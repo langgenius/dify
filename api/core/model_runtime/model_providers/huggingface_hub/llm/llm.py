@@ -2,20 +2,20 @@ from typing import Optional, List, Union, Generator
 
 from huggingface_hub import InferenceClient
 from huggingface_hub.hf_api import HfApi
-from huggingface_hub.utils import HfHubHTTPError
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta, LLMMode
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMMode
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage, \
+    UserPromptMessage, SystemPromptMessage
 from core.model_runtime.entities.model_entities import ParameterRule, DefaultParameterName, AIModelEntity, ModelType, \
     FetchFrom
-from core.model_runtime.errors.invoke import InvokeError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.huggingface_hub._common import _CommonHuggingfaceHub
 
 
-class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
+class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None, stream: bool = True,
                 user: Optional[str] = None) -> Union[LLMResult, Generator]:
@@ -34,40 +34,14 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
             **model_parameters)
 
         if stream:
-            return self._handle_generate_stream_response(model, prompt_messages, response)
+            return self._handle_generate_stream_response(model, credentials, prompt_messages, response)
 
-        return self._handle_generate_response(model, prompt_messages, response)
-
-    @staticmethod
-    def _get_llm_usage():
-        usage = LLMUsage(
-            prompt_tokens=0,
-            prompt_unit_price=0,
-            prompt_price_unit=0,
-            prompt_price=0,
-            completion_tokens=0,
-            completion_unit_price=0,
-            completion_price_unit=0,
-            completion_price=0,
-            total_tokens=0,
-            total_price=0,
-            currency='USD',
-            latency=0,
-        )
-        return usage
+        return self._handle_generate_response(model, credentials, prompt_messages, response)
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
-        """
-        Get number of tokens for given prompt messages
-
-        :param model: model name
-        :param credentials: model credentials
-        :param prompt_messages: prompt messages
-        :param tools: tools for tool calling
-        :return:
-        """
-        return 0
+        prompt = self._convert_messages_to_prompt(prompt_messages)
+        return self._get_num_tokens_by_gpt2(prompt)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         try:
@@ -105,14 +79,6 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
                 model=model)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
-
-    @property
-    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        return {
-            InvokeBadRequestError: [
-                HfHubHTTPError
-            ]
-        }
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         entity = AIModelEntity(
@@ -163,7 +129,9 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
 
         return [temperature_rule, top_k_rule, top_p_rule]
 
-    def _handle_generate_stream_response(self, model: str,
+    def _handle_generate_stream_response(self,
+                                         model: str,
+                                         credentials: dict,
                                          prompt_messages: list[PromptMessage],
                                          response: Generator) -> Generator:
         for chunk in response:
@@ -171,27 +139,44 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
             if chunk.token.special:
                 continue
 
+            assistant_prompt_message = AssistantPromptMessage(
+                content=chunk.token.text
+            )
+
+            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+
+            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+
             yield LLMResultChunk(
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
                     index=chunk.token.id,
-                    message=AssistantPromptMessage(content=chunk.token.text),
-                    usage=self._get_llm_usage(),
+                    message=assistant_prompt_message,
+                    usage=usage,
                 ),
             )
 
-    def _handle_generate_response(self, model: str, prompt_messages: list[PromptMessage], response: any) -> LLMResult:
+    def _handle_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], response: any) -> LLMResult:
         if isinstance(response, str):
             content = response
         else:
             content = response.generated_text
 
-        usage = self._get_llm_usage()
+        assistant_prompt_message = AssistantPromptMessage(
+            content=content
+        )
+
+        prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+        completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+
         result = LLMResult(
             model=model,
             prompt_messages=prompt_messages,
-            message=AssistantPromptMessage(content=content),
+            message=assistant_prompt_message,
             usage=usage,
         )
         return result
@@ -216,3 +201,30 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
             raise CredentialsValidateFailedError(f"{str(e)}")
 
         return model_info.pipeline_tag
+
+    def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
+        messages = messages.copy()  # don't mutate the original list
+
+        text = "".join(
+            self._convert_one_message_to_text(message)
+            for message in messages
+        )
+
+        return text.rstrip()
+
+    @staticmethod
+    def _convert_one_message_to_text(message: PromptMessage) -> str:
+        human_prompt = "\n\nHuman:"
+        ai_prompt = "\n\nAssistant:"
+        content = message.content
+
+        if isinstance(message, UserPromptMessage):
+            message_text = f"{human_prompt} {content}"
+        elif isinstance(message, AssistantPromptMessage):
+            message_text = f"{ai_prompt} {content}"
+        elif isinstance(message, SystemPromptMessage):
+            message_text = content
+        else:
+            raise ValueError(f"Got unknown type {message}")
+
+        return message_text

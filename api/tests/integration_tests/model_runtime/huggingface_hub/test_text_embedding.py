@@ -46,7 +46,7 @@ def test_hosted_inference_api_invoke_model():
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 0
+    assert result.usage.total_tokens == 2
 
 
 def test_inference_endpoints_validate_credentials():
@@ -117,4 +117,4 @@ def test_get_num_tokens():
         ]
     )
 
-    assert num_tokens == 0
+    assert num_tokens == 2
