@@ -5,8 +5,10 @@ import pytest
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.moderation.moderation import OpenAIModerationModel
 
+from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 
-def test_validate_credentials():
+@pytest.mark.parametrize('setup_openai_mock', [['moderation']], indirect=True)
+def test_validate_credentials(setup_openai_mock):
     model = OpenAIModerationModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -24,8 +26,8 @@ def test_validate_credentials():
         }
     )
 
-
-def test_invoke_model():
+@pytest.mark.parametrize('setup_openai_mock', [['moderation']], indirect=True)
+def test_invoke_model(setup_openai_mock):
     model = OpenAIModerationModel()
 
     result = model.invoke(

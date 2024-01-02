@@ -1,9 +1,15 @@
 from tests.integration_tests.model_runtime.__mock.openai_completion import MockCompletionsClass
 from tests.integration_tests.model_runtime.__mock.openai_chat import MockChatClass
 from tests.integration_tests.model_runtime.__mock.openai_remote import MockModelClass
+from tests.integration_tests.model_runtime.__mock.openai_moderation import MockModerationClass
+from tests.integration_tests.model_runtime.__mock.openai_speech2text import MockSpeech2TextClass
+from tests.integration_tests.model_runtime.__mock.openai_embeddings import MockEmbeddingsClass
 from openai.resources.completions import Completions
 from openai.resources.chat import Completions as ChatCompletions
 from openai.resources.models import Models
+from openai.resources.moderations import Moderations
+from openai.resources.audio.transcriptions import Transcriptions
+from openai.resources.embeddings import Embeddings
 
 # import monkeypatch
 from _pytest.monkeypatch import MonkeyPatch
@@ -12,7 +18,7 @@ from typing import Literal, Callable, List
 import os
 import pytest
 
-def mock_openai(monkeypatch: MonkeyPatch, methods: List[Literal["completion", "chat", "remote"]]) -> Callable[[], None]:
+def mock_openai(monkeypatch: MonkeyPatch, methods: List[Literal["completion", "chat", "remote", "moderation", "speech2text"]]) -> Callable[[], None]:
     """
         mock openai module
 
@@ -30,6 +36,15 @@ def mock_openai(monkeypatch: MonkeyPatch, methods: List[Literal["completion", "c
 
     if "remote" in methods:
         monkeypatch.setattr(Models, "list", MockModelClass.list)
+
+    if "moderation" in methods:
+        monkeypatch.setattr(Moderations, "create", MockModerationClass.moderation_create)
+
+    if "speech2text" in methods:
+        monkeypatch.setattr(Transcriptions, "create", MockSpeech2TextClass.speech2text_create)
+
+    if "text_embedding" in methods:
+        monkeypatch.setattr(Embeddings, "create", MockEmbeddingsClass.create_embeddings)
 
     return unpatch
 
