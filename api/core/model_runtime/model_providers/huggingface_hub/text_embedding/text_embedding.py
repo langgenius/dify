@@ -1,19 +1,23 @@
 import json
+import time
 from typing import Optional
 
 import numpy as np
+import requests
 from huggingface_hub import InferenceClient, HfApi
-from huggingface_hub.utils import HfHubHTTPError
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
-from core.model_runtime.errors.invoke import InvokeError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.huggingface_hub._common import _CommonHuggingfaceHub
 
 
-class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
+HUGGINGFACE_ENDPOINT_API = 'https://api.endpoints.huggingface.cloud/v2/endpoint/'
+
+
+class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel):
 
     def _invoke(self, model: str, credentials: dict, texts: list[str],
                 user: Optional[str] = None) -> TextEmbeddingResult:
@@ -36,15 +40,8 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
 
         embeddings = json.loads(output.decode())
 
-        usage = EmbeddingUsage(
-            tokens=0,
-            total_tokens=0,
-            unit_price=0.0,
-            price_unit=0.0,
-            total_price=0.0,
-            currency='USD',
-            latency=0.0
-        )
+        tokens = self.get_num_tokens(model, credentials, texts)
+        usage = self._calc_response_usage(model, credentials, tokens)
 
         return TextEmbeddingResult(
             embeddings=self._mean_pooling(embeddings),
@@ -53,15 +50,10 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
         )
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
-        """
-        Get number of tokens for given prompt messages
-
-        :param model: model name
-        :param credentials: model credentials
-        :param texts: texts to embed
-        :return:
-        """
-        return 0
+        num_tokens = 0
+        for text in texts:
+            num_tokens += self._get_num_tokens_by_gpt2(text)
+        return num_tokens
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         try:
@@ -84,7 +76,10 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
                 if credentials['task_type'] != 'feature-extraction':
                     raise CredentialsValidateFailedError('Huggingface Hub Task Type is invalid.')
 
+                self._check_endpoint_url_model_repository_name(credentials, model)
+
                 model = credentials['huggingfacehub_endpoint_url']
+
             elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
                 self._check_hosted_model_task_type(credentials['huggingfacehub_api_token'],
                                                    model)
@@ -110,14 +105,6 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
             }
         )
         return entity
-
-    @property
-    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        return {
-            InvokeBadRequestError: [
-                HfHubHTTPError
-            ]
-        }
 
     # https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task
     # Returned values are a list of floats, or a list[list[floats]]
@@ -153,3 +140,52 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
                                  f"must be one of {valid_tasks}.")
         except Exception as e:
             raise CredentialsValidateFailedError(f"{str(e)}")
+
+    def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
+        input_price_info = self.get_price(
+            model=model,
+            credentials=credentials,
+            price_type=PriceType.INPUT,
+            tokens=tokens
+        )
+
+        # transform usage
+        usage = EmbeddingUsage(
+            tokens=tokens,
+            total_tokens=tokens,
+            unit_price=input_price_info.unit_price,
+            price_unit=input_price_info.unit,
+            total_price=input_price_info.total_amount,
+            currency=input_price_info.currency,
+            latency=time.perf_counter() - self.started_at
+        )
+
+        return usage
+
+    @staticmethod
+    def _check_endpoint_url_model_repository_name(credentials: dict, model_name: str):
+        try:
+            url = f'{HUGGINGFACE_ENDPOINT_API}{credentials["huggingface_namespace"]}'
+            headers = {
+                'Authorization': f'Bearer {credentials["huggingfacehub_api_token"]}',
+                'Content-Type': 'application/json'
+            }
+
+            response = requests.get(url=url, headers=headers)
+
+            if response.status_code != 200:
+                raise ValueError('User Name or Organization Name is invalid.')
+
+            model_repository_name = ''
+
+            for item in response.json().get("items", []):
+                if item.get("status", {}).get("url") == credentials['huggingfacehub_endpoint_url']:
+                    model_repository_name = item.get("model", {}).get("repository")
+                    break
+
+            if model_repository_name != model_name:
+                raise ValueError(
+                    f'Model Name {model_name} is invalid. Please check it on the inference endpoints console.')
+
+        except Exception as e:
+            raise ValueError(str(e))

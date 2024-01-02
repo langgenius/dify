@@ -264,7 +264,7 @@ class ProviderConfiguration(BaseModel):
 
         model_schema = (
             model_provider_factory.get_provider_instance(self.provider.provider)
-            .get_model_instance(model_type).get_customizable_model_schema(
+            .get_model_instance(model_type)._get_customizable_model_schema(
                 model=model,
                 credentials=credentials
             )

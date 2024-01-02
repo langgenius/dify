@@ -315,7 +315,7 @@ class ApplicationManager:
             chat_prompt_config = copy_app_model_config_dict.get("chat_prompt_config", {})
             if chat_prompt_config:
                 chat_prompt_messages = []
-                for message in chat_prompt_config.get("messages", []):
+                for message in chat_prompt_config.get("prompt", []):
                     chat_prompt_messages.append({
                         "text": message["text"],
                         "role": PromptMessageRole.value_of(message["role"])
@@ -328,12 +328,18 @@ class ApplicationManager:
             advanced_completion_prompt_template = None
             completion_prompt_config = copy_app_model_config_dict.get("completion_prompt_config", {})
             if completion_prompt_config:
+                completion_prompt_template_params = {
+                    'prompt': completion_prompt_config['prompt']['text'],
+                }
+
+                if 'conversation_histories_role' in completion_prompt_config:
+                    completion_prompt_template_params['role_prefix'] = {
+                        'user': completion_prompt_config['conversation_histories_role']['user_prefix'],
+                        'assistant': completion_prompt_config['conversation_histories_role']['assistant_prefix']
+                    }
+
                 advanced_completion_prompt_template = AdvancedCompletionPromptTemplateEntity(
-                    prompt=completion_prompt_config['prompt']['text'],
-                    role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(
-                        user=completion_prompt_config['conversation_histories_role']['user_prefix'],
-                        assistant=completion_prompt_config['conversation_histories_role']['assistant_prefix']
-                    )
+                    **completion_prompt_template_params
                 )
 
             properties['prompt_template'] = PromptTemplateEntity(
@@ -343,6 +349,7 @@ class ApplicationManager:
             )
 
         # external data variables
+        properties['external_data_variables'] = []
         external_data_tools = copy_app_model_config_dict.get('external_data_tools', [])
         for external_data_tool in external_data_tools:
             if 'enabled' not in external_data_tool or not external_data_tool['enabled']:

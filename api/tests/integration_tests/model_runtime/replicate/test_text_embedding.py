@@ -67,7 +67,7 @@ def test_invoke_model_one():
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 0
+    assert result.usage.total_tokens == 2
 
 
 def test_invoke_model_two():
@@ -88,7 +88,7 @@ def test_invoke_model_two():
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 0
+    assert result.usage.total_tokens == 2
 
 
 def test_invoke_model_three():
@@ -109,7 +109,7 @@ def test_invoke_model_three():
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 0
+    assert result.usage.total_tokens == 2
 
 
 def test_invoke_model_four():
@@ -130,7 +130,7 @@ def test_invoke_model_four():
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 0
+    assert result.usage.total_tokens == 2
 
 
 def test_get_num_tokens():
@@ -148,4 +148,4 @@ def test_get_num_tokens():
         ]
     )
 
-    assert num_tokens == 0
+    assert num_tokens == 2

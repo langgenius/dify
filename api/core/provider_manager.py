@@ -117,7 +117,7 @@ class ProviderManager:
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
 
             if preferred_provider_type_record:
-                preferred_provider_type = preferred_provider_type_record.preferred_provider_type
+                preferred_provider_type = ProviderType.value_of(preferred_provider_type_record.preferred_provider_type)
             else:
                 if custom_configuration.provider or custom_configuration.models:
                     preferred_provider_type = ProviderType.CUSTOM

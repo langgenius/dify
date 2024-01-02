@@ -109,7 +109,7 @@ class AppListApi(Resource):
                 tenant_id=current_user.current_tenant_id,
                 account=current_user,
                 config=model_config_dict,
-                mode=args['mode']
+                app_mode=args['mode']
             )
 
             app = App(

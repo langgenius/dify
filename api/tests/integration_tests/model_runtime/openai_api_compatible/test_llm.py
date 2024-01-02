@@ -22,7 +22,8 @@ def test_validate_credentials():
             model='mistralai/Mixtral-8x7B-Instruct-v0.1',
             credentials={
                 'api_key': 'invalid_key',
-                'endpoint_url': 'https://api.together.xyz/v1/chat/completions'
+                'endpoint_url': 'https://api.together.xyz/v1/chat/completions',
+                'mode': 'chat'
             }
         )
 
@@ -30,7 +31,8 @@ def test_validate_credentials():
         model='mistralai/Mixtral-8x7B-Instruct-v0.1',
         credentials={
             'api_key': os.environ.get('TOGETHER_API_KEY'),
-            'endpoint_url': 'https://api.together.xyz/v1/chat/completions'
+            'endpoint_url': 'https://api.together.xyz/v1/chat/completions',
+            'mode': 'chat'
         }
     )
 
@@ -41,7 +43,8 @@ def test_invoke_model():
         model='mistralai/Mixtral-8x7B-Instruct-v0.1',
         credentials={
             'api_key': os.environ.get('TOGETHER_API_KEY'),
-            'endpoint_url': 'https://api.together.xyz/v1/chat/completions'
+            'endpoint_url': 'https://api.together.xyz/v1/completions',
+            'mode': 'completion'
         },
         prompt_messages=[
             SystemPromptMessage(
@@ -71,7 +74,8 @@ def test_invoke_stream_model():
         model='mistralai/Mixtral-8x7B-Instruct-v0.1',
         credentials={
             'api_key': os.environ.get('TOGETHER_API_KEY'),
-            'endpoint_url': 'https://api.together.xyz/v1/chat/completions'
+            'endpoint_url': 'https://api.together.xyz/v1/chat/completions',
+            'mode': 'chat'
         },
         prompt_messages=[
             SystemPromptMessage(
@@ -106,7 +110,8 @@ def test_invoke_chat_model_with_tools():
         model='gpt-3.5-turbo',
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
-            'endpoint_url': 'https://api.openai.com/v1/chat/completions'
+            'endpoint_url': 'https://api.openai.com/v1/chat/completions',
+            'mode': 'chat'
         },
         prompt_messages=[
             SystemPromptMessage(
@@ -158,6 +163,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='mistralai/Mixtral-8x7B-Instruct-v0.1',
+        credentials={
+            'api_key': os.environ.get('OPENAI_API_KEY'),
+            'endpoint_url': 'https://api.openai.com/v1/chat/completions'
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

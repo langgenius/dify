@@ -203,7 +203,7 @@ class AgentRunnerFeature:
         # get dataset from dataset id
         dataset = db.session.query(Dataset).filter(
             Dataset.tenant_id == self.tenant_id,
-            Dataset.id == tool_config.get('dataset').get("id")
+            Dataset.id == tool_config.get("id")
         ).first()
 
         # pass if dataset is not available
