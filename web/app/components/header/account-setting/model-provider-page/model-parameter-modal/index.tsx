@@ -94,13 +94,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
   const handleChangeParams = () => {
     const newCompletionParams = parameterRules.reduce((acc, parameter) => {
-      if (parameter.default !== undefined)
+      if (parameter.default !== undefined && completionParams[parameter.name] === undefined)
         acc[parameter.name] = parameter.default
 
       return acc
     }, {} as Record<string, any>)
 
-    onCompletionParamsChange(newCompletionParams)
+    onCompletionParamsChange({
+      ...completionParams,
+      ...newCompletionParams,
+    })
   }
 
   useEffect(() => {
