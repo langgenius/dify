@@ -170,6 +170,8 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                 name='top_k',
                 type=ParameterType.INT,
                 use_template='top_k',
+                min=1,
+                default=1,
                 label=I18nObject(
                     zh_Hans='Top K',
                     en_US='Top K'
