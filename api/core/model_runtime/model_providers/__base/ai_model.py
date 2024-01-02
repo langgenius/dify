@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import PriceInfo, AIModelEntity, PriceType, PriceConfig, \
     DefaultParameterName, FetchFrom, ModelType
+from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 
@@ -243,9 +244,52 @@ class AIModel(ABC):
                 return model_instance
             except ValidationError as e:
                 logging.exception(f"Invalid model schema for {model}")
-                return self.get_customizable_model_schema(model, credentials)
+                return self._get_customizable_model_schema(model, credentials)
 
-        return self.get_customizable_model_schema(model, credentials)
+        return self._get_customizable_model_schema(model, credentials)
+    
+    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        """
+        Get customizable model schema and fill in the template
+        """
+        schema = self.get_customizable_model_schema(model, credentials)
+
+        if not schema:
+            return None
+        
+        # fill in the template
+        new_parameter_rules = []
+        for parameter_rule in schema.parameter_rules:
+            if parameter_rule.use_template:
+                try:
+                    default_parameter_name = DefaultParameterName.value_of(parameter_rule.use_template)
+                    default_parameter_rule = self._get_default_parameter_rule_variable_map(default_parameter_name)
+                    if not parameter_rule.max:
+                        parameter_rule.max = default_parameter_rule['max']
+                    if not parameter_rule.min:
+                        parameter_rule.min = default_parameter_rule['min']
+                    if not parameter_rule.precision:
+                        parameter_rule.default = default_parameter_rule['default']
+                    if not parameter_rule.precision:
+                        parameter_rule.precision = default_parameter_rule['precision']
+                    if not parameter_rule.required:
+                        parameter_rule.required = default_parameter_rule['required']
+                    if not parameter_rule.help:
+                        parameter_rule.help = I18nObject(
+                            en_US=default_parameter_rule['help']['en_US'],
+                        )
+                    if not parameter_rule.help.en_US:
+                        parameter_rule.help.en_US = default_parameter_rule['help']['en_US']
+                    if not parameter_rule.help.zh_Hans:
+                        parameter_rule.help.zh_Hans = default_parameter_rule['help'].get('zh_Hans', default_parameter_rule['help']['en_US'])
+                except ValueError:
+                    pass
+
+            new_parameter_rules.append(parameter_rule)
+
+        schema.parameter_rules = new_parameter_rules
+
+        return schema
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
