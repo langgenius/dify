@@ -183,7 +183,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
             except ModelCurrentlyNotSupportError:
                 yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
             except InvokeError as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
+                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(e.description)).get_json()) + "\n\n"
             except ValueError as e:
                 yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
             except Exception:
