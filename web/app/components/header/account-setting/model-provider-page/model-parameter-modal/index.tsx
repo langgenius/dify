@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -72,7 +72,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     { provider, model: modelId },
   )
 
-  const parameterRules = parameterRulesData?.data || []
+  const parameterRules = useMemo(() => {
+    return parameterRulesData?.data || []
+  }, [parameterRulesData])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -91,24 +93,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       features: targetModelItem?.features || [],
     })
   }
-
-  const handleChangeParams = () => {
-    const newCompletionParams = parameterRules.reduce((acc, parameter) => {
-      if (parameter.default !== undefined && completionParams[parameter.name] === undefined)
-        acc[parameter.name] = parameter.default
-
-      return acc
-    }, {} as Record<string, any>)
-
-    onCompletionParamsChange({
-      ...completionParams,
-      ...newCompletionParams,
-    })
-  }
-
-  useEffect(() => {
-    handleChangeParams()
-  }, [parameterRules])
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
     if (!value) {

@@ -318,6 +318,7 @@ const Configuration: FC = () => {
       ...visionConfig,
       enabled: supportVision,
     }, true)
+    setCompletionParams({})
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
