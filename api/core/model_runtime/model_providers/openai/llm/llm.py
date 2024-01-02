@@ -125,7 +125,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 base_model = model.split(':')[1]
 
                 # check if model exists
-                remote_models = self.remote_models()
+                remote_models = self.remote_models(credentials)
                 remote_model_map = {model.model: model for model in remote_models}
                 if model not in remote_model_map:
                     raise CredentialsValidateFailedError(f'Fine-tuned model {model} not found')
@@ -687,6 +687,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
+        if model.startswith('ft:'):
+            model = model.split(':')[1]
+
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
