@@ -167,7 +167,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         parameterRule.type === 'boolean' && (
           <Radio.Group
             className='w-[200px] flex items-center'
-            value={isNullOrUndefined(renderValue) ? 1 : 0}
+            value={renderValue ? 1 : 0}
             onChange={handleRadioChange}
           >
             <Radio value={1} className='!mr-1 w-[94px]'>True</Radio>
@@ -195,7 +195,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         )
       }
       {
-        parameterRule.type === 'string' && parameterRule?.options?.length && (
+        parameterRule.type === 'string' && !!parameterRule?.options?.length && (
           <SimpleSelect
             className='!py-0'
             wrapperClassName='!w-[200px] !h-8'

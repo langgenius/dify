@@ -42,7 +42,7 @@ const stopParameerRule: ModelParameterRule = {
   },
   label: {
     en_US: 'Stop sequences',
-    zh_Hans: '停止序列 stop_sequences',
+    zh_Hans: '停止序列',
   },
   name: 'stop',
   required: false,
