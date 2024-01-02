@@ -3,6 +3,7 @@ import time
 from typing import Optional
 
 import numpy as np
+import requests
 from huggingface_hub import InferenceClient, HfApi
 
 from core.model_runtime.entities.common_entities import I18nObject
@@ -11,6 +12,9 @@ from core.model_runtime.entities.text_embedding_entities import TextEmbeddingRes
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.huggingface_hub._common import _CommonHuggingfaceHub
+
+
+HUGGINGFACE_ENDPOINT_API = 'https://api.endpoints.huggingface.cloud/v2/endpoint/'
 
 
 class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel):
@@ -72,7 +76,10 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
                 if credentials['task_type'] != 'feature-extraction':
                     raise CredentialsValidateFailedError('Huggingface Hub Task Type is invalid.')
 
+                self._check_endpoint_url_model_repository_name(credentials, model)
+
                 model = credentials['huggingfacehub_endpoint_url']
+
             elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
                 self._check_hosted_model_task_type(credentials['huggingfacehub_api_token'],
                                                    model)
@@ -154,3 +161,31 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
         )
 
         return usage
+
+    @staticmethod
+    def _check_endpoint_url_model_repository_name(credentials: dict, model_name: str):
+        try:
+            url = f'{HUGGINGFACE_ENDPOINT_API}{credentials["huggingface_namespace"]}'
+            headers = {
+                'Authorization': f'Bearer {credentials["huggingfacehub_api_token"]}',
+                'Content-Type': 'application/json'
+            }
+
+            response = requests.get(url=url, headers=headers)
+
+            if response.status_code != 200:
+                raise ValueError('User Name or Organization Name is invalid.')
+
+            model_repository_name = ''
+
+            for item in response.json().get("items", []):
+                if item.get("status", {}).get("url") == credentials['huggingfacehub_endpoint_url']:
+                    model_repository_name = item.get("model", {}).get("repository")
+                    break
+
+            if model_repository_name != model_name:
+                raise ValueError(
+                    f'Model Name {model_name} is invalid. Please check it on the inference endpoints console.')
+
+        except Exception as e:
+            raise ValueError(str(e))
