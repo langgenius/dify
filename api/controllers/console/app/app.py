@@ -134,10 +134,16 @@ class AppListApi(Resource):
 
             # get model provider
             model_manager = ModelManager()
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=current_user.current_tenant_id,
-                model_type=ModelType.LLM
-            )
+
+            try:
+                model_instance = model_manager.get_default_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    model_type=ModelType.LLM
+                )
+            except ProviderTokenNotInitError:
+                raise ProviderNotInitializeError(
+                    f"No Default System Reasoning Model available. Please configure "
+                    f"in the Settings -> Model Provider.")
 
             if not model_instance:
                 raise ProviderNotInitializeError(
