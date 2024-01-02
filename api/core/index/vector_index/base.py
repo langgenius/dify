@@ -6,7 +6,6 @@ from typing import List, Any, cast
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document, BaseRetriever
 from langchain.vectorstores import VectorStore
-from weaviate import UnexpectedStatusCodeException
 
 from core.index.base import BaseIndex
 from extensions.ext_database import db
@@ -139,10 +138,8 @@ class BaseVectorIndex(BaseIndex):
 
         try:
             self.delete()
-        except UnexpectedStatusCodeException as e:
-            if e.status_code != 400:
-                # 400 means index not exists
-                raise e
+        except Exception as e:
+            raise e
 
         dataset_documents = db.session.query(DatasetDocument).filter(
             DatasetDocument.dataset_id == dataset.id,
@@ -194,10 +191,8 @@ class BaseVectorIndex(BaseIndex):
 
         try:
             self.delete()
-        except UnexpectedStatusCodeException as e:
-            if e.status_code != 400:
-                # 400 means index not exists
-                raise e
+        except Exception as e:
+            raise e
 
         dataset_documents = db.session.query(DatasetDocument).filter(
             DatasetDocument.dataset_id == dataset.id,

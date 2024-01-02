@@ -99,6 +99,7 @@ const translation = {
     createWorkspace: '创建工作空间',
     helpCenter: '帮助文档',
     roadmapAndFeedback: '产品路线图 & 用户反馈',
+    community: '社区',
     about: '关于',
     logout: '登出',
   },
