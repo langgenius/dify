@@ -436,8 +436,6 @@ class ApplicationManager:
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue
 
-                    del tool_item["enabled"]
-
                     agent_tool_properties["config"] = tool_item
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))
 
