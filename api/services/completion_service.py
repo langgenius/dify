@@ -111,7 +111,7 @@ class CompletionService:
                     tenant_id=app_model.tenant_id,
                     account=user,
                     config=args['model_config'],
-                    mode=app_model.mode
+                    app_mode=app_model.mode
                 )
 
                 app_model_config = AppModelConfig(

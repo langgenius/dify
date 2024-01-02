@@ -47,7 +47,7 @@ class AppModelConfigService:
         return cp
 
     @classmethod
-    def validate_configuration(cls, tenant_id: str, account: Account, config: dict, mode: str) -> dict:
+    def validate_configuration(cls, tenant_id: str, account: Account, config: dict, app_mode: str) -> dict:
         # opening_statement
         if 'opening_statement' not in config or not config["opening_statement"]:
             config["opening_statement"] = ""
@@ -155,15 +155,15 @@ class AppModelConfigService:
         if config["model"]["name"] not in model_ids:
             raise ValueError("model.name must be in the specified model list")
 
-        mode = None
+        model_mode = None
         for model in models:
             if model.model == config["model"]["name"]:
-                mode = model.model_properties.get(ModelPropertyKey.MODE)
+                model_mode = model.model_properties.get(ModelPropertyKey.MODE)
                 break
 
         # model.mode
-        if mode:
-            config['model']["mode"] = mode
+        if model_mode:
+            config['model']["mode"] = model_mode
         else:
             config['model']["mode"] = "completion"
 
@@ -287,10 +287,10 @@ class AppModelConfigService:
                     raise ValueError("Dataset ID does not exist, please check your permission.")
 
         # dataset_query_variable
-        cls.is_dataset_query_variable_valid(config, mode)
+        cls.is_dataset_query_variable_valid(config, app_mode)
 
         # advanced prompt validation
-        cls.is_advanced_prompt_valid(config, mode)
+        cls.is_advanced_prompt_valid(config, app_mode)
 
         # external data tools validation
         cls.is_external_data_tools_valid(tenant_id, config)
