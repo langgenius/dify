@@ -8,9 +8,13 @@ def handle(sender, **kwargs):
     message = sender
     conversation = kwargs.get('conversation')
     is_first_message = kwargs.get('is_first_message')
-    auto_generate_name = kwargs.get('auto_generate_name', True)
+    extras = kwargs.get('extras', {})
 
-    if auto_generate_name and is_first_message:
+    auto_generate_conversation_name = True
+    if extras:
+        auto_generate_conversation_name = extras.get('auto_generate_conversation_name', True)
+
+    if auto_generate_conversation_name and is_first_message:
         if conversation.mode == 'chat':
             app_model = conversation.app
             if not app_model:

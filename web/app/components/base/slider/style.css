@@ -6,12 +6,13 @@
 }
 
 .slider-thumb {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
     background-color: white;
     border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.08);
     position: absolute;
-    top: -9px;
+    top: -8px;
     box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.08);
     cursor: pointer;
 

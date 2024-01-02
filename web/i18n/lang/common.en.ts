@@ -286,6 +286,20 @@ const translation = {
     freeQuota: {
       howToEarn: 'How to earn',
     },
+    addMoreModelProvider: 'ADD MORE MODEL PROVIDER',
+    addModel: 'Add Model',
+    modelsNum: '{{num}} Models',
+    showModels: 'Show Models',
+    showModelsNum: 'Show {{num}} Models',
+    collapse: 'Collapse',
+    config: 'Config',
+    modelAndParameters: 'Model and Parameters',
+    model: 'Model',
+    featureSupported: '{{feature}} supported',
+    callTimes: 'Call times',
+    buyQuota: 'Buy Quota',
+    getFreeTokens: 'Get free Tokens',
+    priorityUsing: 'Prioritize using',
   },
   dataSource: {
     add: 'Add a data source',
@@ -318,13 +332,13 @@ const translation = {
     },
   },
   apiBasedExtension: {
-    title: 'API-based extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
+    title: 'API extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
     link: 'Learn how to develop your own API Extension.',
     linkUrl: 'https://docs.dify.ai/advanced/api_based_extension',
     add: 'Add API Extension',
     selector: {
       title: 'API Extension',
-      placeholder: 'Please select API-based extension',
+      placeholder: 'Please select API extension',
       manage: 'Manage API Extension',
     },
     modal: {

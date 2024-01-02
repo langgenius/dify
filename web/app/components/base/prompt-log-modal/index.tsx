@@ -27,6 +27,9 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
     setMounted(true)
   }, [])
 
+  if (!log)
+    return null
+
   return (
     <div
       className='fixed top-16 left-2 bottom-2 flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
@@ -37,7 +40,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
         <div className='text-base font-semibold text-gray-900'>PROMPT LOG</div>
         <div className='flex items-center'>
           {
-            log.length === 1 && (
+            log?.length === 1 && (
               <>
                 <CopyFeedbackNew className='w-6 h-6' content={log[0].text} />
                 <div className='mx-2.5 w-[1px] h-[14px] bg-gray-200' />

@@ -18,9 +18,11 @@ from core.data_loader.loader.notion import NotionLoader
 from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
-from core.model_providers.error import ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.entity.message import MessageType
+from core.model_manager import ModelManager
+from core.errors.error import ProviderTokenNotInitError
+from core.model_runtime.entities.model_entities import ModelType, PriceType
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -36,6 +38,7 @@ class IndexingRunner:
 
     def __init__(self):
         self.storage = storage
+        self.model_manager = ModelManager()
 
     def run(self, dataset_documents: List[DatasetDocument]):
         """Run the indexing process."""
@@ -210,7 +213,7 @@ class IndexingRunner:
         """
         Estimate the indexing for the document.
         """
-        embedding_model = None
+        embedding_model_instance = None
         if dataset_id:
             dataset = Dataset.query.filter_by(
                 id=dataset_id
@@ -218,15 +221,17 @@ class IndexingRunner:
             if not dataset:
                 raise ValueError('Dataset not found.')
             if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                embedding_model_instance = self.model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
         else:
             if indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=tenant_id
+                embedding_model_instance = self.model_manager.get_default_model_instance(
+                    tenant_id=tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING,
                 )
         tokens = 0
         preview_texts = []
@@ -255,32 +260,56 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
-                if indexing_technique == 'high_quality' or embedding_model:
-                    tokens += embedding_model.get_num_tokens(self.filter_string(document.page_content))
+                if indexing_technique == 'high_quality' or embedding_model_instance:
+                    embedding_model_type_instance = embedding_model_instance.model_type_instance
+                    embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+                    tokens += embedding_model_type_instance.get_num_tokens(
+                        model=embedding_model_instance.model,
+                        credentials=embedding_model_instance.credentials,
+                        texts=[self.filter_string(document.page_content)]
+                    )
 
         if doc_form and doc_form == 'qa_model':
-            text_generation_model = ModelFactory.get_text_generation_model(
-                tenant_id=tenant_id
+            model_instance = self.model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM
             )
+
+            model_type_instance = model_instance.model_type_instance
+            model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
                                                              doc_language)
                 document_qa_list = self.format_split_text(response)
+                price_info = model_type_instance.get_price(
+                    model=model_instance.model,
+                    credentials=model_instance.credentials,
+                    price_type=PriceType.INPUT,
+                    tokens=total_segments * 2000,
+                )
                 return {
                     "total_segments": total_segments * 20,
                     "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(
-                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.USER)),
-                    "currency": embedding_model.get_currency(),
+                    "total_price": '{:f}'.format(price_info.total_amount),
+                    "currency": price_info.currency,
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
                 }
+        if embedding_model_instance:
+            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_instance.model_type_instance)
+            embedding_price_info = embedding_model_type_instance.get_price(
+                model=embedding_model_instance.model,
+                credentials=embedding_model_instance.credentials,
+                price_type=PriceType.INPUT,
+                tokens=tokens
+            )
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)) if embedding_model else 0,
-            "currency": embedding_model.get_currency() if embedding_model else 'USD',
+            "total_price": '{:f}'.format(embedding_price_info.total_amount) if embedding_model_instance else 0,
+            "currency": embedding_price_info.currency if embedding_model_instance else 'USD',
             "preview": preview_texts
         }
 
@@ -290,7 +319,7 @@ class IndexingRunner:
         """
         Estimate the indexing for the document.
         """
-        embedding_model = None
+        embedding_model_instance = None
         if dataset_id:
             dataset = Dataset.query.filter_by(
                 id=dataset_id
@@ -298,15 +327,17 @@ class IndexingRunner:
             if not dataset:
                 raise ValueError('Dataset not found.')
             if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                embedding_model_instance = self.model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
         else:
             if indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=tenant_id
+                embedding_model_instance = self.model_manager.get_default_model_instance(
+                    tenant_id=tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING
                 )
         # load data from notion
         tokens = 0
@@ -349,35 +380,63 @@ class IndexingRunner:
                     processing_rule=processing_rule
                 )
                 total_segments += len(documents)
+
+                embedding_model_type_instance = embedding_model_instance.model_type_instance
+                embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+
                 for document in documents:
                     if len(preview_texts) < 5:
                         preview_texts.append(document.page_content)
-                    if indexing_technique == 'high_quality' or embedding_model:
-                        tokens += embedding_model.get_num_tokens(document.page_content)
+                    if indexing_technique == 'high_quality' or embedding_model_instance:
+                        tokens += embedding_model_type_instance.get_num_tokens(
+                            model=embedding_model_instance.model,
+                            credentials=embedding_model_instance.credentials,
+                            texts=[document.page_content]
+                        )
 
         if doc_form and doc_form == 'qa_model':
-            text_generation_model = ModelFactory.get_text_generation_model(
-                tenant_id=tenant_id
+            model_instance = self.model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM
             )
+
+            model_type_instance = model_instance.model_type_instance
+            model_type_instance = cast(LargeLanguageModel, model_type_instance)
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
                                                              doc_language)
                 document_qa_list = self.format_split_text(response)
+
+                price_info = model_type_instance.get_price(
+                    model=model_instance.model,
+                    credentials=model_instance.credentials,
+                    price_type=PriceType.INPUT,
+                    tokens=total_segments * 2000,
+                )
+
                 return {
                     "total_segments": total_segments * 20,
                     "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(
-                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.USER)),
-                    "currency": embedding_model.get_currency(),
+                    "total_price": '{:f}'.format(price_info.total_amount),
+                    "currency": price_info.currency,
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
                 }
+
+        embedding_model_type_instance = embedding_model_instance.model_type_instance
+        embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+        embedding_price_info = embedding_model_type_instance.get_price(
+            model=embedding_model_instance.model,
+            credentials=embedding_model_instance.credentials,
+            price_type=PriceType.INPUT,
+            tokens=tokens
+        )
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)) if embedding_model else 0,
-            "currency": embedding_model.get_currency() if embedding_model else 'USD',
+            "total_price": '{:f}'.format(embedding_price_info.total_amount) if embedding_model_instance else 0,
+            "currency": embedding_price_info.currency if embedding_model_instance else 'USD',
             "preview": preview_texts
         }
 
@@ -656,25 +715,36 @@ class IndexingRunner:
         """
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
-        embedding_model = None
+        embedding_model_instance = None
         if dataset.indexing_technique == 'high_quality':
-            embedding_model = ModelFactory.get_embedding_model(
+            embedding_model_instance = self.model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
+                provider=dataset.embedding_model_provider,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=dataset.embedding_model
             )
 
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
         chunk_size = 100
+
+        embedding_model_type_instance = None
+        if embedding_model_instance:
+            embedding_model_type_instance = embedding_model_instance.model_type_instance
+            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+
         for i in range(0, len(documents), chunk_size):
             # check document is paused
             self._check_document_paused_status(dataset_document.id)
             chunk_documents = documents[i:i + chunk_size]
-            if dataset.indexing_technique == 'high_quality' or embedding_model:
+            if dataset.indexing_technique == 'high_quality' or embedding_model_type_instance:
                 tokens += sum(
-                    embedding_model.get_num_tokens(document.page_content)
+                    embedding_model_type_instance.get_num_tokens(
+                        embedding_model_instance.model,
+                        embedding_model_instance.credentials,
+                        [document.page_content]
+                    )
                     for document in chunk_documents
                 )
 
