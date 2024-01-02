@@ -219,8 +219,23 @@ class GenerateTaskPipeline:
 
                     self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
                         completion=self._task_state.llm_result.message.content,
-                        public_event=True
+                        public_event=False
                     )
+
+                    self._output_moderation_handler = None
+
+                    replace_response = {
+                        'event': 'message_replace',
+                        'task_id': self._application_generate_entity.task_id,
+                        'message_id': self._message.id,
+                        'answer': self._task_state.llm_result.message.content,
+                        'created_at': int(self._message.created_at.timestamp())
+                    }
+
+                    if self._conversation.mode == 'chat':
+                        replace_response['conversation_id'] = self._conversation.id
+
+                    yield self._yield_response(replace_response)
 
                 # Save message
                 self._save_message(self._task_state.llm_result)
@@ -298,7 +313,7 @@ class GenerateTaskPipeline:
                                 message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
                             )
                         ))
-                        self._queue_manager.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.OUTPUT_MODERATION))
+                        self._queue_manager.publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION))
                         continue
                     else:
                         self._output_moderation_handler.append_new_token(delta_text)

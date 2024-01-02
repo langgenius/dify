@@ -61,7 +61,7 @@ class ApplicationQueueManager:
                 if elapsed_time >= listen_timeout or self._is_stopped():
                     # publish two messages to make sure the client can receive the stop signal
                     # and stop listening after the stop signal processed
-                    self.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.USER_MANUAL))
+                    self.publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL))
                     self.stop_listen()
 
                 if elapsed_time // 10 > last_ping_time:
