@@ -17,16 +17,16 @@ def test_validate_credentials():
         model.validate_credentials(
             model='spark-1.5',
             credentials={
-                'spark_app_id': 'invalid_key'
+                'app_id': 'invalid_key'
             }
         )
 
     model.validate_credentials(
         model='spark-1.5',
         credentials={
-            'spark_app_id': os.environ.get('SPARK_APP_ID'),
-            'spark_api_secret': os.environ.get('SPARK_API_SECRET'),
-            'spark_api_key': os.environ.get('SPARK_API_KEY')
+            'app_id': os.environ.get('SPARK_APP_ID'),
+            'api_secret': os.environ.get('SPARK_API_SECRET'),
+            'api_key': os.environ.get('SPARK_API_KEY')
         }
     )
 
@@ -37,9 +37,9 @@ def test_invoke_model():
     response = model.invoke(
         model='spark-1.5',
         credentials={
-            'spark_app_id': os.environ.get('SPARK_APP_ID'),
-            'spark_api_secret': os.environ.get('SPARK_API_SECRET'),
-            'spark_api_key': os.environ.get('SPARK_API_KEY')
+            'app_id': os.environ.get('SPARK_APP_ID'),
+            'api_secret': os.environ.get('SPARK_API_SECRET'),
+            'api_key': os.environ.get('SPARK_API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -65,9 +65,9 @@ def test_invoke_stream_model():
     response = model.invoke(
         model='spark-1.5',
         credentials={
-            'spark_app_id': os.environ.get('SPARK_APP_ID'),
-            'spark_api_secret': os.environ.get('SPARK_API_SECRET'),
-            'spark_api_key': os.environ.get('SPARK_API_KEY')
+            'app_id': os.environ.get('SPARK_APP_ID'),
+            'api_secret': os.environ.get('SPARK_API_SECRET'),
+            'api_key': os.environ.get('SPARK_API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -97,9 +97,9 @@ def test_get_num_tokens():
     num_tokens = model.get_num_tokens(
         model='spark-1.5',
         credentials={
-            'spark_app_id': os.environ.get('SPARK_APP_ID'),
-            'spark_api_secret': os.environ.get('SPARK_API_SECRET'),
-            'spark_api_key': os.environ.get('SPARK_API_KEY')
+            'app_id': os.environ.get('SPARK_APP_ID'),
+            'api_secret': os.environ.get('SPARK_API_SECRET'),
+            'api_key': os.environ.get('SPARK_API_KEY')
         },
         prompt_messages=[
             SystemPromptMessage(

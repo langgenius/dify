@@ -205,9 +205,9 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         credentials_kwargs = {
-            "app_id": credentials['spark_app_id'],
-            "api_secret": credentials['spark_api_secret'],
-            "api_key": credentials['spark_api_key'],
+            "app_id": credentials['app_id'],
+            "api_secret": credentials['api_secret'],
+            "api_key": credentials['api_key'],
         }
 
         return credentials_kwargs

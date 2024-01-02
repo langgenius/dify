@@ -17,14 +17,14 @@ def test_validate_credentials():
         model.validate_credentials(
             model='qwen-turbo',
             credentials={
-                'tongyi_api_key': 'invalid_key'
+                'dashscope_api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
         model='qwen-turbo',
         credentials={
-            'tongyi_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
+            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
         }
     )
 
@@ -35,7 +35,7 @@ def test_invoke_model():
     response = model.invoke(
         model='qwen-turbo',
         credentials={
-            'tongyi_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
+            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -61,7 +61,7 @@ def test_invoke_stream_model():
     response = model.invoke(
         model='qwen-turbo',
         credentials={
-            'tongyi_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
+            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -92,7 +92,7 @@ def test_get_num_tokens():
     num_tokens = model.get_num_tokens(
         model='qwen-turbo',
         credentials={
-            'tongyi_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
+            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
         },
         prompt_messages=[
             SystemPromptMessage(

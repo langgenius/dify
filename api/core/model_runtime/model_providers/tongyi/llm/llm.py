@@ -110,6 +110,8 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         dashscope.api_key = credentials_kwargs['api_key']
 
+        print(credentials_kwargs, 'credentials_kwargs')
+
         client = EnhanceTongyi(
             model_name=model,
             streaming=stream,
@@ -219,6 +221,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param credentials:
         :return:
         """
+        print(credentials, 'credentials')
         credentials_kwargs = {
             "api_key": credentials['dashscope_api_key'],
         }

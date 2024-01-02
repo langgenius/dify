@@ -16,8 +16,8 @@ def test_validate_provider_credentials():
 
     provider.validate_provider_credentials(
         credentials={
-            'spark_app_id': os.environ.get('SPARK_APP_ID'),
-            'spark_api_secret': os.environ.get('SPARK_API_SECRET'),
-            'spark_api_key': os.environ.get('SPARK_API_KEY')
+            'app_id': os.environ.get('SPARK_APP_ID'),
+            'api_secret': os.environ.get('SPARK_API_SECRET'),
+            'api_key': os.environ.get('SPARK_API_KEY')
         }
     )

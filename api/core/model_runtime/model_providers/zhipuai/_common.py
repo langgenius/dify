@@ -11,7 +11,7 @@ class _CommonZhipuaiAI:
         :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['zhipuai_api_key'],
+            "api_key": credentials['api_key'],
         }
 
         return credentials_kwargs

@@ -14,14 +14,14 @@ def test_validate_credentials():
         model.validate_credentials(
             model='text_embedding',
             credentials={
-                'zhipuai_api_key': 'invalid_key'
+                'api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
         model='text_embedding',
         credentials={
-            'zhipuai_api_key': os.environ.get('ZHIPUAI_API_KEY')
+            'api_key': os.environ.get('ZHIPUAI_API_KEY')
         }
     )
 
@@ -32,7 +32,7 @@ def test_invoke_model():
     result = model.invoke(
         model='text_embedding',
         credentials={
-            'zhipuai_api_key': os.environ.get('ZHIPUAI_API_KEY')
+            'api_key': os.environ.get('ZHIPUAI_API_KEY')
         },
         texts=[
             "hello",
@@ -52,7 +52,7 @@ def test_get_num_tokens():
     num_tokens = model.get_num_tokens(
         model='text_embedding',
         credentials={
-            'zhipuai_api_key': os.environ.get('ZHIPUAI_API_KEY')
+            'api_key': os.environ.get('ZHIPUAI_API_KEY')
         },
         texts=[
             "hello",

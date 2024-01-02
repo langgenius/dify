@@ -15,6 +15,6 @@ def test_validate_provider_credentials():
 
     provider.validate_provider_credentials(
         credentials={
-            'zhipuai_api_key': os.environ.get('ZHIPUAI_API_KEY')
+            'api_key': os.environ.get('ZHIPUAI_API_KEY')
         }
     )

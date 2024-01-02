@@ -21,7 +21,7 @@ configurate_methods:
 - predefined-model
 provider_credential_schema:
   credential_form_schemas:
-  - variable: zhipuai_api_key
+  - variable: api_key
     label:
       en_US: APIKey
     type: text-input
