@@ -1,6 +1,7 @@
 import os
 from typing import Optional
 
+from flask import Flask
 from pydantic import BaseModel
 
 from core.entities.provider_entities import QuotaUnit
@@ -46,7 +47,10 @@ class HostingConfiguration:
     provider_map: dict[str, HostingProvider] = {}
     moderation_config: HostedModerationConfig = None
 
-    def init_app(self):
+    def init_app(self, app: Flask):
+        if app.config.get('EDITION') != 'CLOUD':
+            return
+
         self.provider_map["openai"] = self.init_openai()
         self.provider_map["anthropic"] = self.init_anthropic()
         self.provider_map["minimax"] = self.init_minimax()

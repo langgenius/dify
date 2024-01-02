@@ -6,4 +6,4 @@ hosting_configuration = HostingConfiguration()
 
 
 def init_app(app: Flask):
-    hosting_configuration.init_app()
+    hosting_configuration.init_app(app)
