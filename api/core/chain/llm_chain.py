@@ -5,15 +5,19 @@ from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.schema import LLMResult, Generation
 from langchain.schema.language_model import BaseLanguageModel
 
-from core.model_providers.models.entity.message import to_prompt_messages
-from core.model_providers.models.llm.base import BaseLLM
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
+from core.entities.application_entities import ModelConfigEntity
+from core.model_manager import ModelInstance
+from core.entities.message_entities import lc_messages_to_prompt_messages
 from core.third_party.langchain.llms.fake import FakeLLM
 
 
 class LLMChain(LCLLMChain):
-    model_instance: BaseLLM
+    model_config: ModelConfigEntity
     """The language model instance to use."""
     llm: BaseLanguageModel = FakeLLM(response="")
+    parameters: Dict[str, Any] = {}
+    agent_llm_callback: Optional[AgentLLMCallback] = None
 
     def generate(
         self,
@@ -23,14 +27,23 @@ class LLMChain(LCLLMChain):
         """Generate LLM result from inputs."""
         prompts, stop = self.prep_prompts(input_list, run_manager=run_manager)
         messages = prompts[0].to_messages()
-        prompt_messages = to_prompt_messages(messages)
-        result = self.model_instance.run(
-            messages=prompt_messages,
-            stop=stop
+        prompt_messages = lc_messages_to_prompt_messages(messages)
+
+        model_instance = ModelInstance(
+            provider_model_bundle=self.model_config.provider_model_bundle,
+            model=self.model_config.model,
+        )
+
+        result = model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            stream=False,
+            stop=stop,
+            callbacks=[self.agent_llm_callback] if self.agent_llm_callback else None,
+            model_parameters=self.parameters
         )
 
         generations = [
-            [Generation(text=result.content)]
+            [Generation(text=result.message.content)]
         ]
 
         return LLMResult(generations=generations)

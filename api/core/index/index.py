@@ -1,18 +1,12 @@
-import json
-
 from flask import current_app
 from langchain.embeddings import OpenAIEmbeddings
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
-from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.embedding.openai_embedding import OpenAIEmbedding
-from core.model_providers.models.entity.model_params import ModelKwargs
-from core.model_providers.models.llm.openai_model import OpenAIModel
-from core.model_providers.providers.openai_provider import OpenAIProvider
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset
-from models.provider import Provider, ProviderType
 
 
 class IndexBuilder:
@@ -22,10 +16,12 @@ class IndexBuilder:
             if not ignore_high_quality_check and dataset.indexing_technique != 'high_quality':
                 return None
 
-            embedding_model = ModelFactory.get_embedding_model(
+            model_manager = ModelManager()
+            embedding_model = model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
+                model_type=ModelType.TEXT_EMBEDDING,
+                provider=dataset.embedding_model_provider,
+                model=dataset.embedding_model
             )
 
             embeddings = CacheEmbedding(embedding_model)

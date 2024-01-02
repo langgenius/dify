@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from core.file.upload_file_parser import UploadFileParser
-from core.model_providers.models.entity.message import PromptMessageFile, ImagePromptMessageFile
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
 from models.model import UploadFile
 
@@ -50,14 +50,14 @@ class FileObj(BaseModel):
         return self._get_data(force_url=True)
 
     @property
-    def prompt_message_file(self) -> PromptMessageFile:
+    def prompt_message_content(self) -> ImagePromptMessageContent:
         if self.type == FileType.IMAGE:
             image_config = self.file_config.get('image')
 
-            return ImagePromptMessageFile(
+            return ImagePromptMessageContent(
                 data=self.data,
-                detail=ImagePromptMessageFile.DETAIL.HIGH
-                if image_config.get("detail") == "high" else ImagePromptMessageFile.DETAIL.LOW
+                detail=ImagePromptMessageContent.DETAIL.HIGH
+                if image_config.get("detail") == "high" else ImagePromptMessageContent.DETAIL.LOW
             )
 
     def _get_data(self, force_url: bool = False) -> Optional[str]:

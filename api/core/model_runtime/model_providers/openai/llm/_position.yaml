@@ -1,0 +1,9 @@
+gpt-4: 0
+gpt-4-32k: 1
+gpt-4-1106-preview: 2
+gpt-4-vision-preview: 3
+gpt-3.5-turbo: 4
+gpt-3.5-turbo-16k: 5
+gpt-3.5-turbo-1106: 6
+gpt-3.5-turbo-instruct: 7
+text-davinci-003: 8

@@ -34,7 +34,6 @@ tenant_fields = {
     'status': fields.String,
     'created_at': TimestampField,
     'role': fields.String,
-    'providers': fields.List(fields.Nested(provider_fields)),
     'in_trial': fields.Boolean,
     'trial_end_reason': fields.String,
     'custom_config': fields.Raw(attribute='custom_config'),
