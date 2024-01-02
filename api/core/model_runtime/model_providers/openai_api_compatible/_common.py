@@ -117,9 +117,9 @@ class _CommonOAI_API_Compat:
 
         if model_type == ModelType.LLM:
             if credentials['mode'] == 'chat':
-                entity.model_properties['mode'] = LLMMode.CHAT
+                entity.model_properties[ModelPropertyKey.MODE] = LLMMode.CHAT
             elif credentials['mode'] == 'completion':
-                entity.model_properties['mode'] = LLMMode.COMPLETION
+                entity.model_properties[ModelPropertyKey.MODE] = LLMMode.COMPLETION
             else:
                 raise ValueError(f"Unknown completion type {credentials['completion_type']}")
         
