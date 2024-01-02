@@ -7,6 +7,8 @@ type InputProps = {
   onFocus?: () => void
   placeholder?: string
   validated?: boolean
+  className?: string
+  disabled?: boolean
 }
 const Input: FC<InputProps> = ({
   value,
@@ -14,6 +16,8 @@ const Input: FC<InputProps> = ({
   onFocus,
   placeholder,
   validated,
+  className,
+  disabled,
 }) => {
   return (
     <div className='relative'>
@@ -26,11 +30,13 @@ const Input: FC<InputProps> = ({
           focus:bg-white focus:border-gray-300 focus:shadow-xs
           placeholder:text-sm placeholder:text-gray-400
           ${validated && 'pr-[30px]'}
+          ${className}
         `}
         placeholder={placeholder || ''}
         onChange={e => onChange(e.target.value)}
         onFocus={onFocus}
         value={value || ''}
+        disabled={disabled}
       />
       {
         validated && (

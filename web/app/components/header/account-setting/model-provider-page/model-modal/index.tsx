@@ -239,6 +239,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 validating={validating}
                 validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
                 showOnVariableMap={showOnVariableMap}
+                isEditMode={isEditMode}
               />
               <div className='sticky bottom-0 flex justify-between items-center py-6 flex-wrap gap-y-2 bg-white'>
                 {
@@ -313,7 +314,7 @@ const ModelModal: FC<ModelModalProps> = ({
           {
             showConfirm && (
               <ConfirmCommon
-                title='Are you sure?'
+                title={t('common.modelProvider.confirmDelete')}
                 isShow={showConfirm}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={handleRemove}

@@ -21,6 +21,7 @@ type FormProps = {
   validating: boolean
   validatedSuccess?: boolean
   showOnVariableMap: Record<string, string[]>
+  isEditMode: boolean
 }
 
 const Form: FC<FormProps> = ({
@@ -30,11 +31,15 @@ const Form: FC<FormProps> = ({
   validating,
   validatedSuccess,
   showOnVariableMap,
+  isEditMode,
 }) => {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
 
   const handleFormChange = (key: string, val: string) => {
+    if (isEditMode && (key === '__model_type' || key === '__model_name'))
+      return
+
     setChangeKey(key)
     const shouldClearVariable: Record<string, string | undefined> = {}
     if (showOnVariableMap[key]?.length) {
@@ -58,6 +63,8 @@ const Form: FC<FormProps> = ({
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
+      const disabed = isEditMode && (variable === '__model_type' || variable === '__model_name')
+
       return (
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
@@ -69,10 +76,12 @@ const Form: FC<FormProps> = ({
             }
           </div>
           <Input
+            className={`${disabed && 'cursor-not-allowed opacity-60'}`}
             value={value[variable] as string}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
             placeholder={placeholder?.[language]}
+            disabled={disabed}
           />
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -90,6 +99,8 @@ const Form: FC<FormProps> = ({
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
+
+      const disabed = isEditMode && (variable === '__model_type' || variable === '__model_name')
 
       return (
         <div key={variable} className='py-3'>
@@ -113,6 +124,7 @@ const Form: FC<FormProps> = ({
                   className={`
                     flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
                     ${value[variable] === option.value && 'bg-white border-[1.5px] border-primary-400 shadow-sm'}
+                    ${disabed && '!cursor-not-allowed opacity-60'}
                   `}
                   onClick={() => handleFormChange(variable, option.value)}
                   key={`${variable}-${option.value}`}

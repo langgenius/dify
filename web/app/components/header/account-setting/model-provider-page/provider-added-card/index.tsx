@@ -21,6 +21,7 @@ import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/a
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { IS_CE_EDITION } from '@/config'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -40,7 +41,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
-  const showQuota = systemConfig.enabled || ['minimax', 'spark', 'zhipuai', 'anthropic'].includes(provider.provider)
+  const showQuota = systemConfig.enabled && ['minimax', 'spark', 'zhipuai', 'anthropic', 'openai'].includes(provider.provider) && !IS_CE_EDITION
 
   const getModelList = async (providerName: string) => {
     if (loading)

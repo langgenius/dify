@@ -4,11 +4,13 @@ import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
 import type {
-  ConfigurateMethodEnum,
   CustomConfigrationModelFixedFields,
   ModelProvider,
 } from './declarations'
-import { CustomConfigurationStatusEnum } from './declarations'
+import {
+  ConfigurateMethodEnum,
+  CustomConfigurationStatusEnum,
+} from './declarations'
 import {
   useDefaultModel,
   useUpdateModelProvidersAndModelList,
@@ -57,7 +59,7 @@ const ModelProviderPage = () => {
       onSaveCallback: () => {
         updateModelProvidersAndModelList()
 
-        if (customConfigrationModelFixedFields && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+        if (configurateMethod === ConfigurateMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
             payload: provider.provider,

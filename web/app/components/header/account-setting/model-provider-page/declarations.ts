@@ -61,16 +61,16 @@ export enum ModelStatusEnum {
   noPermission = 'no-permission',
 }
 
-export const MODEL_STATUS_TEXT = {
-  [ModelStatusEnum.noConfigure]: {
+export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
+  'no-configure': {
     en_US: 'No Configure',
     zh_Hans: '未配置凭据',
   },
-  [ModelStatusEnum.quotaExceeded]: {
+  'quota-exceeded': {
     en_US: 'Quota Exceeded',
     zh_Hans: '额度不足',
   },
-  [ModelStatusEnum.noPermission]: {
+  'no-permission': {
     en_US: 'No Permission',
     zh_Hans: '无使用权限',
   },

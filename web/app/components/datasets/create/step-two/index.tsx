@@ -587,7 +587,7 @@ const StepTwo = ({
                     </div>
                   </div>
                   <div className={s.formFooter}>
-                    <Button type="primary" className={cn(s.button, '!h-8 text-primary-600')} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
+                    <Button type="primary" className={cn(s.button, '!h-8')} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
                     <Button className={cn(s.button, 'ml-2 !h-8')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
                   </div>
                 </div>

@@ -8,6 +8,7 @@ import type {
 import { useCurrentProviderAndModel } from '../hooks'
 import ModelTrigger from './model-trigger'
 import EmptyTrigger from './empty-trigger'
+import DeprecatedModelTrigger from './deprecated-model-trigger'
 import Popup from './popup'
 import {
   PortalToFollowElem,
@@ -77,7 +78,16 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             )
           }
           {
-            !currentModel && (
+            !currentModel && defaultModel && (
+              <DeprecatedModelTrigger
+                modelName={defaultModel?.model || ''}
+                providerName={defaultModel?.provider || ''}
+                className={triggerClassName}
+              />
+            )
+          }
+          {
+            !defaultModel && (
               <EmptyTrigger
                 open={open}
                 className={triggerClassName}

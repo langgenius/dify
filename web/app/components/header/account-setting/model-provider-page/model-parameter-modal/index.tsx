@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -7,10 +7,17 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '../declarations'
+import {
+  MODEL_STATUS_TEXT,
+  ModelStatusEnum,
+} from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import ModelSelector from '../model-selector'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
+import {
+  useLanguage,
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '../hooks'
 import ParameterItem from './parameter-item'
 import type { ParameterValue } from './parameter-item'
 import {
@@ -23,6 +30,8 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alert
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { fetchModelParameterRules } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import { useProviderContext } from '@/context/provider-context'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type ModelParameterModalProps = {
   isAdvancedMode: boolean
@@ -32,7 +41,6 @@ type ModelParameterModalProps = {
   setModel: (model: { modelId: string; provider: string; mode?: string; features: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
-  disabled: boolean
 }
 const stopParameerRule: ModelParameterRule = {
   default: [],
@@ -42,7 +50,7 @@ const stopParameerRule: ModelParameterRule = {
   },
   label: {
     en_US: 'Stop sequences',
-    zh_Hans: '停止序列 stop_sequences',
+    zh_Hans: '停止序列',
   },
   name: 'stop',
   required: false,
@@ -59,9 +67,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   setModel,
   completionParams,
   onCompletionParamsChange,
-  disabled,
 }) => {
   const { t } = useTranslation()
+  const language = useLanguage()
+  const { hasSettedApiKey, modelProviders } = useProviderContext()
   const [open, setOpen] = useState(false)
   const { data: parameterRulesData, isLoading } = useSWR(`/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`, fetchModelParameterRules)
   const {
@@ -72,7 +81,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     { provider, model: modelId },
   )
 
-  const parameterRules = parameterRulesData?.data || []
+  const hasDeprecated = !currentProvider || !currentModel
+  const modelDisabled = currentModel?.status !== ModelStatusEnum.active
+  const disabled = !hasSettedApiKey || hasDeprecated || modelDisabled
+
+  const parameterRules = useMemo(() => {
+    return parameterRulesData?.data || []
+  }, [parameterRulesData])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -92,21 +107,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
-  const handleChangeParams = () => {
-    const newCompletionParams = parameterRules.reduce((acc, parameter) => {
-      if (parameter.default !== undefined)
-        acc[parameter.name] = parameter.default
-
-      return acc
-    }, {} as Record<string, any>)
-
-    onCompletionParamsChange(newCompletionParams)
-  }
-
-  useEffect(() => {
-    handleChangeParams()
-  }, [parameterRules])
-
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
     if (!value) {
       const newCompletionParams = { ...completionParams }
@@ -121,6 +121,22 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       })
     }
   }
+
+  const handleInitialParams = () => {
+    if (parameterRules.length) {
+      const newCompletionParams = { ...completionParams }
+      Object.keys(newCompletionParams).forEach((key) => {
+        if (!parameterRules.find(item => item.name === key))
+          delete newCompletionParams[key]
+      })
+
+      onCompletionParamsChange(newCompletionParams)
+    }
+  }
+
+  useEffect(() => {
+    handleInitialParams()
+  }, [parameterRules])
 
   return (
     <PortalToFollowElem
@@ -150,21 +166,47 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )
             }
             {
+              !currentProvider && (
+                <ModelIcon
+                  className='mr-1.5 !w-5 !h-5'
+                  provider={modelProviders.find(item => item.provider === provider)}
+                  modelName={modelId}
+                />
+              )
+            }
+            {
               currentModel && (
                 <ModelName
                   className='mr-1.5 text-gray-900'
                   modelItem={currentModel}
-                  showMode={isAdvancedMode}
+                  showMode
                   modeClassName='!text-[#444CE7] !border-[#A4BCFD]'
-                  showFeatures={isAdvancedMode}
+                  showFeatures
                   featuresClassName='!text-[#444CE7] !border-[#A4BCFD]'
                 />
               )
             }
             {
+              !currentModel && (
+                <div className='mr-1 text-[13px] font-medium text-gray-900 truncate'>
+                  {modelId}
+                </div>
+              )
+            }
+            {
               disabled
                 ? (
-                  <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+                  <TooltipPlus
+                    popupContent={
+                      hasDeprecated
+                        ? t('common.modelProvider.deprecated')
+                        : (modelDisabled && currentModel)
+                          ? MODEL_STATUS_TEXT[currentModel.status as string][language]
+                          : ''
+                    }
+                  >
+                    <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+                  </TooltipPlus>
                 )
                 : (
                   <SlidersH className='w-4 h-4 text-indigo-600' />
@@ -178,7 +220,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               <CubeOutline className='mr-2 w-4 h-4 text-primary-600' />
               {t('common.modelProvider.modelAndParameters')}
             </div>
-            <div className='px-10 pt-4 pb-8'>
+            <div className='max-h-[480px] px-10 pt-4 pb-8 overflow-y-auto'>
               <div className='flex items-center justify-between h-8'>
                 <div className='text-sm font-medium text-gray-900'>
                   {t('common.modelProvider.model')}
@@ -189,14 +231,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   onSelect={handleChangeModel}
                 />
               </div>
-              <div className='my-5 h-[1px] bg-gray-100' />
               {
-                isLoading && (
-                  <Loading />
+                !!parameterRules.length && (
+                  <div className='my-5 h-[1px] bg-gray-100' />
                 )
               }
               {
-                !isLoading && (
+                isLoading && (
+                  <div className='mt-5'><Loading /></div>
+                )
+              }
+              {
+                !isLoading && !!parameterRules.length && (
                   [
                     ...parameterRules,
                     ...(isAdvancedMode ? [stopParameerRule] : []),

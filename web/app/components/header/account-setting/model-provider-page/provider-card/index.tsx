@@ -21,6 +21,7 @@ import s from './index.module.css'
 import { Plus, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { CoinsStacked01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Button from '@/app/components/base/button'
+import { IS_CE_EDITION } from '@/config'
 
 type ProviderCardProps = {
   provider: ModelProvider
@@ -54,7 +55,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
   }
   const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
-  const canGetFreeQuota = ['mininmax', 'spark', 'zhipuai'].includes(provider.provider)
+  const canGetFreeQuota = ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && !IS_CE_EDITION
 
   return (
     <div
@@ -135,7 +136,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
             })
           }
           {
-            provider.provider === 'anthropic' && (
+            provider.provider === 'anthropic' && !IS_CE_EDITION && (
               <Button
                 className='h-7 text-xs text-gray-700'
                 onClick={handlePay}
