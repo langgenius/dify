@@ -17,6 +17,9 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers import google
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
+import logging
+logger = logging.getLogger(__name__)
+
 class GoogleLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
@@ -198,7 +201,6 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         index = -1
         for chunk in response:
             content = chunk.text
-            
             index += 1
 
             assistant_prompt_message = AssistantPromptMessage(
@@ -206,6 +208,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             )
 
             if not response._done:
+                
                 # transform assistant message to prompt message
                 yield LLMResultChunk(
                     model=model,
@@ -216,6 +219,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     )
                 )
             else:
+                
                 # calculate num tokens
                 prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
                 completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])

@@ -35,9 +35,13 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
        
         # Prepare headers and payload for the request
         headers = {
-            'Authorization': f'Bearer {credentials["api_key"]}',
             'Content-Type': 'application/json'
         }
+
+        api_key = credentials.get('api_key')
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
 
         endpoint_url = credentials['endpoint_url']
 
@@ -132,9 +136,14 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
         """
         try:
             headers = {
-                'Authorization': f'Bearer {credentials["api_key"]}',
                 'Content-Type': 'application/json'
             }
+
+            api_key = credentials.get('api_key')
+
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
 
             endpoint_url = credentials['endpoint_url']
 
