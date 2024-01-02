@@ -18,4 +18,4 @@ parameter_rules:
   required: true
   default: 2000
   min: 1
-  max: 2000
+  max: 32000
