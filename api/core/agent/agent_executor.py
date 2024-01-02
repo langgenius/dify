@@ -16,6 +16,7 @@ from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
 
 from core.entities.application_entities import ModelConfigEntity
+from core.entities.message_entities import prompt_messages_to_lc_messages
 from core.helper import moderation
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.errors.invoke import InvokeError
@@ -76,7 +77,7 @@ class AgentExecutor:
             agent = AutoSummarizingOpenAIFunctionCallAgent.from_llm_and_tools(
                 model_config=self.configuration.model_config,
                 tools=self.configuration.tools,
-                extra_prompt_messages=self.configuration.memory.get_history_prompt_text()
+                extra_prompt_messages=prompt_messages_to_lc_messages(self.configuration.memory.get_history_prompt_messages())
                 if self.configuration.memory else None,  # used for read chat histories memory
                 summary_model_config=self.configuration.summary_model_config
                 if self.configuration.summary_model_config else None,
@@ -90,7 +91,7 @@ class AgentExecutor:
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
                 model_config=self.configuration.model_config,
                 tools=self.configuration.tools,
-                extra_prompt_messages=self.configuration.memory.get_history_prompt_text()
+                extra_prompt_messages=prompt_messages_to_lc_messages(self.configuration.memory.get_history_prompt_messages())
                 if self.configuration.memory else None,
                 verbose=True
             )
@@ -128,7 +129,6 @@ class AgentExecutor:
         agent_executor = LCAgentExecutor.from_agent_and_tools(
             agent=self.agent,
             tools=self.configuration.tools,
-            memory=self.configuration.memory,
             max_iterations=self.configuration.max_iterations,
             max_execution_time=self.configuration.max_execution_time,
             early_stopping_method=self.configuration.early_stopping_method,

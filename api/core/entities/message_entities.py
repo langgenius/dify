@@ -84,3 +84,45 @@ def lc_messages_to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMe
             prompt_messages.append(ToolPromptMessage(content=message.content, tool_call_id=message.name))
 
     return prompt_messages
+
+
+def prompt_messages_to_lc_messages(prompt_messages: list[PromptMessage]) -> list[BaseMessage]:
+    messages = []
+    for prompt_message in prompt_messages:
+        if isinstance(prompt_message, UserPromptMessage):
+            if isinstance(prompt_message.content, str):
+                messages.append(HumanMessage(content=prompt_message.content))
+            else:
+                message_contents = []
+                for content in prompt_message.content:
+                    if isinstance(content, TextPromptMessageContent):
+                        message_contents.append(content.data)
+                    elif isinstance(content, ImagePromptMessageContent):
+                        message_contents.append({
+                            'type': 'image',
+                            'data': content.data,
+                            'detail': content.detail.value
+                        })
+
+                messages.append(HumanMessage(content=message_contents))
+        elif isinstance(prompt_message, AssistantPromptMessage):
+            message_kwargs = {
+                'content': prompt_message.content
+            }
+
+            if prompt_message.tool_calls:
+                message_kwargs['additional_kwargs'] = {
+                    'function_call': {
+                        'id': prompt_message.tool_calls[0].id,
+                        'name': prompt_message.tool_calls[0].function.name,
+                        'arguments': prompt_message.tool_calls[0].function.arguments
+                    }
+                }
+
+            messages.append(AIMessage(**message_kwargs))
+        elif isinstance(prompt_message, SystemPromptMessage):
+            messages.append(SystemMessage(content=prompt_message.content))
+        elif isinstance(prompt_message, ToolPromptMessage):
+            messages.append(FunctionMessage(name=prompt_message.tool_call_id, content=prompt_message.content))
+
+    return messages
