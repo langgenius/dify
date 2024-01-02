@@ -328,12 +328,18 @@ class ApplicationManager:
             advanced_completion_prompt_template = None
             completion_prompt_config = copy_app_model_config_dict.get("completion_prompt_config", {})
             if completion_prompt_config:
+                completion_prompt_template_params = {
+                    'prompt': completion_prompt_config['prompt']['text'],
+                }
+
+                if 'conversation_histories_role' in completion_prompt_config:
+                    completion_prompt_template_params['role_prefix'] = {
+                        'user': completion_prompt_config['conversation_histories_role']['user_prefix'],
+                        'assistant': completion_prompt_config['conversation_histories_role']['assistant_prefix']
+                    }
+
                 advanced_completion_prompt_template = AdvancedCompletionPromptTemplateEntity(
-                    prompt=completion_prompt_config['prompt']['text'],
-                    role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(
-                        user=completion_prompt_config['conversation_histories_role']['user_prefix'],
-                        assistant=completion_prompt_config['conversation_histories_role']['assistant_prefix']
-                    )
+                    **completion_prompt_template_params
                 )
 
             properties['prompt_template'] = PromptTemplateEntity(

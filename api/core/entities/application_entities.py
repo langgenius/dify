@@ -50,7 +50,7 @@ class AdvancedCompletionPromptTemplateEntity(BaseModel):
         assistant: str
 
     prompt: str
-    role_prefix: RolePrefixEntity
+    role_prefix: Optional[RolePrefixEntity] = None
 
 
 class PromptTemplateEntity(BaseModel):
