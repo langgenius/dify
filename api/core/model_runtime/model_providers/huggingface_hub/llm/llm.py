@@ -97,7 +97,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             model_properties={
-                'mode': LLMMode.COMPLETION
+                'mode': LLMMode.COMPLETION.value
             },
             parameter_rules=self._get_customizable_model_parameter_rules()
         )

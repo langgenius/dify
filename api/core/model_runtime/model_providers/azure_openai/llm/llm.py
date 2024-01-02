@@ -32,7 +32,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
         ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
 
-        if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
+        if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
             # chat model
             return self._chat_generate(
                 model=model,
@@ -62,7 +62,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         model_mode = self._get_ai_model_entity(credentials['base_model_name'], model).entity.model_properties.get(
             ModelPropertyKey.MODE)
 
-        if model_mode == LLMMode.CHAT:
+        if model_mode == LLMMode.CHAT.value:
             # chat model
             return self._num_tokens_from_messages(credentials, prompt_messages, tools)
         else:
@@ -87,7 +87,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
+            if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": 'ping'}],

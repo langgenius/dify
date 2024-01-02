@@ -91,7 +91,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             model_properties={
-                'mode': model_type
+                'mode': model_type.value
             },
             parameter_rules=self._get_customizable_model_parameter_rules(model, credentials)
         )

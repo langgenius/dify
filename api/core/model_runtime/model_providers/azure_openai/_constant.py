@@ -40,7 +40,7 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT,
+                'mode': LLMMode.CHAT.value,
                 'context_size': 4096,
             },
             parameter_rules=[
@@ -84,7 +84,7 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT,
+                'mode': LLMMode.CHAT.value,
                 'context_size': 16385,
             },
             parameter_rules=[
@@ -128,7 +128,7 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT,
+                'mode': LLMMode.CHAT.value,
                 'context_size': 8192,
             },
             parameter_rules=[
@@ -202,7 +202,7 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT,
+                'mode': LLMMode.CHAT.value,
                 'context_size': 32768,
             },
             parameter_rules=[
@@ -276,7 +276,7 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT,
+                'mode': LLMMode.CHAT.value,
                 'context_size': 128000,
             },
             parameter_rules=[
@@ -349,7 +349,7 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT,
+                'mode': LLMMode.CHAT.value,
                 'context_size': 128000,
             },
             parameter_rules=[
@@ -419,7 +419,7 @@ LLM_BASE_MODELS = [
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.COMPLETION,
+                'mode': LLMMode.COMPLETION.value,
                 'context_size': 4096,
             },
             parameter_rules=[
