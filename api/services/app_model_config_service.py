@@ -163,7 +163,7 @@ class AppModelConfigService:
 
         # model.mode
         if model_mode:
-            config['model']["mode"] = model_mode.value
+            config['model']["mode"] = model_mode
         else:
             config['model']["mode"] = "completion"
 
