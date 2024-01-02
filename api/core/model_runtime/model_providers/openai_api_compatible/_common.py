@@ -1,4 +1,10 @@
+from decimal import Decimal
 import requests
+
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.llm_entities import LLMMode
+from core.model_runtime.entities.model_entities import AIModelEntity, DefaultParameterName, \
+      FetchFrom, ModelPropertyKey, ModelType, ParameterRule, ParameterType, PriceConfig
 
 from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, \
       InvokeRateLimitError, InvokeAuthorizationError, InvokeBadRequestError, InvokeError
@@ -35,8 +41,6 @@ class _CommonOAI_API_Compat:
                 requests.exceptions.ReadTimeout  # Timeout
             ]
         }
-<<<<<<< Updated upstream
-=======
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
@@ -120,4 +124,3 @@ class _CommonOAI_API_Compat:
                 raise ValueError(f"Unknown completion type {credentials['completion_type']}")
         
         return entity
->>>>>>> Stashed changes
