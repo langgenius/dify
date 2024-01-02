@@ -404,7 +404,7 @@ class PromptTransform:
                 if (parameter_rule.name == 'max_tokens'
                         or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
                     max_tokens = (model_config.parameters.get(parameter_rule.name)
-                                  or model_config.parameters.get(parameter_rule.use_template))
+                                  or model_config.parameters.get(parameter_rule.use_template)) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
             rest_tokens = max(rest_tokens, 0)

@@ -41,7 +41,7 @@ class AppRunner:
             if (parameter_rule.name == 'max_tokens'
                     or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
                 max_tokens = (model_config.parameters.get(parameter_rule.name)
-                              or model_config.parameters.get(parameter_rule.use_template))
+                              or model_config.parameters.get(parameter_rule.use_template)) or 0
 
         if model_context_tokens is None:
             return -1
@@ -85,7 +85,7 @@ class AppRunner:
             if (parameter_rule.name == 'max_tokens'
                     or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
                 max_tokens = (model_config.parameters.get(parameter_rule.name)
-                              or model_config.parameters.get(parameter_rule.use_template))
+                              or model_config.parameters.get(parameter_rule.use_template)) or 0
 
         if model_context_tokens is None:
             return -1

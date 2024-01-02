@@ -79,7 +79,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             if (parameter_rule.name == 'max_tokens'
                     or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
                 original_max_tokens = (self.model_config.parameters.get(parameter_rule.name)
-                              or self.model_config.parameters.get(parameter_rule.use_template))
+                              or self.model_config.parameters.get(parameter_rule.use_template)) or 0
 
         self.model_config.parameters['max_tokens'] = 40
 
