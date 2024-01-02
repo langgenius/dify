@@ -657,7 +657,6 @@ const Configuration: FC = () => {
                 onCompletionParamsChange={(newParams: FormValue) => {
                   setCompletionParams(newParams)
                 }}
-                disabled={!hasSettedApiKey}
               />
               <div className='w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>

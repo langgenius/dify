@@ -78,9 +78,9 @@ const ModelList: FC<ModelListProps> = ({
               className={`
                 group flex items-center pl-2 pr-2.5 h-8 rounded-lg
                 ${canCustomConfig && 'hover:bg-gray-50'}
+                ${model.deprecated && 'opacity-60'}
               `}
             >
-              <div className='shrink-0 mr-2' style={{ background: provider.icon_small[language] }} />
               <ModelIcon
                 className='shrink-0 mr-2'
                 provider={provider}

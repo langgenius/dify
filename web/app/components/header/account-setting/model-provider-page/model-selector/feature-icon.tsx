@@ -6,10 +6,10 @@ import {
   ModelFeatureTextEnum,
 } from '../declarations'
 import {
-  MagicBox,
+  // MagicBox,
   MagicEyes,
-  MagicWand,
-  Robot,
+  // MagicWand,
+  // Robot,
 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
@@ -23,41 +23,41 @@ const FeatureIcon: FC<FeatureIconProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  if (feature === ModelFeatureEnum.agentThought) {
-    return (
-      <TooltipPlus
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.agentThought })}
-      >
-        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
-          <Robot className='w-3 h-3' />
-        </ModelBadge>
-      </TooltipPlus>
-    )
-  }
+  // if (feature === ModelFeatureEnum.agentThought) {
+  //   return (
+  //     <TooltipPlus
+  //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.agentThought })}
+  //     >
+  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+  //         <Robot className='w-3 h-3' />
+  //       </ModelBadge>
+  //     </TooltipPlus>
+  //   )
+  // }
 
-  if (feature === ModelFeatureEnum.toolCall) {
-    return (
-      <TooltipPlus
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.toolCall })}
-      >
-        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
-          <MagicWand className='w-3 h-3' />
-        </ModelBadge>
-      </TooltipPlus>
-    )
-  }
+  // if (feature === ModelFeatureEnum.toolCall) {
+  //   return (
+  //     <TooltipPlus
+  //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.toolCall })}
+  //     >
+  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+  //         <MagicWand className='w-3 h-3' />
+  //       </ModelBadge>
+  //     </TooltipPlus>
+  //   )
+  // }
 
-  if (feature === ModelFeatureEnum.multiToolCall) {
-    return (
-      <TooltipPlus
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.multiToolCall })}
-      >
-        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
-          <MagicBox className='w-3 h-3' />
-        </ModelBadge>
-      </TooltipPlus>
-    )
-  }
+  // if (feature === ModelFeatureEnum.multiToolCall) {
+  //   return (
+  //     <TooltipPlus
+  //       popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.multiToolCall })}
+  //     >
+  //       <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+  //         <MagicBox className='w-3 h-3' />
+  //       </ModelBadge>
+  //     </TooltipPlus>
+  //   )
+  // }
 
   if (feature === ModelFeatureEnum.vision) {
     return (

@@ -300,6 +300,7 @@ const translation = {
     buyQuota: 'Buy Quota',
     getFreeTokens: 'Get free Tokens',
     priorityUsing: 'Prioritize using',
+    deprecated: 'Deprecated',
   },
   dataSource: {
     add: 'Add a data source',

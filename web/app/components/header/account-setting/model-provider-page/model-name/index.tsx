@@ -43,13 +43,13 @@ const ModelName: FC<ModelNameProps> = ({
       `}
     >
       <div
-        className='mr-2 truncate'
+        className='mr-1 truncate'
         title={modelItem.label[language]}
       >
         {modelItem.label[language]}
       </div>
       {
-        showModelType && (
+        showModelType && modelItem.model_type && (
           <ModelBadge className={`mr-0.5 ${modelTypeClassName}`}>
             {modelTypeFormat(modelItem.model_type)}
           </ModelBadge>

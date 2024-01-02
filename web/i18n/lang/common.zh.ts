@@ -300,6 +300,7 @@ const translation = {
     buyQuota: '购买额度',
     getFreeTokens: '获得免费 Tokens',
     priorityUsing: '优先使用',
+    deprecated: '已弃用',
   },
   dataSource: {
     add: '添加数据源',
