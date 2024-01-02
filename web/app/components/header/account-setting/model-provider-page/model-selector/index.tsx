@@ -78,7 +78,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             )
           }
           {
-            !currentModel && (
+            !currentModel && defaultModel && (
               <DeprecatedModelTrigger
                 modelName={defaultModel?.model || ''}
                 providerName={defaultModel?.provider || ''}
