@@ -313,7 +313,7 @@ const ModelModal: FC<ModelModalProps> = ({
           {
             showConfirm && (
               <ConfirmCommon
-                title='Are you sure?'
+                title={t('common.modelProvider.confirmDelete')}
                 isShow={showConfirm}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={handleRemove}

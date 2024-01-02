@@ -301,6 +301,7 @@ const translation = {
     getFreeTokens: 'Get free Tokens',
     priorityUsing: 'Prioritize using',
     deprecated: 'Deprecated',
+    confirmDelete: 'confirm deletion?',
   },
   dataSource: {
     add: 'Add a data source',

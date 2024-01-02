@@ -301,6 +301,7 @@ const translation = {
     getFreeTokens: '获得免费 Tokens',
     priorityUsing: '优先使用',
     deprecated: '已弃用',
+    confirmDelete: '确认删除?',
   },
   dataSource: {
     add: '添加数据源',
