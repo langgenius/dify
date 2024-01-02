@@ -41,7 +41,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
-  const showQuota = systemConfig.enabled && ['minimax', 'spark', 'zhipuai', 'anthropic'].includes(provider.provider) && !IS_CE_EDITION
+  const showQuota = systemConfig.enabled && ['minimax', 'spark', 'zhipuai', 'anthropic', 'openai'].includes(provider.provider) && !IS_CE_EDITION
 
   const getModelList = async (providerName: string) => {
     if (loading)
