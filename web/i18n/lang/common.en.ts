@@ -302,6 +302,7 @@ const translation = {
     priorityUsing: 'Prioritize using',
     deprecated: 'Deprecated',
     confirmDelete: 'confirm deletion?',
+    quotaTip: 'Remaining available free tokens',
   },
   dataSource: {
     add: 'Add a data source',

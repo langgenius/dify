@@ -302,6 +302,7 @@ const translation = {
     priorityUsing: '优先使用',
     deprecated: '已弃用',
     confirmDelete: '确认删除?',
+    quotaTip: '剩余免费额度',
   },
   dataSource: {
     add: '添加数据源',
