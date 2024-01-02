@@ -315,7 +315,7 @@ class ApplicationManager:
             chat_prompt_config = copy_app_model_config_dict.get("chat_prompt_config", {})
             if chat_prompt_config:
                 chat_prompt_messages = []
-                for message in chat_prompt_config.get("messages", []):
+                for message in chat_prompt_config.get("prompt", []):
                     chat_prompt_messages.append({
                         "text": message["text"],
                         "role": PromptMessageRole.value_of(message["role"])
