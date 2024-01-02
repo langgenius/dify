@@ -9,8 +9,10 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.google.llm.llm import GoogleLargeLanguageModel
 
+from tests.integration_tests.model_runtime.__mock.google import setup_google_mock
 
-def test_validate_credentials():
+@pytest.mark.parametrize('setup_google_mock', [['none']], indirect=True)
+def test_validate_credentials(setup_google_mock):
     model = GoogleLargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -28,8 +30,8 @@ def test_validate_credentials():
         }
     )
 
-
-def test_invoke_model():
+@pytest.mark.parametrize('setup_google_mock', [['none']], indirect=True)
+def test_invoke_model(setup_google_mock):
     model = GoogleLargeLanguageModel()
 
     response = model.invoke(
@@ -70,8 +72,8 @@ def test_invoke_model():
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
 
-
-def test_invoke_stream_model():
+@pytest.mark.parametrize('setup_google_mock', [['none']], indirect=True)
+def test_invoke_stream_model(setup_google_mock):
     model = GoogleLargeLanguageModel()
 
     response = model.invoke(
@@ -152,8 +154,8 @@ def test_invoke_chat_model_with_vision():
     assert isinstance(result, LLMResult)
     assert len(result.message.content) > 0
 
-
-def test_invoke_chat_model_with_vision_multi_pics():
+@pytest.mark.parametrize('setup_google_mock', [['none']], indirect=True)
+def test_invoke_chat_model_with_vision_multi_pics(setup_google_mock):
     model = GoogleLargeLanguageModel()
 
     result = model.invoke(

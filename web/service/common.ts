@@ -25,7 +25,13 @@ import type {
   UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
-import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
+import type {
+  DefaultModelResponse,
+  Model,
+  ModelItem,
+  ModelParameterRule,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
@@ -146,12 +152,20 @@ export const activateMember: Fetcher<CommonResponse, { url: string; body: any }>
   return post<CommonResponse>(url, { body })
 }
 
-export const fetchModelProviders: Fetcher<ProviderMap, string> = (url) => {
-  return get<ProviderMap>(url)
+export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {
+  return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelList: Fetcher<BackendModel[], string> = (url) => {
-  return get<BackendModel[]>(url)
+export const fetchModelProviderCredentials: Fetcher<{ credentials?: Record<string, string | undefined | boolean> }, string> = (url) => {
+  return get<{ credentials?: Record<string, string | undefined | boolean> }>(url)
+}
+
+export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {
+  return get<{ data: ModelItem[] }>(url)
+}
+
+export const fetchModelList: Fetcher<{ data: Model[] }, string> = (url) => {
+  return get<{ data: Model[] }>(url)
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
@@ -162,8 +176,8 @@ export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any 
   return post<CommonResponse>(url, { body })
 }
 
-export const deleteModelProvider: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
-  return del<CommonResponse>(url)
+export const deleteModelProvider: Fetcher<CommonResponse, { url: string; body?: any }> = ({ url, body }) => {
+  return del<CommonResponse>(url, { body })
 }
 
 export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
@@ -182,12 +196,16 @@ export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
   return get<{ url: string }>(url)
 }
 
-export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
-  return get<BackendModel>(url)
+export const fetchDefaultModal: Fetcher<{ data: DefaultModelResponse }, string> = (url) => {
+  return get<{ data: DefaultModelResponse }>(url)
 }
 
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body })
+}
+
+export const fetchModelParameterRules: Fetcher<{ data: ModelParameterRule[] }, string> = (url) => {
+  return get<{ data: ModelParameterRule[] }>(url)
 }
 
 export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {

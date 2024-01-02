@@ -12,6 +12,9 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDe
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
+"""FOR MOCK FIXTURES, DO NOT REMOVE"""
+from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
+
 def test_predefined_models():
     model = OpenAILargeLanguageModel()
     model_schemas = model.predefined_models()
@@ -19,8 +22,8 @@ def test_predefined_models():
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)
 
-
-def test_validate_credentials_for_chat_model():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_validate_credentials_for_chat_model(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -38,8 +41,8 @@ def test_validate_credentials_for_chat_model():
         }
     )
 
-
-def test_validate_credentials_for_completion_model():
+@pytest.mark.parametrize('setup_openai_mock', [['completion']], indirect=True)
+def test_validate_credentials_for_completion_model(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -57,7 +60,8 @@ def test_validate_credentials_for_completion_model():
         }
     )
 
-def test_invoke_completion_model():
+@pytest.mark.parametrize('setup_openai_mock', [['completion']], indirect=True)
+def test_invoke_completion_model(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -83,8 +87,8 @@ def test_invoke_completion_model():
     assert len(result.message.content) > 0
     assert model._num_tokens_from_string('gpt-3.5-turbo-instruct', result.message.content) == 1
 
-
-def test_invoke_stream_completion_model():
+@pytest.mark.parametrize('setup_openai_mock', [['completion']], indirect=True)
+def test_invoke_stream_completion_model(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -114,8 +118,8 @@ def test_invoke_stream_completion_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-
-def test_invoke_chat_model():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_chat_model(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -152,8 +156,8 @@ def test_invoke_chat_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-
-def test_invoke_chat_model_with_vision():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_chat_model_with_vision(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -187,8 +191,8 @@ def test_invoke_chat_model_with_vision():
     assert isinstance(result, LLMResult)
     assert len(result.message.content) > 0
 
-
-def test_invoke_chat_model_with_tools():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_chat_model_with_tools(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -257,8 +261,8 @@ def test_invoke_chat_model_with_tools():
     assert isinstance(result.message, AssistantPromptMessage)
     assert len(result.message.tool_calls) > 0
 
-
-def test_invoke_stream_chat_model():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_stream_chat_model(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -291,7 +295,7 @@ def test_invoke_stream_chat_model():
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
         if chunk.delta.finish_reason is not None:
             assert chunk.delta.usage is not None
-            assert chunk.delta.usage.completion_tokens == 16
+            assert chunk.delta.usage.completion_tokens > 0
 
 
 def test_get_num_tokens():
@@ -328,8 +332,8 @@ def test_get_num_tokens():
 
     assert num_tokens == 21
 
-
-def test_fine_tuned_models():
+@pytest.mark.parametrize('setup_openai_mock', [['chat', 'remote']], indirect=True)
+def test_fine_tuned_models(setup_openai_mock):
     model = OpenAILargeLanguageModel()
 
     remote_models = model.remote_models(credentials={

@@ -81,21 +81,11 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         try:
-            response = post(join(credentials['api_base'], "v1/chat/completions"), data=dumps({
-                "model": model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": "ping"
-                    }
-                ],
-            }),
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
+            self._invoke(model=model, credentials=credentials, prompt_messages=[
+                UserPromptMessage(content="ping"),
+            ], model_parameters={
+                "max_tokens": 16,
             })
-            if response.status_code != 200:
-                raise CredentialsValidateFailedError("Invalid credentials")
         except Exception as e:
             raise CredentialsValidateFailedError(str(e))
 

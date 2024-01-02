@@ -21,10 +21,10 @@ import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
-import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const Config: FC = () => {
   const {
@@ -55,7 +55,7 @@ const Config: FC = () => {
     setModerationConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
-  const { speech2textDefaultModel } = useProviderContext()
+  const { data: speech2textDefaultModel } = useDefaultModel(4)
   const { setShowModerationSettingModal } = useModalContext()
 
   const promptTemplate = modelConfig.configs.prompt_template
