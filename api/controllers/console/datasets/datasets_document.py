@@ -410,7 +410,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         if dataset.data_source_type == 'upload_file':
             file_details = db.session.query(UploadFile).filter(
                 UploadFile.tenant_id == current_user.current_tenant_id,
-                UploadFile.id in info_list
+                UploadFile.id.in_(info_list)
             ).all()
 
             if file_details is None:
