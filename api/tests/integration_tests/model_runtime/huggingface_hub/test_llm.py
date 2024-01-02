@@ -106,22 +106,20 @@ def test_inference_endpoints_text_generation_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='HuggingFaceH4/zephyr-7b-beta',
+            model='openchat/openchat_3.5',
             credentials={
                 'huggingfacehub_api_type': 'inference_endpoints',
                 'huggingfacehub_api_token': 'invalid_key',
-                'model': 'openchat/openchat_3.5',
                 'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT_GEN_ENDPOINT_URL'),
                 'task_type': 'text-generation'
             }
         )
 
     model.validate_credentials(
-        model='HuggingFaceH4/zephyr-7b-beta',
+        model='openchat/openchat_3.5',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'openchat/openchat_3.5',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text-generation'
         }
@@ -132,11 +130,10 @@ def test_inference_endpoints_text_generation_invoke_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='HuggingFaceH4/zephyr-7b-beta',
+        model='openchat/openchat_3.5',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'openchat/openchat_3.5',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text-generation'
         },
@@ -163,11 +160,10 @@ def test_inference_endpoints_text_generation_invoke_stream_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='HuggingFaceH4/zephyr-7b-beta',
+        model='openchat/openchat_3.5',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'openchat/openchat_3.5',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text-generation'
         },
@@ -200,22 +196,20 @@ def test_inference_endpoints_text2text_generation_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='HuggingFaceH4/zephyr-7b-beta',
+            model='google/mt5-base',
             credentials={
                 'huggingfacehub_api_type': 'inference_endpoints',
                 'huggingfacehub_api_token': 'invalid_key',
-                'model': 'google/mt5-base',
                 'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL'),
                 'task_type': 'text2text-generation'
             }
         )
 
     model.validate_credentials(
-        model='HuggingFaceH4/zephyr-7b-beta',
+        model='google/mt5-base',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'google/mt5-base',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text2text-generation'
         }
@@ -226,11 +220,10 @@ def test_inference_endpoints_text2text_generation_invoke_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='HuggingFaceH4/zephyr-7b-beta',
+        model='google/mt5-base',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'google/mt5-base',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text2text-generation'
         },
@@ -257,11 +250,10 @@ def test_inference_endpoints_text2text_generation_invoke_stream_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='HuggingFaceH4/zephyr-7b-beta',
+        model='google/mt5-base',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'google/mt5-base',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text2text-generation'
         },
@@ -293,11 +285,10 @@ def test_get_num_tokens():
     model = HuggingfaceHubLargeLanguageModel()
 
     num_tokens = model.get_num_tokens(
-        model='',
+        model='google/mt5-base',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'google/mt5-base',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL'),
             'task_type': 'text2text-generation'
         },

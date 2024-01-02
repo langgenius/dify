@@ -1,4 +1,4 @@
-from huggingface_hub.utils import HfHubHTTPError
+from huggingface_hub.utils import HfHubHTTPError, BadRequestError
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError, InvokeError
 
@@ -9,6 +9,7 @@ class _CommonHuggingfaceHub:
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
             InvokeBadRequestError: [
-                HfHubHTTPError
+                HfHubHTTPError,
+                BadRequestError
             ]
         }

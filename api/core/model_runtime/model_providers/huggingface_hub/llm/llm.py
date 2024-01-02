@@ -2,6 +2,7 @@ from typing import Optional, List, Union, Generator
 
 from huggingface_hub import InferenceClient
 from huggingface_hub.hf_api import HfApi
+from huggingface_hub.utils import BadRequestError
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
@@ -24,6 +25,9 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
 
         if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             model = credentials['huggingfacehub_endpoint_url']
+
+        if 'baichuan' in model.lower():
+            stream = False
 
         response = client.text_generation(
             prompt=prompt_messages[0].content,
@@ -73,10 +77,14 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
             if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
                 model = credentials['huggingfacehub_endpoint_url']
 
-            client.text_generation(
-                prompt='Who are you?',
-                stream=False,
-                model=model)
+            try:
+                client.text_generation(
+                    prompt='Who are you?',
+                    stream=True,
+                    model=model)
+            except BadRequestError as e:
+                raise CredentialsValidateFailedError('Only available for models running on with the `text-generation-inference`. '
+                                                     'To learn more about the TGI project, please refer to https://github.com/huggingface/text-generation-inference.')
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -134,10 +142,13 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
                                          credentials: dict,
                                          prompt_messages: list[PromptMessage],
                                          response: Generator) -> Generator:
+        index = -1
         for chunk in response:
             # skip special tokens
             if chunk.token.special:
                 continue
+
+            index += 1
 
             assistant_prompt_message = AssistantPromptMessage(
                 content=chunk.token.text
@@ -152,7 +163,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
-                    index=chunk.token.id,
+                    index=index,
                     message=assistant_prompt_message,
                     usage=usage,
                 ),
