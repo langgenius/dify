@@ -389,7 +389,6 @@ class ApplicationManager:
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue
 
-                    del tool_item["enabled"]
                     dataset_id = tool_item['id']
                     dataset_ids.append(dataset_id)
 
