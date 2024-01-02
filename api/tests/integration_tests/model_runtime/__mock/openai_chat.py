@@ -1,5 +1,4 @@
-from openai import OpenAI, Stream, \
-    BadRequestError, InternalServerError
+from openai import OpenAI
 from openai.types import Completion as CompletionMessage
 from openai._types import NotGiven, NOT_GIVEN
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageParam, \
@@ -11,6 +10,7 @@ from openai.types.chat.chat_completion_message import FunctionCall, ChatCompleti
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.completion_usage import CompletionUsage
 from openai.resources.chat.completions import Completions
+from openai import AzureOpenAI
 
 import openai.types.chat.completion_create_params as completion_create_params
 
@@ -18,6 +18,8 @@ import openai.types.chat.completion_create_params as completion_create_params
 from typing import List, Any, Generator, Union, Optional, Literal
 from time import time, sleep
 from json import dumps, loads
+
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 
 import re
 
@@ -215,12 +217,18 @@ class MockChatClass(object):
             "gpt-3.5-turbo-1106", "gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-0301",
             "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k-0613",
         ]
+        azure_openai_models = [
+            "gpt35", "gpt-4v", "gpt-35-turbo"
+        ]
         if not re.match(r'^(https?):\/\/[^\s\/$.?#].[^\s]*$', self._client.base_url.__str__()):
-            raise BadRequestError('Invalid base url')
-        if model in openai_models and not re.match(r'sk-[a-zA-Z0-9]{24,}$', self._client.api_key):
-            # sometime, provider use OpenAI compatible API will not have api key or have different api key format
-            # so we only check if model is in openai_models
-            raise BadRequestError('Invalid api key')
+            raise InvokeAuthorizationError('Invalid base url')
+        if model in openai_models + azure_openai_models:
+            if not re.match(r'sk-[a-zA-Z0-9]{24,}$', self._client.api_key) and type(self._client) == OpenAI:
+                # sometime, provider use OpenAI compatible API will not have api key or have different api key format
+                # so we only check if model is in openai_models
+                raise InvokeAuthorizationError('Invalid api key')
+            if len(self._client.api_key) < 18 and type(self._client) == AzureOpenAI:
+                raise InvokeAuthorizationError('Invalid api key')
         if stream:
             return MockChatClass.mocked_openai_chat_create_stream(model=model, functions=functions, tools=tools)
         

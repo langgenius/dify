@@ -18,7 +18,7 @@ from typing import Literal, Callable, List
 import os
 import pytest
 
-def mock_openai(monkeypatch: MonkeyPatch, methods: List[Literal["completion", "chat", "remote", "moderation", "speech2text"]]) -> Callable[[], None]:
+def mock_openai(monkeypatch: MonkeyPatch, methods: List[Literal["completion", "chat", "remote", "moderation", "speech2text", "text_embedding"]]) -> Callable[[], None]:
     """
         mock openai module
 
