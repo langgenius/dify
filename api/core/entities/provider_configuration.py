@@ -249,11 +249,12 @@ class ProviderConfiguration(BaseModel):
             except JSONDecodeError:
                 original_credentials = {}
 
-            # encrypt credentials
+            # decrypt credentials
             for key, value in credentials.items():
                 if key in provider_credential_secret_variables:
                     # if send [__HIDDEN__] in secret input, it will be same as original value
-                    credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
+                    if value == '[__HIDDEN__]' and key in original_credentials:
+                        credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         model_provider_factory.model_credentials_validate(
             provider=self.provider.provider,
