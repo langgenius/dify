@@ -161,6 +161,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         result = LLMResult(
             model=model,
             message=assistant_prompt_message,
+            prompt_messages=prompt_messages,
             usage=usage,
         )
 

@@ -37,7 +37,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
 
         return TextEmbeddingResult(
             embeddings=embeddings,
-            usage=self._calc_response_usage(model, embedding_used_tokens),
+            usage=self._calc_response_usage(model, credentials_kwargs, embedding_used_tokens),
             model=model
         )
 
@@ -115,7 +115,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         """
         return self.embed_documents([text])[0]
     
-    def _calc_response_usage(self, model: str, tokens: int) -> EmbeddingUsage:
+    def _calc_response_usage(self, model: str,credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
 
@@ -126,6 +126,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         # get input price info
         input_price_info = self.get_price(
             model=model,
+            credentials=credentials,
             price_type=PriceType.INPUT,
             tokens=tokens
         )
