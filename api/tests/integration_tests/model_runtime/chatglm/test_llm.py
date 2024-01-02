@@ -11,13 +11,16 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDe
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.chatglm.llm.llm import ChatGLMLargeLanguageModel
 
+from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
+
 def test_predefined_models():
     model = ChatGLMLargeLanguageModel()
     model_schemas = model.predefined_models()
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)
 
-def test_validate_credentials_for_chat_model():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_validate_credentials_for_chat_model(setup_openai_mock):
     model = ChatGLMLargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -35,7 +38,8 @@ def test_validate_credentials_for_chat_model():
         }
     )
 
-def test_invoke_model():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_model(setup_openai_mock):
     model = ChatGLMLargeLanguageModel()
 
     response = model.invoke(
@@ -64,7 +68,8 @@ def test_invoke_model():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
-def test_invoke_stream_model():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_stream_model(setup_openai_mock):
     model = ChatGLMLargeLanguageModel()
 
     response = model.invoke(
@@ -96,7 +101,8 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-def test_invoke_stream_model_with_functions():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_stream_model_with_functions(setup_openai_mock):
     model = ChatGLMLargeLanguageModel()
 
     response = model.invoke(
@@ -162,7 +168,8 @@ def test_invoke_stream_model_with_functions():
     assert call is not None
     assert call.delta.message.tool_calls[0].function.name == 'get_current_weather'
 
-def test_invoke_model_with_functions():
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_invoke_model_with_functions(setup_openai_mock):
     model = ChatGLMLargeLanguageModel()
 
     response = model.invoke(
