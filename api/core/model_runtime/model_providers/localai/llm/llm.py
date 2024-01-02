@@ -186,6 +186,7 @@ class LocalAILarguageModel(LargeLanguageModel):
                 type=ParameterType.INT,
                 use_template='max_tokens',
                 min=1,
+                max=2048,
                 default=512,
                 label=I18nObject(
                     zh_Hans='最大生成长度',
