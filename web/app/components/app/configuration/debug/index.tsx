@@ -347,7 +347,6 @@ const Debug: FC<IDebug> = ({
         }
       },
       onMessageEnd: (messageEnd) => {
-        // TODO
         if (messageEnd.metadata?.annotation_reply) {
           responseItem.id = messageEnd.id
           responseItem.annotation = ({
@@ -381,27 +380,6 @@ const Debug: FC<IDebug> = ({
       },
       onMessageReplace: (messageReplace) => {
         responseItem.content = messageReplace.answer
-      },
-      onAnnotationReply: (annotationReply) => {
-        // TODO: temp debug
-        responseItem.id = annotationReply.id
-        responseItem.content = annotationReply.answer
-        responseItem.annotation = ({
-          id: annotationReply.annotation_id,
-          authorName: annotationReply.annotation_author_name,
-        } as AnnotationType)
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({
-              ...responseItem,
-              id: annotationReply.id,
-            })
-          })
-        setChatList(newListWithAnswer)
       },
       onError() {
         setResponsingFalse()
