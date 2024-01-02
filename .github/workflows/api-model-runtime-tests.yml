@@ -26,6 +26,9 @@ jobs:
       XINFERENCE_RERANK_MODEL_UID: rerank
       GOOGLE_API_KEY: abcdefghijklmnopqrstuvwxyz
       HUGGINGFACE_API_KEY: hf-awuwuwuwuwuwuwuwuwuwuwuwuwuwuwuwuwu
+      HUGGINGFACE_TEXT_GEN_ENDPOINT_URL: a
+      HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL: b
+      HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL: c
       MOCK_SWITCH: true
 
 
