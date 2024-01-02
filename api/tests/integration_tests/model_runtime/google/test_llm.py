@@ -118,7 +118,8 @@ def test_invoke_stream_model(setup_google_mock):
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-def test_invoke_chat_model_with_vision():
+@pytest.mark.parametrize('setup_google_mock', [['none']], indirect=True)
+def test_invoke_chat_model_with_vision(setup_google_mock):
     model = GoogleLargeLanguageModel()
 
     result = model.invoke(
