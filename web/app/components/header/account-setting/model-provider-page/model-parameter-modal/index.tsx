@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -122,6 +122,22 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     }
   }
 
+  const handleInitialParams = () => {
+    if (parameterRules.length) {
+      const newCompletionParams = { ...completionParams }
+      Object.keys(newCompletionParams).forEach((key) => {
+        if (!parameterRules.find(item => item.name === key))
+          delete newCompletionParams[key]
+      })
+
+      onCompletionParamsChange(newCompletionParams)
+    }
+  }
+
+  useEffect(() => {
+    handleInitialParams()
+  }, [parameterRules])
+
   return (
     <PortalToFollowElem
       open={open}
@@ -222,7 +238,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               }
               {
                 isLoading && (
-                  <Loading />
+                  <div className='mt-5'><Loading /></div>
                 )
               }
               {
