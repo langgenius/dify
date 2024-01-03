@@ -236,8 +236,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         completion_type = LLMMode.value_of(credentials['mode'])
 
         if completion_type is LLMMode.CHAT:
+            endpoint_url = urljoin(endpoint_url, '/chat/completions')
             data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
         elif completion_type == LLMMode.COMPLETION:
+            endpoint_url = urljoin(endpoint_url, '/completions')
             data['prompt'] = prompt_messages[0].content
         else:
             raise ValueError("Unsupported completion type for model configuration.")

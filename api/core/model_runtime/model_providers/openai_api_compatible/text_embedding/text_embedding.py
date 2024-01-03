@@ -146,7 +146,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
                 headers["Authorization"] = f"Bearer {api_key}"
 
 
-            endpoint_url = credentials['endpoint_url']
+            endpoint_url = urljoin(credentials['endpoint_url'], 'embeddings')
 
             payload = {
                 'input': 'ping',
