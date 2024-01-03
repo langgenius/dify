@@ -117,7 +117,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
         params = {
             'model': model,
-            'prompt': [{ 'role': prompt_message.role.value, 'content': prompt_message.content } for prompt_message in prompt_messages],
+            'prompt': [{
+                'role': prompt_message.role.value if prompt_message.role.value != 'system' else 'user',
+                'content': prompt_message.content
+            } for prompt_message in prompt_messages],
             **model_parameters
         }
 
