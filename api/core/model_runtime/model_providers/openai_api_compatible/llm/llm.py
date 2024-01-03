@@ -316,6 +316,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             if chunk:
                 decoded_chunk = chunk.decode('utf-8').strip().lstrip('data: ').lstrip()
 
+                chunk_json = None
                 try:
                     chunk_json = json.loads(decoded_chunk)
                 # stream ended
@@ -326,7 +327,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                         finish_reason="Non-JSON encountered."
                     )
 
-                if len(chunk_json['choices']) == 0:
+                if not chunk_json or len(chunk_json['choices']) == 0:
                     continue
 
                 delta = chunk_json['choices'][0]['delta']
