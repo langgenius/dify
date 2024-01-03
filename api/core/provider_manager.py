@@ -446,7 +446,14 @@ class ProviderManager:
         custom_provider_configuration = None
         if custom_provider_record:
             try:
-                provider_credentials = json.loads(custom_provider_record.encrypted_config)
+                # fix origin data
+                if (custom_provider_record.encrypted_config
+                        and not custom_provider_record.encrypted_config.startswith("{")):
+                    provider_credentials = {
+                        "openai_api_key": custom_provider_record.encrypted_config
+                    }
+                else:
+                    provider_credentials = json.loads(custom_provider_record.encrypted_config)
             except JSONDecodeError:
                 provider_credentials = {}
 
