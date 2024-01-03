@@ -7,10 +7,9 @@ import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
+import { Robot, RobotActive } from '../../base/icons/src/public/header-nav/studio'
 import { fetchAppDetail, fetchAppList } from '@/service/apps'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
-import { Container } from '@/app/components/base/icons/src/vender/line/development'
-import { Container as ContainerSolid } from '@/app/components/base/icons/src/vender/solid/development'
 import type { AppListResponse } from '@/models/app'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
@@ -35,8 +34,8 @@ const AppNav = () => {
   return (
     <>
       <Nav
-        icon={<Container className='w-4 h-4' />}
-        activeIcon={<ContainerSolid className='w-4 h-4' />}
+        icon={<Robot className='w-4 h-4' />}
+        activeIcon={<RobotActive className='w-4 h-4' />}
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link='/apps'
