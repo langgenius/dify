@@ -18,7 +18,7 @@ PARAMETER_RULE_TEMPLATE: Dict[DefaultParameterName, dict] = {
         'default': 0.0,
         'min': 0.0,
         'max': 1.0,
-        'precision': 1,
+        'precision': 2,
     },
     DefaultParameterName.TOP_P: {
         'label': {
@@ -34,7 +34,7 @@ PARAMETER_RULE_TEMPLATE: Dict[DefaultParameterName, dict] = {
         'default': 1.0,
         'min': 0.0,
         'max': 1.0,
-        'precision': 1,
+        'precision': 2,
     },
     DefaultParameterName.PRESENCE_PENALTY: {
         'label': {
@@ -50,7 +50,7 @@ PARAMETER_RULE_TEMPLATE: Dict[DefaultParameterName, dict] = {
         'default': 0.0,
         'min': 0.0,
         'max': 1.0,
-        'precision': 1,
+        'precision': 2,
     },
     DefaultParameterName.FREQUENCY_PENALTY: {
         'label': {
@@ -66,7 +66,7 @@ PARAMETER_RULE_TEMPLATE: Dict[DefaultParameterName, dict] = {
         'default': 0.0,
         'min': 0.0,
         'max': 1.0,
-        'precision': 1,
+        'precision': 2,
     },
     DefaultParameterName.MAX_TOKENS: {
         'label': {
