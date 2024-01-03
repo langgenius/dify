@@ -376,7 +376,8 @@ class ApplicationManager:
                 and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
             'enabled']:
             agent_dict = copy_app_model_config_dict.get('agent_mode')
-            if agent_dict['strategy'] in ['router', 'react_router']:
+            agent_strategy = agent_dict.get('strategy', 'router')
+            if agent_strategy in ['router', 'react_router']:
                 dataset_ids = []
                 for tool in agent_dict.get('tools', []):
                     key = list(tool.keys())[0]
@@ -402,7 +403,7 @@ class ApplicationManager:
                             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
                                 dataset_configs['retrieval_model']
                             ),
-                            single_strategy=agent_dict['strategy']
+                            single_strategy=agent_strategy
                         )
                     )
                 else:
@@ -419,7 +420,7 @@ class ApplicationManager:
                         )
                     )
             else:
-                if agent_dict['strategy'] == 'react':
+                if agent_strategy == 'react':
                     strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
                 else:
                     strategy = AgentEntity.Strategy.FUNCTION_CALLING
