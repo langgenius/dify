@@ -31,7 +31,7 @@ model_credential_schema:
     label:
       zh_Hans: 服务器URL
       en_US: Server url
-    type: text-input
+    type: secret-input
     required: true
     placeholder:
       zh_Hans: 在此输入Xinference的服务器地址，如 https://example.com/xxx
