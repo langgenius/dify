@@ -448,6 +448,46 @@ LLM_BASE_MODELS = [
                 currency='USD',
             )
         )
+    ),
+    AzureBaseModel(
+        base_model_name='text-davinci-003',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label',
+            ),
+            model_type=ModelType.LLM,
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                'mode': LLMMode.COMPLETION.value,
+                'context_size': 4096,
+            },
+            parameter_rules=[
+                ParameterRule(
+                    name='temperature',
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TEMPERATURE],
+                ),
+                ParameterRule(
+                    name='top_p',
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TOP_P],
+                ),
+                ParameterRule(
+                    name='presence_penalty',
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.PRESENCE_PENALTY],
+                ),
+                ParameterRule(
+                    name='frequency_penalty',
+                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.FREQUENCY_PENALTY],
+                ),
+                _get_max_tokens(default=512, min_val=1, max_val=4096),
+            ],
+            pricing=PriceConfig(
+                input=0.02,
+                output=0.02,
+                unit=0.001,
+                currency='USD',
+            )
+        )
     )
 ]
 
