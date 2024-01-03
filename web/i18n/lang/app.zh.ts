@@ -22,7 +22,7 @@ const translation = {
   appNamePlaceholder: '请输入应用名称',
   newApp: {
     startToCreate: '开始创建一个新应用',
-    captionName: '给应用起个名字',
+    captionName: '图标 & 名称',
     captionAppType: '想要哪种应用类型？',
     previewDemo: '预览 Demo',
     chatApp: '对话型应用',

@@ -23,8 +23,8 @@ const translation = {
   appNamePlaceholder: 'Please enter the name of the app',
   newApp: {
     startToCreate: 'Let\'s start with your new app',
-    captionName: 'Give your app a name',
-    captionAppType: 'What kind of app do you want?',
+    captionName: 'App icon & name',
+    captionAppType: 'What type of app do you want to create?',
     previewDemo: 'Preview demo',
     chatApp: 'Chat App',
     chatAppIntro:

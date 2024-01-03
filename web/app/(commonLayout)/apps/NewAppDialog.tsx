@@ -119,13 +119,6 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         </>
       }
     >
-      <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
-
-      <div className='flex items-center justify-between gap-3 mb-8'>
-        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
-        <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''}/>
-      </div>
-
       <div className='overflow-y-auto'>
         <div className={style.newItemCaption}>
           <h3 className='inline'>{t('app.newApp.captionAppType')}</h3>
@@ -141,29 +134,9 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
             </>
           )}
         </div>
-        {isWithTemplate
-          ? (
-            <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              {templates?.data?.map((template, index) => (
-                <li
-                  key={index}
-                  className={classNames(style.listItem, style.selectable, selectedTemplateIndex === index && style.selected)}
-                  onClick={() => setSelectedTemplateIndex(index)}
-                >
-                  <div className={style.listItemTitle}>
-                    <AppIcon size='small' />
-                    <div className={style.listItemHeading}>
-                      <div className={style.listItemHeadingContent}>{template.name}</div>
-                    </div>
-                  </div>
-                  <div className={style.listItemDescription}>{template.model_config?.pre_prompt}</div>
-                  <AppModeLabel mode={template.mode} className='mt-2' />
-                  {/* <AppModeLabel mode='chat' className='mt-2' /> */}
-                </li>
-              ))}
-            </ul>
-          )
-          : (
+
+        {!isWithTemplate && (
+          (
             <>
               <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <li
@@ -201,16 +174,54 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                   </div>
                 </li>
               </ul>
-              <div className='flex items-center h-[34px] mt-2'>
-                <span
-                  className='inline-flex items-center gap-1 text-xs font-medium cursor-pointer text-primary-600'
-                  onClick={() => setIsWithTemplate(true)}
-                >
-                  {t('app.newApp.showTemplates')}<span className={style.rightIcon} />
-                </span>
-              </div>
+
             </>
-          )}
+          )
+        )}
+
+        {isWithTemplate && (
+          <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {templates?.data?.map((template, index) => (
+              <li
+                key={index}
+                className={classNames(style.listItem, style.selectable, selectedTemplateIndex === index && style.selected)}
+                onClick={() => setSelectedTemplateIndex(index)}
+              >
+                <div className={style.listItemTitle}>
+                  <AppIcon size='small' />
+                  <div className={style.listItemHeading}>
+                    <div className={style.listItemHeadingContent}>{template.name}</div>
+                  </div>
+                </div>
+                <div className={style.listItemDescription}>{template.model_config?.pre_prompt}</div>
+                <AppModeLabel mode={template.mode} className='mt-2' />
+                {/* <AppModeLabel mode='chat' className='mt-2' /> */}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className='mt-8'>
+          <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
+          <div className='flex items-center justify-between gap-3'>
+            <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
+            <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''} />
+          </div>
+        </div>
+
+        {
+          !isWithTemplate && (
+            <div className='flex items-center h-[34px] mt-2'>
+              <span
+                className='inline-flex items-center gap-1 text-xs font-medium cursor-pointer text-primary-600'
+                onClick={() => setIsWithTemplate(true)}
+              >
+                {t('app.newApp.showTemplates')}<span className={style.rightIcon} />
+              </span>
+            </div>
+          )
+        }
+
       </div>
       {isAppsFull && <AppsFull loc='app-create' />}
     </Dialog>
