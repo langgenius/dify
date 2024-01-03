@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from urllib.parse import urljoin
 
 import requests
 import json
@@ -105,8 +106,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                         "content": "ping"
                     },
                 ]
+                endpoint_url = urljoin(endpoint_url, '/chat/completions')
             elif completion_type is LLMMode.COMPLETION:
                 data['prompt'] = 'ping'
+                endpoint_url = urljoin(endpoint_url, '/completions')
             else:
                 raise ValueError("Unsupported completion type for model configuration.")
         

@@ -1,6 +1,7 @@
 import time
 from decimal import Decimal
 from typing import Optional
+from urllib.parse import urljoin
 import requests
 import json
 
@@ -43,7 +44,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             headers["Authorization"] = f"Bearer {api_key}"
 
 
-        endpoint_url = credentials['endpoint_url']
+        endpoint_url = urljoin(credentials['endpoint_url'], 'embeddings')
 
         extra_model_kwargs = {}
         if user:
