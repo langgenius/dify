@@ -452,11 +452,14 @@ class ProviderManager:
 
             for variable in provider_credential_secret_variables:
                 if variable in provider_credentials:
-                    provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                        provider_credentials.get(variable),
-                        decoding_rsa_key,
-                        decoding_cipher_rsa
-                    )
+                    try:
+                        provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                            provider_credentials.get(variable),
+                            decoding_rsa_key,
+                            decoding_cipher_rsa
+                        )
+                    except ValueError:
+                        pass
 
             custom_provider_configuration = CustomProviderConfiguration(
                 credentials=provider_credentials
@@ -481,11 +484,14 @@ class ProviderManager:
 
             for variable in model_credential_secret_variables:
                 if variable in provider_model_credentials:
-                    provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                        provider_model_credentials.get(variable),
-                        decoding_rsa_key,
-                        decoding_cipher_rsa
-                    )
+                    try:
+                        provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                            provider_model_credentials.get(variable),
+                            decoding_rsa_key,
+                            decoding_cipher_rsa
+                        )
+                    except ValueError:
+                        pass
 
             custom_model_configurations.append(
                 CustomModelConfiguration(
@@ -577,11 +583,14 @@ class ProviderManager:
 
                 for variable in provider_credential_secret_variables:
                     if variable in provider_credentials:
-                        provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            provider_credentials.get(variable),
-                            decoding_rsa_key,
-                            decoding_cipher_rsa
-                        )
+                        try:
+                            provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                provider_credentials.get(variable),
+                                decoding_rsa_key,
+                                decoding_cipher_rsa
+                            )
+                        except ValueError:
+                            pass
 
                 current_using_credentials = provider_credentials
             else:
