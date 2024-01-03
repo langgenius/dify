@@ -3,7 +3,7 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Optional
 
-from psycopg2 import IntegrityError
+from sqlalchemy.exc import IntegrityError
 
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration, ProviderModelBundle
