@@ -154,20 +154,31 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
                 content=chunk.token.text
             )
 
-            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+            if chunk.details:
+                prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+                completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
-            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
-            yield LLMResultChunk(
-                model=model,
-                prompt_messages=prompt_messages,
-                delta=LLMResultChunkDelta(
-                    index=index,
-                    message=assistant_prompt_message,
-                    usage=usage,
-                ),
-            )
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=index,
+                        message=assistant_prompt_message,
+                        usage=usage,
+                        finish_reason=chunk.details.finish_reason,
+                    ),
+                )
+            else:
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=index,
+                        message=assistant_prompt_message,
+                    ),
+                )
 
     def _handle_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], response: any) -> LLMResult:
         if isinstance(response, str):

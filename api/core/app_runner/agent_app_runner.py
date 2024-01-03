@@ -237,8 +237,8 @@ class AgentApplicationRunner(AppRunner):
         all_message_tokens = 0
         all_answer_tokens = 0
         for agent_thought in agent_thoughts:
-            all_message_tokens += agent_thought.message_tokens
-            all_answer_tokens += agent_thought.answer_tokens
+            all_message_tokens += agent_thought.message_token
+            all_answer_tokens += agent_thought.answer_token
 
         model_type_instance = model_config.provider_model_bundle.model_type_instance
         model_type_instance = cast(LargeLanguageModel, model_type_instance)

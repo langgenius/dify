@@ -3,6 +3,7 @@ from typing import Optional, Generator, Union, List
 import google.generativeai as genai
 import google.api_core.exceptions as exceptions
 import google.generativeai.client as client
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 from google.generativeai.types import GenerateContentResponse, ContentType
 from google.generativeai.types.content_types import to_part
@@ -124,7 +125,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             last_msg = prompt_messages[-1]
             content = self._format_message_to_glm_content(last_msg)
             history.append(content)
-        else:    
+        else:
             for msg in prompt_messages:     # makes message roles strictly alternating
                 content = self._format_message_to_glm_content(msg)
                 if history and history[-1]["role"] == content["role"]:
@@ -139,13 +140,21 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         new_custom_client = new_client_manager.make_client("generative")
 
         google_model._client = new_custom_client
+
+        safety_settings={
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
         
         response = google_model.generate_content(
             contents=history,
             generation_config=genai.types.GenerationConfig(
                 **config_kwargs
             ),
-            stream=stream
+            stream=stream,
+            safety_settings=safety_settings
         )
 
         if stream:
@@ -168,7 +177,6 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         assistant_prompt_message = AssistantPromptMessage(
             content=response.text
         )
-
 
         # calculate num tokens
         prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
@@ -202,11 +210,11 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         for chunk in response:
             content = chunk.text
             index += 1
-
+           
             assistant_prompt_message = AssistantPromptMessage(
                 content=content if content else '',
             )
-
+  
             if not response._done:
                 
                 # transform assistant message to prompt message

@@ -63,8 +63,13 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
   const handleChange = (v: ParameterValue) => {
     setLocalValue(v)
-    if (!isNullOrUndefined(value) && onChange)
-      onChange(v)
+
+    if (onChange) {
+      if (parameterRule.name === 'stop')
+        onChange(v)
+      else if (!isNullOrUndefined(value))
+        onChange(v)
+    }
   }
 
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

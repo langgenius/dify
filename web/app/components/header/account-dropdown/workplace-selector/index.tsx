@@ -30,7 +30,6 @@ const WorkplaceSelector = () => {
   const currentWorkspace = workspaces.find(v => v.current)
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
-    console.log(tenant_id, currentWorkspace?.id)
     try {
       if (currentWorkspace?.id === tenant_id)
         return

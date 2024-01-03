@@ -248,7 +248,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                     ...(isAdvancedMode ? [stopParameerRule] : []),
                   ].map(parameter => (
                     <ParameterItem
-                      key={parameter.name}
+                      key={`${modelId}-${parameter.name}`}
                       className='mb-4'
                       parameterRule={parameter}
                       value={completionParams[parameter.name]}

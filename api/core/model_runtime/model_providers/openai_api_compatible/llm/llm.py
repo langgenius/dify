@@ -6,8 +6,6 @@ import json
 
 from typing import Optional, Generator, Union, List, cast
 
-from sympy import comp
-
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.utils import helper
 
