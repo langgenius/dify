@@ -43,8 +43,11 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
+        endpoint_url = credentials.get('endpoint_url')
+        if not endpoint_url.endswith('/'):
+            endpoint_url += '/'
 
-        endpoint_url = urljoin(credentials['endpoint_url'], 'embeddings')
+        endpoint_url = urljoin(endpoint_url, 'embeddings')
 
         extra_model_kwargs = {}
         if user:
@@ -145,8 +148,11 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
+            endpoint_url = credentials.get('endpoint_url')
+            if not endpoint_url.endswith('/'):
+                endpoint_url += '/'
 
-            endpoint_url = urljoin(credentials['endpoint_url'], 'embeddings')
+            endpoint_url = urljoin(endpoint_url, 'embeddings')
 
             payload = {
                 'input': 'ping',
@@ -161,8 +167,19 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             )
 
             if response.status_code != 200:
-                raise CredentialsValidateFailedError(f"Invalid response status: {response.status_code}")
+                raise CredentialsValidateFailedError(
+                    f'Credentials validation failed with status code {response.status_code}')
 
+            try:
+                json_result = response.json()
+            except json.JSONDecodeError as e:
+                raise CredentialsValidateFailedError(f'Credentials validation failed: JSON decode error')
+
+            if 'model' not in json_result:
+                raise CredentialsValidateFailedError(
+                    f'Credentials validation failed: invalid response')
+        except CredentialsValidateFailedError:
+            raise
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
