@@ -473,7 +473,7 @@ class ApplicationManager:
         more_like_this_dict = copy_app_model_config_dict.get('more_like_this')
         if more_like_this_dict:
             if 'enabled' in more_like_this_dict and more_like_this_dict['enabled']:
-                properties['more_like_this'] = copy_app_model_config_dict.get('opening_statement')
+                properties['more_like_this'] = True
 
         # speech to text
         speech_to_text_dict = copy_app_model_config_dict.get('speech_to_text')
