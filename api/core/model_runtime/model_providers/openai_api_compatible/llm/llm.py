@@ -137,7 +137,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: credentials.get('context_size'),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size')),
                 ModelPropertyKey.MODE: 'chat'
             },
             parameter_rules=[

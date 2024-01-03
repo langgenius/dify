@@ -176,7 +176,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             model_type=ModelType.TEXT_EMBEDDING,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: credentials.get('context_size'),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size')),
                 ModelPropertyKey.MAX_CHUNKS: 1,
             },
             parameter_rules=[],
