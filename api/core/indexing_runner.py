@@ -5,12 +5,12 @@ import re
 import threading
 import time
 import uuid
-from typing import Optional, List, cast
+from typing import Optional, List, cast, Type, Union, Literal, AbstractSet, Collection, Any
 
 from flask import current_app, Flask
 from flask_login import current_user
 from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
+from langchain.text_splitter import TextSplitter, TS, TokenTextSplitter
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.data_loader.file_extractor import FileExtractor
@@ -23,7 +23,8 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
+from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter, EnhanceRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -502,7 +503,8 @@ class IndexingRunner:
             if separator:
                 separator = separator.replace('\\n', '\n')
 
-            character_splitter = FixedRecursiveCharacterTextSplitter.from_tiktoken_encoder(
+
+            character_splitter = FixedRecursiveCharacterTextSplitter.from_gpt2_encoder(
                 chunk_size=segmentation["max_tokens"],
                 chunk_overlap=0,
                 fixed_separator=separator,
@@ -510,7 +512,7 @@ class IndexingRunner:
             )
         else:
             # Automatic segmentation
-            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+            character_splitter = EnhanceRecursiveCharacterTextSplitter.from_gpt2_encoder(
                 chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens'],
                 chunk_overlap=0,
                 separators=["\n\n", "。", ".", " ", ""]
