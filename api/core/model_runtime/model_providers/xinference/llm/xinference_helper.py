@@ -33,10 +33,13 @@ class XinferenceHelper:
 
     @staticmethod
     def _clean_cache() -> None:
-        with cache_lock:
-            for model_uid, model in cache.items():
-                if model['expires'] < time():
+        try:
+            with cache_lock:
+                expired_keys = [model_uid for model_uid, model in cache.items() if model['expires'] < time()]
+                for model_uid in expired_keys:
                     del cache[model_uid]
+        except RuntimeError as e:
+            pass
 
     @staticmethod
     def _get_xinference_extra_parameter(server_url: str, model_uid: str) -> XinferenceModelExtraParameter:
