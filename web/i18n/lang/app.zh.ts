@@ -1,6 +1,11 @@
 const translation = {
   title: '应用',
   createApp: '创建应用',
+  types: {
+    all: '全部',
+    assistant: '助手',
+    completion: '文本生成',
+  },
   modes: {
     completion: '文本生成型',
     chat: '对话型',

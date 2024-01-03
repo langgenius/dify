@@ -26,7 +26,7 @@ const Layout: FC<Props> = ({
   const activeTab = pathname
 
   useEffect(() => {
-    document.title = 'Tools - Dify'
+    document.title = `${t('tools.title')} - Dify`
   }, [])
 
   return (

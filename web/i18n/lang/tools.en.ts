@@ -1,4 +1,5 @@
 const translation = {
+  title: 'Tools',
   type: {
     thirdParty: 'Third-Party',
     published: 'Published',

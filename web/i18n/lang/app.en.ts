@@ -1,9 +1,14 @@
 const translation = {
   title: 'Apps',
   createApp: 'Create new App',
+  types: {
+    all: 'All',
+    assistant: 'Assistant',
+    completion: 'Completion',
+  },
   modes: {
     completion: 'Text Generator',
-    chat: 'Chat App',
+    chat: 'Chat Assistant',
   },
   createFromConfigFile: 'Create app from config file',
   deleteAppConfirmTitle: 'Delete this app?',
