@@ -18,6 +18,7 @@ from models.dataset import Dataset, DatasetCollectionBinding
 class QdrantConfig(BaseModel):
     endpoint: str
     api_key: Optional[str]
+    timeout: float = 20
     root_path: Optional[str]
 
     def to_qdrant_params(self):
@@ -33,6 +34,7 @@ class QdrantConfig(BaseModel):
             return {
                 'url': self.endpoint,
                 'api_key': self.api_key,
+                'timeout': self.timeout
             }
 
 
