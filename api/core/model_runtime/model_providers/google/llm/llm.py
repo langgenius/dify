@@ -4,7 +4,7 @@ import google.generativeai as genai
 import google.api_core.exceptions as exceptions
 import google.generativeai.client as client
 
-from google.generativeai.types import GenerateContentResponse, ContentType
+from google.generativeai.types import GenerateContentResponse, ContentType, BlockedPromptException
 from google.generativeai.types.content_types import to_part
 
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage, AssistantPromptMessage, \
@@ -325,6 +325,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 exceptions.Forbidden
             ],
             InvokeBadRequestError: [
+                BlockedPromptException,
                 exceptions.BadRequest,
                 exceptions.InvalidArgument,
                 exceptions.FailedPrecondition,
