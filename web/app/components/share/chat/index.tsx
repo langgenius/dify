@@ -43,6 +43,7 @@ import Confirm from '@/app/components/base/confirm'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { fetchFileUploadConfig } from '@/service/common'
+import type { Annotation as AnnotationType } from '@/models/log'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -582,23 +583,40 @@ const Main: FC<IMainProps> = ({
         }
         setResponsingFalse()
       },
-      onMessageEnd: isInstalledApp
-        ? (messageEnd) => {
-          if (!isInstalledApp)
-            return
-          responseItem.citation = messageEnd.retriever_resources
-
+      onMessageEnd: (messageEnd) => {
+        if (messageEnd.metadata?.annotation_reply) {
+          responseItem.id = messageEnd.id
+          responseItem.annotation = ({
+            id: messageEnd.metadata.annotation_reply.id,
+            authorName: messageEnd.metadata.annotation_reply.account.name,
+          } as AnnotationType)
           const newListWithAnswer = produce(
             getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
             (draft) => {
               if (!draft.find(item => item.id === questionId))
                 draft.push({ ...questionItem })
 
-              draft.push({ ...responseItem })
+              draft.push({
+                ...responseItem,
+              })
             })
           setChatList(newListWithAnswer)
+          return
         }
-        : undefined,
+        // not support show citation
+        // responseItem.citation = messageEnd.retriever_resources
+        if (!isInstalledApp)
+          return
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
       onMessageReplace: (messageReplace) => {
         if (isInstalledApp) {
           responseItem.content = messageReplace.answer
@@ -614,22 +632,6 @@ const Main: FC<IMainProps> = ({
             },
           ))
         }
-      },
-      onAnnotationReply: (annotationReply) => {
-        responseItem.content = annotationReply.answer
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({
-              ...responseItem,
-              id: annotationReply.id,
-            })
-          })
-        setChatList(newListWithAnswer)
-        tempNewConversationId = annotationReply.conversation_id
       },
       onError() {
         setResponsingFalse()

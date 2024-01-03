@@ -1,4 +1,4 @@
-from typing import List, Tuple, Any, Union, Sequence, Optional
+from typing import List, Tuple, Any, Union, Sequence, Optional, cast
 
 from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
 from langchain.agents.openai_functions_agent.base import _parse_ai_message, \
@@ -13,18 +13,23 @@ from langchain.schema import AgentAction, AgentFinish, SystemMessage, AIMessage,
 from langchain.tools import BaseTool
 from pydantic import root_validator
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.calc_token_mixin import ExceededLLMTokensLimitError, CalcTokenMixin
 from core.chain.llm_chain import LLMChain
-from core.model_providers.models.entity.message import to_prompt_messages
-from core.model_providers.models.llm.base import BaseLLM
+from core.entities.application_entities import ModelConfigEntity
+from core.model_manager import ModelInstance
+from core.entities.message_entities import lc_messages_to_prompt_messages
+from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.third_party.langchain.llms.fake import FakeLLM
 
 
 class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixin):
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
-    summary_model_instance: BaseLLM = None
-    model_instance: BaseLLM
+    summary_model_config: ModelConfigEntity = None
+    model_config: ModelConfigEntity
+    agent_llm_callback: Optional[AgentLLMCallback] = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -38,13 +43,14 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_instance: BaseLLM,
+            model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
             system_message: Optional[SystemMessage] = SystemMessage(
                 content="You are a helpful AI assistant."
             ),
+            agent_llm_callback: Optional[AgentLLMCallback] = None,
             **kwargs: Any,
     ) -> BaseSingleActionAgent:
         prompt = cls.create_prompt(
@@ -52,11 +58,12 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             system_message=system_message,
         )
         return cls(
-            model_instance=model_instance,
+            model_config=model_config,
             llm=FakeLLM(response=''),
             prompt=prompt,
             tools=tools,
             callback_manager=callback_manager,
+            agent_llm_callback=agent_llm_callback,
             **kwargs,
         )
 
@@ -67,28 +74,49 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         :param query:
         :return:
         """
-        original_max_tokens = self.model_instance.model_kwargs.max_tokens
-        self.model_instance.model_kwargs.max_tokens = 40
+        original_max_tokens = 0
+        for parameter_rule in self.model_config.model_schema.parameter_rules:
+            if (parameter_rule.name == 'max_tokens'
+                    or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
+                original_max_tokens = (self.model_config.parameters.get(parameter_rule.name)
+                              or self.model_config.parameters.get(parameter_rule.use_template)) or 0
+
+        self.model_config.parameters['max_tokens'] = 40
 
         prompt = self.prompt.format_prompt(input=query, agent_scratchpad=[])
         messages = prompt.to_messages()
 
         try:
-            prompt_messages = to_prompt_messages(messages)
-            result = self.model_instance.run(
-                messages=prompt_messages,
-                functions=self.functions,
-                callbacks=None
+            prompt_messages = lc_messages_to_prompt_messages(messages)
+            model_instance = ModelInstance(
+                provider_model_bundle=self.model_config.provider_model_bundle,
+                model=self.model_config.model,
+            )
+
+            tools = []
+            for function in self.functions:
+                tool = PromptMessageTool(
+                    **function
+                )
+
+                tools.append(tool)
+
+            result = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                tools=tools,
+                stream=False,
+                model_parameters={
+                    'temperature': 0.2,
+                    'top_p': 0.3,
+                    'max_tokens': 1500
+                }
             )
         except Exception as e:
-            new_exception = self.model_instance.handle_exceptions(e)
-            raise new_exception
+            raise e
 
-        function_call = result.function_call
+        self.model_config.parameters['max_tokens'] = original_max_tokens
 
-        self.model_instance.model_kwargs.max_tokens = original_max_tokens
-
-        return True if function_call else False
+        return True if result.message.tool_calls else False
 
     def plan(
             self,
@@ -113,22 +141,46 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         prompt = self.prompt.format_prompt(**full_inputs)
         messages = prompt.to_messages()
 
+        prompt_messages = lc_messages_to_prompt_messages(messages)
+
         # summarize messages if rest_tokens < 0
         try:
-            messages = self.summarize_messages_if_needed(messages, functions=self.functions)
+            prompt_messages = self.summarize_messages_if_needed(prompt_messages, functions=self.functions)
         except ExceededLLMTokensLimitError as e:
             return AgentFinish(return_values={"output": str(e)}, log=str(e))
 
-        prompt_messages = to_prompt_messages(messages)
-        result = self.model_instance.run(
-            messages=prompt_messages,
-            functions=self.functions,
+        model_instance = ModelInstance(
+            provider_model_bundle=self.model_config.provider_model_bundle,
+            model=self.model_config.model,
+        )
+
+        tools = []
+        for function in self.functions:
+            tool = PromptMessageTool(
+                **function
+            )
+
+            tools.append(tool)
+
+        result = model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            tools=tools,
+            stream=False,
+            callbacks=[self.agent_llm_callback] if self.agent_llm_callback else [],
+            model_parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
 
         ai_message = AIMessage(
-            content=result.content,
+            content=result.message.content or "",
             additional_kwargs={
-                'function_call': result.function_call
+                'function_call': {
+                    'id': result.message.tool_calls[0].id,
+                    **result.message.tool_calls[0].function.dict()
+                } if result.message.tool_calls else None
             }
         )
         agent_decision = _parse_ai_message(ai_message)
@@ -158,9 +210,14 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         except ValueError:
             return AgentFinish({"output": "I'm sorry, I don't know how to respond to that."}, "")
 
-    def summarize_messages_if_needed(self, messages: List[BaseMessage], **kwargs) -> List[BaseMessage]:
+    def summarize_messages_if_needed(self, messages: List[PromptMessage], **kwargs) -> List[PromptMessage]:
         # calculate rest tokens and summarize previous function observation messages if rest_tokens < 0
-        rest_tokens = self.get_message_rest_tokens(self.model_instance, messages, **kwargs)
+        rest_tokens = self.get_message_rest_tokens(
+            self.model_config,
+            messages,
+            **kwargs
+        )
+
         rest_tokens = rest_tokens - 20  # to deal with the inaccuracy of rest_tokens
         if rest_tokens >= 0:
             return messages
@@ -210,19 +267,19 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             ai_prefix="AI",
         )
 
-        chain = LLMChain(model_instance=self.summary_model_instance, prompt=SUMMARY_PROMPT)
+        chain = LLMChain(model_config=self.summary_model_config, prompt=SUMMARY_PROMPT)
         return chain.predict(summary=existing_summary, new_lines=new_lines)
 
-    def get_num_tokens_from_messages(self, model_instance: BaseLLM, messages: List[BaseMessage], **kwargs) -> int:
+    def get_num_tokens_from_messages(self, model_config: ModelConfigEntity, messages: List[BaseMessage], **kwargs) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
-        if model_instance.model_provider.provider_name == 'azure_openai':
-            model = model_instance.base_model_name
+        if model_config.provider == 'azure_openai':
+            model = model_config.model
             model = model.replace("gpt-35", "gpt-3.5")
         else:
-            model = model_instance.base_model_name
+            model = model_config.credentials.get("base_model_name")
 
         tiktoken_ = _import_tiktoken()
         try:

@@ -12,16 +12,12 @@ import qdrant_client
 from qdrant_client.http.models import TextIndexParams, TextIndexType, TokenizerType
 from tqdm import tqdm
 from flask import current_app, Flask
-from langchain.embeddings import OpenAIEmbeddings
 from werkzeug.exceptions import NotFound
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.index import IndexBuilder
-from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.embedding.openai_embedding import OpenAIEmbedding
-from core.model_providers.models.entity.model_params import ModelType
-from core.model_providers.providers.hosted import hosted_model_providers
-from core.model_providers.providers.openai_provider import OpenAIProvider
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
 from extensions.ext_database import db
@@ -327,6 +323,8 @@ def create_qdrant_indexes():
         except NotFound:
             break
 
+        model_manager = ModelManager()
+
         page += 1
         for dataset in datasets:
             if dataset.index_struct_dict:
@@ -334,19 +332,23 @@ def create_qdrant_indexes():
                     try:
                         click.echo('Create dataset qdrant index: {}'.format(dataset.id))
                         try:
-                            embedding_model = ModelFactory.get_embedding_model(
+                            embedding_model = model_manager.get_model_instance(
                                 tenant_id=dataset.tenant_id,
-                                model_provider_name=dataset.embedding_model_provider,
-                                model_name=dataset.embedding_model
+                                provider=dataset.embedding_model_provider,
+                                model_type=ModelType.TEXT_EMBEDDING,
+                                model=dataset.embedding_model
+
                             )
                         except Exception:
                             try:
-                                embedding_model = ModelFactory.get_embedding_model(
-                                    tenant_id=dataset.tenant_id
+                                embedding_model = model_manager.get_default_model_instance(
+                                    tenant_id=dataset.tenant_id,
+                                    model_type=ModelType.TEXT_EMBEDDING,
                                 )
-                                dataset.embedding_model = embedding_model.name
-                                dataset.embedding_model_provider = embedding_model.model_provider.provider_name
+                                dataset.embedding_model = embedding_model.model
+                                dataset.embedding_model_provider = embedding_model.provider
                             except Exception:
+
                                 provider = Provider(
                                     id='provider_id',
                                     tenant_id=dataset.tenant_id,

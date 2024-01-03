@@ -2,8 +2,12 @@
 from datetime import datetime
 from typing import List
 
-from flask import request, current_app
+from flask import request
 from flask_login import current_user
+
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.login import login_required
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import desc, asc
@@ -18,9 +22,8 @@ from controllers.console.datasets.error import DocumentAlreadyFinishedError, Inv
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.indexing_runner import IndexingRunner
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
     LLMBadRequestError
-from core.model_providers.model_factory import ModelFactory
 from extensions.ext_redis import redis_client
 from fields.document_fields import document_with_segments_fields, document_fields, \
     dataset_and_document_fields, document_status_fields
@@ -272,10 +275,12 @@ class DatasetInitApi(Resource):
         args = parser.parse_args()
         if args['indexing_technique'] == 'high_quality':
             try:
-                ModelFactory.get_embedding_model(
-                    tenant_id=current_user.current_tenant_id
+                model_manager = ModelManager()
+                model_manager.get_default_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING
                 )
-            except LLMBadRequestError:
+            except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
@@ -410,7 +415,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         if dataset.data_source_type == 'upload_file':
             file_details = db.session.query(UploadFile).filter(
                 UploadFile.tenant_id == current_user.current_tenant_id,
-                UploadFile.id in info_list
+                UploadFile.id.in_(info_list)
             ).all()
 
             if file_details is None:

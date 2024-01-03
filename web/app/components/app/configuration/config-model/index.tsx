@@ -7,9 +7,6 @@ import { useBoolean, useClickAway, useGetState } from 'ahooks'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import produce from 'immer'
 import ParamItem from './param-item'
-import ModelIcon from './model-icon'
-import ModelName from './model-name'
-import ModelModeTypeLabel from './model-mode-type-label'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
@@ -24,17 +21,19 @@ import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { fetchModelParams } from '@/service/debug'
 import Loading from '@/app/components/base/loading'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
-import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { ModelModeType } from '@/types/app'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+
 export type IConfigModelProps = {
   isAdvancedMode: boolean
   mode: string
   modelId: string
-  provider: ProviderEnum
-  setModel: (model: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => void
+  provider: string
+  setModel: (model: { id: string; provider: string; mode: ModelModeType; features: string[] }) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
@@ -50,11 +49,16 @@ const ConfigModel: FC<IConfigModelProps> = ({
   disabled,
 }) => {
   const { t } = useTranslation()
-  const { textGenerationModelList } = useProviderContext()
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
-  const currModel = textGenerationModelList.find(item => item.model_name === modelId)
+  const {
+    currentProvider,
+    currentModel: currModel,
+    textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
+    { provider, model: modelId },
+  )
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -81,7 +85,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
         setAllParams(newAllParams)
       }
     })()
-  }, [provider, modelId])
+  }, [provider, modelId, allParams, setAllParams])
 
   useClickAway(() => {
     hideConfig()
@@ -89,7 +93,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
   const selectedModel = { name: modelId } // options.find(option => option.id === modelId)
 
-  const ensureModelParamLoaded = (provider: ProviderEnum, modelId: string) => {
+  const ensureModelParamLoaded = (provider: string, modelId: string) => {
     return new Promise<void>((resolve) => {
       if (getAllParams()[provider]?.[modelId]) {
         resolve()
@@ -126,13 +130,13 @@ const ConfigModel: FC<IConfigModelProps> = ({
     return adjustedValue
   }
 
-  const handleSelectModel = ({ id, provider: nextProvider, mode, features }: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => {
+  const handleSelectModel = ({ id, provider: nextProvider, mode, features }: { id: string; provider: string; mode: ModelModeType; features: string[] }) => {
     return async () => {
       const prevParamsRule = getAllParams()[provider]?.[modelId]
 
       setModel({
         id,
-        provider: nextProvider || ProviderEnum.openai,
+        provider: nextProvider || 'openai',
         mode,
         features,
       })
@@ -269,26 +273,34 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
     const max = currParams.max_tokens.max
     const isSupportMaxToken = currParams.max_tokens.enabled
-    if (isSupportMaxToken && currModel?.model_provider.provider_name !== ProviderEnum.anthropic && completionParams.max_tokens > max * 2 / 3)
+    if (isSupportMaxToken && currentProvider?.provider !== 'anthropic' && completionParams.max_tokens > max * 2 / 3)
       setMaxTokenSettingTipVisible(true)
     else
       setMaxTokenSettingTipVisible(false)
-  }, [currParams, completionParams.max_tokens, setMaxTokenSettingTipVisible])
+  }, [currParams, completionParams.max_tokens, setMaxTokenSettingTipVisible, currentProvider])
   return (
     <div className='relative' ref={configContentRef}>
       <div
         className={cn('flex items-center border h-8 px-2 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
         onClick={() => !disabled && toogleShowConfig()}
       >
-        <ModelIcon
-          className='!w-5 !h-5'
-          modelId={modelId}
-          providerName={provider}
-        />
-        <div className='text-[13px] text-gray-900 font-medium'>
-          <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
-        </div>
-        {isAdvancedMode && <ModelModeTypeLabel type={currModel?.model_mode as ModelModeType} isHighlight />}
+        {
+          currentProvider && (
+            <ModelIcon
+              className='!w-5 !h-5'
+              provider={currentProvider}
+            />
+          )
+        }
+        {
+          currModel && (
+            <ModelName
+              className='text-gray-900'
+              modelItem={currModel}
+              showMode={isAdvancedMode}
+            />
+          )
+        }
         {disabled ? <InformationCircleIcon className='w-4 h-4 text-[#F79009]' /> : <SlidersH className='w-4 h-4 text-indigo-600' />}
       </div>
       {isShowConfig && (
@@ -312,21 +324,16 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
-                isShowModelModeType={isAdvancedMode}
-                isShowAddModel
-                popClassName='right-0'
-                triggerIconSmall
-                value={{
-                  modelName: modelId,
-                  providerName: provider,
-                }}
-                modelType={ModelType.textGeneration}
-                onChange={(model) => {
+                defaultModel={{ model: modelId, provider }}
+                modelList={textGenerationModelList}
+                onSelect={({ provider, model }) => {
+                  const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === provider)
+                  const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
                   handleSelectModel({
-                    id: model.model_name,
-                    provider: model.model_provider.provider_name as ProviderEnum,
-                    mode: model.model_mode,
-                    features: model.features,
+                    id: model,
+                    provider,
+                    mode: targetModelItem?.model_properties.mode as ModelModeType,
+                    features: targetModelItem?.features || [],
                   })()
                 }}
               />
@@ -336,7 +343,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             )}
 
             {/* Tone type */}
-            {[ProviderEnum.openai, ProviderEnum.azure_openai].includes(provider) && (
+            {['openai', 'azure_openai'].includes(provider) && (
               <div className="mt-5 mb-4">
                 <div className="mb-3 text-sm text-gray-900">{t('appDebug.modelConfig.setTone')}</div>
                 <Radio.Group className={cn('!rounded-lg', toneTabBgClassName)} value={toneId} onChange={handleToneChange}>

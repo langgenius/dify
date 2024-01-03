@@ -1,8 +1,10 @@
 import json
 from typing import Optional, Union, List
 
-from core.completion import Completion
 from core.generator.llm_generator import LLMGenerator
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
 from models.account import Account
@@ -216,21 +218,27 @@ class MessageService:
             raise SuggestedQuestionsAfterAnswerDisabledError()
 
         # get memory of conversation (read-only)
-        memory = Completion.get_memory_from_conversation(
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
             tenant_id=app_model.tenant_id,
-            app_model_config=app_model_config,
-            conversation=conversation,
-            max_token_limit=3000,
-            message_limit=3,
-            return_messages=False,
-            memory_key="histories"
+            provider=app_model_config.model_dict['provider'],
+            model_type=ModelType.LLM,
+            model=app_model_config.model_dict['name']
         )
 
-        external_context = memory.load_memory_variables({})
+        memory = TokenBufferMemory(
+            conversation=conversation,
+            model_instance=model_instance
+        )
+
+        histories = memory.get_history_prompt_text(
+            max_token_limit=3000,
+            message_limit=3,
+        )
 
         questions = LLMGenerator.generate_suggested_questions_after_answer(
             tenant_id=app_model.tenant_id,
-            **external_context
+            histories=histories
         )
 
         return questions

@@ -4,17 +4,16 @@ import React from 'react'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
 import s from './style.module.css'
-import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import { Google, WebReader, Wikipedia } from '@/app/components/base/icons/src/public/plugins'
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
-import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import ModelName from '@/app/components/app/configuration/config-model/model-name'
-import { useProviderContext } from '@/context/provider-context'
 import type { DataSet } from '@/models/datasets'
+import { useAgentThoughtCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type ISummaryProps = {
   modelId: string
-  providerName: ProviderEnum
+  providerName: string
   plugins: Record<string, boolean>
   dataSets: DataSet[]
 }
@@ -49,9 +48,12 @@ const Summary: FC<ISummaryProps> = ({
   plugins,
   dataSets,
 }) => {
-  const { agentThoughtModelList } = useProviderContext()
-  const currModel = agentThoughtModelList.find(item => item.model_name === modelId && item.model_provider.provider_name === providerName)
-
+  const {
+    currentModel: currModel,
+    currentProvider,
+  } = useAgentThoughtCurrentProviderAndModelAndModelList(
+    { provider: providerName, model: modelId },
+  )
   // current_datetime is not configable and do not have icon
   const pluginIds = Object.keys(plugins).filter(key => plugins[key] && key !== 'current_datetime')
   const [isShowConfig, { setFalse: hideConfig, toggle: toggleShowConfig }] = useBoolean(false)
@@ -63,8 +65,16 @@ const Summary: FC<ISummaryProps> = ({
   return (
     <div ref={configContentRef} className='relative'>
       <div onClick={toggleShowConfig} className={cn(getColorInfo(modelId), 'flex items-center px-1 h-8 rounded-lg border cursor-pointer')}>
-        <ModelIcon providerName={providerName} modelId={modelId} className='!w-6 !h-6' />
-        <div className='ml-2 text-[13px] font-medium text-gray-900'><ModelName modelId={modelId} modelDisplayName={currModel?.model_display_name} /></div>
+        <ModelIcon
+          provider={currentProvider}
+          modelName={currModel?.model}
+          className='!w-6 !h-6'
+        />
+        <div className='ml-2 text-[13px] font-medium text-gray-900'>
+          <ModelName
+            modelItem={currModel!}
+          />
+        </div>
         {
           pluginIds.length > 0 && (
             <div className='ml-1.5 flex items-center'>

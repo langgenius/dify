@@ -12,15 +12,14 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import RadioCard from '@/app/components/base/radio-card/simple'
 import { RETRIEVE_TYPE } from '@/types/app'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
-import { useProviderContext } from '@/context/provider-context'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import Toast from '@/app/components/base/toast'
 import { DATASET_DEFAULT } from '@/config'
 import {
   MultiPathRetrieval,
   NTo1Retrieval,
 } from '@/app/components/base/icons/src/public/common'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
@@ -38,11 +37,11 @@ const ParamsConfig: FC = () => {
       retrieval_model: value,
     })
   }
-
   const {
-    rerankDefaultModel,
-    isRerankDefaultModelVaild,
-  } = useProviderContext()
+    modelList: rerankModelList,
+    defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelVaild,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
 
   const rerankModel = (() => {
     if (tempDataSetConfigs.reranking_model) {
@@ -53,8 +52,8 @@ const ParamsConfig: FC = () => {
     }
     else if (rerankDefaultModel) {
       return {
-        provider_name: rerankDefaultModel.model_provider.provider_name,
-        model_name: rerankDefaultModel.model_name,
+        provider_name: rerankDefaultModel.provider.provider,
+        model_name: rerankDefaultModel.model,
       }
     }
   })()
@@ -104,8 +103,8 @@ const ParamsConfig: FC = () => {
     const config = { ...tempDataSetConfigs }
     if (config.retrieval_model === RETRIEVE_TYPE.multiWay && !config.reranking_model) {
       config.reranking_model = {
-        reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
-        reranking_model_name: rerankDefaultModel?.model_name,
+        reranking_provider_name: rerankDefaultModel?.provider,
+        reranking_model_name: rerankDefaultModel?.model,
       } as any
     }
     setDatasetConfigs(config)
@@ -163,18 +162,17 @@ const ParamsConfig: FC = () => {
                   <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
                   <div>
                     <ModelSelector
-                      popClassName='!max-w-[100%] !w-full'
-                      value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
-                      modelType={ModelType.reranking}
-                      onChange={(v) => {
+                      defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
+                      onSelect={(v) => {
                         setTempDataSetConfigs({
                           ...tempDataSetConfigs,
                           reranking_model: {
-                            reranking_provider_name: v.model_provider.provider_name,
-                            reranking_model_name: v.model_name,
+                            reranking_provider_name: v.provider,
+                            reranking_model_name: v.model,
                           },
                         })
                       }}
+                      modelList={rerankModelList}
                     />
                   </div>
                 </div>

@@ -4,7 +4,7 @@ from typing import Any
 
 from langchain.schema import BaseOutputParser
 
-from core.model_providers.error import LLMError
+from core.model_runtime.errors.invoke import InvokeError
 from core.prompt.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
 
@@ -19,6 +19,6 @@ class SuggestedQuestionsAfterAnswerOutputParser(BaseOutputParser):
         if action_match is not None:
             json_obj = json.loads(action_match.group(1).strip(), strict=False)
         else:
-            raise LLMError("Could not parse LLM output: {text}")
+            raise InvokeError("Could not parse LLM output: {text}")
 
         return json_obj
