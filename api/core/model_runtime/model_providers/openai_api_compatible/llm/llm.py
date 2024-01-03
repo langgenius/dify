@@ -356,7 +356,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     continue
 
                 choice = chunk_json['choices'][0]
-                chunk_index = choice['index']
+                chunk_index = choice['index'] if 'index' in choice else chunk_index
 
                 if 'delta' in choice:
                     delta = choice['delta']
@@ -414,6 +414,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     message=AssistantPromptMessage(content=""),
                     finish_reason="End of stream."
                 )
+
+            chunk_index += 1
 
     def _handle_generate_response(self, model: str, credentials: dict, response: requests.Response,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
