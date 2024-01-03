@@ -10,7 +10,7 @@ First, install the dependencies:
 ```bash
 npm install
 # or
-yarn
+yarn install --frozen-lockfile
 ```
 
 Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
