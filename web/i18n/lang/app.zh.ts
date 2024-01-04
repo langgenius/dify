@@ -25,7 +25,7 @@ const translation = {
     captionName: '图标 & 名称',
     captionAppType: '想要哪种应用类型？',
     previewDemo: '预览 Demo',
-    chatApp: '对话型应用',
+    chatApp: '助手',
     chatAppIntro:
       '我要构建一个聊天场景的应用。该应用采用一问一答模式与用户持续对话。',
     completeApp: '文本生成应用',

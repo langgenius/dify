@@ -7,6 +7,7 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import style from '../list.module.css'
 import AppModeLabel from './AppModeLabel'
 import Button from '@/app/components/base/button'
@@ -19,6 +20,7 @@ import AppsContext from '@/context/app-context'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { AiText } from '@/app/components/base/icons/src/vender/solid/communication'
 
 type NewAppDialogProps = {
   show: boolean
@@ -151,10 +153,10 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                       <div className={style.listItemHeadingContent}>{t('app.newApp.chatApp')}</div>
                     </div>
                   </div>
-                  <div className={style.listItemDescription}>{t('app.newApp.chatAppIntro')}</div>
-                  <div className={classNames(style.listItemFooter, 'justify-end')}>
+                  <div className={`${style.listItemDescription} ${style.noClip}`}>{t('app.newApp.chatAppIntro')}</div>
+                  {/* <div className={classNames(style.listItemFooter, 'justify-end')}>
                     <a className={style.listItemLink} href='https://udify.app/chat/7CQBa5yyvYLSkZtx' target='_blank'>{t('app.newApp.previewDemo')}<span className={classNames(style.linkIcon, style.grayLinkIcon)} /></a>
-                  </div>
+                  </div> */}
                 </li>
                 <li
                   className={classNames(style.listItem, style.selectable, newAppMode === 'completion' && style.selected)}
@@ -162,16 +164,14 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                 >
                   <div className={style.listItemTitle}>
                     <span className={style.newItemIcon}>
-                      <span className={classNames(style.newItemIconImage, style.newItemIconComplete)} />
+                      {/* <span className={classNames(style.newItemIconImage, style.newItemIconComplete)} /> */}
+                      <AiText className={cn('w-5 h-5', newAppMode === 'completion' ? 'text-[#155EEF]' : 'text-gray-700')} />
                     </span>
                     <div className={style.listItemHeading}>
                       <div className={style.listItemHeadingContent}>{t('app.newApp.completeApp')}</div>
                     </div>
                   </div>
-                  <div className={style.listItemDescription}>{t('app.newApp.completeAppIntro')}</div>
-                  <div className={classNames(style.listItemFooter, 'justify-end')}>
-                    <a className={style.listItemLink} href='https://udify.app/completion/aeFTj0VCb3Ok3TUE' target='_blank'>{t('app.newApp.previewDemo')}<span className={classNames(style.linkIcon, style.grayLinkIcon)} /></a>
-                  </div>
+                  <div className={`${style.listItemDescription} ${style.noClip}`}>{t('app.newApp.completeAppIntro')}</div>
                 </li>
               </ul>
 
@@ -195,7 +195,6 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                 </div>
                 <div className={style.listItemDescription}>{template.model_config?.pre_prompt}</div>
                 <AppModeLabel mode={template.mode} className='mt-2' />
-                {/* <AppModeLabel mode='chat' className='mt-2' /> */}
               </li>
             ))}
           </ul>

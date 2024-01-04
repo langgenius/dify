@@ -26,7 +26,7 @@ const translation = {
     captionName: 'App icon & name',
     captionAppType: 'What type of app do you want to create?',
     previewDemo: 'Preview demo',
-    chatApp: 'Chat App',
+    chatApp: 'Assistant',
     chatAppIntro:
       'I want to build a chat-based application. This app uses a question-and-answer format, allowing for multiple rounds of continuous conversation.',
     completeApp: 'Text Generator',
