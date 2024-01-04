@@ -30,6 +30,10 @@ class ModelProviderExtension(BaseModel):
 class ModelProviderFactory:
     model_provider_extensions: dict[str, ModelProviderExtension] = None
 
+    def __init__(self) -> None:
+        # for cache in memory
+        self.get_providers()
+
     def get_providers(self) -> list[ProviderEntity]:
         """
         Get all providers
