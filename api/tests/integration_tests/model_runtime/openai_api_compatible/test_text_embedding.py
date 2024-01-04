@@ -18,9 +18,8 @@ def test_validate_credentials():
             model='text-embedding-ada-002',
             credentials={
                 'api_key': 'invalid_key',
-                'endpoint_url': 'https://api.openai.com/v1/embeddings',
-                'context_size': 8184,
-                'max_chunks': 32
+                'endpoint_url': 'https://api.openai.com/v1/',
+                'context_size': 8184
                 
             }
         )
@@ -29,9 +28,8 @@ def test_validate_credentials():
         model='text-embedding-ada-002',
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
-            'endpoint_url': 'https://api.openai.com/v1/embeddings',
-            'context_size': 8184,
-            'max_chunks': 32
+            'endpoint_url': 'https://api.openai.com/v1/',
+            'context_size': 8184
         }
     )
 
@@ -43,9 +41,8 @@ def test_invoke_model():
         model='text-embedding-ada-002',
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
-            'endpoint_url': 'https://api.openai.com/v1/embeddings',
-            'context_size': 8184,
-            'max_chunks': 32
+            'endpoint_url': 'https://api.openai.com/v1/',
+            'context_size': 8184
         },
         texts=[
             "hello",
@@ -67,8 +64,7 @@ def test_get_num_tokens():
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
             'endpoint_url': 'https://api.openai.com/v1/embeddings',
-            'context_size': 8184,
-            'max_chunks': 32
+            'context_size': 8184
         },
         texts=[
             "hello",
