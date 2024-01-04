@@ -133,7 +133,7 @@ class UniversalChatMessageSuggestedQuestionApi(UniversalChatResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(str(e))
+            raise CompletionRequestError(e.description)
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
