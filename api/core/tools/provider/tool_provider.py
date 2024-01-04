@@ -9,7 +9,8 @@ from core.model_runtime.entities.message_entities import PromptMessage
 from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType, \
     AssistantToolProviderIdentity, AssistantToolParamter, AssistantCredentials
 from core.tools.provider.assistant_tool import AssistantTool
-from core.tools.errors import AssistantToolNotFoundError, AssistantNotFoundError, AssistantToolParamterValidationError
+from core.tools.errors import AssistantToolNotFoundError, AssistantNotFoundError, \
+    AssistantToolParamterValidationError, AssistantProviderCredentialValidationError
 
 import importlib
 
@@ -32,7 +33,15 @@ class AssistantToolProvider(BaseModel, ABC):
         except:
             raise AssistantNotFoundError(f'can not load provider yaml for {provider}')
 
-        super().__init__(**provider_yaml)
+        if 'credentails_for_provider' in provider_yaml:
+            # set credentials name
+            for credential_name in provider_yaml['credentails_for_provider']:
+                provider_yaml['credentails_for_provider'][credential_name]['name'] = credential_name
+
+        super().__init__(**{
+            'identity': provider_yaml['identity'],
+            'credentials': provider_yaml['credentails_for_provider'] if 'credentails_for_provider' in provider_yaml else None,
+        })
 
     def _get_bulitin_tools(self) -> List[AssistantTool]:
         """
@@ -143,6 +152,7 @@ class AssistantToolProvider(BaseModel, ABC):
 
             :return: the messages that the tool wants to send to the user
         """
+        # validate parameters
         self.validate_parameters(tool_id=tool_id, tool_name=tool_name, tool_parameters=tool_parameters)
 
         if self.app_type == AssistantAppType.APP_BASED:
@@ -264,8 +274,75 @@ class AssistantToolProvider(BaseModel, ABC):
 
                 tool_parameters[parameter] = default_value
 
-    @abstractmethod
+    def validate_credentials_format(self, credentials: Dict[str, Any]) -> None:
+        """
+            validate the format of the credentials of the provider and set the default value if needed
+
+            :param credentials: the credentials of the tool
+        """
+        credentials_schema = self.credentials
+        if credentials_schema is None:
+            return
+        
+        credentials_need_to_validate: Dict[str, AssistantCredentials] = {}
+        for credential_name in credentials_schema:
+            credentials_need_to_validate[credential_name] = credentials_schema[credential_name]
+
+        for credential_name in credentials:
+            if credential_name not in credentials_need_to_validate:
+                raise AssistantProviderCredentialValidationError(f'credential {credential_name} not found in provider {self.identity.name}')
+            
+            # check type
+            credential_schema = credentials_need_to_validate[credential_name]
+            if credential_schema == AssistantCredentials.AssistantCredentialsType.SECRET_INPUT or \
+                credential_schema == AssistantCredentials.AssistantCredentialsType.TEXT_INPUT:
+                if not isinstance(credentials[credential_name], str):
+                    raise AssistantProviderCredentialValidationError(f'credential {credential_name} should be string')
+            
+            elif credential_schema.type == AssistantCredentials.AssistantCredentialsType.SELECT:
+                if not isinstance(credentials[credential_name], str):
+                    raise AssistantProviderCredentialValidationError(f'credential {credential_name} should be string')
+                
+                options = credential_schema.options
+                if not isinstance(options, list):
+                    raise AssistantProviderCredentialValidationError(f'credential {credential_name} options should be list')
+                
+                if credentials[credential_name] not in [x.value for x in options]:
+                    raise AssistantProviderCredentialValidationError(f'credential {credential_name} should be one of {options}')
+                
+            credentials_need_to_validate.pop(credential_name)
+
+        for credential_name in credentials_need_to_validate:
+            credential_schema = credentials_need_to_validate[credential_name]
+            if credential_schema.required:
+                raise AssistantProviderCredentialValidationError(f'credential {credential_name} is required')
+            
+            # the credential is not set currently, set the default value if needed
+            if credential_schema.default is not None:
+                default_value = credential_schema.default
+                # parse default value into the correct type
+                if credential_schema.type == AssistantCredentials.AssistantCredentialsType.SECRET_INPUT or \
+                    credential_schema.type == AssistantCredentials.AssistantCredentialsType.TEXT_INPUT or \
+                    credential_schema.type == AssistantCredentials.AssistantCredentialsType.SELECT:
+                    default_value = str(default_value)
+
+                credentials[credential_name] = default_value
+
     def validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+        """
+            validate the credentials of the provider
+
+            :param tool_name: the name of the tool, defined in `get_tools`
+            :param credentials: the credentials of the tool
+        """
+        # validate credentials format
+        self.validate_credentials_format(credentials)
+
+        # validate credentials
+        self._validate_credentials(tool_name, credentials)
+
+    @abstractmethod
+    def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 

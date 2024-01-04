@@ -82,16 +82,34 @@ class AssistantToolIdentity(BaseModel):
     label: I18nObject = Field(..., description="The label of the tool")
     icon: str = Field(..., description="The icon of the tool")
 
+class AssistantToolCredentialsOption(BaseModel):
+    value: str = Field(..., description="The value of the option")
+    label: I18nObject = Field(..., description="The label of the option")
+
 class AssistantCredentials(BaseModel):
-    class AssistantCredentialsType(BaseModel):
+    class AssistantCredentialsType(Enum):
         SECRET_INPUT = "secret-input"
         TEXT_INPUT = "text-input"
         SELECT = "select"
 
+        @classmethod
+        def value_of(cls, value: str) -> 'AssistantCredentialsType':
+            """
+            Get value of given mode.
+
+            :param value: mode value
+            :return: mode
+            """
+            for mode in cls:
+                if mode.value == value:
+                    return mode
+            raise ValueError(f'invalid mode value {value}')
+
     name: str = Field(..., description="The name of the credentials")
     type: AssistantCredentialsType = Field(..., description="The type of the credentials")
-    required: Optional[bool] = False
+    required: bool = False
     default: Optional[str] = None
-    options: Optional[List[str]] = None
+    options: Optional[List[AssistantToolCredentialsOption]] = None
     help: Optional[I18nObject] = None
+    url: Optional[str] = None
     placeholder: Optional[I18nObject] = None

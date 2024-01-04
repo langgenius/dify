@@ -6,3 +6,6 @@ class AssistantToolNotFoundError(Exception):
 
 class AssistantToolParamterValidationError(Exception):
     pass
+
+class AssistantProviderCredentialValidationError(Exception):
+    pass

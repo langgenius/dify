@@ -27,7 +27,7 @@ class ApiBasedToolProvider(AssistantToolProvider):
         """
         return []
 
-    def validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
         pass
 
     def validate_parameters(self, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
