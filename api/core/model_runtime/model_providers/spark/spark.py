@@ -19,13 +19,23 @@ class SparkProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            # Use `claude-instant-1` model for validate,
             model_instance.validate_credentials(
                 model='spark-1.5',
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:
-            raise ex
+            try:
+                model_instance = self.get_model_instance(ModelType.LLM)
+
+                model_instance.validate_credentials(
+                    model='spark-3',
+                    credentials=credentials
+                )
+            except CredentialsValidateFailedError as ex:
+                raise ex
+            except Exception as ex:
+                logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+                raise ex
         except Exception as ex:
             logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
             raise ex
