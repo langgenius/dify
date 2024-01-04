@@ -3,3 +3,6 @@ class AssistantNotFoundError(Exception):
 
 class AssistantToolNotFoundError(Exception):
     pass
+
+class AssistantToolParamterValidationError(Exception):
+    pass

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 
 from core.tools.entities.common_entities import I18nObject
 
@@ -61,6 +61,8 @@ class AssistantToolParamter(BaseModel):
     llm_description: Optional[str] = None
     required: Optional[bool] = False
     default: Optional[str] = None
+    min: Optional[Union[float, int]] = None
+    max: Optional[Union[float, int]] = None
     options: Optional[List[AssistantToolParamterOption]] = None
 
 class AssistantToolProviderIdentity(BaseModel):

@@ -3,7 +3,7 @@ from core.tools.entities.assistant_entities import AssistantAppMessage
 from core.tools.provider.tool_provider import AssistantTool
 from core.model_runtime.entities.message_entities import PromptMessage
 
-class DallETool(AssistantTool):
+class DallE3Tool(AssistantTool):
     def _invoke(self, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 

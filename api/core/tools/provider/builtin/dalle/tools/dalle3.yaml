@@ -1,0 +1,51 @@
+identity:
+  name: dalle
+  author: Dify
+  label:
+    en_US: DALL-E
+    zh_Hans: DALL-E 画画
+  description:
+    en_US: DALL-E draw
+    zh_Hans: DALL-E 画画
+  icon: icon.svg
+tool_description:
+  human:
+    en_US: DALL-E is a text to image tool
+    zh_Hans: DALL-E 是一个文本到图像的工具
+  llm: DALL-E is a tool used to generate images from text
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Image prompt, you can check the official documentation of DallE 3
+      zh_Hans: 图像提示词，您可以查看DallE 3 的官方文档
+    llm_description: Image prompt of DallE 3, you should describe the image you want to generate as a list of words as possible as detailed
+    form: llm
+  - name: size
+    type: select
+    required: true
+    human_description:
+      en_US: used for selecting the image size
+      zh_Hans: 用于选择图像大小
+    label:
+      en_US: Image size
+      zh_Hans: 图像大小
+    form: form
+    options:
+      - value: square
+        label:
+          en_US: Squre(1024x1024)
+          zh_Hans: 方(1024x1024)
+      - value: vertical
+        label:
+          en_US: Vertical(1024x1792)
+          zh_Hans: 竖屏(1024x1792)
+      - value: horizontal
+        label:
+          en_US: Horizontal(1792x1024)
+          zh_Hans: 横屏(1792x1024)
+    default: square
