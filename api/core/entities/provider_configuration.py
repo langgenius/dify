@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import time
 from json import JSONDecodeError
 from typing import Optional, List, Dict, Tuple, Iterator
@@ -17,6 +18,8 @@ from core.model_runtime.model_providers.__base.model_provider import ModelProvid
 from core.model_runtime.utils import encoders
 from extensions.ext_database import db
 from models.provider import ProviderType, Provider, ProviderModel, TenantPreferredModelProvider
+
+logger = logging.getLogger(__name__)
 
 
 class ProviderConfiguration(BaseModel):
@@ -544,13 +547,17 @@ class ProviderConfiguration(BaseModel):
             if model_configuration.model_type not in model_types:
                 continue
 
-            custom_model_schema = (
-                provider_instance.get_model_instance(model_configuration.model_type)
-                .get_customizable_model_schema_from_credentials(
-                    model_configuration.model,
-                    model_configuration.credentials
+            try:
+                custom_model_schema = (
+                    provider_instance.get_model_instance(model_configuration.model_type)
+                    .get_customizable_model_schema_from_credentials(
+                        model_configuration.model,
+                        model_configuration.credentials
+                    )
                 )
-            )
+            except Exception as ex:
+                logger.warning(f'get custom model schema failed, {ex}')
+                continue
 
             if not custom_model_schema:
                 continue

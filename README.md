@@ -91,7 +91,7 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 ### Helm Chart
 
-A big thanks to @BorisPolonsky for providing us with a [Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
+Big thanks to @BorisPolonsky for providing us with a [Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
 You can go to https://github.com/BorisPolonsky/dify-helm for deployment information.
 
 ### Configuration

@@ -147,13 +147,13 @@ class AIModel(ABC):
         # read _position.yaml file
         position_map = {}
         if os.path.exists(position_file_path):
-            with open(position_file_path, 'r') as f:
+            with open(position_file_path, 'r', encoding='utf-8') as f:
                 position_map = yaml.safe_load(f)
 
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
             # read yaml data from yaml file
-            with open(model_schema_yaml_path, 'r') as f:
+            with open(model_schema_yaml_path, 'r', encoding='utf-8') as f:
                 yaml_data = yaml.safe_load(f)
 
             new_parameter_rules = []

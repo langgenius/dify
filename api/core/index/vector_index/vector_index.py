@@ -49,7 +49,8 @@ class VectorIndex:
                 config=QdrantConfig(
                     endpoint=config.get('QDRANT_URL'),
                     api_key=config.get('QDRANT_API_KEY'),
-                    root_path=current_app.root_path
+                    root_path=current_app.root_path,
+                    timeout=config.get('QDRANT_CLIENT_TIMEOUT')
                 ),
                 embeddings=embeddings
             )

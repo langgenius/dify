@@ -33,8 +33,8 @@ model_credential_schema:
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入您的 API endpoint URL
-      en_US: Enter your API endpoint URL  
+      zh_Hans: Base URL, eg. https://api.openai.com/v1
+      en_US: Base URL, eg. https://api.openai.com/v1
   - variable: mode
     show_on:
       - variable: __model_type

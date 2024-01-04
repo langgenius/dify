@@ -1,6 +1,7 @@
 import time
 from decimal import Decimal
 from typing import Optional
+from urllib.parse import urljoin
 import requests
 import json
 
@@ -42,8 +43,11 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
+        endpoint_url = credentials.get('endpoint_url')
+        if not endpoint_url.endswith('/'):
+            endpoint_url += '/'
 
-        endpoint_url = credentials['endpoint_url']
+        endpoint_url = urljoin(endpoint_url, 'embeddings')
 
         extra_model_kwargs = {}
         if user:
@@ -144,8 +148,11 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
+            endpoint_url = credentials.get('endpoint_url')
+            if not endpoint_url.endswith('/'):
+                endpoint_url += '/'
 
-            endpoint_url = credentials['endpoint_url']
+            endpoint_url = urljoin(endpoint_url, 'embeddings')
 
             payload = {
                 'input': 'ping',
@@ -160,8 +167,19 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             )
 
             if response.status_code != 200:
-                raise CredentialsValidateFailedError(f"Invalid response status: {response.status_code}")
+                raise CredentialsValidateFailedError(
+                    f'Credentials validation failed with status code {response.status_code}')
 
+            try:
+                json_result = response.json()
+            except json.JSONDecodeError as e:
+                raise CredentialsValidateFailedError(f'Credentials validation failed: JSON decode error')
+
+            if 'model' not in json_result:
+                raise CredentialsValidateFailedError(
+                    f'Credentials validation failed: invalid response')
+        except CredentialsValidateFailedError:
+            raise
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -175,7 +193,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             model_type=ModelType.TEXT_EMBEDDING,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: credentials.get('context_size'),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size')),
                 ModelPropertyKey.MAX_CHUNKS: 1,
             },
             parameter_rules=[],

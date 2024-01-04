@@ -136,7 +136,6 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               onThought?.(bufferObj as ThoughtItem)
             }
             else if (bufferObj.event === 'message_end') {
-              console.log(bufferObj)
               onMessageEnd?.(bufferObj as MessageEnd)
             }
             else if (bufferObj.event === 'message_replace') {
