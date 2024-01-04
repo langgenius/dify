@@ -50,7 +50,7 @@ class AppRunner:
             max_tokens = 0
 
         # get prompt messages without memory and context
-        prompt_messages, stop = self.originze_prompt_messages(
+        prompt_messages, stop = self.organize_prompt_messages(
             app_record=app_record,
             model_config=model_config,
             prompt_template_entity=prompt_template_entity,
@@ -107,7 +107,7 @@ class AppRunner:
                         or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
                     model_config.parameters[parameter_rule.name] = max_tokens
 
-    def originze_prompt_messages(self, app_record: App,
+    def organize_prompt_messages(self, app_record: App,
                                  model_config: ModelConfigEntity,
                                  prompt_template_entity: PromptTemplateEntity,
                                  inputs: dict[str, str],
