@@ -173,7 +173,7 @@ class ApplicationQueueManager:
             return
 
         user_prefix = 'account' if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end-user'
-        if result != f"{user_prefix}-{user_id}":
+        if result.decode('utf-8') != f"{user_prefix}-{user_id}":
             return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
