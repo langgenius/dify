@@ -1,0 +1,2 @@
+class AssistantNotFoundError(Exception):
+    pass

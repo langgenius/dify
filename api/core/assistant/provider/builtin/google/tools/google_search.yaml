@@ -1,0 +1,10 @@
+identity:
+  name: google_search
+  author: Dify
+  label:
+    en_US: GoogleSearch
+    zh_Hans: 谷歌搜索
+  description:
+    en_US: A tool for performing a Google SERP search and extracting snippets and webpages.Input should be a search query.
+    zh_Hans: 一个用于执行 Google SERP 搜索并提取片段和网页的工具。输入应该是一个搜索查询。
+  icon: icon.svg

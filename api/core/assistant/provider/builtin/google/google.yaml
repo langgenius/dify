@@ -1,0 +1,17 @@
+identity:
+  author: Dify
+  name: google
+  label:
+    en_US: Google
+    zh_Hans: Google
+  description: 
+    en_US: Google
+    zh_Hans: GoogleSearch
+  icon: icon.svg
+credentails_for_provider:
+  openai_api_key:
+    type: secret-input
+    required: true
+    help:
+      en_US: Please input your Google API key
+      zh_Hans: 请输入你的 Google API key
