@@ -401,9 +401,12 @@ class ProviderManager:
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == provider_name,
                                 Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == ProviderQuotaType.TRIAL.value,
-                                Provider.is_valid == True
+                                Provider.quota_type == ProviderQuotaType.TRIAL.value
                             ).first()
+
+                            if provider_record and not provider_record.is_valid:
+                                provider_record.is_valid = True
+                                db.session.commit()
 
                         provider_name_to_provider_records_dict[provider_name].append(provider_record)
 

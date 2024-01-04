@@ -207,7 +207,7 @@ class PromptTransform:
 
         json_file_path = os.path.join(prompt_path, f'{prompt_name}.json')
         # Open the JSON file and read its content
-        with open(json_file_path, 'r') as json_file:
+        with open(json_file_path, 'r', encoding='utf-8') as json_file:
             return json.load(json_file)
 
     def _get_simple_chat_app_chat_model_prompt_messages(self, prompt_rules: dict,

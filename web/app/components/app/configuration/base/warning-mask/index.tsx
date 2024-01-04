@@ -1,9 +1,10 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 
 import s from './style.module.css'
 
-export interface IWarningMaskProps {
+export type IWarningMaskProps = {
   title: string
   description: string
   footer: React.ReactNode

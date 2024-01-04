@@ -59,7 +59,7 @@ class IndexingRunner:
                     first()
 
                 # load file
-                text_docs = self._load_data(dataset_document)
+                text_docs = self._load_data(dataset_document, processing_rule.mode == 'automatic')
 
                 # get splitter
                 splitter = self._get_splitter(processing_rule)
@@ -113,14 +113,13 @@ class IndexingRunner:
             for document_segment in document_segments:
                 db.session.delete(document_segment)
             db.session.commit()
-
-            # load file
-            text_docs = self._load_data(dataset_document)
-
             # get the process rule
             processing_rule = db.session.query(DatasetProcessRule). \
                 filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
                 first()
+
+            # load file
+            text_docs = self._load_data(dataset_document, processing_rule.mode == 'automatic')
 
             # get splitter
             splitter = self._get_splitter(processing_rule)
@@ -238,13 +237,14 @@ class IndexingRunner:
         preview_texts = []
         total_segments = 0
         for file_detail in file_details:
-            # load data from file
-            text_docs = FileExtractor.load(file_detail)
 
             processing_rule = DatasetProcessRule(
                 mode=tmp_processing_rule["mode"],
                 rules=json.dumps(tmp_processing_rule["rules"])
             )
+
+            # load data from file
+            text_docs = FileExtractor.load(file_detail, is_automatic=processing_rule.mode == 'automatic')
 
             # get splitter
             splitter = self._get_splitter(processing_rule)
@@ -382,13 +382,15 @@ class IndexingRunner:
                 )
                 total_segments += len(documents)
 
-                embedding_model_type_instance = embedding_model_instance.model_type_instance
-                embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+                embedding_model_type_instance = None
+                if embedding_model_instance:
+                    embedding_model_type_instance = embedding_model_instance.model_type_instance
+                    embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
 
                 for document in documents:
                     if len(preview_texts) < 5:
                         preview_texts.append(document.page_content)
-                    if indexing_technique == 'high_quality' or embedding_model_instance:
+                    if indexing_technique == 'high_quality' and embedding_model_type_instance:
                         tokens += embedding_model_type_instance.get_num_tokens(
                             model=embedding_model_instance.model,
                             credentials=embedding_model_instance.credentials,
@@ -457,7 +459,7 @@ class IndexingRunner:
                 one_or_none()
 
             if file_detail:
-                text_docs = FileExtractor.load(file_detail, is_automatic=True)
+                text_docs = FileExtractor.load(file_detail, is_automatic=automatic)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
             text_docs = loader.load()

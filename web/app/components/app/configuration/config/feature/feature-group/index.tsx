@@ -1,8 +1,9 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import GroupName from '@/app/components/app/configuration/base/group-name'
 
-export interface IFeatureGroupProps {
+export type IFeatureGroupProps = {
   title: string
   description?: string
   children: React.ReactNode
@@ -11,7 +12,7 @@ export interface IFeatureGroupProps {
 const FeatureGroup: FC<IFeatureGroupProps> = ({
   title,
   description,
-  children
+  children,
 }) => {
   return (
     <div className='mb-6'>
