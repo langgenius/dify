@@ -92,6 +92,8 @@ services:
       QDRANT_URL: http://qdrant:6333
       # The Qdrant API key.
       QDRANT_API_KEY: difyai123456
+      # The Qdrant clinet timeout setting.
+      QDRANT_CLIENT_TIMEOUT: 20
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
       # The milvus host.
       MILVUS_HOST: 127.0.0.1
@@ -170,6 +172,8 @@ services:
       QDRANT_URL: http://qdrant:6333
       # The Qdrant API key.
       QDRANT_API_KEY: difyai123456
+      # The Qdrant clinet timeout setting.
+      QDRANT_CLIENT_TIMEOUT: 20
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
       # The milvus host.
       MILVUS_HOST: 127.0.0.1

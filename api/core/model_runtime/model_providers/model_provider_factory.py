@@ -212,7 +212,7 @@ class ModelProviderFactory:
         # read _position.yaml file
         position_map = {}
         if os.path.exists(position_file_path):
-            with open(position_file_path, 'r') as f:
+            with open(position_file_path, 'r', encoding='utf-8') as f:
                 position_map = yaml.safe_load(f)
 
         # traverse all model_provider_dir_paths

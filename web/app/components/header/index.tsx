@@ -19,7 +19,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 
 const navClassName = `
-  flex items-center relative mr-0 sm:mr-3 px-3 h-9 rounded-xl
+  flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
   font-medium text-sm
   cursor-pointer
 `

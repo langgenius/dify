@@ -1,9 +1,10 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 
 import s from './style.module.css'
 
-export interface IVarHighlightProps {
+export type IVarHighlightProps = {
   name: string
 }
 
@@ -30,7 +31,5 @@ export const varHighlightHTML = ({ name }: IVarHighlightProps) => {
 </div>`
   return html
 }
-
-
 
 export default React.memo(VarHighlight)
