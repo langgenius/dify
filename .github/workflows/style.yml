@@ -24,7 +24,11 @@ jobs:
         cache-dependency-path: ./web/package.json
 
     - name: Web dependencies
-      run: yarn install --frozen-lockfile
+      run: |
+        cd ./web
+        yarn install --frozen-lockfile
 
     - name: Web style check
-      run: yarn run lint
+      run: |
+        cd ./web
+        yarn run lint
