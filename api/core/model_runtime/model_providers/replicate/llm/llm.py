@@ -8,7 +8,7 @@ from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMResult, LLMMode, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage, \
     PromptMessageRole, UserPromptMessage, SystemPromptMessage
-from core.model_runtime.entities.model_entities import ParameterRule, AIModelEntity, FetchFrom, ModelType
+from core.model_runtime.entities.model_entities import ParameterRule, AIModelEntity, FetchFrom, ModelType, ModelPropertyKey
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.replicate._common import _CommonReplicate
@@ -91,7 +91,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             model_properties={
-                'mode': model_type.value
+                ModelPropertyKey.MODE: model_type.value
             },
             parameter_rules=self._get_customizable_model_parameter_rules(model, credentials)
         )
