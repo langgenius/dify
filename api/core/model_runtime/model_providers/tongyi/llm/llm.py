@@ -52,9 +52,13 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
+        # transform credentials to kwargs for model instance
+        credentials_kwargs = self._to_credential_kwargs(credentials)
+
         response = dashscope.Tokenization.call(
             model=model,
             prompt=self._convert_messages_to_prompt(prompt_messages),
+            **credentials_kwargs
         )
         
         if response.status_code == HTTPStatus.OK:
@@ -108,10 +112,6 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
-        dashscope.api_key = credentials_kwargs['api_key']
-
-        print(credentials_kwargs, 'credentials_kwargs')
-
         client = EnhanceTongyi(
             model_name=model,
             streaming=stream,
@@ -121,7 +121,8 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         params = {
             'model': model,
             'prompt': self._convert_messages_to_prompt(prompt_messages),
-            **model_parameters
+            **model_parameters,
+            **credentials_kwargs
         }
         if stream:
             responses = stream_generate_with_retry(
@@ -222,7 +223,6 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param credentials:
         :return:
         """
-        print(credentials, 'credentials')
         credentials_kwargs = {
             "api_key": credentials['dashscope_api_key'],
         }
