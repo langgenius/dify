@@ -15,6 +15,7 @@ import PriorityUseTip from './priority-use-tip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { formatNumber } from '@/utils/format'
 
 type QuotaPanelProps = {
   provider: ModelProvider
@@ -50,7 +51,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       {
         currentQuota && (
           <div className='flex items-center h-4 text-xs text-gray-500'>
-            <span className='mr-0.5 text-sm font-semibold text-gray-700'>{(currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0)}</span>
+            <span className='mr-0.5 text-sm font-semibold text-gray-700'>{formatNumber((currentQuota?.quota_limit || 0) - (currentQuota?.quota_used || 0))}</span>
             {
               currentQuota?.quota_unit === QuotaUnitEnum.tokens && 'Tokens'
             }
