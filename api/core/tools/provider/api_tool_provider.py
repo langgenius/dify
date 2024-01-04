@@ -1,13 +1,13 @@
 from typing import Any, Dict, List
-from core.assistant.entities.assistant_entities import AssistantAppMessage, AssistantAppType
-from core.assistant.provider.assistant_tool import AssistantTool
-from core.assistant.provider.tool_provider import AssistantToolProvider
+from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType
+from core.tools.provider.assistant_tool import AssistantTool
+from core.tools.provider.tool_provider import AssistantToolProvider
 from core.model_runtime.entities.message_entities import PromptMessage
 
-class AppBasedToolProvider(AssistantToolProvider):
+class ApiBasedToolProvider(AssistantToolProvider):
     @property
     def app_type(self) -> AssistantAppType:
-        return AssistantAppType.APP_BASED
+        return AssistantAppType.API_BASED
     
     def invoke(self, 
                tool_id: int, tool_name: str, 
@@ -25,6 +25,7 @@ class AppBasedToolProvider(AssistantToolProvider):
 
             :return: the messages that the tool wants to send to the user
         """
+        return []
 
     def validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
         pass

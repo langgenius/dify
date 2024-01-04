@@ -3,7 +3,7 @@ import logging
 from typing import cast
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
-from core.assistant.assistant_manager import AssistantManager
+from core.tools.tool_manager import ToolManager
 from core.app_runner.app_runner import AppRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, PromptTemplateEntity, ModelConfigEntity

@@ -6,15 +6,33 @@ from os import path, listdir
 from yaml import load, FullLoader
 
 from core.model_runtime.entities.message_entities import PromptMessage
-from core.assistant.entities.assistant_entities import AssistantAppMessage, AssistantAppType, \
-    AssistantToolProviderIdentity, AssistantToolParamter
-from core.assistant.provider.assistant_tool import AssistantTool
+from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType, \
+    AssistantToolProviderIdentity, AssistantToolParamter, AssistantCredentials
+from core.tools.provider.assistant_tool import AssistantTool
+from core.tools.errors import AssistantToolNotFoundError, AssistantNotFoundError
 
 import importlib
 
 class AssistantToolProvider(BaseModel, ABC):
     identity: Optional[AssistantToolProviderIdentity] = None
     tools: Optional[List[AssistantTool]] = None
+    credentials: Optional[Dict[str, AssistantCredentials]] = None
+
+    def __init__(self):
+        if self.app_type == AssistantAppType.API_BASED or self.app_type == AssistantAppType.APP_BASED:
+            super().__init__()
+            return
+        
+        # load provider yaml
+        provider = self.__class__.__module__.split('.')[-1]
+        yaml_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.yaml')
+        try:
+            with open(yaml_path, 'r') as f:
+                provider_yaml = load(f.read(), FullLoader)
+        except:
+            raise AssistantNotFoundError(f'can not load provider yaml for {provider}')
+
+        super().__init__(**provider_yaml)
 
     def _get_bulitin_tools(self) -> List[AssistantTool]:
         """
@@ -32,10 +50,10 @@ class AssistantToolProvider(BaseModel, ABC):
         tools = []
         for tool_file in tool_files:
             with open(path.join(tool_path, tool_file), "r") as f:
-                tool = load(f, FullLoader)
+                tool = load(f.read(), FullLoader)
                 # get tool class, import the module
                 py_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, 'tools', f'{tool["identity"]["name"]}.py')
-                spec = importlib.util.spec_from_file_location(f'core.assistant.provider.builtin.{provider}.tools.{tool["identity"]["name"]}', py_path)
+                spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.tools.{tool["identity"]["name"]}', py_path)
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
 
@@ -94,7 +112,16 @@ class AssistantToolProvider(BaseModel, ABC):
 
             :return: the messages that the tool wants to send to the user
         """
-        pass
+        # get tool
+        tool = next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
+        if tool is None:
+            raise AssistantToolNotFoundError(f'tool {tool_name} not found')
+        
+        # validate parameters
+        self.validate_parameters(tool_name, tool_paramters)
+
+        # invoke
+        return tool.invoke(tool_paramters, credentials, prompt_messages)
 
     def invoke(
         self,
@@ -183,30 +210,3 @@ class AssistantToolProvider(BaseModel, ABC):
             :param credentials: the credentials of the tool
         """
         pass
-
-    def create_image_message(self, image: str) -> AssistantAppMessage:
-        """
-            create an image message
-
-            :param image: the url of the image
-            :return: the image message
-        """
-        return AssistantAppMessage(type=AssistantAppMessage.AssistantAppMessageType.IMAGE, message=image)
-    
-    def create_link_message(self, link: str) -> AssistantAppMessage:
-        """
-            create a link message
-
-            :param link: the url of the link
-            :return: the link message
-        """
-        return AssistantAppMessage(type=AssistantAppMessage.AssistantAppMessageType.LINK, message=link)
-    
-    def create_text_message(self, text: str) -> AssistantAppMessage:
-        """
-            create a text message
-
-            :param text: the text
-            :return: the text message
-        """
-        return AssistantAppMessage(type=AssistantAppMessage.AssistantAppMessageType.TEXT, message=text)

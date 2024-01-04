@@ -1,6 +1,6 @@
-from core.assistant.entities.assistant_entities import AssistantAppMessage, AssistantAppType
-from core.assistant.provider.assistant_tool import AssistantTool
-from core.assistant.provider.tool_provider import AssistantToolProvider
+from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType
+from core.tools.provider.assistant_tool import AssistantTool
+from core.tools.provider.tool_provider import AssistantToolProvider
 
 from typing import Any, Dict, List
 
