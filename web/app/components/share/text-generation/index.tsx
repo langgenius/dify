@@ -374,7 +374,13 @@ const TextGeneration: FC<IMainProps> = ({
     }
   }, [siteInfo?.title, canReplaceLogo])
 
-  const [isShowResSidebar, { setTrue: showResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const showResSidebar = () => {
+    // fix: useClickAway hideResSidebar will close sidebar
+    setTimeout(() => {
+      doShowResSidebar()
+    }, 0)
+  }
   const resRef = useRef<HTMLDivElement>(null)
   useClickAway(() => {
     hideResSidebar()
@@ -405,6 +411,16 @@ const TextGeneration: FC<IMainProps> = ({
   const renderBatchRes = () => {
     return (showTaskList.map(task => renderRes(task)))
   }
+
+  const resWrapClassNames = (() => {
+    if (isPC)
+      return 'grow h-full'
+
+    if (!isShowResSidebar)
+      return 'none'
+
+    return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
+  })()
 
   const renderResWrap = (
     <div
@@ -578,22 +594,14 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         {/* Result */}
-        {isPC && (
-          <div className='grow h-full'>
-            {renderResWrap}
-          </div>
-        )}
-
-        {(!isPC && isShowResSidebar) && (
-          <div
-            className={cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')}
-            style={{
-              background: 'rgba(35, 56, 118, 0.2)',
-            }}
-          >
-            {renderResWrap}
-          </div>
-        )}
+        <div
+          className={resWrapClassNames}
+          style={{
+            background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
+          }}
+        >
+          {renderResWrap}
+        </div>
       </div>
     </>
   )
