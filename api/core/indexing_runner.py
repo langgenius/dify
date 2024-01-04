@@ -382,13 +382,15 @@ class IndexingRunner:
                 )
                 total_segments += len(documents)
 
-                embedding_model_type_instance = embedding_model_instance.model_type_instance
-                embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+                embedding_model_type_instance = None
+                if embedding_model_instance:
+                    embedding_model_type_instance = embedding_model_instance.model_type_instance
+                    embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
 
                 for document in documents:
                     if len(preview_texts) < 5:
                         preview_texts.append(document.page_content)
-                    if indexing_technique == 'high_quality' or embedding_model_instance:
+                    if indexing_technique == 'high_quality' and embedding_model_type_instance:
                         tokens += embedding_model_type_instance.get_num_tokens(
                             model=embedding_model_instance.model,
                             credentials=embedding_model_instance.credentials,
