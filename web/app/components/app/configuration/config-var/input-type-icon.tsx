@@ -3,6 +3,7 @@ import React from 'react'
 import type { FC } from 'react'
 import { Paragraph, TypeSquare } from '@/app/components/base/icons/src/vender/solid/editor'
 import { CheckDone01 } from '@/app/components/base/icons/src/vender/solid/general'
+import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 
 export type IInputTypeIconProps = {
   type: 'string' | 'select'
@@ -20,6 +21,9 @@ const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
     ),
     select: (
       <CheckDone01 className={classNames} />
+    ),
+    api: (
+      <ApiConnection className={classNames} />
     ),
   }
 

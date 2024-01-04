@@ -271,6 +271,7 @@ const translation = {
     maxLength: 'Max length',
     options: 'Options',
     addOption: 'Add option',
+    apiBasedVar: 'API-based Variable',
   },
   vision: {
     name: 'Vision',

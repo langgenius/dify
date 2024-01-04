@@ -131,8 +131,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     onPromptVariablesChange?.(newPromptVariables)
   }
 
-  const handleAddVar = () => {
-    const newVar = getNewVar('')
+  const handleAddVar = (type: string) => {
+    const newVar = getNewVar('', type)
     onPromptVariablesChange?.([...promptVariables, newVar])
   }
 
@@ -160,7 +160,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     setCurrKey(key)
     showEditModal()
   }
-
   return (
     <Panel
       className="mt-4"
@@ -179,7 +178,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           )}
         </div>
       }
-      headerRight={!readonly ? <SelectVarType onChange={() => { }} /> : null}
+      headerRight={!readonly ? <SelectVarType onChange={handleAddVar} /> : null}
     >
       {!hasVar && (
         <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.notSetVar')}</div>
