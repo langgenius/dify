@@ -99,7 +99,7 @@ const Operation = ({
                 <div className="px-1 py-1">
                   {
                     ['admin', 'normal'].map(role => (
-                      <Menu.Item>
+                      <Menu.Item key={role}>
                         <div className={itemClassName} onClick={() => handleUpdateMemberRole(role)}>
                           {
                             role === member.role

@@ -257,7 +257,7 @@ const CodeGroupContext = createContext(false)
 
 export function CodeGroup({ children, title, inputs, targetCode, ...props }: IChildrenProps) {
   const languages = Children.map(children, child =>
-    getPanelTitle(child.props.children.props)
+    getPanelTitle(child.props.children.props),
   )
   const tabGroupProps = useTabGroupProps(languages)
   const hasTabs = Children.count(children) > 1
