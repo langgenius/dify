@@ -6,7 +6,7 @@ from typing import Optional, cast, Tuple
 import requests
 from flask import current_app
 
-from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, DefaultModelEntity
+from core.entities.model_entities import ModelStatus
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel

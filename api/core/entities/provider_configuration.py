@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, SimpleModelProviderEntity
 from core.entities.provider_entities import SystemConfiguration, CustomConfiguration, SystemConfigurationStatus
 from core.helper import encrypter
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity, CredentialFormSchema, FormType
 from core.model_runtime.model_providers import model_provider_factory
@@ -171,6 +172,14 @@ class ProviderConfiguration(BaseModel):
             db.session.add(provider_record)
             db.session.commit()
 
+        provider_model_credentials_cache = ProviderCredentialsCache(
+            tenant_id=self.tenant_id,
+            identity_id=provider_record.id,
+            cache_type=ProviderCredentialsCacheType.PROVIDER
+        )
+
+        provider_model_credentials_cache.delete()
+
         self.switch_preferred_provider_type(ProviderType.CUSTOM)
 
     def delete_custom_credentials(self) -> None:
@@ -192,6 +201,14 @@ class ProviderConfiguration(BaseModel):
 
             db.session.delete(provider_record)
             db.session.commit()
+
+            provider_model_credentials_cache = ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=provider_record.id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER
+            )
+
+            provider_model_credentials_cache.delete()
 
     def get_custom_model_credentials(self, model_type: ModelType, model: str, obfuscated: bool = False) \
             -> Optional[dict]:
@@ -314,6 +331,14 @@ class ProviderConfiguration(BaseModel):
             db.session.add(provider_model_record)
             db.session.commit()
 
+        provider_model_credentials_cache = ProviderCredentialsCache(
+            tenant_id=self.tenant_id,
+            identity_id=provider_model_record.id,
+            cache_type=ProviderCredentialsCacheType.MODEL
+        )
+
+        provider_model_credentials_cache.delete()
+
     def delete_custom_model_credentials(self, model_type: ModelType, model: str) -> None:
         """
         Delete custom model credentials.
@@ -334,6 +359,14 @@ class ProviderConfiguration(BaseModel):
         if provider_model_record:
             db.session.delete(provider_model_record)
             db.session.commit()
+
+            provider_model_credentials_cache = ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=provider_model_record.id,
+                cache_type=ProviderCredentialsCacheType.MODEL
+            )
+
+            provider_model_credentials_cache.delete()
 
     def get_provider_instance(self) -> ModelProvider:
         """
