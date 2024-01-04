@@ -7,11 +7,11 @@ import { useBoolean } from 'ahooks'
 import type { Timeout } from 'ahooks/lib/useRequest/src/types'
 import { useContext } from 'use-context-selector'
 import Panel from '../base/feature-panel'
-import OperationBtn from '../base/operation-btn'
 import EditModal from './config-modal'
 import IconTypeIcon from './input-type-icon'
 import type { IInputTypeIconProps } from './input-type-icon'
 import s from './style.module.css'
+import SelectVarType from './select-var-type'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import Tooltip from '@/app/components/base/tooltip'
 import type { PromptVariable } from '@/models/debug'
@@ -165,7 +165,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     <Panel
       className="mt-4"
       headerIcon={
-        <VarIcon className='w-4 h-4 text-primary-500'/>
+        <VarIcon className='w-4 h-4 text-primary-500' />
       }
       title={
         <div className='flex items-center'>
@@ -179,7 +179,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           )}
         </div>
       }
-      headerRight={!readonly ? <OperationBtn type="add" onClick={handleAddVar} /> : null}
+      headerRight={!readonly ? <SelectVarType onChange={() => { }} /> : null}
     >
       {!hasVar && (
         <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.notSetVar')}</div>
