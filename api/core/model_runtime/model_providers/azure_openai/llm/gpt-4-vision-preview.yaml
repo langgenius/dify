@@ -7,6 +7,7 @@ features:
 - vision
 model_properties:
   mode: chat
+  deployment: gpt-4-vision-preview
   context_size: 128000
 parameter_rules:
 - name: temperature

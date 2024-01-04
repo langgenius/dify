@@ -16,7 +16,6 @@ class _CommonAzureOpenAI:
             "api_version": AZURE_OPENAI_API_VERSION,
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "max_retries": 1,
-            "azure_deployment": credentials['base_model_name'].replace('.', '')
         }
 
         return credentials_kwargs

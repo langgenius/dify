@@ -116,6 +116,7 @@ class ModelPropertyKey(Enum):
     Enum class for model property key.
     """
     MODE = "mode"
+    DEPLOYMENT = "deployment"
     CONTEXT_SIZE = "context_size"
     MAX_CHUNKS = "max_chunks"
     FILE_UPLOAD_LIMIT = "file_upload_limit"

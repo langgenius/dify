@@ -8,6 +8,7 @@ features:
 - agent-thought
 model_properties:
   mode: chat
+  deployment: gpt-35-turbo-16k
   context_size: 16385
 parameter_rules:
 - name: temperature

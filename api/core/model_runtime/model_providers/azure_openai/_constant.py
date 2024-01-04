@@ -41,6 +41,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
+                'deployment': 'gpt-35-turbo',
                 'context_size': 4096,
             },
             parameter_rules=[
@@ -85,6 +86,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
+                'deployment': 'gpt-35-turbo-16k',
                 'context_size': 16385,
             },
             parameter_rules=[
@@ -129,6 +131,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
+                'deployment': 'gpt-4',
                 'context_size': 8192,
             },
             parameter_rules=[
@@ -203,6 +206,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
+                'deployment': 'gpt-4-32k',
                 'context_size': 32768,
             },
             parameter_rules=[
@@ -277,6 +281,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
+                'deployment': 'gpt-4-1106-preview',
                 'context_size': 128000,
             },
             parameter_rules=[
@@ -350,6 +355,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
+                'deployment': 'gpt-4-vision-preview',
                 'context_size': 128000,
             },
             parameter_rules=[
@@ -420,6 +426,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.COMPLETION.value,
+                'deployment': 'gpt-35-turbo-instruct',
                 'context_size': 4096,
             },
             parameter_rules=[
@@ -460,6 +467,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.COMPLETION.value,
+                'deployment': 'text-davinci-003',
                 'context_size': 4096,
             },
             parameter_rules=[
