@@ -38,9 +38,9 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -268,10 +268,10 @@ const StepTwo = ({
     }
   }
   const {
-    rerankDefaultModel,
-    isRerankDefaultModelVaild,
-    rerankModelList,
-  } = useProviderContext()
+    modelList: rerankModelList,
+    defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelVaild,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
   const getCreationParams = () => {
     let params
     if (isSetting) {
@@ -289,7 +289,7 @@ const StepTwo = ({
       if (
         !isReRankModelSelected({
           rerankDefaultModel,
-          isRerankDefaultModelVaild,
+          isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
           rerankModelList,
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
@@ -489,8 +489,8 @@ const StepTwo = ({
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
-      reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
-      reranking_model_name: rerankDefaultModel?.model_name,
+      reranking_provider_name: rerankDefaultModel?.provider.provider,
+      reranking_model_name: rerankDefaultModel?.model,
     },
     top_k: 3,
     score_threshold_enabled: false,
@@ -587,7 +587,7 @@ const StepTwo = ({
                     </div>
                   </div>
                   <div className={s.formFooter}>
-                    <Button type="primary" className={cn(s.button, '!h-8 text-primary-600')} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
+                    <Button type="primary" className={cn(s.button, '!h-8')} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
                     <Button className={cn(s.button, 'ml-2 !h-8')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
                   </div>
                 </div>
@@ -820,7 +820,7 @@ const StepTwo = ({
         </div>
       </div>
       <FloatRightContainer isMobile={isMobile} isOpen={showPreview} onClose={hidePreview} footer={null}>
-        {showPreview && <div ref={previewScrollRef} className={cn(s.previewWrap, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}>
+        {showPreview && <div ref={previewScrollRef} className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}>
           <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
             <div className='flex items-center justify-between px-8'>
               <div className='grow flex items-center'>

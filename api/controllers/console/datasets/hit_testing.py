@@ -1,6 +1,8 @@
 import logging
 
 from flask_login import current_user
+
+from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from flask_restful import Resource, reqparse, marshal
 from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
@@ -8,11 +10,11 @@ from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
 import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError, ProviderQuotaExceededError, \
-    ProviderModelCurrentlyNotSupportError
+    ProviderModelCurrentlyNotSupportError, CompletionRequestError
 from controllers.console.datasets.error import HighQualityDatasetOnlyError, DatasetNotInitializedError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
     LLMBadRequestError
 from fields.hit_testing_fields import hit_testing_record_fields
 from services.dataset_service import DatasetService
@@ -69,6 +71,8 @@ class HitTestingApi(Resource):
             raise ProviderNotInitializeError(
                 f"No Embedding Model or Reranking Model available. Please configure a valid provider "
                 f"in the Settings -> Model Provider.")
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:

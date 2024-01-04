@@ -19,6 +19,7 @@ import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
+import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -57,10 +58,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     '/code-based-extension?module=moderation',
     fetchCodeBasedExtensionList,
   )
-  const systemOpenaiProvider = modelProviders?.openai.providers.find(item => item.provider_type === 'system')
-  const systemOpenaiProviderCanUse = systemOpenaiProvider && (((systemOpenaiProvider as any).quota_limit - (systemOpenaiProvider as any).quota_used) > 0)
-  const customOpenaiProviders = modelProviders?.openai.providers.filter(item => item.provider_type !== 'system')
-  const customOpenaiProvidersCanUse = customOpenaiProviders?.some(item => item.is_valid)
+  const openaiProvider = modelProviders?.data.find(item => item.provider === 'openai')
+  const systemOpenaiProviderEnabled = openaiProvider?.system_configuration.enabled
+  const systemOpenaiProviderQuota = systemOpenaiProviderEnabled ? openaiProvider?.system_configuration.quota_configurations.find(item => item.quota_type === openaiProvider.system_configuration.current_quota_type) : undefined
+  const systemOpenaiProviderCanUse = systemOpenaiProviderQuota?.is_valid
+  const customOpenaiProvidersCanUse = openaiProvider?.custom_configuration.status === CustomConfigurationStatusEnum.active
   const openaiProviderConfiged = customOpenaiProvidersCanUse || systemOpenaiProviderCanUse
   const providers: Provider[] = [
     {

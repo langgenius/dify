@@ -19,7 +19,6 @@ class WorkspaceService:
             'plan': tenant.plan,
             'status': tenant.status,
             'created_at': tenant.created_at,
-            'providers': [],
             'in_trail': True,
             'trial_end_reason': None,
             'role': 'normal',
@@ -36,13 +35,5 @@ class WorkspaceService:
 
         if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]):
             tenant_info['custom_config'] = tenant.custom_config_dict
-
-        # Get providers
-        providers = db.session.query(Provider).filter(
-            Provider.tenant_id == tenant.id
-        ).all()
-
-        # Add providers to the tenant info
-        tenant_info['providers'] = providers
 
         return tenant_info

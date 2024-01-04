@@ -15,14 +15,16 @@ import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { DataSet, DataSetListResponse } from '@/models/datasets'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
-import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import {
+  useModelList,
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+
 const rowClass = `
   flex justify-between py-4 flex-wrap gap-y-2
 `
@@ -56,11 +58,13 @@ const Form = () => {
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+
   const {
-    rerankDefaultModel,
-    isRerankDefaultModelVaild,
-    rerankModelList,
-  } = useProviderContext()
+    modelList: rerankModelList,
+    defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelVaild,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+  const { data: embeddingModelList } = useModelList(2)
 
   const handleSave = async () => {
     if (loading)
@@ -72,7 +76,7 @@ const Form = () => {
     if (
       !isReRankModelSelected({
         rerankDefaultModel,
-        isRerankDefaultModelVaild,
+        isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -183,17 +187,15 @@ const Form = () => {
             <div>{t('datasetSettings.form.embeddingModel')}</div>
           </div>
           <div className='w-[480px]'>
-            <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-              <ModelSelector
-                readonly
-                value={{
-                  providerName: currentDataset.embedding_model_provider as ProviderEnum,
-                  modelName: currentDataset.embedding_model,
-                }}
-                modelType={ModelType.embeddings}
-                onChange={() => {}}
-              />
-            </div>
+            <ModelSelector
+              readonly
+              triggerClassName='!h-9 !cursor-not-allowed opacity-60'
+              defaultModel={{
+                provider: currentDataset.embedding_model_provider,
+                model: currentDataset.embedding_model,
+              }}
+              modelList={embeddingModelList}
+            />
             <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
               {t('datasetSettings.form.embeddingModelTip')}
               <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>

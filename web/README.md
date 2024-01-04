@@ -10,7 +10,7 @@ First, install the dependencies:
 ```bash
 npm install
 # or
-yarn
+yarn install --frozen-lockfile
 ```
 
 Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
@@ -68,4 +68,4 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 Visit https://docs.dify.ai/getting-started/readme to view the full documentation.
 
 ## Community
-The Dify community can be found on [Discord community](https://discord.com/invite/FngNHpbcY7), where you can ask questions, voice ideas, and share your projects.
+The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.
