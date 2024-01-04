@@ -252,6 +252,9 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :param messages: List of PromptMessage to combine.
         :return: Combined string with necessary human_prompt and ai_prompt tags.
         """
+        if not messages:
+            return ''
+
         messages = messages.copy()  # don't mutate the original list
         if not isinstance(messages[-1], AssistantPromptMessage):
             messages.append(AssistantPromptMessage(content=""))

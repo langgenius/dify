@@ -24,7 +24,7 @@ provider_credential_schema:
   - variable: api_key
     label:
       en_US: APIKey
-    type: text-input
+    type: secret-input
     required: true
     placeholder:
       zh_Hans: 在此输入您的 APIKey
