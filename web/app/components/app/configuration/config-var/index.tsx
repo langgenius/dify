@@ -23,6 +23,8 @@ import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import ConfirmModal from '@/app/components/base/confirm/common'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
+import type { ExternalDataTool } from '@/models/common'
+import { useModalContext } from '@/context/modal-context'
 
 export type IConfigVarProps = {
   promptVariables: PromptVariable[]
@@ -37,6 +39,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const {
     mode,
     dataSets,
+    externalDataToolsConfig,
+    setExternalDataToolsConfig,
   } = useContext(ConfigContext)
 
   const hasVar = promptVariables.length > 0
@@ -156,8 +160,37 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const [currKey, setCurrKey] = useState<string | null>(null)
   const currItem = currKey ? promptVariables.find(item => item.key === currKey) : null
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
-  const handleConfig = (key: string) => {
+  const { setShowExternalDataToolModal } = useModalContext()
+
+  const handleConfig = ({ key, type }: { key: string; type: string }) => {
     setCurrKey(key)
+    if (type === 'api') {
+      setShowExternalDataToolModal({
+        payload: {},
+        onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+          setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+        },
+        onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+          for (let i = 0; i < promptVariables.length; i++) {
+            if (promptVariables[i].key === newExternalDataTool.variable) {
+              Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+              return false
+            }
+          }
+
+          for (let i = 0; i < externalDataToolsConfig.length; i++) {
+            if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
+              Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
+              return false
+            }
+          }
+
+          return true
+        },
+      })
+      return
+    }
+
     showEditModal()
   }
   return (
@@ -246,7 +279,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                       </td>
                       <td className='w-20  border-b border-gray-100'>
                         <div className='flex h-full items-center space-x-1'>
-                          <div className='flex items-center justify-items-center w-6 h-6 text-gray-500 cursor-pointer' onClick={() => handleConfig(key)}>
+                          <div className='flex items-center justify-items-center w-6 h-6 text-gray-500 cursor-pointer' onClick={() => handleConfig({ type, key })}>
                             <Cog8ToothIcon width={16} height={16} />
                           </div>
                           <div className='flex items-center justify-items-center w-6 h-6 text-gray-500 cursor-pointer' onClick={() => handleRemoveVar(index)} >

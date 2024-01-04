@@ -5,7 +5,6 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean, useScroll } from 'ahooks'
 import DatasetConfig from '../dataset-config'
-import Tools from '../tools'
 import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
@@ -222,8 +221,6 @@ const Config: FC = () => {
 
         {/* Dataset */}
         <DatasetConfig />
-
-        <Tools />
 
         <ConfigVision />
 

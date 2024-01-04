@@ -66,7 +66,7 @@ const SelectVarType: FC<Props> = ({
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
-            <SelectItem Icon={ApiConnection} value='api' text={t('appDebug.variableConig.string')} onClick={handleChange}></SelectItem>
+            <SelectItem Icon={ApiConnection} value='api' text={t('appDebug.variableConig.apiBasedVar')} onClick={handleChange}></SelectItem>
           </div>
         </div>
       </PortalToFollowElemContent>
