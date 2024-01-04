@@ -236,16 +236,6 @@ class AIModel(ABC):
         :param credentials: model credentials
         :return: model schema
         """
-        if 'schema' in credentials:
-            schema_dict = json.loads(credentials['schema'])
-
-            try:
-                model_instance = AIModelEntity.parse_obj(schema_dict)
-                return model_instance
-            except ValidationError as e:
-                logging.exception(f"Invalid model schema for {model}")
-                return self._get_customizable_model_schema(model, credentials)
-
         return self._get_customizable_model_schema(model, credentials)
     
     def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
