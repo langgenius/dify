@@ -18,7 +18,7 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import { type CitationConfig, type ModelConfig, type ModerationConfig, type MoreLikeThisConfig, PromptMode, type PromptVariable, type SpeechToTextConfig, type SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
@@ -32,6 +32,7 @@ const Config: FC = () => {
     isAdvancedMode,
     modelModeType,
     canReturnToSimpleMode,
+    setPromptMode,
     hasSetBlockStatus,
     showHistoryModal,
     introduction,
@@ -191,7 +192,7 @@ const Config: FC = () => {
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
         {
           (isAdvancedMode && canReturnToSimpleMode) && (
-            <AdvancedModeWaring />
+            <AdvancedModeWaring onReturnToSimpleMode={() => setPromptMode(PromptMode.simple)} />
           )
         }
         {showChooseFeature && (

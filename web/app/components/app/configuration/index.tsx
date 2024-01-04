@@ -11,7 +11,6 @@ import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
-import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
@@ -39,7 +38,6 @@ import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
-import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
@@ -559,6 +557,7 @@ const Configuration: FC = () => {
       modelModeType,
       promptMode,
       isAdvancedMode,
+      isAgent: false,
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
@@ -616,31 +615,11 @@ const Configuration: FC = () => {
       <>
         <div className="flex flex-col h-full">
           <div className='flex items-center justify-between px-6 shrink-0 py-3 flex-wrap gap-y-2'>
-            <div className='flex items-end'>
-              <div className={s.promptTitle}></div>
+            <div className='flex items-center'>
+              <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
               <div className='flex items-center h-[14px] space-x-1 text-xs'>
-                {/* modelModeType missing can not load template */}
-                {(!isAdvancedMode && modelModeType) && (
-                  <div
-                    onClick={() => setPromptMode(PromptMode.advanced)}
-                    className={'cursor-pointer text-indigo-600'}
-                  >
-                    {t('appDebug.promptMode.simple')}
-                  </div>
-                )}
                 {isAdvancedMode && (
-                  <div className='flex items-center space-x-2'>
-                    <div className={cn(locale === 'en' && 'italic', `${s.advancedPromptMode}  text-indigo-600`)}>{t('appDebug.promptMode.advanced')}</div>
-                    {canReturnToSimpleMode && (
-                      <div
-                        onClick={() => setPromptMode(PromptMode.simple)}
-                        className='flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
-                      >
-                        <FlipBackward className='w-3 h-3 text-white' />
-                        <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
-                      </div>
-                    )}
-                  </div>
+                  <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
                 )}
               </div>
             </div>

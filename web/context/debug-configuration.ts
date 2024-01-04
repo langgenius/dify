@@ -33,6 +33,7 @@ type IDebugConfiguration = {
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
   isAdvancedMode: boolean
+  isAgent: boolean
   canReturnToSimpleMode: boolean
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
   chatPromptConfig: ChatPromptConfig
@@ -98,6 +99,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   promptMode: PromptMode.simple,
   setPromptMode: () => { },
   isAdvancedMode: false,
+  isAgent: false,
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
   chatPromptConfig: DEFAULT_CHAT_PROMPT_CONFIG,

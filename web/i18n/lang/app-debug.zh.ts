@@ -3,6 +3,7 @@ const translation = {
     line1: '提示词',
     line2: '编排',
   },
+  orchestrate: '编排',
   promptMode: {
     simple: '切换到专家模式以编辑完整的提示词',
     advanced: '专家模式',

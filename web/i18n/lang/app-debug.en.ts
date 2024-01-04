@@ -3,6 +3,7 @@ const translation = {
     line1: 'PROMPT',
     line2: 'Engineering',
   },
+  orchestrate: 'Orchestrate',
   promptMode: {
     simple: 'Switch to Expert Mode to edit the whole PROMPT',
     advanced: 'Expert Mode',
