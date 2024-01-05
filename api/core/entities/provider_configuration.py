@@ -572,6 +572,13 @@ class ProviderConfiguration(BaseModel):
                 continue
 
             models = provider_instance.models(model_type)
+            customizable_models = [model for model in provider_instance.get_provider_schema().configurate_methods if
+                                   model.value == 'customizable-model']
+            if len(customizable_models) > 0:
+                have_customizable_model = True
+            else:
+                have_customizable_model = False
+
             for m in models:
                 provider_models.append(
                     ModelWithProviderEntity(
@@ -583,7 +590,7 @@ class ProviderConfiguration(BaseModel):
                         model_properties=m.model_properties,
                         deprecated=m.deprecated,
                         provider=SimpleModelProviderEntity(self.provider),
-                        status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
+                        status=ModelStatus.ACTIVE if credentials or have_customizable_model else ModelStatus.NO_CONFIGURE
                     )
                 )
 
