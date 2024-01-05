@@ -8,6 +8,9 @@ class InvokeError(Exception):
     def __init__(self, description: Optional[str] = None) -> None:
         self.description = description
 
+    def __str__(self):
+        return self.description or self.__class__.__name__
+
 
 class InvokeConnectionError(InvokeError):
     """Raised when the Invoke returns connection error."""
