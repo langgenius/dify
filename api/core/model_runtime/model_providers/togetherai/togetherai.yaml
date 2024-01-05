@@ -26,6 +26,7 @@ model_credential_schema:
       zh_Hans: 输入模型全称
   credential_form_schemas:
   - variable: api_key
+    required: true
     label:
       en_US: API Key
     type: secret-input
