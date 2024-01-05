@@ -23,7 +23,7 @@
     "@lexical/react": "^0.12.2",
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",
-    "@next/mdx": "^13.2.4",
+    "@next/mdx": "^14.0.4",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
     "@tailwindcss/line-clamp": "^0.4.4",
