@@ -158,7 +158,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size')),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', "4096")),
                 ModelPropertyKey.MODE: credentials.get('mode'),
             },
             parameter_rules=[
@@ -196,9 +196,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.PRESENCE_PENALTY.value,
-                    label=I18nObject(en_US="PRESENCE Penalty"),
+                    label=I18nObject(en_US="Presence Penalty"),
                     type=ParameterType.FLOAT,
-                    default=float(credentials.get('PRESENCE_penalty', 0)),
+                    default=float(credentials.get('presence_penalty', 0)),
                     min=-2,
                     max=2
                 ),
@@ -219,6 +219,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             )
         )
 
+        if credentials['mode'] == 'chat':
+            entity.model_properties[ModelPropertyKey.MODE] = LLMMode.CHAT.value
+        elif credentials['mode'] == 'completion':
+            entity.model_properties[ModelPropertyKey.MODE] = LLMMode.COMPLETION.value
+        else:
+            raise ValueError(f"Unknown completion type {credentials['completion_type']}")
+    
         return entity
 
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
@@ -261,7 +268,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         if completion_type is LLMMode.CHAT:
             endpoint_url = urljoin(endpoint_url, 'chat/completions')
             data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
-        elif completion_type == LLMMode.COMPLETION:
+        elif completion_type is LLMMode.COMPLETION:
             endpoint_url = urljoin(endpoint_url, 'completions')
             data['prompt'] = prompt_messages[0].content
         else:
@@ -290,10 +297,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             timeout=(10, 60),
             stream=stream
         )
-
-        # Debug: Print request headers and json data
-        logger.debug(f"Request headers: {headers}")
-        logger.debug(f"Request JSON data: {data}")
 
         if response.status_code != 200:
             raise InvokeError(f"API request failed with status code {response.status_code}: {response.text}")
