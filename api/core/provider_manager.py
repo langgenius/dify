@@ -24,6 +24,9 @@ class ProviderManager:
     """
     ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
     """
+    def __init__(self) -> None:
+        self.decoding_rsa_key = None
+        self.decoding_cipher_rsa = None
 
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
@@ -472,15 +475,16 @@ class ProviderManager:
                     provider_credentials = {}
 
                 # Get decoding rsa key and cipher for decrypting credentials
-                decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+                if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                    self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
 
                 for variable in provider_credential_secret_variables:
                     if variable in provider_credentials:
                         try:
                             provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                 provider_credentials.get(variable),
-                                decoding_rsa_key,
-                                decoding_cipher_rsa
+                                self.decoding_rsa_key,
+                                self.decoding_cipher_rsa
                             )
                         except ValueError:
                             pass
@@ -524,15 +528,16 @@ class ProviderManager:
                     continue
 
                 # Get decoding rsa key and cipher for decrypting credentials
-                decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+                if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                    self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
 
                 for variable in model_credential_secret_variables:
                     if variable in provider_model_credentials:
                         try:
                             provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                 provider_model_credentials.get(variable),
-                                decoding_rsa_key,
-                                decoding_cipher_rsa
+                                self.decoding_rsa_key,
+                                self.decoding_cipher_rsa
                             )
                         except ValueError:
                             pass
@@ -641,15 +646,16 @@ class ProviderManager:
                     )
 
                     # Get decoding rsa key and cipher for decrypting credentials
-                    decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+                    if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                        self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
                             try:
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable),
-                                    decoding_rsa_key,
-                                    decoding_cipher_rsa
+                                    self.decoding_rsa_key,
+                                    self.decoding_cipher_rsa
                                 )
                             except ValueError:
                                 pass
