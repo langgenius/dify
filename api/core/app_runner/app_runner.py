@@ -1,7 +1,7 @@
 import time
 from typing import cast, Optional, List, Tuple, Generator, Union
 
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import ModelConfigEntity, PromptTemplateEntity, AppOrchestrationConfigEntity
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -183,7 +183,7 @@ class AppRunner:
                         index=index,
                         message=AssistantPromptMessage(content=token)
                     )
-                ))
+                ), PublishFrom.APPLICATION_MANAGER)
                 index += 1
                 time.sleep(0.01)
 
@@ -193,7 +193,8 @@ class AppRunner:
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=text),
                 usage=usage if usage else LLMUsage.empty_usage()
-            )
+            ),
+            pub_from=PublishFrom.APPLICATION_MANAGER
         )
 
     def _handle_invoke_result(self, invoke_result: Union[LLMResult, Generator],
@@ -226,7 +227,8 @@ class AppRunner:
         :return:
         """
         queue_manager.publish_message_end(
-            llm_result=invoke_result
+            llm_result=invoke_result,
+            pub_from=PublishFrom.APPLICATION_MANAGER
         )
 
     def _handle_invoke_result_stream(self, invoke_result: Generator,
@@ -242,7 +244,7 @@ class AppRunner:
         text = ''
         usage = None
         for result in invoke_result:
-            queue_manager.publish_chunk_message(result)
+            queue_manager.publish_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
 
             text += result.delta.message.content
 
@@ -263,5 +265,6 @@ class AppRunner:
         )
 
         queue_manager.publish_message_end(
-            llm_result=llm_result
+            llm_result=llm_result,
+            pub_from=PublishFrom.APPLICATION_MANAGER
         )
