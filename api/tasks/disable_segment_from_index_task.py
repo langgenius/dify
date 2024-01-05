@@ -27,7 +27,7 @@ def disable_segment_from_index_task(segment_id: str):
         raise NotFound('Segment not found')
 
     if segment.status != 'completed':
-        return
+        raise NotFound('Segment is not completed , disable action is not allowed.')
 
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
