@@ -629,7 +629,7 @@ const Configuration: FC = () => {
                   </div>
                 </div>
                 {isChatApp && (
-                  <AssistantTypePicker value={isAgent ? 'agent' : 'assistant'} onChange={value => setIsAgent(value === 'agent')} />
+                  <AssistantTypePicker value={isAgent ? 'agent' : 'assistant'} onChange={value => setIsAgent(value === 'agent')} onAgentSettingChange={() => { }} />
                 )}
               </div>
               <Config />

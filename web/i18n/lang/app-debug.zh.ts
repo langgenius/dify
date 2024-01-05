@@ -356,6 +356,10 @@ const translation = {
       name: '代理设置',
       description: '代理设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
     },
+    buildInPrompt: '内置提示词',
+    firstPrompt: '第一次提示词',
+    nextIteration: '下一次迭代',
+    promptPlaceholder: '在这里写下您的提示词',
   },
 }
 

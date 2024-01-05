@@ -362,6 +362,10 @@ const translation = {
       name: 'Agent Settings',
       description: 'Agent settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
     },
+    buildInPrompt: 'Build-In Prompt',
+    firstPrompt: 'First Prompt',
+    nextIteration: 'Next Iteration',
+    promptPlaceholder: 'Write your prompt here',
   },
 }
 
