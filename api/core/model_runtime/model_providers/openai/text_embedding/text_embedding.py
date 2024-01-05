@@ -107,12 +107,6 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
             tokens=used_tokens
         )
 
-        if embeddings:
-            print(f"Embedding dimensions: {len(batched_embeddings)}, {len(batched_embeddings[0])}")
-            print(f"Embedding types: {type(batched_embeddings)}, {type(batched_embeddings[0])}")
-        else:
-            print("No embeddings to display dimensions or types for.")
-        
         return TextEmbeddingResult(
             embeddings=embeddings,
             usage=usage,
