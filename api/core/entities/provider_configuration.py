@@ -572,9 +572,9 @@ class ProviderConfiguration(BaseModel):
                 continue
 
             models = provider_instance.models(model_type)
-            customizable_models = [model for model in provider_instance.get_provider_schema().configurate_methods if
-                                   model.value == 'customizable-model']
-            if len(customizable_models) > 0:
+            customizable_models = [model for model in provider_instance.get_provider_schema().configurate_methods if model.value == 'customizable-model']
+            predefined_models = [model for model in provider_instance.get_provider_schema().configurate_methods if model.value == 'predefined-model']
+            if len(customizable_models) > 0 and len(predefined_models) == 0 and provider_instance.get_provider_schema().provider != 'openai':
                 have_customizable_model = True
             else:
                 have_customizable_model = False
