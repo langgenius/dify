@@ -112,7 +112,7 @@ class ModelProvider(ABC):
         model_class = None
         for name, obj in vars(mod).items():
             if (isinstance(obj, type) and issubclass(obj, AIModel) and not obj.__abstractmethods__
-                    and obj != AIModel):
+                    and obj != AIModel and obj.__module__ == mod.__name__):
                 model_class = obj
                 break
 
