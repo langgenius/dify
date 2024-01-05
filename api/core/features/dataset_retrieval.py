@@ -172,7 +172,7 @@ class DatasetRetrievalFeature:
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,
                 retriever_from=invoke_from.to_source(),
-                reranking_provider_name=retrieve_config.reranking_model.get('reranking_provider_name'),
+                reranking_provider_name=retrieve_config.reranking_model.get('reranking_provider_name')['provider'],
                 reranking_model_name=retrieve_config.reranking_model.get('reranking_model_name')
             )
 
