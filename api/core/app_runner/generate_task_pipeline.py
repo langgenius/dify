@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from core.app_runner.moderation_handler import OutputModerationHandler, ModerationRule
 from core.entities.application_entities import ApplicationGenerateEntity
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.queue_entities import QueueErrorEvent, QueueStopEvent, QueueMessageEndEvent, \
     QueueRetrieverResourcesEvent, QueueAgentThoughtEvent, QueuePingEvent, QueueMessageEvent, QueueMessageReplaceEvent, \
     AnnotationReplyEvent
@@ -312,8 +312,11 @@ class GenerateTaskPipeline:
                                 index=0,
                                 message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
                             )
-                        ))
-                        self._queue_manager.publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION))
+                        ), PublishFrom.TASK_PIPELINE)
+                        self._queue_manager.publish(
+                            QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
+                            PublishFrom.TASK_PIPELINE
+                        )
                         continue
                     else:
                         self._output_moderation_handler.append_new_token(delta_text)
