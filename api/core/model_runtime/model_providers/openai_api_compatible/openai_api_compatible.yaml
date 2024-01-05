@@ -2,8 +2,8 @@ provider: openai_api_compatible
 label:
   en_US: OpenAI-API-compatible
 description:
-  en_US: Model providers compatible with OpenAI's API standard, such as Ollama.
-  zh_Hans: 兼容 OpenAI API 的模型供应商，例如 Ollama。
+  en_US: Model providers compatible with OpenAI's API standard, such as LM Studio.
+  zh_Hans: 兼容 OpenAI API 的模型供应商，例如 LM Studio 。
 supported_model_types:
 - llm
 - text-embedding

@@ -159,7 +159,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', "4096")),
-                ModelPropertyKey.MODE: credentials.get('mode', ),
+                ModelPropertyKey.MODE: credentials.get('mode'),
             },
             parameter_rules=[
                 ParameterRule(
