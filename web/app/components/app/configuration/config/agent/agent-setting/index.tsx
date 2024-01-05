@@ -2,14 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import PromptEditor from '../prompt-editor'
 import Button from '@/app/components/base/button'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import ConfigContext from '@/context/debug-configuration'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import type { ExternalDataTool } from '@/models/common'
-import { useModalContext } from '@/context/modal-context'
-import { useToastContext } from '@/app/components/base/toast'
 
 type Props = {
   payload: any
@@ -23,47 +18,9 @@ const AgentSetting: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
 
   const handleSave = () => {
     onSave(payload)
-  }
-
-  const {
-    modelConfig,
-    hasSetBlockStatus,
-    dataSets,
-    showSelectDataSet,
-    externalDataToolsConfig,
-    setExternalDataToolsConfig,
-  } = useContext(ConfigContext)
-  const { setShowExternalDataToolModal } = useModalContext()
-  const promptVariables = modelConfig.configs.prompt_variables
-
-  const handleOpenExternalDataToolModal = () => {
-    setShowExternalDataToolModal({
-      payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
-      },
-      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
-            return false
-          }
-        }
-
-        for (let i = 0; i < externalDataToolsConfig.length; i++) {
-          if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
-            return false
-          }
-        }
-
-        return true
-      },
-    })
   }
 
   return (
@@ -99,48 +56,18 @@ const AgentSetting: FC<Props> = ({
           <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
             {t('appDebug.agent.buildInPrompt')}
           </div>
+          <PromptEditor
+            className='mb-2'
+            type='first-prompt'
+            value='aaa'
+            onChange={() => { }}
+          />
 
           <PromptEditor
-            className='h-[336px]'
-            value={''}
-            contextBlock={{
-              show: true,
-              selectable: !hasSetBlockStatus.context,
-              datasets: dataSets.map(item => ({
-                id: item.id,
-                name: item.name,
-                type: item.data_source_type,
-              })),
-              onAddContext: showSelectDataSet,
-            }}
-            variableBlock={{
-              variables: modelConfig.configs.prompt_variables.map(item => ({
-                name: item.name,
-                value: item.key,
-              })),
-              externalTools: externalDataToolsConfig.map(item => ({
-                name: item.label!,
-                variableName: item.variable!,
-                icon: item.icon,
-                icon_background: item.icon_background,
-              })),
-              onAddExternalTool: handleOpenExternalDataToolModal,
-            }}
-            historyBlock={{
-              show: false,
-              selectable: false,
-              history: {
-                user: '',
-                assistant: '',
-              },
-              onEditRole: () => { },
-            }}
-            queryBlock={{
-              show: false,
-              selectable: false,
-            }}
+            className='mb-2'
+            type='next-iteration'
+            value='bbb'
             onChange={() => { }}
-            onBlur={() => { }}
           />
         </div>
         <div
