@@ -614,50 +614,53 @@ const Configuration: FC = () => {
     >
       <>
         <div className="flex flex-col h-full">
-          <div className='flex items-center justify-between px-6 shrink-0 py-3 flex-wrap gap-y-2'>
-            <div className='flex items-center'>
-              <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
-              <div className='flex items-center h-[14px] space-x-1 text-xs'>
-                {isAdvancedMode && (
-                  <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
-                )}
-              </div>
-            </div>
-
-            <div className='flex items-center flex-wrap gap-y-2 gap-x-2'>
-              {/* Model and Parameters */}
-              <ModelParameterModal
-                isAdvancedMode={isAdvancedMode}
-                mode={mode}
-                provider={modelConfig.provider}
-                completionParams={completionParams}
-                modelId={modelConfig.model_id}
-                setModel={setModel as any}
-                onCompletionParamsChange={(newParams: FormValue) => {
-                  setCompletionParams(newParams)
-                }}
-              />
-              <div className='w-[1px] h-[14px] bg-gray-200'></div>
-              <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
-              {isMobile && (
-                <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
-                  <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                  <CodeBracketIcon className="h-4 w-4 text-gray-500" />
-                </Button>
-              )}
-              <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
-            </div>
-          </div>
           <div className='flex grow h-[200px]'>
             <div className="w-full sm:w-1/2 shrink-0">
+              {/* Header Left */}
+              <div className='flex items-center px-6 h-14'>
+                <div className='flex items-center'>
+                  <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
+                  <div className='flex items-center h-[14px] space-x-1 text-xs'>
+                    {isAdvancedMode && (
+                      <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
               <Config />
             </div>
-            {!isMobile && <div className="relative w-1/2 grow h-full overflow-y-auto py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <Debug
-                hasSetAPIKEY={hasSettedApiKey}
-                onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
-                inputs={inputs}
-              />
+            {!isMobile && <div className="relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              {/* Header Right */}
+              <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
+                {/* Model and Parameters */}
+                <ModelParameterModal
+                  isAdvancedMode={isAdvancedMode}
+                  mode={mode}
+                  provider={modelConfig.provider}
+                  completionParams={completionParams}
+                  modelId={modelConfig.model_id}
+                  setModel={setModel as any}
+                  onCompletionParamsChange={(newParams: FormValue) => {
+                    setCompletionParams(newParams)
+                  }}
+                />
+                <div className='w-[1px] h-[14px] bg-gray-200'></div>
+                <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
+                {isMobile && (
+                  <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                    <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
+                    <CodeBracketIcon className="h-4 w-4 text-gray-500" />
+                  </Button>
+                )}
+                <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
+              </div>
+              <div className='flex flex-col grow h-0 px-6 py-4 rounded-tl-2xl border-t border-l bg-gray-50 '>
+                <Debug
+                  hasSetAPIKEY={hasSettedApiKey}
+                  onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                  inputs={inputs}
+                />
+              </div>
             </div>}
           </div>
         </div>
