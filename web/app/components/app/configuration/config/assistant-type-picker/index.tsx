@@ -12,6 +12,8 @@ import { BubbleText } from '@/app/components/base/icons/src/vender/solid/educati
 import Radio from '@/app/components/base/radio/ui'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows'
 import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
+import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {
   value: string
@@ -30,7 +32,7 @@ type ItemProps = {
 const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, onClick }) => {
   return (
     <div
-      className={cn(isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 p-3 pr-4 rounded-xl hover:bg-gray-50 cursor-pointer')}
+      className={cn(isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 p-3 pr-4 rounded-xl bg-gray-25 hover:bg-gray-50 cursor-pointer')}
       onClick={() => onClick(value)}
     >
       <div className='flex items-center justify-between'>
@@ -99,7 +101,21 @@ const AssistantTypePicker: FC<Props> = ({
             onClick={handleChange}
           />
           <div className='my-4 h-[1px] bg-gray-100'></div>
-
+          <div
+            className={cn(isAgent ? 'group cursor-pointer hover:bg-primary-50' : 'opacity-30', 'p-3 pr-4 rounded-xl bg-gray-50 ')}
+            onClick={() => { }}
+          >
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center '>
+                <div className='mr-3 p-1 bg-gray-200 group-hover:bg-white rounded-lg'>
+                  <Settings04 className='w-4 h-4 text-gray-600 group-hover:text-[#155EEF]' />
+                </div>
+                <div className='leading-5 text-sm font-medium text-gray-900 group-hover:text-[#155EEF]'>{t('appDebug.agent.setting.name')}</div>
+              </div>
+              <ArrowUpRight className='w-4 h-4 text-gray-500 group-hover:text-[#155EEF]' />
+            </div>
+            <div className='ml-9 leading-[18px] text-xs font-normal text-gray-500'>{t('appDebug.agent.setting.description')}</div>
+          </div>
         </div>
       </PortalToFollowElemContent>
 

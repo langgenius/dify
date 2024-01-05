@@ -341,6 +341,7 @@ const translation = {
     retrieveChangeTip: '修改索引模式和检索模式可能会影响与该知识库关联的应用程序。',
   },
   assistantType: {
+    name: '助手类型',
     chatAssistant: {
       name: '聊天助手',
       description: 'todo',
