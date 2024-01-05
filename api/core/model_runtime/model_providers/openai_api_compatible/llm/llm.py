@@ -337,9 +337,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 )
             )
 
-        for chunk in response.iter_content(chunk_size=2048):
+        for chunk in response.iter_lines(decode_unicode=True, delimiter='\n\n'):
             if chunk:
-                decoded_chunk = chunk.decode('utf-8').strip().lstrip('data: ').lstrip()
+                decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
 
                 chunk_json = None
                 try:
@@ -356,7 +356,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     continue
 
                 choice = chunk_json['choices'][0]
-                chunk_index = choice['index'] if 'index' in choice else chunk_index
+                chunk_index += 1
 
                 if 'delta' in choice:
                     delta = choice['delta']
@@ -408,12 +408,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                             message=assistant_prompt_message,
                         )
                     )
-            else:
-                yield create_final_llm_result_chunk(
-                    index=chunk_index + 1,
-                    message=AssistantPromptMessage(content=""),
-                    finish_reason="End of stream."
-                )
 
             chunk_index += 1
 
