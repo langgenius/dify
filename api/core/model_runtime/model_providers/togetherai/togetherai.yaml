@@ -2,10 +2,10 @@ provider: togetherai
 label:
   en_US: together.ai
 icon_small:
-    en_US: icon_s_en.png
+    en_US: togetherai_square.svg
 icon_large:
-    en_US: icon_l_en.png
-background: "#FFF8DC"
+    en_US: togetherai.svg
+background: "#F1EFED"
 help:
   title:
     en_US: Get your API key from together.ai
