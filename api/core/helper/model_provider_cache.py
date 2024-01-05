@@ -40,7 +40,7 @@ class ProviderCredentialsCache:
         :param credentials: provider credentials
         :return:
         """
-        redis_client.setex(self.cache_key, 3600, json.dumps(credentials))
+        redis_client.setex(self.cache_key, 86400, json.dumps(credentials))
 
     def delete(self) -> None:
         """
