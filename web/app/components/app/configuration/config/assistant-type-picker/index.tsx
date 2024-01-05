@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -12,7 +10,9 @@ import {
 import { Paragraph, TypeSquare } from '@/app/components/base/icons/src/vender/solid/editor'
 import { CheckDone01 } from '@/app/components/base/icons/src/vender/solid/general'
 import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
+
 type Props = {
+  value: string
   onChange: (value: string) => void
 }
 
@@ -35,11 +35,13 @@ const SelectItem: FC<ItemProps> = ({ text, value, Icon, onClick }) => {
   )
 }
 
-const SelectVarType: FC<Props> = ({
+const AssistantTypePicker: FC<Props> = ({
+  value,
   onChange,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+
+  const [open, setOpen] = useState(true)
   const handleChange = (value: string) => {
     onChange(value)
     setOpen(false)
@@ -55,7 +57,7 @@ const SelectVarType: FC<Props> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <OperationBtn type='add' className={cn(open && 'bg-gray-200')} />
+        <div className='flex px-1 space-x-1 select-none'>aaaa</div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         <div className='bg-white border border-gray-200 shadow-lg rounded-lg min-w-[192px]'>
@@ -70,7 +72,8 @@ const SelectVarType: FC<Props> = ({
           </div>
         </div>
       </PortalToFollowElemContent>
+
     </PortalToFollowElem>
   )
 }
-export default React.memo(SelectVarType)
+export default React.memo(AssistantTypePicker)

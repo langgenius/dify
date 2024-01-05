@@ -13,6 +13,7 @@ import Button from '../../base/button'
 import Loading from '../../base/loading'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
+import AssistantTypePicker from './config/assistant-type-picker'
 import type {
   AnnotationReplyConfig,
   DatasetConfigs,
@@ -141,7 +142,8 @@ const Configuration: FC = () => {
     sensitive_word_avoidance: null,
     dataSets: [],
   })
-
+  const isChatApp = mode === AppType.chat
+  const [isAgent, setIsAgent] = useState(false)
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
     reranking_model: {
@@ -557,7 +559,7 @@ const Configuration: FC = () => {
       modelModeType,
       promptMode,
       isAdvancedMode,
-      isAgent: false,
+      isAgent,
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
@@ -617,7 +619,7 @@ const Configuration: FC = () => {
           <div className='flex grow h-[200px]'>
             <div className="w-full sm:w-1/2 shrink-0">
               {/* Header Left */}
-              <div className='flex items-center px-6 h-14'>
+              <div className='flex justify-between items-center px-6 h-14'>
                 <div className='flex items-center'>
                   <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
                   <div className='flex items-center h-[14px] space-x-1 text-xs'>
@@ -626,6 +628,9 @@ const Configuration: FC = () => {
                     )}
                   </div>
                 </div>
+                {isChatApp && (
+                  <AssistantTypePicker value={isAgent ? 'agent' : 'assistant'} onChange={value => setIsAgent(value === 'agent')} />
+                )}
               </div>
               <Config />
             </div>
