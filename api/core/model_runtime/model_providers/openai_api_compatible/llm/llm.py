@@ -196,9 +196,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.PRESENCE_PENALTY.value,
-                    label=I18nObject(en_US="PRESENCE Penalty"),
+                    label=I18nObject(en_US="Presence Penalty"),
                     type=ParameterType.FLOAT,
-                    default=float(credentials.get('PRESENCE_penalty', 0)),
+                    default=float(credentials.get('presence_penalty', 0)),
                     min=-2,
                     max=2
                 ),
