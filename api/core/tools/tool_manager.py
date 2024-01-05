@@ -1,11 +1,11 @@
 from typing import List, Dict, Any
 from os import listdir, path
 
-from core.tools.entities.assistant_entities import AssistantAppMessage
-from core.tools.provider.tool_provider import AssistantToolProvider
+from core.tools.entities.tool_entities import AssistantAppMessage
+from core.tools.provider.tool_provider import ToolProvider
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.common_entities import I18nObject
-from core.tools.errors import AssistantNotFoundError
+from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProvider
 from core.tools.provider.app_tool_provider import AppBasedToolProvider
 from core.tools.entities.user_entities import UserToolProvider
@@ -14,7 +14,7 @@ from core.model_runtime.entities.message_entities import PromptMessage
 
 from extensions.ext_database import db
 
-from models.tools import AssistantApiProvider, AssistantBuiltinToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider
 
 import importlib
 
@@ -42,7 +42,7 @@ class ToolManager:
 
             :return: the messages that the tool wants to send to the user
         """
-        provider_entity: AssistantToolProvider = None
+        provider_entity: ToolProvider = None
         if provider == DEFAULT_PROVIDERS.API_BASED:
             provider_entity = ApiBasedToolProvider()
         elif provider == DEFAULT_PROVIDERS.APP_BASED:
@@ -56,18 +56,18 @@ class ToolManager:
             spec.loader.exec_module(mod)
 
             # get all the classes in the module
-            classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != AssistantToolProvider and issubclass(x, AssistantToolProvider)]
+            classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != ToolProvider and issubclass(x, ToolProvider)]
             if len(classes) == 0:
-                raise AssistantNotFoundError(f'provider {provider} not found')
+                raise ToolProviderNotFoundError(f'provider {provider} not found')
             if len(classes) > 1:
-                raise AssistantNotFoundError(f'multiple providers found for {provider}')
+                raise ToolProviderNotFoundError(f'multiple providers found for {provider}')
             
             provider_entity = classes[0]()
 
         return provider_entity.invoke(tool_id, tool_name, tool_parameters, credentials, prompt_messages)
     
     @staticmethod
-    def get_builtin_provider(provider: str) -> AssistantToolProvider:
+    def get_builtin_provider(provider: str) -> ToolProvider:
         global _builtin_providers
         """
             get the builtin provider
@@ -80,12 +80,12 @@ class ToolManager:
             ToolManager.list_builtin_providers()
 
         if provider not in _builtin_providers:
-            raise AssistantNotFoundError(f'builtin provider {provider} not found')
+            raise ToolProviderNotFoundError(f'builtin provider {provider} not found')
         
         return _builtin_providers[provider]
 
     @staticmethod
-    def list_builtin_providers() -> List[AssistantToolProvider]:
+    def list_builtin_providers() -> List[ToolProvider]:
         global _builtin_providers
 
 
@@ -108,11 +108,11 @@ class ToolManager:
                 spec.loader.exec_module(mod)
 
                 # load all classes
-                classes = [obj for name, obj in vars(mod).items() if isinstance(obj, type) and obj != AssistantToolProvider and issubclass(obj, AssistantToolProvider)]
+                classes = [obj for name, obj in vars(mod).items() if isinstance(obj, type) and obj != ToolProvider and issubclass(obj, ToolProvider)]
                 if len(classes) == 0:
-                    raise AssistantNotFoundError(f'provider {provider} not found')
+                    raise ToolProviderNotFoundError(f'provider {provider} not found')
                 if len(classes) > 1:
-                    raise AssistantNotFoundError(f'multiple providers found for {provider}')
+                    raise ToolProviderNotFoundError(f'multiple providers found for {provider}')
                 
                 # init provider
                 provider_class = classes[0]
@@ -153,15 +153,15 @@ class ToolManager:
             )
 
         # get db builtin providers
-        db_builtin_providers: List[AssistantBuiltinToolProvider] = db.session.query(AssistantBuiltinToolProvider). \
-            filter(AssistantBuiltinToolProvider.tenant_id == tenant_id).all()
+        db_builtin_providers: List[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
+            filter(BuiltinToolProvider.tenant_id == tenant_id).all()
         
         for db_builtin_provider in db_builtin_providers:
             # add provider into providers
             credentails = db_builtin_provider.credentials
             provider_name = db_builtin_provider.provider
             result_providers[provider_name].is_team_authorization = True
-            
+
             for name, value in credentails.items():
                 if len(value) <= 6:
                     value = '******'

@@ -2,10 +2,10 @@ from typing import List
 
 from core.tools.tool_manager import ToolManager
 from core.tools.entities.user_entities import UserToolProvider
-from core.tools.errors import AssistantProviderCredentialValidationError, AssistantNotFoundError, AssistantToolNotFoundError
+from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError, ToolNotFoundError
 
 from extensions.ext_database import db
-from models.tools import AssistantBuiltinToolProvider
+from models.tools import BuiltinToolProvider
 
 import json
 
@@ -60,9 +60,9 @@ class ToolManageService:
         user_id: str, tenant_id: str, provider_type: str, provider_name: str, credentails: dict
     ):
         # get if the provider exists
-        provider: AssistantBuiltinToolProvider = db.session.query(AssistantBuiltinToolProvider).filter(
-            AssistantBuiltinToolProvider.tenant_id == tenant_id,
-            AssistantBuiltinToolProvider.provider == provider_name,
+        provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider == provider_name,
         ).first()
 
         if provider is not None:
@@ -73,11 +73,11 @@ class ToolManageService:
             provider = ToolManager.get_builtin_provider(provider_name)
             # validate credentials
             provider.validate_credentials(credentails)
-        except (AssistantNotFoundError, AssistantToolNotFoundError, AssistantProviderCredentialValidationError) as e:
+        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
             raise ValueError(str(e))
 
         # create provider
-        provider = AssistantBuiltinToolProvider(
+        provider = BuiltinToolProvider(
             tenant_id=tenant_id,
             user_id=user_id,
             provider=provider_name,

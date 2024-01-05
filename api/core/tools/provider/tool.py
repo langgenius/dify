@@ -3,14 +3,14 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Union
 from abc import abstractmethod, ABC
 
-from core.tools.entities.assistant_entities import AssistantToolIdentity, AssistantAppMessage,\
-    AssistantToolParamter, AssistantToolDescription
+from core.tools.entities.tool_entities import ToolIdentity, AssistantAppMessage,\
+    ToolParamter, ToolDescription
 from core.model_runtime.entities.message_entities import PromptMessage
 
-class AssistantTool(BaseModel, ABC):
-    identity: AssistantToolIdentity = None
-    parameters: List[AssistantToolParamter] = None
-    description: AssistantToolDescription = None
+class Tool(BaseModel, ABC):
+    identity: ToolIdentity = None
+    parameters: List[ToolParamter] = None
+    description: ToolDescription = None
     is_team_authorization: bool = False
 
     def invoke(self, tool_paramters: Dict[str, Any],
@@ -42,7 +42,7 @@ class AssistantTool(BaseModel, ABC):
             :param image: the url of the image
             :return: the image message
         """
-        return AssistantAppMessage(type=AssistantAppMessage.AssistantAppMessageType.IMAGE, message=image)
+        return AssistantAppMessage(type=AssistantAppMessage.MessageType.IMAGE, message=image)
     
     def create_link_message(self, link: str) -> AssistantAppMessage:
         """
@@ -51,7 +51,7 @@ class AssistantTool(BaseModel, ABC):
             :param link: the url of the link
             :return: the link message
         """
-        return AssistantAppMessage(type=AssistantAppMessage.AssistantAppMessageType.LINK, message=link)
+        return AssistantAppMessage(type=AssistantAppMessage.MessageType.LINK, message=link)
     
     def create_text_message(self, text: str) -> AssistantAppMessage:
         """
@@ -60,4 +60,4 @@ class AssistantTool(BaseModel, ABC):
             :param text: the text
             :return: the text message
         """
-        return AssistantAppMessage(type=AssistantAppMessage.AssistantAppMessageType.TEXT, message=text)
+        return AssistantAppMessage(type=AssistantAppMessage.MessageType.TEXT, message=text)

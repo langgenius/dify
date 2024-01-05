@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Union
-from core.tools.entities.assistant_entities import AssistantAppMessage
-from core.tools.provider.tool_provider import AssistantTool
+from core.tools.entities.tool_entities import AssistantAppMessage
+from core.tools.provider.tool_provider import Tool
 from core.model_runtime.entities.message_entities import PromptMessage
 
-class DallE2Tool(AssistantTool):
+class DallE2Tool(Tool):
     def _invoke(self, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 

@@ -3,7 +3,7 @@ from enum import Enum
 from typing import List, Dict
 
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.assistant_entities import AssistantCredentials
+from core.tools.entities.tool_entities import ToolProviderCredentials
 
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):
@@ -37,7 +37,7 @@ class UserToolProvider(BaseModel):
         }
 
 class UserToolProviderCredentials(BaseModel):
-    credentails: Dict[str, AssistantCredentials]
+    credentails: Dict[str, ToolProviderCredentials]
 
 class UserTool(BaseModel):
     author: str

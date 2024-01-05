@@ -7,20 +7,20 @@ from sqlalchemy import ForeignKey
 
 from extensions.ext_database import db
 
-from core.tools.entities.assistant_bundle import AssistantApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.common_entities import I18nObject
 
-from models.model import Tenant, EndUser
+from models.model import Tenant, EndUser, App
 
-class AssistantBuiltinToolProvider(db.Model):
+class BuiltinToolProvider(db.Model):
     """
     This table stores the tool provider information for built-in tools for each tenant.
     """
-    __tablename__ = 'assistant_tool_providers'
+    __tablename__ = 'tool_builtin_providers'
     __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='assistant_tool_provider_pkey'),
+        db.PrimaryKeyConstraint('id', name='tool_builtin_provider_pkey'),
         # one tenant can only have one tool provider with the same name
-        db.UniqueConstraint('tenant_id', 'provider', name='unique_assistant_tool_provider')
+        db.UniqueConstraint('tenant_id', 'provider', name='unique_builtin_tool_provider')
     )
 
     # id of the tool provider
@@ -40,21 +40,20 @@ class AssistantBuiltinToolProvider(db.Model):
     def credentials(self) -> dict:
         return json.loads(self.encrypted_credentials)
 
-class AssistantAppTool(db.Model):
+class PublishedAppTool(db.Model):
     """
     The table stores the apps published as a tool for each person.
     """
-    __tablename__ = 'assistant_app_tools'
+    __tablename__ = 'tool_published_apps'
     __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='assistant_app_tool_pkey'),
-        db.UniqueConstraint('app_id', 'user_id', name='unique_app_tool')
+        db.PrimaryKeyConstraint('id', name='published_app_tool_pkey'),
+        db.UniqueConstraint('app_id', 'user_id', name='unique_published_app_tool')
     )
 
     # id of the tool provider
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     # id of the app
     app_id = db.Column(UUID, ForeignKey('apps.id'), nullable=False)
-    app = db.relationship('App', backref=db.backref('assistant_app_tool', uselist=False))
     # who published this tool
     user_id = db.Column(UUID, nullable=False)
     # description of the tool, stored in i18n format, for human
@@ -76,9 +75,13 @@ class AssistantAppTool(db.Model):
     def description_i18n(self) -> I18nObject:
         return I18nObject(**json.loads(self.description))
     
-class AssistantApiProviderSchemaType(Enum):
+    @property
+    def app(self) -> App:
+        return db.session.query(App).filter(App.id == self.app_id).first()
+    
+class ApiProviderSchemaType(Enum):
     """
-    Enum class for assistant api provider schema type.
+    Enum class for api provider schema type.
     """
     OPENAPI = "openapi"
     SWAGGER = "swagger"
@@ -86,7 +89,7 @@ class AssistantApiProviderSchemaType(Enum):
     OPENAI_ACTIONS = "openai_actions"
 
     @classmethod
-    def value_of(cls, value: str) -> 'AssistantApiProviderSchemaType':
+    def value_of(cls, value: str) -> 'ApiProviderSchemaType':
         """
         Get value of given mode.
 
@@ -98,13 +101,13 @@ class AssistantApiProviderSchemaType(Enum):
                 return mode
         raise ValueError(f'invalid mode value {value}')
 
-class AssistantApiProvider(db.Model):
+class ApiToolProvider(db.Model):
     """
     The table stores the api providers.
     """
-    __tablename__ = 'assistant_api_providers'
+    __tablename__ = 'tool_api_providers'
     __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='assistant_api_provider_pkey'),
+        db.PrimaryKeyConstraint('id', name='tool_api_provider_pkey'),
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
@@ -129,12 +132,12 @@ class AssistantApiProvider(db.Model):
         return I18nObject(**json.loads(self.description_str))
     
     @property
-    def schema_type(self) -> AssistantApiProviderSchemaType:
-        return AssistantApiProviderSchemaType.value_of(self.schema_type_str)
+    def schema_type(self) -> ApiProviderSchemaType:
+        return ApiProviderSchemaType.value_of(self.schema_type_str)
     
     @property
-    def tools(self) -> List[AssistantApiBasedToolBundle]:
-        return [AssistantApiBasedToolBundle(**tool) for tool in json.loads(self.tools_str)]
+    def tools(self) -> List[ApiBasedToolBundle]:
+        return [ApiBasedToolBundle(**tool) for tool in json.loads(self.tools_str)]
     
     @property
     def credentials(self) -> dict:

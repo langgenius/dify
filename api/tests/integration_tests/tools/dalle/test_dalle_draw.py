@@ -1,13 +1,13 @@
 from core.tools.provider.builtin.dalle.dalle import DALLEProvider
-from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType
-from core.tools.provider.assistant_tool import AssistantTool
+from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType
+from core.tools.provider.tool import Tool
 
 def test_dalle_draw():
     provider = DALLEProvider()
 
     tools = provider.get_tools()
 
-    tool: AssistantTool = tools[0]
+    tool: Tool = tools[0]
 
     tool.invoke(tool_paramters={
 

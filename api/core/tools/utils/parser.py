@@ -1,8 +1,8 @@
 
-from core.tools.entities.assistant_bundle import AssistantApiBasedToolBundle
-from core.tools.entities.assistant_entities import AssistantToolParamter, AssistantToolParamterOption
+from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_entities import ToolParamter, ToolParamterOption
 from core.tools.entities.common_entities import I18nObject
-from core.tools.errors import AssistantNotFoundError, AssistantToolNotSupportedError
+from core.tools.errors import ToolProviderNotFoundError, ToolNotSupportedError
 
 from typing import List
 
@@ -12,9 +12,9 @@ from requests import get
 
 class AssistantApiBasedSchemaParser:
     @staticmethod
-    def parse_openapi_to_tool_bundle(openapi: dict) -> List[AssistantApiBasedToolBundle]:
+    def parse_openapi_to_tool_bundle(openapi: dict) -> List[ApiBasedToolBundle]:
         if len(openapi['servers']) == 0:
-            raise AssistantNotFoundError('No server found in the openapi yaml.')
+            raise ToolProviderNotFoundError('No server found in the openapi yaml.')
 
         server_url = openapi['servers'][0]['url']
 
@@ -37,7 +37,7 @@ class AssistantApiBasedSchemaParser:
             parameters = []
             if 'parameters' in interface['operation']:
                 for parameter in interface['operation']['parameters']:
-                    parameters.append(AssistantToolParamter(
+                    parameters.append(ToolParamter(
                         name=parameter['name'],
                         label=I18nObject(
                             en_US=parameter['name'],
@@ -47,14 +47,14 @@ class AssistantApiBasedSchemaParser:
                             en_US=parameter['description'],
                             zh_Hans=parameter['description']
                         ),
-                        type=AssistantToolParamter.AssistantToolParameterType.STRING,
+                        type=ToolParamter.ToolParameterType.STRING,
                         required=parameter['required'],
-                        form=AssistantToolParamter.AssistantToolParameterForm.LLM,
+                        form=ToolParamter.ToolParameterForm.LLM,
                         llm_description=parameter['description'],
                         default=parameter['default'] if 'default' in parameter else None,
                     ))
             # create tool bundle
-            bundles.append(AssistantApiBasedToolBundle(
+            bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
                 summary=interface['operation']['summary'] if 'summary' in interface['operation'] else None,
@@ -68,7 +68,7 @@ class AssistantApiBasedSchemaParser:
         return bundles
         
     @staticmethod
-    def parse_openapi_yaml_to_tool_bundle(yaml: str) -> List[AssistantApiBasedToolBundle]:
+    def parse_openapi_yaml_to_tool_bundle(yaml: str) -> List[ApiBasedToolBundle]:
         """
             parse openapi yaml to tool bundle
 
@@ -79,7 +79,7 @@ class AssistantApiBasedSchemaParser:
         return AssistantApiBasedSchemaParser.parse_openapi_to_tool_bundle(openapi)
     
     @staticmethod
-    def parse_openai_plugin_json_to_tool_bundle(json: str) -> List[AssistantApiBasedToolBundle]:
+    def parse_openai_plugin_json_to_tool_bundle(json: str) -> List[ApiBasedToolBundle]:
         """
             parse openapi plugin yaml to tool bundle
 
@@ -92,10 +92,10 @@ class AssistantApiBasedSchemaParser:
             api_url = api['url']
             api_type = api['type']
         except:
-            raise AssistantNotFoundError('Invalid openai plugin json.')
+            raise ToolProviderNotFoundError('Invalid openai plugin json.')
         
         if api_type != 'openapi':
-            raise AssistantToolNotSupportedError('Only openapi is supported now.')
+            raise ToolNotSupportedError('Only openapi is supported now.')
         
         # get openapi yaml
         response = get(api_url, headers={
@@ -103,6 +103,6 @@ class AssistantApiBasedSchemaParser:
         }, timeout=5)
 
         if response.status_code != 200:
-            raise AssistantNotFoundError('cannot get openapi yaml from url.')
+            raise ToolProviderNotFoundError('cannot get openapi yaml from url.')
         
         return AssistantApiBasedSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text)

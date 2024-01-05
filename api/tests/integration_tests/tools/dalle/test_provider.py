@@ -1,7 +1,7 @@
 import pytest
 
 from core.tools.provider.builtin.dalle.dalle import DALLEProvider
-from core.tools.errors import AssistantProviderCredentialValidationError
+from core.tools.errors import ToolProviderCredentialValidationError
 
 def test_dalle_provider():
     """
@@ -14,7 +14,7 @@ def test_dalle_provider():
     assert len(tools) > 0
 
 def test_validate_credentails():
-    with pytest.raises(AssistantProviderCredentialValidationError):
+    with pytest.raises(ToolProviderCredentialValidationError):
         DALLEProvider().validate_credentials("dalle2", {})
 
     DALLEProvider().validate_credentials("dalle2", {

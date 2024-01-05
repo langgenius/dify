@@ -1,22 +1,22 @@
 from typing import Any, Dict, List
-from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType, AssistantToolParamter, AssistantToolParamterOption
-from core.tools.provider.assistant_tool import AssistantTool
+from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, ToolParamter, ToolParamterOption
+from core.tools.provider.tool import Tool
 from core.tools.entities.common_entities import I18nObject
-from core.tools.provider.tool_provider import AssistantToolProvider
+from core.tools.provider.tool_provider import ToolProvider
 from core.model_runtime.entities.message_entities import PromptMessage
 
 from extensions.ext_database import db
-from models.tools import AssistantAppTool
+from models.tools import PublishedAppTool
 from models.model import App, AppModelConfig
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-class AppBasedToolProvider(AssistantToolProvider):
+class AppBasedToolProvider(ToolProvider):
     @property
-    def app_type(self) -> AssistantAppType:
-        return AssistantAppType.APP_BASED
+    def app_type(self) -> ToolProviderType:
+        return ToolProviderType.APP_BASED
     
     def invoke(self, 
                tool_id: int, tool_name: str, 
@@ -41,15 +41,15 @@ class AppBasedToolProvider(AssistantToolProvider):
     def validate_parameters(self, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
         pass
 
-    def get_tools(self, user_id: str) -> List[AssistantTool]:
-        db_tools: List[AssistantAppTool] = db.session.query(AssistantAppTool).filter(
-            AssistantAppTool.user_id == user_id,
+    def get_tools(self, user_id: str) -> List[Tool]:
+        db_tools: List[PublishedAppTool] = db.session.query(PublishedAppTool).filter(
+            PublishedAppTool.user_id == user_id,
         ).all()
 
         if not db_tools or len(db_tools) == 0:
             return []
 
-        tools: List[AssistantTool] = []
+        tools: List[Tool] = []
 
         for db_tool in db_tools:
             tool = {
@@ -89,7 +89,7 @@ class AppBasedToolProvider(AssistantToolProvider):
                 variable_name = input_form[form_type]['variable_name']
                 options = input_form[form_type].get('options', [])
                 if form_type == 'paragraph' or form_type == 'text-input':
-                    tool['parameters'].append(AssistantToolParamter(
+                    tool['parameters'].append(ToolParamter(
                         name=variable_name,
                         label=I18nObject(
                             en_US=label,
@@ -100,13 +100,13 @@ class AppBasedToolProvider(AssistantToolProvider):
                             zh_Hans=label
                         ),
                         llm_description=label,
-                        form=AssistantToolParamter.AssistantToolParameterForm.FORM,
-                        type=AssistantToolParamter.AssistantToolParameterType.STRING,
+                        form=ToolParamter.ToolParameterForm.FORM,
+                        type=ToolParamter.ToolParameterType.STRING,
                         required=required,
                         default=default
                     ))
                 elif form_type == 'select':
-                    tool['parameters'].append(AssistantToolParamter(
+                    tool['parameters'].append(ToolParamter(
                         name=variable_name,
                         label=I18nObject(
                             en_US=label,
@@ -117,11 +117,11 @@ class AppBasedToolProvider(AssistantToolProvider):
                             zh_Hans=label
                         ),
                         llm_description=label,
-                        form=AssistantToolParamter.AssistantToolParameterForm.FORM,
-                        type=AssistantToolParamter.AssistantToolParameterType.SELECT,
+                        form=ToolParamter.ToolParameterForm.FORM,
+                        type=ToolParamter.ToolParameterType.SELECT,
                         required=required,
                         default=default,
-                        options=[AssistantToolParamterOption(
+                        options=[ToolParamterOption(
                             value=option,
                             label=I18nObject(
                                 en_US=option,
@@ -130,5 +130,5 @@ class AppBasedToolProvider(AssistantToolProvider):
                         ) for option in options]
                     ))
 
-            tools.append(AssistantTool(**tool))
+            tools.append(Tool(**tool))
         return tools

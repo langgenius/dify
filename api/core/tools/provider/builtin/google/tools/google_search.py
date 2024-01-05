@@ -1,14 +1,11 @@
-from core.tools.provider.tool_provider import AssistantTool
-from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType
-from core.tools.errors import AssistantProviderCredentialValidationError
+from core.tools.provider.tool_provider import Tool
+from core.tools.entities.tool_entities import AssistantAppMessage
 from core.model_runtime.entities.message_entities import PromptMessage
 
 from typing import Any, Dict, List, Union, Optional, Tuple
 
 import os
 import sys
-
-from pydantic import Field 
 
 from serpapi import GoogleSearch
 
@@ -112,7 +109,7 @@ class SerpAPI:
         return toret
 
 
-class GoogleSearchTool(AssistantTool):
+class GoogleSearchTool(Tool):
     def _invoke(self, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 

@@ -2,9 +2,9 @@ from pydantic import BaseModel
 from typing import Dict, Optional, Any, List
 from openapi_schema_pydantic import OpenAPI, Operation
 
-from core.tools.entities.assistant_entities import AssistantAppType, AssistantToolParamter
+from core.tools.entities.tool_entities import ToolProviderType, ToolParamter
 
-class AssistantApiBasedToolBundle(BaseModel):
+class ApiBasedToolBundle(BaseModel):
     """
     This class is used to store the schema information of an api based tool. such as the url, the method, the parameters, etc.
     """
@@ -17,7 +17,7 @@ class AssistantApiBasedToolBundle(BaseModel):
     # operation_id
     operation_id: str = None
     # parameters
-    parameters: Optional[List[AssistantToolParamter]] = None
+    parameters: Optional[List[ToolParamter]] = None
     # author
     author: str
     # icon
@@ -25,11 +25,11 @@ class AssistantApiBasedToolBundle(BaseModel):
     # openapi operation
     openapi: Operation
 
-class AssistantAppToolBundle(BaseModel):
+class AppToolBundle(BaseModel):
     """
     This class is used to store the schema information of an tool for an app.
     """
-    type: AssistantAppType
+    type: ToolProviderType
     credential: Optional[Dict[str, Any]] = None
     provider_id: str
     tool_name: str

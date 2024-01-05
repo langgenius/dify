@@ -1,18 +1,18 @@
 from typing import Any, Dict, List
-from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType
-from core.tools.entities.assistant_bundle import AssistantApiBasedToolBundle
-from core.tools.provider.assistant_tool import AssistantTool
-from core.tools.provider.tool_provider import AssistantToolProvider
+from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType
+from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.provider.tool import Tool
+from core.tools.provider.tool_provider import ToolProvider
 from core.model_runtime.entities.message_entities import PromptMessage
 
 from extensions.ext_database import db
 
-from models.tools import AssistantApiProvider, AssistantApiProviderSchemaType
+from models.tools import ApiToolProvider
 
-class ApiBasedToolProvider(AssistantToolProvider):
+class ApiBasedToolProvider(ToolProvider):
     @property
-    def app_type(self) -> AssistantAppType:
-        return AssistantAppType.API_BASED
+    def app_type(self) -> ToolProviderType:
+        return ToolProviderType.API_BASED
     
     def invoke(self, 
                tool_id: int, tool_name: str, 
@@ -38,14 +38,14 @@ class ApiBasedToolProvider(AssistantToolProvider):
     def validate_parameters(self, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
         pass
 
-    def _parse_tool_bundle(self, tool_bundle: AssistantApiBasedToolBundle) -> AssistantTool:
+    def _parse_tool_bundle(self, tool_bundle: ApiBasedToolBundle) -> Tool:
         """
             parse tool bundle to tool
 
             :param tool_bundle: the tool bundle
             :return: the tool
         """
-        return AssistantTool(**{
+        return Tool(**{
             'identity' : {
                 'author': tool_bundle.author,
                 'name': tool_bundle.operation_id,
@@ -69,7 +69,7 @@ class ApiBasedToolProvider(AssistantToolProvider):
             'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
         })
 
-    def get_tools(self, user_id: str, tanent_id: str) -> List[AssistantTool]:
+    def get_tools(self, user_id: str, tanent_id: str) -> List[Tool]:
         """
             fetch tools from database
 
@@ -77,11 +77,11 @@ class ApiBasedToolProvider(AssistantToolProvider):
             :param tanent_id: the tanent id
             :return: the tools
         """
-        tools: List[AssistantTool] = []
+        tools: List[Tool] = []
 
         # get tanent api providers
-        db_providers: List[AssistantApiProvider] = db.session.query(AssistantApiProvider).filter(
-            AssistantApiProvider.tenant_id == tanent_id,
+        db_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tanent_id,
         ).all()
 
         if db_providers and len(db_providers) != 0:
@@ -92,9 +92,9 @@ class ApiBasedToolProvider(AssistantToolProvider):
                     tools.append(assistant_tool)
 
         # get user api providers
-        db_providers: List[AssistantApiProvider] = db.session.query(AssistantApiProvider).filter(
-            AssistantApiProvider.user_id == user_id,
-            AssistantApiProvider.tenant_id == None
+        db_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.user_id == user_id,
+            ApiToolProvider.tenant_id == None
         ).all()
 
         if db_providers and len(db_providers) != 0:

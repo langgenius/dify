@@ -1,9 +1,9 @@
-from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType
-from core.tools.provider.assistant_tool import AssistantTool
-from core.tools.provider.tool_provider import AssistantToolProvider
+from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType
+from core.tools.provider.tool import Tool
+from core.tools.provider.tool_provider import ToolProvider
 
 from typing import Any, Dict, List
 
-class DALLEProvider(AssistantToolProvider):
+class DALLEProvider(ToolProvider):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         pass

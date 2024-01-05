@@ -1,14 +1,14 @@
-class AssistantNotFoundError(Exception):
+class ToolProviderNotFoundError(Exception):
     pass
 
-class AssistantToolNotFoundError(Exception):
+class ToolNotFoundError(Exception):
     pass
 
-class AssistantToolParamterValidationError(Exception):
+class ToolParamterValidationError(Exception):
     pass
 
-class AssistantProviderCredentialValidationError(Exception):
+class ToolProviderCredentialValidationError(Exception):
     pass
 
-class AssistantToolNotSupportedError(Exception):
+class ToolNotSupportedError(Exception):
     pass
