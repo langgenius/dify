@@ -520,7 +520,13 @@ class ProviderConfiguration(BaseModel):
             provider_models.extend(
                 [
                     ModelWithProviderEntity(
-                        **m.dict(),
+                        model=m.model,
+                        label=m.label,
+                        model_type=m.model_type,
+                        features=m.features,
+                        fetch_from=m.fetch_from,
+                        model_properties=m.model_properties,
+                        deprecated=m.deprecated,
                         provider=SimpleModelProviderEntity(self.provider),
                         status=ModelStatus.ACTIVE
                     )
@@ -569,7 +575,13 @@ class ProviderConfiguration(BaseModel):
             for m in models:
                 provider_models.append(
                     ModelWithProviderEntity(
-                        **m.dict(),
+                        model=m.model,
+                        label=m.label,
+                        model_type=m.model_type,
+                        features=m.features,
+                        fetch_from=m.fetch_from,
+                        model_properties=m.model_properties,
+                        deprecated=m.deprecated,
                         provider=SimpleModelProviderEntity(self.provider),
                         status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
                     )
@@ -597,7 +609,13 @@ class ProviderConfiguration(BaseModel):
 
             provider_models.append(
                 ModelWithProviderEntity(
-                    **custom_model_schema.dict(),
+                    model=custom_model_schema.model,
+                    label=custom_model_schema.label,
+                    model_type=custom_model_schema.model_type,
+                    features=custom_model_schema.features,
+                    fetch_from=custom_model_schema.fetch_from,
+                    model_properties=custom_model_schema.model_properties,
+                    deprecated=custom_model_schema.deprecated,
                     provider=SimpleModelProviderEntity(self.provider),
                     status=ModelStatus.ACTIVE
                 )

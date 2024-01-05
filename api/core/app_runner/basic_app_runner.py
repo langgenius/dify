@@ -132,16 +132,16 @@ class BasicApplicationRunner(AppRunner):
                 )
                 return
 
-            # fill in variable inputs from external data tools if exists
-            external_data_tools = app_orchestration_config.external_data_variables
-            if external_data_tools:
-                inputs = self.fill_in_inputs_from_external_data_tools(
-                    tenant_id=app_record.tenant_id,
-                    app_id=app_record.id,
-                    external_data_tools=external_data_tools,
-                    inputs=inputs,
-                    query=query
-                )
+        # fill in variable inputs from external data tools if exists
+        external_data_tools = app_orchestration_config.external_data_variables
+        if external_data_tools:
+            inputs = self.fill_in_inputs_from_external_data_tools(
+                tenant_id=app_record.tenant_id,
+                app_id=app_record.id,
+                external_data_tools=external_data_tools,
+                inputs=inputs,
+                query=query
+            )
 
         # get context from datasets
         context = None
