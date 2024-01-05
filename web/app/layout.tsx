@@ -2,8 +2,8 @@ import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowerInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
-
 import { getLocaleOnServer } from '@/i18n/server'
+
 import './styles/globals.css'
 import './styles/markdown.scss'
 
