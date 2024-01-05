@@ -340,6 +340,22 @@ const translation = {
     score_thresholdTip: '用于设置文本片段筛选的相似度阈值。',
     retrieveChangeTip: '修改索引模式和检索模式可能会影响与该知识库关联的应用程序。',
   },
+  assistantType: {
+    chatAssistant: {
+      name: '聊天助手',
+      description: 'todo',
+    },
+    agentAssistant: {
+      name: '代理助手',
+      description: 'todo',
+    },
+  },
+  agent: {
+    setting: {
+      name: '代理设置',
+      description: '代理设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
+    },
+  },
 }
 
 export default translation

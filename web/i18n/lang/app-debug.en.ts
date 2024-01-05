@@ -346,6 +346,23 @@ const translation = {
     score_thresholdTip: 'Used to set the similarity threshold for chunks filtering.',
     retrieveChangeTip: 'Modifying the index mode and retrieval mode may affect applications associated with this Knowledge.',
   },
+  assistantType: {
+    name: 'Assistant Type',
+    chatAssistant: {
+      name: 'Chat Assistant',
+      description: 'Description text here, chat mode can do that',
+    },
+    agentAssistant: {
+      name: 'Agent Assistant',
+      description: 'Description text here, agent mod can use tools',
+    },
+  },
+  agent: {
+    setting: {
+      name: 'Agent Settings',
+      description: 'Agent settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
+    },
+  },
 }
 
 export default translation
