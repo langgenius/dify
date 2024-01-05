@@ -39,13 +39,15 @@ def test_invoke_model(setup_openai_mock):
         },
         texts=[
             "hello",
-            "world"
+            "world",
+            " ".join(["long_text"] * 100),
+            " ".join(["another_long_text"] * 100)
         ],
         user="abc-123"
     )
 
     assert isinstance(result, TextEmbeddingResult)
-    assert len(result.embeddings) == 2
+    assert len(result.embeddings) == 4
     assert result.usage.total_tokens == 2
 
 
