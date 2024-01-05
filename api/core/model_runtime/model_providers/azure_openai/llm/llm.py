@@ -309,7 +309,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
         # transform response
         response = LLMResult(
-            model=response.model,
+            model=response.model or model,
             prompt_messages=prompt_messages,
             message=assistant_prompt_message,
             usage=usage,
