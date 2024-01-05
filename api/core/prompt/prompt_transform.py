@@ -334,7 +334,18 @@ class PromptTransform:
 
         prompt = re.sub(r'<\|.*?\|>', '', prompt)
 
-        return [UserPromptMessage(content=prompt)]
+        model_mode = ModelMode.value_of(model_config.mode)
+
+        if model_mode == ModelMode.CHAT and files:
+            prompt_message_contents = [TextPromptMessageContent(data=prompt)]
+            for file in files:
+                prompt_message_contents.append(file.prompt_message_content)
+
+            prompt_message = UserPromptMessage(content=prompt_message_contents)
+        else:
+            prompt_message = UserPromptMessage(content=prompt)
+
+        return [prompt_message]
 
     def _set_context_variable(self, context: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> None:
         if '#context#' in prompt_template.variable_keys:

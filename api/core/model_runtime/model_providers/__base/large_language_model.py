@@ -165,7 +165,7 @@ class LargeLanguageModel(AIModel):
                 model=real_model,
                 prompt_messages=prompt_messages,
                 message=prompt_message,
-                usage=usage,
+                usage=usage if usage else LLMUsage.empty_usage(),
                 system_fingerprint=system_fingerprint
             ),
             credentials=credentials,

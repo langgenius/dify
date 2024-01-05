@@ -279,7 +279,7 @@ const TextGeneration: FC<IMainProps> = ({
       }
     })
     setAllTaskList(allTaskList)
-
+    setCurrGroupNum(0)
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
@@ -295,10 +295,7 @@ const TextGeneration: FC<IMainProps> = ({
     // avoid add many task at the same time
     if (needToAddNextGroupTask)
       setCurrGroupNum(hadRunedTaskNum)
-    // console.group()
-    // console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}.currGroupNum: ${getCurrGroupNum()}.hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
-    // console.log([...allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).map(item => item.id), taskId].sort((a: any, b: any) => a - b).join(','))
-    // console.groupEnd()
+
     const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {

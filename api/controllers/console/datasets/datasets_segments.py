@@ -156,6 +156,9 @@ class DatasetDocumentSegmentApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
 
+        if segment.status != 'completed':
+            raise NotFound('Segment is not completed, enable or disable function is not allowed')
+
         document_indexing_cache_key = 'document_{}_indexing'.format(segment.document_id)
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
