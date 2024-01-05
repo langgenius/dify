@@ -4,18 +4,27 @@ from os import listdir, path
 from core.tools.entities.assistant_entities import AssistantAppMessage
 from core.tools.provider.tool_provider import AssistantToolProvider
 from core.tools.entities.constant import DEFAULT_PROVIDERS
+from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import AssistantNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProvider
 from core.tools.provider.app_tool_provider import AppBasedToolProvider
+from core.tools.entities.user_entities import UserToolProvider
+
 from core.model_runtime.entities.message_entities import PromptMessage
 
+from extensions.ext_database import db
+
+from models.tools import AssistantApiProvider, AssistantBuiltinToolProvider
+
 import importlib
+
+_builtin_providers = {}
 
 class ToolManager:
     @staticmethod
     def invoke(
         provider: str,
-        tool_id: int,
+        tool_id: str,
         tool_name: str,
         tool_parameters: Dict[str, Any],
         credentials: Dict[str, Any],
@@ -58,7 +67,32 @@ class ToolManager:
         return provider_entity.invoke(tool_id, tool_name, tool_parameters, credentials, prompt_messages)
     
     @staticmethod
-    def list_providers() -> List[AssistantToolProvider]:
+    def get_builtin_provider(provider: str) -> AssistantToolProvider:
+        global _builtin_providers
+        """
+            get the builtin provider
+
+            :param provider: the name of the provider
+            :return: the provider
+        """
+        if len(_builtin_providers) == 0:
+            # init the builtin providers
+            ToolManager.list_builtin_providers()
+
+        if provider not in _builtin_providers:
+            raise AssistantNotFoundError(f'builtin provider {provider} not found')
+        
+        return _builtin_providers[provider]
+
+    @staticmethod
+    def list_builtin_providers() -> List[AssistantToolProvider]:
+        global _builtin_providers
+
+
+        # use cache first
+        if len(_builtin_providers) > 0:
+            return list(_builtin_providers.values())
+        
         builtin_providers = []
         for provider in listdir(path.join(path.dirname(path.realpath(__file__)), 'provider', 'builtin')):
             if provider.startswith('__'):
@@ -84,8 +118,57 @@ class ToolManager:
                 provider_class = classes[0]
                 builtin_providers.append(provider_class())
 
-        return [
-            ApiBasedToolProvider(),
-            AppBasedToolProvider(),
-            *builtin_providers
-        ]
+        # cache the builtin providers
+        for provider in builtin_providers:
+            _builtin_providers[provider.identity.name] = provider
+        return builtin_providers
+    
+    @staticmethod
+    def user_list_providers(
+        user_id: str,
+        tenant_id: str,
+    ) -> List[UserToolProvider]:
+        result_providers: Dict[str, UserToolProvider] = {}
+        # get builtin providers
+        builtin_providers = ToolManager.list_builtin_providers()
+        # append builtin providers
+        for provider in builtin_providers:
+            result_providers[provider.identity.name] = UserToolProvider(
+                author=provider.identity.author,
+                name=provider.identity.name,
+                description=I18nObject(
+                    en_US=provider.identity.description.en_US,
+                    zh_Hans=provider.identity.description.zh_Hans,
+                ),
+                icon=provider.identity.icon,
+                label=I18nObject(
+                    en_US=provider.identity.label.en_US,
+                    zh_Hans=provider.identity.label.zh_Hans,
+                ),
+                type=UserToolProvider.ProviderType.BUILTIN,
+                team_credentials={},
+                self_credentails=[],
+                is_team_authorization=False,
+                self_authorization_count=0,
+            )
+
+        # get db builtin providers
+        db_builtin_providers: List[AssistantBuiltinToolProvider] = db.session.query(AssistantBuiltinToolProvider). \
+            filter(AssistantBuiltinToolProvider.tenant_id == tenant_id).all()
+        
+        for db_builtin_provider in db_builtin_providers:
+            # add provider into providers
+            credentails = db_builtin_provider.credentials
+            provider_name = db_builtin_provider.provider
+            result_providers[provider_name].is_team_authorization = True
+            
+            for name, value in credentails.items():
+                if len(value) <= 6:
+                    value = '******'
+                else:
+                    value = value[:3] + '******' + value[-3:]
+                
+                # overwrite the result_providers
+                result_providers[provider_name].team_credentials[name] = value
+
+        return list(result_providers.values())

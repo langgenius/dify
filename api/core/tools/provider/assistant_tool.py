@@ -11,6 +11,7 @@ class AssistantTool(BaseModel, ABC):
     identity: AssistantToolIdentity = None
     parameters: List[AssistantToolParamter] = None
     description: AssistantToolDescription = None
+    is_team_authorization: bool = False
 
     def invoke(self, tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],

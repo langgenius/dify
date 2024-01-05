@@ -9,3 +9,6 @@ class AssistantToolParamterValidationError(Exception):
 
 class AssistantProviderCredentialValidationError(Exception):
     pass
+
+class AssistantToolNotSupportedError(Exception):
+    pass

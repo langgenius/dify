@@ -113,3 +113,15 @@ class AssistantCredentials(BaseModel):
     help: Optional[I18nObject] = None
     url: Optional[str] = None
     placeholder: Optional[I18nObject] = None
+
+    def to_dict(self) -> dict:
+        return {
+            'name': self.name,
+            'type': self.type.value,
+            'required': self.required,
+            'default': self.default,
+            'options': self.options,
+            'help': self.help.to_dict() if self.help else None,
+            'url': self.url,
+            'placeholder': self.placeholder.to_dict() if self.placeholder else None,
+        }

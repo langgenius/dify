@@ -14,3 +14,9 @@ class I18nObject(BaseModel):
         super().__init__(**data)
         if not self.zh_Hans:
             self.zh_Hans = self.en_US
+
+    def to_dict(self) -> dict:
+        return {
+            'zh_Hans': self.zh_Hans,
+            'en_US': self.en_US,
+        }

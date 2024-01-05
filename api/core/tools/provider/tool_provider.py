@@ -9,6 +9,7 @@ from core.model_runtime.entities.message_entities import PromptMessage
 from core.tools.entities.assistant_entities import AssistantAppMessage, AssistantAppType, \
     AssistantToolProviderIdentity, AssistantToolParamter, AssistantCredentials
 from core.tools.provider.assistant_tool import AssistantTool
+from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import AssistantToolNotFoundError, AssistantNotFoundError, \
     AssistantToolParamterValidationError, AssistantProviderCredentialValidationError
 
@@ -17,7 +18,7 @@ import importlib
 class AssistantToolProvider(BaseModel, ABC):
     identity: Optional[AssistantToolProviderIdentity] = None
     tools: Optional[List[AssistantTool]] = None
-    credentials: Optional[Dict[str, AssistantCredentials]] = None
+    credentials_schema: Optional[Dict[str, AssistantCredentials]] = None
 
     def __init__(self):
         if self.app_type == AssistantAppType.API_BASED or self.app_type == AssistantAppType.APP_BASED:
@@ -40,7 +41,7 @@ class AssistantToolProvider(BaseModel, ABC):
 
         super().__init__(**{
             'identity': provider_yaml['identity'],
-            'credentials': provider_yaml['credentails_for_provider'] if 'credentails_for_provider' in provider_yaml else None,
+            'credentials_schema': provider_yaml['credentails_for_provider'] if 'credentails_for_provider' in provider_yaml else None,
         })
 
     def _get_bulitin_tools(self) -> List[AssistantTool]:
@@ -75,6 +76,23 @@ class AssistantToolProvider(BaseModel, ABC):
 
         self.tools = tools
         return tools
+    
+    def get_credentails_schema(self) -> Dict[str, AssistantCredentials]:
+        """
+            returns the credentials schema of the provider
+
+            :return: the credentials schema
+        """
+        return self.credentials_schema.copy()
+    
+    def user_get_credentails_schema(self) -> UserToolProviderCredentials:
+        """
+            returns the credentials schema of the provider, this method is used for user
+
+            :return: the credentials schema
+        """
+        credentials = self.credentials_schema.copy()
+        return UserToolProviderCredentials(credentails=credentials)
 
     def get_tools(self) -> List[AssistantTool]:
         """
@@ -280,7 +298,7 @@ class AssistantToolProvider(BaseModel, ABC):
 
             :param credentials: the credentials of the tool
         """
-        credentials_schema = self.credentials
+        credentials_schema = self.credentials_schema
         if credentials_schema is None:
             return
         
@@ -328,7 +346,7 @@ class AssistantToolProvider(BaseModel, ABC):
 
                 credentials[credential_name] = default_value
 
-    def validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: Dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 
@@ -339,10 +357,10 @@ class AssistantToolProvider(BaseModel, ABC):
         self.validate_credentials_format(credentials)
 
         # validate credentials
-        self._validate_credentials(tool_name, credentials)
+        self._validate_credentials(credentials)
 
     @abstractmethod
-    def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 

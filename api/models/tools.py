@@ -10,6 +10,7 @@ from extensions.ext_database import db
 from core.tools.entities.assistant_bundle import AssistantApiBasedToolBundle
 from core.tools.entities.common_entities import I18nObject
 
+from models.model import Tenant, EndUser
 
 class AssistantBuiltinToolProvider(db.Model):
     """
@@ -25,7 +26,7 @@ class AssistantBuiltinToolProvider(db.Model):
     # id of the tool provider
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     # id of the tenant
-    tenant_id = db.Column(UUID, nullable=False)
+    tenant_id = db.Column(UUID, nullable=True)
     # who created this tool provider
     user_id = db.Column(UUID, nullable=False)
     # name of the tool provider
@@ -34,6 +35,10 @@ class AssistantBuiltinToolProvider(db.Model):
     encrypted_credentials = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def credentials(self) -> dict:
+        return json.loads(self.encrypted_credentials)
 
 class AssistantAppTool(db.Model):
     """
@@ -134,3 +139,15 @@ class AssistantApiProvider(db.Model):
     @property
     def credentials(self) -> dict:
         return json.loads(self.credentials)
+    
+    @property
+    def is_taned(self) -> bool:
+        return self.tenant_id is not None
+    
+    @property
+    def user(self) -> EndUser:
+        return db.session.query(EndUser).filter(EndUser.id == self.user_id).first()
+
+    @property
+    def tanent(self) -> Tenant:
+        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()

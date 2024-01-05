@@ -12,6 +12,7 @@ from libs.login import login_required
 from models.tool import ToolProvider, ToolProviderName
 from werkzeug.exceptions import Forbidden
 
+from services.tools_manage_service import ToolManageService
 
 class ToolProviderListApi(Resource):
 
@@ -130,7 +131,55 @@ class ToolProviderCredentialsValidateApi(Resource):
         return response
 
 
+class AssistantToolProviderListApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        return ToolManageService.list_tool_providers(user_id, tenant_id)
+
+class AssistantToolProviderApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('provider_type', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
+
+        args = parser.parse_args()
+
+        return ToolManageService.create_tool_provider(
+            user_id,
+            tenant_id,
+            args['provider_type'],
+            args['provider'],
+            args['credentials'],
+        )
+    
+class AssistantToolBuiltinProviderCredentialsSchemaApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        return ToolManageService.list_builtin_provider_credentails_schema(provider)
+
+
+# consider to remove apis below
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
 api.add_resource(ToolProviderCredentialsApi, '/workspaces/current/tool-providers/<provider>/credentials')
 api.add_resource(ToolProviderCredentialsValidateApi,
                  '/workspaces/current/tool-providers/<provider>/credentials-validate')
+
+# new apis
+api.add_resource(AssistantToolProviderListApi, '/workspaces/current/assistant-tool-providers')
+api.add_resource(AssistantToolProviderApi, '/workspaces/current/assistant-tool-provider')
+api.add_resource(AssistantToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/assistant-tool-provider/builtin/<provider>/credentials_schema')
