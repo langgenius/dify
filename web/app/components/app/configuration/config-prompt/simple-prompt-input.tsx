@@ -21,7 +21,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { ArrowNarrowRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -146,13 +146,13 @@ const Prompt: FC<ISimplePromptInput> = ({
             <AutomaticBtn onClick={showAutomaticTrue} />
             {!isAgent && !isAdvancedMode && (
               <>
-                <div className='mx-1 h-3.5 bg-black/5'></div>
+                <div className='mx-1 w-px h-3.5 bg-black/5'></div>
                 <div
-                  className='flex px-2 space-x-1 leading-[18px] text-xs font-semibold text-[#444CE7] cursor-pointer'
+                  className='flex items-center px-2 space-x-1 leading-[18px] text-xs font-semibold text-[#444CE7] cursor-pointer'
                   onClick={() => setPromptMode(PromptMode.advanced)}
                 >
                   <div>{t('appDebug.promptMode.advanced')}</div>
-                  <ArrowNarrowLeft></ArrowNarrowLeft>
+                  <ArrowNarrowRight className='w-3 h-3'></ArrowNarrowRight>
                 </div>
               </>
             )}
