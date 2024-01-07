@@ -118,7 +118,7 @@ class ApiBasedToolProviderEntity(ToolProviderController):
             'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
         })
 
-    def load_bundled_tools(self, tools: ApiBasedToolBundle) -> List[ApiTool]:
+    def load_bundled_tools(self, tools: List[ApiBasedToolBundle]) -> List[ApiTool]:
         """
             load bundled tools
 

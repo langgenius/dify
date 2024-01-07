@@ -54,6 +54,24 @@ class ApiBasedToolSchemaParser:
                         default=parameter['default'] if 'default' in parameter else None,
                     ))
             # create tool bundle
+            # check if there is a request body
+            if 'requestBody' in interface['operation']:
+                request_body = interface['operation']['requestBody']
+                if 'content' in request_body:
+                    for content_type, content in request_body['content'].items():
+                        # if there is a reference, get the reference and overwrite the content
+                        if 'schema' not in content:
+                            content
+
+                        if '$ref' in content['schema']:
+                            # get the reference
+                            root = openapi
+                            reference = content['schema']['$ref'].split('/')[1:]
+                            for ref in reference:
+                                root = root[ref]
+                            # overwrite the content
+                            interface['operation']['requestBody']['content'][content_type]['schema'] = root
+
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],

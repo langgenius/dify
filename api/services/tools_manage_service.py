@@ -92,7 +92,7 @@ class ToolManageService:
             raise ValueError(f'invalid schema type {schema}')
         
         if schema_type == ApiProviderSchemaType.OPENAPI.value:
-            ToolManageService.create_openapi_tool_provider(
+            return ToolManageService.create_openapi_tool_provider(
                 user_id, tenant_id, provider_name, icon, description,
                 credentails, parameters, schema
             )

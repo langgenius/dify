@@ -23,7 +23,7 @@ class ApiBasedToolBundle(BaseModel):
     # icon
     icon: Optional[str] = None
     # openapi operation
-    openapi: Operation
+    openapi: dict
 
 class AppToolBundle(BaseModel):
     """
