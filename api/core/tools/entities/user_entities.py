@@ -18,9 +18,7 @@ class UserToolProvider(BaseModel):
     label: I18nObject # label
     type: ProviderType
     team_credentials: dict = None
-    self_credentails: List[dict] = None
     is_team_authorization: bool = False
-    self_authorization_count: int = 0
 
     def to_dict(self) -> dict:
         return {
@@ -31,9 +29,7 @@ class UserToolProvider(BaseModel):
             'label': self.label.to_dict(),
             'type': self.type.value,
             'team_credentials': self.team_credentials,
-            'self_credentails': self.self_credentails,
             'is_team_authorization': self.is_team_authorization,
-            'self_authorization_count': self.self_authorization_count,
         }
 
 class UserToolProviderCredentials(BaseModel):

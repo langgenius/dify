@@ -22,7 +22,7 @@ class ToolProviderListApi(Resource):
 
         return ToolManageService.list_tool_providers(user_id, tenant_id)
 
-class ToolProviderApi(Resource):
+class ToolBuiltinProviderApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -32,27 +32,57 @@ class ToolProviderApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('provider_type', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
 
         args = parser.parse_args()
 
-        return ToolManageService.create_tool_provider(
+        return ToolManageService.create_builtin_tool_provider(
             user_id,
             tenant_id,
-            args['provider_type'],
             args['provider'],
             args['credentials'],
         )
-    
+
+class ToolApiProviderApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('parameters', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('description', type=str, required=True, nullable=False, location='json')
+
+        args = parser.parse_args()
+
+        return ToolManageService.create_api_tool_provider(
+            user_id,
+            tenant_id,
+            args['provider'],
+            args['icon'],
+            args['description'],
+            args['credentials'],
+            args['parameters'],
+            args['schema_type'],
+            args['schema'],
+        )
+
 class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider):
-        return ToolManageService.list_builtin_provider_credentails_schema(provider)
+        return ToolManageService.list_builtin_provider_credentials_schema(provider)
 
 # new apis
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
-api.add_resource(ToolProviderApi, '/workspaces/current/tool-provider')
+api.add_resource(ToolBuiltinProviderApi, '/workspaces/current/tool-provider/builtin')
+api.add_resource(ToolApiProviderApi, '/workspaces/current/tool-provider/api')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')

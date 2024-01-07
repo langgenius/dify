@@ -2,12 +2,13 @@ from typing import List, Dict, Any
 from os import listdir, path
 
 from core.tools.entities.tool_entities import AssistantAppMessage
-from core.tools.provider.tool_provider import ToolProvider
+from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.provider.api_tool_provider import ApiBasedToolProvider
-from core.tools.provider.app_tool_provider import AppBasedToolProvider
+from core.tools.provider.api_tool_provider import ApiBasedToolProviderEntity
+from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.entities.user_entities import UserToolProvider
 
 from core.model_runtime.entities.message_entities import PromptMessage
@@ -42,11 +43,11 @@ class ToolManager:
 
             :return: the messages that the tool wants to send to the user
         """
-        provider_entity: ToolProvider = None
+        provider_entity: ToolProviderController = None
         if provider == DEFAULT_PROVIDERS.API_BASED:
-            provider_entity = ApiBasedToolProvider()
+            provider_entity = ApiBasedToolProviderEntity()
         elif provider == DEFAULT_PROVIDERS.APP_BASED:
-            provider_entity = AppBasedToolProvider()
+            provider_entity = AppBasedToolProviderEntity()
 
         if provider_entity is None:
             # fetch the provider from .provider.builtin
@@ -56,7 +57,7 @@ class ToolManager:
             spec.loader.exec_module(mod)
 
             # get all the classes in the module
-            classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != ToolProvider and issubclass(x, ToolProvider)]
+            classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != ToolProviderController and issubclass(x, ToolProviderController)]
             if len(classes) == 0:
                 raise ToolProviderNotFoundError(f'provider {provider} not found')
             if len(classes) > 1:
@@ -67,7 +68,7 @@ class ToolManager:
         return provider_entity.invoke(tool_id, tool_name, tool_parameters, credentials, prompt_messages)
     
     @staticmethod
-    def get_builtin_provider(provider: str) -> ToolProvider:
+    def get_builtin_provider(provider: str) -> ToolProviderController:
         global _builtin_providers
         """
             get the builtin provider
@@ -85,7 +86,7 @@ class ToolManager:
         return _builtin_providers[provider]
 
     @staticmethod
-    def list_builtin_providers() -> List[ToolProvider]:
+    def list_builtin_providers() -> List[BuiltinToolProviderController]:
         global _builtin_providers
 
 
@@ -108,7 +109,10 @@ class ToolManager:
                 spec.loader.exec_module(mod)
 
                 # load all classes
-                classes = [obj for name, obj in vars(mod).items() if isinstance(obj, type) and obj != ToolProvider and issubclass(obj, ToolProvider)]
+                classes = [
+                    obj for name, obj in vars(mod).items() 
+                        if isinstance(obj, type) and obj != BuiltinToolProviderController and issubclass(obj, BuiltinToolProviderController)
+                ]
                 if len(classes) == 0:
                     raise ToolProviderNotFoundError(f'provider {provider} not found')
                 if len(classes) > 1:
@@ -147,9 +151,7 @@ class ToolManager:
                 ),
                 type=UserToolProvider.ProviderType.BUILTIN,
                 team_credentials={},
-                self_credentails=[],
                 is_team_authorization=False,
-                self_authorization_count=0,
             )
 
         # get db builtin providers
@@ -161,6 +163,37 @@ class ToolManager:
             credentails = db_builtin_provider.credentials
             provider_name = db_builtin_provider.provider
             result_providers[provider_name].is_team_authorization = True
+
+            for name, value in credentails.items():
+                if len(value) <= 6:
+                    value = '******'
+                else:
+                    value = value[:3] + '******' + value[-3:]
+                
+                # overwrite the result_providers
+                result_providers[provider_name].team_credentials[name] = value
+
+        # get db api providers
+        db_api_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider). \
+            filter(ApiToolProvider.tenant_id == tenant_id).all()
+        
+        for db_api_provider in db_api_providers:
+            # add provider into providers
+            credentails = db_api_provider.credentials
+            provider_name = db_api_provider.name
+            result_providers[provider_name] = UserToolProvider(
+                author=db_api_provider.user_id,
+                name=db_api_provider.name,
+                description=db_api_provider.description,
+                icon=db_api_provider.icon,
+                label=I18nObject(
+                    en_US=db_api_provider.name,
+                    zh_Hans=db_api_provider.name,
+                ),
+                type=UserToolProvider.ProviderType.API,
+                team_credentials={},
+                is_team_authorization=True,
+            )
 
             for name, value in credentails.items():
                 if len(value) <= 6:

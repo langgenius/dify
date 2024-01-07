@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Union, List
+from typing import List
 
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import ForeignKey
@@ -9,6 +9,7 @@ from extensions.ext_database import db
 
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ApiProviderSchemaType
 
 from models.model import Tenant, EndUser, App
 
@@ -78,28 +79,6 @@ class PublishedAppTool(db.Model):
     @property
     def app(self) -> App:
         return db.session.query(App).filter(App.id == self.app_id).first()
-    
-class ApiProviderSchemaType(Enum):
-    """
-    Enum class for api provider schema type.
-    """
-    OPENAPI = "openapi"
-    SWAGGER = "swagger"
-    OPENAI_PLUGIN = "openai_plugin"
-    OPENAI_ACTIONS = "openai_actions"
-
-    @classmethod
-    def value_of(cls, value: str) -> 'ApiProviderSchemaType':
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f'invalid mode value {value}')
 
 class ApiToolProvider(db.Model):
     """
@@ -113,6 +92,8 @@ class ApiToolProvider(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     # name of the api provider
     name = db.Column(db.String(40), nullable=False)
+    # icon
+    icon = db.Column(db.String(256), nullable=False)
     # original schema
     schema = db.Column(db.Text, nullable=False)
     schema_type_str = db.Column(db.String(40), nullable=False)
@@ -121,16 +102,15 @@ class ApiToolProvider(db.Model):
     # tanent id
     tenant_id = db.Column(UUID, nullable=False)
     # description of the provider
-    description_str = db.Column(db.Text, nullable=False)
+    description = db.Column(db.Text, nullable=False)
     # json format tools
     tools_str = db.Column(db.Text, nullable=False)
     # json format credentials
-    credentials = db.Column(db.Text, nullable=False)
+    credentials_str = db.Column(db.Text, nullable=False)
 
-    @property
-    def description(self) -> I18nObject:
-        return I18nObject(**json.loads(self.description_str))
-    
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
     @property
     def schema_type(self) -> ApiProviderSchemaType:
         return ApiProviderSchemaType.value_of(self.schema_type_str)

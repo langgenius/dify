@@ -10,7 +10,7 @@ from yaml import FullLoader, load
 from json import loads as json_loads, dumps as json_dumps
 from requests import get
 
-class AssistantApiBasedSchemaParser:
+class ApiBasedToolSchemaParser:
     @staticmethod
     def parse_openapi_to_tool_bundle(openapi: dict) -> List[ApiBasedToolBundle]:
         if len(openapi['servers']) == 0:
@@ -76,7 +76,9 @@ class AssistantApiBasedSchemaParser:
             :return: the tool bundle
         """
         openapi: dict = load(yaml, Loader=FullLoader)
-        return AssistantApiBasedSchemaParser.parse_openapi_to_tool_bundle(openapi)
+        if openapi is None:
+            raise ToolProviderNotFoundError('Invalid openapi yaml.')
+        return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
     
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(json: str) -> List[ApiBasedToolBundle]:
@@ -105,4 +107,4 @@ class AssistantApiBasedSchemaParser:
         if response.status_code != 200:
             raise ToolProviderNotFoundError('cannot get openapi yaml from url.')
         
-        return AssistantApiBasedSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text)
+        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text)

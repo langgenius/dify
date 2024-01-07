@@ -34,6 +34,16 @@ class Tool(BaseModel, ABC):
         prompt_messages: List[PromptMessage]
     ) -> Union[AssistantAppMessage, List[AssistantAppMessage]]:
         pass
+    
+    @abstractmethod
+    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+        """
+            validate the credentials
+
+            :param credentails: the credentials
+            :param parameters: the parameters
+        """
+        pass
 
     def create_image_message(self, image: str) -> AssistantAppMessage:
         """

@@ -24,6 +24,48 @@ class ToolProviderType(Enum):
             if mode.value == value:
                 return mode
         raise ValueError(f'invalid mode value {value}')
+    
+class ApiProviderSchemaType(Enum):
+    """
+    Enum class for api provider schema type.
+    """
+    OPENAPI = "openapi"
+    SWAGGER = "swagger"
+    OPENAI_PLUGIN = "openai_plugin"
+    OPENAI_ACTIONS = "openai_actions"
+
+    @classmethod
+    def value_of(cls, value: str) -> 'ApiProviderSchemaType':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid mode value {value}')
+    
+class ApiProviderAuthType(Enum):
+    """
+    Enum class for api provider auth type.
+    """
+    NONE = "none"
+    API_KEY = "api_key"
+
+    @classmethod
+    def value_of(cls, value: str) -> 'ApiProviderAuthType':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid mode value {value}')
 
 class AssistantAppMessage(BaseModel):
     class MessageType(Enum):

@@ -1,21 +1,78 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 
-from pydantic import BaseModel
+from os import path, listdir
+from yaml import load, FullLoader
 
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, \
     ToolProviderIdentity, ToolParamter, ToolProviderCredentials
 from core.tools.provider.tool import Tool
+from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError, \
     ToolParamterValidationError, ToolProviderCredentialValidationError
 
-class ToolProviderController(BaseModel, ABC):
-    identity: Optional[ToolProviderIdentity] = None
-    tools: Optional[List[Tool]] = None
-    credentials_schema: Optional[Dict[str, ToolProviderCredentials]] = None
+import importlib
 
+class BuiltinToolProviderController(ToolProviderController):
+    def __init__(self, **data: Any) -> None:
+        if self.app_type == ToolProviderType.API_BASED or self.app_type == ToolProviderType.APP_BASED:
+            super().__init__(**data)
+            return
+        
+        # load provider yaml
+        provider = self.__class__.__module__.split('.')[-1]
+        yaml_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.yaml')
+        try:
+            with open(yaml_path, 'r') as f:
+                provider_yaml = load(f.read(), FullLoader)
+        except:
+            raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}')
+
+        if 'credentails_for_provider' in provider_yaml:
+            # set credentials name
+            for credential_name in provider_yaml['credentails_for_provider']:
+                provider_yaml['credentails_for_provider'][credential_name]['name'] = credential_name
+
+        super().__init__(**{
+            'identity': provider_yaml['identity'],
+            'credentials_schema': provider_yaml['credentails_for_provider'] if 'credentails_for_provider' in provider_yaml else None,
+        })
+
+    def _get_bulitin_tools(self) -> List[Tool]:
+        """
+            returns a list of tools that the provider can provide
+
+            :return: list of tools
+        """
+        if self.tools:
+            return self.tools
+        
+        provider = self.identity.name
+        tool_path = path.join(path.dirname(path.realpath(__file__)), "builtin", provider, "tools")
+        # get all the yaml files in the tool path
+        tool_files = list(filter(lambda x: x.endswith(".yaml") and not x.startswith("__"), listdir(tool_path)))
+        tools = []
+        for tool_file in tool_files:
+            with open(path.join(tool_path, tool_file), "r") as f:
+                # get tool name
+                tool_name = tool_file.split(".")[0]
+                tool = load(f.read(), FullLoader)
+                # get tool class, import the module
+                py_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, 'tools', f'{tool_name}.py')
+                spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.tools.{tool_name}', py_path)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+
+                # get all the classes in the module
+                classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != Tool and issubclass(x, Tool)]
+                assistant_tool_class = classes[0]
+                tools.append(assistant_tool_class(**tool))
+
+        self.tools = tools
+        return tools
+    
     def get_credentails_schema(self) -> Dict[str, ToolProviderCredentials]:
         """
             returns the credentials schema of the provider
@@ -33,23 +90,19 @@ class ToolProviderController(BaseModel, ABC):
         credentials = self.credentials_schema.copy()
         return UserToolProviderCredentials(credentails=credentials)
 
-    @abstractmethod
     def get_tools(self) -> List[Tool]:
         """
             returns a list of tools that the provider can provide
 
             :return: list of tools
         """
-        pass
-
-    @abstractmethod
+        return self._get_bulitin_tools()
+    
     def get_tool(self, tool_name: str) -> Tool:
         """
-            returns a tool that the provider can provide
-
-            :return: tool
+            returns the tool that the provider can provide
         """
-        pass
+        return next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
 
     def get_parameters(self, tool_name: str) -> List[ToolParamter]:
         """
@@ -96,69 +149,6 @@ class ToolProviderController(BaseModel, ABC):
         
         # invoke
         return tool.invoke(tool_paramters, credentials, prompt_messages)
-
-    def invoke(
-        self,
-        tool_id: int,
-        tool_name: str,
-        tool_parameters: Dict[str, Any],
-        credentials: Dict[str, Any],
-        prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
-        """
-            invoke will detect which type of assistant should be used and route the request to the correct method
-        
-            tool_name: the name of the tool, defined in `get_tools`
-            tool_paramters: the parameters of the tool
-            credentials: the credentials of the tool
-            prompt_messages: the prompt messages that the tool can use
-
-            :return: the messages that the tool wants to send to the user
-        """
-        # validate parameters
-        self.validate_parameters(tool_id=tool_id, tool_name=tool_name, tool_parameters=tool_parameters)
-        
-        return self._invoke(tool_name, tool_parameters, credentials, prompt_messages)
-
-    def invoke_app_based(
-        self,
-        tool_id: int,
-        tool_name: str,
-        tool_paramters: Dict[str, Any],
-        credentials: Dict[str, Any],
-        prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
-        """
-            invoke app based assistant
-
-            tool_name: the name of the tool, defined in `get_tools`
-            tool_paramters: the parameters of the tool
-            credentials: the credentials of the tool
-            prompt_messages: the prompt messages that the tool can use
-
-            :return: the messages that the tool wants to send to the user
-        """
-        raise NotImplementedError()
-
-    def invoke_api_based(
-        self,
-        tool_id: int,
-        tool_name: str,
-        tool_paramters: Dict[str, Any],
-        credentials: Dict[str, Any],
-        prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
-        """
-            invoke api based assistant
-
-            tool_name: the name of the tool, defined in `get_tools`
-            tool_paramters: the parameters of the tool
-            credentials: the credentials of the tool
-            prompt_messages: the prompt messages that the tool can use
-
-            :return: the messages that the tool wants to send to the user
-        """
-        raise NotImplementedError()
 
     def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
         """
