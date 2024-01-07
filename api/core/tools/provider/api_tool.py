@@ -7,9 +7,8 @@ from core.tools.entities.tool_entities import AssistantAppMessage
 from core.tools.provider.tool import Tool
 from core.tools.errors import ToolProviderCredentialValidationError
 
-from openapi_schema_pydantic import Components
-
 import httpx
+import requests
 
 class ApiTool(Tool):
     api_bundle: ApiBasedToolBundle
@@ -24,16 +23,19 @@ class ApiTool(Tool):
         """
         headers = {}
 
-        if self.api_bundle['auth_type'] == 'api_key':
+        if 'auth_type' not in credentails:
+            raise ToolProviderCredentialValidationError('Missing auth_type')
+
+        if credentails['auth_type'] == 'api_key':
             api_key_header = 'api_key'
 
             if 'api_key_header' in credentails:
                 api_key_header = credentails['api_key_header']
             
-            if 'api_key_value' not in parameters:
+            if 'api_key_value' not in credentails:
                 raise ToolProviderCredentialValidationError('Missing api_key_value')
             
-            headers[api_key_header] = parameters['api_key_value']
+            headers[api_key_header] = credentails['api_key_value']
 
         needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
         for parameter in needed_parameters:
@@ -43,8 +45,15 @@ class ApiTool(Tool):
             if parameter.default is not None and parameter.name not in parameters:
                 parameters[parameter.name] = parameter.default
 
-        self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
+        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
+        # validate response
+        self.validate_response(response)
 
+    def validate_response(self, response: httpx.Response) -> None:
+        """
+            validate the response
+        """
+        pass
     
     def do_http_request(self, url: str, method: str, headers: Dict[str, Any], parameters: Dict[str, Any]) -> httpx.Response:
         """
@@ -105,7 +114,9 @@ class ApiTool(Tool):
                         if name in parameters:
                             body[name] = parameters[name]
                         elif name in required:
-                            raise ToolProviderCredentialValidationError(f"Missing required parameter {name}")
+                            raise ToolProviderCredentialValidationError(
+                                f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
+                            )
                         elif 'default' in property:
                             body[name] = property['default']
                         else:
@@ -116,29 +127,34 @@ class ApiTool(Tool):
         for name, value in path_params.items():
             url = url.replace(f'{{{name}}}', value)
 
-        # parse http body data
-        if headers['Content-Type'] == 'application/json':
-            body = dumps(body)
-        else:
-            body = body
+        # parse http body data if needed, for GET/HEAD/OPTIONS/TRACE, the body is ignored
+        if 'Content-Type' in headers:
+            if headers['Content-Type'] == 'application/json':
+                body = dumps(body)
+            else:
+                body = body
         
         # do http request
         if method == 'get':
-            response = httpx.get(url, params=params, headers=headers, cookies=cookies)
+            response = httpx.get(url, params=params, headers=headers, cookies=cookies, timeout=10)
         elif method == 'post':
-            response = httpx.post(url, params=params, headers=headers, cookies=cookies, data=body)
+            response = httpx.post(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
         elif method == 'put':
-            response = httpx.put(url, params=params, headers=headers, cookies=cookies, data=body)
+            response = httpx.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
         elif method == 'delete':
-            response = httpx.delete(url, params=params, headers=headers, cookies=cookies)
+            """
+            request body data is unsupported for DELETE method in standard http protocol
+            however, OpenAPI 3.0 supports request body data for DELETE method, so we support it here by using requests
+            """
+            response = requests.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
         elif method == 'patch':
-            response = httpx.patch(url, params=params, headers=headers, cookies=cookies, data=body)
+            response = httpx.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
         elif method == 'head':
-            response = httpx.head(url, params=params, headers=headers, cookies=cookies)
+            response = httpx.head(url, params=params, headers=headers, cookies=cookies, timeout=10)
         elif method == 'options':
-            response = httpx.options(url, params=params, headers=headers, cookies=cookies)
+            response = httpx.options(url, params=params, headers=headers, cookies=cookies, timeout=10)
         elif method == 'trace':
-            response = httpx.trace(url, params=params, headers=headers, cookies=cookies)
+            response = httpx.trace(url, params=params, headers=headers, cookies=cookies, timeout=10)
         else:
             raise ValueError(f'Invalid http method {method}')
         

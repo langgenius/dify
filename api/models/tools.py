@@ -121,7 +121,7 @@ class ApiToolProvider(db.Model):
     
     @property
     def credentials(self) -> dict:
-        return json.loads(self.credentials)
+        return json.loads(self.credentials_str)
     
     @property
     def is_taned(self) -> bool:

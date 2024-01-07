@@ -182,9 +182,12 @@ class ToolManager:
             credentails = db_api_provider.credentials
             provider_name = db_api_provider.name
             result_providers[provider_name] = UserToolProvider(
-                author=db_api_provider.user_id,
+                author=db_api_provider.tanent.name,
                 name=db_api_provider.name,
-                description=db_api_provider.description,
+                description=I18nObject(
+                    en_US=db_api_provider.description,
+                    zh_Hans=db_api_provider.description,
+                ),
                 icon=db_api_provider.icon,
                 label=I18nObject(
                     en_US=db_api_provider.name,
