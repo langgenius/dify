@@ -18,6 +18,9 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 
 import importlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 _builtin_providers = {}
 
@@ -88,7 +91,6 @@ class ToolManager:
     @staticmethod
     def list_builtin_providers() -> List[BuiltinToolProviderController]:
         global _builtin_providers
-
 
         # use cache first
         if len(_builtin_providers) > 0:
@@ -178,11 +180,16 @@ class ToolManager:
             filter(ApiToolProvider.tenant_id == tenant_id).all()
         
         for db_api_provider in db_api_providers:
+            username = 'Anonymous'
+            try:
+                username = db_api_provider.user.name
+            except Exception as e:
+                logger.error(f'failed to get user name for api provider {db_api_provider.id}: {str(e)}')
             # add provider into providers
             credentails = db_api_provider.credentials
             provider_name = db_api_provider.name
             result_providers[provider_name] = UserToolProvider(
-                author=db_api_provider.tanent.name,
+                author=username,
                 name=db_api_provider.name,
                 description=I18nObject(
                     en_US=db_api_provider.description,

@@ -11,7 +11,7 @@ from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 
-from models.model import Tenant, EndUser, App
+from models.model import Tenant, Account, App
 
 class BuiltinToolProvider(db.Model):
     """
@@ -128,8 +128,8 @@ class ApiToolProvider(db.Model):
         return self.tenant_id is not None
     
     @property
-    def user(self) -> EndUser:
-        return db.session.query(EndUser).filter(EndUser.id == self.user_id).first()
+    def user(self) -> Account:
+        return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property
     def tanent(self) -> Tenant:
