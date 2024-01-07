@@ -6,7 +6,7 @@ from typing import Optional, cast, Tuple
 import requests
 from flask import current_app
 
-from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, DefaultModelEntity
+from core.entities.model_entities import ModelStatus
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -14,7 +14,7 @@ from core.provider_manager import ProviderManager
 from models.provider import ProviderType
 from services.entities.model_provider_entities import ProviderResponse, CustomConfigurationResponse, \
     SystemConfigurationResponse, CustomConfigurationStatus, ProviderWithModelsResponse, ModelResponse, \
-    DefaultModelResponse, ModelWithProviderEntityResponse
+    DefaultModelResponse, ModelWithProviderEntityResponse, SimpleProviderEntityResponse
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,17 @@ class ModelProviderService:
                     continue
 
             provider_response = ProviderResponse(
-                **provider_configuration.provider.dict(),
+                provider=provider_configuration.provider.provider,
+                label=provider_configuration.provider.label,
+                description=provider_configuration.provider.description,
+                icon_small=provider_configuration.provider.icon_small,
+                icon_large=provider_configuration.provider.icon_large,
+                background=provider_configuration.provider.background,
+                help=provider_configuration.provider.help,
+                supported_model_types=provider_configuration.provider.supported_model_types,
+                configurate_methods=provider_configuration.provider.configurate_methods,
+                provider_credential_schema=provider_configuration.provider.provider_credential_schema,
+                model_credential_schema=provider_configuration.provider.model_credential_schema,
                 preferred_provider_type=provider_configuration.preferred_provider_type,
                 custom_configuration=CustomConfigurationResponse(
                     status=CustomConfigurationStatus.ACTIVE
@@ -53,7 +63,9 @@ class ModelProviderService:
                     else CustomConfigurationStatus.NO_CONFIGURE
                 ),
                 system_configuration=SystemConfigurationResponse(
-                    **provider_configuration.system_configuration.dict()
+                    enabled=provider_configuration.system_configuration.enabled,
+                    current_quota_type=provider_configuration.system_configuration.current_quota_type,
+                    quota_configurations=provider_configuration.system_configuration.quota_configurations
                 )
             )
 
@@ -369,7 +381,15 @@ class ModelProviderService:
         )
 
         return DefaultModelResponse(
-            **result.dict()
+            model=result.model,
+            model_type=result.model_type,
+            provider=SimpleProviderEntityResponse(
+                provider=result.provider.provider,
+                label=result.provider.label,
+                icon_small=result.provider.icon_small,
+                icon_large=result.provider.icon_large,
+                supported_model_types=result.provider.supported_model_types
+            )
         ) if result else None
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:

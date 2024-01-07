@@ -112,7 +112,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             credentials=credentials,
             tokens=used_tokens
         )
-
+        
         return TextEmbeddingResult(
             embeddings=batched_embeddings,
             usage=usage,

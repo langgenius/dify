@@ -5,7 +5,6 @@ from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-from core.helper.lru_cache import LRUCache
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 
@@ -46,15 +45,7 @@ def encrypt(text, public_key):
     return prefix_hybrid + encrypted_data
 
 
-tenant_rsa_keys = LRUCache(capacity=1000)
-
-
 def get_decrypt_decoding(tenant_id):
-    rsa_key = tenant_rsa_keys.get(tenant_id)
-    if rsa_key:
-        cipher_rsa = PKCS1_OAEP.new(rsa_key)
-        return rsa_key, cipher_rsa
-
     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
 
     cache_key = 'tenant_privkey:{hash}'.format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
@@ -69,8 +60,6 @@ def get_decrypt_decoding(tenant_id):
 
     rsa_key = RSA.import_key(private_key)
     cipher_rsa = PKCS1_OAEP.new(rsa_key)
-
-    tenant_rsa_keys.put(tenant_id, rsa_key)
 
     return rsa_key, cipher_rsa
 
