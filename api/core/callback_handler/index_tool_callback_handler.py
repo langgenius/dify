@@ -2,7 +2,7 @@ from typing import List, Union
 
 from langchain.schema import Document
 
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import InvokeFrom
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, DatasetQuery
@@ -80,4 +80,4 @@ class DatasetIndexToolCallbackHandler:
                 db.session.add(dataset_retriever_resource)
                 db.session.commit()
 
-        self._queue_manager.publish_retriever_resources(resource)
+        self._queue_manager.publish_retriever_resources(resource, PublishFrom.APPLICATION_MANAGER)
