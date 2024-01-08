@@ -374,6 +374,11 @@ const translation = {
     firstPrompt: 'First Prompt',
     nextIteration: 'Next Iteration',
     promptPlaceholder: 'Write your prompt here',
+    tools: {
+      name: 'Tools',
+      description: 'Tools des',
+      enabled: 'Enabled',
+    },
   },
 }
 

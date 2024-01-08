@@ -14,6 +14,7 @@ import useAnnotationConfig from '../toolbox/annotation/use-annotation-config'
 import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
+import AgentTools from './agent/agent-tools'
 import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/advanced-mode-waring'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
@@ -223,6 +224,12 @@ const Config: FC = () => {
         {/* Dataset */}
         <DatasetConfig />
 
+        {/* Tools */}
+        <AgentTools
+          onAdd={() => { }}
+          onDeleted={() => { }}
+          onChange={() => { }}
+        />
         <ConfigVision />
 
         {/* Chat History */}

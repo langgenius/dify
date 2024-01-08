@@ -364,6 +364,11 @@ const translation = {
     firstPrompt: '第一次提示词',
     nextIteration: '下一次迭代',
     promptPlaceholder: '在这里写下您的提示词',
+    tools: {
+      name: '工具',
+      description: 'Tools des',
+      enabled: '启用',
+    },
   },
 }
 
