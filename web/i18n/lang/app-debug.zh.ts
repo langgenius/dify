@@ -352,6 +352,10 @@ const translation = {
     },
   },
   agent: {
+    agentMode: 'Agent Mode',
+    agentModeType: {
+      cot: 'COT',
+    },
     setting: {
       name: '代理设置',
       description: '代理设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',

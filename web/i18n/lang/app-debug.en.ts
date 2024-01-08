@@ -358,9 +358,17 @@ const translation = {
     },
   },
   agent: {
+    agentMode: 'Agent Mode',
+    agentModeType: {
+      cot: 'COT',
+    },
     setting: {
       name: 'Agent Settings',
       description: 'Agent settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
+      maximumIterations: {
+        name: 'Maximum Iterations',
+        description: 'Maximum Iterations des',
+      },
     },
     buildInPrompt: 'Build-In Prompt',
     firstPrompt: 'First Prompt',

@@ -67,7 +67,7 @@ const AssistantTypePicker: FC<Props> = ({
       setOpen(false)
   }
   const isAgent = value === 'agent'
-  const [isShowAgentSetting, setIsShowAgentSetting] = useState(true)
+  const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
   return (
     <>
       <PortalToFollowElem

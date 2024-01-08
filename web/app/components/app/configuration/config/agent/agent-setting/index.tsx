@@ -1,16 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '../prompt-editor'
+import ItemPanel from '../item-panel'
 import Button from '@/app/components/base/button'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-
+import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
+import Slider from '@/app/components/base/slider'
 type Props = {
   payload: any
   onCancel: () => void
   onSave: (payload: any) => void
 }
+
+const maxIterationsMin = 1
+const maxIterationsMax = 10
 
 const AgentSetting: FC<Props> = ({
   payload,
@@ -18,7 +24,7 @@ const AgentSetting: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-
+  const [maxIterations, setMaxIterations] = useState(5)
   const handleSave = () => {
     onSave(payload)
   }
@@ -49,9 +55,17 @@ const AgentSetting: FC<Props> = ({
         <div className='grow p-6 pt-5 border-b overflow-y-auto pb-[68px]' style={{
           borderBottom: 'rgba(0, 0, 0, 0.05)',
         }}>
-          <div>
-            Agent Mode
-          </div>
+          {/* Agent Mode */}
+          <ItemPanel
+            className='mb-4'
+            icon={
+              <CuteRobote className='w-4 h-4 text-indigo-600' />
+            }
+            name={t('appDebug.agent.agentMode')}
+            description={t('appDebug.assistantType.agentAssistant.description')}
+          >
+            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appDebug.agent.agentModeType.cot')}</div>
+          </ItemPanel>
 
           <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
             {t('appDebug.agent.buildInPrompt')}
@@ -69,6 +83,35 @@ const AgentSetting: FC<Props> = ({
             value='bbb'
             onChange={() => { }}
           />
+
+          <ItemPanel
+            className='mb-4'
+            icon={
+              <Unblur className='w-4 h-4 text-[#FB6514]' />
+            }
+            name={t('appDebug.agent.setting.maximumIterations.name')}
+            description={t('appDebug.agent.setting.maximumIterations.description')}
+          >
+            <div className='flex items-center'>
+              <Slider
+                className='mr-3 w-[156px]'
+                min={maxIterationsMin}
+                max={maxIterationsMax}
+                value={maxIterations}
+                onChange={setMaxIterations}
+              />
+
+              <input type="number" min={maxIterationsMin} max={maxIterationsMax} step={1} className="block w-11 h-7 leading-7 rounded-lg border-0 pl-1 px-1.5 bg-gray-100 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={maxIterations} onChange={(e) => {
+                let value = parseInt(e.target.value, 10)
+                if (value < maxIterationsMin)
+                  value = maxIterationsMin
+
+                if (value > maxIterationsMax)
+                  value = maxIterationsMax
+                setMaxIterations(value)
+              }} />
+            </div>
+          </ItemPanel>
         </div>
         <div
           className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
