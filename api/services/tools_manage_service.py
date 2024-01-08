@@ -2,12 +2,14 @@ from typing import List
 
 from core.tools.tool_manager import ToolManager
 from core.tools.entities.user_entities import UserToolProvider
-from core.tools.entities.tool_entities import ApiProviderSchemaType, ApiProviderAuthType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ApiProviderAuthType, ToolProviderCredentials, \
+    ToolCredentialsOption
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderEntity
 from core.tools.utils.parser import ApiBasedToolSchemaParser
-from core.tools.utils.encoder import serialize_base_model_array
+from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError, ToolNotFoundError
 
 from extensions.ext_database import db
@@ -43,6 +45,76 @@ class ToolManageService:
         return [
             v.to_dict() for _, v in provider.credentials_schema.items()
         ]
+
+    @staticmethod
+    def parser_api_schema(
+        schema_type: str, schema: str
+    ) -> List[ApiBasedToolBundle]:
+        """
+            parse api schema to tool bundle
+        """
+        try:
+            if schema_type == ApiProviderSchemaType.OPENAPI.value:
+                tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
+            elif schema_type == ApiProviderSchemaType.OPENAI_PLUGIN.value:
+                tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema)
+            else:
+                raise ValueError(f'invalid schema type {schema_type}')
+            credentails_schema = [
+                ToolProviderCredentials(
+                    name='auth_type',
+                    type=ToolProviderCredentials.CredentialsType.SELECT,
+                    required=True,
+                    default='none',
+                    options=[
+                        ToolCredentialsOption(value='none', label=I18nObject(
+                            en_US='None',
+                            zh_CN='无'
+                        )),
+                        ToolCredentialsOption(value='api_key', label=I18nObject(
+                            en_US='Api Key',
+                            zh_CN='Api Key'
+                        )),
+                    ],
+                    placeholder=I18nObject(
+                        en_US='Select auth type',
+                        zh_CN='选择认证方式'
+                    )
+                ),
+                ToolProviderCredentials(
+                    name='api_key_header',
+                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    required=False,
+                    placeholder=I18nObject(
+                        en_US='Enter api key header',
+                        zh_CN='输入 api key header，如：X-API-KEY'
+                    ),
+                    default='api_key',
+                    help=I18nObject(
+                        en_US='HTTP header name for api key',
+                        zh_CN='HTTP 头部字段名，用于传递 api key'
+                    )
+                ),
+                ToolProviderCredentials(
+                    name='api_key_value',
+                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    required=False,
+                    placeholder=I18nObject(
+                        en_US='Enter api key',
+                        zh_CN='输入 api key'
+                    ),
+                    default=''
+                ),
+            ]
+
+            return json.loads(serialize_base_model_dict(
+                {
+                    'parameters_schema': tool_bundles,
+                    'credentials_schema': credentails_schema,
+                }
+            ))
+        except Exception as e:
+            raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
     def create_builtin_tool_provider(
