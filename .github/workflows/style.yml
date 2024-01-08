@@ -43,6 +43,7 @@ jobs:
       env:
         BASH_SEVERITY: warning
         DEFAULT_BRANCH: main
+        ERROR_ON_MISSING_EXEC_BIT: true
         IGNORE_GENERATED_FILES: true
         IGNORE_GITIGNORED_FILES: true
         VALIDATE_BASH: true
