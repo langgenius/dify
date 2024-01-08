@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType, FetchFrom, ParameterRule, \
-    DefaultParameterName, PriceConfig
+    DefaultParameterName, PriceConfig, ModelPropertyKey
 from core.model_runtime.entities.model_entities import AIModelEntity, I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 
@@ -41,7 +41,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
-                'deployment': 'gpt-35-turbo',
                 'context_size': 4096,
             },
             parameter_rules=[
@@ -86,7 +85,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
-                'deployment': 'gpt-35-turbo-16k',
                 'context_size': 16385,
             },
             parameter_rules=[
@@ -131,7 +129,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
-                'deployment': 'gpt-4',
                 'context_size': 8192,
             },
             parameter_rules=[
@@ -206,7 +203,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
-                'deployment': 'gpt-4-32k',
                 'context_size': 32768,
             },
             parameter_rules=[
@@ -281,7 +277,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
-                'deployment': 'gpt-4-1106-preview',
                 'context_size': 128000,
             },
             parameter_rules=[
@@ -355,7 +350,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.CHAT.value,
-                'deployment': 'gpt-4-vision-preview',
                 'context_size': 128000,
             },
             parameter_rules=[
@@ -426,7 +420,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.COMPLETION.value,
-                'deployment': 'gpt-35-turbo-instruct',
                 'context_size': 4096,
             },
             parameter_rules=[
@@ -467,7 +460,6 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 'mode': LLMMode.COMPLETION.value,
-                'deployment': 'text-davinci-003',
                 'context_size': 4096,
             },
             parameter_rules=[
@@ -510,8 +502,8 @@ EMBEDDING_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.TEXT_EMBEDDING,
             model_properties={
-                'context_size': 8097,
-                'max_chunks': 32,
+                ModelPropertyKey.CONTEXT_SIZE: 8097,
+                ModelPropertyKey.MAX_CHUNKS: 32,
             },
             pricing=PriceConfig(
                 input=0.0001,

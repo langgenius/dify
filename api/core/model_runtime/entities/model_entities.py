@@ -32,7 +32,7 @@ class ModelType(Enum):
             return cls.TEXT_EMBEDDING
         elif origin_model_type == 'reranking' or origin_model_type == cls.RERANK.value:
             return cls.RERANK
-        elif origin_model_type == cls.SPEECH2TEXT.value:
+        elif origin_model_type == 'speech2text' or origin_model_type == cls.SPEECH2TEXT.value:
             return cls.SPEECH2TEXT
         elif origin_model_type == cls.MODERATION.value:
             return cls.MODERATION
@@ -116,7 +116,6 @@ class ModelPropertyKey(Enum):
     Enum class for model property key.
     """
     MODE = "mode"
-    DEPLOYMENT = "deployment"
     CONTEXT_SIZE = "context_size"
     MAX_CHUNKS = "max_chunks"
     FILE_UPLOAD_LIMIT = "file_upload_limit"

@@ -30,13 +30,12 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
 
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        ai_model_entity = self._get_ai_model_entity(credentials.get('base_model_name'), model)
 
         if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
             # chat model
             return self._chat_generate(
                 model=model,
-                deployment=ai_model_entity.entity.model_properties.get(ModelPropertyKey.DEPLOYMENT),
                 credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -49,7 +48,6 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             # text completion model
             return self._generate(
                 model=model,
-                deployment=ai_model_entity.entity.model_properties.get(ModelPropertyKey.DEPLOYMENT),
                 credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -61,7 +59,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
 
-        model_mode = self._get_ai_model_entity(credentials['base_model_name'], model).entity.model_properties.get(
+        model_mode = self._get_ai_model_entity(credentials.get('base_model_name'), model).entity.model_properties.get(
             ModelPropertyKey.MODE)
 
         if model_mode == LLMMode.CHAT.value:
@@ -81,13 +79,13 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        ai_model_entity = self._get_ai_model_entity(credentials.get('base_model_name'), model)
 
         if not ai_model_entity:
             raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
 
         try:
-            client = AzureOpenAI(azure_deployment='gpt-35-turbo',**self._to_credential_kwargs(credentials))
+            client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
             if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
                 # chat model
@@ -111,14 +109,14 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
-        return ai_model_entity.entity
+        ai_model_entity = self._get_ai_model_entity(credentials.get('base_model_name'), model)
+        return ai_model_entity.entity if ai_model_entity else None
 
-    def _generate(self, model: str, deployment: str, credentials: dict,
+    def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
-        client = AzureOpenAI(azure_deployment=deployment, **self._to_credential_kwargs(credentials))
+        client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
         extra_model_kwargs = {}
 
@@ -231,12 +229,12 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                     )
                 )
 
-    def _chat_generate(self, model: str, deployment: str, credentials: dict,
+    def _chat_generate(self, model: str, credentials: dict,
                        prompt_messages: list[PromptMessage], model_parameters: dict,
                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
-        client = AzureOpenAI(azure_deployment=deployment, **self._to_credential_kwargs(credentials))
+        client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
         response_format = model_parameters.get("response_format")
         if response_format:

@@ -21,6 +21,12 @@ class SystemConfigurationStatus(Enum):
     UNSUPPORTED = 'unsupported'
 
 
+class RestrictModel(BaseModel):
+    model: str
+    base_model_name: Optional[str] = None
+    model_type: ModelType
+
+
 class QuotaConfiguration(BaseModel):
     """
     Model class for provider quota configuration.
@@ -30,7 +36,7 @@ class QuotaConfiguration(BaseModel):
     quota_limit: int
     quota_used: int
     is_valid: bool
-    restrict_llms: list[str] = []
+    restrict_models: list[RestrictModel] = []
 
 
 class SystemConfiguration(BaseModel):
