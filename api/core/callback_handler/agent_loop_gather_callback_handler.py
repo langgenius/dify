@@ -8,7 +8,7 @@ from langchain.agents import openai_functions_agent, openai_functions_multi_agen
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration, BaseMessage
 
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.entities.application_entities import ModelConfigEntity
 from core.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
@@ -232,7 +232,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         db.session.add(message_agent_thought)
         db.session.commit()
 
-        self.queue_manager.publish_agent_thought(message_agent_thought)
+        self.queue_manager.publish_agent_thought(message_agent_thought, PublishFrom.APPLICATION_MANAGER)
 
         return message_agent_thought
 

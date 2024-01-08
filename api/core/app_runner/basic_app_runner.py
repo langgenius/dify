@@ -5,7 +5,7 @@ from core.app_runner.app_runner import AppRunner
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
     AppOrchestrationConfigEntity, InvokeFrom, ExternalDataVariableEntity, DatasetEntity
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.features.annotation_reply import AnnotationReplyFeature
 from core.features.dataset_retrieval import DatasetRetrievalFeature
 from core.features.external_data_fetch import ExternalDataFetchFeature
@@ -121,7 +121,8 @@ class BasicApplicationRunner(AppRunner):
 
             if annotation_reply:
                 queue_manager.publish_annotation_reply(
-                    message_annotation_id=annotation_reply.id
+                    message_annotation_id=annotation_reply.id,
+                    pub_from=PublishFrom.APPLICATION_MANAGER
                 )
                 self.direct_output(
                     queue_manager=queue_manager,
