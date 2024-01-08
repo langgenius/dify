@@ -1,12 +1,15 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSWRConfig } from 'swr'
 import type { ModelProvider } from '../declarations'
 import {
+  ConfigurateMethodEnum,
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
-import { useUpdateModelList } from '../hooks'
+import {
+  useUpdateModelList,
+  useUpdateModelProviders,
+} from '../hooks'
 import PrioritySelector from './priority-selector'
 import PriorityUseTip from './priority-use-tip'
 import Indicator from '@/app/components/header/indicator'
@@ -25,12 +28,13 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { mutate } = useSWRConfig()
   const updateModelList = useUpdateModelList()
+  const updateModelProviders = useUpdateModelProviders()
   const customConfig = provider.custom_configuration
   const systemConfig = provider.system_configuration
   const priorityUseType = provider.preferred_provider_type
   const customConfiged = customConfig.status === CustomConfigurationStatusEnum.active
+  const configurateMethods = provider.configurate_methods
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -41,8 +45,12 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
     })
     if (res.result === 'success') {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      mutate('/workspaces/current/model-providers')
-      updateModelList(1)
+      updateModelProviders()
+
+      configurateMethods.forEach((method) => {
+        if (method === ConfigurateMethodEnum.predefinedModel)
+          provider.supported_model_types.forEach(modelType => updateModelList(modelType))
+      })
     }
   }
 

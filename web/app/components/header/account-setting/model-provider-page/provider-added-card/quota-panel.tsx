@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { useSWRConfig } from 'swr'
 import { useTranslation } from 'react-i18next'
 import type { ModelProvider } from '../declarations'
 import {
@@ -10,6 +9,7 @@ import {
 import {
   useAnthropicBuyQuota,
   useFreeQuota,
+  useUpdateModelProviders,
 } from '../hooks'
 import PriorityUseTip from './priority-use-tip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
@@ -24,10 +24,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   provider,
 }) => {
   const { t } = useTranslation()
-  const { mutate } = useSWRConfig()
+  const updateModelProviders = useUpdateModelProviders()
   const handlePay = useAnthropicBuyQuota()
   const handleFreeQuotaSuccess = () => {
-    mutate('/workspaces/current/model-providers')
+    updateModelProviders()
   }
   const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
   const customConfig = provider.custom_configuration

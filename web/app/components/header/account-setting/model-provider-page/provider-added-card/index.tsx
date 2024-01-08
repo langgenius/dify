@@ -100,7 +100,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           )
         }
         {
-          configurateMethods.includes(ConfigurateMethodEnum.predefinedModel) && (
+          configurateMethods.includes(ConfigurateMethodEnum.predefinedModel) && provider.provider_credential_schema && (
             <CredentialPanel
               onSetup={() => onOpenModal(ConfigurateMethodEnum.predefinedModel)}
               provider={provider}
