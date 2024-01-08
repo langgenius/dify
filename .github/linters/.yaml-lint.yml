@@ -1,0 +1,15 @@
+---
+
+extends: default
+
+rules:
+  brackets:
+    max-spaces-inside: 1
+  document-start: disable
+  indentation:
+    level: warning
+  line-length: disable
+  new-line-at-end-of-file:
+    level: warning
+  trailing-spaces:
+    level: warning
