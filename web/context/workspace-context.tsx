@@ -16,6 +16,7 @@ const WorkspacesContext = createContext<WorkspacesContextValue>({
 type IWorkspaceProviderProps = {
   children: React.ReactNode
 }
+
 export const WorkspaceProvider = ({
   children,
 }: IWorkspaceProviderProps) => {
