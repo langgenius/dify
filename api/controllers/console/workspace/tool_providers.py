@@ -158,6 +158,26 @@ class ToolApiProviderDeleteApi(Resource):
             args['provider'],
         )
 
+class ToolApiProviderGetApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+
+        parser.add_argument('provider', type=str, required=True, nullable=False, location='args')
+
+        args = parser.parse_args()
+
+        return ToolManageService.get_api_tool_provider(
+            user_id,
+            tenant_id,
+            args['provider'],
+        )
+
 class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @setup_required
     @login_required
@@ -191,4 +211,5 @@ api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/t
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
 api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update')
 api.add_resource(ToolApiProviderDeleteApi, '/workspaces/current/tool-provider/api/delete')
+api.add_resource(ToolApiProviderGetApi, '/workspaces/current/tool-provider/api/get')
 api.add_resource(ToolApiProviderSchemaApi, '/workspaces/current/tool-provider/api/schema')

@@ -372,3 +372,24 @@ class ToolManageService:
         db.session.commit()
 
         return { 'result': 'success' }
+    
+    @staticmethod
+    def get_api_tool_provider(
+        user_id: str, tenant_id: str, provider: str
+    ):
+        """
+            get tool provider
+        """
+        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tenant_id,
+            ApiToolProvider.name == provider,
+        ).first()
+
+        if provider is None:
+            raise ValueError(f'yout have not added provider {provider}')
+        
+        return json.loads(serialize_base_model_dict({
+            'schema_type': provider.schema_type,
+            'schema': provider.schema,
+            'tools': provider.tools,
+        }))
