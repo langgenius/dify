@@ -12,7 +12,8 @@ from core.entities.provider_entities import CustomConfiguration, CustomProviderC
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ProviderEntity, CredentialFormSchema, FormType
+from core.model_runtime.entities.provider_entities import ProviderEntity, CredentialFormSchema, FormType, \
+    ConfigurateMethod
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
@@ -607,7 +608,7 @@ class ProviderManager:
                 quota_used=provider_record.quota_used,
                 quota_limit=provider_record.quota_limit,
                 is_valid=provider_record.quota_limit > provider_record.quota_used or provider_record.quota_limit == -1,
-                restrict_llms=provider_quota.restrict_llms
+                restrict_models=provider_quota.restrict_models
             )
 
             quota_configurations.append(quota_configuration)
