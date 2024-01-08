@@ -1,11 +1,12 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GroupName from '../../base/group-name'
 import MoreLikeThis from './more-like-this'
 
 /*
-* Include 
+* Include
 * 1. More like this
 */
 const ExperienceEnchanceGroup: FC = () => {

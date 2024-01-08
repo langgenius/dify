@@ -5,6 +5,10 @@ from typing import Generator, Union
 
 import flask_login
 from flask import Response, stream_with_context
+
+from core.application_queue_manager import ApplicationQueueManager
+from core.entities.application_entities import InvokeFrom
+from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -16,9 +20,7 @@ from controllers.console.app.error import ConversationCompletedError, AppUnavail
     ProviderModelCurrentlyNotSupportError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.conversation_message_task import PubHandler
-from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
-    LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from flask_restful import Resource, reqparse
 
@@ -56,7 +58,7 @@ class CompletionMessageApi(Resource):
                 app_model=app_model,
                 user=account,
                 args=args,
-                from_source='console',
+                invoke_from=InvokeFrom.DEBUGGER,
                 streaming=streaming,
                 is_model_config_override=True
             )
@@ -75,9 +77,8 @@ class CompletionMessageApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -97,7 +98,7 @@ class CompletionMessageStopApi(Resource):
 
         account = flask_login.current_user
 
-        PubHandler.stop(account, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 
@@ -132,7 +133,7 @@ class ChatMessageApi(Resource):
                 app_model=app_model,
                 user=account,
                 args=args,
-                from_source='console',
+                invoke_from=InvokeFrom.DEBUGGER,
                 streaming=streaming,
                 is_model_config_override=True
             )
@@ -151,9 +152,8 @@ class ChatMessageApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -182,9 +182,8 @@ def compact_response(response: Union[dict, Generator]) -> Response:
                 yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
             except ModelCurrentlyNotSupportError:
                 yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
+            except InvokeError as e:
+                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(e.description)).get_json()) + "\n\n"
             except ValueError as e:
                 yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
             except Exception:
@@ -207,7 +206,7 @@ class ChatMessageStopApi(Resource):
 
         account = flask_login.current_user
 
-        PubHandler.stop(account, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 

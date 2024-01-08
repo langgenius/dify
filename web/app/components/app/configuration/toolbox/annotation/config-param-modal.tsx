@@ -6,12 +6,11 @@ import ScoreSlider from '../score-slider'
 import { Item } from './config-param'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector/portal-select'
-import { useProviderContext } from '@/context/provider-context'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { ANNOTATION_DEFAULT } from '@/config'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type Props = {
   appId: string
@@ -34,9 +33,10 @@ const ConfigParamModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const {
-    embeddingsDefaultModel,
-    isEmbeddingsDefaultModelValid,
-  } = useProviderContext()
+    modelList: embeddingsModelList,
+    defaultModel: embeddingsDefaultModel,
+    currentModel: isEmbeddingsDefaultModelValid,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(2)
   const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
 
   const [isLoading, setLoading] = useState(false)
@@ -47,8 +47,8 @@ const ConfigParamModal: FC<Props> = ({
     }
     : (embeddingsDefaultModel
       ? {
-        providerName: embeddingsDefaultModel.model_provider.provider_name,
-        modelName: embeddingsDefaultModel.model_name,
+        providerName: embeddingsDefaultModel.provider.provider,
+        modelName: embeddingsDefaultModel.model,
       }
       : undefined))
   const onHide = () => {
@@ -57,7 +57,7 @@ const ConfigParamModal: FC<Props> = ({
   }
 
   const handleSave = async () => {
-    if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model_name && !isEmbeddingsDefaultModelValid)) {
+    if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)) {
       Toast.notify({
         message: t('common.modelProvider.embeddingModel.required'),
         type: 'error',
@@ -106,13 +106,15 @@ const ConfigParamModal: FC<Props> = ({
         >
           <div className='pt-1'>
             <ModelSelector
-              widthSameToTrigger
-              value={embeddingModel as any}
-              modelType={ModelType.embeddings}
-              onChange={(val) => {
+              defaultModel={embeddingModel && {
+                provider: embeddingModel.providerName,
+                model: embeddingModel.modelName,
+              }}
+              modelList={embeddingsModelList}
+              onSelect={(val) => {
                 setEmbeddingModel({
-                  providerName: val.model_provider.provider_name,
-                  modelName: val.model_name,
+                  providerName: val.provider,
+                  modelName: val.model,
                 })
               }}
             />

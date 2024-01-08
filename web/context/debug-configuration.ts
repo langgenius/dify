@@ -5,7 +5,6 @@ import type {
   BlockStatus,
   ChatPromptConfig,
   CitationConfig,
-  CompletionParams,
   CompletionPromptConfig,
   ConversationHistoriesRole,
   DatasetConfigs,
@@ -23,6 +22,7 @@ import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
 import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type IDebugConfiguration = {
   appId: string
@@ -72,8 +72,8 @@ type IDebugConfiguration = {
   query: string // user question
   setQuery: (query: string) => void
   // Belows are draft infos
-  completionParams: CompletionParams
-  setCompletionParams: (completionParams: CompletionParams) => void
+  completionParams: FormValue
+  setCompletionParams: (completionParams: FormValue) => void
   // model_config
   modelConfig: ModelConfig
   setModelConfig: (modelConfig: ModelConfig) => void

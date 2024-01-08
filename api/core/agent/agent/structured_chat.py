@@ -13,10 +13,11 @@ from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage, 
 from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
 from core.chain.llm_chain import LLMChain
-from core.model_providers.models.entity.model_params import ModelMode
-from core.model_providers.models.llm.base import BaseLLM
+from core.entities.application_entities import ModelConfigEntity
+from core.entities.message_entities import lc_messages_to_prompt_messages
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -54,7 +55,7 @@ Action:
 class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
-    summary_model_instance: BaseLLM = None
+    summary_model_config: ModelConfigEntity = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -82,7 +83,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
 
         Args:
             intermediate_steps: Steps the LLM has taken to date,
-                along with observations
+                along with observatons
             callbacks: Callbacks to run.
             **kwargs: User inputs.
 
@@ -96,15 +97,16 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
         if prompts:
             messages = prompts[0].to_messages()
 
-        rest_tokens = self.get_message_rest_tokens(self.llm_chain.model_instance, messages)
+        prompt_messages = lc_messages_to_prompt_messages(messages)
+
+        rest_tokens = self.get_message_rest_tokens(self.llm_chain.model_config, prompt_messages)
         if rest_tokens < 0:
             full_inputs = self.summarize_messages(intermediate_steps, **kwargs)
 
         try:
             full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
         except Exception as e:
-            new_exception = self.llm_chain.model_instance.handle_exceptions(e)
-            raise new_exception
+            raise e
 
         try:
             agent_decision = self.output_parser.parse(full_output)
@@ -119,7 +121,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
                                           "I don't know how to respond to that."}, "")
 
     def summarize_messages(self, intermediate_steps: List[Tuple[AgentAction, str]], **kwargs):
-        if len(intermediate_steps) >= 2 and self.summary_model_instance:
+        if len(intermediate_steps) >= 2 and self.summary_model_config:
             should_summary_intermediate_steps = intermediate_steps[self.moving_summary_index:-1]
             should_summary_messages = [AIMessage(content=observation)
                                        for _, observation in should_summary_intermediate_steps]
@@ -153,7 +155,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             ai_prefix="AI",
         )
 
-        chain = LLMChain(model_instance=self.summary_model_instance, prompt=SUMMARY_PROMPT)
+        chain = LLMChain(model_config=self.summary_model_config, prompt=SUMMARY_PROMPT)
         return chain.predict(summary=existing_summary, new_lines=new_lines)
 
     @classmethod
@@ -229,7 +231,7 @@ Thought: {agent_scratchpad}
             raise ValueError("agent_scratchpad should be of type string.")
         if agent_scratchpad:
             llm_chain = cast(LLMChain, self.llm_chain)
-            if llm_chain.model_instance.model_mode == ModelMode.CHAT:
+            if llm_chain.model_config.mode == "chat":
                 return (
                     f"This was your previous work "
                     f"(but I haven't seen any of it! I only see what "
@@ -243,7 +245,7 @@ Thought: {agent_scratchpad}
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_instance: BaseLLM,
+            model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             output_parser: Optional[AgentOutputParser] = None,
@@ -253,11 +255,12 @@ Thought: {agent_scratchpad}
             format_instructions: str = FORMAT_INSTRUCTIONS,
             input_variables: Optional[List[str]] = None,
             memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            agent_llm_callback: Optional[AgentLLMCallback] = None,
             **kwargs: Any,
     ) -> Agent:
         """Construct an agent from an LLM and tools."""
         cls._validate_tools(tools)
-        if model_instance.model_mode == ModelMode.CHAT:
+        if model_config.mode == "chat":
             prompt = cls.create_prompt(
                 tools,
                 prefix=prefix,
@@ -275,9 +278,15 @@ Thought: {agent_scratchpad}
                 input_variables=input_variables,
             )
         llm_chain = LLMChain(
-            model_instance=model_instance,
+            model_config=model_config,
             prompt=prompt,
             callback_manager=callback_manager,
+            agent_llm_callback=agent_llm_callback,
+            parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
         tool_names = [tool.name for tool in tools]
         _output_parser = output_parser

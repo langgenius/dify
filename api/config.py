@@ -36,6 +36,7 @@ DEFAULTS = {
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
     'WEAVIATE_GRPC_ENABLED': 'True',
     'WEAVIATE_BATCH_SIZE': 100,
+    'QDRANT_CLIENT_TIMEOUT': 20,
     'CELERY_BACKEND': 'database',
     'LOG_LEVEL': 'INFO',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
@@ -87,7 +88,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.3.34"
+        self.CURRENT_VERSION = "0.4.4"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -197,6 +198,7 @@ class Config:
         # qdrant settings
         self.QDRANT_URL = get_env('QDRANT_URL')
         self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')
+        self.QDRANT_CLIENT_TIMEOUT = get_env('QDRANT_CLIENT_TIMEOUT')
 
         # milvus / zilliz setting
         self.MILVUS_HOST = get_env('MILVUS_HOST')

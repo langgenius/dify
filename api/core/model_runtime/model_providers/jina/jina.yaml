@@ -1,0 +1,30 @@
+provider: jina
+label:
+  en_US: Jina
+description:
+    en_US: Embedding Model Supported
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#EFFDFD"
+help:
+  title:
+    en_US: Get your API key from Jina AI
+    zh_Hans: 从 Jina 获取 API Key
+  url:
+    en_US: https://jina.ai/embeddings/
+supported_model_types:
+- text-embedding
+configurate_methods:
+- predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+  - variable: api_key
+    label:
+      en_US: API Key
+    type: secret-input
+    required: true
+    placeholder:
+      zh_Hans: 在此输入您的 API Key
+      en_US: Enter your API Key

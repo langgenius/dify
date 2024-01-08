@@ -75,7 +75,7 @@ GENERATOR_QA_PROMPT = (
     'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
     'Step 4: Generate 20 questions and answers based on these key information and concepts.'
     'The questions should be clear and detailed, and the answers should be detailed and complete.\n'
-    "Answer according to the the language:{language} and in the following format: Q1:\nA1:\nQ2:\nA2:...\n"
+    "Answer MUST according to the the language:{language} and in the following format: Q1:\nA1:\nQ2:\nA2:...\n"
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \

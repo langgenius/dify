@@ -1,0 +1,29 @@
+model: abab5-chat
+label:
+  en_US: Abab5-Chat
+model_type: llm
+features:
+- agent-thought
+model_properties:
+  mode: chat
+  context_size: 6144
+parameter_rules:
+- name: temperature
+  use_template: temperature
+- name: top_p
+  use_template: top_p
+- name: max_tokens
+  use_template: max_tokens
+  required: true
+  default: 6144
+  min: 1
+  max: 6144
+- name: presence_penalty
+  use_template: presence_penalty
+- name: frequency_penalty
+  use_template: frequency_penalty
+pricing:
+  input: '0.00'
+  output: '0.015'
+  unit: '0.001'
+  currency: RMB

@@ -65,7 +65,8 @@ class FileExtractor:
             elif file_extension == '.pdf':
                 loader = PdfLoader(file_path, upload_file=upload_file)
             elif file_extension in ['.md', '.markdown']:
-                loader = UnstructuredMarkdownLoader(file_path, unstructured_api_url)
+                loader = UnstructuredMarkdownLoader(file_path, unstructured_api_url) if is_automatic \
+                    else MarkdownLoader(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
                 loader = HTMLLoader(file_path)
             elif file_extension == '.docx':
@@ -84,7 +85,8 @@ class FileExtractor:
                 loader = UnstructuredXmlLoader(file_path, unstructured_api_url)
             else:
                 # txt
-                loader = UnstructuredTextLoader(file_path, unstructured_api_url)
+                loader = UnstructuredTextLoader(file_path, unstructured_api_url) if is_automatic \
+                    else TextLoader(file_path, autodetect_encoding=True)
         else:
             if file_extension == '.xlsx':
                 loader = ExcelLoader(file_path)

@@ -1,5 +1,6 @@
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
-from core.model_providers.model_factory import ModelFactory
 
 
 class OpenAIModeration(Moderation):
@@ -41,6 +42,16 @@ class OpenAIModeration(Moderation):
 
     def _is_violated(self, inputs: dict):
         text = '\n'.join(inputs.values())
-        openai_moderation = ModelFactory.get_moderation_model(self.tenant_id, "openai", "moderation")
-        is_not_invalid = openai_moderation.run(text)
-        return not is_not_invalid
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=self.tenant_id,
+            provider="openai",
+            model_type=ModelType.MODERATION,
+            model="text-moderation-stable"
+        )
+
+        openai_moderation = model_instance.invoke_moderation(
+            text=text
+        )
+
+        return openai_moderation

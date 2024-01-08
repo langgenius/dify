@@ -1,11 +1,11 @@
 'use client'
-import React, { FC, useEffect } from 'react'
+import type { FC } from 'react'
+import React, { useEffect } from 'react'
 import cn from 'classnames'
 import { useBoolean } from 'ahooks'
 import { ChevronRightIcon } from '@heroicons/react/24/outline'
 
-
-export interface IPanelProps {
+export type IPanelProps = {
   className?: string
   headerIcon: React.ReactNode
   title: React.ReactNode
@@ -30,23 +30,21 @@ const Panel: FC<IPanelProps> = ({
   foldDisabled = false,
   onFoldChange,
   controlUnFold,
-  controlFold
+  controlFold,
 }) => {
-  const [fold, { setTrue: setFold, setFalse: setUnFold, toggle: toggleFold }] = useBoolean(keepUnFold ? false : true)
+  const [fold, { setTrue: setFold, setFalse: setUnFold, toggle: toggleFold }] = useBoolean(!keepUnFold)
   useEffect(() => {
     onFoldChange?.(fold)
   }, [fold])
 
   useEffect(() => {
-    if (controlUnFold) {
+    if (controlUnFold)
       setUnFold()
-    }
   }, [controlUnFold])
 
   useEffect(() => {
-    if (controlFold) {
+    if (controlFold)
       setFold()
-    }
   }, [controlFold])
 
   // overflow-hidden

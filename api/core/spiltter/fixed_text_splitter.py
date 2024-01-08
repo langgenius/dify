@@ -7,10 +7,38 @@ from typing import (
     Optional,
 )
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter, TokenTextSplitter, TS, Type, Union, AbstractSet, Literal, Collection
 
+from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 
-class FixedRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
+class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
+    """
+        This class is used to implement from_gpt2_encoder, to prevent using of tiktoken
+    """
+    @classmethod
+    def from_gpt2_encoder(
+        cls: Type[TS],
+        encoding_name: str = "gpt2",
+        model_name: Optional[str] = None,
+        allowed_special: Union[Literal["all"], AbstractSet[str]] = set(),
+        disallowed_special: Union[Literal["all"], Collection[str]] = "all",
+        **kwargs: Any,
+    ):
+        def _token_encoder(text: str) -> int:
+            return GPT2Tokenizer.get_num_tokens(text)
+
+        if issubclass(cls, TokenTextSplitter):
+            extra_kwargs = {
+                "encoding_name": encoding_name,
+                "model_name": model_name,
+                "allowed_special": allowed_special,
+                "disallowed_special": disallowed_special,
+            }
+            kwargs = {**kwargs, **extra_kwargs}
+
+        return cls(length_function=_token_encoder, **kwargs)
+
+class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter):
     def __init__(self, fixed_separator: str = "\n\n", separators: Optional[List[str]] = None, **kwargs: Any):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)

@@ -15,9 +15,10 @@ from controllers.console.app.error import ConversationCompletedError, AppUnavail
     ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
 from controllers.console.explore.error import NotCompletionAppError, NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from core.conversation_message_task import PubHandler
-from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
-    LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.application_queue_manager import ApplicationQueueManager
+from core.entities.application_entities import InvokeFrom
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
@@ -50,7 +51,7 @@ class CompletionApi(InstalledAppResource):
                 app_model=app_model,
                 user=current_user,
                 args=args,
-                from_source='console',
+                invoke_from=InvokeFrom.EXPLORE,
                 streaming=streaming
             )
 
@@ -68,9 +69,8 @@ class CompletionApi(InstalledAppResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -84,7 +84,7 @@ class CompletionStopApi(InstalledAppResource):
         if app_model.mode != 'completion':
             raise NotCompletionAppError()
 
-        PubHandler.stop(current_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {'result': 'success'}, 200
 
@@ -115,7 +115,7 @@ class ChatApi(InstalledAppResource):
                 app_model=app_model,
                 user=current_user,
                 args=args,
-                from_source='console',
+                invoke_from=InvokeFrom.EXPLORE,
                 streaming=streaming
             )
 
@@ -133,9 +133,8 @@ class ChatApi(InstalledAppResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -149,7 +148,7 @@ class ChatStopApi(InstalledAppResource):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        PubHandler.stop(current_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {'result': 'success'}, 200
 
@@ -175,9 +174,8 @@ def compact_response(response: Union[dict, Generator]) -> Response:
                 yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
             except ModelCurrentlyNotSupportError:
                 yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
+            except InvokeError as e:
+                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(e.description)).get_json()) + "\n\n"
             except ValueError as e:
                 yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
             except Exception:

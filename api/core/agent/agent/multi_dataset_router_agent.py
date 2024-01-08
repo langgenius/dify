@@ -1,4 +1,3 @@
-import json
 from typing import Tuple, List, Any, Union, Sequence, Optional, cast
 
 from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
@@ -6,13 +5,14 @@ from langchain.agents.openai_functions_agent.base import _format_intermediate_st
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import AgentAction, AgentFinish, SystemMessage, Generation, LLMResult, AIMessage
-from langchain.schema.language_model import BaseLanguageModel
+from langchain.schema import AgentAction, AgentFinish, SystemMessage, AIMessage
 from langchain.tools import BaseTool
 from pydantic import root_validator
 
-from core.model_providers.models.entity.message import to_prompt_messages
-from core.model_providers.models.llm.base import BaseLLM
+from core.entities.application_entities import ModelConfigEntity
+from core.model_manager import ModelInstance
+from core.entities.message_entities import lc_messages_to_prompt_messages
+from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.third_party.langchain.llms.fake import FakeLLM
 
 
@@ -20,7 +20,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     """
     An Multi Dataset Retrieve Agent driven by Router.
     """
-    model_instance: BaseLLM
+    model_config: ModelConfigEntity
 
     class Config:
         """Configuration for this pydantic object."""
@@ -81,8 +81,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
                 agent_decision.return_values['output'] = ''
             return agent_decision
         except Exception as e:
-            new_exception = self.model_instance.handle_exceptions(e)
-            raise new_exception
+            raise e
 
     def real_plan(
         self,
@@ -106,16 +105,39 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         full_inputs = dict(**selected_inputs, agent_scratchpad=agent_scratchpad)
         prompt = self.prompt.format_prompt(**full_inputs)
         messages = prompt.to_messages()
-        prompt_messages = to_prompt_messages(messages)
-        result = self.model_instance.run(
-            messages=prompt_messages,
-            functions=self.functions,
+        prompt_messages = lc_messages_to_prompt_messages(messages)
+
+        model_instance = ModelInstance(
+            provider_model_bundle=self.model_config.provider_model_bundle,
+            model=self.model_config.model,
+        )
+
+        tools = []
+        for function in self.functions:
+            tool = PromptMessageTool(
+                **function
+            )
+
+            tools.append(tool)
+
+        result = model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            tools=tools,
+            stream=False,
+            model_parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
 
         ai_message = AIMessage(
-            content=result.content,
+            content=result.message.content or "",
             additional_kwargs={
-                'function_call': result.function_call
+                'function_call': {
+                    'id': result.message.tool_calls[0].id,
+                    **result.message.tool_calls[0].function.dict()
+                } if result.message.tool_calls else None
             }
         )
 
@@ -133,7 +155,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_instance: BaseLLM,
+            model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
@@ -147,7 +169,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             system_message=system_message,
         )
         return cls(
-            model_instance=model_instance,
+            model_config=model_config,
             llm=FakeLLM(response=''),
             prompt=prompt,
             tools=tools,

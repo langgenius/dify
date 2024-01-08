@@ -1,6 +1,8 @@
 import io
 from werkzeug.datastructures import FileStorage
-from core.model_providers.model_factory import ModelFactory
+
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
 
 FILE_SIZE = 15
@@ -25,11 +27,13 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        model = ModelFactory.get_speech2text_model(
-            tenant_id=tenant_id
+        model_manager = ModelManager()
+        model_instance = model_manager.get_default_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.SPEECH2TEXT
         )
 
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.mp3'
 
-        return model.run(buffer)
+        return {"text": model_instance.invoke_speech2text(buffer)}

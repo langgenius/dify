@@ -1,11 +1,9 @@
 import time
-from typing import List, Optional, Any, Mapping, Callable
+from typing import List, Optional, Any, Mapping
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import SimpleChatModel
 from langchain.schema import BaseMessage, ChatResult, AIMessage, ChatGeneration
-
-from core.model_providers.models.entity.message import str_to_prompt_messages
 
 
 class FakeLLM(SimpleChatModel):
@@ -14,7 +12,6 @@ class FakeLLM(SimpleChatModel):
     streaming: bool = False
     """Whether to stream the results or not."""
     response: str
-    num_token_func: Optional[Callable] = None
 
     @property
     def _llm_type(self) -> str:
@@ -35,7 +32,7 @@ class FakeLLM(SimpleChatModel):
         return {"response": self.response}
 
     def get_num_tokens(self, text: str) -> int:
-        return self.num_token_func(str_to_prompt_messages([text])) if self.num_token_func else 0
+        return 0
 
     def _generate(
         self,

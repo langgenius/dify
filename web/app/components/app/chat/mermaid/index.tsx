@@ -23,7 +23,6 @@ const style = {
   overflow: 'auto',
 }
 
-// eslint-disable-next-line react/display-name
 const Flowchart = React.forwardRef((props: {
   PrimitiveCode: string
 }, ref) => {

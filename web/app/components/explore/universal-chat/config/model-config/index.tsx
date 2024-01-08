@@ -2,12 +2,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModelType, type ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useProviderContext } from '@/context/provider-context'
+
 export type IModelConfigProps = {
   modelId: string
-  providerName: ProviderEnum
-  onChange?: (modelId: string, providerName: ProviderEnum) => void
+  providerName: string
+  onChange?: (modelId: string, providerName: string) => void
   readonly?: boolean
 }
 
@@ -18,21 +19,17 @@ const ModelConfig: FC<IModelConfigProps> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
+  const { agentThoughtModelList } = useProviderContext()
 
   return (
     <div className='flex items-center justify-between h-[52px] px-3 rounded-xl bg-gray-50'>
       <div className='text-sm font-semibold text-gray-800'>{t('explore.universalChat.model')}</div>
       <ModelSelector
-        popClassName="right-0"
-        triggerIconSmall
-        modelType={ModelType.textGeneration}
-        supportAgentThought
-        value={{
-          modelName: modelId,
-          providerName,
-        }}
-        onChange={(model) => {
-          onChange?.(model.model_name, model.model_provider.provider_name)
+        triggerClassName={`${readonly && '!cursor-not-allowed !opacity-60'}`}
+        defaultModel={{ provider: providerName, model: modelId }}
+        modelList={agentThoughtModelList}
+        onSelect={(model) => {
+          onChange?.(model.model, model.provider)
         }}
         readonly={readonly}
       />

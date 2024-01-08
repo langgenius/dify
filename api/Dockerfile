@@ -34,9 +34,6 @@ RUN apt-get update \
 COPY --from=base /pkg /usr/local
 COPY . /app/api/
 
-RUN python -c "from transformers import GPT2TokenizerFast; GPT2TokenizerFast.from_pretrained('gpt2')"
-ENV TRANSFORMERS_OFFLINE true
-
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
