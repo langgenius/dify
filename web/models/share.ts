@@ -1,4 +1,4 @@
-import { Locale } from '@/i18n'
+import type { Locale } from '@/i18n'
 
 export type ResponseHolder = {}
 
@@ -6,7 +6,7 @@ export type ConversationItem = {
   id: string
   name: string
   inputs: Record<string, any> | null
-  introduction: string,
+  introduction: string
 }
 
 export type SiteInfo = {
