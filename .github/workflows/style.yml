@@ -44,6 +44,7 @@ jobs:
         BASH_SEVERITY: warning
         DEFAULT_BRANCH: main
         ERROR_ON_MISSING_EXEC_BIT: true
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         IGNORE_GENERATED_FILES: true
         IGNORE_GITIGNORED_FILES: true
         VALIDATE_BASH: true
