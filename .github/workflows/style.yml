@@ -1,0 +1,34 @@
+name: Style check
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - deploy/dev
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup NodeJS
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: yarn
+        cache-dependency-path: ./web/package.json
+
+    - name: Web dependencies
+      run: |
+        cd ./web
+        yarn install --frozen-lockfile
+
+    - name: Web style check
+      run: |
+        cd ./web
+        yarn run lint

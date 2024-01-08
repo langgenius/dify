@@ -79,8 +79,11 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
         """Run on agent action."""
         tool = action.tool
         tool_input = action.tool_input
-        action_name_position = action.log.index("\nAction:") + 1 if action.log else -1
-        thought = action.log[:action_name_position].strip() if action.log else ''
+        try:
+            action_name_position = action.log.index("\nAction:") + 1 if action.log else -1
+            thought = action.log[:action_name_position].strip() if action.log else ''
+        except ValueError:
+            thought = ''
 
         log = f"Thought: {thought}\nTool: {tool}\nTool Input: {tool_input}"
         print_text("\n[on_agent_action]\n" + log + "\n", color='green')

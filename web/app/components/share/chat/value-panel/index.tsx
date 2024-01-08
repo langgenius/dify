@@ -1,13 +1,13 @@
 'use client'
-import React, { FC, ReactNode } from 'react'
+import type { FC, ReactNode } from 'react'
+import React from 'react'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
+import s from './style.module.css'
 import { StarIcon } from '@/app/components/share/chat/welcome/massive-component'
 import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
 
-import s from './style.module.css'
-
-export interface ITemplateVarPanelProps {
+export type ITemplateVarPanelProps = {
   className?: string
   header: ReactNode
   children?: ReactNode | null
@@ -18,7 +18,7 @@ const TemplateVarPanel: FC<ITemplateVarPanelProps> = ({
   className,
   header,
   children,
-  isFold
+  isFold,
 }) => {
   return (
     <div className={cn(isFold ? 'border border-indigo-100' : s.boxShodow, className, 'rounded-xl ')}>
@@ -38,9 +38,9 @@ const TemplateVarPanel: FC<ITemplateVarPanelProps> = ({
   )
 }
 
-export const PanelTitle: FC<{ title: string, className?: string }> = ({
+export const PanelTitle: FC<{ title: string; className?: string }> = ({
   title,
-  className
+  className,
 }) => {
   return (
     <div className={cn(className, 'flex items-center space-x-1 text-indigo-600')}>
@@ -50,10 +50,10 @@ export const PanelTitle: FC<{ title: string, className?: string }> = ({
   )
 }
 
-export const VarOpBtnGroup: FC<{ className?: string, onConfirm: () => void, onCancel: () => void }> = ({
+export const VarOpBtnGroup: FC<{ className?: string; onConfirm: () => void; onCancel: () => void }> = ({
   className,
   onConfirm,
-  onCancel
+  onCancel,
 }) => {
   const { t } = useTranslation()
 

@@ -279,7 +279,7 @@ const TextGeneration: FC<IMainProps> = ({
       }
     })
     setAllTaskList(allTaskList)
-
+    setCurrGroupNum(0)
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
@@ -295,10 +295,7 @@ const TextGeneration: FC<IMainProps> = ({
     // avoid add many task at the same time
     if (needToAddNextGroupTask)
       setCurrGroupNum(hadRunedTaskNum)
-    // console.group()
-    // console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}.currGroupNum: ${getCurrGroupNum()}.hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
-    // console.log([...allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).map(item => item.id), taskId].sort((a: any, b: any) => a - b).join(','))
-    // console.groupEnd()
+
     const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
@@ -374,7 +371,13 @@ const TextGeneration: FC<IMainProps> = ({
     }
   }, [siteInfo?.title, canReplaceLogo])
 
-  const [isShowResSidebar, { setTrue: showResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const showResSidebar = () => {
+    // fix: useClickAway hideResSidebar will close sidebar
+    setTimeout(() => {
+      doShowResSidebar()
+    }, 0)
+  }
   const resRef = useRef<HTMLDivElement>(null)
   useClickAway(() => {
     hideResSidebar()
@@ -405,6 +408,16 @@ const TextGeneration: FC<IMainProps> = ({
   const renderBatchRes = () => {
     return (showTaskList.map(task => renderRes(task)))
   }
+
+  const resWrapClassNames = (() => {
+    if (isPC)
+      return 'grow h-full'
+
+    if (!isShowResSidebar)
+      return 'none'
+
+    return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
+  })()
 
   const renderResWrap = (
     <div
@@ -578,22 +591,14 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         {/* Result */}
-        {isPC && (
-          <div className='grow h-full'>
-            {renderResWrap}
-          </div>
-        )}
-
-        {(!isPC && isShowResSidebar) && (
-          <div
-            className={cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')}
-            style={{
-              background: 'rgba(35, 56, 118, 0.2)',
-            }}
-          >
-            {renderResWrap}
-          </div>
-        )}
+        <div
+          className={resWrapClassNames}
+          style={{
+            background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
+          }}
+        >
+          {renderResWrap}
+        </div>
       </div>
     </>
   )

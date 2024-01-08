@@ -2,8 +2,7 @@ import { Model, createServer } from 'miragejs'
 import type { User } from '@/models/user'
 import type { History } from '@/models/history'
 import type { Log } from '@/models/log'
-import { seedUser, seedHistory, seedLog } from '@/test/factories'
-
+import { seedHistory, seedLog, seedUser } from '@/test/factories'
 
 export function mockAPI() {
   if (process.env.NODE_ENV === 'development') {

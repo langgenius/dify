@@ -4,10 +4,10 @@ from typing import Union, Optional
 
 from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent
 from langchain.callbacks.manager import Callbacks
-from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Extra
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
 from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionCallAgent
 from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
@@ -15,9 +15,11 @@ from core.agent.agent.structed_multi_dataset_router_agent import StructuredMulti
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
 
+from core.entities.application_entities import ModelConfigEntity
+from core.entities.message_entities import prompt_messages_to_lc_messages
 from core.helper import moderation
-from core.model_providers.error import LLMError
-from core.model_providers.models.llm.base import BaseLLM
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_runtime.errors.invoke import InvokeError
 from core.tool.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
@@ -31,14 +33,15 @@ class PlanningStrategy(str, enum.Enum):
 
 class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
-    model_instance: BaseLLM
+    model_config: ModelConfigEntity
     tools: list[BaseTool]
-    summary_model_instance: BaseLLM = None
-    memory: Optional[BaseChatMemory] = None
+    summary_model_config: Optional[ModelConfigEntity] = None
+    memory: Optional[TokenBufferMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
     max_execution_time: Optional[float] = None
     early_stopping_method: str = "generate"
+    agent_llm_callback: Optional[AgentLLMCallback] = None
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
 
     class Config:
@@ -62,34 +65,42 @@ class AgentExecutor:
     def _init_agent(self) -> Union[BaseSingleActionAgent, BaseMultiActionAgent]:
         if self.configuration.strategy == PlanningStrategy.REACT:
             agent = AutoSummarizingStructuredChatAgent.from_llm_and_tools(
-                model_instance=self.configuration.model_instance,
+                model_config=self.configuration.model_config,
                 tools=self.configuration.tools,
                 output_parser=StructuredChatOutputParser(),
-                summary_model_instance=self.configuration.summary_model_instance
-                if self.configuration.summary_model_instance else None,
+                summary_model_config=self.configuration.summary_model_config
+                if self.configuration.summary_model_config else None,
+                agent_llm_callback=self.configuration.agent_llm_callback,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.FUNCTION_CALL:
             agent = AutoSummarizingOpenAIFunctionCallAgent.from_llm_and_tools(
-                model_instance=self.configuration.model_instance,
+                model_config=self.configuration.model_config,
                 tools=self.configuration.tools,
-                extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
-                summary_model_instance=self.configuration.summary_model_instance
-                if self.configuration.summary_model_instance else None,
+                extra_prompt_messages=prompt_messages_to_lc_messages(self.configuration.memory.get_history_prompt_messages())
+                if self.configuration.memory else None,  # used for read chat histories memory
+                summary_model_config=self.configuration.summary_model_config
+                if self.configuration.summary_model_config else None,
+                agent_llm_callback=self.configuration.agent_llm_callback,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.ROUTER:
-            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool) or isinstance(t, DatasetMultiRetrieverTool)]
+            self.configuration.tools = [t for t in self.configuration.tools
+                                        if isinstance(t, DatasetRetrieverTool)
+                                        or isinstance(t, DatasetMultiRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
-                model_instance=self.configuration.model_instance,
+                model_config=self.configuration.model_config,
                 tools=self.configuration.tools,
-                extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,
+                extra_prompt_messages=prompt_messages_to_lc_messages(self.configuration.memory.get_history_prompt_messages())
+                if self.configuration.memory else None,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.REACT_ROUTER:
-            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool) or isinstance(t, DatasetMultiRetrieverTool)]
+            self.configuration.tools = [t for t in self.configuration.tools
+                                        if isinstance(t, DatasetRetrieverTool)
+                                        or isinstance(t, DatasetMultiRetrieverTool)]
             agent = StructuredMultiDatasetRouterAgent.from_llm_and_tools(
-                model_instance=self.configuration.model_instance,
+                model_config=self.configuration.model_config,
                 tools=self.configuration.tools,
                 output_parser=StructuredChatOutputParser(),
                 verbose=True
@@ -104,11 +115,11 @@ class AgentExecutor:
 
     def run(self, query: str) -> AgentExecuteResult:
         moderation_result = moderation.check_moderation(
-            self.configuration.model_instance.model_provider,
+            self.configuration.model_config,
             query
         )
 
-        if not moderation_result:
+        if moderation_result:
             return AgentExecuteResult(
                 output="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
                 strategy=self.configuration.strategy,
@@ -118,7 +129,6 @@ class AgentExecutor:
         agent_executor = LCAgentExecutor.from_agent_and_tools(
             agent=self.agent,
             tools=self.configuration.tools,
-            memory=self.configuration.memory,
             max_iterations=self.configuration.max_iterations,
             max_execution_time=self.configuration.max_execution_time,
             early_stopping_method=self.configuration.early_stopping_method,
@@ -126,8 +136,8 @@ class AgentExecutor:
         )
 
         try:
-            output = agent_executor.run(query)
-        except LLMError as ex:
+            output = agent_executor.run(input=query)
+        except InvokeError as ex:
             raise ex
         except Exception as ex:
             logging.exception("agent_executor run failed")

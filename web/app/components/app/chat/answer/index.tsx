@@ -275,7 +275,7 @@ const Answer: FC<IAnswerProps> = ({
                     className={cn(s.copyBtn, 'mr-1')}
                   />
                 )}
-                {supportAnnotation && (
+                {(supportAnnotation && !item.isOpeningStatement) && (
                   <AnnotationCtrlBtn
                     appId={appId!}
                     messageId={id}

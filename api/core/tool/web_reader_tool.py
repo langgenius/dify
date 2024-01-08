@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unicodedata
 from contextlib import contextmanager
-from typing import Type
+from typing import Type, Any
 
 import requests
 from bs4 import BeautifulSoup, NavigableString, Comment, CData
@@ -23,7 +23,7 @@ from regex import regex
 from core.chain.llm_chain import LLMChain
 from core.data_loader import file_extractor
 from core.data_loader.file_extractor import FileExtractor
-from core.model_providers.models.llm.base import BaseLLM
+from core.entities.application_entities import ModelConfigEntity
 
 FULL_TEMPLATE = """
 TITLE: {title}
@@ -67,7 +67,8 @@ class WebReaderTool(BaseTool):
     summary_chunk_overlap: int = 0
     summary_separators: list[str] = ["\n\n", "。", ".", " ", ""]
     continue_reading: bool = True
-    model_instance: BaseLLM = None
+    model_config: ModelConfigEntity
+    model_parameters: dict[str, Any]
 
     def _run(self, url: str, summary: bool = False, cursor: int = 0) -> str:
         try:
@@ -80,7 +81,7 @@ class WebReaderTool(BaseTool):
         except Exception as e:
             return f'Read this website failed, caused by: {str(e)}.'
 
-        if summary and self.model_instance:
+        if summary:
             character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
                 chunk_size=self.summary_chunk_tokens,
                 chunk_overlap=self.summary_chunk_overlap,
@@ -117,12 +118,14 @@ class WebReaderTool(BaseTool):
 
     def get_summary_chain(self) -> RefineDocumentsChain:
         initial_chain = LLMChain(
-            model_instance=self.model_instance,
-            prompt=refine_prompts.PROMPT
+            model_config=self.model_config,
+            prompt=refine_prompts.PROMPT,
+            parameters=self.model_parameters
         )
         refine_chain = LLMChain(
-            model_instance=self.model_instance,
-            prompt=refine_prompts.REFINE_PROMPT
+            model_config=self.model_config,
+            prompt=refine_prompts.REFINE_PROMPT,
+            parameters=self.model_parameters
         )
         return RefineDocumentsChain(
             initial_llm_chain=initial_chain,

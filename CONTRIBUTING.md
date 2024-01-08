@@ -55,6 +55,11 @@ Did you have an issue, like a merge conflict, or don't know how to open a pull r
 
 Stuck somewhere? Have any questions? Join the [Discord Community Server](https://discord.gg/j3XRWSPBf7). We are here to help!
 
+
+### Provider Integrations
+If you see a model provider not yet supported by Dify that you'd like to use, follow these [steps](api/core/model_runtime/README.md) to submit a PR.
+
+
 ### i18n (Internationalization) Support
 
 We are looking for contributors to help with translations in other languages. If you are interested in helping, please join the [Discord Community Server](https://discord.gg/AhzKf7dNgk) and let us know.  

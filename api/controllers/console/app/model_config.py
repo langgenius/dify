@@ -31,7 +31,7 @@ class ModelConfigResource(Resource):
             tenant_id=current_user.current_tenant_id,
             account=current_user,
             config=request.json,
-            mode=app.mode
+            app_mode=app.mode
         )
 
         new_app_model_config = AppModelConfig(

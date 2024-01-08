@@ -1,7 +1,0 @@
-.modelModeLabel {
-  visibility: hidden;
-}
-
-.optionItem:hover .modelModeLabel {
-  visibility: visible;
-}

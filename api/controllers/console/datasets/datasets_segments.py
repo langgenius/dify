@@ -12,8 +12,9 @@ from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from libs.login import login_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -133,10 +134,12 @@ class DatasetDocumentSegmentApi(Resource):
         if dataset.indexing_technique == 'high_quality':
             # check embedding model setting
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
@@ -152,6 +155,9 @@ class DatasetDocumentSegmentApi(Resource):
 
         if not segment:
             raise NotFound('Segment not found.')
+
+        if segment.status != 'completed':
+            raise NotFound('Segment is not completed, enable or disable function is not allowed')
 
         document_indexing_cache_key = 'document_{}_indexing'.format(segment.document_id)
         cache_result = redis_client.get(document_indexing_cache_key)
@@ -219,10 +225,12 @@ class DatasetDocumentSegmentAddApi(Resource):
         # check embedding model setting
         if dataset.indexing_technique == 'high_quality':
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
@@ -269,10 +277,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if dataset.indexing_technique == 'high_quality':
             # check embedding model setting
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(

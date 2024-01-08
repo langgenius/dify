@@ -287,7 +287,6 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   }
 
   const onSave = async () => {
-    console.log('metadataParams:', metadataParams)
     setSaveLoading(true)
     const [e] = await asyncRunSafe<CommonResponse>(modifyDocMetadata({
       datasetId,

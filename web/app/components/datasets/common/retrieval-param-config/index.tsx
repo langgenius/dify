@@ -9,10 +9,9 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { RetrievalConfig } from '@/types/app'
-import { useProviderContext } from '@/context/provider-context'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type Props = {
   type: RETRIEVE_METHOD
@@ -29,8 +28,9 @@ const RetrievalParamConfig: FC<Props> = ({
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.invertedIndex
   const {
-    rerankDefaultModel,
-  } = useProviderContext()
+    defaultModel: rerankDefaultModel,
+    modelList: rerankModelList,
+  } = useModelListAndDefaultModel(3)
 
   const rerankModel = (() => {
     if (value.reranking_model) {
@@ -41,8 +41,8 @@ const RetrievalParamConfig: FC<Props> = ({
     }
     else if (rerankDefaultModel) {
       return {
-        provider_name: rerankDefaultModel.model_provider.provider_name,
-        model_name: rerankDefaultModel.model_name,
+        provider_name: rerankDefaultModel.provider.provider,
+        model_name: rerankDefaultModel.model,
       }
     }
   })()
@@ -71,24 +71,21 @@ const RetrievalParamConfig: FC<Props> = ({
               </Tooltip>
             </div>
           </div>
-          <div>
-            <ModelSelector
-              whenEmptyGoToSetting
-              popClassName='!max-w-[100%] !w-full'
-              value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
-              modelType={ModelType.reranking}
-              readonly={!value.reranking_enable && type !== RETRIEVE_METHOD.hybrid}
-              onChange={(v) => {
-                onChange({
-                  ...value,
-                  reranking_model: {
-                    reranking_provider_name: v.model_provider.provider_name,
-                    reranking_model_name: v.model_name,
-                  },
-                })
-              }}
-            />
-          </div>
+          <ModelSelector
+            triggerClassName={`${!value.reranking_enable && type !== RETRIEVE_METHOD.hybrid && '!opacity-60 !cursor-not-allowed'}`}
+            defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
+            modelList={rerankModelList}
+            readonly={!value.reranking_enable && type !== RETRIEVE_METHOD.hybrid}
+            onSelect={(v) => {
+              onChange({
+                ...value,
+                reranking_model: {
+                  reranking_provider_name: v.provider,
+                  reranking_model_name: v.model,
+                },
+              })
+            }}
+          />
         </div>
       )}
 

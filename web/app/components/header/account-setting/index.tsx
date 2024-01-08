@@ -11,7 +11,7 @@ import LanguagePage from './language-page'
 import PluginPage from './plugin-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
-import ModelPage from './model-page'
+import ModelProviderPage from './model-provider-page'
 import s from './index.module.css'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
@@ -211,7 +211,7 @@ export default function AccountSetting({
             {activeMenu === 'billing' && <BillingPage />}
             {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
-            {activeMenu === 'provider' && <ModelPage />}
+            {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
             {activeMenu === 'plugin' && <PluginPage />}
             {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage /> }
