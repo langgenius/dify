@@ -5,7 +5,7 @@ from flask import current_app
 from core.tools.tool_manager import ToolManager
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ApiProviderAuthType, ToolProviderCredentials, \
-    ToolCredentialsOption, ToolProviderIdentity, ToolProviderType
+    ToolCredentialsOption
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.provider.tool_provider import ToolProviderController

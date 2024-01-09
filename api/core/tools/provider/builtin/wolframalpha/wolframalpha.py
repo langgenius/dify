@@ -11,6 +11,7 @@ class GoogleProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
             WolframAlphaTool().invoke(
+                user_id='',
                 tool_paramters={
                     "query": "1+2+....+111",
                 },

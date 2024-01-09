@@ -13,11 +13,14 @@ class Tool(BaseModel, ABC):
     description: ToolDescription = None
     is_team_authorization: bool = False
 
-    def invoke(self, tool_paramters: Dict[str, Any],
+    def invoke(self, 
+        user_id: str,
+        tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage]
     ) -> List[ToolInvokeMessage]:
         result = self._invoke(
+            user_id=user_id,
             tool_paramters=tool_paramters,
             credentials=credentials,
             prompt_messages=prompt_messages
@@ -29,7 +32,7 @@ class Tool(BaseModel, ABC):
         return [result]
 
     @abstractmethod
-    def _invoke(self, tool_paramters: Dict[str, Any],
+    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage]
     ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:

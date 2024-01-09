@@ -9,6 +9,7 @@ from openai import OpenAI
 
 class DallE3Tool(Tool):
     def _invoke(self, 
+                user_id: str, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 
                prompt_messages: List[PromptMessage]

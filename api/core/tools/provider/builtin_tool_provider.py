@@ -127,6 +127,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
     def _invoke(
         self,
+        user_id: str,
         tool_name: str,
         tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
@@ -148,7 +149,7 @@ class BuiltinToolProviderController(ToolProviderController):
             raise ToolNotFoundError(f'tool {tool_name} not found')
         
         # invoke
-        return tool.invoke(tool_paramters, credentials, prompt_messages)
+        return tool.invoke(user_id, tool_paramters, credentials, prompt_messages)
 
     def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
         """

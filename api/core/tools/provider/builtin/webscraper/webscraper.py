@@ -9,6 +9,7 @@ class WebscraperProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
             WebscraperTool().invoke(
+                user_id='',
                 tool_paramters={
                     'url': 'https://www.google.com',
                     'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '

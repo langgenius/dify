@@ -11,6 +11,7 @@ class WolframAlphaTool(Tool):
     _base_url = 'https://api.wolframalpha.com/v2/query'
 
     def _invoke(self, 
+                user_id: str, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 
                prompt_messages: List[PromptMessage]

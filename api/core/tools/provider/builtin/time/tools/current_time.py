@@ -8,6 +8,7 @@ import datetime
 
 class CurrentTimeTool(Tool):
     def _invoke(self, 
+                user_id: str,
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 
                prompt_messages: List[PromptMessage]

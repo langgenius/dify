@@ -91,6 +91,7 @@ class ToolParamter(BaseModel):
         NUMBER = "number"
         BOOLEAN = "boolean"
         SELECT = "select"
+        MODEL = "model"
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema" # should be set while adding tool

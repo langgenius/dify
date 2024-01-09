@@ -74,6 +74,7 @@ class ToolProviderController(BaseModel, ABC):
 
     def _invoke(
         self,
+        user_id: str,
         tool_name: str,
         tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
@@ -95,10 +96,11 @@ class ToolProviderController(BaseModel, ABC):
             raise ToolNotFoundError(f'tool {tool_name} not found')
         
         # invoke
-        return tool.invoke(tool_paramters, credentials, prompt_messages)
+        return tool.invoke(user_id, tool_paramters, credentials, prompt_messages)
 
     def invoke(
         self,
+        user_id: str,
         tool_id: int,
         tool_name: str,
         tool_parameters: Dict[str, Any],
@@ -118,7 +120,7 @@ class ToolProviderController(BaseModel, ABC):
         # validate parameters
         self.validate_parameters(tool_id=tool_id, tool_name=tool_name, tool_parameters=tool_parameters)
         
-        return self._invoke(tool_name, tool_parameters, credentials, prompt_messages)
+        return self._invoke(user_id, tool_name, tool_parameters, credentials, prompt_messages)
 
     def invoke_app_based(
         self,

@@ -9,6 +9,7 @@ class WikiPediaProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
             WikiPediaSearchTool().invoke(
+                user_id='',
                 tool_paramters={
                     "query": "misaka mikoto",
                 },

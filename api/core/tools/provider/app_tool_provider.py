@@ -19,6 +19,7 @@ class AppBasedToolProviderEntity(ToolProviderController):
         return ToolProviderType.APP_BASED
     
     def invoke(self, 
+               user_id: str,
                tool_id: int, tool_name: str, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 
