@@ -49,6 +49,8 @@ class HostingConfiguration:
     moderation_config: HostedModerationConfig = None
 
     def init_app(self, app: Flask) -> None:
+        if app.config.get('EDITION') != 'CLOUD':
+            return
 
         self.provider_map["azure_openai"] = self.init_azure_openai()
         self.provider_map["openai"] = self.init_openai()
