@@ -85,16 +85,16 @@ class ToolManageService:
                     options=[
                         ToolCredentialsOption(value='none', label=I18nObject(
                             en_US='None',
-                            zh_CN='无'
+                            zh_Hans='无'
                         )),
                         ToolCredentialsOption(value='api_key', label=I18nObject(
                             en_US='Api Key',
-                            zh_CN='Api Key'
+                            zh_Hans='Api Key'
                         )),
                     ],
                     placeholder=I18nObject(
                         en_US='Select auth type',
-                        zh_CN='选择认证方式'
+                        zh_Hans='选择认证方式'
                     )
                 ),
                 ToolProviderCredentials(
@@ -103,12 +103,12 @@ class ToolManageService:
                     required=False,
                     placeholder=I18nObject(
                         en_US='Enter api key header',
-                        zh_CN='输入 api key header，如：X-API-KEY'
+                        zh_Hans='输入 api key header，如：X-API-KEY'
                     ),
                     default='api_key',
                     help=I18nObject(
                         en_US='HTTP header name for api key',
-                        zh_CN='HTTP 头部字段名，用于传递 api key'
+                        zh_Hans='HTTP 头部字段名，用于传递 api key'
                     )
                 ),
                 ToolProviderCredentials(
@@ -117,7 +117,7 @@ class ToolManageService:
                     required=False,
                     placeholder=I18nObject(
                         en_US='Enter api key',
-                        zh_CN='输入 api key'
+                        zh_Hans='输入 api key'
                     ),
                     default=''
                 ),
