@@ -1,5 +1,5 @@
 from core.tools.provider.builtin.dalle.dalle import DALLEProvider
-from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.provider.tool import Tool
 
 def test_dalle_draw():

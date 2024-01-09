@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, ToolProviderIdentity, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, ToolProviderIdentity, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.provider.tool import Tool
@@ -84,7 +84,7 @@ class ApiBasedToolProviderController(ToolProviderController):
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any],
                prompt_messages: List[PromptMessage]
-        ) -> List[AssistantAppMessage]:
+        ) -> List[ToolInvokeMessage]:
         """
             invoke app based assistant
 

@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
 from core.model_runtime.entities.message_entities import PromptMessage
-from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, \
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, \
     ToolProviderIdentity, ToolParamter, ToolProviderCredentials
 from core.tools.provider.tool import Tool
 from core.tools.entities.user_entities import UserToolProviderCredentials
@@ -78,7 +78,7 @@ class ToolProviderController(BaseModel, ABC):
         tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
+    ) -> List[ToolInvokeMessage]:
         """
             should be implemented by the subclass
 
@@ -104,7 +104,7 @@ class ToolProviderController(BaseModel, ABC):
         tool_parameters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
+    ) -> List[ToolInvokeMessage]:
         """
             invoke will detect which type of assistant should be used and route the request to the correct method
         
@@ -127,7 +127,7 @@ class ToolProviderController(BaseModel, ABC):
         tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
+    ) -> List[ToolInvokeMessage]:
         """
             invoke app based assistant
 
@@ -147,7 +147,7 @@ class ToolProviderController(BaseModel, ABC):
         tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
+    ) -> List[ToolInvokeMessage]:
         """
             invoke api based assistant
 

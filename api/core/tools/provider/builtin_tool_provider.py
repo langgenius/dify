@@ -5,7 +5,7 @@ from os import path, listdir
 from yaml import load, FullLoader
 
 from core.model_runtime.entities.message_entities import PromptMessage
-from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, \
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, \
     ToolProviderIdentity, ToolParamter, ToolProviderCredentials
 from core.tools.provider.tool import Tool
 from core.tools.provider.tool_provider import ToolProviderController
@@ -30,7 +30,7 @@ class BuiltinToolProviderController(ToolProviderController):
         except:
             raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}')
 
-        if 'credentails_for_provider' in provider_yaml:
+        if 'credentails_for_provider' in provider_yaml and provider_yaml['credentails_for_provider'] is not None:
             # set credentials name
             for credential_name in provider_yaml['credentails_for_provider']:
                 provider_yaml['credentails_for_provider'][credential_name]['name'] = credential_name
@@ -131,7 +131,7 @@ class BuiltinToolProviderController(ToolProviderController):
         tool_paramters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
+    ) -> List[ToolInvokeMessage]:
         """
             should be implemented by the subclass
 

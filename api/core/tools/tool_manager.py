@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Tuple
 from os import listdir, path
 
-from core.tools.entities.tool_entities import AssistantAppMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.entities.constant import DEFAULT_PROVIDERS
@@ -34,7 +34,7 @@ class ToolManager:
         tool_parameters: Dict[str, Any],
         credentials: Dict[str, Any],
         prompt_messages: List[PromptMessage],
-    ) -> List[AssistantAppMessage]:
+    ) -> List[ToolInvokeMessage]:
         """
             invoke the assistant
 

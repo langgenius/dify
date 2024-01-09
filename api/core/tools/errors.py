@@ -12,3 +12,6 @@ class ToolProviderCredentialValidationError(ValueError):
 
 class ToolNotSupportedError(ValueError):
     pass
+
+class ToolInvokeError(ValueError):
+    pass

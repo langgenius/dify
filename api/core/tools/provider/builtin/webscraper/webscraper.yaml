@@ -1,0 +1,12 @@
+identity:
+  author: Dify
+  name: webscraper
+  label:
+    en_US: WebScraper
+    zh_Hans: 网页抓取
+  description: 
+    en_US: A tool for scraping webpages.
+    zh_Hans: 一个用于抓取网页的工具。
+  icon: icon.svg
+credentails_for_provider:
+  

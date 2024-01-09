@@ -4,7 +4,6 @@ identity:
   label:
     en_US: GoogleSearch
     zh_Hans: 谷歌搜索
-  icon: icon.svg
 tool_description:
   human:
     en_US: A tool for performing a Google SERP search and extracting snippets and webpages.Input should be a search query.

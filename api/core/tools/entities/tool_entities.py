@@ -67,17 +67,19 @@ class ApiProviderAuthType(Enum):
                 return mode
         raise ValueError(f'invalid mode value {value}')
 
-class AssistantAppMessage(BaseModel):
+class ToolInvokeMessage(BaseModel):
     class MessageType(Enum):
         TEXT = "text"
         IMAGE = "image"
         LINK = "link"
+        BLOB = "blob"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
-    message: str = None
+    message: Union[str, bytes] = None
+    meta: Dict[str, Any] = None
 
 class ToolParamterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
@@ -122,7 +124,6 @@ class ToolIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
-    icon: str = Field(..., description="The icon of the tool")
 
 class ToolCredentialsOption(BaseModel):
     value: str = Field(..., description="The value of the option")
