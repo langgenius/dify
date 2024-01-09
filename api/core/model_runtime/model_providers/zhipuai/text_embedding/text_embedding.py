@@ -55,7 +55,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         
         total_num_tokens = 0
         for text in texts:
-            total_num_tokens += len(_get_token_ids_default_method(text))
+            total_num_tokens += self._get_num_tokens_by_gpt2(text)
 
         return total_num_tokens
 
