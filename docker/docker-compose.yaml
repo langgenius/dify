@@ -251,7 +251,7 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass difyai123456
     healthcheck:
-      test: ["CMD", "redis-cli","ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
     # uncomment to expose redis port to host
     # ports:
     #   - "6379:6379"
