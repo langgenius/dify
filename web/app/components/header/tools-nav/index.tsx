@@ -17,7 +17,7 @@ const ToolsNav = ({
   const actived = selectedSegment === 'tools'
 
   return (
-    <Link href="/tools/third-part" className={classNames(
+    <Link href="/tools" className={classNames(
       className, 'group',
       actived && 'bg-white shadow-md',
       actived ? 'text-primary-600' : 'text-gray-500 hover:bg-gray-200',
