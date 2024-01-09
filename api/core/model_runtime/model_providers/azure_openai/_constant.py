@@ -40,8 +40,8 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT.value,
-                'context_size': 4096,
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 4096,
             },
             parameter_rules=[
                 ParameterRule(
@@ -84,8 +84,8 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT.value,
-                'context_size': 16385,
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 16385,
             },
             parameter_rules=[
                 ParameterRule(
@@ -128,8 +128,8 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT.value,
-                'context_size': 8192,
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 8192,
             },
             parameter_rules=[
                 ParameterRule(
@@ -202,8 +202,8 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT.value,
-                'context_size': 32768,
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 32768,
             },
             parameter_rules=[
                 ParameterRule(
@@ -276,8 +276,8 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT.value,
-                'context_size': 128000,
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 128000,
             },
             parameter_rules=[
                 ParameterRule(
@@ -349,8 +349,8 @@ LLM_BASE_MODELS = [
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.CHAT.value,
-                'context_size': 128000,
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+                ModelPropertyKey.CONTEXT_SIZE: 128000,
             },
             parameter_rules=[
                 ParameterRule(
@@ -419,8 +419,8 @@ LLM_BASE_MODELS = [
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.COMPLETION.value,
-                'context_size': 4096,
+                ModelPropertyKey.MODE: LLMMode.COMPLETION.value,
+                ModelPropertyKey.CONTEXT_SIZE: 4096,
             },
             parameter_rules=[
                 ParameterRule(
@@ -459,8 +459,8 @@ LLM_BASE_MODELS = [
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                'mode': LLMMode.COMPLETION.value,
-                'context_size': 4096,
+                ModelPropertyKey.MODE: LLMMode.COMPLETION.value,
+                ModelPropertyKey.CONTEXT_SIZE: 4096,
             },
             parameter_rules=[
                 ParameterRule(
