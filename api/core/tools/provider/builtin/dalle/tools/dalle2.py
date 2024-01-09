@@ -1,15 +1,64 @@
 from typing import Any, Dict, List, Union
-from core.tools.entities.tool_entities import AssistantAppMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.provider.tool_provider import Tool
 from core.model_runtime.entities.message_entities import PromptMessage
+
+from base64 import b64decode
+
+from openai import OpenAI
 
 class DallE2Tool(Tool):
     def _invoke(self, 
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 
                prompt_messages: List[PromptMessage]
-        ) -> Union[AssistantAppMessage, List[AssistantAppMessage]]:
+        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        return self.create_image_message(image='https://images.openai.com/blob/b196df3a-6fea-4d86-87b2-f9bb50be64c7/leaf.png')
+        openai_organization = credentials.get('openai_organizaion_id', None)
+        openai_base_url = credentials.get('openai_base_url', None)
+
+        client = OpenAI(
+            api_key=credentials['openai_api_key'],
+            base_url=openai_base_url,
+            organization=openai_organization
+        )
+
+        SIZE_MAPPING = {
+            'small': '256x256',
+            'medium': '512x512',
+            'large': '1024x1024',
+        }
+
+        # prompt
+        prompt = tool_paramters.get('prompt', '')
+        if not prompt:
+            return self.create_text_message('Please input prompt')
+        
+        # get size
+        size = SIZE_MAPPING[tool_paramters.get('size', 'large')]
+
+        # get n
+        n = tool_paramters.get('n', 1)
+
+        # call openapi dalle2
+        response = client.images.generate(
+            prompt=prompt,
+            model='dall-e-2',
+            size=size,
+            n=n,
+            response_format='b64_json'
+        )
+
+        result = []
+
+        for image in response.data:
+            result.append(self.create_blob_message(blob=b64decode(image.b64_json), meta={
+                'mime_type': 'image/png'
+            }))
+
+        return result
+
+    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+        pass

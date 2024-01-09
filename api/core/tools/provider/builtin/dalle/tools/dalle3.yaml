@@ -1,5 +1,5 @@
 identity:
-  name: dalle
+  name: dalle3
   author: Dify
   label:
     en_US: DALL-E
@@ -7,7 +7,6 @@ identity:
   description:
     en_US: DALL-E draw
     zh_Hans: DALL-E 画画
-  icon: icon.svg
 tool_description:
   human:
     en_US: DALL-E is a text to image tool
@@ -29,8 +28,8 @@ parameters:
     type: select
     required: true
     human_description:
-      en_US: used for selecting the image size
-      zh_Hans: 用于选择图像大小
+      en_US: selecting the image size
+      zh_Hans: 选择图像大小
     label:
       en_US: Image size
       zh_Hans: 图像大小
@@ -49,3 +48,56 @@ parameters:
           en_US: Horizontal(1792x1024)
           zh_Hans: 横屏(1792x1024)
     default: square
+  - n:
+    type: number
+    required: true
+    human_description:
+      en_US: selecting the number of images
+      zh_Hans: 选择图像数量
+    label:
+      en_US: Number of images
+      zh_Hans: 图像数量
+    form: form
+    min: 1
+    max: 4
+    default: 1
+  - name: quality
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the image quality
+      zh_Hans: 选择图像质量
+    label:
+      en_US: Image quality
+      zh_Hans: 图像质量
+    form: form
+    options:
+      - value: standard
+        label:
+          en_US: Standard
+          zh_Hans: 标准
+      - value: hd
+        label:
+          en_US: HD
+          zh_Hans: 高清
+    default: standard
+    - name: style
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the image style
+      zh_Hans: 选择图像风格
+    label:
+      en_US: Image style
+      zh_Hans: 图像风格
+    form: form
+    options:
+      - value: vivid
+        label:
+          en_US: Vivid
+          zh_Hans: 生动
+      - value: natural
+        label:
+          en_US: Natural
+          zh_Hans: 自然
+    default: vivid

@@ -1,5 +1,5 @@
 from core.tools.provider.tool_provider import Tool
-from core.tools.entities.tool_entities import AssistantAppMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.model_runtime.entities.message_entities import PromptMessage
 
 from typing import Any, Dict, List, Union, Optional, Tuple
@@ -114,7 +114,7 @@ class GoogleSearchTool(Tool):
                tool_paramters: Dict[str, Any], 
                credentials: Dict[str, Any], 
                prompt_messages: List[PromptMessage]
-        ) -> Union[AssistantAppMessage, List[AssistantAppMessage]]:
+        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
