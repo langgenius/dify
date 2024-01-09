@@ -15,7 +15,6 @@ from services.tools_manage_service import ToolManageService
 import io
 
 class ToolProviderListApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -82,7 +81,7 @@ class ToolApiProviderAddApi(Resource):
         parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('description', type=str, required=True, nullable=False, location='json')
 
         args = parser.parse_args()

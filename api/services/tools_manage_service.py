@@ -37,9 +37,14 @@ class ToolManageService:
         
         # add icon url prefix
         for provider in result:
-            if 'icon' in provider and provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
-                provider['icon'] = url_prefix + provider['name'] + '/icon'
-
+            if 'icon' in provider:
+                if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
+                    provider['icon'] = url_prefix + provider['name'] + '/icon'
+                elif provider['type'] == UserToolProvider.ProviderType.API.value:
+                    try:
+                        provider['icon'] = json.loads(provider['icon'])
+                    except:
+                        provider = ''
         return result
     
     @staticmethod
@@ -130,7 +135,7 @@ class ToolManageService:
 
     @staticmethod
     def create_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentails: dict, parameters: dict, schema_type: str, schema: str
+        user_id: str, tenant_id: str, provider_name: str, icon: dict, description: str, credentails: dict, parameters: dict, schema_type: str, schema: str
     ):
         """
             create api tool provider
@@ -203,7 +208,7 @@ class ToolManageService:
 
     @staticmethod
     def create_openapi_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, 
+        user_id: str, tenant_id: str, provider_name: str, icon: dict, 
         description: str,
         credentials: dict, parameters: dict, schema: str
     ):
@@ -230,7 +235,7 @@ class ToolManageService:
             tenant_id=tenant_id,
             user_id=user_id,
             name=provider_name,
-            icon=icon,
+            icon=json.dumps(icon),
             schema=schema,
             description=description,
             schema_type_str=ApiProviderSchemaType.OPENAPI.value,
