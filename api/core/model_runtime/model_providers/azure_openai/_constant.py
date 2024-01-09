@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType, FetchFrom, ParameterRule, \
-    DefaultParameterName, PriceConfig
+    DefaultParameterName, PriceConfig, ModelPropertyKey
 from core.model_runtime.entities.model_entities import AIModelEntity, I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 
@@ -502,8 +502,8 @@ EMBEDDING_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.TEXT_EMBEDDING,
             model_properties={
-                'context_size': 8097,
-                'max_chunks': 32,
+                ModelPropertyKey.CONTEXT_SIZE: 8097,
+                ModelPropertyKey.MAX_CHUNKS: 32,
             },
             pricing=PriceConfig(
                 input=0.0001,

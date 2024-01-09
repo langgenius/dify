@@ -144,7 +144,7 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) \
+    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None, **params) \
             -> str:
         """
         Invoke large language model
@@ -161,7 +161,8 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             file=file,
-            user=user
+            user=user,
+            **params
         )
 
 
