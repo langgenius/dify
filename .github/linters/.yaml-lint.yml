@@ -7,5 +7,4 @@ rules:
     max-spaces-inside: 1
   document-start: disable
   line-length: disable
-  trailing-spaces:
-    level: warning
+  truthy: disable
