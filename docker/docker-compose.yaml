@@ -236,7 +236,7 @@ services:
     # ports:
     #   - "5432:5432"
     healthcheck:
-      test: ["CMD", "pg_isready"]
+      test: [ "CMD", "pg_isready" ]
       interval: 1s
       timeout: 3s
       retries: 30
