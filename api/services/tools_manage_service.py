@@ -1,13 +1,15 @@
 from typing import List
 
+from flask import current_app
+
 from core.tools.tool_manager import ToolManager
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ApiProviderAuthType, ToolProviderCredentials, \
-    ToolCredentialsOption
+    ToolCredentialsOption, ToolProviderIdentity, ToolProviderType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.provider.tool_provider import ToolProviderController
-from core.tools.provider.api_tool_provider import ApiBasedToolProviderEntity
+from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError, ToolNotFoundError
@@ -25,12 +27,20 @@ class ToolManageService:
 
             :return: the list of tool providers
         """
-        return [
-            provider.to_dict() for provider in ToolManager.user_list_providers(
-                user_id,
-                tanent_id,
-            )
-        ]
+        result = [provider.to_dict() for provider in ToolManager.user_list_providers(
+            user_id,
+            tanent_id,
+        )]
+
+        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+                      + f"/console/api/workspaces/current/tool-provider/builtin/")
+        
+        # add icon url prefix
+        for provider in result:
+            if 'icon' in provider and provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
+                provider['icon'] = url_prefix + provider['name'] + '/icon'
+
+        return result
     
     @staticmethod
     def list_builtin_provider_credentials_schema(
@@ -54,10 +64,11 @@ class ToolManageService:
             parse api schema to tool bundle
         """
         try:
+            warnings = {}
             if schema_type == ApiProviderSchemaType.OPENAPI.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
+                tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema, warning=warnings)
             elif schema_type == ApiProviderSchemaType.OPENAI_PLUGIN.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema)
+                tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema, warning=warnings)
             else:
                 raise ValueError(f'invalid schema type {schema_type}')
             credentails_schema = [
@@ -111,6 +122,7 @@ class ToolManageService:
                 {
                     'parameters_schema': tool_bundles,
                     'credentials_schema': credentails_schema,
+                    'warning': warnings
                 }
             ))
         except Exception as e:
@@ -260,7 +272,7 @@ class ToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
 
         # create provider entity
-        provider_entity = ApiBasedToolProviderEntity.from_db(db_provider, auth_type)
+        provider_entity = ApiBasedToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_entity.load_bundled_tools(tool_bundles)
 
@@ -268,7 +280,7 @@ class ToolManageService:
             # validate credentials for each tool
             try:
                 tool = provider_entity.get_tool(tool_bundle.operation_id)
-                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}))
+                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}), format_only=True)
             except ToolProviderCredentialValidationError as e:
                 raise ValueError(str(e))
 
@@ -316,7 +328,7 @@ class ToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
 
         # create provider entity
-        provider_entity = ApiBasedToolProviderEntity.from_db(provider, auth_type)
+        provider_entity = ApiBasedToolProviderController.from_db(provider, auth_type)
         # load tools into provider entity
         provider_entity.load_bundled_tools(tool_bundles)
 
@@ -324,7 +336,7 @@ class ToolManageService:
             # validate credentials for each tool
             try:
                 tool = provider_entity.get_tool(tool_bundle.operation_id)
-                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}))
+                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}), format_only=True)
             except ToolProviderCredentialValidationError as e:
                 raise ValueError(str(e))
 
@@ -352,6 +364,19 @@ class ToolManageService:
         db.session.commit()
 
         return { 'result': 'success' }
+    
+    @staticmethod
+    def get_builtin_tool_provider_icon(
+        provider: str
+    ):
+        """
+            get tool provider icon and it's minetype
+        """
+        icon_path, mime_type = ToolManager.get_builtin_provider_icon(provider)
+        with open(icon_path, 'rb') as f:
+            icon_bytes = f.read()
+
+        return icon_bytes, mime_type
     
     @staticmethod
     def delete_api_tool_provider(
@@ -393,3 +418,56 @@ class ToolManageService:
             'schema': provider.schema,
             'tools': provider.tools,
         }))
+    
+    @staticmethod
+    def test_api_tool_preview(
+        tool_name: str, credentials: dict, parameters: dict, schema_type: str, schema: str
+    ):
+        """
+            test api tool before adding api tool provider
+
+            1. parse schema into tool bundle
+        """
+        if schema_type not in [member.value for member in ApiProviderSchemaType]:
+            raise ValueError(f'invalid schema type {schema_type}')
+        
+        if schema_type == ApiProviderSchemaType.OPENAPI.value:
+            tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
+        else:
+            raise ValueError(f'invalid schema type {schema_type}')
+        
+        # get tool bundle
+        tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)
+        if tool_bundle is None:
+            raise ValueError(f'invalid tool name {tool_name}')
+        
+        # create a fake db provider
+        db_provider = ApiToolProvider(
+            tenant_id='', user_id='', name='', icon='',
+            schema=schema,
+            description='',
+            schema_type_str=ApiProviderSchemaType.OPENAPI.value,
+            tools_str=serialize_base_model_array(tool_bundles),
+            credentials_str=json.dumps(credentials),
+        )
+
+        if 'auth_type' not in credentials:
+            raise ValueError('auth_type is required')
+
+        # get auth type, none or api key
+        auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
+
+        # create provider entity
+        provider_controller = ApiBasedToolProviderController.from_db(db_provider, auth_type)
+        # load tools into provider entity
+        provider_controller.load_bundled_tools(tool_bundles)
+
+        try:
+            provider_controller.validate_credentials_format(credentials)
+            # get tool
+            tool = provider_controller.get_tool(tool_name)
+            tool.validate_credentials(credentials, parameters)
+        except Exception as e:
+            return { 'error': str(e) }
+        
+        return { 'result': 'success' }

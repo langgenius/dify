@@ -12,7 +12,9 @@ from requests import get
 
 class ApiBasedToolSchemaParser:
     @staticmethod
-    def parse_openapi_to_tool_bundle(openapi: dict) -> List[ApiBasedToolBundle]:
+    def parse_openapi_to_tool_bundle(openapi: dict, warning: dict = None) -> List[ApiBasedToolBundle]:
+        warning = warning if warning is not None else {}
+
         if len(openapi['servers']) == 0:
             raise ToolProviderNotFoundError('No server found in the openapi yaml.')
 
@@ -71,6 +73,38 @@ class ApiBasedToolSchemaParser:
                                 root = root[ref]
                             # overwrite the content
                             interface['operation']['requestBody']['content'][content_type]['schema'] = root
+                    # parse body parameters
+                    if 'schema' in interface['operation']['requestBody']['content'][content_type]:
+                        body_schema = interface['operation']['requestBody']['content'][content_type]['schema']
+                        required = body_schema['required'] if 'required' in body_schema else []
+                        properties = body_schema['properties'] if 'properties' in body_schema else {}
+                        for name, property in properties.items():
+                            parameters.append(ToolParamter(
+                                name=name,
+                                label=I18nObject(
+                                    en_US=name,
+                                    zh_Hans=name
+                                ),
+                                human_description=I18nObject(
+                                    en_US=property['description'] if 'description' in property else '',
+                                    zh_Hans=property['description'] if 'description' in property else ''
+                                ),
+                                type=ToolParamter.ToolParameterType.STRING,
+                                required=name in required,
+                                form=ToolParamter.ToolParameterForm.LLM,
+                                llm_description=property['description'] if 'description' in property else '',
+                                default=property['default'] if 'default' in property else None,
+                            ))
+
+            # check if parameters is duplicated
+            parameters_count = {}
+            for parameter in parameters:
+                if parameter.name not in parameters_count:
+                    parameters_count[parameter.name] = 0
+                parameters_count[parameter.name] += 1
+            for name, count in parameters_count.items():
+                if count > 1:
+                    warning['duplicated_parameter'] = f'Parameter {name} is duplicated.'
 
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
@@ -86,26 +120,30 @@ class ApiBasedToolSchemaParser:
         return bundles
         
     @staticmethod
-    def parse_openapi_yaml_to_tool_bundle(yaml: str) -> List[ApiBasedToolBundle]:
+    def parse_openapi_yaml_to_tool_bundle(yaml: str, warning: dict = None) -> List[ApiBasedToolBundle]:
         """
             parse openapi yaml to tool bundle
 
             :param yaml: the yaml string
             :return: the tool bundle
         """
+        warning = warning if warning is not None else {}
+
         openapi: dict = load(yaml, Loader=FullLoader)
         if openapi is None:
             raise ToolProviderNotFoundError('Invalid openapi yaml.')
-        return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+        return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, warning=warning)
     
     @staticmethod
-    def parse_openai_plugin_json_to_tool_bundle(json: str) -> List[ApiBasedToolBundle]:
+    def parse_openai_plugin_json_to_tool_bundle(json: str, warning: dict = None) -> List[ApiBasedToolBundle]:
         """
             parse openapi plugin yaml to tool bundle
 
             :param json: the json string
             :return: the tool bundle
         """
+        warning = warning if warning is not None else {}
+
         try:
             openai_plugin = json_loads(json)
             api = openai_plugin['api']
@@ -125,4 +163,4 @@ class ApiBasedToolSchemaParser:
         if response.status_code != 200:
             raise ToolProviderNotFoundError('cannot get openapi yaml from url.')
         
-        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text)
+        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text, warning=warning)

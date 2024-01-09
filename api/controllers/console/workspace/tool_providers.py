@@ -1,8 +1,9 @@
 import json
 
-from flask_login import current_user
 from libs.login import login_required
+from flask_login import current_user
 from flask_restful import Resource, abort, reqparse
+from flask import send_file
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -10,6 +11,8 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 
 from services.tools_manage_service import ToolManageService
+
+import io
 
 class ToolProviderListApi(Resource):
 
@@ -75,6 +78,15 @@ class ToolBuiltinProviderUpdateApi(Resource):
             provider,
             args['credentials'],
         )
+
+class ToolBuiltinProviderIconApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        icon_bytes, minetype = ToolManageService.get_builtin_tool_provider_icon(provider)
+        return send_file(io.BytesIO(icon_bytes), mimetype=minetype)
+
 
 class ToolApiProviderAddApi(Resource):
     @setup_required
@@ -202,14 +214,39 @@ class ToolApiProviderSchemaApi(Resource):
             schema=args['schema'],
         )
 
+class ToolApiProviderPreviousTestApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+
+        parser.add_argument('tool_name', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('parameters', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
+
+        args = parser.parse_args()
+
+        return ToolManageService.test_api_tool_preview(
+            args['tool_name'],
+            args['credentials'],
+            args['parameters'],
+            args['schema_type'],
+            args['schema'],
+        )
+
 # new apis
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
 api.add_resource(ToolBuiltinProviderAddApi, '/workspaces/current/tool-provider/builtin/<provider>/add')
 api.add_resource(ToolBuiltinProviderDeleteApi, '/workspaces/current/tool-provider/builtin/<provider>/delete')
 api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provider/builtin/<provider>/update')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
+api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
 api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update')
 api.add_resource(ToolApiProviderDeleteApi, '/workspaces/current/tool-provider/api/delete')
 api.add_resource(ToolApiProviderGetApi, '/workspaces/current/tool-provider/api/get')
 api.add_resource(ToolApiProviderSchemaApi, '/workspaces/current/tool-provider/api/schema')
+api.add_resource(ToolApiProviderPreviousTestApi, '/workspaces/current/tool-provider/api/test/pre')

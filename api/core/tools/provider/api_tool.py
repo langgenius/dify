@@ -17,7 +17,7 @@ class ApiTool(Tool):
     Api tool
     """
 
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
         """
             validate the credentials for Api tool
         """
@@ -45,15 +45,27 @@ class ApiTool(Tool):
             if parameter.default is not None and parameter.name not in parameters:
                 parameters[parameter.name] = parameter.default
 
+        if format_only:
+            return
+
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
-        self.validate_response(response)
+        self.validate_and_parse_response(response)
 
-    def validate_response(self, response: httpx.Response) -> None:
+    def validate_and_parse_response(self, response: Union[httpx.Response, requests.Response]) -> str:
         """
             validate the response
         """
-        pass
+        if isinstance(response, httpx.Response):
+            if response.status_code >= 400:
+                raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
+            return response.text
+        elif isinstance(response, requests.Response):
+            if not response.ok:
+                raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
+            return response.text
+        else:
+            raise ValueError(f'Invalid response type {type(response)}')
     
     def do_http_request(self, url: str, method: str, headers: Dict[str, Any], parameters: Dict[str, Any]) -> httpx.Response:
         """
@@ -65,7 +77,6 @@ class ApiTool(Tool):
         path_params = {}
         body = {}
         cookies = {}
-        request_content_type = ''
 
         # check parameters
         for parameter in self.api_bundle.openapi['parameters']:
@@ -136,25 +147,23 @@ class ApiTool(Tool):
         
         # do http request
         if method == 'get':
-            response = httpx.get(url, params=params, headers=headers, cookies=cookies, timeout=10)
+            response = httpx.get(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
         elif method == 'post':
-            response = httpx.post(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
+            response = httpx.post(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'put':
-            response = httpx.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
+            response = httpx.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'delete':
             """
             request body data is unsupported for DELETE method in standard http protocol
             however, OpenAPI 3.0 supports request body data for DELETE method, so we support it here by using requests
             """
-            response = requests.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
+            response = requests.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, allow_redirects=True)
         elif method == 'patch':
-            response = httpx.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10)
+            response = httpx.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'head':
-            response = httpx.head(url, params=params, headers=headers, cookies=cookies, timeout=10)
+            response = httpx.head(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
         elif method == 'options':
-            response = httpx.options(url, params=params, headers=headers, cookies=cookies, timeout=10)
-        elif method == 'trace':
-            response = httpx.trace(url, params=params, headers=headers, cookies=cookies, timeout=10)
+            response = httpx.options(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
         else:
             raise ValueError(f'Invalid http method {method}')
         

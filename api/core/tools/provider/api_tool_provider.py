@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, ToolProviderIdentity, ApiProviderAuthType, ToolProviderCredentials
+from core.tools.entities.tool_entities import AssistantAppMessage, ToolProviderType, ToolProviderIdentity, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.provider.tool import Tool
@@ -11,11 +11,28 @@ from extensions.ext_database import db
 
 from models.tools import ApiToolProvider
 
-class ApiBasedToolProviderEntity(ToolProviderController):
+class ApiBasedToolProviderController(ToolProviderController):
     @staticmethod
-    def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiBasedToolProviderEntity':
+    def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiBasedToolProviderController':
+        credentials_schema = {
+            'auth_type': ToolProviderCredentials(
+                name='auth_type',
+                required=True,
+                type=ToolProviderCredentials.CredentialsType.SELECT,
+                options=[
+                    ToolCredentialsOption(value='none', label=I18nObject(en_US='None', zh_Hans='无')),
+                    ToolCredentialsOption(value='api_key', label=I18nObject(en_US='api_key', zh_Hans='api_key'))
+                ],
+                default='none',
+                help=I18nObject(
+                    en_US='The auth type of the api provider',
+                    zh_Hans='api provider 的认证类型'
+                )
+            )
+        }
         if auth_type == ApiProviderAuthType.API_KEY:
             credentials_schema = {
+                **credentials_schema,
                 'api_key_header': ToolProviderCredentials(
                     name='api_key_header',
                     required=False,
@@ -37,13 +54,13 @@ class ApiBasedToolProviderEntity(ToolProviderController):
                 )
             }
         elif auth_type == ApiProviderAuthType.NONE:
-            credentials_schema = {}
+            pass
         else:
             raise ValueError(f'invalid auth type {auth_type}')
 
-        return ApiBasedToolProviderEntity(**{
+        return ApiBasedToolProviderController(**{
             'identity': {
-                'author': db_provider.user.name if db_provider.user else '',
+                'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
                 'name': db_provider.name,
                 'label': {
                     'en_US': db_provider.name,

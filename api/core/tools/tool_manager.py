@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from os import listdir, path
 
 from core.tools.entities.tool_entities import AssistantAppMessage
@@ -7,7 +7,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.provider.api_tool_provider import ApiBasedToolProviderEntity
+from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.entities.user_entities import UserToolProvider
 
@@ -19,6 +19,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider
 
 import importlib
 import logging
+import mimetypes
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class ToolManager:
         """
         provider_entity: ToolProviderController = None
         if provider == DEFAULT_PROVIDERS.API_BASED:
-            provider_entity = ApiBasedToolProviderEntity()
+            provider_entity = ApiBasedToolProviderController()
         elif provider == DEFAULT_PROVIDERS.APP_BASED:
             provider_entity = AppBasedToolProviderEntity()
 
@@ -87,6 +88,29 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'builtin provider {provider} not found')
         
         return _builtin_providers[provider]
+    
+    @staticmethod
+    def get_builtin_provider_icon(provider: str) -> Tuple[str, str]:
+        """
+            get the absolute path of the icon of the builtin provider
+
+            :param provider: the name of the provider
+
+            :return: the absolute path of the icon, the mime type of the icon
+        """
+        # get provider
+        provider_controller = ToolManager.get_builtin_provider(provider)
+
+        absolute_path = path.join(path.dirname(path.realpath(__file__)), 'provider', 'builtin', provider, '_assets', provider_controller.identity.icon)
+        # check if the icon exists
+        if not path.exists(absolute_path):
+            raise ToolProviderNotFoundError(f'builtin provider {provider} icon not found')
+        
+        # get the mime type
+        mime_type, _ = mimetypes.guess_type(absolute_path)
+        mime_type = mime_type or 'application/octet-stream'
+
+        return absolute_path, mime_type
 
     @staticmethod
     def list_builtin_providers() -> List[BuiltinToolProviderController]:

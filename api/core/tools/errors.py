@@ -1,14 +1,14 @@
-class ToolProviderNotFoundError(Exception):
+class ToolProviderNotFoundError(ValueError):
     pass
 
-class ToolNotFoundError(Exception):
+class ToolNotFoundError(ValueError):
     pass
 
-class ToolParamterValidationError(Exception):
+class ToolParamterValidationError(ValueError):
     pass
 
-class ToolProviderCredentialValidationError(Exception):
+class ToolProviderCredentialValidationError(ValueError):
     pass
 
-class ToolNotSupportedError(Exception):
+class ToolNotSupportedError(ValueError):
     pass
