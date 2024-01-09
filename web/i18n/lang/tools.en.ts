@@ -1,9 +1,15 @@
 const translation = {
   title: 'Tools',
+  createCustomTool: 'Create Custom Tool',
   type: {
-    thirdParty: 'Third-Party',
-    published: 'Published',
+    all: 'All',
+    builtIn: 'Built-in',
     custom: 'Custom',
+  },
+  contribute: {
+    line1: 'I\'m interested in ',
+    line2: 'contributing tools to Dify.',
+    viewGuide: 'View the guide',
   },
 }
 

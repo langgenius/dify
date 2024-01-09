@@ -3,6 +3,12 @@ export enum LOC {
   app = 'app',
 }
 
+export enum CollectionType {
+  all = 'all',
+  builtIn = 'builtIn',
+  custom = 'api',
+}
+
 export type Collection = {
   name: string
   author: string
@@ -10,11 +16,14 @@ export type Collection = {
     zh_Hans: string
     en_US: string
   }
-  icon: string
+  icon: string | {
+    background: string
+    content: string
+  }
   label: {
     zh_Hans: string
     en_US: string
   }
-  type: string
+  type: CollectionType
   team_credentials: Record<string, any>
 }
