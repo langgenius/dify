@@ -25,26 +25,6 @@ class ToolProviderListApi(Resource):
 
         return ToolManageService.list_tool_providers(user_id, tenant_id)
 
-class ToolBuiltinProviderAddApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, provider):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
-
-        args = parser.parse_args()
-
-        return ToolManageService.create_builtin_tool_provider(
-            user_id,
-            tenant_id,
-            provider,
-            args['credentials'],
-        )
-
 class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -239,7 +219,6 @@ class ToolApiProviderPreviousTestApi(Resource):
 
 # new apis
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
-api.add_resource(ToolBuiltinProviderAddApi, '/workspaces/current/tool-provider/builtin/<provider>/add')
 api.add_resource(ToolBuiltinProviderDeleteApi, '/workspaces/current/tool-provider/builtin/<provider>/delete')
 api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provider/builtin/<provider>/update')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')

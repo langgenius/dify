@@ -129,43 +129,6 @@ class ToolManageService:
             raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
-    def create_builtin_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, credentials: dict
-    ):
-        """
-            create builtin tool provider
-        """
-        # get if the provider exists
-        provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
-            BuiltinToolProvider.tenant_id == tenant_id,
-            BuiltinToolProvider.provider == provider_name,
-        ).first()
-
-        if provider is not None:
-            raise ValueError(f'provider {provider_name} already exists')
-        
-        try: 
-            # get provider
-            provider = ToolManager.get_builtin_provider(provider_name)
-            # validate credentials
-            provider.validate_credentials(credentials)
-        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
-            raise ValueError(str(e))
-
-        # create provider
-        provider = BuiltinToolProvider(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            provider=provider_name,
-            encrypted_credentials=json.dumps(credentials),
-        )
-
-        db.session.add(provider)
-        db.session.commit()
-
-        return { 'result': 'success' }
-    
-    @staticmethod
     def create_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentails: dict, parameters: dict, schema_type: str, schema: str
     ):
@@ -194,9 +157,6 @@ class ToolManageService:
             BuiltinToolProvider.provider == provider_name,
         ).first()
 
-        if provider is None:
-            raise ValueError(f'provider {provider_name} does not exists')
-        
         try: 
             # get provider
             provider_controller = ToolManager.get_builtin_provider(provider_name)
@@ -205,10 +165,23 @@ class ToolManageService:
         except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
             raise ValueError(str(e))
 
-        provider.encrypted_credentials = json.dumps(credentials)
+        if provider is None:
+            # create provider
+            provider = BuiltinToolProvider(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                provider=provider_name,
+                encrypted_credentials=json.dumps(credentials),
+            )
 
-        db.session.add(provider)
-        db.session.commit()
+            db.session.add(provider)
+            db.session.commit()
+
+        else:
+            provider.encrypted_credentials = json.dumps(credentials)
+
+            db.session.add(provider)
+            db.session.commit()
 
         return { 'result': 'success' }
     
