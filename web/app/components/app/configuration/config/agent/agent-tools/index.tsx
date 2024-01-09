@@ -2,12 +2,16 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import list from './mock'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle, Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import { ToolsActive } from '@/app/components/base/icons/src/public/header-nav/tools'
+import AppIcon from '@/app/components/base/app-icon'
+import Switch from '@/app/components/base/switch'
+
 const MAX_TOOLS_NUM = 5
 type Props = {
   onAdd: (item: any) => void
@@ -41,22 +45,51 @@ const AgentTools: FC<Props> = ({
       headerRight={
         <div className='flex items-center'>
           <div className='leading-[18px] text-xs font-normal text-gray-500'>{list.length}/{MAX_TOOLS_NUM}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
-          <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
-          <OperationBtn type="add" onClick={() => {
+          {list.length < MAX_TOOLS_NUM && (
+            <>
+              <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
+              <OperationBtn type="add" onClick={() => {
 
-          }} />
+              }} />
+            </>
+          )}
         </div>
       }
     >
-      <div className='flex items-center space-y-1 flex-wrap justify-between'>
-        {list.map((item: any) => (
+      <div className='flex items-center flex-wrap justify-between'>
+        {list.map((item: any, index) => (
           <div key={item.id}
-            className='group relative flex items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'
+            className={cn(item.enable && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 ')}
             style={{
               width: 'calc(50% - 2px)',
             }}
           >
-            <div>{item.name}</div>
+            <div className='flex items-center'>
+              <AppIcon
+                className={cn(!item.enabled && 'opacity-50', 'mr-2 !rounded-md')}
+                size='tiny'
+                icon='🤖'
+                background='#F5F7FA'
+              />
+              <div
+                title={item.name}
+                className='max-w-[70px] leading-[18px] text-[13px] font-medium text-gray-800  truncate'
+              >
+                {item.name}
+              </div>
+            </div>
+            <div className='flex items-center'>
+              <div className='hidden group-hover:flex items-center'>
+                <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => { }}>
+                  <Settings01 className='w-4 h-4 text-gray-500' />
+                </div>
+                <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => { }}>
+                  <Trash03 className='w-4 h-4 text-gray-500' />
+                </div>
+                <div className='ml-2 mr-3 w-px h-3.5 bg-gray-200'></div>
+              </div>
+              <Switch defaultValue={item.enabled} size='md' onChange={() => { }} />
+            </div>
           </div>
         ))}
       </div>

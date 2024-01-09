@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Cog8ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import type { Timeout } from 'ahooks/lib/useRequest/src/types'
 import { useContext } from 'use-context-selector'
@@ -19,7 +18,7 @@ import { DEFAULT_VALUE_MAX_LEN, getMaxVarNameLength } from '@/config'
 import { checkKeys, getNewVar } from '@/utils/var'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle, Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfirmModal from '@/app/components/base/confirm/common'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
@@ -279,11 +278,11 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                       </td>
                       <td className='w-20  border-b border-gray-100'>
                         <div className='flex h-full items-center space-x-1'>
-                          <div className='flex items-center justify-items-center w-6 h-6 text-gray-500 cursor-pointer' onClick={() => handleConfig({ type, key })}>
-                            <Cog8ToothIcon width={16} height={16} />
+                          <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleConfig({ type, key })}>
+                            <Settings01 className='w-4 h-4 text-gray-500' />
                           </div>
-                          <div className='flex items-center justify-items-center w-6 h-6 text-gray-500 cursor-pointer' onClick={() => handleRemoveVar(index)} >
-                            <TrashIcon width={16} height={16} />
+                          <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleRemoveVar(index)} >
+                            <Trash03 className='w-4 h-4 text-gray-500' />
                           </div>
                         </div>
                       </td>

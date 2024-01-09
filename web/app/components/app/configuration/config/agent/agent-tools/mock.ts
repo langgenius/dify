@@ -14,12 +14,21 @@ const list = [
     name: 'Calendar',
     enabled: true,
   },
+  {
+    id: '4',
+    name: 'Data Search',
+    enabled: false,
+  },
   // {
-  //   id: '4',
+  //   id: '5',
+  //   name: 'Calendar',
+  //   enabled: true,
+  // },
+  // {
+  //   id: '6',
   //   name: 'Data Search',
   //   enabled: false,
-  // }
-
+  // },
 ]
 
 export default list
