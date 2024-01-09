@@ -13,29 +13,29 @@ help:
   url:
     en_US: https://replicate.com/account/api-tokens
 supported_model_types:
-- llm
-- text-embedding
+  - llm
+  - text-embedding
 configurate_methods:
-- customizable-model
+  - customizable-model
 model_credential_schema:
   model:
     label:
       en_US: Model Name
       zh_Hans: 模型名称
   credential_form_schemas:
-  - variable: replicate_api_token
-    label:
-      en_US: API Key
-    type: secret-input
-    required: true
-    placeholder:
-      zh_Hans: 在此输入您的 Replicate API Key
-      en_US: Enter your Replicate API Key
-  - variable: model_version
-    label:
-      en_US: Model Version
-    type: text-input
-    required: true
-    placeholder:
-      zh_Hans: 在此输入您的模型版本
-      en_US: Enter your model version
+    - variable: replicate_api_token
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Replicate API Key
+        en_US: Enter your Replicate API Key
+    - variable: model_version
+      label:
+        en_US: Model Version
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的模型版本
+        en_US: Enter your model version
