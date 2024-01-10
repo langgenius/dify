@@ -15,7 +15,9 @@ const translation = {
   auth: {
     unauthorized: '未经授权',
     authorized: '已授权',
+    setup: '要使用请先授权',
   },
+  includeToolNum: '包含 {{num}} 个工具',
 }
 
 export default translation

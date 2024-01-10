@@ -15,7 +15,9 @@ const translation = {
   auth: {
     unauthorized: 'Unauthorized',
     authorized: 'Authorized',
+    setup: 'Set up authorization to use',
   },
+  includeToolNum: '{{num}} tools included',
 }
 
 export default translation
