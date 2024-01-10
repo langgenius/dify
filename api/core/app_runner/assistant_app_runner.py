@@ -1,29 +1,33 @@
 import json
 import logging
-from typing import cast
+from typing import cast, Tuple
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
-from core.tools.tool_manager import ToolManager
 from core.app_runner.app_runner import AppRunner
+from core.app_runner.assistant_cot_runner import AssistantCotApplicationRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
-from core.entities.application_entities import ApplicationGenerateEntity, PromptTemplateEntity, ModelConfigEntity
+from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
+    AgentEntity, AgentToolEntity
 from core.application_queue_manager import ApplicationQueueManager
-from core.features.agent_runner import AgentRunnerFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+
+from core.tools.tool_manager import ToolManager
+from core.tools.entities.tool_entities import ToolParamter
+from core.tools.provider.tool import Tool
+
 from extensions.ext_database import db
 from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
-
-class AgentApplicationRunner(AppRunner):
+class AssistantApplicationRunner(AppRunner):
     """
     Assistant Application Runner
     """
-
     def run(self, application_generate_entity: ApplicationGenerateEntity,
             queue_manager: ApplicationQueueManager,
             conversation: Conversation,
@@ -73,20 +77,18 @@ class AgentApplicationRunner(AppRunner):
                 model_instance=model_instance
             )
 
-        # reorganize all inputs and template to prompt messages
-        # Include: prompt template, inputs, query(optional), files(optional)
-        #          memory(optional)
-        prompt_messages, stop = self.originze_prompt_messages(
-            app_record=app_record,
-            model_config=app_orchestration_config.model_config,
-            prompt_template_entity=app_orchestration_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
-            context=None,
-            memory=memory
-        )
+        agent_entity = app_orchestration_config.agent
+        tools = agent_entity.tools
 
+        # convert tools into ModelRuntime Tool format
+        prompt_messages_tools = []
+        tool_instances = {}
+        for tool in tools:
+            prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(application_generate_entity, tool)
+            prompt_messages_tools.append(prompt_tool)
+            # save tool entity
+            tool_instances[tool.tool_name] = tool_entity
+        
         # Create MessageChain
         message_chain = self._init_message_chain(
             message=message,
@@ -106,93 +108,95 @@ class AgentApplicationRunner(AppRunner):
             agent_callback=agent_callback
         )
 
-        # assistant manager
-
-        agent_runner = AgentRunnerFeature(
-            tenant_id=application_generate_entity.tenant_id,
-            app_orchestration_config=app_orchestration_config,
-            model_config=app_orchestration_config.model_config,
-            config=app_orchestration_config.agent,
-            queue_manager=queue_manager,
-            message=message,
-            user_id=application_generate_entity.user_id,
-            agent_llm_callback=agent_llm_callback,
-            callback=agent_callback,
-            memory=memory
+        # init model instance
+        model_instance = ModelInstance(
+            provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
+            model=app_orchestration_config.model_config.model
         )
 
-        # agent run
-        result = agent_runner.run(
-            query=query,
-            invoke_from=application_generate_entity.invoke_from
-        )
-
-        if result:
-            self._save_message_chain(
-                message_chain=message_chain,
-                output_text=result
-            )
-
-        if (result
-                and app_orchestration_config.prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE
-                and app_orchestration_config.prompt_template.simple_prompt_template
-        ):
-            # Direct output if agent result exists and has pre prompt
-            self.direct_output(
+        # start agent runner
+        if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
+            assistant_cot_runner = AssistantCotApplicationRunner()
+            invoke_result = assistant_cot_runner.run(
+                application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
-                app_orchestration_config=app_orchestration_config,
-                prompt_messages=prompt_messages,
-                stream=application_generate_entity.stream,
-                text=result,
-                usage=self._get_usage_of_all_agent_thoughts(
-                    model_config=app_orchestration_config.model_config,
-                    message=message
-                )
-            )
-        else:
-            # As normal LLM run, agent result as context
-            context = result
-
-            # reorganize all inputs and template to prompt messages
-            # Include: prompt template, inputs, query(optional), files(optional)
-            #          memory(optional), external data, dataset context(optional)
-            prompt_messages, stop = self.originze_prompt_messages(
-                app_record=app_record,
-                model_config=app_orchestration_config.model_config,
-                prompt_template_entity=app_orchestration_config.prompt_template,
-                inputs=inputs,
-                files=files,
+                model_instance=model_instance,
+                agent_llm_callback=agent_llm_callback,
+                conversation=conversation,
+                tool_instances=tool_instances,
+                message=message,
+                prompt_messages_tools=prompt_messages_tools,
+                agent_entity=agent_entity,
                 query=query,
-                context=context,
-                memory=memory
             )
+        elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
+            # TODO: implement function calling
+            pass
 
-            # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
-            self.recale_llm_max_tokens(
-                model_config=app_orchestration_config.model_config,
-                prompt_messages=prompt_messages
-            )
+        # handle invoke result
+        self._handle_invoke_result(
+            invoke_result=invoke_result,
+            queue_manager=queue_manager,
+            stream=application_generate_entity.stream
+        )
 
-            # Invoke model
-            model_instance = ModelInstance(
-                provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
-                model=app_orchestration_config.model_config.model
-            )
+    def _convert_tool_to_prompt_message_tool(self, application_generate_entity: ApplicationGenerateEntity, tool: AgentToolEntity
+                                             ) -> Tuple[PromptMessageTool, Tool]:
+        """
+            convert tool to prompt message tool
+        """
+        tool_entity = ToolManager.get_tool(
+            provider_type=tool.provider_type, provider_name=tool.provider_name, tool_name=tool.tool_name, 
+            tanent_id=application_generate_entity.tenant_id
+        )
 
-            invoke_result = model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters=app_orchestration_config.model_config.parameters,
-                stop=stop,
-                stream=application_generate_entity.stream,
-                user=application_generate_entity.user_id,
-            )
+        if tool.provider_type == 'builtin':
+            """
+                if builtin tool, fork a new tool with tenant_id
+                ensure the builtin tool has ability to access model
+            """
+            tool_entity = tool_entity.fork_processing_tool(meta={
+                "tenant_id": application_generate_entity.tenant_id,
+            })
 
-            # handle invoke result
-            self._handle_invoke_result(
-                invoke_result=invoke_result,
-                queue_manager=queue_manager,
-                stream=application_generate_entity.stream
-            )
+        message_tool = PromptMessageTool(
+            name=tool.tool_name,
+            description=tool_entity.description.llm,
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        )
+
+        for parameter in tool_entity.parameters:
+            parameter_type = 'string'
+            enum = []
+            if parameter.type == ToolParamter.ToolParameterType.STRING:
+                parameter_type = 'string'
+            elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+                parameter_type = 'boolean'
+            elif parameter.type == ToolParamter.ToolParameterType.NUMBER:
+                parameter_type = 'number'
+            elif parameter.type == ToolParamter.ToolParameterType.SELECT:
+                for option in parameter.options:
+                    enum.append(option.value)
+                parameter_type = 'string'
+            else:
+                raise ValueError(f"parameter type {parameter.type} is not supported")
+            
+            message_tool.parameters['properties'][parameter.name] = {
+                "type": parameter_type,
+                "description": parameter.llm_description or '',
+            }
+
+            if len(enum) > 0:
+                message_tool.parameters['properties'][parameter.name]['enum'] = enum
+
+            if parameter.required:
+                message_tool.parameters['required'].append(parameter.name)
+
+        return message_tool, tool_entity
 
     def _init_message_chain(self, message: Message, query: str) -> MessageChain:
         """

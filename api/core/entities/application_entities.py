@@ -1,11 +1,12 @@
 from enum import Enum
-from typing import Any, Optional, cast
+from typing import Optional, Any, cast, Literal
+
+from pydantic import BaseModel
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileObj
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import AIModelEntity
-from pydantic import BaseModel
 
 
 class ModelConfigEntity(BaseModel):
@@ -153,9 +154,17 @@ class AgentToolEntity(BaseModel):
     """
     Agent Tool Entity.
     """
-    tool_id: str
-    config: dict[str, Any] = {}
+    provider_type: Literal["builtin", "api"]
+    provider_name: str
+    tool_name: str
+    tool_parameters: dict[str, Any] = {}
 
+class AgentPromptEntity(BaseModel):
+    """
+    Agent Prompt Entity.
+    """
+    first_prompt: str
+    next_iteration: str
 
 class AgentEntity(BaseModel):
     """
@@ -171,8 +180,8 @@ class AgentEntity(BaseModel):
     provider: str
     model: str
     strategy: Strategy
-    tools: list[AgentToolEntity] = []
-
+    prompt: Optional[AgentPromptEntity] = None
+    tools: list[AgentToolEntity] = None
 
 class AppOrchestrationConfigEntity(BaseModel):
     """

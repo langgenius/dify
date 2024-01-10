@@ -66,7 +66,13 @@ class App(db.Model):
     def tenant(self):
         tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
         return tenant
-
+    
+    @property
+    def is_agent(self) -> bool:
+        if self.app_model_config.agent_mode_dict['enabled'] \
+            and self.app_model_config.agent_mode_dict['strategy'] != 'router':
+            return True
+        return False
 
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'

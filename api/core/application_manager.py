@@ -4,7 +4,7 @@ import threading
 import uuid
 from typing import Any, Generator, Optional, Tuple, Union, cast
 
-from core.app_runner.agent_app_runner import AgentApplicationRunner
+from core.app_runner.assistant_app_runner import AssistantApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
@@ -151,7 +151,7 @@ class ApplicationManager:
 
                 if application_generate_entity.app_orchestration_config_entity.agent:
                     # agent app
-                    runner = AgentApplicationRunner()
+                    runner = AssistantApplicationRunner()
                     runner.run(
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
@@ -431,17 +431,19 @@ class ApplicationManager:
 
                 agent_tools = []
                 for tool in agent_dict.get('tools', []):
-                    key = list(tool.keys())[0]
-                    tool_item = tool[key]
+                    if 'provider_type' not in tool:
+                        continue
 
                     agent_tool_properties = {
-                        "tool_id": key
+                        'provider_type': tool['provider_type'],
+                        'provider_name': tool['provider_name'],
+                        'tool_name': tool['tool_name'],
+                        'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
                     }
 
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue
 
-                    agent_tool_properties["config"] = tool_item
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))
 
                 properties['agent'] = AgentEntity(

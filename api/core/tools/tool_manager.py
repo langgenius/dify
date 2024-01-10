@@ -1,8 +1,10 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Union
 from os import listdir, path
 
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ApiProviderAuthType
 from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.provider.builtin_tool import BuiltinTool
+from core.tools.provider.api_tool import ApiTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.common_entities import I18nObject
@@ -61,7 +63,9 @@ class ToolManager:
             spec.loader.exec_module(mod)
 
             # get all the classes in the module
-            classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != ToolProviderController and issubclass(x, ToolProviderController)]
+            classes = [ x for _, x in vars(mod).items() 
+                       if isinstance(x, type) and x != ToolProviderController and issubclass(x, ToolProviderController)
+            ]
             if len(classes) == 0:
                 raise ToolProviderNotFoundError(f'provider {provider} not found')
             if len(classes) > 1:
@@ -72,7 +76,7 @@ class ToolManager:
         return provider_entity.invoke(tool_id, tool_name, tool_parameters, credentials, prompt_messages)
     
     @staticmethod
-    def get_builtin_provider(provider: str) -> ToolProviderController:
+    def get_builtin_provider(provider: str) -> BuiltinToolProviderController:
         global _builtin_providers
         """
             get the builtin provider
@@ -88,6 +92,44 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'builtin provider {provider} not found')
         
         return _builtin_providers[provider]
+    
+    @staticmethod
+    def get_builtin_tool(provider: str, tool_name: str) -> BuiltinTool:
+        """
+            get the builtin tool
+
+            :param provider: the name of the provider
+            :param tool_name: the name of the tool
+
+            :return: the provider, the tool
+        """
+        provider_controller = ToolManager.get_builtin_provider(provider)
+        tool = provider_controller.get_tool(tool_name)
+
+        return tool
+    
+    @staticmethod
+    def get_tool(provider_type: str, provider_name: str, tool_name: str, tanent_id: str = None) \
+        -> Union[BuiltinTool, ApiTool]:
+        """
+            get the tool
+
+            :param provider_type: the type of the provider
+            :param provider_name: the name of the provider
+            :param tool_name: the name of the tool
+
+            :return: the provider, the tool
+        """
+        if provider_type == 'builtin':
+            return ToolManager.get_builtin_tool(provider_name, tool_name)
+        elif provider_type == 'api':
+            if tanent_id is None:
+                raise ValueError('tanent id is required for api provider')
+            return ToolManager.get_api_provider(tanent_id, provider_name).get_tool(tool_name)
+        elif provider_type == 'app':
+            raise NotImplementedError('app provider not implemented')
+        else:
+            raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
     
     @staticmethod
     def get_builtin_provider_icon(provider: str) -> Tuple[str, str]:
@@ -239,3 +281,26 @@ class ToolManager:
                 result_providers[provider_name].team_credentials[name] = value
 
         return list(result_providers.values())
+    
+    @staticmethod
+    def get_api_provider(tanent_id: str, provider_name: str) -> ApiBasedToolProviderController:
+        """
+            get the api provider
+
+            :param provider_name: the name of the provider
+
+            :return: the provider
+        """
+        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.name == provider_name,
+            ApiToolProvider.tenant_id == tanent_id,
+        ).first()
+        if provider is None:
+            raise ToolProviderNotFoundError(f'api provider {provider_name} not found')
+        
+        controller = ApiBasedToolProviderController.from_db(
+            provider, ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
+        )
+        controller.load_bundled_tools(provider.tools)
+
+        return controller
