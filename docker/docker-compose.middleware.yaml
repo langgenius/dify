@@ -56,7 +56,7 @@ services:
   # (if uncommented, you need to comment out the weaviate service above,
   # and set VECTOR_STORE to qdrant in the api & worker service.)
   # qdrant:
-  #   image: qdrant/qdrant:latest
+  #   image: qdrant/qdrant:1.7.3
   #   restart: always
   #   volumes:
   #     - ./volumes/qdrant:/qdrant/storage
