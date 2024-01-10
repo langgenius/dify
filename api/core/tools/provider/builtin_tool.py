@@ -29,15 +29,15 @@ class BuiltinTool(Tool):
             :param meta: the meta data of a tool call processing, tenant_id is required
             :return: the new tool
         """
-        return BuiltinTool(
-            identity=self.identity.copy(),
-            parameters=self.parameters.copy(),
-            description=self.description.copy(),
+        return self.__class__(
+            identity=self.identity.copy() if self.identity else None,
+            parameters=self.parameters.copy() if self.parameters else None,
+            description=self.description.copy() if self.description else None,
             meta=BuiltinTool.Meta(**meta)
         )
     
     def invoke_model(
-        self, user_id: str, model_config: dict, prompt_messages: List[PromptMessage], stop: List[str]
+        self, user_id: str, prompt_messages: List[PromptMessage], stop: List[str]
     ) -> LLMResult:
         """
             invoke model
@@ -47,18 +47,34 @@ class BuiltinTool(Tool):
             :param stop: the stop words
             :return: the model result
         """
-        # parse model config
-        model_config_entity = ToolModelConfig(**model_config)
         # invoke model
         return ToolModelManager.invoke(
             user_id=user_id,
             tenant_id=self.meta.tenant_id,
-            model_config=model_config,
             tool_type='builtin',
             tool_name=self.identity.name,
-            model_provider=model_config_entity.provider,
-            model=model_config_entity.model,
-            model_parameters=model_config_entity.model_parameters,
             prompt_messages=prompt_messages,
-            stop=stop
+        )
+    
+    def get_max_tokens(self) -> int:
+        """
+            get max tokens
+
+            :param model_config: the model config
+            :return: the max tokens
+        """
+        return ToolModelManager.get_max_llm_context_tokens(
+            tenant_id=self.meta.tenant_id,
+        )
+
+    def get_prompt_tokens(self, prompt_messages: List[PromptMessage]) -> int:
+        """
+            get prompt tokens
+
+            :param prompt_messages: the prompt messages
+            :return: the tokens
+        """
+        return ToolModelManager.calculate_tokens(
+            tenant_id=self.meta.tenant_id,
+            prompt_messages=prompt_messages
         )

@@ -27,25 +27,20 @@ class ToolModelManager:
     @staticmethod
     def get_max_llm_context_tokens(
         tenant_id: str,
-        model_provider: str, model: str, model_parameters: dict,
     ) -> int:
         """
             get max llm context tokens of the model
         """
-        model_parameter_max_tokens = model_parameters.get('max_tokens', None)
-        if model_parameter_max_tokens is not None:
-            return model_parameter_max_tokens
-        
         model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id, provider=model_provider, model_type=ModelType.LLM, model=model
+        model_instance = model_manager.get_default_model_instance(
+            tenant_id=tenant_id, model_type=ModelType.LLM,
         )
 
         if not model_instance:
             raise InvokeModelError(f'Model not found')
         
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-        schema = llm_model.get_model_schema(model, model_instance.credentials)
+        schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
         if not schema:
             raise InvokeModelError(f'No model schema found')
@@ -57,11 +52,34 @@ class ToolModelManager:
         return max_tokens
 
     @staticmethod
+    def calculate_tokens(
+        tenant_id: str,
+        prompt_messages: List[PromptMessage]
+    ) -> int:
+        """
+            calculate tokens from prompt messages and model parameters
+        """
+
+        # get model instance
+        model_manager = ModelManager()
+        model_instance = model_manager.get_default_model_instance(
+            tenant_id=tenant_id, model_type=ModelType.LLM
+        )
+
+        if not model_instance:
+            raise InvokeModelError(f'Model not found')
+        
+        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+
+        # get tokens
+        tokens = llm_model.get_num_tokens(model_instance.model, model_instance.credentials, prompt_messages)
+
+        return tokens
+
+    @staticmethod
     def invoke(
         user_id: str, tenant_id: str,
-        model_config: ToolModelConfig,
         tool_type: str, tool_name: str,
-        model_provider: str, model: str, model_parameters: dict,
         prompt_messages: List[PromptMessage]
     ) -> LLMResult:
         """
@@ -82,8 +100,8 @@ class ToolModelManager:
         # get model manager
         model_manager = ModelManager()
         # get model instance
-        model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id, provider=model_provider, model_type=ModelType.LLM, model=model
+        model_instance = model_manager.get_default_model_instance(
+            tenant_id=tenant_id, model_type=ModelType.LLM,
         )
 
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
@@ -92,13 +110,18 @@ class ToolModelManager:
         model_credentials = model_instance.credentials
 
         # get prompt tokens
-        prompt_tokens = llm_model.get_num_tokens(model, model_credentials, prompt_messages)
+        prompt_tokens = llm_model.get_num_tokens(model_instance.model, model_credentials, prompt_messages)
+
+        model_parameters = {
+            'temperature': 0.8,
+            'top_p': 0.8,
+        }
 
         # create tool model invoke
         tool_model_invoke = ToolModelInvoke(
             user_id=user_id,
             tenant_id=tenant_id,
-            provider=model_config.provider,
+            provider=model_instance.provider,
             tool_type=tool_type,
             tool_name=tool_name,
             model_parameters=json.dumps(model_parameters),
