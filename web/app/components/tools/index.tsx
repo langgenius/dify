@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Button from '../base/button'
 import { Plus } from '../base/icons/src/vender/line/general'
-import type { Collection } from './types'
+import type { Collection, Tool } from './types'
 import { CollectionType, LOC } from './types'
 import ToolNavList from './tool-nav-list'
 import Search from './search'
-import { collectionList } from './mock-data'
+import { CustomTools, builtInTools, collectionList } from './mock-data'
 import Contribute from './contribute'
+import ToolList from './tool-list'
 import TabSlider from '@/app/components/base/tab-slider'
 
 type Props = {
@@ -24,7 +25,7 @@ const Tools: FC<Props> = ({
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage
 
-  const [currCollection, setCurrCollection] = React.useState<Collection | null>(collectionList[0])
+  const [currCollection, setCurrCollection] = useState<Collection | null>(collectionList[0])
   const collectionTypeOptions = (() => {
     const res = [
       { value: CollectionType.builtIn, text: t('tools.type.builtIn') },
@@ -35,9 +36,14 @@ const Tools: FC<Props> = ({
     return res
   })()
 
-  const [collectionType, setCollectionType] = React.useState<CollectionType>(collectionTypeOptions[0].value)
+  const [collectionType, setCollectionType] = useState<CollectionType>(collectionTypeOptions[0].value)
 
-  const [query, setQuery] = React.useState('')
+  const [query, setQuery] = useState('')
+  const [currTools, setCurrentTools] = useState<Tool[]>([])
+  useEffect(() => {
+    if (currCollection)
+      setCurrentTools(currCollection.type === CollectionType.builtIn ? builtInTools : CustomTools)
+  }, [currCollection])
 
   return (
     <div className='flex h-full'>
@@ -92,7 +98,11 @@ const Tools: FC<Props> = ({
       {/* tools */}
       <div className={cn('grow h-full overflow-hidden p-2')}>
         <div className='h-full bg-white rounded-2xl'>
-          content
+          <ToolList
+            collection={currCollection}
+            list={currTools}
+            loc={loc}
+          />
         </div>
       </div>
     </div>

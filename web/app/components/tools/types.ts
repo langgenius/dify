@@ -26,4 +26,11 @@ export type Collection = {
   }
   type: CollectionType
   team_credentials: Record<string, any>
+  is_team_authorization: boolean
+}
+
+export type Tool = {
+  id: string
+  name: string
+  description: string
 }

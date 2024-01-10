@@ -11,6 +11,11 @@ const translation = {
     line2: 'contributing tools to Dify.',
     viewGuide: 'View the guide',
   },
+  author: 'By',
+  auth: {
+    unauthorized: 'Unauthorized',
+    authorized: 'Authorized',
+  },
 }
 
 export default translation

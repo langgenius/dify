@@ -11,6 +11,11 @@ const translation = {
     line2: 'Dify 贡献工具。',
     viewGuide: '查看指南',
   },
+  author: '作者',
+  auth: {
+    unauthorized: '未经授权',
+    authorized: '已授权',
+  },
 }
 
 export default translation

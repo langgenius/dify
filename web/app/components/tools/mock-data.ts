@@ -3,8 +3,8 @@ export const collectionList = [
     author: 'Dify',
     name: 'google',
     description: {
-      zh_Hans: 'GoogleSearch',
-      en_US: 'Google',
+      zh_Hans: 'Google Search',
+      en_US: 'Google Search',
     },
     icon: 'https://placehold.co/100x100/EEE/31343C',
     label: {
@@ -15,7 +15,7 @@ export const collectionList = [
     team_credentials: {
       serpapi_api_key: '763******40a',
     },
-    is_team_authorization: true,
+    is_team_authorization: false,
   },
   {
     author: 'Yeuoly Yeuoly Chou',
@@ -71,4 +71,55 @@ export const selectedToolList = [
   //   name: 'Data Search',
   //   enabled: false,
   // },
+]
+
+export const builtInTools = [
+  {
+    id: '1',
+    name: 'Fetch Google',
+    description: 'Fetch an event from Google Calendar',
+  },
+  {
+    id: '1',
+    name: 'Fetch Google',
+    description: 'Fetch an event from Google Calendar',
+  },
+  {
+    id: '2',
+    name: 'Fetch Google Calendar Event',
+    description: 'Balabala',
+  },
+  {
+    id: '3',
+    name: 'Fetch Google',
+    description: 'Fetch an event from Google Calendar',
+  },
+  {
+    id: '4',
+    name: 'Fetch Google',
+    description: 'Fetch an event from Google Calendar',
+  },
+]
+
+export const CustomTools = [
+  {
+    id: '1',
+    name: 'Add Pet',
+    description: 'Add pet to...',
+  },
+  {
+    id: '2',
+    name: 'Update Pet',
+    description: 'Add pet to...',
+  },
+  {
+    id: '3',
+    name: 'Query Pet',
+    description: 'Add pet to...',
+  },
+  {
+    id: '4',
+    name: 'Delete Pet',
+    description: 'Add pet to...',
+  },
 ]
