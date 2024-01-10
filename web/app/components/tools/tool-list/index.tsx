@@ -31,7 +31,7 @@ const ToolList: FC<Props> = ({
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
 
-  const [showSettingAuth, setShowSettingAuth] = useState(true)
+  const [showSettingAuth, setShowSettingAuth] = useState(false)
   if (!collection)
     return <Loading type='app' />
 
@@ -59,6 +59,7 @@ const ToolList: FC<Props> = ({
         icon={icon}
         collection={collection}
         loc={loc}
+        onShowAuth={() => setShowSettingAuth(true)}
       />
       <div className={cn(isInToolsPage ? 'px-6 pt-4' : 'px-4 pt-3')}>
         <div className='flex items-center h-[4.5] space-x-2  text-xs font-medium text-gray-500'>
@@ -68,7 +69,10 @@ const ToolList: FC<Props> = ({
           {!collection.is_team_authorization && (
             <>
               <div>·</div>
-              <div className='flex items-center text-[#155EEF] cursor-pointer'>
+              <div
+                className='flex items-center text-[#155EEF] cursor-pointer'
+                onClick={() => setShowSettingAuth(true)}
+              >
                 <div>{t('tools.auth.setup')}</div>
                 <ArrowNarrowRight className='ml-0.5 w-3 h-3' />
               </div>

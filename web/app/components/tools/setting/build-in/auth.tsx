@@ -33,10 +33,10 @@ const SettingAuth: FC<Props> = ({
         <div className='px-6 py-3'>
           Forms
           <div className='mt-2 flex justify-between'>
-            <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700'>{t('common.operation.remove')}</Button>
+            <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onCancel}>{t('common.operation.remove')}</Button>
             <div className='flex space-x-2'>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700'>{t('common.operation.cancel')}</Button>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary'>{t('common.operation.save')}</Button>
+              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onCancel}>{t('common.operation.cancel')}</Button>
+              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={onSaved}>{t('common.operation.save')}</Button>
             </div>
           </div>
         </div>
