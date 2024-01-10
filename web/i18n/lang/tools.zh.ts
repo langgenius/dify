@@ -18,6 +18,7 @@ const translation = {
     setup: '要使用请先授权',
   },
   includeToolNum: '包含 {{num}} 个工具',
+  addTool: '添加工具',
 }
 
 export default translation

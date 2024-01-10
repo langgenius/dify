@@ -16,10 +16,14 @@ import TabSlider from '@/app/components/base/tab-slider'
 
 type Props = {
   loc: LOC
+  addedToolNames?: string[]
+  onAddTool?: (payload: Tool) => void
 }
 
 const Tools: FC<Props> = ({
   loc,
+  addedToolNames,
+  onAddTool,
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
@@ -102,6 +106,8 @@ const Tools: FC<Props> = ({
             collection={currCollection}
             list={currTools}
             loc={loc}
+            addedToolNames={addedToolNames}
+            onAddTool={onAddTool}
           />
         </div>
       </div>

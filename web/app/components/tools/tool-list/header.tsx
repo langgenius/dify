@@ -5,16 +5,17 @@ import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from '../types'
-import AppIcon from '../../base/app-icon'
 import { LOC } from '../types'
 import I18n from '@/context/i18n'
 
 type Props = {
+  icon: JSX.Element
   collection: Collection
   loc: LOC
 }
 
 const Header: FC<Props> = ({
+  icon,
   collection,
   loc,
 }) => {
@@ -28,22 +29,7 @@ const Header: FC<Props> = ({
   return (
     <div className={cn(isInToolsPage ? 'py-4 px-6' : 'py-[11px] pl-4 pr-3', 'flex justify-between  items-center border-b border-gray-200')}>
       <div className='flex items-center'>
-        {typeof collection.icon === 'string'
-          ? (
-            <div
-              className='w-10 h-10 bg-cover bg-center border border-gray-100 rounded-lg '
-              style={{
-                backgroundImage: `url(${collection.icon})`,
-              }}
-            ></div>
-          )
-          : (
-            <AppIcon
-              size='large'
-              innerIcon={(collection.icon as any).content}
-              background={(collection.icon as any).content}
-            />
-          )}
+        {icon}
         <div className='ml-3'>
           <div className='flex items-center h-6 space-x-1'>
             <div className={cn(isInDebugPage && 'max-w-[160px] truncate', 'text-base font-semibold text-gray-900')}>{collection.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>

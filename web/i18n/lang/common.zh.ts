@@ -14,6 +14,7 @@ const translation = {
     save: '保存',
     edit: '编辑',
     add: '添加',
+    added: '已添加',
     refresh: '重新开始',
     reset: '重置',
     search: '搜索',

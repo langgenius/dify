@@ -75,51 +75,105 @@ export const selectedToolList = [
 
 export const builtInTools = [
   {
-    id: '1',
     name: 'Fetch Google',
-    description: 'Fetch an event from Google Calendar',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Fetch Google',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des1...',
+    },
   },
   {
-    id: '1',
-    name: 'Fetch Google',
-    description: 'Fetch an event from Google Calendar',
+    name: 'Fetch Google Event',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Fetch Google Event',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des2...',
+    },
   },
   {
-    id: '2',
-    name: 'Fetch Google Calendar Event',
-    description: 'Balabala',
+    name: 'Fetch Google Calendar Event2',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Fetch Google Event2',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
   {
-    id: '3',
-    name: 'Fetch Google',
-    description: 'Fetch an event from Google Calendar',
+    name: 'Fetch Google3',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Fetch Google Event3',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
   {
-    id: '4',
-    name: 'Fetch Google',
-    description: 'Fetch an event from Google Calendar',
+    name: 'Fetch Google4',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Fetch Google Event4',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
 ]
 
 export const CustomTools = [
   {
-    id: '1',
     name: 'Add Pet',
-    description: 'Add pet to...',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Add Pet',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
   {
-    id: '2',
     name: 'Update Pet',
-    description: 'Add pet to...',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Update Pet',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
   {
-    id: '3',
     name: 'Query Pet',
-    description: 'Add pet to...',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Query Pet',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
   {
-    id: '4',
     name: 'Delete Pet',
-    description: 'Add pet to...',
+    label: {
+      zh_Hans: 'Fetch Google',
+      en_US: 'Delete Pet',
+    },
+    description: {
+      zh_Hans: 'Des...',
+      en_US: 'Des...',
+    },
   },
 ]

@@ -17,6 +17,8 @@ type Props = {
   title: string | JSX.Element
   body: JSX.Element
   foot?: JSX.Element
+  isShowMask?: boolean
+  clickOutsideNotOpen?: boolean
 }
 
 const DrawerPlus: FC<Props> = ({
@@ -30,6 +32,8 @@ const DrawerPlus: FC<Props> = ({
   title,
   body,
   foot,
+  isShowMask,
+  clickOutsideNotOpen = true,
 }) => {
   const ref = useRef(null)
   const media = useBreakpoints()
@@ -40,7 +44,7 @@ const DrawerPlus: FC<Props> = ({
 
   return (
     // clickOutsideNotOpen to fix confirm modal click cause drawer close
-    <Drawer isOpen={isShow} clickOutsideNotOpen onClose={onHide} footer={null} mask={isMobile} panelClassname={`mt-16 mx-2 sm:mr-2 mb-3 !p-0 ${panelClassName} ${maxWidthClassName} rounded-xl`}>
+    <Drawer isOpen={isShow} clickOutsideNotOpen={clickOutsideNotOpen} onClose={onHide} footer={null} mask={isMobile || isShowMask} panelClassname={`mt-16 mx-2 sm:mr-2 mb-3 !p-0 ${panelClassName} ${maxWidthClassName} rounded-xl`}>
       <div
         className={cn(contentClassName, 'w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl')}
         style={{

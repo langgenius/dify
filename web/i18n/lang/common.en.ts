@@ -14,6 +14,7 @@ const translation = {
     save: 'Save',
     edit: 'Edit',
     add: 'Add',
+    added: 'Added',
     refresh: 'Restart',
     reset: 'Reset',
     search: 'Search',

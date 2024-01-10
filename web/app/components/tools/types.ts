@@ -30,7 +30,13 @@ export type Collection = {
 }
 
 export type Tool = {
-  id: string
   name: string
-  description: string
+  label: {
+    zh_Hans: string
+    en_US: string
+  }
+  description: {
+    zh_Hans: string
+    en_US: string
+  }
 }
