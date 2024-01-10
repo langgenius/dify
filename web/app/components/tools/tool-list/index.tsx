@@ -59,14 +59,14 @@ const ToolList: FC<Props> = ({
         icon={icon}
         collection={collection}
         loc={loc}
-        onShowAuth={() => setShowSettingAuth(true)}
+        onShowAuth={() => isInToolsPage && setShowSettingAuth(true)}
       />
       <div className={cn(isInToolsPage ? 'px-6 pt-4' : 'px-4 pt-3')}>
         <div className='flex items-center h-[4.5] space-x-2  text-xs font-medium text-gray-500'>
           <div className=''>{t('tools.includeToolNum', {
             num: list.length,
           })}</div>
-          {!collection.is_team_authorization && (
+          {!collection.is_team_authorization && isInToolsPage && (
             <>
               <div>·</div>
               <div

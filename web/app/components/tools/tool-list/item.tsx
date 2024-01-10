@@ -50,7 +50,7 @@ const Item: FC<Props> = ({
           </div>
         </div>
         {onAdd && (
-          <Button className='flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added} onClick={() => !added && onAdd(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
+          <Button className='flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
         )}
 
       </div>
