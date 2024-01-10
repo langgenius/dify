@@ -52,3 +52,4 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_YAML: true
+          VALIDATE_PYTHON_ISORT: true
