@@ -23,10 +23,9 @@ class Mail:
                     raise ValueError('RESEND_API_KEY is not set')
                 
                 api_url = app.config.get('RESEND_API_URL')
-                if not api_url:
-                    raise ValueError('RESEND_API_URL is not set')
-                
-                resend.api_url = api_url
+                if api_url:
+                    resend.api_url = api_url
+
                 resend.api_key = api_key
                 self._client = resend.Emails
             else:
