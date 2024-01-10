@@ -219,6 +219,7 @@ class Config:
         self.MAIL_TYPE = get_env('MAIL_TYPE')
         self.MAIL_DEFAULT_SEND_FROM = get_env('MAIL_DEFAULT_SEND_FROM')
         self.RESEND_API_KEY = get_env('RESEND_API_KEY')
+        self.RESEND_API_URL = get_env('RESEND_API_URL')
         
         # ------------------------
         # Workpace Configurations.

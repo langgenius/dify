@@ -34,7 +34,7 @@ openpyxl==3.1.2
 chardet~=5.1.0
 docx2txt==0.8
 pypdfium2==4.16.0
-resend~=0.5.1
+resend~=0.7.0
 pyjwt~=2.6.0
 anthropic~=0.7.7
 newspaper3k==0.2.8
