@@ -50,7 +50,7 @@ class AudioApi(AppApiResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(str(e))
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:

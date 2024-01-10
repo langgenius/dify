@@ -75,7 +75,7 @@ class AgentApplicationRunner(AppRunner):
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         #          memory(optional)
-        prompt_messages, stop = self.originze_prompt_messages(
+        prompt_messages, stop = self.organize_prompt_messages(
             app_record=app_record,
             model_config=app_orchestration_config.model_config,
             prompt_template_entity=app_orchestration_config.prompt_template,
@@ -153,7 +153,7 @@ class AgentApplicationRunner(AppRunner):
             # reorganize all inputs and template to prompt messages
             # Include: prompt template, inputs, query(optional), files(optional)
             #          memory(optional), external data, dataset context(optional)
-            prompt_messages, stop = self.originze_prompt_messages(
+            prompt_messages, stop = self.organize_prompt_messages(
                 app_record=app_record,
                 model_config=app_orchestration_config.model_config,
                 prompt_template_entity=app_orchestration_config.prompt_template,

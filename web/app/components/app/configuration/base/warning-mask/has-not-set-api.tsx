@@ -1,10 +1,11 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import WarningMask from '.'
 import Button from '@/app/components/base/button'
 
-export interface IHasNotSetAPIProps {
+export type IHasNotSetAPIProps = {
   isTrailFinished: boolean
   onSetting: () => void
 }
@@ -18,7 +19,7 @@ const icon = (
 
 const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
   isTrailFinished,
-  onSetting
+  onSetting,
 }) => {
   const { t } = useTranslation()
 

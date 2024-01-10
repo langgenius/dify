@@ -38,7 +38,7 @@ class RuleGenerateApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(str(e))
+            raise CompletionRequestError(e.description)
 
         return rules
 

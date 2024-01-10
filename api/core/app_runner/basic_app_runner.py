@@ -5,7 +5,7 @@ from core.app_runner.app_runner import AppRunner
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
     AppOrchestrationConfigEntity, InvokeFrom, ExternalDataVariableEntity, DatasetEntity
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.features.annotation_reply import AnnotationReplyFeature
 from core.features.dataset_retrieval import DatasetRetrievalFeature
 from core.features.external_data_fetch import ExternalDataFetchFeature
@@ -79,7 +79,7 @@ class BasicApplicationRunner(AppRunner):
         # organize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         #          memory(optional)
-        prompt_messages, stop = self.originze_prompt_messages(
+        prompt_messages, stop = self.organize_prompt_messages(
             app_record=app_record,
             model_config=app_orchestration_config.model_config,
             prompt_template_entity=app_orchestration_config.prompt_template,
@@ -121,7 +121,8 @@ class BasicApplicationRunner(AppRunner):
 
             if annotation_reply:
                 queue_manager.publish_annotation_reply(
-                    message_annotation_id=annotation_reply.id
+                    message_annotation_id=annotation_reply.id,
+                    pub_from=PublishFrom.APPLICATION_MANAGER
                 )
                 self.direct_output(
                     queue_manager=queue_manager,
@@ -132,16 +133,16 @@ class BasicApplicationRunner(AppRunner):
                 )
                 return
 
-            # fill in variable inputs from external data tools if exists
-            external_data_tools = app_orchestration_config.external_data_variables
-            if external_data_tools:
-                inputs = self.fill_in_inputs_from_external_data_tools(
-                    tenant_id=app_record.tenant_id,
-                    app_id=app_record.id,
-                    external_data_tools=external_data_tools,
-                    inputs=inputs,
-                    query=query
-                )
+        # fill in variable inputs from external data tools if exists
+        external_data_tools = app_orchestration_config.external_data_variables
+        if external_data_tools:
+            inputs = self.fill_in_inputs_from_external_data_tools(
+                tenant_id=app_record.tenant_id,
+                app_id=app_record.id,
+                external_data_tools=external_data_tools,
+                inputs=inputs,
+                query=query
+            )
 
         # get context from datasets
         context = None
@@ -164,7 +165,7 @@ class BasicApplicationRunner(AppRunner):
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         #          memory(optional), external data, dataset context(optional)
-        prompt_messages, stop = self.originze_prompt_messages(
+        prompt_messages, stop = self.organize_prompt_messages(
             app_record=app_record,
             model_config=app_orchestration_config.model_config,
             prompt_template_entity=app_orchestration_config.prompt_template,

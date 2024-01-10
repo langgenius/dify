@@ -158,7 +158,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size')),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', "4096")),
                 ModelPropertyKey.MODE: credentials.get('mode'),
             },
             parameter_rules=[
@@ -168,7 +168,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     type=ParameterType.FLOAT,
                     default=float(credentials.get('temperature', 0.7)),
                     min=0,
-                    max=2
+                    max=2,
+                    precision=2
                 ),
                 ParameterRule(
                     name=DefaultParameterName.TOP_P.value,
@@ -176,7 +177,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     type=ParameterType.FLOAT,
                     default=float(credentials.get('top_p', 1)),
                     min=0,
-                    max=1
+                    max=1,
+                    precision=2
                 ),
                 ParameterRule(
                     name="top_k",
@@ -196,9 +198,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.PRESENCE_PENALTY.value,
-                    label=I18nObject(en_US="PRESENCE Penalty"),
+                    label=I18nObject(en_US="Presence Penalty"),
                     type=ParameterType.FLOAT,
-                    default=float(credentials.get('PRESENCE_penalty', 0)),
+                    default=float(credentials.get('presence_penalty', 0)),
                     min=-2,
                     max=2
                 ),
@@ -219,6 +221,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             )
         )
 
+        if credentials['mode'] == 'chat':
+            entity.model_properties[ModelPropertyKey.MODE] = LLMMode.CHAT.value
+        elif credentials['mode'] == 'completion':
+            entity.model_properties[ModelPropertyKey.MODE] = LLMMode.COMPLETION.value
+        else:
+            raise ValueError(f"Unknown completion type {credentials['completion_type']}")
+    
         return entity
 
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
@@ -239,7 +248,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept-Charset': 'utf-8',
         }
 
         api_key = credentials.get('api_key')
@@ -261,7 +271,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         if completion_type is LLMMode.CHAT:
             endpoint_url = urljoin(endpoint_url, 'chat/completions')
             data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
-        elif completion_type == LLMMode.COMPLETION:
+        elif completion_type is LLMMode.COMPLETION:
             endpoint_url = urljoin(endpoint_url, 'completions')
             data['prompt'] = prompt_messages[0].content
         else:
@@ -291,9 +301,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             stream=stream
         )
 
-        # Debug: Print request headers and json data
-        logger.debug(f"Request headers: {headers}")
-        logger.debug(f"Request JSON data: {data}")
+        if response.encoding is None or response.encoding == 'ISO-8859-1':
+            response.encoding = 'utf-8'
 
         if response.status_code != 200:
             raise InvokeError(f"API request failed with status code {response.status_code}: {response.text}")
@@ -337,9 +346,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 )
             )
 
-        for chunk in response.iter_content(chunk_size=2048):
+        for chunk in response.iter_lines(decode_unicode=True, delimiter='\n\n'):
             if chunk:
-                decoded_chunk = chunk.decode('utf-8').strip().lstrip('data: ').lstrip()
+                decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
 
                 chunk_json = None
                 try:
@@ -356,7 +365,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     continue
 
                 choice = chunk_json['choices'][0]
-                chunk_index = choice['index'] if 'index' in choice else chunk_index
+                chunk_index += 1
 
                 if 'delta' in choice:
                     delta = choice['delta']
@@ -408,12 +417,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                             message=assistant_prompt_message,
                         )
                     )
-            else:
-                yield create_final_llm_result_chunk(
-                    index=chunk_index + 1,
-                    message=AssistantPromptMessage(content=""),
-                    finish_reason="End of stream."
-                )
 
             chunk_index += 1
 

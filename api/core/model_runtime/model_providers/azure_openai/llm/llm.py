@@ -30,7 +30,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
 
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        ai_model_entity = self._get_ai_model_entity(credentials.get('base_model_name'), model)
 
         if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
             # chat model
@@ -59,7 +59,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
 
-        model_mode = self._get_ai_model_entity(credentials['base_model_name'], model).entity.model_properties.get(
+        model_mode = self._get_ai_model_entity(credentials.get('base_model_name'), model).entity.model_properties.get(
             ModelPropertyKey.MODE)
 
         if model_mode == LLMMode.CHAT.value:
@@ -79,7 +79,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        ai_model_entity = self._get_ai_model_entity(credentials.get('base_model_name'), model)
 
         if not ai_model_entity:
             raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
@@ -109,8 +109,8 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
-        return ai_model_entity.entity
+        ai_model_entity = self._get_ai_model_entity(credentials.get('base_model_name'), model)
+        return ai_model_entity.entity if ai_model_entity else None
 
     def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
@@ -309,7 +309,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
         # transform response
         response = LLMResult(
-            model=response.model,
+            model=response.model or model,
             prompt_messages=prompt_messages,
             message=assistant_prompt_message,
             usage=usage,

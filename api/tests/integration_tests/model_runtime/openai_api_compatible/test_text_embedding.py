@@ -18,9 +18,8 @@ def test_validate_credentials():
             model='text-embedding-ada-002',
             credentials={
                 'api_key': 'invalid_key',
-                'endpoint_url': 'https://api.openai.com/v1/embeddings',
-                'context_size': 8184,
-                'max_chunks': 32
+                'endpoint_url': 'https://api.openai.com/v1/',
+                'context_size': 8184
                 
             }
         )
@@ -29,9 +28,8 @@ def test_validate_credentials():
         model='text-embedding-ada-002',
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
-            'endpoint_url': 'https://api.openai.com/v1/embeddings',
-            'context_size': 8184,
-            'max_chunks': 32
+            'endpoint_url': 'https://api.openai.com/v1/',
+            'context_size': 8184
         }
     )
 
@@ -43,20 +41,21 @@ def test_invoke_model():
         model='text-embedding-ada-002',
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
-            'endpoint_url': 'https://api.openai.com/v1/embeddings',
-            'context_size': 8184,
-            'max_chunks': 32
+            'endpoint_url': 'https://api.openai.com/v1/',
+            'context_size': 8184
         },
         texts=[
             "hello",
-            "world"
+            "world",
+            " ".join(["long_text"] * 100),
+            " ".join(["another_long_text"] * 100)
         ],
         user="abc-123"
     )
 
     assert isinstance(result, TextEmbeddingResult)
-    assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 2
+    assert len(result.embeddings) == 4
+    assert result.usage.total_tokens == 502
 
 
 def test_get_num_tokens():
@@ -67,8 +66,7 @@ def test_get_num_tokens():
         credentials={
             'api_key': os.environ.get('OPENAI_API_KEY'),
             'endpoint_url': 'https://api.openai.com/v1/embeddings',
-            'context_size': 8184,
-            'max_chunks': 32
+            'context_size': 8184
         },
         texts=[
             "hello",

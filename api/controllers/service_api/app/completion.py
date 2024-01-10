@@ -31,7 +31,7 @@ class CompletionApi(AppApiResource):
         parser.add_argument('query', type=str, location='json', default='')
         parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
-        parser.add_argument('user', type=str, location='json')
+        parser.add_argument('user', required=True, nullable=False, type=str, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
 
         args = parser.parse_args()
@@ -67,7 +67,7 @@ class CompletionApi(AppApiResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(str(e))
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -96,7 +96,7 @@ class ChatApi(AppApiResource):
         parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
-        parser.add_argument('user', type=str, location='json')
+        parser.add_argument('user', type=str, required=True, nullable=False, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
         parser.add_argument('auto_generate_name', type=bool, required=False, default=True, location='json')
 
@@ -131,7 +131,7 @@ class ChatApi(AppApiResource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
-            raise CompletionRequestError(str(e))
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -171,7 +171,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
             except ModelCurrentlyNotSupportError:
                 yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
             except InvokeError as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
+                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(e.description)).get_json()) + "\n\n"
             except ValueError as e:
                 yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
             except Exception:

@@ -10,8 +10,10 @@ from core.entities.provider_configuration import ProviderConfigurations, Provide
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, CustomModelConfiguration, \
     SystemConfiguration, QuotaConfiguration
 from core.helper import encrypter
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ProviderEntity, CredentialFormSchema, FormType
+from core.model_runtime.entities.provider_entities import ProviderEntity, CredentialFormSchema, FormType, \
+    ConfigurateMethod
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
@@ -23,6 +25,9 @@ class ProviderManager:
     """
     ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
     """
+    def __init__(self) -> None:
+        self.decoding_rsa_key = None
+        self.decoding_cipher_rsa = None
 
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
@@ -79,9 +84,6 @@ class ProviderManager:
         # Get All preferred provider types of the workspace
         provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
 
-        # Get decoding rsa key and cipher for decrypting credentials
-        decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
-
         provider_configurations = ProviderConfigurations(
             tenant_id=tenant_id
         )
@@ -100,19 +102,17 @@ class ProviderManager:
 
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
+                tenant_id,
                 provider_entity,
                 provider_records,
-                provider_model_records,
-                decoding_rsa_key,
-                decoding_cipher_rsa
+                provider_model_records
             )
 
             # Convert to system configuration
             system_configuration = self._to_system_configuration(
+                tenant_id,
                 provider_entity,
-                provider_records,
-                decoding_rsa_key,
-                decoding_cipher_rsa
+                provider_records
             )
 
             # Get preferred provider type
@@ -233,11 +233,18 @@ class ProviderManager:
             return None
 
         provider_instance = model_provider_factory.get_provider_instance(default_model.provider_name)
+        provider_schema = provider_instance.get_provider_schema()
 
         return DefaultModelEntity(
             model=default_model.model_name,
             model_type=model_type,
-            provider=DefaultModelProviderEntity(**provider_instance.get_provider_schema().to_simple_provider().dict())
+            provider=DefaultModelProviderEntity(
+                provider=provider_schema.provider,
+                label=provider_schema.label,
+                icon_small=provider_schema.icon_small,
+                icon_large=provider_schema.icon_large,
+                supported_model_types=provider_schema.supported_model_types
+            )
         )
 
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
@@ -401,28 +408,29 @@ class ProviderManager:
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == provider_name,
                                 Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == ProviderQuotaType.TRIAL.value,
-                                Provider.is_valid == True
+                                Provider.quota_type == ProviderQuotaType.TRIAL.value
                             ).first()
+
+                            if provider_record and not provider_record.is_valid:
+                                provider_record.is_valid = True
+                                db.session.commit()
 
                         provider_name_to_provider_records_dict[provider_name].append(provider_record)
 
         return provider_name_to_provider_records_dict
 
     def _to_custom_configuration(self,
+                                 tenant_id: str,
                                  provider_entity: ProviderEntity,
                                  provider_records: list[Provider],
-                                 provider_model_records: list[ProviderModel],
-                                 decoding_rsa_key,
-                                 decoding_cipher_rsa) -> CustomConfiguration:
+                                 provider_model_records: list[ProviderModel]) -> CustomConfiguration:
         """
         Convert to custom configuration.
 
+        :param tenant_id: workspace id
         :param provider_entity: provider entity
         :param provider_records: provider records
         :param provider_model_records: provider model records
-        :param decoding_rsa_key: decoding rsa key
-        :param decoding_cipher_rsa: decoding cipher rsa
         :return:
         """
         # Get provider credential secret variables
@@ -445,28 +453,49 @@ class ProviderManager:
         # Get custom provider credentials
         custom_provider_configuration = None
         if custom_provider_record:
-            try:
-                # fix origin data
-                if (custom_provider_record.encrypted_config
-                        and not custom_provider_record.encrypted_config.startswith("{")):
-                    provider_credentials = {
-                        "openai_api_key": custom_provider_record.encrypted_config
-                    }
-                else:
-                    provider_credentials = json.loads(custom_provider_record.encrypted_config)
-            except JSONDecodeError:
-                provider_credentials = {}
+            provider_credentials_cache = ProviderCredentialsCache(
+                tenant_id=tenant_id,
+                identity_id=custom_provider_record.id,
+                cache_type=ProviderCredentialsCacheType.PROVIDER
+            )
 
-            for variable in provider_credential_secret_variables:
-                if variable in provider_credentials:
-                    try:
-                        provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            provider_credentials.get(variable),
-                            decoding_rsa_key,
-                            decoding_cipher_rsa
-                        )
-                    except ValueError:
-                        pass
+            # Get cached provider credentials
+            cached_provider_credentials = provider_credentials_cache.get()
+
+            if not cached_provider_credentials:
+                try:
+                    # fix origin data
+                    if (custom_provider_record.encrypted_config
+                            and not custom_provider_record.encrypted_config.startswith("{")):
+                        provider_credentials = {
+                            "openai_api_key": custom_provider_record.encrypted_config
+                        }
+                    else:
+                        provider_credentials = json.loads(custom_provider_record.encrypted_config)
+                except JSONDecodeError:
+                    provider_credentials = {}
+
+                # Get decoding rsa key and cipher for decrypting credentials
+                if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                    self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+
+                for variable in provider_credential_secret_variables:
+                    if variable in provider_credentials:
+                        try:
+                            provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                provider_credentials.get(variable),
+                                self.decoding_rsa_key,
+                                self.decoding_cipher_rsa
+                            )
+                        except ValueError:
+                            pass
+
+                # cache provider credentials
+                provider_credentials_cache.set(
+                    credentials=provider_credentials
+                )
+            else:
+                provider_credentials = cached_provider_credentials
 
             custom_provider_configuration = CustomProviderConfiguration(
                 credentials=provider_credentials
@@ -484,21 +513,42 @@ class ProviderManager:
             if not provider_model_record.encrypted_config:
                 continue
 
-            try:
-                provider_model_credentials = json.loads(provider_model_record.encrypted_config)
-            except JSONDecodeError:
-                continue
+            provider_model_credentials_cache = ProviderCredentialsCache(
+                tenant_id=tenant_id,
+                identity_id=provider_model_record.id,
+                cache_type=ProviderCredentialsCacheType.MODEL
+            )
 
-            for variable in model_credential_secret_variables:
-                if variable in provider_model_credentials:
-                    try:
-                        provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                            provider_model_credentials.get(variable),
-                            decoding_rsa_key,
-                            decoding_cipher_rsa
-                        )
-                    except ValueError:
-                        pass
+            # Get cached provider model credentials
+            cached_provider_model_credentials = provider_model_credentials_cache.get()
+
+            if not cached_provider_model_credentials:
+                try:
+                    provider_model_credentials = json.loads(provider_model_record.encrypted_config)
+                except JSONDecodeError:
+                    continue
+
+                # Get decoding rsa key and cipher for decrypting credentials
+                if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                    self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+
+                for variable in model_credential_secret_variables:
+                    if variable in provider_model_credentials:
+                        try:
+                            provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                provider_model_credentials.get(variable),
+                                self.decoding_rsa_key,
+                                self.decoding_cipher_rsa
+                            )
+                        except ValueError:
+                            pass
+
+                # cache provider model credentials
+                provider_model_credentials_cache.set(
+                    credentials=provider_model_credentials
+                )
+            else:
+                provider_model_credentials = cached_provider_model_credentials
 
             custom_model_configurations.append(
                 CustomModelConfiguration(
@@ -514,17 +564,15 @@ class ProviderManager:
         )
 
     def _to_system_configuration(self,
+                                 tenant_id: str,
                                  provider_entity: ProviderEntity,
-                                 provider_records: list[Provider],
-                                 decoding_rsa_key,
-                                 decoding_cipher_rsa) -> SystemConfiguration:
+                                 provider_records: list[Provider]) -> SystemConfiguration:
         """
         Convert to system configuration.
 
+        :param tenant_id: workspace id
         :param provider_entity: provider entity
         :param provider_records: provider records
-        :param decoding_rsa_key: decoding rsa key
-        :param decoding_cipher_rsa: decoding cipher rsa
         :return:
         """
         # Get hosting configuration
@@ -560,7 +608,7 @@ class ProviderManager:
                 quota_used=provider_record.quota_used,
                 quota_limit=provider_record.quota_limit,
                 is_valid=provider_record.quota_limit > provider_record.quota_used or provider_record.quota_limit == -1,
-                restrict_llms=provider_quota.restrict_llms
+                restrict_models=provider_quota.restrict_models
             )
 
             quota_configurations.append(quota_configuration)
@@ -577,29 +625,50 @@ class ProviderManager:
             provider_record = quota_type_to_provider_records_dict.get(current_quota_type)
 
             if provider_record:
-                try:
-                    provider_credentials = json.loads(provider_record.encrypted_config)
-                except JSONDecodeError:
-                    provider_credentials = {}
-
-                # Get provider credential secret variables
-                provider_credential_secret_variables = self._extract_secret_variables(
-                    provider_entity.provider_credential_schema.credential_form_schemas
-                    if provider_entity.provider_credential_schema else []
+                provider_credentials_cache = ProviderCredentialsCache(
+                    tenant_id=tenant_id,
+                    identity_id=provider_record.id,
+                    cache_type=ProviderCredentialsCacheType.PROVIDER
                 )
 
-                for variable in provider_credential_secret_variables:
-                    if variable in provider_credentials:
-                        try:
-                            provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                provider_credentials.get(variable),
-                                decoding_rsa_key,
-                                decoding_cipher_rsa
-                            )
-                        except ValueError:
-                            pass
+                # Get cached provider credentials
+                cached_provider_credentials = provider_credentials_cache.get()
 
-                current_using_credentials = provider_credentials
+                if not cached_provider_credentials:
+                    try:
+                        provider_credentials = json.loads(provider_record.encrypted_config)
+                    except JSONDecodeError:
+                        provider_credentials = {}
+
+                    # Get provider credential secret variables
+                    provider_credential_secret_variables = self._extract_secret_variables(
+                        provider_entity.provider_credential_schema.credential_form_schemas
+                        if provider_entity.provider_credential_schema else []
+                    )
+
+                    # Get decoding rsa key and cipher for decrypting credentials
+                    if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                        self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+
+                    for variable in provider_credential_secret_variables:
+                        if variable in provider_credentials:
+                            try:
+                                provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                    provider_credentials.get(variable),
+                                    self.decoding_rsa_key,
+                                    self.decoding_cipher_rsa
+                                )
+                            except ValueError:
+                                pass
+
+                    current_using_credentials = provider_credentials
+
+                    # cache provider credentials
+                    provider_credentials_cache.set(
+                        credentials=current_using_credentials
+                    )
+                else:
+                    current_using_credentials = cached_provider_credentials
             else:
                 current_using_credentials = {}
 

@@ -10,7 +10,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage, \
     UserPromptMessage, SystemPromptMessage
 from core.model_runtime.entities.model_entities import ParameterRule, DefaultParameterName, AIModelEntity, ModelType, \
-    FetchFrom
+    FetchFrom, ModelPropertyKey
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.huggingface_hub._common import _CommonHuggingfaceHub
@@ -97,7 +97,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             model_properties={
-                'mode': LLMMode.COMPLETION.value
+                ModelPropertyKey.MODE: LLMMode.COMPLETION.value
             },
             parameter_rules=self._get_customizable_model_parameter_rules()
         )

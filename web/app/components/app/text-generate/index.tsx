@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { format } from '@/service/base'
 import React from 'react'
+import { format } from '@/service/base'
 
 export type ITextGenerationProps = {
   value: string
@@ -16,7 +16,7 @@ const TextGeneration: FC<ITextGenerationProps> = ({
     <div
       className={className}
       dangerouslySetInnerHTML={{
-        __html: format(value)
+        __html: format(value),
       }}
     >
     </div>

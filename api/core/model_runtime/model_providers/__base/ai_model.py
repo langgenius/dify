@@ -148,7 +148,9 @@ class AIModel(ABC):
         position_map = {}
         if os.path.exists(position_file_path):
             with open(position_file_path, 'r', encoding='utf-8') as f:
-                position_map = yaml.safe_load(f)
+                positions = yaml.safe_load(f)
+                # convert list to dict with key as model provider name, value as index
+                position_map = {position: index for index, position in enumerate(positions)}
 
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
@@ -236,16 +238,6 @@ class AIModel(ABC):
         :param credentials: model credentials
         :return: model schema
         """
-        if 'schema' in credentials:
-            schema_dict = json.loads(credentials['schema'])
-
-            try:
-                model_instance = AIModelEntity.parse_obj(schema_dict)
-                return model_instance
-            except ValidationError as e:
-                logging.exception(f"Invalid model schema for {model}")
-                return self._get_customizable_model_schema(model, credentials)
-
         return self._get_customizable_model_schema(model, credentials)
     
     def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:

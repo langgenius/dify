@@ -141,15 +141,9 @@ class AppListApi(Resource):
                     model_type=ModelType.LLM
                 )
             except ProviderTokenNotInitError:
-                raise ProviderNotInitializeError(
-                    f"No Default System Reasoning Model available. Please configure "
-                    f"in the Settings -> Model Provider.")
+                model_instance = None
 
-            if not model_instance:
-                raise ProviderNotInitializeError(
-                    f"No Default System Reasoning Model available. Please configure "
-                    f"in the Settings -> Model Provider.")
-            else:
+            if model_instance:
                 model_dict = app_model_config.model_dict
                 model_dict['provider'] = model_instance.provider
                 model_dict['name'] = model_instance.model
