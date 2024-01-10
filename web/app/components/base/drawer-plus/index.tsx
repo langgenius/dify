@@ -15,6 +15,7 @@ type Props = {
   headerClassName?: string
   height?: number | string
   title: string | JSX.Element
+  titleDescription?: string | JSX.Element
   body: JSX.Element
   foot?: JSX.Element
   isShowMask?: boolean
@@ -30,6 +31,7 @@ const DrawerPlus: FC<Props> = ({
   contentClassName,
   headerClassName,
   title,
+  titleDescription,
   body,
   foot,
   isShowMask,
@@ -52,18 +54,25 @@ const DrawerPlus: FC<Props> = ({
         }}
         ref={ref}
       >
-        <div className={cn(headerClassName, 'shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100')}>
-          <div className='text-base font-semibold text-gray-900'>
-            {title}
-          </div>
-          <div className='flex items-center'>
-            <div
-              onClick={onHide}
-              className='flex justify-center items-center w-6 h-6 cursor-pointer'
-            >
-              <XClose className='w-4 h-4 text-gray-500' />
+        <div className={cn(headerClassName, 'shrink-0 border-b border-b-gray-100 py-4')}>
+          <div className='flex justify-between items-center pl-6 pr-5 h-6'>
+            <div className='text-base font-semibold text-gray-900'>
+              {title}
+            </div>
+            <div className='flex items-center'>
+              <div
+                onClick={onHide}
+                className='flex justify-center items-center w-6 h-6 cursor-pointer'
+              >
+                <XClose className='w-4 h-4 text-gray-500' />
+              </div>
             </div>
           </div>
+          {titleDescription && (
+            <div className='pl-6 pr-10 leading-[18px] text-xs font-normal text-gray-500'>
+              {titleDescription}
+            </div>
+          )}
         </div>
         <div className='grow overflow-y-auto'>
           {body}

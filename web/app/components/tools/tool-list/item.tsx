@@ -34,7 +34,6 @@ const Item: FC<Props> = ({
   const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
   const [showDetail, setShowDetail] = useState(false)
 
-  console.log(showDetail)
   return (
     <>
       <div

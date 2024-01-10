@@ -16,6 +16,8 @@ const translation = {
     unauthorized: '未经授权',
     authorized: '已授权',
     setup: '要使用请先授权',
+    setupModalTitle: '设置授权',
+    setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
   },
   includeToolNum: '包含 {{num}} 个工具',
   addTool: '添加工具',

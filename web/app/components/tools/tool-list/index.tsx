@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { LOC } from '../types'
@@ -10,6 +10,7 @@ import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
 import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
+import SettingAuth from '@/app/components/tools/setting/build-in/auth'
 
 type Props = {
   collection: Collection | null
@@ -29,6 +30,8 @@ const ToolList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
+
+  const [showSettingAuth, setShowSettingAuth] = useState(true)
   if (!collection)
     return <Loading type='app' />
 
@@ -89,6 +92,13 @@ const ToolList: FC<Props> = ({
           ))}
         </div>
       </div>
+      {showSettingAuth && (
+        <SettingAuth
+          config={{}}
+          onCancel={() => setShowSettingAuth(false)}
+          onSaved={() => setShowSettingAuth(false)}
+        />
+      )}
     </div>
   )
 }

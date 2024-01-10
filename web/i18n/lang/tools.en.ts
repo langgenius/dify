@@ -16,6 +16,8 @@ const translation = {
     unauthorized: 'Unauthorized',
     authorized: 'Authorized',
     setup: 'Set up authorization to use',
+    setupModalTitle: 'Set Up Authorization',
+    setupModalTitleDescription: 'After configuring credentials, all members within the workspace can use this tool when orchestrating applications.',
   },
   includeToolNum: '{{num}} tools included',
   addTool: 'Add Tool',
