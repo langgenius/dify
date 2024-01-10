@@ -21,6 +21,29 @@ const translation = {
   },
   includeToolNum: '{{num}} tools included',
   addTool: 'Add Tool',
+  createTool: {
+    title: 'Create Custom Tool',
+    name: 'Name',
+    schema: 'Schema',
+    viewSchemaSpec: 'View the OpenAPI-Swagger Specification',
+    importFromUrl: 'Import from URL',
+    example: 'Example',
+    exampleOptions: {
+      examples: 'Examples',
+      json: 'Weather(JSON)',
+      yaml: 'Pet Store(YAML)',
+      template: 'Blank Template',
+    },
+    availableTools: {
+      name: 'Name',
+      description: 'Description',
+      method: 'Method',
+      path: 'Path',
+      action: 'Actions',
+    },
+    authMethod: 'Authorization method',
+    privacyPolicy: 'Privacy policy',
+  },
 }
 
 export default translation

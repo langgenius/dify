@@ -21,6 +21,29 @@ const translation = {
   },
   includeToolNum: '包含 {{num}} 个工具',
   addTool: '添加工具',
+  createTool: {
+    title: '创建自定义工具',
+    name: '名称',
+    schema: 'Schema',
+    viewSchemaSpec: '查看 OpenAPI-Swagger 规范',
+    importFromUrl: '从 URL 中导入',
+    example: '例子',
+    exampleOptions: {
+      examples: '例子',
+      json: '天气(JSON)',
+      yaml: '宠物商店(YAML)',
+      template: '空白模版',
+    },
+    availableTools: {
+      name: '名称',
+      description: '描述',
+      method: '方法',
+      path: '路径',
+      action: '操作',
+    },
+    authMethod: '鉴权方法',
+    privacyPolicy: '隐私协议',
+  },
 }
 
 export default translation

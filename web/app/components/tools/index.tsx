@@ -29,7 +29,7 @@ const Tools: FC<Props> = ({
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage
 
-  const [currCollection, setCurrCollection] = useState<Collection | null>(collectionList[0])
+  const [currCollection, setCurrCollection] = useState<Collection | null>(collectionList[1])
   const collectionTypeOptions = (() => {
     const res = [
       { value: CollectionType.builtIn, text: t('tools.type.builtIn') },
@@ -49,15 +49,24 @@ const Tools: FC<Props> = ({
       setCurrentTools(currCollection.type === CollectionType.builtIn ? builtInTools : CustomTools)
   }, [currCollection])
 
-  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(false)
+  const [isAddToolCollection, setIsAddToolCollection] = useState(false)
+  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(true)
+  const handleCreateToolCollection = () => {
+    setIsAddToolCollection(true)
+    setIsShowEditCustomToolModal(true)
+  }
 
+  const handleEditToolCollection = () => {
+    setIsAddToolCollection(false)
+    setIsShowEditCustomToolModal(true)
+  }
   return (
     <>
       <div className='flex h-full'>
         {/* sidebar */}
         <div className={cn(isInToolsPage ? 'sm:w-[216px] px-4' : 'sm:w-[256px] px-3', 'flex flex-col  w-16 shrink-0 pb-2')}>
           {isInToolsPage && (
-            <Button className='mt-6 flex items-center !h-8 pl-4' type='primary'>
+            <Button className='mt-6 flex items-center !h-8 pl-4' type='primary' onClick={handleCreateToolCollection}>
               <Plus className='w-4 h-4 mr-1' />
               <div className='leading-[18px] text-[13px] font-medium'>{t('tools.createCustomTool')}</div>
             </Button>
@@ -71,7 +80,7 @@ const Tools: FC<Props> = ({
                 onChange={setQuery}
               />
               <Button className='flex items-center justify-center !w-8 !h-8 !p-0' type='primary'>
-                <Plus className='w-4 h-4' />
+                <Plus className='w-4 h-4' onClick={handleCreateToolCollection} />
               </Button>
             </div>
           )}
@@ -117,7 +126,7 @@ const Tools: FC<Props> = ({
       </div>
       {isShowEditCustomToolModal && (
         <EditCustomToolModal
-          payload={null}
+          payload={isAddToolCollection ? null : {}}
           onHide={() => setIsShowEditCustomToolModal(false)}
         />
       )}
