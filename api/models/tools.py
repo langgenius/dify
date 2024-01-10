@@ -155,8 +155,6 @@ class ToolModelInvoke(db.Model):
     tool_type = db.Column(db.String(40), nullable=False)
     # tool name
     tool_name = db.Column(db.String(40), nullable=False)
-    # tool id
-    tool_id = db.Column(UUID, nullable=False)
     # invoke parameters
     model_parameters = db.Column(db.Text, nullable=False)
     # prompt messages

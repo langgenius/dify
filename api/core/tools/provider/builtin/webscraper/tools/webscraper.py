@@ -1,4 +1,4 @@
-from core.tools.provider.tool_provider import Tool
+from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
 from core.tools.provider.builtin.webscraper.tools.web_reader_tool import get_url
@@ -8,7 +8,7 @@ from core.model_runtime.entities.message_entities import PromptMessage
 
 from typing import Any, Dict, List, Union
 
-class WebscraperTool(Tool):
+class WebscraperTool(BuiltinTool):
     def _invoke(self,
                user_id: str,
                tool_paramters: Dict[str, Any], 

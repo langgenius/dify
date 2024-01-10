@@ -4,7 +4,7 @@ identity:
   label:
     en_US: Web Scraper
     zh_Hans: 网页爬虫
-tool_description:
+description:
   human:
     en_US: A tool for scraping webpages.
     zh_Hans: 一个用于爬取网页的工具。

@@ -4,6 +4,7 @@ from typing import List, Dict
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderCredentials
+from core.tools.provider.tool import ToolParamter
 
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):
@@ -39,8 +40,5 @@ class UserTool(BaseModel):
     author: str
     name: str # identifier
     label: I18nObject # label
-    icon: str
-    class Description(BaseModel):
-        human: I18nObject
-        llm: str
-    description: Description
+    description: I18nObject
+    parameters: List[ToolParamter]

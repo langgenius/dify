@@ -7,7 +7,7 @@ identity:
   description:
     en_US: DALL-E draw
     zh_Hans: DALL-E 画画
-tool_description:
+description:
   human:
     en_US: DALL-E is a text to image tool
     zh_Hans: DALL-E 是一个文本到图像的工具

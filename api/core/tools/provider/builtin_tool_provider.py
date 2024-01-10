@@ -8,6 +8,7 @@ from core.model_runtime.entities.message_entities import PromptMessage
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, \
     ToolProviderIdentity, ToolParamter, ToolProviderCredentials
 from core.tools.provider.tool import Tool
+from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError, \
@@ -66,7 +67,9 @@ class BuiltinToolProviderController(ToolProviderController):
                 spec.loader.exec_module(mod)
 
                 # get all the classes in the module
-                classes = [x for _, x in vars(mod).items() if isinstance(x, type) and x != Tool and issubclass(x, Tool)]
+                classes = [x for _, x in vars(mod).items() 
+                    if isinstance(x, type) and x not in [BuiltinTool, Tool] and issubclass(x, BuiltinTool)
+                ]
                 assistant_tool_class = classes[0]
                 tools.append(assistant_tool_class(**tool))
 

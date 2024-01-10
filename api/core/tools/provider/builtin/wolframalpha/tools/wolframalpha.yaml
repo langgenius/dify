@@ -4,7 +4,7 @@ identity:
   label:
     en_US: WolframAlpha
     zh_Hans: WolframAlpha
-tool_description:
+description:
   human:
     en_US: WolframAlpha is a powerful computational knowledge engine.
     zh_Hans: WolframAlpha 是一个强大的计算知识引擎。

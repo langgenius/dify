@@ -11,9 +11,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.errors.invoke import InvokeRateLimitError, InvokeBadRequestError, \
     InvokeConnectionError, InvokeAuthorizationError, InvokeServerUnavailableError
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.model_runtime.model_providers import model_provider_factory
-from core.provider_manager import ProviderManager
-from core.entities.provider_configuration import ProviderConfiguration
+from core.model_manager import ModelManager
 
 from core.tools.model.errors import InvokeModelError
 from core.tools.model.entities import ToolModelConfig
@@ -27,20 +25,8 @@ import json
 
 class ToolModelManager:
     @staticmethod
-    def get_model_provider_configuration(tenant_id: str, provider: str) -> ProviderConfiguration:
-        model_provider_manager = ProviderManager()
-
-        configurations = model_provider_manager.get_configurations(tenant_id)
-        provider_configuration = configurations.configurations.get(provider, None)
-        if provider_configuration is None:
-            raise InvokeModelError(f'Provider {provider} is not configured')
-        
-        return provider_configuration
-
-    @staticmethod
     def get_max_llm_context_tokens(
         tenant_id: str,
-        model_config: ToolModelConfig,
         model_provider: str, model: str, model_parameters: dict,
     ) -> int:
         """
@@ -50,12 +36,16 @@ class ToolModelManager:
         if model_parameter_max_tokens is not None:
             return model_parameter_max_tokens
         
-        model_provider = model_provider_factory.get_provider_instance(model_config.provider)
-        llm_model = cast(LargeLanguageModel, model_provider.get_model_instance(ModelType.LLM, model))
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id, provider=model_provider, model_type=ModelType.LLM, model=model
+        )
 
-        model_configuration = ToolModelManager.get_model_provider_configuration(tenant_id, model_provider)
-
-        schema = llm_model.get_model_schema(model, model_configuration.get_current_credentials(ModelType.LLM, model))
+        if not model_instance:
+            raise InvokeModelError(f'Model not found')
+        
+        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+        schema = llm_model.get_model_schema(model, model_instance.credentials)
 
         if not schema:
             raise InvokeModelError(f'No model schema found')
@@ -68,9 +58,9 @@ class ToolModelManager:
 
     @staticmethod
     def invoke(
-        user_id: str, 
+        user_id: str, tenant_id: str,
         model_config: ToolModelConfig,
-        tool_type: str, tool_name: str, tool_id: str,
+        tool_type: str, tool_name: str,
         model_provider: str, model: str, model_parameters: dict,
         prompt_messages: List[PromptMessage]
     ) -> LLMResult:
@@ -78,7 +68,7 @@ class ToolModelManager:
         invoke model with parameters in user's own context
 
         :param user_id: user id
-        :param tenant_id: tenant id
+        :param tenant_id: tenant id, the tenant id of the creator of the tool
         :param tool_provider: tool provider
         :param tool_id: tool id
         :param tool_name: tool name
@@ -89,13 +79,17 @@ class ToolModelManager:
         :return: AssistantPromptMessage
         """
 
-        model_provider = model_provider_factory.get_provider_instance(provider=model_provider)
-        model_configuration = ToolModelManager.get_model_provider_configuration(tenant_id, model_provider)
+        # get model manager
+        model_manager = ModelManager()
+        # get model instance
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id, provider=model_provider, model_type=ModelType.LLM, model=model
+        )
 
-        model_credentials = model_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)
+        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
 
-        # get llm
-        llm_model = cast(LargeLanguageModel, model_provider.get_model_instance(ModelType.LLM, model))
+        # get model credentials
+        model_credentials = model_instance.credentials
 
         # get prompt tokens
         prompt_tokens = llm_model.get_num_tokens(model, model_credentials, prompt_messages)
@@ -107,7 +101,6 @@ class ToolModelManager:
             provider=model_config.provider,
             tool_type=tool_type,
             tool_name=tool_name,
-            tool_id=tool_id,
             model_parameters=json.dumps(model_parameters),
             prompt_messages=json.dumps(jsonable_encoder(prompt_messages)),
             model_response='',

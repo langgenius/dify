@@ -5,7 +5,7 @@ identity:
     en_US: WikipediaSearch
     zh_Hans: 维基百科搜索
   icon: icon.svg
-tool_description:
+description:
   human:
     en_US: A tool for performing a Wikipedia search and extracting snippets and webpages.
     zh_Hans: 一个用于执行维基百科搜索并提取片段和网页的工具。

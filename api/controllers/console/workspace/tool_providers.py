@@ -24,6 +24,20 @@ class ToolProviderListApi(Resource):
 
         return ToolManageService.list_tool_providers(user_id, tenant_id)
 
+class ToolBuiltinProviderListToolsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        return ToolManageService.list_builtin_tool_provider_tools(
+            user_id,
+            tenant_id,
+            provider,
+        )
+
 class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -96,6 +110,26 @@ class ToolApiProviderAddApi(Resource):
             args['parameters'],
             args['schema_type'],
             args['schema'],
+        )
+    
+class ToolApiProviderListToolsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+
+        parser.add_argument('provider', type=str, required=True, nullable=False, location='args')
+
+        args = parser.parse_args()
+
+        return ToolManageService.list_api_tool_provider_tools(
+            user_id,
+            tenant_id,
+            args['provider'],
         )
 
 class ToolApiProviderUpdateApi(Resource):
@@ -218,11 +252,13 @@ class ToolApiProviderPreviousTestApi(Resource):
 
 # new apis
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
+api.add_resource(ToolBuiltinProviderListToolsApi, '/workspaces/current/tool-provider/builtin/<provider>/tools')
 api.add_resource(ToolBuiltinProviderDeleteApi, '/workspaces/current/tool-provider/builtin/<provider>/delete')
 api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provider/builtin/<provider>/update')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
+api.add_resource(ToolApiProviderListToolsApi, '/workspaces/current/tool-provider/api/tools')
 api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update')
 api.add_resource(ToolApiProviderDeleteApi, '/workspaces/current/tool-provider/api/delete')
 api.add_resource(ToolApiProviderGetApi, '/workspaces/current/tool-provider/api/get')

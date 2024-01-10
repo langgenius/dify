@@ -1,4 +1,4 @@
-from core.tools.provider.tool_provider import Tool
+from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError, ToolInvokeError
 from core.model_runtime.entities.message_entities import PromptMessage
@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Union, Optional, Tuple
 
 from httpx import get
 
-class WolframAlphaTool(Tool):
+class WolframAlphaTool(BuiltinTool):
     _base_url = 'https://api.wolframalpha.com/v2/query'
 
     def _invoke(self, 

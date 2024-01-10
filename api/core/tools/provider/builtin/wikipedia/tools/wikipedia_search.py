@@ -1,4 +1,4 @@
-from core.tools.provider.tool_provider import Tool
+from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.model_runtime.entities.message_entities import PromptMessage
 
@@ -12,7 +12,7 @@ from langchain.tools import WikipediaQueryRun
 class WikipediaInput(BaseModel):
     query: str = Field(..., description="search query.")
 
-class WikiPediaSearchTool(Tool):
+class WikiPediaSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
                tool_paramters: Dict[str, Any], 

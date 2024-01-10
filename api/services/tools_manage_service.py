@@ -3,7 +3,7 @@ from typing import List
 from flask import current_app
 
 from core.tools.tool_manager import ToolManager
-from core.tools.entities.user_entities import UserToolProvider
+from core.tools.entities.user_entities import UserToolProvider, UserTool
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ApiProviderAuthType, ToolProviderCredentials, \
     ToolCredentialsOption
 from core.tools.entities.common_entities import I18nObject
@@ -46,6 +46,30 @@ class ToolManageService:
                     except:
                         provider = ''
         return result
+    
+    @staticmethod
+    def list_builtin_tool_provider_tools(
+        user_id: str, tenant_id: str, provider: str
+    ):
+        """
+            list builtin tool provider tools
+        """
+        provider_controller: ToolProviderController = ToolManager.get_builtin_provider(provider)
+        tools = provider_controller.get_tools()
+
+        result = [
+            UserTool(
+                author=tool.identity.author,
+                name=tool.identity.name,
+                label=tool.identity.label,
+                description=tool.description.human,
+                parameters=tool.parameters
+            ) for tool in tools
+        ]
+
+        return json.loads(
+            serialize_base_model_array(result)
+        )
     
     @staticmethod
     def list_builtin_provider_credentials_schema(
@@ -148,6 +172,39 @@ class ToolManageService:
                 user_id, tenant_id, provider_name, icon, description,
                 credentails, parameters, schema
             )
+        
+    @staticmethod
+    def list_api_tool_provider_tools(
+        user_id: str, tenant_id: str, provider: str
+    ):
+        """
+            list api tool provider tools
+        """
+        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tenant_id,
+            ApiToolProvider.name == provider,
+        ).first()
+
+        if provider is None:
+            raise ValueError(f'yout have not added provider {provider}')
+        
+        return json.loads(
+            serialize_base_model_array([
+                UserTool(
+                    author=tool_bundle.author,
+                    name=tool_bundle.operation_id,
+                    label=I18nObject(
+                        en_US=tool_bundle.operation_id,
+                        zh_Hans=tool_bundle.operation_id
+                    ),
+                    description=I18nObject(
+                        en_US=tool_bundle.summary,
+                        zh_Hans=tool_bundle.summary
+                    ),
+                    parameters=tool_bundle.parameters
+                ) for tool_bundle in provider.tools
+            ])
+        )
 
     @staticmethod
     def update_builtin_tool_provider(

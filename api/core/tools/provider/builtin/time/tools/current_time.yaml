@@ -4,7 +4,7 @@ identity:
   label:
     en_US: Current Time
     zh_Hans: 获取当前时间
-tool_description:
+description:
   human:
     en_US: A tool for getting the current time.
     zh_Hans: 一个用于获取当前时间的工具。

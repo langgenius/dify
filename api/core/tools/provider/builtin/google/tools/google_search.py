@@ -1,4 +1,4 @@
-from core.tools.provider.tool_provider import Tool
+from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.model_runtime.entities.message_entities import PromptMessage
 
@@ -109,7 +109,7 @@ class SerpAPI:
         return toret
 
 
-class GoogleSearchTool(Tool):
+class GoogleSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
                tool_paramters: Dict[str, Any], 
