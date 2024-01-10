@@ -69,9 +69,9 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
                 raise InsufficientAccountBalance(msg)
             elif err == 'invalid_authentication':
                 raise InvalidAuthenticationError(msg)
-            elif 'rate' in err:
+            elif err and 'rate' in err:
                 raise RateLimitReachedError(msg)
-            elif 'internal' in err:
+            elif err and 'internal' in err:
                 raise InternalServerError(msg)
             elif err == 'api_key_empty':
                 raise InvalidAPIKeyError(msg)
