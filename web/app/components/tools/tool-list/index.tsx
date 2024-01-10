@@ -14,6 +14,7 @@ import AppIcon from '@/app/components/base/app-icon'
 type Props = {
   collection: Collection | null
   list: Tool[]
+  // onToolListChange: () => void // custom tools change
   loc: LOC
   addedToolNames?: string[]
   onAddTool?: (payload: Tool) => void
@@ -80,6 +81,8 @@ const ToolList: FC<Props> = ({
               key={item.name}
               icon={icon}
               payload={item}
+              collection={collection}
+              isInToolsPage={isInToolsPage}
               added={addedToolNames?.includes(item.name)}
               onAdd={onAddTool}
             />

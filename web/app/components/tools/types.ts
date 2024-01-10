@@ -5,7 +5,7 @@ export enum LOC {
 
 export enum CollectionType {
   all = 'all',
-  builtIn = 'builtIn',
+  builtIn = 'builtin',
   custom = 'api',
 }
 

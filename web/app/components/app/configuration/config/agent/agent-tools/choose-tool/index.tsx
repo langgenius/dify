@@ -24,7 +24,7 @@ const ChooseTool: FC<Props> = ({
     <Drawer
       isShow
       onHide={onHide}
-      title={t('tools.chooseTool') as string}
+      title={t('tools.addTool') as string}
       panelClassName='mt-2 !w-[760px]'
       maxWidthClassName='!max-w-[760px]'
       height='calc(100vh - 16px)'
@@ -39,9 +39,7 @@ const ChooseTool: FC<Props> = ({
       }
       isShowMask={true}
       clickOutsideNotOpen={false}
-    >
-    </Drawer>
-
+    />
   )
 }
 export default React.memo(ChooseTool)
