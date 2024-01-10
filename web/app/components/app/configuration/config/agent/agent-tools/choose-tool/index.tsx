@@ -21,11 +21,13 @@ const ChooseTool: FC<Props> = ({
       isShow
       onHide={onHide}
       title='Choose a tool'
-      // panelClassname='w-[760px] mt-16 mx-2 sm:mr-2 mb-3 !p-0 rounded-xl'
+      panelClassName='mt-2 !w-[760px]'
+      maxWidthClassName='!max-w-[760px]'
+      height='calc(100vh - 16px)'
+      contentClassName='!bg-gray-100'
+      headerClassName='!border-b-black/5'
       body={
-        <div>
-          <Tools loc={LOC.app} />
-        </div>
+        <Tools loc={LOC.app} />
       }
     >
     </Drawer>

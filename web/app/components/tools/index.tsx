@@ -22,6 +22,7 @@ const Tools: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
+  const isInDebugPage = !isInToolsPage
 
   const [currCollection, setCurrCollection] = React.useState<Collection | null>(collectionList[0])
   const collectionTypeOptions = (() => {
@@ -41,23 +42,41 @@ const Tools: FC<Props> = ({
   return (
     <div className='flex h-full'>
       {/* sidebar */}
-      <div className={cn(isInToolsPage && 'px-4', 'flex flex-col sm:w-56 w-16 shrink-0 pb-2')}>
-        <Button className='mt-6 flex items-center !h-8 pl-4' type='primary'>
-          <Plus className='w-4 h-4 mr-1' />
-          <div className='leading-[18px] text-[13px] font-medium'>{t('tools.createCustomTool')}</div>
-        </Button>
+      <div className={cn(isInToolsPage ? 'sm:w-[216px] px-4' : 'sm:w-[256px] px-3', 'flex flex-col  w-16 shrink-0 pb-2')}>
+        {isInToolsPage && (
+          <Button className='mt-6 flex items-center !h-8 pl-4' type='primary'>
+            <Plus className='w-4 h-4 mr-1' />
+            <div className='leading-[18px] text-[13px] font-medium'>{t('tools.createCustomTool')}</div>
+          </Button>
+        )}
+
+        {isInDebugPage && (
+          <div className='mt-6 flex space-x-1 items-center'>
+            <Search
+              className='grow'
+              value={query}
+              onChange={setQuery}
+            />
+            <Button className='flex items-center justify-center !w-8 !h-8 !p-0' type='primary'>
+              <Plus className='w-4 h-4' />
+            </Button>
+          </div>
+        )}
+
         <TabSlider
           className='mt-3'
-          itemWidth={isInToolsPage ? 93 : 48}
+          itemWidth={isInToolsPage ? 89 : 75}
           value={collectionType}
           onChange={v => setCollectionType(v as CollectionType)}
           options={collectionTypeOptions}
         />
-        <Search
-          className='mt-5'
-          value={query}
-          onChange={setQuery}
-        />
+        {isInToolsPage && (
+          <Search
+            className='mt-5'
+            value={query}
+            onChange={setQuery}
+          />
+        )}
 
         <ToolNavList
           className='mt-2 grow height-0 overflow-y-auto'
@@ -71,8 +90,8 @@ const Tools: FC<Props> = ({
       </div>
 
       {/* tools */}
-      <div className='grow h-full overflow-hidden p-2'>
-        <div className='h-full border-l border-gray-200 bg-white rounded-2xl'>
+      <div className={cn('grow h-full overflow-hidden p-2')}>
+        <div className='h-full bg-white rounded-2xl'>
           content
         </div>
       </div>
