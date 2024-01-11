@@ -48,7 +48,7 @@ parameters:
           en_US: Horizontal(1792x1024)
           zh_Hans: 横屏(1792x1024)
     default: square
-  - n:
+  - name: n
     type: number
     required: true
     human_description:
@@ -81,7 +81,7 @@ parameters:
           en_US: HD
           zh_Hans: 高清
     default: standard
-    - name: style
+  - name: style
     type: select
     required: true
     human_description:
