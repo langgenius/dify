@@ -322,8 +322,11 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                                               response: Stream[ChatCompletionChunk],
                                               prompt_messages: list[PromptMessage],
                                               tools: Optional[list[PromptMessageTool]] = None) -> Generator:
-
+        index = 0
         full_assistant_content = ''
+        real_model = model
+        system_fingerprint = None
+        completion = ''
         for chunk in response:
             if len(chunk.choices) == 0:
                 continue
@@ -349,40 +352,44 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
             full_assistant_content += delta.delta.content if delta.delta.content else ''
 
-            if delta.finish_reason is not None:
-                # calculate num tokens
-                prompt_tokens = self._num_tokens_from_messages(credentials, prompt_messages, tools)
+            real_model = chunk.model
+            system_fingerprint = chunk.system_fingerprint
+            completion += delta.delta.content if delta.delta.content else ''
 
-                full_assistant_prompt_message = AssistantPromptMessage(
-                    content=full_assistant_content,
-                    tool_calls=tool_calls
+            yield LLMResultChunk(
+                model=real_model,
+                prompt_messages=prompt_messages,
+                system_fingerprint=system_fingerprint,
+                delta=LLMResultChunkDelta(
+                    index=index,
+                    message=assistant_prompt_message,
                 )
-                completion_tokens = self._num_tokens_from_messages(credentials, [full_assistant_prompt_message])
+            )
 
-                # transform usage
-                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+            index += 0
 
-                yield LLMResultChunk(
-                    model=chunk.model,
-                    prompt_messages=prompt_messages,
-                    system_fingerprint=chunk.system_fingerprint,
-                    delta=LLMResultChunkDelta(
-                        index=delta.index,
-                        message=assistant_prompt_message,
-                        finish_reason=delta.finish_reason,
-                        usage=usage
-                    )
-                )
-            else:
-                yield LLMResultChunk(
-                    model=chunk.model,
-                    prompt_messages=prompt_messages,
-                    system_fingerprint=chunk.system_fingerprint,
-                    delta=LLMResultChunkDelta(
-                        index=delta.index,
-                        message=assistant_prompt_message,
-                    )
-                )
+        # calculate num tokens
+        prompt_tokens = self._num_tokens_from_messages(credentials, prompt_messages, tools)
+
+        full_assistant_prompt_message = AssistantPromptMessage(
+            content=completion
+        )
+        completion_tokens = self._num_tokens_from_messages(credentials, [full_assistant_prompt_message])
+
+        # transform usage
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+
+        yield LLMResultChunk(
+            model=real_model,
+            prompt_messages=prompt_messages,
+            system_fingerprint=system_fingerprint,
+            delta=LLMResultChunkDelta(
+                index=index,
+                message=AssistantPromptMessage(content=''),
+                finish_reason='stop',
+                usage=usage
+            )
+        )
 
     @staticmethod
     def _extract_response_tool_calls(response_tool_calls: list[ChatCompletionMessageToolCall | ChoiceDeltaToolCall]) \
