@@ -50,7 +50,7 @@ const Tools: FC<Props> = ({
   }, [currCollection])
 
   const [isAddToolCollection, setIsAddToolCollection] = useState(false)
-  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(true)
+  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(false)
   const handleCreateToolCollection = () => {
     setIsAddToolCollection(true)
     setIsShowEditCustomToolModal(true)

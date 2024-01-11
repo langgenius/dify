@@ -57,6 +57,14 @@ const translation = {
     privacyPolicy: 'Privacy policy',
     privacyPolicyPlaceholder: 'Please enter privacy policy',
   },
+  test: {
+    title: 'Test',
+    parametersValue: 'Parameters & Value',
+    parameters: 'Parameters',
+    value: 'Value',
+    testResult: 'Test Results',
+    testResultPlaceholder: 'Test result will show here',
+  },
 }
 
 export default translation

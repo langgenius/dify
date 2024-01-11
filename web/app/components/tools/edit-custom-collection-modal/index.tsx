@@ -7,10 +7,12 @@ import type { Credential } from '../types'
 import { AuthType } from '../types'
 import GetSchema from './get-schema'
 import ConfigCredentials from './config-credentials'
+import TestApi from './test-api'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
+
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
   payload: any
@@ -27,9 +29,11 @@ const EditCustomCollectionModal: FC<Props> = ({
 
   const [schema, setSchema] = useState('')
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
-  const [credentials, setCredentials] = useState<Credential>({
+  const [credential, setCredential] = useState<Credential>({
     auth_type: AuthType.none,
   })
+
+  const [isShowTestApi, setIsShowTestApi] = useState(false)
 
   const isAdd = !!payload
 
@@ -86,7 +90,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.availableTools.title')}</div>
                 <div className='rounded-lg border border-gray-200'>
-                  <table className='w-full  leading-[18px] text-xs text-gray-700 font-normal'>
+                  <table className='w-full leading-[18px] text-xs text-gray-700 font-normal'>
                     <thead className='text-gray-500 uppercase'>
                       <tr className='border-b border-gray-200'>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.name')}</th>
@@ -103,7 +107,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                         <td className="p-2 pl-3">GET</td>
                         <td className="p-2 pl-3">/pets</td>
                         <td className="p-2 pl-3 w-[54px]">
-                          <Button className='!h-6 !px-2 text-xs font-medium text-gray-700'>{t('tools.createTool.availableTools.test')}</Button>
+                          <Button
+                            className='!h-6 !px-2 text-xs font-medium text-gray-700'
+                            onClick={() => setIsShowTestApi(true)}
+                          >
+                            {t('tools.createTool.availableTools.test')}
+                          </Button>
                         </td>
                       </tr>
                       <tr className='border-b last:border-0 border-gray-200'>
@@ -133,7 +142,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.authMethod.title')}</div>
                 <div className='flex items-center h-9 justify-between px-2.5 bg-gray-100 rounded-lg cursor-pointer' onClick={() => setCredentialsModalShow(true)}>
-                  <div className='text-sm font-normal text-gray-900'>{t(`tools.createTool.authMethod.types.${credentials.auth_type}`)}</div>
+                  <div className='text-sm font-normal text-gray-900'>{t(`tools.createTool.authMethod.types.${credential.auth_type}`)}</div>
                   <Settings01 className='w-4 h-4 text-gray-700 opacity-60' />
                 </div>
               </div>
@@ -165,11 +174,18 @@ const EditCustomCollectionModal: FC<Props> = ({
       />}
       {credentialsModalShow && (
         <ConfigCredentials
-          credential={credentials}
-          onChange={setCredentials}
+          credential={credential}
+          onChange={setCredential}
           onHide={() => setCredentialsModalShow(false)}
         />)
       }
+      {isShowTestApi && (
+        <TestApi
+          toolName='aaa'
+          credential={credential}
+          onHide={() => setIsShowTestApi(false)}
+        />
+      )}
     </>
 
   )
