@@ -75,23 +75,49 @@ const EditCustomCollectionModal: FC<Props> = ({
               </div>
 
               <div>
-                <div className={fieldNameClassNames}>{t('tools.createTool.availableTools.name')}</div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th className="p-2 border border-slate-300">code</th>
-                      <th className="p-2 border border-slate-300">status</th>
-                      <th className="p-2 border border-slate-300">message</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="p-2 border border-slate-300">code</td>
-                      <td className="p-2 border border-slate-300">code</td>
-                      <td className="p-2 border border-slate-300">code</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className={fieldNameClassNames}>{t('tools.createTool.availableTools.title')}</div>
+                <div className='rounded-lg border border-gray-200'>
+                  <table className='w-full  leading-[18px] text-xs text-gray-700 font-normal'>
+                    <thead className='text-gray-500 uppercase'>
+                      <tr className='border-b border-gray-200'>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.name')}</th>
+                        <th className="p-2 pl-3 font-medium w-[236px]">{t('tools.createTool.availableTools.description')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.method')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.path')}</th>
+                        <th className="p-2 pl-3 font-medium w-[54px]">{t('tools.createTool.availableTools.action')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className='border-b last:border-0 border-gray-200'>
+                        <td className="p-2 pl-3">xx</td>
+                        <td className="p-2 pl-3 text-gray-500 w-[236px]">Retrieves and displays a list of all pets registered in the system.</td>
+                        <td className="p-2 pl-3">GET</td>
+                        <td className="p-2 pl-3">/pets</td>
+                        <td className="p-2 pl-3 w-[54px]">
+                          <Button className='!h-6 !px-2 text-xs font-medium text-gray-700'>{t('tools.createTool.availableTools.test')}</Button>
+                        </td>
+                      </tr>
+                      <tr className='border-b last:border-0 border-gray-200'>
+                        <td className="p-2 pl-3">xx</td>
+                        <td className="p-2 pl-3 text-gray-500 w-[236px]">Retrieves and displays a list of all pets registered in the system.</td>
+                        <td className="p-2 pl-3">GET</td>
+                        <td className="p-2 pl-3">/pets</td>
+                        <td className="p-2 pl-3 w-[54px]">
+                          <Button className='!h-6 !px-2 text-xs font-medium text-gray-700'>{t('tools.createTool.availableTools.test')}</Button>
+                        </td>
+                      </tr>
+                      <tr className='border-b last:border-0 border-gray-200'>
+                        <td className="p-2 pl-3">xx</td>
+                        <td className="p-2 pl-3 text-gray-500 w-[236px]">Retrieves and displays a list of all pets registered in the system.</td>
+                        <td className="p-2 pl-3">GET</td>
+                        <td className="p-2 pl-3">/pets</td>
+                        <td className="p-2 pl-3 w-[54px]">
+                          <Button className='!h-6 !px-2 text-xs font-medium text-gray-700'>{t('tools.createTool.availableTools.test')}</Button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div>

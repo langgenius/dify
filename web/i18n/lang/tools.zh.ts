@@ -38,11 +38,13 @@ const translation = {
       blankTemplate: '空白模版',
     },
     availableTools: {
+      title: '可用工具',
       name: '名称',
       description: '描述',
       method: '方法',
       path: '路径',
       action: '操作',
+      test: '测试',
     },
     authMethod: '鉴权方法',
     privacyPolicy: '隐私协议',

@@ -38,11 +38,13 @@ const translation = {
       blankTemplate: 'Blank Template',
     },
     availableTools: {
+      title: 'Available Tools',
       name: 'Name',
       description: 'Description',
       method: 'Method',
       path: 'Path',
       action: 'Actions',
+      test: 'Test',
     },
     authMethod: 'Authorization method',
     privacyPolicy: 'Privacy policy',
