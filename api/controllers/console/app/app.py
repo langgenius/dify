@@ -48,10 +48,6 @@ class AppListApi(Resource):
             App.tenant_id == current_user.current_tenant_id,
         ]
 
-        filters = [
-            App.tenant_id == current_user.current_tenant_id,
-        ]
-
         if args['mode'] == 'completion':
             filters.append(App.mode == 'completion')
         elif args['mode'] == 'chat':
