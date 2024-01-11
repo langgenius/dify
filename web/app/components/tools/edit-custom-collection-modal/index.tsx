@@ -2,8 +2,11 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
+import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
+import type { Credential } from '../types'
+import { authType } from '../types'
 import GetSchema from './get-schema'
+import ConfigCredentials from './config-credentials'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -23,6 +26,10 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [emoji, setEmoji] = useState({ icon: '🕵️', icon_background: '#FEF7C3' })
 
   const [schema, setSchema] = useState('')
+  const [credentialsModalShow, setCredentialsModalShow] = useState(false)
+  const [credentials, setCredentials] = useState<Credential>({
+    auth_type: authType.none,
+  })
 
   const isAdd = !!payload
 
@@ -47,6 +54,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                 </div>
               </div>
 
+              {/* Schema */}
               <div className='select-none'>
                 <div className='flex justify-between items-center'>
                   <div className='flex items-center'>
@@ -74,6 +82,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                 </textarea>
               </div>
 
+              {/* Available Tools  */}
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.availableTools.title')}</div>
                 <div className='rounded-lg border border-gray-200'>
@@ -120,14 +129,18 @@ const EditCustomCollectionModal: FC<Props> = ({
                 </div>
               </div>
 
+              {/* Authorization method */}
               <div>
-                <div className={fieldNameClassNames}>{t('tools.createTool.authMethod')}</div>
-                <input className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''} />
+                <div className={fieldNameClassNames}>{t('tools.createTool.authMethod.title')}</div>
+                <div className='flex items-center h-9 justify-between px-2.5 bg-gray-100 rounded-lg cursor-pointer' onClick={() => setCredentialsModalShow(true)}>
+                  <div className='text-sm font-normal text-gray-900'>{t(`tools.createTool.authMethod.types.${credentials.auth_type}`)}</div>
+                  <Settings01 className='w-4 h-4 text-gray-700 opacity-60' />
+                </div>
               </div>
 
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.privacyPolicy')}</div>
-                <input className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''} />
+                <input className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''} />
               </div>
 
             </div>
@@ -150,6 +163,13 @@ const EditCustomCollectionModal: FC<Props> = ({
           setShowEmojiPicker(false)
         }}
       />}
+      {credentialsModalShow && (
+        <ConfigCredentials
+          credential={credentials}
+          onChange={setCredentials}
+          onHide={() => setCredentialsModalShow(false)}
+        />)
+      }
     </>
 
   )

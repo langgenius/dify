@@ -46,7 +46,13 @@ const translation = {
       action: '操作',
       test: '测试',
     },
-    authMethod: '鉴权方法',
+    authMethod: {
+      title: '鉴权方法',
+      types: {
+        none: '无',
+        api_key: 'API Key',
+      },
+    },
     privacyPolicy: '隐私协议',
   },
 }

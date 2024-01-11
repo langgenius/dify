@@ -3,6 +3,17 @@ export enum LOC {
   app = 'app',
 }
 
+export enum authType {
+  none = 'none',
+  apiKey = 'api_key',
+}
+
+export type Credential = {
+  'auth_type': authType
+  'api_key_header'?: string
+  'api_key_value'?: string
+}
+
 export enum CollectionType {
   all = 'all',
   builtIn = 'builtin',

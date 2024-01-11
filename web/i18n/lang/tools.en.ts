@@ -46,7 +46,13 @@ const translation = {
       action: 'Actions',
       test: 'Test',
     },
-    authMethod: 'Authorization method',
+    authMethod: {
+      title: 'Authorization method',
+      types: {
+        none: 'None',
+        api_key: 'API Key',
+      },
+    },
     privacyPolicy: 'Privacy policy',
   },
 }
