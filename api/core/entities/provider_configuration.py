@@ -60,7 +60,22 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         if self.using_provider_type == ProviderType.SYSTEM:
-            return self.system_configuration.credentials
+            restrict_models = []
+            for quota_configuration in self.system_configuration.quota_configurations:
+                if self.system_configuration.current_quota_type != quota_configuration.quota_type:
+                    continue
+
+                restrict_models = quota_configuration.restrict_models
+
+            copy_credentials = self.system_configuration.credentials.copy()
+            if restrict_models:
+                for restrict_model in restrict_models:
+                    if (restrict_model.model_type == model_type
+                            and restrict_model.model == model
+                            and restrict_model.base_model_name):
+                        copy_credentials['base_model_name'] = restrict_model.base_model_name
+
+            return copy_credentials
         else:
             if self.custom_configuration.models:
                 for model_configuration in self.custom_configuration.models:
