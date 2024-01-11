@@ -4,7 +4,7 @@ identity:
   label:
     en_US: DALL-E
     zh_Hans: DALL-E 画画
-  description: 
+  description:
     en_US: DALL-E art
     zh_Hans: DALL-E 画画
   icon: icon.png

@@ -4,9 +4,8 @@ identity:
   label:
     en_US: Time
     zh_Hans: 时间
-  description: 
+  description:
     en_US: A tool for getting the current time.
     zh_Hans: 一个用于获取当前时间的工具。
   icon: icon.svg
 credentails_for_provider:
-  

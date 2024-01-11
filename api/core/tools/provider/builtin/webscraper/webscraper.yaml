@@ -4,9 +4,8 @@ identity:
   label:
     en_US: WebScraper
     zh_Hans: 网页抓取
-  description: 
+  description:
     en_US: Web Scrapper tool kit is used to scrape web
     zh_Hans: 一个用于抓取网页的工具。
   icon: icon.svg
 credentails_for_provider:
-  

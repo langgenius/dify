@@ -4,7 +4,7 @@ identity:
   label:
     en_US: Google
     zh_Hans: Google
-  description: 
+  description:
     en_US: Google
     zh_Hans: GoogleSearch
   icon: icon.svg
