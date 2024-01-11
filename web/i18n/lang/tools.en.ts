@@ -24,15 +24,17 @@ const translation = {
   createTool: {
     title: 'Create Custom Tool',
     name: 'Name',
+    toolNamePlaceHolder: 'Enter the tool name',
     schema: 'Schema',
     viewSchemaSpec: 'View the OpenAPI-Swagger Specification',
     importFromUrl: 'Import from URL',
-    example: 'Example',
+    importFromUrlPlaceHolder: 'https://...',
+    urlError: 'Please enter a valid URL',
+    examples: 'Examples',
     exampleOptions: {
-      examples: 'Examples',
       json: 'Weather(JSON)',
       yaml: 'Pet Store(YAML)',
-      template: 'Blank Template',
+      blankTemplate: 'Blank Template',
     },
     availableTools: {
       name: 'Name',

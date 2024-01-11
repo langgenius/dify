@@ -24,15 +24,17 @@ const translation = {
   createTool: {
     title: '创建自定义工具',
     name: '名称',
+    toolNamePlaceHolder: '输入工具名称',
     schema: 'Schema',
     viewSchemaSpec: '查看 OpenAPI-Swagger 规范',
     importFromUrl: '从 URL 中导入',
-    example: '例子',
+    importFromUrlPlaceHolder: 'https://...',
+    urlError: '请输入有效的 URL',
+    examples: '例子',
     exampleOptions: {
-      examples: '例子',
       json: '天气(JSON)',
       yaml: '宠物商店(YAML)',
-      template: '空白模版',
+      blankTemplate: '空白模版',
     },
     availableTools: {
       name: '名称',
