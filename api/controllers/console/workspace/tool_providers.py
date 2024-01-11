@@ -43,6 +43,9 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
@@ -57,6 +60,9 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
@@ -86,6 +92,9 @@ class ToolApiProviderAddApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
@@ -137,6 +146,9 @@ class ToolApiProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
@@ -168,6 +180,9 @@ class ToolApiProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
