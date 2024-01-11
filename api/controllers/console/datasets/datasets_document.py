@@ -558,7 +558,7 @@ class DocumentDetailApi(DocumentResource):
             }
         else:
             process_rules = DatasetService.get_process_rules(dataset_id)
-            data_source_info = document.data_source_detail_dict_()
+            data_source_info = document.data_source_detail_dict
             response = {
                 'id': document.id,
                 'position': document.position,
