@@ -221,12 +221,18 @@ class IndexingRunner:
             if not dataset:
                 raise ValueError('Dataset not found.')
             if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                embedding_model_instance = self.model_manager.get_model_instance(
-                    tenant_id=tenant_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model
-                )
+                if dataset.embedding_model_provider:
+                    embedding_model_instance = self.model_manager.get_model_instance(
+                        tenant_id=tenant_id,
+                        provider=dataset.embedding_model_provider,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=dataset.embedding_model
+                    )
+                else:
+                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                        tenant_id=tenant_id,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                    )
         else:
             if indexing_technique == 'high_quality':
                 embedding_model_instance = self.model_manager.get_default_model_instance(
@@ -328,12 +334,18 @@ class IndexingRunner:
             if not dataset:
                 raise ValueError('Dataset not found.')
             if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                embedding_model_instance = self.model_manager.get_model_instance(
-                    tenant_id=tenant_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model
-                )
+                if dataset.embedding_model_provider:
+                    embedding_model_instance = self.model_manager.get_model_instance(
+                        tenant_id=tenant_id,
+                        provider=dataset.embedding_model_provider,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=dataset.embedding_model
+                    )
+                else:
+                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                        tenant_id=tenant_id,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                    )
         else:
             if indexing_technique == 'high_quality':
                 embedding_model_instance = self.model_manager.get_default_model_instance(

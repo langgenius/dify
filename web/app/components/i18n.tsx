@@ -9,12 +9,10 @@ import { setLocaleOnClient } from '@/i18n/client'
 
 export type II18nProps = {
   locale: Locale
-  dictionary: Record<string, any>
   children: React.ReactNode
 }
 const I18n: FC<II18nProps> = ({
   locale,
-  dictionary,
   children,
 }) => {
   useEffect(() => {
@@ -24,7 +22,7 @@ const I18n: FC<II18nProps> = ({
   return (
     <I18NContext.Provider value={{
       locale,
-      i18n: dictionary,
+      i18n: {},
       setLocaleOnClient,
     }}>
       {children}

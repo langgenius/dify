@@ -136,6 +136,7 @@ class KeywordTableIndex(BaseIndex):
                     page_content=segment.content,
                     metadata={
                         "doc_id": chunk_index,
+                        "doc_hash": segment.index_node_hash,
                         "document_id": segment.document_id,
                         "dataset_id": segment.dataset_id,
                     }

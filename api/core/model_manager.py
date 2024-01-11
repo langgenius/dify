@@ -144,7 +144,7 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) \
+    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None, **params) \
             -> str:
         """
         Invoke large language model
@@ -161,7 +161,8 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             file=file,
-            user=user
+            user=user,
+            **params
         )
 
 
@@ -178,6 +179,8 @@ class ModelManager:
         :param model: model name
         :return:
         """
+        if not provider:
+            return self.get_default_model_instance(tenant_id, model_type)
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id,
             provider=provider,
