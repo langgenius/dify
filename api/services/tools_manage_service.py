@@ -279,19 +279,21 @@ class ToolManageService:
         """
             update builtin tool provider
         """
+        try: 
+            # get provider
+            provider_controller = ToolManager.get_builtin_provider(provider_name)
+            if not provider_controller.need_credentials:
+                raise ValueError(f'provider {provider_name} does not need credentials')
+            # validate credentials
+            provider_controller.validate_credentials(credentials)
+        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
+            raise ValueError(str(e))
+
         # get if the provider exists
         provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
             BuiltinToolProvider.tenant_id == tenant_id,
             BuiltinToolProvider.provider == provider_name,
         ).first()
-
-        try: 
-            # get provider
-            provider_controller = ToolManager.get_builtin_provider(provider_name)
-            # validate credentials
-            provider_controller.validate_credentials(credentials)
-        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
-            raise ValueError(str(e))
 
         if provider is None:
             # create provider
