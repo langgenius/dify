@@ -68,13 +68,22 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         # get model mode
-        model_mode = self.get_model_mode(model)
+        model_mode = self.get_model_mode(model, credentials)
 
         if model_mode == LLMMode.CHAT:
             # chat model
             return self._num_tokens_from_messages(prompt_messages)
         else:
-            text = prompt_messages[0].content
+            first_prompt_message = prompt_messages[0]
+            if isinstance(first_prompt_message.content, str):
+                text = first_prompt_message.content
+            else:
+                text = ''
+                for message_content in first_prompt_message.content:
+                    if message_content.type == PromptMessageContentType.TEXT:
+                        message_content = cast(TextPromptMessageContent, message_content)
+                        text = message_content.data
+                        break
             return self._get_num_tokens_by_gpt2(text)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
