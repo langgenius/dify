@@ -26,6 +26,7 @@ const translation = {
     name: '名称',
     toolNamePlaceHolder: '输入工具名称',
     schema: 'Schema',
+    schemaPlaceHolder: '在此处输入您的 OpenAPI schema',
     viewSchemaSpec: '查看 OpenAPI-Swagger 规范',
     importFromUrl: '从 URL 中导入',
     importFromUrlPlaceHolder: 'https://...',

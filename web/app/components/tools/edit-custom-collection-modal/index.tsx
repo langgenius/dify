@@ -67,6 +67,8 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <textarea
                   value={schema}
                   onChange={e => setSchema(e.target.value)}
+                  className='w-full h-[240px] px-3 py-2 leading-4 text-xs font-normal text-gray-900 bg-gray-100 rounded-lg overflow-y-auto'
+                  placeholder={t('tools.createTool.schemaPlaceHolder')!}
                 >
 
                 </textarea>
