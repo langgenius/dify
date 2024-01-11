@@ -75,7 +75,7 @@ const ConfigCredential: FC<Props> = ({
             {tempCredential.auth_type === AuthType.apiKey && (
               <>
                 <div>
-                  <div className={keyClassNames}>KEY</div>
+                  <div className={keyClassNames}>{t('tools.createTool.authMethod.key')}</div>
                   <input
                     value={tempCredential.api_key_header}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
@@ -83,7 +83,7 @@ const ConfigCredential: FC<Props> = ({
                 </div>
 
                 <div>
-                  <div className={keyClassNames}>VALUE</div>
+                  <div className={keyClassNames}>{t('tools.createTool.authMethod.value')}</div>
                   <input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}

@@ -53,6 +53,8 @@ const translation = {
         none: '无',
         api_key: 'API Key',
       },
+      key: '键',
+      value: '值',
     },
     privacyPolicy: '隐私协议',
     privacyPolicyPlaceholder: '请输入隐私协议',

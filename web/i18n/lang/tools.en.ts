@@ -53,6 +53,8 @@ const translation = {
         none: 'None',
         api_key: 'API Key',
       },
+      key: 'Key',
+      value: 'Value',
     },
     privacyPolicy: 'Privacy policy',
     privacyPolicyPlaceholder: 'Please enter privacy policy',
