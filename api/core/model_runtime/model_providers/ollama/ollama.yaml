@@ -11,10 +11,10 @@ help:
   url:
     en_US: https://github.com/jmorganca/ollama
 supported_model_types:
-- llm
-- text-embedding
+  - llm
+  - text-embedding
 configurate_methods:
-- customizable-model
+  - customizable-model
 model_credential_schema:
   model:
     label:
