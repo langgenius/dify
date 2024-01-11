@@ -562,6 +562,14 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                                           "a specific number will make the model generate the same text for "
                                           "the same prompt. (Default: 0)"),
                     default=0
+                ),
+                ParameterRule(
+                    name='format',
+                    label=I18nObject(en_US="Format"),
+                    type=ParameterType.STRING,
+                    help=I18nObject(en_US="the format to return a response in."
+                                          " Currently the only accepted value is json."),
+                    options=['json'],
                 )
             ],
             pricing=PriceConfig(
