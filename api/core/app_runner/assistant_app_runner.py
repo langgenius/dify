@@ -4,7 +4,7 @@ from typing import cast, Tuple
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
-from core.app_runner.assistant_cot_runner import AssistantCotApplicationRunner
+from core.features.assistant_cot_runner import AssistantCotApplicationRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
     AgentEntity, AgentToolEntity
@@ -116,7 +116,18 @@ class AssistantApplicationRunner(AppRunner):
 
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
-            assistant_cot_runner = AssistantCotApplicationRunner()
+            assistant_cot_runner = AssistantCotApplicationRunner(
+                tenant_id=application_generate_entity.tenant_id,
+                app_orchestration_config=app_orchestration_config,
+                model_config=app_orchestration_config.model_config,
+                config=agent_entity,
+                queue_manager=queue_manager,
+                message=message,
+                user_id=application_generate_entity.user_id,
+                agent_llm_callback=agent_llm_callback,
+                callback=agent_callback,
+                memory=memory,
+            )
             invoke_result = assistant_cot_runner.run(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
@@ -125,6 +136,7 @@ class AssistantApplicationRunner(AppRunner):
                 conversation=conversation,
                 tool_instances=tool_instances,
                 message=message,
+                message_chain=message_chain,
                 prompt_messages_tools=prompt_messages_tools,
                 agent_entity=agent_entity,
                 query=query,

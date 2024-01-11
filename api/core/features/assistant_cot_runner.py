@@ -1,7 +1,7 @@
 import json
-from typing import cast, Literal, Union, Generator, Dict, Any
+from typing import Literal, Union, Generator, Dict, Any
 
-from core.entities.application_entities import ApplicationGenerateEntity, PromptTemplateEntity, ModelConfigEntity, \
+from core.entities.application_entities import ApplicationGenerateEntity, \
       AgentPromptEntity, AgentEntity
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, UserPromptMessage
@@ -10,34 +10,31 @@ from core.model_manager import ModelInstance
 
 from core.tools.provider.tool import Tool
 
-from core.app_runner.app_runner import AppRunner
+from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 from core.application_queue_manager import ApplicationQueueManager
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 
 from extensions.ext_database import db
-from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
+from models.model import Conversation, Message, MessageChain
 
-class AssistantCotApplicationRunner(AppRunner):
-    def run(self, application_generate_entity: ApplicationGenerateEntity,
-        queue_manager: ApplicationQueueManager,
-        model_instance: ModelInstance,
-        agent_llm_callback: AgentLLMCallback,
+class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
+    def run(self, model_instance: ModelInstance,
         conversation: Conversation,
         tool_instances: Dict[str, Tool],
         message: Message,
+        message_chain: MessageChain,
         prompt_messages_tools: list[PromptMessageTool],
-        agent_entity: AgentEntity,
         query: str,
     ) -> Union[Generator, LLMResult]:
         """
         Run Cot agent application
         """
-        app_orchestration_config = application_generate_entity.app_orchestration_config_entity
+        app_orchestration_config = self.app_orchestration_config
 
         first_prompt_messages = self._originze_first_cot_prompt_messages(
             mode=app_orchestration_config.model_config.mode,
             tools=prompt_messages_tools,
-            agent_prompt_message=agent_entity.prompt,
+            agent_prompt_message=app_orchestration_config.agent.prompt,
             instruction=app_orchestration_config.prompt_template.simple_prompt_template,
             input=query
         )
@@ -52,8 +49,8 @@ class AssistantCotApplicationRunner(AppRunner):
             tools=[],
             stop=app_orchestration_config.model_config.stop,
             stream=False,
-            user=application_generate_entity.user_id,
-            callbacks=[agent_llm_callback],
+            user=self.user_id,
+            callbacks=[self.agent_llm_callback],
         )
 
         # check llm result
