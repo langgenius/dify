@@ -257,6 +257,9 @@ class AppRunner:
             if not usage and result.delta.usage:
                 usage = result.delta.usage
 
+        if not usage:
+            usage = LLMUsage.empty_usage()
+
         llm_result = LLMResult(
             model=model,
             prompt_messages=prompt_messages,
