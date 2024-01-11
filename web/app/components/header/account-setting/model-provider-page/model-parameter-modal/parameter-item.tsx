@@ -95,6 +95,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   const renderInput = () => {
+    const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
+    && !isNullOrUndefined(parameterRule.min)
+    && !isNullOrUndefined(parameterRule.max)
+
     if (parameterRule.type === 'int' || parameterRule.type === 'float') {
       let step = 100
       if (parameterRule.max) {
@@ -110,7 +114,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
       return (
         <>
-          {isNullOrUndefined(parameterRule.min) && isNullOrUndefined(parameterRule.max) && <Slider
+          {numberInputWithSlide && <Slider
             className='w-[120px]'
             value={renderValue as number}
             min={parameterRule.min}
