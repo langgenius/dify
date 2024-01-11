@@ -40,7 +40,7 @@ const ToolList: FC<Props> = ({
       <div
         className='w-10 h-10 bg-cover bg-center border border-gray-100 rounded-lg '
         style={{
-          backgroundImage: `url(${collection.icon})`,
+          backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
         }}
       ></div>
     )

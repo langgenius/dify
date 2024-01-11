@@ -30,7 +30,7 @@ const Item: FC<Props> = ({
           <div
             className='w-6 h-6 bg-cover bg-center'
             style={{
-              backgroundImage: `url(${payload.icon})`,
+              backgroundImage: `url(${payload.icon}?_token=${localStorage.getItem('console_token')})`,
             }}
           ></div>
         )

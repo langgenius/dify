@@ -9,11 +9,11 @@ import type { Collection, Tool } from './types'
 import { CollectionType, LOC } from './types'
 import ToolNavList from './tool-nav-list'
 import Search from './search'
-import { CustomTools, builtInTools, collectionList } from './mock-data'
 import Contribute from './contribute'
 import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import TabSlider from '@/app/components/base/tab-slider'
+import { fetchBuiltInToolList, fetchCollectionList } from '@/service/tools'
 type Props = {
   loc: LOC
   addedToolNames?: string[]
@@ -29,7 +29,18 @@ const Tools: FC<Props> = ({
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage
 
-  const [currCollection, setCurrCollection] = useState<Collection | null>(collectionList[1])
+  const [collectionList, setCollectionList] = useState<Collection[]>([])
+  const [currCollection, setCurrCollection] = useState<Collection | null>(null)
+
+  useEffect(() => {
+    (async () => {
+      const list = await fetchCollectionList() as Collection[]
+      setCollectionList(list)
+      if (list.length > 0)
+        setCurrCollection(list[0])
+    })()
+  }, [])
+
   const collectionTypeOptions = (() => {
     const res = [
       { value: CollectionType.builtIn, text: t('tools.type.builtIn') },
@@ -45,8 +56,12 @@ const Tools: FC<Props> = ({
   const [query, setQuery] = useState('')
   const [currTools, setCurrentTools] = useState<Tool[]>([])
   useEffect(() => {
-    if (currCollection)
-      setCurrentTools(currCollection.type === CollectionType.builtIn ? builtInTools : CustomTools)
+    (async () => {
+      if (currCollection && currCollection.type === CollectionType.builtIn) {
+        const list = await fetchBuiltInToolList(currCollection.name) as Tool[]
+        setCurrentTools(list)
+      }
+    })()
   }, [currCollection])
 
   const [isAddToolCollection, setIsAddToolCollection] = useState(false)
@@ -60,6 +75,7 @@ const Tools: FC<Props> = ({
     setIsAddToolCollection(false)
     setIsShowEditCustomToolModal(true)
   }
+
   return (
     <>
       <div className='flex h-full'>
