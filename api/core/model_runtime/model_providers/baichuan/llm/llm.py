@@ -79,7 +79,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
         try:
             instance.generate(model=model, stream=False, messages=[
                 BaichuanMessage(content='ping', role='user')
-            ], parameters={}, timeout=10)
+            ], parameters={}, timeout=60)
         except (InvalidAPIKeyError, InvalidAuthenticationError) as e:
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
