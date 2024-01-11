@@ -46,7 +46,6 @@ import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
@@ -645,19 +644,6 @@ const Configuration: FC = () => {
             </div>
 
             <div className='flex items-center flex-wrap gap-y-2 gap-x-2'>
-              {/* Model and Parameters */}
-              <ModelParameterModal
-                isAdvancedMode={isAdvancedMode}
-                mode={mode}
-                provider={modelConfig.provider}
-                completionParams={completionParams}
-                modelId={modelConfig.model_id}
-                setModel={setModel as any}
-                onCompletionParamsChange={(newParams: FormValue) => {
-                  setCompletionParams(newParams)
-                }}
-              />
-              <div className='w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
               {isMobile && (
                 <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
@@ -677,6 +663,10 @@ const Configuration: FC = () => {
                 hasSetAPIKEY={hasSettedApiKey}
                 onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
                 inputs={inputs}
+                modelParameterParams={{
+                  setModel: setModel as any,
+                  onCompletionParamsChange: setCompletionParams,
+                }}
               />
             </div>}
           </div>
@@ -732,6 +722,10 @@ const Configuration: FC = () => {
               hasSetAPIKEY={hasSettedApiKey}
               onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
               inputs={inputs}
+              modelParameterParams={{
+                setModel: setModel as any,
+                onCompletionParamsChange: setCompletionParams,
+              }}
             />
           </Drawer>
         )}

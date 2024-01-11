@@ -41,7 +41,7 @@ import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
-type ModelParameterModalProps = {
+export type ModelParameterModalProps = {
   isAdvancedMode: boolean
   mode: string
   modelId: string

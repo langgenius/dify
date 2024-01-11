@@ -28,17 +28,21 @@ import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
   inputs: Inputs
+  modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
 }
 
 const Debug: FC<IDebug> = ({
   hasSetAPIKEY = true,
   onSetting,
   inputs,
+  modelParameterParams,
 }) => {
   const { t } = useTranslation()
   const {
@@ -511,14 +515,28 @@ const Debug: FC<IDebug> = ({
       <div className="shrink-0">
         <div className='flex items-center justify-between mb-2'>
           <div className='h2 '>{t('appDebug.inputs.title')}</div>
-          {mode === 'chat' && (
-            <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className='text-primary-600 text-[13px] font-semibold'>{t('common.operation.refresh')}</span>
-            </Button>
-          )}
+          <div className='flex items-center'>
+            <ModelParameterModal
+              isAdvancedMode={isAdvancedMode}
+              mode={mode}
+              provider={modelConfig.provider}
+              completionParams={completionParams}
+              modelId={modelConfig.model_id}
+              setModel={modelParameterParams.setModel}
+              onCompletionParamsChange={modelParameterParams.onCompletionParamsChange}
+            />
+            {mode === 'chat' && (
+              <>
+                <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />
+                <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className='text-primary-600 text-[13px] font-semibold'>{t('common.operation.refresh')}</span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
         <PromptValuePanel
           appType={mode as AppType}
