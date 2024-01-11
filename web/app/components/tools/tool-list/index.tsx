@@ -38,11 +38,14 @@ const ToolList: FC<Props> = ({
   const icon = <>{typeof collection.icon === 'string'
     ? (
       <div
-        className='w-10 h-10 bg-cover bg-center border border-gray-100 rounded-lg '
-        style={{
-          backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
-        }}
-      ></div>
+        className='p-2 bg-cover bg-center border border-gray-100 rounded-lg'
+      >
+        <div className='w-6 h-6 bg-center bg-contain'
+          style={{
+            backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
+          }}
+        ></div>
+      </div>
     )
     : (
       <AppIcon

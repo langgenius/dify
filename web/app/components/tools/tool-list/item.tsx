@@ -8,9 +8,10 @@ import type { Collection, Tool } from '../types'
 import Button from '../../base/button'
 import { CollectionType } from '../types'
 import AppIcon from '../../base/app-icon'
+import { toolParametersToFormSchemas } from '../utils/params-to-form-schema'
+import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import I18n from '@/context/i18n'
 import Drawer from '@/app/components/base/drawer-plus'
-
 type Props = {
   collection: Collection
   icon: JSX.Element
@@ -33,6 +34,7 @@ const Item: FC<Props> = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
   const [showDetail, setShowDetail] = useState(false)
+  const formSchemas = toolParametersToFormSchemas(payload.parameters)
 
   return (
     <>
@@ -40,11 +42,11 @@ const Item: FC<Props> = ({
         className={cn(canShowDetail && 'cursor-pointer', 'flex justify-between items-center p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-xs')}
         onClick={() => canShowDetail && setShowDetail(true)}
       >
-        <div className='flex'>
+        <div className='flex w-full'>
           {icon}
-          <div className='ml-3'>
-            <div className={cn(' truncate', 'text-base font-semibold text-gray-900 truncate')}>{payload.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
-            <div className={cn('max-w-[260px] truncate', 'leading-[18px] text-[13px] font-normal text-gray-500 truncate')}>
+          <div className='ml-3 w-0 grow'>
+            <div className={cn('text-base font-semibold text-gray-900 truncate')}>{payload.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
+            <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500 truncate')}>
               {payload.description[locale === 'en' ? 'en_US' : 'zh_Hans']}
             </div>
           </div>
@@ -67,7 +69,7 @@ const Item: FC<Props> = ({
                   <div
                     className='w-6 h-6 bg-cover bg-center'
                     style={{
-                      backgroundImage: `url(${collection.icon})`,
+                      backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
                     }}
                   ></div>
                 )
@@ -84,10 +86,20 @@ const Item: FC<Props> = ({
           panelClassName='mt-[65px] !w-[480px]'
           maxWidthClassName='!max-w-[480px]'
           height='calc(100vh - 65px)'
-          contentClassName='!bg-gray-100'
           headerClassName='!border-b-black/5'
           body={
-            <div className='px-6 py-3'>Forms</div>
+            <div className='px-6 py-3'>
+              <Form
+                value={{}}
+                onChange={() => { }}
+                formSchemas={formSchemas as any}
+                isEditMode={false}
+                readonly
+                showOnVariableMap={{}}
+                validating={false}
+                inputClassName='!bg-gray-50'
+              />
+            </div>
           }
           isShowMask={true}
           clickOutsideNotOpen={false}

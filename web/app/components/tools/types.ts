@@ -1,3 +1,4 @@
+import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
 export enum LOC {
   tools = 'tools',
   app = 'app',
@@ -23,31 +24,36 @@ export enum CollectionType {
 export type Collection = {
   name: string
   author: string
-  description: {
-    zh_Hans: string
-    en_US: string
-  }
+  description: TypeWithI18N
   icon: string | {
     background: string
     content: string
   }
-  label: {
-    zh_Hans: string
-    en_US: string
-  }
+  label: TypeWithI18N
   type: CollectionType
   team_credentials: Record<string, any>
   is_team_authorization: boolean
 }
 
+export type ToolParameter = {
+  name: string
+  label: TypeWithI18N
+  human_description: TypeWithI18N
+  type: string
+  required: boolean
+  default: string
+  options?: {
+    label: TypeWithI18N
+    value: string
+  }[]
+}
+
 export type Tool = {
   name: string
-  label: {
-    zh_Hans: string
-    en_US: string
-  }
+  label: TypeWithI18N
   description: {
     zh_Hans: string
     en_US: string
   }
+  parameters: ToolParameter[]
 }

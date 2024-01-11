@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FC } from 'react'
+import cn from 'classnames'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -13,7 +14,6 @@ import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
 import { SimpleSelect } from '@/app/components/base/select'
-
 type FormProps = {
   value: FormValue
   onChange: (val: FormValue) => void
@@ -22,6 +22,8 @@ type FormProps = {
   validatedSuccess?: boolean
   showOnVariableMap: Record<string, string[]>
   isEditMode: boolean
+  readonly?: boolean
+  inputClassName?: string
 }
 
 const Form: FC<FormProps> = ({
@@ -32,6 +34,8 @@ const Form: FC<FormProps> = ({
   validatedSuccess,
   showOnVariableMap,
   isEditMode,
+  readonly,
+  inputClassName,
 }) => {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
@@ -63,7 +67,7 @@ const Form: FC<FormProps> = ({
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
-      const disabed = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const disabed = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
 
       return (
         <div key={variable} className='py-3'>
@@ -76,7 +80,7 @@ const Form: FC<FormProps> = ({
             }
           </div>
           <Input
-            className={`${disabed && 'cursor-not-allowed opacity-60'}`}
+            className={cn(inputClassName, `${disabed && 'cursor-not-allowed opacity-60'}`)}
             value={value[variable] as string}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
@@ -167,6 +171,8 @@ const Form: FC<FormProps> = ({
             }
           </div>
           <SimpleSelect
+            className={cn(inputClassName)}
+            disabled={readonly}
             defaultValue={value[variable] as string}
             items={options.filter((option) => {
               if (option.show_on.length)
