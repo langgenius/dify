@@ -127,7 +127,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             type='number'
             max={parameterRule.max}
             min={parameterRule.min}
-            step={step}
+            step={numberInputWithSlide ? step : +`0.${parameterRule.precision || 0}`}
             value={renderValue as string}
             onChange={handleNumberInputChange}
           />
