@@ -57,3 +57,17 @@ export type Tool = {
   }
   parameters: ToolParameter[]
 }
+
+export type ToolCredential = {
+  name: string
+  label: TypeWithI18N
+  help: TypeWithI18N
+  placeholder: TypeWithI18N
+  type: string
+  required: boolean
+  default: string
+  options?: {
+    label: TypeWithI18N
+    value: string
+  }[]
+}

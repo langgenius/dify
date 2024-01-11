@@ -10,8 +10,8 @@ import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
 import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
-import SettingAuth from '@/app/components/tools/setting/build-in/auth'
-
+import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
+import { updateBuiltInToolCredential } from '@/service/tools'
 type Props = {
   collection: Collection | null
   list: Tool[]
@@ -100,10 +100,14 @@ const ToolList: FC<Props> = ({
         </div>
       </div>
       {showSettingAuth && (
-        <SettingAuth
-          config={{}}
+        <ConfigCredential
+          collectionName={collection.name}
+          credentialValue={collection.team_credentials}
           onCancel={() => setShowSettingAuth(false)}
-          onSaved={() => setShowSettingAuth(false)}
+          onSaved={async (value) => {
+            await updateBuiltInToolCredential(collection.name, value)
+            setShowSettingAuth(false)
+          }}
         />
       )}
     </div>

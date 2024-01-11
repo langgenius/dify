@@ -14,6 +14,8 @@ import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
 import { SimpleSelect } from '@/app/components/base/select'
+import Tooltip from '@/app/components/base/tooltip-plus'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 type FormProps = {
   value: FormValue
   onChange: (val: FormValue) => void
@@ -55,6 +57,18 @@ const Form: FC<FormProps> = ({
   }
 
   const renderField = (formSchema: CredentialFormSchema) => {
+    const tooltip = formSchema.tooltip
+    const tooltipContent = (tooltip && (
+      <span className='ml-1 pt-1.5'>
+        <Tooltip popupContent={
+          // w-[100px] caused problem
+          <div className=''>
+            {tooltip[language]}
+          </div>
+        } >
+          <HelpCircle className='w-3 h-3  text-gray-500' />
+        </Tooltip>
+      </span>))
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput) {
       const {
         variable,
@@ -78,6 +92,7 @@ const Form: FC<FormProps> = ({
                 <span className='ml-1 text-red-500'>*</span>
               )
             }
+            {tooltipContent}
           </div>
           <Input
             className={cn(inputClassName, `${disabed && 'cursor-not-allowed opacity-60'}`)}
@@ -115,6 +130,7 @@ const Form: FC<FormProps> = ({
                 <span className='ml-1 text-red-500'>*</span>
               )
             }
+            {tooltipContent}
           </div>
           <div className={`grid grid-cols-${options?.length} gap-3`}>
             {
@@ -164,11 +180,13 @@ const Form: FC<FormProps> = ({
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
             {label[language]}
+
             {
               required && (
                 <span className='ml-1 text-red-500'>*</span>
               )
             }
+            {tooltipContent}
           </div>
           <SimpleSelect
             className={cn(inputClassName)}
