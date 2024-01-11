@@ -82,5 +82,14 @@ model_credential_schema:
         - variable: __model_type
           value: llm
       default: 'false'
-      type: switch
+      type: radio
       required: false
+      options:
+        - value: 'true'
+          label:
+            en_US: Yes
+            zh_Hans: 是
+        - value: 'false'
+          label:
+            en_US: No
+            zh_Hans: 否

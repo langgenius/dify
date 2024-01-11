@@ -403,7 +403,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         """
         extras = {}
 
-        if 'vision_support' in credentials and credentials['vision_support']:
+        if 'vision_support' in credentials and credentials['vision_support'] == 'true':
             extras['features'] = [ModelFeature.VISION]
 
         entity = AIModelEntity(
