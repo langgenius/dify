@@ -1,6 +1,5 @@
-from flask import Flask
-
 from core.hosting_configuration import HostingConfiguration
+from flask import Flask
 
 hosting_configuration = HostingConfiguration()
 

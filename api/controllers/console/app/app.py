@@ -3,27 +3,25 @@ import json
 import logging
 from datetime import datetime
 
-from flask_login import current_user
-
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
-from libs.login import login_required
-from flask_restful import Resource, reqparse, marshal_with, abort, inputs
-from werkzeug.exceptions import Forbidden
-
-from constants.model_template import model_templates, demo_model_templates
+from constants.model_template import demo_model_templates, model_templates
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.errors.error import ProviderTokenNotInitError, LLMBadRequestError
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.provider_manager import ProviderManager
 from events.app_event import app_was_created, app_was_deleted
-from fields.app_fields import app_pagination_fields, app_detail_fields, template_list_fields, \
-    app_detail_fields_with_site
 from extensions.ext_database import db
+from fields.app_fields import (app_detail_fields, app_detail_fields_with_site, app_pagination_fields,
+                               template_list_fields)
+from flask_login import current_user
+from flask_restful import Resource, abort, inputs, marshal_with, reqparse
+from libs.login import login_required
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
+from werkzeug.exceptions import Forbidden
 
 
 def _get_app(app_id, tenant_id):

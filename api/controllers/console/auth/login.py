@@ -1,12 +1,11 @@
 # -*- coding:utf-8 -*-
 import flask
 import flask_login
-from flask import request, current_app
-from flask_restful import Resource, reqparse
-
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
+from flask import current_app, request
+from flask_restful import Resource, reqparse
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService, TenantService

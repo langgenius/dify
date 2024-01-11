@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.model_runtime.entities.provider_entities import FormType, CredentialFormSchema
+from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
 
 
 class CommonValidator:

@@ -1,11 +1,12 @@
+import re
+from typing import Any, Generator, List, Literal, Optional, Union
+
+from _pytest.monkeypatch import MonkeyPatch
 from huggingface_hub import InferenceClient
-from huggingface_hub.inference._text_generation import TextGenerationResponse, TextGenerationStreamResponse, Details, StreamDetails, Token
+from huggingface_hub.inference._text_generation import (Details, StreamDetails, TextGenerationResponse,
+                                                        TextGenerationStreamResponse, Token)
 from huggingface_hub.utils import BadRequestError
 
-from typing import Literal, Optional, List, Generator, Union, Any
-from _pytest.monkeypatch import MonkeyPatch
-
-import re
 
 class MockHuggingfaceChatClass(object):
     @staticmethod

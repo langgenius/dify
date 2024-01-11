@@ -2,7 +2,6 @@ import base64
 
 from extensions.ext_database import db
 from libs import rsa
-
 from models.account import Tenant
 
 

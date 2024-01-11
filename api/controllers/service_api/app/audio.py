@@ -1,20 +1,21 @@
 import logging
 
-from flask import request
-from werkzeug.exceptions import InternalServerError
-
 import services
 from controllers.service_api import api
-from controllers.service_api.app.error import AppUnavailableError, ProviderNotInitializeError, CompletionRequestError, ProviderQuotaExceededError, \
-    ProviderModelCurrentlyNotSupportError, NoAudioUploadedError, AudioTooLargeError, UnsupportedAudioTypeError, \
-    ProviderNotSupportSpeechToTextError
+from controllers.service_api.app.error import (AppUnavailableError, AudioTooLargeError, CompletionRequestError,
+                                               NoAudioUploadedError, ProviderModelCurrentlyNotSupportError,
+                                               ProviderNotInitializeError, ProviderNotSupportSpeechToTextError,
+                                               ProviderQuotaExceededError, UnsupportedAudioTypeError)
 from controllers.service_api.wraps import AppApiResource
-from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
+from flask import request
 from models.model import App, AppModelConfig
 from services.audio_service import AudioService
-from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
-    UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
+from services.errors.audio import (AudioTooLargeServiceError, NoAudioUploadedServiceError,
+                                   ProviderNotSupportSpeechToTextServiceError, UnsupportedAudioTypeServiceError)
+from werkzeug.exceptions import InternalServerError
+
 
 class AudioApi(AppApiResource):
     def post(self, app_model: App, end_user):

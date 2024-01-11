@@ -1,23 +1,22 @@
 import logging
-from typing import Optional, Generator, Union, List, cast
+from typing import Generator, List, Optional, Union, cast
 
 import tiktoken
-from openai import AzureOpenAI, Stream
-from openai.types import Completion
-from openai.types.chat import ChatCompletionChunk, ChatCompletion, ChatCompletionMessageToolCall
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall, ChoiceDeltaFunctionCall
-from openai.types.chat.chat_completion_message import FunctionCall
-
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, \
-    LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, AssistantPromptMessage, \
-    UserPromptMessage, PromptMessageContentType, ImagePromptMessageContent, \
-    TextPromptMessageContent, SystemPromptMessage, ToolPromptMessage
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
+                                                          PromptMessage, PromptMessageContentType, PromptMessageTool,
+                                                          SystemPromptMessage, TextPromptMessageContent,
+                                                          ToolPromptMessage, UserPromptMessage)
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
 from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS, AzureBaseModel
+from openai import AzureOpenAI, Stream
+from openai.types import Completion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageToolCall
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
+from openai.types.chat.chat_completion_message import FunctionCall
 
 logger = logging.getLogger(__name__)
 

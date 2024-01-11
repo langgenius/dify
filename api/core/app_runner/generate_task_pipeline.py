@@ -1,25 +1,25 @@
 import json
 import logging
 import time
-from typing import Union, Generator, cast, Optional
+from typing import Generator, Optional, Union, cast
 
-from pydantic import BaseModel
-
-from core.app_runner.moderation_handler import OutputModerationHandler, ModerationRule
-from core.entities.application_entities import ApplicationGenerateEntity
+from core.app_runner.moderation_handler import ModerationRule, OutputModerationHandler
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.queue_entities import QueueErrorEvent, QueueStopEvent, QueueMessageEndEvent, \
-    QueueRetrieverResourcesEvent, QueueAgentThoughtEvent, QueuePingEvent, QueueMessageEvent, QueueMessageReplaceEvent, \
-    AnnotationReplyEvent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, \
-    TextPromptMessageContent, PromptMessageContentType, ImagePromptMessageContent, PromptMessage
-from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError
+from core.entities.application_entities import ApplicationGenerateEntity
+from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
+                                          QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
+                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent)
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
+                                                          PromptMessage, PromptMessageContentType, PromptMessageRole,
+                                                          TextPromptMessageContent)
+from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.model import Message, Conversation, MessageAgentThought
+from models.model import Conversation, Message, MessageAgentThought
+from pydantic import BaseModel
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)

@@ -1,15 +1,12 @@
 """Functionality for splitting text."""
 from __future__ import annotations
 
-from typing import (
-    Any,
-    List,
-    Optional,
-)
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TokenTextSplitter, TS, Type, Union, AbstractSet, Literal, Collection
+from typing import Any, List, Optional
 
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from langchain.text_splitter import (TS, AbstractSet, Collection, Literal, RecursiveCharacterTextSplitter,
+                                     TokenTextSplitter, Type, Union)
+
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
     """

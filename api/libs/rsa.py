@@ -1,10 +1,9 @@
 # -*- coding:utf-8 -*-
 import hashlib
 
-from Crypto.Cipher import PKCS1_OAEP, AES
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
-
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 

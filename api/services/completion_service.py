@@ -1,18 +1,17 @@
 import json
-from typing import Generator, Union, Any
-
-from sqlalchemy import and_
+from typing import Any, Generator, Union
 
 from core.application_manager import ApplicationManager
 from core.entities.application_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from extensions.ext_database import db
-from models.model import Conversation, AppModelConfig, App, Account, EndUser, Message
+from models.model import Account, App, AppModelConfig, Conversation, EndUser, Message
 from services.app_model_config_service import AppModelConfigService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.conversation import ConversationNotExistsError, ConversationCompletedError
+from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from sqlalchemy import and_
 
 
 class CompletionService:

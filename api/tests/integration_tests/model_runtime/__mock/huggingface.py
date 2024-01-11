@@ -1,12 +1,10 @@
-from tests.integration_tests.model_runtime.__mock.huggingface_chat import MockHuggingfaceChatClass
-
-from huggingface_hub import InferenceClient
-
-from _pytest.monkeypatch import MonkeyPatch
-from typing import List, Dict, Any
+import os
+from typing import Any, Dict, List
 
 import pytest
-import os
+from _pytest.monkeypatch import MonkeyPatch
+from huggingface_hub import InferenceClient
+from tests.integration_tests.model_runtime.__mock.huggingface_chat import MockHuggingfaceChatClass
 
 MOCK = os.getenv('MOCK_SWITCH', 'false').lower() == 'true'
 
