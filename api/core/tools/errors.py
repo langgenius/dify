@@ -15,3 +15,6 @@ class ToolNotSupportedError(ValueError):
 
 class ToolInvokeError(ValueError):
     pass
+
+class ToolApiSchemaError(ValueError):
+    pass

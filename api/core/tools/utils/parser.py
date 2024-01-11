@@ -2,7 +2,8 @@
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ToolParamter, ToolParamterOption
 from core.tools.entities.common_entities import I18nObject
-from core.tools.errors import ToolProviderNotFoundError, ToolNotSupportedError
+from core.tools.errors import ToolProviderNotFoundError, ToolNotSupportedError, \
+      ToolApiSchemaError
 
 from typing import List
 
@@ -131,9 +132,92 @@ class ApiBasedToolSchemaParser:
 
         openapi: dict = load(yaml, Loader=FullLoader)
         if openapi is None:
-            raise ToolProviderNotFoundError('Invalid openapi yaml.')
+            raise ToolApiSchemaError('Invalid openapi yaml.')
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, warning=warning)
     
+    @staticmethod
+    def parse_swagger_to_openapi(swagger: dict, warning: dict = None) -> dict:
+        """
+            parse swagger to openapi
+
+            :param swagger: the swagger dict
+            :return: the openapi dict
+        """
+        # convert swagger to openapi
+        info = swagger.get('info', {
+            'title': 'Swagger',
+            'description': 'Swagger',
+            'version': '1.0.0'
+        })
+
+        servers = swagger.get('servers', [])
+
+        if len(servers) == 0:
+            raise ToolApiSchemaError('No server found in the swagger yaml.')
+
+        openapi = {
+            'openapi': '3.0.0',
+            'info': {
+                'title': info.get('title', 'Swagger'),
+                'description': info.get('description', 'Swagger'),
+                'version': info.get('version', '1.0.0')
+            },
+            'servers': swagger['servers'],
+            'paths': {},
+            'components': {
+                'schemas': {}
+            }
+        }
+
+        # check paths
+        if 'paths' not in swagger or len(swagger['paths']) == 0:
+            raise ToolApiSchemaError('No paths found in the swagger yaml.')
+
+        # convert paths
+        for path, path_item in swagger['paths'].items():
+            openapi['paths'][path] = {}
+            for method, operation in path_item.items():
+                if 'operationId' not in operation:
+                    raise ToolApiSchemaError(f'No operationId found in operation {method} {path}.')
+                
+                if 'summary' not in operation or len(operation['summary']) == 0:
+                    warning['missing_summary'] = f'No summary found in operation {method} {path}.'
+                
+                if 'description' not in operation or len(operation['description']) == 0:
+                    warning['missing_description'] = f'No description found in operation {method} {path}.'
+
+                openapi['paths'][path][method] = {
+                    'operationId': operation['operationId'],
+                    'summary': operation.get('summary', ''),
+                    'description': operation.get('description', ''),
+                    'parameters': operation.get('parameters', []),
+                    'responses': operation.get('responses', {}),
+                }
+
+                if 'requestBody' in operation:
+                    openapi['paths'][path][method]['requestBody'] = operation['requestBody']
+
+        # convert definitions
+        for name, definition in swagger['definitions'].items():
+            openapi['components']['schemas'][name] = definition
+
+        return openapi
+
+    @staticmethod
+    def parse_swagger_yaml_to_tool_bundle(yaml: str, warning: dict = None) -> List[ApiBasedToolBundle]:
+        """
+            parse swagger yaml to tool bundle
+
+            :param yaml: the yaml string
+            :return: the tool bundle
+        """
+        warning = warning if warning is not None else {}
+
+        swagger: dict = load(yaml, Loader=FullLoader)
+
+        openapi = ApiBasedToolSchemaParser.parse_swagger_to_openapi(swagger, warning=warning)
+        return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, warning=warning)
+
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(json: str, warning: dict = None) -> List[ApiBasedToolBundle]:
         """

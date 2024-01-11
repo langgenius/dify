@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from typing import Dict, Optional, Any, List
-from openapi_schema_pydantic import OpenAPI, Operation
 
 from core.tools.entities.tool_entities import ToolProviderType, ToolParamter
 

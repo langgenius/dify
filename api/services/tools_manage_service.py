@@ -63,7 +63,7 @@ class ToolManageService:
                 name=tool.identity.name,
                 label=tool.identity.label,
                 description=tool.description.human,
-                parameters=tool.parameters
+                parameters=tool.parameters or []
             ) for tool in tools
         ]
 
@@ -82,7 +82,7 @@ class ToolManageService:
         """
         provider = ToolManager.get_builtin_provider(provider_name)
         return [
-            v.to_dict() for _, v in provider.credentials_schema.items()
+            v.to_dict() for _, v in (provider.credentials_schema or {}).items()
         ]
 
     @staticmethod
@@ -98,6 +98,8 @@ class ToolManageService:
                 tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema, warning=warnings)
             elif schema_type == ApiProviderSchemaType.OPENAI_PLUGIN.value:
                 tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema, warning=warnings)
+            elif schema_type == ApiProviderSchemaType.SWAGGER.value:
+                tool_bundles = ApiBasedToolSchemaParser.parse_swagger_yaml_to_tool_bundle(schema, warning=warnings)
             else:
                 raise ValueError(f'invalid schema type {schema_type}')
             credentails_schema = [
@@ -158,8 +160,29 @@ class ToolManageService:
             raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
+    def convert_schema_to_tool_bundles(
+        schema_type: str, schema: str
+    ) -> List[ApiBasedToolBundle]:
+        """
+            convert schema to tool bundles
+        """
+        try:
+            if schema_type == ApiProviderSchemaType.OPENAPI.value:
+                tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
+            elif schema_type == ApiProviderSchemaType.OPENAI_PLUGIN.value:
+                tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema)
+            elif schema_type == ApiProviderSchemaType.SWAGGER.value:
+                tool_bundles = ApiBasedToolSchemaParser.parse_swagger_yaml_to_tool_bundle(schema)
+            else:
+                raise ValueError(f'invalid schema type {schema_type}')
+
+            return tool_bundles
+        except Exception as e:
+            raise ValueError(f'invalid schema: {str(e)}')
+
+    @staticmethod
     def create_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: dict, description: str, credentails: dict, parameters: dict, schema_type: str, schema: str
+        user_id: str, tenant_id: str, provider_name: str, icon: dict, description: str, credentials: dict, parameters: dict, schema_type: str, schema: str
     ):
         """
             create api tool provider
@@ -167,12 +190,55 @@ class ToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f'invalid schema type {schema}')
         
-        if schema_type == ApiProviderSchemaType.OPENAPI.value:
-            return ToolManageService.create_openapi_tool_provider(
-                user_id, tenant_id, provider_name, icon, description,
-                credentails, parameters, schema
-            )
+        # check if the provider exists
+        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tenant_id,
+            ApiToolProvider.name == provider_name,
+        ).first()
+
+        if provider is not None:
+            raise ValueError(f'provider {provider_name} already exists')
+
+        # parse openapi to tool bundle
+        tool_bundles = ToolManageService.convert_schema_to_tool_bundles(schema_type, schema)
         
+        # create db provider
+        db_provider = ApiToolProvider(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            name=provider_name,
+            icon=json.dumps(icon),
+            schema=schema,
+            description=description,
+            schema_type_str=schema_type,
+            tools_str=serialize_base_model_array(tool_bundles),
+            credentials_str=json.dumps(credentials),
+        )
+
+        if 'auth_type' not in credentials:
+            raise ValueError('auth_type is required')
+
+        # get auth type, none or api key
+        auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
+
+        # create provider entity
+        provider_entity = ApiBasedToolProviderController.from_db(db_provider, auth_type)
+        # load tools into provider entity
+        provider_entity.load_bundled_tools(tool_bundles)
+
+        for tool_bundle in tool_bundles:
+            # validate credentials for each tool
+            try:
+                tool = provider_entity.get_tool(tool_bundle.operation_id)
+                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}), format_only=True)
+            except ToolProviderCredentialValidationError as e:
+                raise ValueError(str(e))
+
+        db.session.add(db_provider)
+        db.session.commit()
+
+        return { 'result': 'success' }
+
     @staticmethod
     def list_api_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
@@ -249,7 +315,7 @@ class ToolManageService:
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentails: dict, parameters: dict, schema_type: str, schema: str
+        user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentials: dict, parameters: dict, schema_type: str, schema: str
     ):
         """
             update api tool provider
@@ -257,82 +323,6 @@ class ToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f'invalid schema type {schema}')
         
-        if schema_type == ApiProviderSchemaType.OPENAPI.value:
-            return ToolManageService.update_openapi_tool_provider(
-                user_id, tenant_id, provider_name, icon, description,
-                credentails, parameters, schema
-            )
-
-    @staticmethod
-    def create_openapi_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: dict, 
-        description: str,
-        credentials: dict, parameters: dict, schema: str
-    ):
-        """
-            create openapi tool provider
-        """
-        # check if the provider exists
-        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
-            ApiToolProvider.tenant_id == tenant_id,
-            ApiToolProvider.name == provider_name,
-        ).first()
-
-        if provider is not None:
-            raise ValueError(f'provider {provider_name} already exists')
-
-        # parse openapi to tool bundle
-        try:
-            tool_bundles: List[ApiBasedToolBundle] = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
-        except Exception as e:
-            raise ValueError('invalid openapi schema: ' + str(e))
-        
-        # create db provider
-        db_provider = ApiToolProvider(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            name=provider_name,
-            icon=json.dumps(icon),
-            schema=schema,
-            description=description,
-            schema_type_str=ApiProviderSchemaType.OPENAPI.value,
-            tools_str=serialize_base_model_array(tool_bundles),
-            credentials_str=json.dumps(credentials),
-        )
-
-        if 'auth_type' not in credentials:
-            raise ValueError('auth_type is required')
-
-        # get auth type, none or api key
-        auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
-
-        # create provider entity
-        provider_entity = ApiBasedToolProviderController.from_db(db_provider, auth_type)
-        # load tools into provider entity
-        provider_entity.load_bundled_tools(tool_bundles)
-
-        for tool_bundle in tool_bundles:
-            # validate credentials for each tool
-            try:
-                tool = provider_entity.get_tool(tool_bundle.operation_id)
-                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}), format_only=True)
-            except ToolProviderCredentialValidationError as e:
-                raise ValueError(str(e))
-
-        db.session.add(db_provider)
-        db.session.commit()
-
-        return { 'result': 'success' }
-    
-    @staticmethod
-    def update_openapi_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, 
-        description: str,
-        credentials: dict, parameters: dict, schema: str
-    ):
-        """
-            update openapi tool provider
-        """
         # check if the provider exists
         provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
             ApiToolProvider.tenant_id == tenant_id,
@@ -343,10 +333,7 @@ class ToolManageService:
             raise ValueError(f'api provider {provider_name} does not exists')
 
         # parse openapi to tool bundle
-        try:
-            tool_bundles: List[ApiBasedToolBundle] = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
-        except Exception as e:
-            raise ValueError('invalid openapi schema: ' + str(e))
+        tool_bundles = ToolManageService.convert_schema_to_tool_bundles(schema_type, schema)
         
         # update db provider
         provider.icon = icon

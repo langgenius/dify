@@ -21,21 +21,33 @@ class ApiTool(Tool):
         """
             validate the credentials for Api tool
         """
-        headers = {}
+        # assemble validate request and request parameters 
+        headers = self.assembling_request(parameters)
 
-        if 'auth_type' not in credentails:
+        if format_only:
+            return
+
+        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
+        # validate response
+        self.validate_and_parse_response(response)
+
+    def assembling_request(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        headers = {}
+        credentials = self.meta.credentials or {}
+
+        if 'auth_type' not in credentials:
             raise ToolProviderCredentialValidationError('Missing auth_type')
 
-        if credentails['auth_type'] == 'api_key':
+        if credentials['auth_type'] == 'api_key':
             api_key_header = 'api_key'
 
-            if 'api_key_header' in credentails:
-                api_key_header = credentails['api_key_header']
+            if 'api_key_header' in credentials:
+                api_key_header = credentials['api_key_header']
             
-            if 'api_key_value' not in credentails:
+            if 'api_key_value' not in credentials:
                 raise ToolProviderCredentialValidationError('Missing api_key_value')
             
-            headers[api_key_header] = credentails['api_key_value']
+            headers[api_key_header] = credentials['api_key_value']
 
         needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
         for parameter in needed_parameters:
@@ -45,12 +57,7 @@ class ApiTool(Tool):
             if parameter.default is not None and parameter.name not in parameters:
                 parameters[parameter.name] = parameter.default
 
-        if format_only:
-            return
-
-        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
-        # validate response
-        self.validate_and_parse_response(response)
+        return headers
 
     def validate_and_parse_response(self, response: Union[httpx.Response, requests.Response]) -> str:
         """
@@ -170,4 +177,17 @@ class ApiTool(Tool):
         return response
 
     def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
-        pass
+        """
+        invoke http request
+        """
+        # assemble request
+        headers = self.assembling_request(tool_paramters)
+
+        # do http request
+        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_paramters)
+
+        # validate response
+        response = self.validate_and_parse_response(response)
+
+        # assemble invoke message
+        return self.create_text_message(response)

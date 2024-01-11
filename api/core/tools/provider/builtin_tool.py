@@ -13,30 +13,7 @@ class BuiltinTool(Tool):
 
         :param meta: the meta data of a tool call processing
     """
-    class Meta(BaseModel):
-        """
-            Meta data of a tool call processing
-        """
-        tenant_id: str = None
-        tool_id: str = None
-        credentials: Dict[str, Any] = None
 
-    meta: Meta = None
-
-    def fork_processing_tool(self, meta: Dict[str, Any]) -> 'BuiltinTool':
-        """
-            fork a new tool with meta data
-
-            :param meta: the meta data of a tool call processing, tenant_id is required
-            :return: the new tool
-        """
-        return self.__class__(
-            identity=self.identity.copy() if self.identity else None,
-            parameters=self.parameters.copy() if self.parameters else None,
-            description=self.description.copy() if self.description else None,
-            meta=BuiltinTool.Meta(**meta)
-        )
-    
     def invoke_model(
         self, user_id: str, prompt_messages: List[PromptMessage], stop: List[str]
     ) -> LLMResult:

@@ -1,12 +1,11 @@
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from abc import abstractmethod
+from typing import List, Dict, Any
 
 from os import path, listdir
 from yaml import load, FullLoader
 
-from core.model_runtime.entities.message_entities import PromptMessage
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, \
-    ToolProviderIdentity, ToolParamter, ToolProviderCredentials
+from core.tools.entities.tool_entities import ToolProviderType, \
+      ToolParamter, ToolProviderCredentials
 from core.tools.provider.tool import Tool
 from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.provider.tool_provider import ToolProviderController
@@ -118,6 +117,15 @@ class BuiltinToolProviderController(ToolProviderController):
         if tool is None:
             raise ToolNotFoundError(f'tool {tool_name} not found')
         return tool.parameters
+
+    @property
+    def need_credentials(self) -> bool:
+        """
+            returns whether the provider needs credentials
+
+            :return: whether the provider needs credentials
+        """
+        return self.credentials_schema is not None and len(self.credentials_schema) != 0
 
     @property
     def app_type(self) -> ToolProviderType:

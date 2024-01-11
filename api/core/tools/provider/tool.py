@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 from abc import abstractmethod, ABC
 
 from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage,\
@@ -9,14 +9,35 @@ from core.model_runtime.entities.message_entities import PromptMessage
 
 class Tool(BaseModel, ABC):
     identity: ToolIdentity = None
-    parameters: List[ToolParamter] = None
+    parameters: Optional[List[ToolParamter]] = None
     description: ToolDescription = None
     is_team_authorization: bool = False
 
-    def invoke(self, 
-        user_id: str,
-        tool_paramters: Dict[str, Any]
-    ) -> List[ToolInvokeMessage]:
+    class Meta(BaseModel):
+        """
+            Meta data of a tool call processing
+        """
+        tenant_id: str = None
+        tool_id: str = None
+        credentials: Dict[str, Any] = None
+
+    meta: Meta = None
+
+    def fork_processing_tool(self, meta: Dict[str, Any]) -> 'Tool':
+        """
+            fork a new tool with meta data
+
+            :param meta: the meta data of a tool call processing, tenant_id is required
+            :return: the new tool
+        """
+        return self.__class__(
+            identity=self.identity.copy() if self.identity else None,
+            parameters=self.parameters.copy() if self.parameters else None,
+            description=self.description.copy() if self.description else None,
+            meta=Tool.Meta(**meta)
+        )
+
+    def invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> List[ToolInvokeMessage]:
         result = self._invoke(
             user_id=user_id,
             tool_paramters=tool_paramters,

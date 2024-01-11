@@ -222,6 +222,11 @@ class ToolManager:
                 is_team_authorization=False,
             )
 
+            # check if the provider need credentials
+            if not provider.need_credentials:
+                result_providers[provider.identity.name].is_team_authorization = True
+                result_providers[provider.identity.name].allow_delete = False
+
         # get db builtin providers
         db_builtin_providers: List[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
             filter(BuiltinToolProvider.tenant_id == tenant_id).all()
