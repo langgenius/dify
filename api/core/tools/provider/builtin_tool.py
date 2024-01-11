@@ -19,6 +19,7 @@ class BuiltinTool(Tool):
         """
         tenant_id: str = None
         tool_id: str = None
+        credentials: Dict[str, Any] = None
 
     meta: Meta = None
 

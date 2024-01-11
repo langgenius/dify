@@ -13,8 +13,6 @@ class WolframAlphaTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
                tool_paramters: Dict[str, Any], 
-               credentials: Dict[str, Any], 
-               prompt_messages: List[PromptMessage]
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
@@ -22,7 +20,7 @@ class WolframAlphaTool(BuiltinTool):
         query = tool_paramters.get('query', '')
         if not query:
             return self.create_text_message('Please input query')
-        appid = credentials.get('appid', '')
+        appid = self.meta.credentials.get('appid', '')
         if not appid:
             raise ToolProviderCredentialValidationError('Please input appid')
         

@@ -169,6 +169,5 @@ class ApiTool(Tool):
         
         return response
 
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any], credentials: Dict[str, Any], prompt_messages: List[PromptMessage]) \
-        -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
         pass

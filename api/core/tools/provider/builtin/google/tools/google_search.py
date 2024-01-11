@@ -113,15 +113,13 @@ class GoogleSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
                tool_paramters: Dict[str, Any], 
-               credentials: Dict[str, Any], 
-               prompt_messages: List[PromptMessage]
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
         query = tool_paramters['query']
         result_type = tool_paramters['result_type']
-        api_key = credentials['serpapi_api_key']
+        api_key = self.meta.credentials['serpapi_api_key']
         result = SerpAPI(api_key).run(query)
         if result_type == 'text':
             return self.create_text_message(text=result)

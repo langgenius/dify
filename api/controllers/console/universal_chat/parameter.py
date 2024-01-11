@@ -34,5 +34,3 @@ class UniversalChatParameterApi(UniversalChatResource):
             'annotation_reply': app_model_config.annotation_reply_dict,
         }
 
-
-api.add_resource(UniversalChatParameterApi, '/universal-chat/parameters')

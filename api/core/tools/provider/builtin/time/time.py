@@ -11,8 +11,6 @@ class WikiPediaProvider(BuiltinToolProviderController):
             CurrentTimeTool().invoke(
                 user_id='',
                 tool_paramters={},
-                credentials=credentials,
-                prompt_messages=[]
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

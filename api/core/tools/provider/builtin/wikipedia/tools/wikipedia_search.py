@@ -16,8 +16,6 @@ class WikiPediaSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
                tool_paramters: Dict[str, Any], 
-               credentials: Dict[str, Any], 
-               prompt_messages: List[PromptMessage]
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools

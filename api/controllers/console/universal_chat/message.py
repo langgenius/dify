@@ -139,7 +139,3 @@ class UniversalChatMessageSuggestedQuestionApi(UniversalChatResource):
 
         return {'data': questions}
 
-
-api.add_resource(UniversalChatMessageListApi, '/universal-chat/messages')
-api.add_resource(UniversalChatMessageFeedbackApi, '/universal-chat/messages/<uuid:message_id>/feedbacks')
-api.add_resource(UniversalChatMessageSuggestedQuestionApi, '/universal-chat/messages/<uuid:message_id>/suggested-questions')

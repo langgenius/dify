@@ -10,14 +10,16 @@ from typing import Any, Dict, List
 class GoogleProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
-            GoogleSearchTool().invoke(
+            GoogleSearchTool().fork_processing_tool(
+                meta={
+                    "credentials": credentials,
+                }
+            ).invoke(
                 user_id='',
                 tool_paramters={
                     "query": "test",
                     "result_type": "link"
                 },
-                credentials=credentials,
-                prompt_messages=[]
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

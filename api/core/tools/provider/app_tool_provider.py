@@ -18,24 +18,6 @@ class AppBasedToolProviderEntity(ToolProviderController):
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.APP_BASED
     
-    def invoke(self, 
-               user_id: str,
-               tool_id: int, tool_name: str, 
-               tool_paramters: Dict[str, Any], 
-               credentials: Dict[str, Any], 
-               prompt_messages: List[PromptMessage]
-        ) -> List[ToolInvokeMessage]:
-        """
-            invoke app based assistant
-
-            tool_name: the name of the tool, defined in `get_tools`
-            tool_paramters: the parameters of the tool
-            credentials: the credentials of the tool
-            prompt_messages: the prompt messages that the tool can use
-
-            :return: the messages that the tool wants to send to the user
-        """
-
     def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
         pass
 

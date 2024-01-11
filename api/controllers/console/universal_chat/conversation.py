@@ -102,9 +102,3 @@ class UniversalChatConversationUnPinApi(UniversalChatResource):
 
         return {"result": "success"}
 
-
-api.add_resource(UniversalChatConversationRenameApi, '/universal-chat/conversations/<uuid:c_id>/name')
-api.add_resource(UniversalChatConversationListApi, '/universal-chat/conversations')
-api.add_resource(UniversalChatConversationApi, '/universal-chat/conversations/<uuid:c_id>')
-api.add_resource(UniversalChatConversationPinApi, '/universal-chat/conversations/<uuid:c_id>/pin')
-api.add_resource(UniversalChatConversationUnPinApi, '/universal-chat/conversations/<uuid:c_id>/unpin')

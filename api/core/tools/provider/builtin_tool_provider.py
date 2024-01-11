@@ -128,32 +128,6 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return ToolProviderType.BUILT_IN
 
-    def _invoke(
-        self,
-        user_id: str,
-        tool_name: str,
-        tool_paramters: Dict[str, Any],
-        credentials: Dict[str, Any],
-        prompt_messages: List[PromptMessage],
-    ) -> List[ToolInvokeMessage]:
-        """
-            should be implemented by the subclass
-
-            tool_name: the name of the tool, defined in `get_tools`
-            tool_paramters: the parameters of the tool
-            credentials: the credentials of the tool
-            prompt_messages: the prompt messages that the tool can use
-
-            :return: the messages that the tool wants to send to the user
-        """
-        # get tool
-        tool = next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
-        if tool is None:
-            raise ToolNotFoundError(f'tool {tool_name} not found')
-        
-        # invoke
-        return tool.invoke(user_id, tool_paramters, credentials, prompt_messages)
-
     def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
         """
             validate the parameters of the tool and set the default value if needed

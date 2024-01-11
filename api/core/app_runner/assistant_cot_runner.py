@@ -115,13 +115,10 @@ class AssistantCotApplicationRunner(AppRunner):
                 raise ValueError("{{query}} is required in first_prompt")
             if not first_prompt.find("{{agent_scratchpad}}") >= 0:
                 raise ValueError("{{agent_scratchpad}} is required in first_prompt")
-            
-        elif mode == "chat":
-            if not first_prompt.find("{{input}}") >= 0:
-                raise ValueError("{{input}} is required in first_prompt")
-            
-        if not next_iteration.find("{{observation}}") >= 0:
-            raise ValueError("{{observation}} is required in next_iteration")
+        
+        if mode == "completion":
+            if not next_iteration.find("{{observation}}") >= 0:
+                raise ValueError("{{observation}} is required in next_iteration")
 
     def _originze_first_cot_prompt_messages(self, mode: Literal["completion", "chat"], 
                                       tools: list[PromptMessageTool], 

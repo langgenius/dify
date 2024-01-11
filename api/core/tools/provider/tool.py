@@ -15,15 +15,11 @@ class Tool(BaseModel, ABC):
 
     def invoke(self, 
         user_id: str,
-        tool_paramters: Dict[str, Any],
-        credentials: Dict[str, Any],
-        prompt_messages: List[PromptMessage]
+        tool_paramters: Dict[str, Any]
     ) -> List[ToolInvokeMessage]:
         result = self._invoke(
             user_id=user_id,
             tool_paramters=tool_paramters,
-            credentials=credentials,
-            prompt_messages=prompt_messages
         )
 
         if isinstance(result, list):
@@ -32,10 +28,7 @@ class Tool(BaseModel, ABC):
         return [result]
 
     @abstractmethod
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any],
-        credentials: Dict[str, Any],
-        prompt_messages: List[PromptMessage]
-    ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         pass
     
     @abstractmethod
