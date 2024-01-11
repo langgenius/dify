@@ -48,12 +48,14 @@ const translation = {
     },
     authMethod: {
       title: 'Authorization method',
+      type: 'Authorization type',
       types: {
         none: 'None',
         api_key: 'API Key',
       },
     },
     privacyPolicy: 'Privacy policy',
+    privacyPolicyPlaceholder: 'Please enter privacy policy',
   },
 }
 

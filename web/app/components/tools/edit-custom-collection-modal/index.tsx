@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential } from '../types'
-import { authType } from '../types'
+import { AuthType } from '../types'
 import GetSchema from './get-schema'
 import ConfigCredentials from './config-credentials'
 import Drawer from '@/app/components/base/drawer-plus'
@@ -28,7 +28,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [schema, setSchema] = useState('')
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [credentials, setCredentials] = useState<Credential>({
-    auth_type: authType.none,
+    auth_type: AuthType.none,
   })
 
   const isAdd = !!payload
@@ -140,7 +140,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.privacyPolicy')}</div>
-                <input className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''} />
+                <input className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
               </div>
 
             </div>

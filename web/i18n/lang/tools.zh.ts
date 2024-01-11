@@ -48,12 +48,14 @@ const translation = {
     },
     authMethod: {
       title: '鉴权方法',
+      type: '鉴权类型',
       types: {
         none: '无',
         api_key: 'API Key',
       },
     },
     privacyPolicy: '隐私协议',
+    privacyPolicyPlaceholder: '请输入隐私协议',
   },
 }
 

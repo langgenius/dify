@@ -3,13 +3,13 @@ export enum LOC {
   app = 'app',
 }
 
-export enum authType {
+export enum AuthType {
   none = 'none',
   apiKey = 'api_key',
 }
 
 export type Credential = {
-  'auth_type': authType
+  'auth_type': AuthType
   'api_key_header'?: string
   'api_key_value'?: string
 }
