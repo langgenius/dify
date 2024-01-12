@@ -16,7 +16,7 @@ from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageChain, MessageAgentThought
+from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         conversation: Conversation,
         tool_instances: Dict[str, Tool],
         message: Message,
-        message_chain: MessageChain,
         prompt_messages_tools: list[PromptMessageTool],
         query: str,
     ) -> Generator[LLMResultChunk, None, None]:
@@ -96,7 +95,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 # create agent thought
                 agent_thought = self.create_agent_thought(
                     message_id=message.id,
-                    message_chain_id=message_chain.id,
                     message=message.message,
                     tool_name=tool_call_name,
                     tool_input=json.dumps(tool_call_args),

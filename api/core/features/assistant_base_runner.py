@@ -71,8 +71,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         else:
             return f"Here is the message: {tool_response.message}"
         
-    def create_agent_thought(self, message_id: str, message_chain_id: str,
-                             message: str, thought: str,
+    def create_agent_thought(self, message_id: str, message: str, 
                              tool_name: str, tool_input: str,
                              ) -> MessageAgentThought:
         """
@@ -80,7 +79,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         """
         thought = MessageAgentThought(
             message_id=message_id,
-            message_chain_id=message_chain_id,
+            message_chain_id=None,
             thought='',
             tool=tool_name,
             tool_input=tool_input,

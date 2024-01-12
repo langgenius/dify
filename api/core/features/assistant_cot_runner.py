@@ -1,8 +1,7 @@
 import json
 from typing import Literal, Union, Generator, Dict, Any
 
-from core.entities.application_entities import ApplicationGenerateEntity, \
-      AgentPromptEntity, AgentEntity
+from core.entities.application_entities import AgentPromptEntity
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, UserPromptMessage
 from core.model_runtime.entities.llm_entities import LLMResult
@@ -11,18 +10,15 @@ from core.model_manager import ModelInstance
 from core.tools.provider.tool import Tool
 
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
-from core.application_queue_manager import ApplicationQueueManager
-from core.agent.agent.agent_llm_callback import AgentLLMCallback
 
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageChain
+from models.model import Conversation, Message
 
 class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, model_instance: ModelInstance,
         conversation: Conversation,
         tool_instances: Dict[str, Tool],
         message: Message,
-        message_chain: MessageChain,
         prompt_messages_tools: list[PromptMessageTool],
         query: str,
     ) -> Union[Generator, LLMResult]:

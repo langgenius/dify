@@ -89,7 +89,6 @@ class AssistantApplicationRunner(AppRunner):
             # save tool entity
             tool_instances[tool.tool_name] = tool_entity
         
-        # Create MessageChain
         message_chain = self._init_message_chain(
             message=message,
             query=query
@@ -129,16 +128,11 @@ class AssistantApplicationRunner(AppRunner):
                 memory=memory,
             )
             invoke_result = assistant_cot_runner.run(
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
                 model_instance=model_instance,
-                agent_llm_callback=agent_llm_callback,
                 conversation=conversation,
                 tool_instances=tool_instances,
                 message=message,
-                message_chain=message_chain,
                 prompt_messages_tools=prompt_messages_tools,
-                agent_entity=agent_entity,
                 query=query,
             )
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
