@@ -9,6 +9,9 @@ export const fetchBuiltInToolList = (collectionName: string) => {
   return get(`/workspaces/current/tool-provider/builtin/${collectionName}/tools`)
 }
 
+export const fetchCustomToolList = (collectionName: string) => {
+  return get(`/workspaces/current/tool-provider/api/tools?provider=${collectionName}`)
+}
 export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {
   return get(`/workspaces/current/tool-provider/builtin/${collectionName}/credentials_schema`)
 }

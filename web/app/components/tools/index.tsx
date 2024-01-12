@@ -14,7 +14,7 @@ import Contribute from './contribute'
 import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import TabSlider from '@/app/components/base/tab-slider'
-import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList } from '@/service/tools'
+import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
 
 type Props = {
   loc: LOC
@@ -38,6 +38,7 @@ const Tools: FC<Props> = ({
       return null
     return collectionList[currCollectionIndex]
   })()
+  const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   const fetchCollectionList = async () => {
     const list = await doFetchCollectionList() as Collection[]
@@ -64,13 +65,25 @@ const Tools: FC<Props> = ({
   const [query, setQuery] = useState('')
   const [currTools, setCurrentTools] = useState<Tool[]>([])
   useEffect(() => {
+    if (!currCollection)
+      return
+
     (async () => {
-      if (currCollection && currCollection.type === CollectionType.builtIn) {
-        const list = await fetchBuiltInToolList(currCollection.name) as Tool[]
-        setCurrentTools(list)
+      setIsDetailLoading(true)
+      try {
+        if (currCollection.type === CollectionType.builtIn) {
+          const list = await fetchBuiltInToolList(currCollection.name) as Tool[]
+          setCurrentTools(list)
+        }
+        else {
+          const list = await fetchCustomToolList(currCollection.name) as Tool[]
+          setCurrentTools(list)
+        }
       }
+      catch (e) { }
+      setIsDetailLoading(false)
     })()
-  }, [currCollection])
+  }, [currCollection?.name])
 
   const [isShowEditCollectionToolModal, setIsShowEditCollectionToolModal] = useState(false)
   const handleCreateToolCollection = () => {
@@ -148,6 +161,7 @@ const Tools: FC<Props> = ({
               addedToolNames={addedToolNames}
               onAddTool={onAddTool}
               onRefreshData={fetchCollectionList}
+              isLoading={isDetailLoading}
             />
           </div>
         </div>

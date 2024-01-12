@@ -23,6 +23,7 @@ type Props = {
   addedToolNames?: string[]
   onAddTool?: (payload: Tool) => void
   onRefreshData: () => void
+  isLoading: boolean
 }
 
 const ToolList: FC<Props> = ({
@@ -32,6 +33,7 @@ const ToolList: FC<Props> = ({
   addedToolNames,
   onAddTool,
   onRefreshData,
+  isLoading,
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
@@ -63,7 +65,7 @@ const ToolList: FC<Props> = ({
     setIsShowEditCustomCollectionModal(false)
   }
 
-  if (!collection)
+  if (!collection || isLoading)
     return <Loading type='app' />
 
   const icon = <>{typeof collection.icon === 'string'
