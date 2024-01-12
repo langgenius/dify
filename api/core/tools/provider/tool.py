@@ -23,7 +23,7 @@ class Tool(BaseModel, ABC):
 
     meta: Meta = None
 
-    def fork_processing_tool(self, meta: Dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 

@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 class GoogleProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
-            GoogleSearchTool().fork_processing_tool(
+            GoogleSearchTool().fork_tool_runtime(
                 meta={
                     "credentials": credentials,
                 }

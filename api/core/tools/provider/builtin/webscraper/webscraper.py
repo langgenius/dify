@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 class WebscraperProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
-            WebscraperTool().fork_processing_tool(
+            WebscraperTool().fork_tool_runtime(
                 meta={
                     "credentials": credentials,
                 }

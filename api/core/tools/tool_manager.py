@@ -118,19 +118,63 @@ class ToolManager:
             :param provider_name: the name of the provider
             :param tool_name: the name of the tool
 
-            :return: the provider, the tool
+            :return: the tool
         """
         if provider_type == 'builtin':
             return ToolManager.get_builtin_tool(provider_name, tool_name)
         elif provider_type == 'api':
             if tanent_id is None:
                 raise ValueError('tanent id is required for api provider')
-            return ToolManager.get_api_provider(tanent_id, provider_name).get_tool(tool_name)
+            api_provider, _ = ToolManager.get_api_provider(tanent_id, provider_name)
+            return api_provider.get_tool(tool_name)
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
         else:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
-    
+        
+    @staticmethod
+    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tanent_id) \
+        -> Union[BuiltinTool, ApiTool]:
+        """
+            get the tool runtime
+
+            :param provider_type: the type of the provider
+            :param provider_name: the name of the provider
+            :param tool_name: the name of the tool
+
+            :return: the tool
+        """
+        if provider_type == 'builtin':
+            builtin_tool = ToolManager.get_builtin_tool(provider_name, tool_name)
+            # get credentials
+            builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
+                BuiltinToolProvider.tenant_id == tanent_id,
+                BuiltinToolProvider.provider == provider_name,
+            ).first()
+
+            if builtin_provider is None:
+                raise ToolProviderNotFoundError(f'builtin provider {provider_name} not found')
+            
+            return builtin_tool.fork_tool_runtime(meta={
+                'tenant_id': tanent_id,
+                'credentials': builtin_provider.credentials,
+            })
+        
+        elif provider_type == 'api':
+            if tanent_id is None:
+                raise ValueError('tanent id is required for api provider')
+            
+            api_provider, credentials = ToolManager.get_api_provider(tanent_id, provider_name)
+
+            return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
+                'tenant_id': tanent_id,
+                'credentials': credentials,
+            })
+        elif provider_type == 'app':
+            raise NotImplementedError('app provider not implemented')
+        else:
+            raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
+
     @staticmethod
     def get_builtin_provider_icon(provider: str) -> Tuple[str, str]:
         """
@@ -294,18 +338,19 @@ class ToolManager:
         return list(result_providers.values())
     
     @staticmethod
-    def get_api_provider(tanent_id: str, provider_name: str) -> ApiBasedToolProviderController:
+    def get_api_provider(tanent_id: str, provider_name: str) -> Tuple[ApiBasedToolProviderController, Dict[str, Any]]:
         """
             get the api provider
 
             :param provider_name: the name of the provider
 
-            :return: the provider
+            :return: the provider controller, the credentials
         """
         provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
             ApiToolProvider.name == provider_name,
             ApiToolProvider.tenant_id == tanent_id,
         ).first()
+
         if provider is None:
             raise ToolProviderNotFoundError(f'api provider {provider_name} not found')
         
@@ -314,4 +359,4 @@ class ToolManager:
         )
         controller.load_bundled_tools(provider.tools)
 
-        return controller
+        return controller, provider.credentials

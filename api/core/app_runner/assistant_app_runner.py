@@ -157,19 +157,10 @@ class AssistantApplicationRunner(AppRunner):
         """
             convert tool to prompt message tool
         """
-        tool_entity = ToolManager.get_tool(
+        tool_entity = ToolManager.get_tool_runtime(
             provider_type=tool.provider_type, provider_name=tool.provider_name, tool_name=tool.tool_name, 
             tanent_id=application_generate_entity.tenant_id
         )
-
-        if tool.provider_type == 'builtin':
-            """
-                if builtin tool, fork a new tool with tenant_id
-                ensure the builtin tool has ability to access model
-            """
-            tool_entity = tool_entity.fork_processing_tool(meta={
-                "tenant_id": application_generate_entity.tenant_id,
-            })
 
         message_tool = PromptMessageTool(
             name=tool.tool_name,

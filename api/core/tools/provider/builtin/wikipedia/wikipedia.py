@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 class WikiPediaProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
-            WikiPediaSearchTool().fork_processing_tool(
+            WikiPediaSearchTool().fork_tool_runtime(
                 meta={
                     "credentials": credentials,
                 }
