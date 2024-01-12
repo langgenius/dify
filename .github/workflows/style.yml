@@ -52,3 +52,31 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_YAML: true
+
+  reformat:
+    name: Reformat
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: ./api/requirements.txt
+
+      - name: Install Python Linters
+        run: pip install isort
+
+      - name: Run Reformat
+        run: dev/reformat
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: Apply reformat
+          file_pattern: '*.py'
