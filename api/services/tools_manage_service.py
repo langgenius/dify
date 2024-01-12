@@ -28,24 +28,36 @@ class ToolManageService:
             :return: the list of tool providers
         """
         result = [provider.to_dict() for provider in ToolManager.user_list_providers(
-            user_id,
-            tanent_id,
+            user_id, tanent_id
         )]
 
+        # add icon url prefix
+        for provider in result:
+            ToolManageService.repacket_provider(provider)
+
+        return result
+    
+    @staticmethod
+    def repacket_provider(provider: dict):
+        """
+            repacket provider
+
+            :param provider: the provider dict
+        """
         url_prefix = (current_app.config.get("CONSOLE_API_URL")
                       + f"/console/api/workspaces/current/tool-provider/builtin/")
         
-        # add icon url prefix
-        for provider in result:
-            if 'icon' in provider:
-                if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
-                    provider['icon'] = url_prefix + provider['name'] + '/icon'
-                elif provider['type'] == UserToolProvider.ProviderType.API.value:
-                    try:
-                        provider['icon'] = json.loads(provider['icon'])
-                    except:
-                        provider = ''
-        return result
+        if 'icon' in provider:
+            if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
+                provider['icon'] = url_prefix + provider['name'] + '/icon'
+            elif provider['type'] == UserToolProvider.ProviderType.API.value:
+                try:
+                    provider['icon'] = json.loads(provider['icon'])
+                except:
+                    provider['icon'] =  {
+                        "background": "#252525",
+                        "content": "\ud83d\ude01"
+                    }
     
     @staticmethod
     def list_builtin_tool_provider_tools(

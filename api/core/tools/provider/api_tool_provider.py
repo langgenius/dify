@@ -101,18 +101,14 @@ class ApiBasedToolProviderController(ToolProviderController):
                     'en_US': tool_bundle.operation_id,
                     'zh_Hans': tool_bundle.operation_id
                 },
-                'description': {
-                    'en_US': tool_bundle.summary,
-                    'zh_Hans': tool_bundle.summary
-                },
                 'icon': tool_bundle.icon if tool_bundle.icon else ''
             },
             'description': {
                 'human': {
-                    'en_US': tool_bundle.summary,
-                    'zh_Hans': tool_bundle.summary
+                    'en_US': tool_bundle.summary or '',
+                    'zh_Hans': tool_bundle.summary or ''
                 },
-                'llm': tool_bundle.summary
+                'llm': tool_bundle.summary or ''
             },
             'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
         })
