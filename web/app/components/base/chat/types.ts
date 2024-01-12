@@ -36,9 +36,9 @@ export type EnableType = {
 export type ChatConfig = {
   opening_statement: string
   speech_to_text: EnableType
-  user_input_form: (UserInputFormTextInput | UserInputFormSelect | UserInputFormParagraph)[]
+  user_input_form?: (UserInputFormTextInput | UserInputFormSelect | UserInputFormParagraph)[]
   suggested_questions_after_answer: EnableType
-  file_upload: {
+  file_upload?: {
     image: VisionConfig
   }
 }

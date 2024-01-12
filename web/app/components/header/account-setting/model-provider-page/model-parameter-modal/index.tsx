@@ -40,6 +40,7 @@ import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAn
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ModelParameterModalProps = {
   isAdvancedMode: boolean
@@ -49,6 +50,8 @@ export type ModelParameterModalProps = {
   setModel: (model: { modelId: string; provider: string; mode?: string; features: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
+  debugWithMultipleModel: boolean
+  onDebugWithMultipleModelChange: () => void
 }
 const stopParameerRule: ModelParameterRule = {
   default: [],
@@ -75,6 +78,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   setModel,
   completionParams,
   onCompletionParamsChange,
+  debugWithMultipleModel,
+  onDebugWithMultipleModelChange,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -358,6 +363,17 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   ))
                 )
               }
+            </div>
+            <div
+              className='flex items-center justify-between px-6 h-[50px] bg-gray-50 border-t border-t-gray-100 text-xs font-medium text-primary-600 cursor-pointer rounded-b-xl'
+              onClick={() => onDebugWithMultipleModelChange()}
+            >
+              {
+                debugWithMultipleModel
+                  ? 'Debug as Single Model'
+                  : 'Debug as Multiple Model'
+              }
+              <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
             </div>
           </div>
         </PortalToFollowElemContent>

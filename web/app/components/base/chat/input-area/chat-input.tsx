@@ -29,12 +29,12 @@ import {
   useImageFiles,
 } from '@/app/components/base/image-uploader/hooks'
 
-type InputProps = {
+type ChatInputProps = {
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
 }
-const Input: FC<InputProps> = ({
+const ChatInput: FC<ChatInputProps> = ({
   visionConfig,
   speechToTextConfig,
   onSend,
@@ -216,4 +216,4 @@ const Input: FC<InputProps> = ({
   )
 }
 
-export default Input
+export default ChatInput

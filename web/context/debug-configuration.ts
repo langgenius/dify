@@ -1,4 +1,4 @@
-import { createContext } from 'use-context-selector'
+import { createContext, useContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type {
   AnnotationReplyConfig,
@@ -213,5 +213,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   setVisionConfig: () => { },
 })
+
+export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)
 
 export default DebugConfigurationContext

@@ -12,6 +12,8 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
+import DebugWithMultipleModel from './debug-with-multiple-model'
+import { useDebugWithSingleOrMultipleModel } from './hooks'
 import { AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
@@ -30,6 +32,7 @@ import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -74,6 +77,19 @@ const Debug: FC<IDebug> = ({
     visionConfig,
     annotationConfig,
   } = useContext(ConfigContext)
+  const {
+    debugWithMultipleModel,
+    multipleModelConfigs,
+    handleAddModel,
+    handleDebugWithSingleModel,
+    handleDebugWithMultipleModel,
+  } = useDebugWithSingleOrMultipleModel(appId)
+  const handleToggleDebugWithMultipleModel = () => {
+    if (debugWithMultipleModel)
+      handleDebugWithSingleModel()
+    else
+      handleDebugWithMultipleModel({ model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams })
+  }
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
@@ -516,15 +532,32 @@ const Debug: FC<IDebug> = ({
         <div className='flex items-center justify-between mb-2'>
           <div className='h2 '>{t('appDebug.inputs.title')}</div>
           <div className='flex items-center'>
-            <ModelParameterModal
-              isAdvancedMode={isAdvancedMode}
-              mode={mode}
-              provider={modelConfig.provider}
-              completionParams={completionParams}
-              modelId={modelConfig.model_id}
-              setModel={modelParameterParams.setModel}
-              onCompletionParamsChange={modelParameterParams.onCompletionParamsChange}
-            />
+            {
+              debugWithMultipleModel
+                ? (
+                  <Button
+                    className='h-8 px-2.5 text-primary-600 text-[13px] font-medium'
+                    onClick={handleAddModel}
+                    disabled={multipleModelConfigs.length >= 4}
+                  >
+                    <Plus className='mr-1 w-3.5 h-3.5' />
+                    Add Model({multipleModelConfigs.length}/4)
+                  </Button>
+                )
+                : (
+                  <ModelParameterModal
+                    isAdvancedMode={isAdvancedMode}
+                    mode={mode}
+                    provider={modelConfig.provider}
+                    completionParams={completionParams}
+                    modelId={modelConfig.model_id}
+                    setModel={modelParameterParams.setModel}
+                    onCompletionParamsChange={modelParameterParams.onCompletionParamsChange}
+                    debugWithMultipleModel={debugWithMultipleModel}
+                    onDebugWithMultipleModelChange={handleToggleDebugWithMultipleModel}
+                  />
+                )
+            }
             {mode === 'chat' && (
               <>
                 <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />
@@ -549,76 +582,89 @@ const Debug: FC<IDebug> = ({
           onVisionFilesChange={setCompletionFiles}
         />
       </div>
-      <div className="flex flex-col grow">
-        {/* Chat */}
-        {mode === AppType.chat && (
-          <div className="mt-[34px] h-full flex flex-col">
-            <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative mt-1.5 grow h-[200px] overflow-hidden')}>
-              <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
-                <Chat
-                  chatList={chatList}
-                  onSend={onSend}
-                  checkCanSend={checkCanSend}
-                  feedbackDisabled
-                  useCurrentUserAvatar
-                  isResponsing={isResponsing}
-                  canStopResponsing={!!messageTaskId}
-                  abortResponsing={async () => {
-                    await stopChatMessageResponding(appId, messageTaskId)
-                    setHasStopResponded(true)
-                    setResponsingFalse()
-                  }}
-                  isShowSuggestion={doShowSuggestion}
-                  suggestionList={suggestQuestions}
-                  isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
-                  isShowCitation={citationConfig.enabled}
-                  isShowCitationHitInfo
-                  isShowPromptLog
-                  visionConfig={{
-                    ...visionConfig,
-                    image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
-                  }}
-                  supportAnnotation
-                  appId={appId}
-                  onChatListChange={setChatList}
-                />
-              </div>
-            </div>
+      {
+        debugWithMultipleModel && (
+          <div className='grow'>
+            <DebugWithMultipleModel
+              multipleModelConfigs={multipleModelConfigs}
+            />
           </div>
-        )}
-        {/* Text  Generation */}
-        {mode === AppType.completion && (
-          <div className="mt-6">
-            <GroupName name={t('appDebug.result')} />
-            {(completionRes || isResponsing) && (
-              <TextGeneration
-                className="mt-2"
-                content={completionRes}
-                isLoading={!completionRes && isResponsing}
-                isResponsing={isResponsing}
-                isInstalledApp={false}
-                messageId={messageId}
-                isError={false}
-                onRetry={() => { }}
-                supportAnnotation
-                appId={appId}
-                varList={varList}
+        )
+      }
+      {
+        !debugWithMultipleModel && (
+          <div className="flex flex-col grow">
+            {/* Chat */}
+            {mode === AppType.chat && (
+              <div className="mt-[34px] h-full flex flex-col">
+                <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative mt-1.5 grow h-[200px] overflow-hidden')}>
+                  <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
+                    <Chat
+                      chatList={chatList}
+                      onSend={onSend}
+                      checkCanSend={checkCanSend}
+                      feedbackDisabled
+                      useCurrentUserAvatar
+                      isResponsing={isResponsing}
+                      canStopResponsing={!!messageTaskId}
+                      abortResponsing={async () => {
+                        await stopChatMessageResponding(appId, messageTaskId)
+                        setHasStopResponded(true)
+                        setResponsingFalse()
+                      }}
+                      isShowSuggestion={doShowSuggestion}
+                      suggestionList={suggestQuestions}
+                      isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
+                      isShowCitation={citationConfig.enabled}
+                      isShowCitationHitInfo
+                      isShowPromptLog
+                      visionConfig={{
+                        ...visionConfig,
+                        image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+                      }}
+                      supportAnnotation
+                      appId={appId}
+                      onChatListChange={setChatList}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Text  Generation */}
+            {mode === AppType.completion && (
+              <div className="mt-6">
+                <GroupName name={t('appDebug.result')} />
+                {(completionRes || isResponsing) && (
+                  <TextGeneration
+                    className="mt-2"
+                    content={completionRes}
+                    isLoading={!completionRes && isResponsing}
+                    isResponsing={isResponsing}
+                    isInstalledApp={false}
+                    messageId={messageId}
+                    isError={false}
+                    onRetry={() => { }}
+                    supportAnnotation
+                    appId={appId}
+                    varList={varList}
+                  />
+                )}
+              </div>
+            )}
+            {isShowFormattingChangeConfirm && (
+              <FormattingChanged
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+              />
+            )}
+            {isShowCannotQueryDataset && (
+              <CannotQueryDataset
+                onConfirm={() => setShowCannotQueryDataset(false)}
               />
             )}
           </div>
-        )}
-        {isShowFormattingChangeConfirm && (
-          <FormattingChanged
-            onConfirm={handleConfirm}
-            onCancel={handleCancel}
-          />
-        )}
-        {isShowCannotQueryDataset && (
-          <CannotQueryDataset
-            onConfirm={() => setShowCannotQueryDataset(false)}
-          />
-        )}
-      </div>
+        )
+      }
       {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )

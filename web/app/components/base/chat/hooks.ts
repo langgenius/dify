@@ -15,6 +15,7 @@ import { ssePost } from '@/service/base'
 export const useChat = (config: ChatConfig, prevChatList?: ChatItem[]) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const [conversationId, setConversationId] = useState('')
   const [isResponsing, setIsResponsing] = useState(false)
   const [chatList, setChatList, getChatList] = useGetState<ChatItem[]>(prevChatList || [])
   const [abortController, setAbortController] = useState<AbortController | null>(null)
@@ -67,6 +68,9 @@ export const useChat = (config: ChatConfig, prevChatList?: ChatItem[]) => {
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           responseItem.content = responseItem.content + message
 
+          if (isFirstMessage && newConversationId)
+            setConversationId(newConversationId)
+
           // closesure new list is outdated.
           const newListWithAnswer = produce(
             getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -102,6 +106,7 @@ export const useChat = (config: ChatConfig, prevChatList?: ChatItem[]) => {
     chatList,
     getChatList,
     setChatList,
+    conversationId,
     isResponsing,
     setIsResponsing,
     handleSend,

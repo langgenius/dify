@@ -13,11 +13,13 @@ type ChatProps = {
   config: ChatConfig
   onSend?: (message: string, files?: VisionFile[]) => void
   chatList: ChatItem[]
+  noChatInput?: boolean
 }
 const Chat: FC<ChatProps> = ({
   config = INITIAL_CONFIG,
   onSend,
   chatList,
+  noChatInput,
 }) => {
   return (
     <ChatContextProvider config={config}>
@@ -26,6 +28,7 @@ const Chat: FC<ChatProps> = ({
           chatList={chatList}
         />
         <InputArea
+          noChatInput={noChatInput}
           onSend={onSend}
         />
       </div>
