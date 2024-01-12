@@ -40,12 +40,20 @@ class WolframAlphaTool(BuiltinTool):
         while not finished and counter < 3:
             counter += 1
             try:
-                response = get(self._base_url, params=params)
+                response = get(self._base_url, params=params, timeout=20)
                 response.raise_for_status()
                 response_data = response.json()
             except Exception as e:
                 raise ToolInvokeError(str(e))
             
+            if 'success' not in response_data['queryresult'] or response_data['queryresult']['success'] != True:
+                query_result = response_data.get('queryresult', {})
+                if 'error' in query_result and query_result['error']:
+                    if 'msg' in query_result['error']:
+                        if query_result['error']['msg'] == 'Invalid appid':
+                            raise ToolProviderCredentialValidationError('Invalid appid')
+                raise ToolInvokeError('Failed to invoke tool')
+                    
             if 'didyoumeans' in response_data['queryresult']:
                 # get the most likely interpretation
                 query = ''
