@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, cast
 
 from core.tools.entities.common_entities import I18nObject
 
@@ -137,7 +137,7 @@ class ToolProviderCredentials(BaseModel):
         SELECT = "select"
 
         @classmethod
-        def value_of(cls, value: str) -> 'CredentialsType':
+        def value_of(cls, value: str) -> "ToolProviderCredentials.CredentialsType":
             """
             Get value of given mode.
 
@@ -175,3 +175,76 @@ class ToolProviderCredentials(BaseModel):
             'url': self.url,
             'placeholder': self.placeholder.to_dict() if self.placeholder else None,
         }
+
+class ToolRuntimeVariableType(Enum):
+    TEXT = "text"
+    IMAGE = "image"
+
+class ToolRuntimeVariable(BaseModel):
+    type: ToolRuntimeVariableType = Field(..., description="The type of the variable")
+    name: str = Field(..., description="The name of the variable")
+    position: int = Field(..., description="The position of the variable")
+    tool_name: str = Field(..., description="The name of the tool")
+
+class ToolRuntimeTextVariable(ToolRuntimeVariable):
+    value: str = Field(..., description="The value of the variable")
+
+class ToolRuntimeImageVariable(ToolRuntimeVariable):
+    value: str = Field(..., description="The path of the image")
+
+class ToolRuntimeVariablePool(BaseModel):
+    conversation_id: str = Field(..., description="The conversation id")
+    user_id: str = Field(..., description="The user id")
+    tenant_id: str = Field(..., description="The tenant id of assistant")
+
+    pool: List[ToolRuntimeVariable] = Field(..., description="The pool of variables")
+
+    def dict(self) -> dict:
+        return {
+            'conversation_id': self.conversation_id,
+            'user_id': self.user_id,
+            'tenant_id': self.tenant_id,
+            'pool': [variable.dict() for variable in self.pool],
+        }
+    
+    def set_text(self, tool_name: str, name: str, value: str) -> None:
+        """
+            set a text variable
+        """
+        for variable in self.pool:
+            if variable.name == name:
+                if variable.type == ToolRuntimeVariableType.TEXT:
+                    variable = cast(ToolRuntimeTextVariable, variable)
+                    variable.value = value
+                    return
+                
+        variable = ToolRuntimeTextVariable(
+            type=ToolRuntimeVariableType.TEXT,
+            name=name,
+            position=len(self.pool),
+            tool_name=tool_name,
+            value=value,
+        )
+
+        self.pool.append(variable)
+
+    def set_image(self, tool_name: str, name: str, value: str) -> None:
+        """
+            set an image variable
+        """
+        for variable in self.pool:
+            if variable.name == name:
+                if variable.type == ToolRuntimeVariableType.IMAGE:
+                    variable = cast(ToolRuntimeImageVariable, variable)
+                    variable.value = value
+                    return
+                
+        variable = ToolRuntimeImageVariable(
+            type=ToolRuntimeVariableType.IMAGE,
+            name=name,
+            position=len(self.pool),
+            tool_name=tool_name,
+            value=value,
+        )
+
+        self.pool.append(variable)

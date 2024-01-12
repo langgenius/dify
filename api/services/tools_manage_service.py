@@ -178,7 +178,8 @@ class ToolManageService:
 
     @staticmethod
     def create_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: dict, description: str, credentials: dict, parameters: dict, schema_type: str, schema: str
+        user_id: str, tenant_id: str, provider_name: str, icon: dict, description: str, credentials: dict,
+        schema_type: str, schema: str, privacy_policy: str
     ):
         """
             create api tool provider
@@ -209,6 +210,7 @@ class ToolManageService:
             schema_type_str=schema_type,
             tools_str=serialize_base_model_array(tool_bundles),
             credentials_str=json.dumps(credentials),
+            privacy_policy=privacy_policy
         )
 
         if 'auth_type' not in credentials:
@@ -221,14 +223,6 @@ class ToolManageService:
         provider_entity = ApiBasedToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_entity.load_bundled_tools(tool_bundles)
-
-        for tool_bundle in tool_bundles:
-            # validate credentials for each tool
-            try:
-                tool = provider_entity.get_tool(tool_bundle.operation_id)
-                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}), format_only=True)
-            except ToolProviderCredentialValidationError as e:
-                raise ValueError(str(e))
 
         db.session.add(db_provider)
         db.session.commit()
@@ -313,7 +307,8 @@ class ToolManageService:
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentials: dict, parameters: dict, schema_type: str, schema: str
+        user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentials: dict, 
+        schema_type: str, schema: str, privacy_policy: str
     ):
         """
             update api tool provider
@@ -340,6 +335,7 @@ class ToolManageService:
         provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
         provider.tools_str = serialize_base_model_array(tool_bundles)
         provider.credentials_str = json.dumps(credentials)
+        provider.privacy_policy = privacy_policy
 
         if 'auth_type' not in credentials:
             raise ValueError('auth_type is required')
@@ -351,14 +347,6 @@ class ToolManageService:
         provider_entity = ApiBasedToolProviderController.from_db(provider, auth_type)
         # load tools into provider entity
         provider_entity.load_bundled_tools(tool_bundles)
-
-        for tool_bundle in tool_bundles:
-            # validate credentials for each tool
-            try:
-                tool = provider_entity.get_tool(tool_bundle.operation_id)
-                tool.validate_credentials(credentials, parameters.get(tool_bundle.operation_id, {}), format_only=True)
-            except ToolProviderCredentialValidationError as e:
-                raise ValueError(str(e))
 
         db.session.add(provider)
         db.session.commit()
@@ -433,10 +421,25 @@ class ToolManageService:
         if provider is None:
             raise ValueError(f'yout have not added provider {provider}')
         
+        try:
+            credentials = json.loads(provider.credentials_str) or {}
+        except:
+            credentials = {}
+
+        for key, value in credentials.items():
+            if len(value) > 6:
+                credentials[key] = value[:3] + '***' + value[-3:]
+            else:
+                credentials[key] = '*****'
+
         return json.loads(serialize_base_model_dict({
             'schema_type': provider.schema_type,
             'schema': provider.schema,
             'tools': provider.tools,
+            'icon': json.loads(provider.icon),
+            'description': provider.description,
+            'credentials': credentials,
+            'privacy_policy': provider.privacy_policy
         }))
     
     @staticmethod

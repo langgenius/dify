@@ -100,12 +100,12 @@ class ToolApiProviderAddApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('parameters', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('description', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
 
         args = parser.parse_args()
 
@@ -116,9 +116,9 @@ class ToolApiProviderAddApi(Resource):
             args['icon'],
             args['description'],
             args['credentials'],
-            args['parameters'],
             args['schema_type'],
             args['schema'],
+            args['privacy_policy'],
         )
     
 class ToolApiProviderListToolsApi(Resource):
@@ -154,12 +154,12 @@ class ToolApiProviderUpdateApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('parameters', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
         parser.add_argument('description', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
 
         args = parser.parse_args()
 
@@ -170,9 +170,9 @@ class ToolApiProviderUpdateApi(Resource):
             args['icon'],
             args['description'],
             args['credentials'],
-            args['parameters'],
             args['schema_type'],
             args['schema'],
+            args['privacy_policy'],
         )
 
 class ToolApiProviderDeleteApi(Resource):

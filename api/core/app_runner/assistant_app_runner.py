@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import cast, Tuple
+from datetime import datetime
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
@@ -16,11 +17,12 @@ from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 from core.tools.tool_manager import ToolManager
-from core.tools.entities.tool_entities import ToolParamter
+from core.tools.entities.tool_entities import ToolParamter, ToolRuntimeVariablePool
 from core.tools.provider.tool import Tool
 
 from extensions.ext_database import db
 from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
+from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
@@ -80,11 +82,21 @@ class AssistantApplicationRunner(AppRunner):
         agent_entity = app_orchestration_config.agent
         tools = agent_entity.tools
 
+        # load tool variables
+        tool_conversation_variables = self._load_tool_variables(conversation_id=conversation.id,
+                                                   user_id=application_generate_entity.user_id,
+                                                   tanent_id=application_generate_entity.tenant_id)
+
+        # convert db variables to tool variables
+        tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
+
         # convert tools into ModelRuntime Tool format
         prompt_messages_tools = []
         tool_instances = {}
         for tool in tools:
             prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(application_generate_entity, tool)
+            # load tool variables into tool entity memory
+            tool_entity.load_variables(tool_variables)
             prompt_messages_tools.append(prompt_tool)
             # save tool entity
             tool_instances[tool.tool_name] = tool_entity
@@ -145,6 +157,45 @@ class AssistantApplicationRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream
         )
+
+    def _load_tool_variables(self, conversation_id: str, user_id: str, tanent_id: str) -> ToolConversationVariables:
+        """
+        load tool variables from database
+        """
+        tool_variables: ToolConversationVariables = db.session.query(ToolConversationVariables).filter(
+            ToolConversationVariables.conversation_id == conversation_id,
+            ToolConversationVariables.tenant_id == tanent_id
+        ).first()
+
+        if tool_variables:
+            # save tool variables to session, so that we can update it later
+            db.session.add(tool_variables)
+        else:
+            # create new tool variables
+            tool_variables = ToolConversationVariables(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                tenant_id=tanent_id,
+                variables_str='{}',
+            )
+            db.session.add(tool_variables)
+            db.session.commit()
+
+        return tool_variables
+    
+    def _convert_db_variables_to_tool_variables(self, db_variables: ToolConversationVariables) -> ToolRuntimeVariablePool:
+        """
+        convert db variables to tool variables
+        """
+        return ToolRuntimeVariablePool(**db_variables.variables)
+    
+    def _update_db_variables(self, tool_variables: ToolRuntimeVariablePool, db_variables: ToolConversationVariables):
+        """
+        convert tool variables to db variables
+        """
+        db_variables.updated_at = datetime.utcnow()
+        db_variables.variables_str = tool_variables.json()
+        db.session.commit()
 
     def _convert_tool_to_prompt_message_tool(self, application_generate_entity: ApplicationGenerateEntity, tool: AgentToolEntity
                                              ) -> Tuple[PromptMessageTool, Tool]:

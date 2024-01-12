@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Union, Optional
 from abc import abstractmethod, ABC
 
 from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage,\
-    ToolParamter, ToolDescription
-from core.model_runtime.entities.message_entities import PromptMessage
+    ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable, \
+    ToolRuntimeImageVariable
 
 class Tool(BaseModel, ABC):
     identity: ToolIdentity = None
@@ -22,6 +22,7 @@ class Tool(BaseModel, ABC):
         credentials: Dict[str, Any] = None
 
     meta: Meta = None
+    variables: ToolRuntimeVariablePool = None
 
     def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
         """
@@ -36,6 +37,48 @@ class Tool(BaseModel, ABC):
             description=self.description.copy() if self.description else None,
             meta=Tool.Meta(**meta)
         )
+    
+    def load_variables(self, variables: ToolRuntimeVariablePool):
+        """
+            load variables from database
+
+            :param conversation_id: the conversation id
+        """
+        self.variables = variables
+
+    def set_image_variable(self, variable_name: str, image_key: str) -> None:
+        """
+            set an image variable
+        """
+        if not self.variables:
+            return
+        
+        self.variables.set_image(self.identity.name, variable_name, image_key)
+
+    def set_text_variable(self, variable_name: str, text: str) -> None:
+        """
+            set a text variable
+        """
+        if not self.variables:
+            return
+        
+        self.variables.set_text(self.identity.name, variable_name, text)
+        
+    def get_variable(self, name: str) -> Optional[ToolRuntimeVariable]:
+        """
+            get a variable
+
+            :param name: the name of the variable
+            :return: the variable
+        """
+        if not self.variables:
+            return None
+        
+        for variable in self.variables.pool:
+            if variable.name == name:
+                return variable
+            
+        return None
 
     def invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> List[ToolInvokeMessage]:
         result = self._invoke(

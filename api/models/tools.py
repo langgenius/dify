@@ -9,7 +9,7 @@ from extensions.ext_database import db
 
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ApiProviderSchemaType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolRuntimeVariablePool
 
 from models.model import Tenant, Account, App
 
@@ -93,7 +93,7 @@ class ApiToolProvider(db.Model):
     # name of the api provider
     name = db.Column(db.String(40), nullable=False)
     # icon
-    icon = db.Column(db.String(256), nullable=False)
+    icon = db.Column(db.String(255), nullable=False)
     # original schema
     schema = db.Column(db.Text, nullable=False)
     schema_type_str = db.Column(db.String(40), nullable=False)
@@ -107,6 +107,8 @@ class ApiToolProvider(db.Model):
     tools_str = db.Column(db.Text, nullable=False)
     # json format credentials
     credentials_str = db.Column(db.Text, nullable=False)
+    # privacy policy
+    privacy_policy = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
@@ -171,3 +173,29 @@ class ToolModelInvoke(db.Model):
     currency = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+class ToolConversationVariables(db.Model):
+    """
+    store the conversation variables from tool invoke
+    """
+    __tablename__ = "tool_conversation_variables"
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tool_conversation_variables_pkey'),
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    # conversation user id
+    user_id = db.Column(UUID, nullable=False)
+    # tanent id
+    tenant_id = db.Column(UUID, nullable=False)
+    # conversation id
+    conversation_id = db.Column(UUID, nullable=False)
+    # variables pool
+    variables_str = db.Column(db.Text, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def variables(self) -> dict:
+        return json.loads(self.variables_str)
