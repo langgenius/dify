@@ -86,22 +86,17 @@ class ToolManageService:
         ]
 
     @staticmethod
-    def parser_api_schema(
-        schema_type: str, schema: str
-    ) -> List[ApiBasedToolBundle]:
+    def parser_api_schema(schema: str) -> List[ApiBasedToolBundle]:
         """
             parse api schema to tool bundle
         """
         try:
             warnings = {}
-            if schema_type == ApiProviderSchemaType.OPENAPI.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema, warning=warnings)
-            elif schema_type == ApiProviderSchemaType.OPENAI_PLUGIN.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema, warning=warnings)
-            elif schema_type == ApiProviderSchemaType.SWAGGER.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_swagger_yaml_to_tool_bundle(schema, warning=warnings)
-            else:
-                raise ValueError(f'invalid schema type {schema_type}')
+            try:
+                tool_bundles = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
+            except Exception as e:
+                raise ValueError(f'invalid schema: {str(e)}')
+            
             credentails_schema = [
                 ToolProviderCredentials(
                     name='auth_type',

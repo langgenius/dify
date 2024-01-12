@@ -158,7 +158,7 @@ class ToolProviderCredentials(BaseModel):
     required: bool = False
     default: Optional[str] = None
     options: Optional[List[ToolCredentialsOption]] = None
-    label: I18nObject = Field(..., description="The label presented to the user")
+    label: Optional[I18nObject] = None
     help: Optional[I18nObject] = None
     url: Optional[str] = None
     placeholder: Optional[I18nObject] = None

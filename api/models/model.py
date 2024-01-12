@@ -923,7 +923,7 @@ class MessageAgentThought(db.Model):
 
     id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
     message_id = db.Column(UUID, nullable=False)
-    message_chain_id = db.Column(UUID, nullable=False)
+    message_chain_id = db.Column(UUID, nullable=True)
     position = db.Column(db.Integer, nullable=False)
     thought = db.Column(db.Text, nullable=True)
     tool = db.Column(db.Text, nullable=True)

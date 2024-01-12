@@ -232,13 +232,11 @@ class ToolApiProviderSchemaApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
 
-        parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
 
         args = parser.parse_args()
 
         return ToolManageService.parser_api_schema(
-            schema_type=args['schema_type'],
             schema=args['schema'],
         )
 
