@@ -1,11 +1,11 @@
 
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ToolParamter, ToolParamterOption
+from core.tools.entities.tool_entities import ToolParamter, ToolParamterOption, ApiProviderSchemaType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderNotFoundError, ToolNotSupportedError, \
       ToolApiSchemaError
 
-from typing import List
+from typing import List, Tuple
 
 from yaml import FullLoader, load
 from json import loads as json_loads, dumps as json_dumps
@@ -280,12 +280,12 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text, warning=warning)
     
     @staticmethod
-    def auto_parse_to_tool_bundle(content: str, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def auto_parse_to_tool_bundle(content: str, warning: dict = None) -> Tuple[List[ApiBasedToolBundle], str]:
         """
             auto parse to tool bundle
 
             :param content: the content
-            :return: the tool bundle
+            :return: tools bundle, schema_type
         """
         warning = warning if warning is not None else {}
 
@@ -297,26 +297,31 @@ class ApiBasedToolSchemaParser:
 
         if json_possible:
             try:
-                return ApiBasedToolSchemaParser.parse_openapi_json_to_tool_bundle(content, warning=warning)
+                return ApiBasedToolSchemaParser.parse_openapi_json_to_tool_bundle(content, warning=warning), \
+                    ApiProviderSchemaType.OPENAPI.value
             except:
                 pass
 
             try:
-                return ApiBasedToolSchemaParser.parse_swagger_json_to_tool_bundle(content, warning=warning)
+                return ApiBasedToolSchemaParser.parse_swagger_json_to_tool_bundle(content, warning=warning), \
+                    ApiProviderSchemaType.SWAGGER.value
             except:
                 pass
             try:
-                return ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(content, warning=warning)
+                return ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(content, warning=warning), \
+                    ApiProviderSchemaType.OPENAI_PLUGIN.value
             except:
                 pass
         else:
             try:
-                return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(content, warning=warning)
+                return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(content, warning=warning), \
+                    ApiProviderSchemaType.OPENAPI.value
             except:
                 pass
 
             try:
-                return ApiBasedToolSchemaParser.parse_swagger_yaml_to_tool_bundle(content, warning=warning)
+                return ApiBasedToolSchemaParser.parse_swagger_yaml_to_tool_bundle(content, warning=warning), \
+                    ApiProviderSchemaType.SWAGGER.value
             except:
                 pass
 

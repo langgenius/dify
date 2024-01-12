@@ -93,7 +93,7 @@ class ToolManageService:
         try:
             warnings = {}
             try:
-                tool_bundles = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
+                tool_bundles, schema_type = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, warning=warnings)
             except Exception as e:
                 raise ValueError(f'invalid schema: {str(e)}')
             
@@ -146,6 +146,7 @@ class ToolManageService:
 
             return json.loads(serialize_base_model_dict(
                 {
+                    'schema_type': schema_type,
                     'parameters_schema': tool_bundles,
                     'credentials_schema': credentails_schema,
                     'warning': warnings
