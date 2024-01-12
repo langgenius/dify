@@ -11,7 +11,7 @@ help:
     en_US: How to integrate with Ollama
     zh_Hans: 如何集成 Ollama
   url:
-    en_US: https://github.com/jmorganca/ollama
+    en_US: https://docs.dify.ai/advanced/model-configuration/ollama
 supported_model_types:
   - llm
   - text-embedding
@@ -40,6 +40,7 @@ model_credential_schema:
         - variable: __model_type
           value: llm
       label:
+        zh_Hans: 模型类型
         en_US: Completion mode
       type: select
       required: true
