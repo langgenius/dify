@@ -35,8 +35,24 @@ export const parseParamsSchema = (schema: string) => {
   })
 }
 
+export const fetchCustomCollection = (collectionName: string) => {
+  return get(`/workspaces/current/tool-provider/api/get?provider=${collectionName}`)
+}
+
 export const createCustomCollection = (collection: CustomCollectionBackend) => {
   return post('/workspaces/current/tool-provider/api/add', {
-    body: collection,
+    body: {
+      ...collection,
+      description: 'just something', // TODO: remove this after api changed
+    },
+  })
+}
+
+export const updateCustomCollection = (collection: CustomCollectionBackend) => {
+  return post('/workspaces/current/tool-provider/api/update', {
+    body: {
+      ...collection,
+      description: 'just something', // TODO: remove this after api changed
+    },
   })
 }

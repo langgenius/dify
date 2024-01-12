@@ -13,6 +13,7 @@ type Props = {
   collection: Collection
   loc: LOC
   onShowAuth: () => void
+  onShowEditCustomCollection: () => void
 }
 
 const Header: FC<Props> = ({
@@ -20,6 +21,7 @@ const Header: FC<Props> = ({
   collection,
   loc,
   onShowAuth,
+  onShowEditCustomCollection,
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
@@ -52,6 +54,15 @@ const Header: FC<Props> = ({
           onClick={() => onShowAuth()}
         >
           <div className={cn(isAuthed ? 'border-[#12B76A] bg-[#32D583]' : 'border-gray-400 bg-gray-300', 'rounded h-2 w-2 border')}></div>
+          <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
+        </div>
+      )}
+
+      {collection.type === CollectionType.custom && (
+        <div
+          className={cn('cursor-pointer', 'flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
+          onClick={() => onShowEditCustomCollection()}
+        >
           <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
         </div>
       )}

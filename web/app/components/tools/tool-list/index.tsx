@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { CollectionType, LOC } from '../types'
-import type { Collection, Tool } from '../types'
+import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Loading from '../../base/loading'
 import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
 import Toast from '../../base/toast'
@@ -12,7 +12,9 @@ import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import { removeBuiltInToolCredential, updateBuiltInToolCredential } from '@/service/tools'
+import { fetchCustomCollection, removeBuiltInToolCredential, updateBuiltInToolCredential, updateCustomCollection } from '@/service/tools'
+import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+
 type Props = {
   collection: Collection | null
   list: Tool[]
@@ -37,6 +39,30 @@ const ToolList: FC<Props> = ({
   const needAuth = collection?.allow_delete
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
+
+  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | null>(null)
+  useEffect(() => {
+    if (!collection)
+      return
+    (async () => {
+      if (collection.type === CollectionType.custom) {
+        const res = await fetchCustomCollection(collection.name)
+        setCustomCollection(res as CustomCollectionBackend)
+      }
+    })()
+  }, [collection])
+  const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
+
+  const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    await updateCustomCollection(data)
+    onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setIsShowEditCustomCollectionModal(false)
+  }
+
   if (!collection)
     return <Loading type='app' />
 
@@ -68,6 +94,7 @@ const ToolList: FC<Props> = ({
         collection={collection}
         loc={loc}
         onShowAuth={() => isInToolsPage && setShowSettingAuth(true)}
+        onShowEditCustomCollection={() => setIsShowEditCustomCollectionModal(true)}
       />
       <div className={cn(isInToolsPage ? 'px-6 pt-4' : 'px-4 pt-3')}>
         <div className='flex items-center h-[4.5] space-x-2  text-xs font-medium text-gray-500'>
@@ -126,6 +153,14 @@ const ToolList: FC<Props> = ({
             await onRefreshData()
             setShowSettingAuth(false)
           }}
+        />
+      )}
+
+      {isShowEditCollectionToolModal && (
+        <EditCustomToolModal
+          payload={customCollection}
+          onHide={() => setIsShowEditCustomCollectionModal(false)}
+          onEdit={doUpdateCustomToolCollection}
         />
       )}
     </div>

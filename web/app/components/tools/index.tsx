@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Button from '../base/button'
 import { Plus } from '../base/icons/src/vender/line/general'
+import Toast from '../base/toast'
 import type { Collection, CustomCollectionBackend, Tool } from './types'
 import { CollectionType, LOC } from './types'
 import ToolNavList from './tool-nav-list'
@@ -71,30 +72,19 @@ const Tools: FC<Props> = ({
     })()
   }, [currCollection])
 
-  const [isAddToolCollection, setIsAddToolCollection] = useState(true)
-  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(false)
+  const [isShowEditCollectionToolModal, setIsShowEditCollectionToolModal] = useState(false)
   const handleCreateToolCollection = () => {
-    setIsAddToolCollection(true)
-    setIsShowEditCustomToolModal(true)
-  }
-
-  const handleEditToolCollection = () => {
-    setIsAddToolCollection(false)
-    setIsShowEditCustomToolModal(true)
-  }
-
-  const doSaveCustomToolCollection = (isAdd: boolean, data: CustomCollectionBackend) => {
-    return createCustomCollection(data)
+    setIsShowEditCollectionToolModal(true)
   }
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
-    setIsShowEditCustomToolModal(false)
-  }
-
-  const doEditCustomToolCollection = async (data: CustomCollectionBackend) => {
-    await doSaveCustomToolCollection(false, data)
-    setIsShowEditCustomToolModal(false)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    await fetchCollectionList()
+    setIsShowEditCollectionToolModal(false)
   }
 
   return (
@@ -162,12 +152,11 @@ const Tools: FC<Props> = ({
           </div>
         </div>
       </div>
-      {isShowEditCustomToolModal && (
+      {isShowEditCollectionToolModal && (
         <EditCustomToolModal
-          payload={isAddToolCollection ? null : {}}
-          onHide={() => setIsShowEditCustomToolModal(false)}
+          payload={null}
+          onHide={() => setIsShowEditCollectionToolModal(false)}
           onAdd={doCreateCustomToolCollection}
-          onEdit={doEditCustomToolCollection}
         />
       )}
     </>
