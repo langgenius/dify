@@ -26,7 +26,7 @@ const AgentTools: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const [isShowChooseTool, setIsShowChooseTool] = useState(true)
+  const [isShowChooseTool, setIsShowChooseTool] = useState(false)
 
   return (
     <>

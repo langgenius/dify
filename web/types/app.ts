@@ -1,5 +1,6 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
 import type { ExternalDataTool } from '@/models/common'
+import type { CollectionType } from '@/app/components/tools/types'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -90,6 +91,13 @@ export type UserInputFormItem = {
   'select': SelectTypeFormItem
 }
 
+export type AgentTool = {
+  provider_type: CollectionType
+  provider_name: string
+  tool_name: string
+  tool_parameters: string
+}
+
 export type ToolItem = {
   dataset: {
     enabled: boolean
@@ -101,7 +109,7 @@ export type ToolItem = {
     words: string[]
     canned_response: string
   }
-}
+} | AgentTool
 
 /**
  * Model configuration. The backend type.
@@ -133,6 +141,11 @@ export type ModelConfig = {
   annotation_reply?: AnnotationReplyConfig
   agent_mode: {
     enabled: boolean
+    prompt?: {
+      first_prompt: string
+      next_iteration: string
+    }
+    strategy: string
     tools: ToolItem[]
   }
   model: {
