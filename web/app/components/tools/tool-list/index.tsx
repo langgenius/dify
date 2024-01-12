@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { LOC } from '../types'
+import { CollectionType, LOC } from '../types'
 import type { Collection, Tool } from '../types'
 import Loading from '../../base/loading'
 import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
@@ -30,6 +30,8 @@ const ToolList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
+  const isBuiltIn = collection?.type === CollectionType.builtIn
+  const needAuth = collection?.allow_delete
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   if (!collection)
@@ -69,7 +71,7 @@ const ToolList: FC<Props> = ({
           <div className=''>{t('tools.includeToolNum', {
             num: list.length,
           })}</div>
-          {!collection.is_team_authorization && isInToolsPage && (
+          {needAuth && isBuiltIn && !collection.is_team_authorization && isInToolsPage && (
             <>
               <div>·</div>
               <div

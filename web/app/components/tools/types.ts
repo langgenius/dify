@@ -33,6 +33,7 @@ export type Collection = {
   type: CollectionType
   team_credentials: Record<string, any>
   is_team_authorization: boolean
+  allow_delete: boolean
 }
 
 export type ToolParameter = {

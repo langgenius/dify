@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from '../types'
-import { LOC } from '../types'
+import { CollectionType, LOC } from '../types'
 import I18n from '@/context/i18n'
 
 type Props = {
@@ -25,6 +25,7 @@ const Header: FC<Props> = ({
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage
+  const needAuth = collection?.allow_delete
 
   // const isBuiltIn = collection.type === CollectionType.builtIn
   const isAuthed = collection.is_team_authorization
@@ -45,13 +46,15 @@ const Header: FC<Props> = ({
           )}
         </div>
       </div>
-      <div
-        className={cn(!isAuthed && 'cursor-pointer', 'flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
-        onClick={() => !isAuthed && onShowAuth()}
-      >
-        <div className={cn(isAuthed ? 'border-[#12B76A] bg-[#32D583]' : 'border-gray-400 bg-gray-300', 'rounded h-2 w-2 border')}></div>
-        <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
-      </div>
+      {collection.type === CollectionType.builtIn && needAuth && (
+        <div
+          className={cn(!isAuthed && 'cursor-pointer', 'flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
+          onClick={() => !isAuthed && onShowAuth()}
+        >
+          <div className={cn(isAuthed ? 'border-[#12B76A] bg-[#32D583]' : 'border-gray-400 bg-gray-300', 'rounded h-2 w-2 border')}></div>
+          <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
+        </div>
+      )}
     </div >
   )
 }
