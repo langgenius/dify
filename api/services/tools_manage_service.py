@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from flask import current_app
 
@@ -156,29 +156,21 @@ class ToolManageService:
             raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
-    def convert_schema_to_tool_bundles(
-        schema_type: str, schema: str
-    ) -> List[ApiBasedToolBundle]:
+    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> List[ApiBasedToolBundle]:
         """
             convert schema to tool bundles
+
+            :return: the list of tool bundles, description
         """
         try:
-            if schema_type == ApiProviderSchemaType.OPENAPI.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
-            elif schema_type == ApiProviderSchemaType.OPENAI_PLUGIN.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(schema)
-            elif schema_type == ApiProviderSchemaType.SWAGGER.value:
-                tool_bundles = ApiBasedToolSchemaParser.parse_swagger_yaml_to_tool_bundle(schema)
-            else:
-                raise ValueError(f'invalid schema type {schema_type}')
-
+            tool_bundles = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema, extra_info=extra_info)
             return tool_bundles
         except Exception as e:
             raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
     def create_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: dict, description: str, credentials: dict,
+        user_id: str, tenant_id: str, provider_name: str, icon: dict, credentials: dict,
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -197,7 +189,9 @@ class ToolManageService:
             raise ValueError(f'provider {provider_name} already exists')
 
         # parse openapi to tool bundle
-        tool_bundles = ToolManageService.convert_schema_to_tool_bundles(schema_type, schema)
+        extra_info = {}
+        # extra info like description will be set here
+        tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
         # create db provider
         db_provider = ApiToolProvider(
@@ -206,7 +200,7 @@ class ToolManageService:
             name=provider_name,
             icon=json.dumps(icon),
             schema=schema,
-            description=description,
+            description=extra_info.get('description', ''),
             schema_type_str=schema_type,
             tools_str=serialize_base_model_array(tool_bundles),
             credentials_str=json.dumps(credentials),
@@ -307,7 +301,7 @@ class ToolManageService:
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, description: str, credentials: dict, 
+        user_id: str, tenant_id: str, provider_name: str, icon: str, credentials: dict, 
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -326,12 +320,14 @@ class ToolManageService:
             raise ValueError(f'api provider {provider_name} does not exists')
 
         # parse openapi to tool bundle
-        tool_bundles = ToolManageService.convert_schema_to_tool_bundles(schema_type, schema)
+        extra_info = {}
+        # extra info like description will be set here
+        tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
         # update db provider
         provider.icon = icon
         provider.schema = schema
-        provider.description = description
+        provider.description = extra_info.get('description', '')
         provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
         provider.tools_str = serialize_base_model_array(tool_bundles)
         provider.credentials_str = json.dumps(credentials)

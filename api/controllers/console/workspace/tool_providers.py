@@ -104,8 +104,7 @@ class ToolApiProviderAddApi(Resource):
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('description', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('privacy_policy', type=str, required=False, nullable=False, location='json')
 
         args = parser.parse_args()
 
@@ -114,11 +113,10 @@ class ToolApiProviderAddApi(Resource):
             tenant_id,
             args['provider'],
             args['icon'],
-            args['description'],
             args['credentials'],
             args['schema_type'],
             args['schema'],
-            args['privacy_policy'],
+            args.get('privacy_policy', ''),
         )
     
 class ToolApiProviderListToolsApi(Resource):
@@ -158,7 +156,6 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('description', type=str, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
 
         args = parser.parse_args()
@@ -168,7 +165,6 @@ class ToolApiProviderUpdateApi(Resource):
             tenant_id,
             args['provider'],
             args['icon'],
-            args['description'],
             args['credentials'],
             args['schema_type'],
             args['schema'],
