@@ -13,7 +13,7 @@ import Contribute from './contribute'
 import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import TabSlider from '@/app/components/base/tab-slider'
-import { fetchBuiltInToolList, fetchCollectionList } from '@/service/tools'
+import { createCustomCollection, fetchBuiltInToolList, fetchCollectionList } from '@/service/tools'
 
 type Props = {
   loc: LOC
@@ -78,11 +78,11 @@ const Tools: FC<Props> = ({
   }
 
   const doSaveCustomToolCollection = (isAdd: boolean, data: CustomCollectionBackend) => {
-    console.log(isAdd, data)
+    return createCustomCollection(data)
   }
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    await doSaveCustomToolCollection(true, data)
+    await createCustomCollection(data)
     setIsShowEditCustomToolModal(false)
   }
 

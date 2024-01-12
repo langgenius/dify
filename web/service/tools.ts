@@ -1,4 +1,5 @@
 import { get, post } from './base'
+import type { CustomCollectionBackend } from '@/app/components/tools/types'
 
 export const fetchCollectionList = () => {
   return get('/workspaces/current/tool-providers')
@@ -23,5 +24,11 @@ export const parseParamsSchema = (schema: string) => {
     body: {
       schema,
     },
+  })
+}
+
+export const createCustomCollection = (collection: CustomCollectionBackend) => {
+  return post('/workspaces/current/tool-provider/api/add', {
+    body: collection,
   })
 }

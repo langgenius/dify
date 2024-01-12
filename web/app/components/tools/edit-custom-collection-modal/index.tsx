@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { useDebounce } from 'ahooks'
+import { useDebounce, useGetState } from 'ahooks'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
 import { AuthType } from '../types'
@@ -33,7 +33,8 @@ const EditCustomCollectionModal: FC<Props> = ({
   const { t } = useTranslation()
   const isAdd = !payload
 
-  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend>(isAdd
+  const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>([])
+  const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
     ? {
       provider: '',
       credentials: {
@@ -43,11 +44,11 @@ const EditCustomCollectionModal: FC<Props> = ({
         icon: '🕵️',
         icon_background: '#FEF7C3',
       },
-      parameters: {},
       schema_type: '',
       schema: '',
     }
     : payload)
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
   const setEmoji = (emoji: Emoji) => {
@@ -65,18 +66,26 @@ const EditCustomCollectionModal: FC<Props> = ({
     setCustomCollection(newCollection)
   }
 
-  const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>([])
-
   useEffect(() => {
     if (!debouncedSchema)
       return
     (async () => {
-      const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema) as any
-      produce(customCollection, (draft) => {
-        draft.parameters = parameters_schema
-        draft.schema_type = schema_type
-      })
-      setParamsSchemas(parameters_schema)
+      const customCollection = getCustomCollection()
+      try {
+        const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema) as any
+        const newCollection = produce(customCollection, (draft) => {
+          draft.schema_type = schema_type
+        })
+        setCustomCollection(newCollection)
+        setParamsSchemas(parameters_schema)
+      }
+      catch (e) {
+        const newCollection = produce(customCollection, (draft) => {
+          draft.schema_type = ''
+        })
+        setCustomCollection(newCollection)
+        setParamsSchemas([])
+      }
     })()
   }, [debouncedSchema])
 
@@ -116,7 +125,16 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <div className={fieldNameClassNames}>{t('tools.createTool.name')}</div>
                 <div className='flex items-center justify-between gap-3'>
                   <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
-                  <input className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.toolNamePlaceHolder')!} />
+                  <input
+                    className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.toolNamePlaceHolder')!}
+                    value={customCollection.provider}
+                    onChange={(e) => {
+                      const newCollection = produce(customCollection, (draft) => {
+                        draft.provider = e.target.value
+                      })
+                      setCustomCollection(newCollection)
+                    }}
+                  />
                 </div>
               </div>
 
@@ -143,9 +161,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                   onChange={e => setSchema(e.target.value)}
                   className='w-full h-[240px] px-3 py-2 leading-4 text-xs font-normal text-gray-900 bg-gray-100 rounded-lg overflow-y-auto'
                   placeholder={t('tools.createTool.schemaPlaceHolder')!}
-                >
-
-                </textarea>
+                ></textarea>
               </div>
 
               {/* Available Tools  */}
@@ -195,13 +211,21 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.privacyPolicy')}</div>
-                <input className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
+                <input
+                  value={customCollection.privacy_policy}
+                  onChange={(e) => {
+                    const newCollection = produce(customCollection, (draft) => {
+                      draft.privacy_policy = e.target.value
+                    })
+                    setCustomCollection(newCollection)
+                  }}
+                  className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
               </div>
 
             </div>
             <div className='shrink-0 flex justify-end space-x-2 py-4 pr-6 rounded-b-[10px] bg-gray-50 border-t border-black/5'>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={handleSave}>{t('common.operation.cancel')}</Button>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={onHide}>{t('common.operation.save')}</Button>
+              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
+              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
             </div>
           </div>
         }

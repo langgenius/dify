@@ -79,9 +79,9 @@ export type CustomCollectionBackend = {
   provider: string
   credentials: Credential
   icon: Emoji
-  parameters: Record<string, Record<string, object>>
   schema_type: string
   schema: string
+  privacy_policy: string
 }
 
 export type ParamItem = {
