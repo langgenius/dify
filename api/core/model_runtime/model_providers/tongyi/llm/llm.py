@@ -1,8 +1,8 @@
-from http import HTTPStatus
 from typing import Generator, List, Optional, Union
 
-import dashscope
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from dashscope import get_tokenizer
+
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMMode
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
                                                           SystemPromptMessage, UserPromptMessage)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
@@ -51,19 +51,12 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
-        # transform credentials to kwargs for model instance
-        credentials_kwargs = self._to_credential_kwargs(credentials)
+        tokenizer = get_tokenizer(model)
 
-        response = dashscope.Tokenization.call(
-            model=model,
-            prompt=self._convert_messages_to_prompt(prompt_messages),
-            **credentials_kwargs
-        )
-        
-        if response.status_code == HTTPStatus.OK:
-            return response['usage']['input_tokens']
-        else:
-            raise self._invoke_error_mapping[InvokeBadRequestError][0](response['message'])
+        # convert string to token ids
+        tokens = tokenizer.encode(self._convert_messages_to_prompt(prompt_messages))
+
+        return len(tokens)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -119,14 +112,22 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         params = {
             'model': model,
-            'prompt': self._convert_messages_to_prompt(prompt_messages),
             **model_parameters,
             **credentials_kwargs
         }
+
+        mode = self.get_model_mode(model, credentials)
+
+        if mode == LLMMode.CHAT:
+            params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
+        else:
+            params['prompt'] = self._convert_messages_to_prompt(prompt_messages)
+
         if stream:
             responses = stream_generate_with_retry(
                 client, 
                 stream=True,
+                incremental_output=True,
                 **params
             )
 
@@ -266,6 +267,35 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
+
+    def _convert_prompt_messages_to_tongyi_messages(self, prompt_messages: list[PromptMessage]) -> list[dict]:
+        """
+        Convert prompt messages to tongyi messages
+
+        :param prompt_messages: prompt messages
+        :return: tongyi messages
+        """
+        tongyi_messages = []
+        for prompt_message in prompt_messages:
+            if isinstance(prompt_message, SystemPromptMessage):
+                tongyi_messages.append({
+                    'role': 'system',
+                    'content': prompt_message.content,
+                })
+            elif isinstance(prompt_message, UserPromptMessage):
+                tongyi_messages.append({
+                    'role': 'user',
+                    'content': prompt_message.content,
+                })
+            elif isinstance(prompt_message, AssistantPromptMessage):
+                tongyi_messages.append({
+                    'role': 'assistant',
+                    'content': prompt_message.content,
+                })
+            else:
+                raise ValueError(f"Got unknown type {prompt_message}")
+
+        return tongyi_messages
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
