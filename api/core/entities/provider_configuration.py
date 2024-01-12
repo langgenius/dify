@@ -165,7 +165,7 @@ class ProviderConfiguration(BaseModel):
                     if value == '[__HIDDEN__]' and key in original_credentials:
                         credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
-        model_provider_factory.provider_credentials_validate(
+        credentials = model_provider_factory.provider_credentials_validate(
             self.provider.provider,
             credentials
         )
@@ -308,23 +308,12 @@ class ProviderConfiguration(BaseModel):
                     if value == '[__HIDDEN__]' and key in original_credentials:
                         credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
-        model_provider_factory.model_credentials_validate(
+        credentials = model_provider_factory.model_credentials_validate(
             provider=self.provider.provider,
             model_type=model_type,
             model=model,
             credentials=credentials
         )
-
-        model_schema = (
-            model_provider_factory.get_provider_instance(self.provider.provider)
-            .get_model_instance(model_type)._get_customizable_model_schema(
-                model=model,
-                credentials=credentials
-            )
-        )
-
-        if model_schema:
-            credentials['schema'] = json.dumps(encoders.jsonable_encoder(model_schema))
 
         for key, value in credentials.items():
             if key in provider_credential_secret_variables:

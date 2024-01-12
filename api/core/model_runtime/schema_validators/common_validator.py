@@ -46,7 +46,7 @@ class CommonValidator:
         :return: validated credential form schema value
         """
         #  If the variable does not exist in credentials
-        if credential_form_schema.variable not in credentials:
+        if credential_form_schema.variable not in credentials or not credentials[credential_form_schema.variable]:
             # If required is True, an exception is thrown
             if credential_form_schema.required:
                 raise ValueError(f'Variable {credential_form_schema.variable} is required')
