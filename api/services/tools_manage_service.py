@@ -419,36 +419,9 @@ class ToolManageService:
         user_id: str, tenant_id: str, provider: str
     ):
         """
-            get tool provider
+            get api tool provider
         """
-        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
-            ApiToolProvider.tenant_id == tenant_id,
-            ApiToolProvider.name == provider,
-        ).first()
-
-        if provider is None:
-            raise ValueError(f'yout have not added provider {provider}')
-        
-        try:
-            credentials = json.loads(provider.credentials_str) or {}
-        except:
-            credentials = {}
-
-        for key, value in credentials.items():
-            if len(value) > 6:
-                credentials[key] = value[:3] + '***' + value[-3:]
-            else:
-                credentials[key] = '*****'
-
-        return json.loads(serialize_base_model_dict({
-            'schema_type': provider.schema_type,
-            'schema': provider.schema,
-            'tools': provider.tools,
-            'icon': json.loads(provider.icon),
-            'description': provider.description,
-            'credentials': credentials,
-            'privacy_policy': provider.privacy_policy
-        }))
+        return ToolManager.user_get_api_provider(provider=provider, tenant_id=tenant_id)
     
     @staticmethod
     def test_api_tool_preview(

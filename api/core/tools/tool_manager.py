@@ -12,6 +12,8 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.entities.user_entities import UserToolProvider
+from core.tools.utils.configration import ToolConfiguration
+from core.tools.utils.encoder import serialize_base_model_dict
 
 from core.model_runtime.entities.message_entities import PromptMessage
 
@@ -21,6 +23,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider
 
 import importlib
 import logging
+import json
 import mimetypes
 
 logger = logging.getLogger(__name__)
@@ -125,7 +128,7 @@ class ToolManager:
         elif provider_type == 'api':
             if tanent_id is None:
                 raise ValueError('tanent id is required for api provider')
-            api_provider, _ = ToolManager.get_api_provider(tanent_id, provider_name)
+            api_provider, _ = ToolManager.get_api_provider_controller(tanent_id, provider_name)
             return api_provider.get_tool(tool_name)
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
@@ -164,7 +167,7 @@ class ToolManager:
             if tanent_id is None:
                 raise ValueError('tanent id is required for api provider')
             
-            api_provider, credentials = ToolManager.get_api_provider(tanent_id, provider_name)
+            api_provider, credentials = ToolManager.get_api_provider_controller(tanent_id, provider_name)
 
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tanent_id,
@@ -287,14 +290,16 @@ class ToolManager:
             provider_name = db_builtin_provider.provider
             result_providers[provider_name].is_team_authorization = True
 
-            for name, value in credentails.items():
-                if len(value) <= 6:
-                    value = '******'
-                else:
-                    value = value[:3] + '******' + value[-3:]
-                
-                # overwrite the result_providers
-                result_providers[provider_name].team_credentials[name] = value
+            # package builtin tool provider controller
+            controller = ToolManager.get_builtin_provider(provider_name)
+
+            # init tool configuration
+            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+            # decrypt the credentials and mask the credentials
+            decrypted_credentails = tool_configuration.decrypt_tool_credentials(credentials=credentails)
+            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentails)
+
+            result_providers[provider_name].team_credentials = masked_credentials
 
         # get db api providers
         db_api_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider). \
@@ -326,19 +331,25 @@ class ToolManager:
                 is_team_authorization=True,
             )
 
-            for name, value in credentails.items():
-                if len(value) <= 6:
-                    value = '******'
-                else:
-                    value = value[:3] + '******' + value[-3:]
-                
-                # overwrite the result_providers
-                result_providers[provider_name].team_credentials[name] = value
+            # package tool provider controller
+            controller = ApiBasedToolProviderController.from_db(
+                db_provider=db_api_provider,
+                auth_type=ApiProviderAuthType.API_KEY if db_api_provider.credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
+            )
+
+            # init tool configuration
+            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+
+            # decrypt the credentials and mask the credentials
+            decrypted_credentails = tool_configuration.decrypt_tool_credentials(credentials=credentails)
+            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentails)
+
+            result_providers[provider_name].team_credentials = masked_credentials
 
         return list(result_providers.values())
     
     @staticmethod
-    def get_api_provider(tanent_id: str, provider_name: str) -> Tuple[ApiBasedToolProviderController, Dict[str, Any]]:
+    def get_api_provider_controller(tanent_id: str, provider_name: str) -> Tuple[ApiBasedToolProviderController, Dict[str, Any]]:
         """
             get the api provider
 
@@ -360,3 +371,52 @@ class ToolManager:
         controller.load_bundled_tools(provider.tools)
 
         return controller, provider.credentials
+    
+    @staticmethod
+    def user_get_api_provider(provider: str, tenant_id: str) -> dict:
+        """
+            get api provider
+        """
+        """
+            get tool provider
+        """
+        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tenant_id,
+            ApiToolProvider.name == provider,
+        ).first()
+
+        if provider is None:
+            raise ValueError(f'yout have not added provider {provider}')
+        
+        try:
+            credentials = json.loads(provider.credentials_str) or {}
+        except:
+            credentials = {}
+
+        # package tool provider controller
+        controller = ApiBasedToolProviderController.from_db(
+            provider, ApiProviderAuthType.API_KEY if credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
+        )
+        # init tool configuration
+        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+
+        decrypted_credentails = tool_configuration.decrypt_tool_credentials(credentials)
+        masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentails)
+
+        try:
+            icon = json.loads(provider.icon)
+        except:
+            icon = {
+                "background": "#252525",
+                "content": "\ud83d\ude01"
+            }
+
+        return json.loads(serialize_base_model_dict({
+            'schema_type': provider.schema_type,
+            'schema': provider.schema,
+            'tools': provider.tools,
+            'icon': icon,
+            'description': provider.description,
+            'credentials': masked_credentials,
+            'privacy_policy': provider.privacy_policy
+        }))
