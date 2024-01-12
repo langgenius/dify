@@ -98,8 +98,8 @@ const ToolList: FC<Props> = ({
     : (
       <AppIcon
         size='large'
-        innerIcon={(collection.icon as any).content}
-        background={(collection.icon as any).content}
+        icon={collection.icon.content}
+        background={collection.icon.background}
       />
     )}
   </>

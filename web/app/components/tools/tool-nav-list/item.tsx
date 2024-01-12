@@ -37,8 +37,8 @@ const Item: FC<Props> = ({
         : (
           <AppIcon
             size='tiny'
-            innerIcon={(payload.icon as any).content}
-            background={(payload.icon as any).content}
+            icon={payload.icon.content}
+            background={payload.icon.background}
           />
         )}
       <div className={cn(isCurrent && 'text-primary-600 font-semibold', 'leading-5 text-sm font-normal truncate')}>{payload.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>

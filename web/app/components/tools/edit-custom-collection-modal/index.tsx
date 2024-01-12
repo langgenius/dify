@@ -46,8 +46,8 @@ const EditCustomCollectionModal: FC<Props> = ({
         auth_type: AuthType.none,
       },
       icon: {
-        icon: '🕵️',
-        icon_background: '#FEF7C3',
+        content: '🕵️',
+        background: '#FEF7C3',
       },
       schema_type: '',
       schema: '',
