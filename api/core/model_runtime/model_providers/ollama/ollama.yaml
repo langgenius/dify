@@ -1,8 +1,10 @@
 provider: ollama
 label:
   en_US: Ollama
+icon_large:
+  en_US: icon_l_en.svg
 icon_small:
-  en_US: icon_s_en.png
+  en_US: icon_s_en.svg
 background: "#F9FAFB"
 help:
   title:
