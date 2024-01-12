@@ -1,11 +1,9 @@
 from core.tools.provider.tool import Tool
 from core.tools.model.tool_model_manager import ToolModelManager
-from core.tools.model.entities import ToolModelConfig
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.llm_entities import LLMResult
 
-from typing import Dict, Any, List
-from pydantic import BaseModel
+from typing import List
 
 class BuiltinTool(Tool):
     """

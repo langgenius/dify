@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Union
 from json import dumps
 
-from core.model_runtime.entities.message_entities import PromptMessage
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.provider.tool import Tool

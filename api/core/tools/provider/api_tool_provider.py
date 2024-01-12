@@ -1,11 +1,10 @@
 from typing import Any, Dict, List
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, ToolProviderIdentity, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
+from core.tools.entities.tool_entities import ToolProviderType, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.provider.tool import Tool
 from core.tools.provider.api_tool import ApiTool
 from core.tools.provider.tool_provider import ToolProviderController
-from core.model_runtime.entities.message_entities import PromptMessage
 
 from extensions.ext_database import db
 

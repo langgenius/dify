@@ -1,9 +1,8 @@
 from typing import Any, Dict, List
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType, ToolParamter, ToolParamterOption
+from core.tools.entities.tool_entities import ToolProviderType, ToolParamter, ToolParamterOption
 from core.tools.provider.tool import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.provider.tool_provider import ToolProviderController
-from core.model_runtime.entities.message_entities import PromptMessage
 
 from extensions.ext_database import db
 from models.tools import PublishedAppTool
