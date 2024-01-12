@@ -2,33 +2,47 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { Settings01 } from '../../base/icons/src/vender/line/general'
 import ConfigCredentials from './config-credentials'
-import type { Credential } from '@/app/components/tools/types'
+import type { Credential, CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
-
 import Drawer from '@/app/components/base/drawer-plus'
+import I18n from '@/context/i18n'
+import { testAPIAvailable } from '@/service/tools'
+
 type Props = {
-  toolName: string
-  credential: Credential
+  customCollection: CustomCollectionBackend
+  tool: CustomParamSchema
   onHide: () => void
 }
 
 const keyClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 
 const TestApi: FC<Props> = ({
-  toolName,
-  credential,
+  customCollection,
+  tool,
   onHide,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
-  const [tempCredential, setTempCredential] = React.useState<Credential>(credential)
+  const [tempCredential, setTempCredential] = React.useState<Credential>(customCollection.credentials)
   const [result, setResult] = useState<string>('')
-
-  const handleTest = () => {
-    setResult('testssssss')
+  const { operation_id: toolName, parameters } = tool
+  const [parametersValue, setParametersValue] = useState<Record<string, string>>({})
+  const handleTest = async () => {
+    const data = {
+      tool_name: toolName,
+      credentials: tempCredential,
+      schema_type: customCollection.schema_type,
+      schema: customCollection.schema,
+      parameters: parametersValue,
+    }
+    const res = await testAPIAvailable(data)
+    setResult(res as string)
   }
+
   return (
     <>
       <Drawer
@@ -61,22 +75,19 @@ const TestApi: FC<Props> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className='border-b last:border-0 border-gray-200'>
-                        <td className="py-2 pl-3 pr-2.5">
-                          adfdfd
-                        </td>
-                        <td className="">
-                          <input type='text' className='px-3 h-[34px] w-full outline-none focus:bg-gray-100' ></input>
-                        </td>
-                      </tr>
-                      <tr className='border-b last:border-0 border-gray-200'>
-                        <td className="py-2 pl-3 pr-2.5">
-                          adfdfd
-                        </td>
-                        <td className="">
-                          <input type='text' className='px-3 h-[34px] w-full outline-none focus:bg-gray-100' ></input>
-                        </td>
-                      </tr>
+                      {parameters.map((item, index) => (
+                        <tr key={index} className='border-b last:border-0 border-gray-200'>
+                          <td className="py-2 pl-3 pr-2.5">
+                            {item.label[locale === 'en' ? 'en_US' : 'zh_Hans']}
+                          </td>
+                          <td className="">
+                            <input
+                              value={parametersValue[item.name] || ''}
+                              onChange={e => setParametersValue({ ...parametersValue, [item.name]: e.target.value })}
+                              type='text' className='px-3 h-[34px] w-full outline-none focus:bg-gray-100' ></input>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

@@ -98,6 +98,7 @@ const EditCustomCollectionModal: FC<Props> = ({
     setCustomCollection(newCollection)
   }
 
+  const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
   const handleSave = () => {
@@ -188,7 +189,10 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3 w-[54px]">
                             <Button
                               className='!h-6 !px-2 text-xs font-medium text-gray-700'
-                              onClick={() => setIsShowTestApi(true)}
+                              onClick={() => {
+                                setCurrTool(item)
+                                setIsShowTestApi(true)
+                              }}
                             >
                               {t('tools.createTool.availableTools.test')}
                             </Button>
@@ -250,8 +254,8 @@ const EditCustomCollectionModal: FC<Props> = ({
       }
       {isShowTestApi && (
         <TestApi
-          toolName='aaa'
-          credential={credential}
+          tool={currTool as CustomParamSchema}
+          customCollection={customCollection}
           onHide={() => setIsShowTestApi(false)}
         />
       )}

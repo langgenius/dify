@@ -43,7 +43,6 @@ export const createCustomCollection = (collection: CustomCollectionBackend) => {
   return post('/workspaces/current/tool-provider/api/add', {
     body: {
       ...collection,
-      description: 'just something', // TODO: remove this after api changed
     },
   })
 }
@@ -52,7 +51,14 @@ export const updateCustomCollection = (collection: CustomCollectionBackend) => {
   return post('/workspaces/current/tool-provider/api/update', {
     body: {
       ...collection,
-      description: 'just something', // TODO: remove this after api changed
+    },
+  })
+}
+
+export const testAPIAvailable = (payload: any) => {
+  return post('/workspaces/current/tool-provider/test/pre', {
+    body: {
+      ...payload,
     },
   })
 }
