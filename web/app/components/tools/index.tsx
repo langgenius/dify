@@ -33,11 +33,7 @@ const Tools: FC<Props> = ({
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   const [currCollectionIndex, setCurrCollectionIndex] = useState<number | null>(null)
-  const currCollection = (() => {
-    if (currCollectionIndex === null)
-      return null
-    return collectionList[currCollectionIndex]
-  })()
+
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   const fetchCollectionList = async () => {
@@ -60,9 +56,31 @@ const Tools: FC<Props> = ({
     return res
   })()
 
+  const [query, setQuery] = useState('')
   const [collectionType, setCollectionType] = useState<CollectionType>(collectionTypeOptions[0].value)
 
-  const [query, setQuery] = useState('')
+  const showCollectionList = (() => {
+    let typeFilteredList: Collection[] = []
+    if (collectionType === CollectionType.all)
+      typeFilteredList = collectionList
+    else
+      typeFilteredList = collectionList.filter(item => item.type === collectionType)
+    if (query)
+      return typeFilteredList.filter(item => item.name.includes(query))
+
+    return typeFilteredList
+  })()
+
+  useEffect(() => {
+    setCurrCollectionIndex(0)
+  }, [collectionType])
+
+  const currCollection = (() => {
+    if (currCollectionIndex === null)
+      return null
+    return showCollectionList[currCollectionIndex]
+  })()
+
   const [currTools, setCurrentTools] = useState<Tool[]>([])
   useEffect(() => {
     if (!currCollection)
@@ -143,7 +161,7 @@ const Tools: FC<Props> = ({
           <ToolNavList
             className='mt-2 grow height-0 overflow-y-auto'
             currentName={currCollection?.name || ''}
-            list={collectionList}
+            list={showCollectionList}
             onChosen={setCurrCollectionIndex}
           />
           {loc === LOC.tools && (
