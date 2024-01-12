@@ -81,6 +81,9 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: the credentials schema
         """
+        if not self.credentials_schema:
+            return {}
+        
         return self.credentials_schema.copy()
     
     def user_get_credentails_schema(self) -> UserToolProviderCredentials:

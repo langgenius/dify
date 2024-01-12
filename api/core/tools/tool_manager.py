@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Tuple, Union
 from os import listdir, path
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ApiProviderAuthType
+from core.tools.entities.tool_entities import ToolInvokeMessage, ApiProviderAuthType, ToolProviderCredentials
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.builtin_tool import BuiltinTool
 from core.tools.provider.api_tool import ApiTool
@@ -221,6 +221,12 @@ class ToolManager:
                 team_credentials={},
                 is_team_authorization=False,
             )
+
+            # get credentials schema
+            schema = provider.get_credentails_schema()
+            for name, value in schema.items():
+                result_providers[provider.identity.name].team_credentials[name] = \
+                    ToolProviderCredentials.CredentialsType.defaut(value.type)
 
             # check if the provider need credentials
             if not provider.need_credentials:

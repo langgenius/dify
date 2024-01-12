@@ -148,6 +148,10 @@ class ToolProviderCredentials(BaseModel):
                 if mode.value == value:
                     return mode
             raise ValueError(f'invalid mode value {value}')
+        
+        @staticmethod
+        def defaut(value: str) -> str:
+            return ""
 
     name: str = Field(..., description="The name of the credentials")
     type: CredentialsType = Field(..., description="The type of the credentials")
