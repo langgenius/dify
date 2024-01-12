@@ -21,14 +21,16 @@ export enum CollectionType {
   custom = 'api',
 }
 
+export type Emoji = {
+  background: string
+  content: string
+}
+
 export type Collection = {
   name: string
   author: string
   description: TypeWithI18N
-  icon: string | {
-    background: string
-    content: string
-  }
+  icon: string | Emoji
   label: TypeWithI18N
   type: CollectionType
   team_credentials: Record<string, any>
@@ -71,4 +73,36 @@ export type ToolCredential = {
     label: TypeWithI18N
     value: string
   }[]
+}
+
+export type CustomCollectionBackend = {
+  provider: string
+  credentials: Credential
+  icon: Emoji
+  parameters: Record<string, Record<string, object>>
+  schema_type: string
+  schema: string
+}
+
+export type ParamItem = {
+  name: string
+  label: TypeWithI18N
+  human_description: TypeWithI18N
+  type: string
+  required: boolean
+  default: string
+  min?: number
+  max?: number
+  options?: {
+    label: TypeWithI18N
+    value: string
+  }[]
+}
+
+export type CustomParamSchema = {
+  operation_id: string // name
+  summary: string
+  server_url: string
+  method: string
+  parameters: ParamItem[]
 }

@@ -17,3 +17,11 @@ export const updateBuiltInToolCredential = (collectionName: string, credential: 
     body: credential,
   })
 }
+
+export const parseParamsSchema = (schema: string) => {
+  return post('/workspaces/current/tool-provider/api/schema', {
+    body: {
+      schema,
+    },
+  })
+}

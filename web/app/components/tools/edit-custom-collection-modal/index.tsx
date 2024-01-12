@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import produce from 'immer'
+import { useDebounce } from 'ahooks'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
-import type { Credential } from '../types'
+import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
 import { AuthType } from '../types'
 import GetSchema from './get-schema'
 import ConfigCredentials from './config-credentials'
@@ -12,30 +14,90 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
+import { parseParamsSchema } from '@/service/tools'
 
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
   payload: any
   onHide: () => void
+  onAdd?: (payload: CustomCollectionBackend) => void
+  onEdit?: (payload: CustomCollectionBackend) => void
 }
 // Add and Edit
 const EditCustomCollectionModal: FC<Props> = ({
   payload,
   onHide,
+  onAdd,
+  onEdit,
 }) => {
   const { t } = useTranslation()
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [emoji, setEmoji] = useState({ icon: '🕵️', icon_background: '#FEF7C3' })
+  const isAdd = !payload
 
-  const [schema, setSchema] = useState('')
+  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend>(isAdd
+    ? {
+      provider: '',
+      credentials: {
+        auth_type: AuthType.none,
+      },
+      icon: {
+        icon: '🕵️',
+        icon_background: '#FEF7C3',
+      },
+      parameters: {},
+      schema_type: '',
+      schema: '',
+    }
+    : payload)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const emoji = customCollection.icon
+  const setEmoji = (emoji: Emoji) => {
+    const newCollection = produce(customCollection, (draft) => {
+      draft.icon = emoji
+    })
+    setCustomCollection(newCollection)
+  }
+  const schema = customCollection.schema
+  const debouncedSchema = useDebounce(schema, { wait: 500 })
+  const setSchema = (schema: string) => {
+    const newCollection = produce(customCollection, (draft) => {
+      draft.schema = schema
+    })
+    setCustomCollection(newCollection)
+  }
+
+  const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>([])
+
+  useEffect(() => {
+    if (!debouncedSchema)
+      return
+    (async () => {
+      const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema) as any
+      produce(customCollection, (draft) => {
+        draft.parameters = parameters_schema
+        draft.schema_type = schema_type
+      })
+      setParamsSchemas(parameters_schema)
+    })()
+  }, [debouncedSchema])
+
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
-  const [credential, setCredential] = useState<Credential>({
-    auth_type: AuthType.none,
-  })
+  const credential = customCollection.credentials
+  const setCredential = (credential: Credential) => {
+    const newCollection = produce(customCollection, (draft) => {
+      draft.credentials = credential
+    })
+    setCustomCollection(newCollection)
+  }
 
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
-  const isAdd = !!payload
+  const handleSave = () => {
+    if (isAdd)
+      onAdd?.(customCollection)
+
+    else
+      onEdit?.(customCollection)
+  }
 
   return (
     <>
@@ -53,7 +115,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.name')}</div>
                 <div className='flex items-center justify-between gap-3'>
-                  <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
+                  <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
                   <input className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.toolNamePlaceHolder')!} />
                 </div>
               </div>
@@ -101,38 +163,22 @@ const EditCustomCollectionModal: FC<Props> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className='border-b last:border-0 border-gray-200'>
-                        <td className="p-2 pl-3">xx</td>
-                        <td className="p-2 pl-3 text-gray-500 w-[236px]">Retrieves and displays a list of all pets registered in the system.</td>
-                        <td className="p-2 pl-3">GET</td>
-                        <td className="p-2 pl-3">/pets</td>
-                        <td className="p-2 pl-3 w-[54px]">
-                          <Button
-                            className='!h-6 !px-2 text-xs font-medium text-gray-700'
-                            onClick={() => setIsShowTestApi(true)}
-                          >
-                            {t('tools.createTool.availableTools.test')}
-                          </Button>
-                        </td>
-                      </tr>
-                      <tr className='border-b last:border-0 border-gray-200'>
-                        <td className="p-2 pl-3">xx</td>
-                        <td className="p-2 pl-3 text-gray-500 w-[236px]">Retrieves and displays a list of all pets registered in the system.</td>
-                        <td className="p-2 pl-3">GET</td>
-                        <td className="p-2 pl-3">/pets</td>
-                        <td className="p-2 pl-3 w-[54px]">
-                          <Button className='!h-6 !px-2 text-xs font-medium text-gray-700'>{t('tools.createTool.availableTools.test')}</Button>
-                        </td>
-                      </tr>
-                      <tr className='border-b last:border-0 border-gray-200'>
-                        <td className="p-2 pl-3">xx</td>
-                        <td className="p-2 pl-3 text-gray-500 w-[236px]">Retrieves and displays a list of all pets registered in the system.</td>
-                        <td className="p-2 pl-3">GET</td>
-                        <td className="p-2 pl-3">/pets</td>
-                        <td className="p-2 pl-3 w-[54px]">
-                          <Button className='!h-6 !px-2 text-xs font-medium text-gray-700'>{t('tools.createTool.availableTools.test')}</Button>
-                        </td>
-                      </tr>
+                      {paramsSchemas.map((item, index) => (
+                        <tr key={index} className='border-b last:border-0 border-gray-200'>
+                          <td className="p-2 pl-3">{item.operation_id}</td>
+                          <td className="p-2 pl-3 text-gray-500 w-[236px]">{item.summary}</td>
+                          <td className="p-2 pl-3">{item.method}</td>
+                          <td className="p-2 pl-3">{item.server_url ? item.server_url.split('/').slice(1).join('/') : ''}</td>
+                          <td className="p-2 pl-3 w-[54px]">
+                            <Button
+                              className='!h-6 !px-2 text-xs font-medium text-gray-700'
+                              onClick={() => setIsShowTestApi(true)}
+                            >
+                              {t('tools.createTool.availableTools.test')}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -154,7 +200,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
             </div>
             <div className='shrink-0 flex justify-end space-x-2 py-4 pr-6 rounded-b-[10px] bg-gray-50 border-t border-black/5'>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
+              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={handleSave}>{t('common.operation.cancel')}</Button>
               <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={onHide}>{t('common.operation.save')}</Button>
             </div>
           </div>
@@ -164,11 +210,10 @@ const EditCustomCollectionModal: FC<Props> = ({
       />
       {showEmojiPicker && <EmojiPicker
         onSelect={(icon, icon_background) => {
-          setEmoji({ icon, icon_background })
+          setEmoji({ content: icon, background: icon_background })
           setShowEmojiPicker(false)
         }}
         onClose={() => {
-          setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
           setShowEmojiPicker(false)
         }}
       />}

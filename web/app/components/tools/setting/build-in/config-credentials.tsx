@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toolCredentialToFormSchemas } from '../../utils/to-form-schema'
+import type { Collection } from '../../types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import { fetchBuiltInToolCredentialSchema } from '@/service/tools'
@@ -10,20 +11,19 @@ import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 
 type Props = {
-  credentialValue: Record<string, any>
-  collectionName: string
+  collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
 }
 
 const ConfigCredential: FC<Props> = ({
-  credentialValue,
-  collectionName,
+  collection,
   onCancel,
   onSaved,
 }) => {
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
+  const { team_credentials: credentialValue, name: collectionName } = collection
   useEffect(() => {
     fetchBuiltInToolCredentialSchema(collectionName).then((res) => {
       setCredentialSchema(toolCredentialToFormSchemas(res as any))

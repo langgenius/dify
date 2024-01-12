@@ -103,8 +103,7 @@ const ToolList: FC<Props> = ({
       </div>
       {showSettingAuth && (
         <ConfigCredential
-          collectionName={collection.name}
-          credentialValue={collection.team_credentials}
+          collection={collection}
           onCancel={() => setShowSettingAuth(false)}
           onSaved={async (value) => {
             await updateBuiltInToolCredential(collection.name, value)

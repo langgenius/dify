@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Button from '../base/button'
 import { Plus } from '../base/icons/src/vender/line/general'
-import type { Collection, Tool } from './types'
+import type { Collection, CustomCollectionBackend, Tool } from './types'
 import { CollectionType, LOC } from './types'
 import ToolNavList from './tool-nav-list'
 import Search from './search'
@@ -14,6 +14,7 @@ import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import TabSlider from '@/app/components/base/tab-slider'
 import { fetchBuiltInToolList, fetchCollectionList } from '@/service/tools'
+
 type Props = {
   loc: LOC
   addedToolNames?: string[]
@@ -37,7 +38,7 @@ const Tools: FC<Props> = ({
       const list = await fetchCollectionList() as Collection[]
       setCollectionList(list)
       if (list.length > 0)
-        setCurrCollection(list[0])
+        setCurrCollection(list[1]) // test wolfram
     })()
   }, [])
 
@@ -64,8 +65,8 @@ const Tools: FC<Props> = ({
     })()
   }, [currCollection])
 
-  const [isAddToolCollection, setIsAddToolCollection] = useState(false)
-  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(false)
+  const [isAddToolCollection, setIsAddToolCollection] = useState(true)
+  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(true)
   const handleCreateToolCollection = () => {
     setIsAddToolCollection(true)
     setIsShowEditCustomToolModal(true)
@@ -74,6 +75,20 @@ const Tools: FC<Props> = ({
   const handleEditToolCollection = () => {
     setIsAddToolCollection(false)
     setIsShowEditCustomToolModal(true)
+  }
+
+  const doSaveCustomToolCollection = (isAdd: boolean, data: CustomCollectionBackend) => {
+    console.log(isAdd, data)
+  }
+
+  const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    await doSaveCustomToolCollection(true, data)
+    setIsShowEditCustomToolModal(false)
+  }
+
+  const doEditCustomToolCollection = async (data: CustomCollectionBackend) => {
+    await doSaveCustomToolCollection(false, data)
+    setIsShowEditCustomToolModal(false)
   }
 
   return (
@@ -144,6 +159,8 @@ const Tools: FC<Props> = ({
         <EditCustomToolModal
           payload={isAddToolCollection ? null : {}}
           onHide={() => setIsShowEditCustomToolModal(false)}
+          onAdd={doCreateCustomToolCollection}
+          onEdit={doEditCustomToolCollection}
         />
       )}
     </>
