@@ -23,6 +23,8 @@ const translation = {
   addTool: '添加工具',
   createTool: {
     title: '创建自定义工具',
+    editAction: '编辑',
+    editTitle: '编辑自定义工具',
     name: '名称',
     toolNamePlaceHolder: '输入工具名称',
     schema: 'Schema',

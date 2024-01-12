@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useDebounce, useGetState } from 'ahooks'
+import { clone } from 'lodash-es'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
 import { AuthType } from '../types'
@@ -15,7 +16,6 @@ import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import { parseParamsSchema } from '@/service/tools'
-
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
   payload: any
@@ -32,8 +32,8 @@ const EditCustomCollectionModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isAdd = !payload
-
-  const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>([])
+  const [editFirst, setEditFirst] = useState(!isAdd)
+  const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
     ? {
       provider: '',
@@ -69,6 +69,10 @@ const EditCustomCollectionModal: FC<Props> = ({
   useEffect(() => {
     if (!debouncedSchema)
       return
+    if (!isAdd && editFirst) {
+      setEditFirst(false)
+      return
+    }
     (async () => {
       const customCollection = getCustomCollection()
       try {
@@ -102,11 +106,13 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
   const handleSave = () => {
+    const postData = clone(customCollection)
+    delete postData.tools
     if (isAdd)
-      onAdd?.(customCollection)
+      onAdd?.(postData)
 
     else
-      onEdit?.(customCollection)
+      onEdit?.(postData)
   }
 
   return (
@@ -114,7 +120,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       <Drawer
         isShow
         onHide={onHide}
-        title={t('tools.createTool.title') as string}
+        title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
         panelClassName='mt-2 !w-[640px]'
         maxWidthClassName='!max-w-[640px]'
         height='calc(100vh - 16px)'

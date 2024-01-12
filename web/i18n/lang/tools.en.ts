@@ -23,6 +23,8 @@ const translation = {
   addTool: 'Add Tool',
   createTool: {
     title: 'Create Custom Tool',
+    editAction: 'Configure',
+    editTitle: 'Edit Custom Tool',
     name: 'Name',
     toolNamePlaceHolder: 'Enter the tool name',
     schema: 'Schema',

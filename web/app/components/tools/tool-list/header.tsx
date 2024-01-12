@@ -6,6 +6,7 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from '../types'
 import { CollectionType, LOC } from '../types'
+import { Settings01 } from '../../base/icons/src/vender/line/general'
 import I18n from '@/context/i18n'
 
 type Props = {
@@ -63,7 +64,8 @@ const Header: FC<Props> = ({
           className={cn('cursor-pointer', 'flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
           onClick={() => onShowEditCustomCollection()}
         >
-          <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
+          <Settings01 className='w-4 h-4 text-gray-700' />
+          <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
         </div>
       )}
     </div >
