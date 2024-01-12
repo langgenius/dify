@@ -360,6 +360,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                         message=AssistantPromptMessage(content=""),
                         finish_reason="Non-JSON encountered."
                     )
+                    break
 
                 if not chunk_json or len(chunk_json['choices']) == 0:
                     continue

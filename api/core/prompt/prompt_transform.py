@@ -121,6 +121,7 @@ class PromptTransform:
                     prompt_template_entity=prompt_template_entity,
                     inputs=inputs,
                     query=query,
+                    files=files,
                     context=context,
                     memory=memory,
                     model_config=model_config
@@ -343,7 +344,14 @@ class PromptTransform:
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)
         else:
-            prompt_message = UserPromptMessage(content=prompt)
+            if files:
+                prompt_message_contents = [TextPromptMessageContent(data=prompt)]
+                for file in files:
+                    prompt_message_contents.append(file.prompt_message_content)
+
+                prompt_message = UserPromptMessage(content=prompt_message_contents)
+            else:
+                prompt_message = UserPromptMessage(content=prompt)
 
         return [prompt_message]
 
@@ -434,6 +442,7 @@ class PromptTransform:
                                                        prompt_template_entity: PromptTemplateEntity,
                                                        inputs: dict,
                                                        query: str,
+                                                       files: List[FileObj],
                                                        context: Optional[str],
                                                        memory: Optional[TokenBufferMemory],
                                                        model_config: ModelConfigEntity) -> List[PromptMessage]:
@@ -461,7 +470,14 @@ class PromptTransform:
 
         prompt = self._format_prompt(prompt_template, prompt_inputs)
 
-        prompt_messages.append(UserPromptMessage(content=prompt))
+        if files:
+            prompt_message_contents = [TextPromptMessageContent(data=prompt)]
+            for file in files:
+                prompt_message_contents.append(file.prompt_message_content)
+
+            prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
+        else:
+            prompt_messages.append(UserPromptMessage(content=prompt))
 
         return prompt_messages
 

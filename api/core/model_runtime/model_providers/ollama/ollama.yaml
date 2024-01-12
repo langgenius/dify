@@ -1,9 +1,17 @@
-provider: openai_api_compatible
+provider: ollama
 label:
-  en_US: OpenAI-API-compatible
-description:
-  en_US: Model providers compatible with OpenAI's API standard, such as LM Studio.
-  zh_Hans: 兼容 OpenAI API 的模型供应商，例如 LM Studio 。
+  en_US: Ollama
+icon_large:
+  en_US: icon_l_en.svg
+icon_small:
+  en_US: icon_s_en.svg
+background: "#F9FAFB"
+help:
+  title:
+    en_US: How to integrate with Ollama
+    zh_Hans: 如何集成 Ollama
+  url:
+    en_US: https://docs.dify.ai/advanced/model-configuration/ollama
 supported_model_types:
   - llm
   - text-embedding
@@ -15,34 +23,27 @@ model_credential_schema:
       en_US: Model Name
       zh_Hans: 模型名称
     placeholder:
-      en_US: Enter full model name
-      zh_Hans: 输入模型全称
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
   credential_form_schemas:
-    - variable: api_key
+    - variable: base_url
       label:
-        en_US: API Key
-      type: secret-input
-      required: false
-      placeholder:
-        zh_Hans: 在此输入您的 API Key
-        en_US: Enter your API Key
-    - variable: endpoint_url
-      label:
-        zh_Hans: API endpoint URL
-        en_US: API endpoint URL
+        zh_Hans: 基础 URL
+        en_US: Base URL
       type: text-input
       required: true
       placeholder:
-        zh_Hans: Base URL, e.g. https://api.openai.com/v1
-        en_US: Base URL, e.g. https://api.openai.com/v1
+        zh_Hans: Ollama server 的基础 URL，例如 http://192.168.1.100:11434
+        en_US: Base url of Ollama server, e.g. http://192.168.1.100:11434
     - variable: mode
       show_on:
         - variable: __model_type
           value: llm
       label:
+        zh_Hans: 模型类型
         en_US: Completion mode
       type: select
-      required: false
+      required: true
       default: chat
       placeholder:
         zh_Hans: 选择对话类型
@@ -66,7 +67,7 @@ model_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的模型上下文长度
         en_US: Enter your Model context size
-    - variable: max_tokens_to_sample
+    - variable: max_tokens
       label:
         zh_Hans: 最大 token 上限
         en_US: Upper bound for max tokens
@@ -75,3 +76,23 @@ model_credential_schema:
           value: llm
       default: '4096'
       type: text-input
+      required: true
+    - variable: vision_support
+      label:
+        zh_Hans: 是否支持 Vision
+        en_US: Vision support
+      show_on:
+        - variable: __model_type
+          value: llm
+      default: 'false'
+      type: radio
+      required: false
+      options:
+        - value: 'true'
+          label:
+            en_US: Yes
+            zh_Hans: 是
+        - value: 'false'
+          label:
+            en_US: No
+            zh_Hans: 否

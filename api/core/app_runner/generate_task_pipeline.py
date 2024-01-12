@@ -459,10 +459,33 @@ class GenerateTaskPipeline:
                     "files": files
                 })
         else:
-            prompts.append({
+            prompt_message = prompt_messages[0]
+            text = ''
+            files = []
+            if isinstance(prompt_message.content, list):
+                for content in prompt_message.content:
+                    if content.type == PromptMessageContentType.TEXT:
+                        content = cast(TextPromptMessageContent, content)
+                        text += content.data
+                    else:
+                        content = cast(ImagePromptMessageContent, content)
+                        files.append({
+                            "type": 'image',
+                            "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
+                            "detail": content.detail.value
+                        })
+            else:
+                text = prompt_message.content
+
+            params = {
                 "role": 'user',
-                "text": prompt_messages[0].content
-            })
+                "text": text,
+            }
+
+            if files:
+                params['files'] = files
+
+            prompts.append(params)
 
         return prompts
 

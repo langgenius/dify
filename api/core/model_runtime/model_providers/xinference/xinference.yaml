@@ -34,8 +34,8 @@ model_credential_schema:
       type: secret-input
       required: true
       placeholder:
-        zh_Hans: 在此输入Xinference的服务器地址，如 https://example.com/xxx
-        en_US: Enter the url of your Xinference, for example https://example.com/xxx
+        zh_Hans: 在此输入Xinference的服务器地址，如 http://192.168.1.100:9997
+        en_US: Enter the url of your Xinference, e.g. http://192.168.1.100:9997
     - variable: model_uid
       label:
         zh_Hans: 模型UID
