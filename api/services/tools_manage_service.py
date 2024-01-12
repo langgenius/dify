@@ -260,8 +260,8 @@ class ToolManageService:
                         zh_Hans=tool_bundle.operation_id
                     ),
                     description=I18nObject(
-                        en_US=tool_bundle.summary,
-                        zh_Hans=tool_bundle.summary
+                        en_US=tool_bundle.summary or '',
+                        zh_Hans=tool_bundle.summary or ''
                     ),
                     parameters=tool_bundle.parameters
                 ) for tool_bundle in provider.tools
