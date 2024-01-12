@@ -12,7 +12,7 @@ import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import { fetchCustomCollection, removeBuiltInToolCredential, updateBuiltInToolCredential, updateCustomCollection } from '@/service/tools'
+import { fetchCustomCollection, removeBuiltInToolCredential, removeCustomCollection, updateBuiltInToolCredential, updateCustomCollection } from '@/service/tools'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 
 type Props = {
@@ -23,6 +23,7 @@ type Props = {
   addedToolNames?: string[]
   onAddTool?: (payload: Tool) => void
   onRefreshData: () => void
+  onCollectionRemoved: () => void
   isLoading: boolean
 }
 
@@ -33,6 +34,7 @@ const ToolList: FC<Props> = ({
   addedToolNames,
   onAddTool,
   onRefreshData,
+  onCollectionRemoved,
   isLoading,
 }) => {
   const { t } = useTranslation()
@@ -61,6 +63,16 @@ const ToolList: FC<Props> = ({
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
     onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setIsShowEditCustomCollectionModal(false)
+  }
+
+  const doRemoveCustomToolCollection = async () => {
+    await removeCustomCollection(collection?.name as string)
+    onCollectionRemoved()
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
@@ -166,6 +178,7 @@ const ToolList: FC<Props> = ({
           payload={customCollection}
           onHide={() => setIsShowEditCustomCollectionModal(false)}
           onEdit={doUpdateCustomToolCollection}
+          onRemove={doRemoveCustomToolCollection}
         />
       )}
     </div>

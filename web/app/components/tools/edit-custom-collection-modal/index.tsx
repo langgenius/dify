@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useDebounce, useGetState } from 'ahooks'
 import { clone } from 'lodash-es'
+import cn from 'classnames'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
 import { AuthType } from '../types'
@@ -16,11 +17,13 @@ import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import { parseParamsSchema } from '@/service/tools'
+
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
   payload: any
   onHide: () => void
   onAdd?: (payload: CustomCollectionBackend) => void
+  onRemove?: () => void
   onEdit?: (payload: CustomCollectionBackend) => void
 }
 // Add and Edit
@@ -29,9 +32,11 @@ const EditCustomCollectionModal: FC<Props> = ({
   onHide,
   onAdd,
   onEdit,
+  onRemove,
 }) => {
   const { t } = useTranslation()
   const isAdd = !payload
+  const isEdit = !!payload
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
@@ -69,7 +74,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   useEffect(() => {
     if (!debouncedSchema)
       return
-    if (!isAdd && editFirst) {
+    if (isEdit && editFirst) {
       setEditFirst(false)
       return
     }
@@ -233,9 +238,16 @@ const EditCustomCollectionModal: FC<Props> = ({
               </div>
 
             </div>
-            <div className='shrink-0 flex justify-end space-x-2 py-4 pr-6 rounded-b-[10px] bg-gray-50 border-t border-black/5'>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-              <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+            <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
+              {
+                isEdit && (
+                  <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                )
+              }
+              <div className='flex space-x-2 '>
+                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+              </div>
             </div>
           </div>
         }

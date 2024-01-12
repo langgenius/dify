@@ -161,6 +161,10 @@ const Tools: FC<Props> = ({
               addedToolNames={addedToolNames}
               onAddTool={onAddTool}
               onRefreshData={fetchCollectionList}
+              onCollectionRemoved={() => {
+                setCurrCollectionIndex(0)
+                fetchCollectionList()
+              }}
               isLoading={isDetailLoading}
             />
           </div>

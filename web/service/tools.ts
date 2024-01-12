@@ -58,6 +58,14 @@ export const updateCustomCollection = (collection: CustomCollectionBackend) => {
   })
 }
 
+export const removeCustomCollection = (collectionName: string) => {
+  return post('/workspaces/current/tool-provider/api/delete', {
+    body: {
+      provider: collectionName,
+    },
+  })
+}
+
 export const testAPIAvailable = (payload: any) => {
   return post('/workspaces/current/tool-provider/test/pre', {
     body: {
