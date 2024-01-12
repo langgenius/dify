@@ -10,7 +10,7 @@ import I18n from '@/context/i18n'
 type Props = {
   isCurrent: boolean
   payload: Collection
-  onClick: (payload: Collection) => void
+  onClick: () => void
 }
 
 const Item: FC<Props> = ({
@@ -23,7 +23,7 @@ const Item: FC<Props> = ({
   return (
     <div
       className={cn(isCurrent && 'bg-white shadow-xs rounded-lg', 'mt-1 flex h-9 items-center px-2 space-x-2 cursor-pointer')}
-      onClick={() => !isCurrent && onClick(payload)}
+      onClick={() => !isCurrent && onClick()}
     >
       {typeof payload.icon === 'string'
         ? (

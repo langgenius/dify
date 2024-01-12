@@ -13,7 +13,7 @@ import Contribute from './contribute'
 import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import TabSlider from '@/app/components/base/tab-slider'
-import { createCustomCollection, fetchBuiltInToolList, fetchCollectionList } from '@/service/tools'
+import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList } from '@/service/tools'
 
 type Props = {
   loc: LOC
@@ -31,15 +31,21 @@ const Tools: FC<Props> = ({
   const isInDebugPage = !isInToolsPage
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
-  const [currCollection, setCurrCollection] = useState<Collection | null>(null)
+  const [currCollectionIndex, setCurrCollectionIndex] = useState<number | null>(null)
+  const currCollection = (() => {
+    if (currCollectionIndex === null)
+      return null
+    return collectionList[currCollectionIndex]
+  })()
 
+  const fetchCollectionList = async () => {
+    const list = await doFetchCollectionList() as Collection[]
+    setCollectionList(list)
+    if (list.length > 0 && currCollectionIndex === null)
+      setCurrCollectionIndex(1) // test wolfram
+  }
   useEffect(() => {
-    (async () => {
-      const list = await fetchCollectionList() as Collection[]
-      setCollectionList(list)
-      if (list.length > 0)
-        setCurrCollection(list[1]) // test wolfram
-    })()
+    fetchCollectionList()
   }, [])
 
   const collectionTypeOptions = (() => {
@@ -66,7 +72,7 @@ const Tools: FC<Props> = ({
   }, [currCollection])
 
   const [isAddToolCollection, setIsAddToolCollection] = useState(true)
-  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(true)
+  const [isShowEditCustomToolModal, setIsShowEditCustomToolModal] = useState(false)
   const handleCreateToolCollection = () => {
     setIsAddToolCollection(true)
     setIsShowEditCustomToolModal(true)
@@ -135,7 +141,7 @@ const Tools: FC<Props> = ({
             className='mt-2 grow height-0 overflow-y-auto'
             currentName={currCollection?.name || ''}
             list={collectionList}
-            onChosen={setCurrCollection}
+            onChosen={setCurrCollectionIndex}
           />
           {loc === LOC.tools && (
             <Contribute />
@@ -151,6 +157,7 @@ const Tools: FC<Props> = ({
               loc={loc}
               addedToolNames={addedToolNames}
               onAddTool={onAddTool}
+              onRefreshData={fetchCollectionList}
             />
           </div>
         </div>

@@ -7,11 +7,12 @@ import { CollectionType, LOC } from '../types'
 import type { Collection, Tool } from '../types'
 import Loading from '../../base/loading'
 import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
+import Toast from '../../base/toast'
 import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import { updateBuiltInToolCredential } from '@/service/tools'
+import { removeBuiltInToolCredential, updateBuiltInToolCredential } from '@/service/tools'
 type Props = {
   collection: Collection | null
   list: Tool[]
@@ -19,6 +20,7 @@ type Props = {
   loc: LOC
   addedToolNames?: string[]
   onAddTool?: (payload: Tool) => void
+  onRefreshData: () => void
 }
 
 const ToolList: FC<Props> = ({
@@ -27,6 +29,7 @@ const ToolList: FC<Props> = ({
   loc,
   addedToolNames,
   onAddTool,
+  onRefreshData,
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
@@ -107,6 +110,20 @@ const ToolList: FC<Props> = ({
           onCancel={() => setShowSettingAuth(false)}
           onSaved={async (value) => {
             await updateBuiltInToolCredential(collection.name, value)
+            Toast.notify({
+              type: 'success',
+              message: t('common.api.actionSuccess'),
+            })
+            await onRefreshData()
+            setShowSettingAuth(false)
+          }}
+          onRemove={async () => {
+            await removeBuiltInToolCredential(collection.name)
+            Toast.notify({
+              type: 'success',
+              message: t('common.api.actionSuccess'),
+            })
+            await onRefreshData()
             setShowSettingAuth(false)
           }}
         />

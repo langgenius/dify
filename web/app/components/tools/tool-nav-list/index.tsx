@@ -8,7 +8,7 @@ type Props = {
   className?: string
   currentName: string
   list: Collection[]
-  onChosen: (Collection: any) => void
+  onChosen: (index: number) => void
 }
 
 const ToolNavList: FC<Props> = ({
@@ -19,8 +19,8 @@ const ToolNavList: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className)}>
-      {list.map(item => (
-        <Item isCurrent={item.name === currentName} key={item.name} payload={item} onClick={onChosen}></Item>
+      {list.map((item, index) => (
+        <Item isCurrent={item.name === currentName} key={item.name} payload={item} onClick={() => onChosen(index)}></Item>
       ))}
     </div>
   )

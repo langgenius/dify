@@ -6,6 +6,7 @@ export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
   const formSchemas = parameters.map((parameter) => {
     return {
       ...parameter,
+      variable: parameter.name,
       type: parameter.type === 'string' ? 'text-input' : parameter.type,
       show_on: [],
       options: parameter.options?.map((option) => {
@@ -26,6 +27,7 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]) => {
   const formSchemas = parameters.map((parameter) => {
     return {
       ...parameter,
+      variable: parameter.name,
       label: {
         en_US: parameter.name,
         zh_Hans: parameter.name,

@@ -15,7 +15,15 @@ export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {
 
 export const updateBuiltInToolCredential = (collectionName: string, credential: Record<string, any>) => {
   return post(`/workspaces/current/tool-provider/builtin/${collectionName}/update`, {
-    body: credential,
+    body: {
+      credentials: credential,
+    },
+  })
+}
+
+export const removeBuiltInToolCredential = (collectionName: string) => {
+  return post(`/workspaces/current/tool-provider/builtin/${collectionName}/delete`, {
+    body: {},
   })
 }
 

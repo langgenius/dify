@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 import type { Collection } from '../../types'
 import Drawer from '@/app/components/base/drawer-plus'
@@ -14,12 +15,14 @@ type Props = {
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
+  onRemove: () => void
 }
 
 const ConfigCredential: FC<Props> = ({
   collection,
   onCancel,
   onSaved,
+  onRemove,
 }) => {
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
@@ -51,24 +54,31 @@ const ConfigCredential: FC<Props> = ({
               <>
                 <Form
                   value={tempCredential}
-                  onChange={setTempCredential}
+                  onChange={(v) => {
+                    setTempCredential(v)
+                  }}
                   formSchemas={credentialSchema}
                   isEditMode={true}
                   showOnVariableMap={{}}
                   validating={false}
                   inputClassName='!bg-gray-50'
                 />
-                <div className='mt-2 flex justify-between'>
-                  <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onCancel}>{t('common.operation.remove')}</Button>
-                  <div className='flex space-x-2'>
+                <div className={cn(collection.is_team_authorization ? 'justify-between' : 'justify-end', 'mt-2 flex ')} >
+                  {
+                    collection.is_team_authorization && (
+                      <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                    )
+                  }
+                  < div className='flex space-x-2'>
                     <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onCancel}>{t('common.operation.cancel')}</Button>
                     <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => onSaved(tempCredential)}>{t('common.operation.save')}</Button>
                   </div>
                 </div>
               </>
-            )}
+            )
+          }
 
-        </div>
+        </div >
       }
       isShowMask={true}
       clickOutsideNotOpen={false}
