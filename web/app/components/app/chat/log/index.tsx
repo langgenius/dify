@@ -46,7 +46,11 @@ const Log: FC<LogProps> = ({
               `}>
                 <div
                   className='flex items-center justify-center rounded-md w-full h-full hover:bg-gray-100'
-                  onClick={() => setShowModal(true)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowModal(true)
+                  }
+                  }
                 >
                   <File02 className='w-4 h-4 text-gray-500' />
                 </div>
