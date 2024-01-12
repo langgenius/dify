@@ -1,8 +1,7 @@
 from typing import List, Optional
 
-from langchain.schema import Document
-
 from core.model_manager import ModelInstance
+from langchain.schema import Document
 
 
 class RerankRunner:

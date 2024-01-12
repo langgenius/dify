@@ -1,17 +1,16 @@
-from flask_login import current_user
-from libs.login import login_required
 import flask_restful
-from flask_restful import Resource, fields, marshal_with
-from werkzeug.exceptions import Forbidden
-
 from extensions.ext_database import db
-from models.model import App, ApiToken
+from flask_login import current_user
+from flask_restful import Resource, fields, marshal_with
+from libs.helper import TimestampField
+from libs.login import login_required
 from models.dataset import Dataset
+from models.model import ApiToken, App
+from werkzeug.exceptions import Forbidden
 
 from . import api
 from .setup import setup_required
 from .wraps import account_initialization_required
-from libs.helper import TimestampField
 
 api_key_fields = {
     'id': fields.String,

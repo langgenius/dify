@@ -5,13 +5,12 @@ from collections import OrderedDict
 from typing import Optional
 
 import yaml
-from pydantic import BaseModel
-
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import SimpleProviderEntity, ProviderConfig, ProviderEntity
+from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

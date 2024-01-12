@@ -1,19 +1,18 @@
-from typing import Tuple, List, Any, Union, Sequence, Optional, cast
+from typing import Any, List, Optional, Sequence, Tuple, Union, cast
 
-from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
+from core.entities.application_entities import ModelConfigEntity
+from core.entities.message_entities import lc_messages_to_prompt_messages
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.message_entities import PromptMessageTool
+from core.third_party.langchain.llms.fake import FakeLLM
+from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
 from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import AgentAction, AgentFinish, SystemMessage, AIMessage
+from langchain.schema import AgentAction, AgentFinish, AIMessage, SystemMessage
 from langchain.tools import BaseTool
 from pydantic import root_validator
-
-from core.entities.application_entities import ModelConfigEntity
-from core.model_manager import ModelInstance
-from core.entities.message_entities import lc_messages_to_prompt_messages
-from core.model_runtime.entities.message_entities import PromptMessageTool
-from core.third_party.langchain.llms.fake import FakeLLM
 
 
 class MultiDatasetRouterAgent(OpenAIFunctionsAgent):

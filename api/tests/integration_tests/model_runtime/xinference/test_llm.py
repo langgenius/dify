@@ -1,19 +1,19 @@
 import os
-import pytest
-
 from typing import Generator
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, UserPromptMessage, \
-    SystemPromptMessage, PromptMessageTool
+import pytest
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessageTool,
+                                                          SystemPromptMessage, TextPromptMessageContent,
+                                                          UserPromptMessage)
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
-    LLMResultChunk
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.llm.llm import XinferenceAILargeLanguageModel
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 from tests.integration_tests.model_runtime.__mock.xinference import setup_xinference_mock
+
 
 @pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['chat', 'none']], indirect=True)
 def test_validate_credentials_for_chat_model(setup_openai_mock, setup_xinference_mock):

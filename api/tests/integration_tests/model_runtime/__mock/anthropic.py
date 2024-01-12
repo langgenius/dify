@@ -1,16 +1,14 @@
-import anthropic
-from anthropic import Anthropic
-from anthropic.resources.completions import Completions
-from anthropic.types import completion_create_params, Completion
-from anthropic._types import NOT_GIVEN, NotGiven, Headers, Query, Body
-
-from _pytest.monkeypatch import MonkeyPatch
-
-from typing import List, Union, Literal, Any, Generator
-from time import sleep
-
-import pytest
 import os
+from time import sleep
+from typing import Any, Generator, List, Literal, Union
+
+import anthropic
+import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from anthropic import Anthropic
+from anthropic._types import NOT_GIVEN, Body, Headers, NotGiven, Query
+from anthropic.resources.completions import Completions
+from anthropic.types import Completion, completion_create_params
 
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
 

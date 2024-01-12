@@ -1,7 +1,6 @@
 import os
 
 import requests
-
 from models.api_based_extension import APIBasedExtensionPoint
 
 

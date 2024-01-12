@@ -4,24 +4,24 @@ import logging
 from datetime import datetime
 from typing import Generator, Union
 
-from flask import Response, stream_with_context
-from flask_login import current_user
-from flask_restful import reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
-
 import services
 from controllers.console import api
-from controllers.console.app.error import ConversationCompletedError, AppUnavailableError, ProviderNotInitializeError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
-from controllers.console.explore.error import NotCompletionAppError, NotChatAppError
+from controllers.console.app.error import (AppUnavailableError, CompletionRequestError, ConversationCompletedError,
+                                           ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
+                                           ProviderQuotaExceededError)
+from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
-from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from flask import Response, stream_with_context
+from flask_login import current_user
+from flask_restful import reqparse
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
+from werkzeug.exceptions import InternalServerError, NotFound
 
 
 # define completion api for user

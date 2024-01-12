@@ -2,7 +2,7 @@ from core.entities.application_entities import ApplicationGenerateEntity
 from core.entities.provider_entities import QuotaUnit
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.provider import ProviderType, Provider
+from models.provider import Provider, ProviderType
 
 
 @message_was_created.connect

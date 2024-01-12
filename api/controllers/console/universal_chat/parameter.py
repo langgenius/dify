@@ -1,11 +1,9 @@
 # -*- coding:utf-8 -*-
 import json
 
-from flask_restful import marshal_with, fields
-
 from controllers.console import api
 from controllers.console.universal_chat.wraps import UniversalChatResource
-
+from flask_restful import fields, marshal_with
 from models.model import App
 
 

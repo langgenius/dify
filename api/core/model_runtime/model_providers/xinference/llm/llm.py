@@ -1,29 +1,27 @@
-from typing import Generator, List, Optional, Union, Iterator, cast
-from openai import OpenAI
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
-from openai.types.completion import Completion
-from openai.types.chat.chat_completion_message import FunctionCall
-from openai.types.chat import ChatCompletionChunk, ChatCompletion, ChatCompletionMessageToolCall
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall, ChoiceDeltaFunctionCall
-from openai import OpenAI, Stream, \
-    APIConnectionError, APITimeoutError, AuthenticationError, InternalServerError, \
-    RateLimitError, ConflictError, NotFoundError, UnprocessableEntityError, PermissionDeniedError
+from typing import Generator, Iterator, List, Optional, Union, cast
 
-from xinference_client.client.restful.restful_client import \
-    RESTfulChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatglmCppChatModelHandle, Client
-
-from core.model_runtime.entities.model_entities import AIModelEntity
-
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage, SystemPromptMessage, AssistantPromptMessage
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType, ModelPropertyKey
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
+                                                          SystemPromptMessage, UserPromptMessage)
+from core.model_runtime.entities.model_entities import (AIModelEntity, FetchFrom, ModelPropertyKey, ModelType,
+                                                        ParameterRule, ParameterType)
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.xinference.llm.xinference_helper import XinferenceHelper, XinferenceModelExtraParameter
-from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
-    InvokeAuthorizationError, InvokeBadRequestError, InvokeError
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.xinference.llm.xinference_helper import (XinferenceHelper,
+                                                                                 XinferenceModelExtraParameter)
 from core.model_runtime.utils import helper
+from openai import (APIConnectionError, APITimeoutError, AuthenticationError, ConflictError, InternalServerError,
+                    NotFoundError, OpenAI, PermissionDeniedError, RateLimitError, Stream, UnprocessableEntityError)
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageToolCall
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
+from openai.types.chat.chat_completion_message import FunctionCall
+from openai.types.completion import Completion
+from xinference_client.client.restful.restful_client import (Client, RESTfulChatglmCppChatModelHandle,
+                                                             RESTfulChatModelHandle, RESTfulGenerateModelHandle)
+
 
 class XinferenceAILargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 

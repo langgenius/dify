@@ -1,9 +1,9 @@
 import time
-from typing import List, Optional, Any, Mapping
+from typing import Any, List, Mapping, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import SimpleChatModel
-from langchain.schema import BaseMessage, ChatResult, AIMessage, ChatGeneration
+from langchain.schema import AIMessage, BaseMessage, ChatGeneration, ChatResult
 
 
 class FakeLLM(SimpleChatModel):

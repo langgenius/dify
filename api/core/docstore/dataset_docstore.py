@@ -1,13 +1,12 @@
 from typing import Any, Dict, Optional, Sequence, cast
 
-from langchain.schema import Document
-from sqlalchemy import func
-
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
+from langchain.schema import Document
 from models.dataset import Dataset, DocumentSegment
+from sqlalchemy import func
 
 
 class DatasetDocumentStore:

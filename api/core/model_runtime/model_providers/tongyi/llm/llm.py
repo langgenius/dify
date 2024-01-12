@@ -1,22 +1,21 @@
 from http import HTTPStatus
-from typing import Optional, Generator, Union, List
+from typing import Generator, List, Optional, Union
+
 import dashscope
-from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
-from dashscope.common.error import AuthenticationError, RequestFailure, \
-    InvalidParameter, UnsupportedModel, ServiceUnavailableError, UnsupportedHTTPMethod
-
-from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
-
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage, AssistantPromptMessage, \
-    SystemPromptMessage
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, \
-    LLMResultChunkDelta
-from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
-    InvokeAuthorizationError, InvokeBadRequestError, InvokeError
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
+                                                          SystemPromptMessage, UserPromptMessage)
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
+from dashscope.common.error import (AuthenticationError, InvalidParameter, RequestFailure, ServiceUnavailableError,
+                                    UnsupportedHTTPMethod, UnsupportedModel)
+from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
 
 from ._client import EnhanceTongyi
+
 
 class TongyiLargeLanguageModel(LargeLanguageModel):
 

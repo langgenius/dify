@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Type
 
 from langchain.tools import BaseTool
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 
 class DatetimeToolInput(BaseModel):

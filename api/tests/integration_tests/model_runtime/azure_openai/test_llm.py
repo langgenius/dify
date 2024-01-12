@@ -2,15 +2,14 @@ import os
 from typing import Generator
 
 import pytest
-
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
-    LLMResultChunk
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, \
-    SystemPromptMessage, ImagePromptMessageContent, PromptMessageTool, UserPromptMessage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
+                                                          PromptMessageTool, SystemPromptMessage,
+                                                          TextPromptMessageContent, UserPromptMessage)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.azure_openai.llm.llm import AzureOpenAILargeLanguageModel
-
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_validate_credentials_for_chat_model(setup_openai_mock):

@@ -6,14 +6,13 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import yaml
-from pydantic import ValidationError
-
-from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
-from core.model_runtime.entities.model_entities import PriceInfo, AIModelEntity, PriceType, PriceConfig, \
-    DefaultParameterName, FetchFrom, ModelType
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError
+from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
+from core.model_runtime.entities.model_entities import (AIModelEntity, DefaultParameterName, FetchFrom, ModelType,
+                                                        PriceConfig, PriceInfo, PriceType)
+from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from pydantic import ValidationError
 
 
 class AIModel(ABC):

@@ -1,12 +1,12 @@
 # -*- coding:utf-8 -*-
+import random
 import re
+import string
 import subprocess
 import uuid
 from datetime import datetime
 from hashlib import sha256
 from zoneinfo import available_timezones
-import random
-import string
 
 from flask_restful import fields
 

@@ -1,6 +1,6 @@
-from models.model import AppModelConfig, App
 from core.moderation.factory import ModerationFactory, ModerationOutputsResult
 from extensions.ext_database import db
+from models.model import App, AppModelConfig
 
 
 class ModerationService:

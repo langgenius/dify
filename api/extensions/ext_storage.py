@@ -1,7 +1,7 @@
 import os
 import shutil
 from contextlib import closing
-from typing import Union, Generator
+from typing import Generator, Union
 
 import boto3
 from botocore.exceptions import ClientError

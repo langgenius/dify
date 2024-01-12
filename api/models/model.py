@@ -1,13 +1,13 @@
 import json
 
+from core.file.upload_file_parser import UploadFileParser
+from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import UserMixin
+from libs.helper import generate_string
 from sqlalchemy import Float
 from sqlalchemy.dialects.postgresql import UUID
 
-from core.file.upload_file_parser import UploadFileParser
-from libs.helper import generate_string
-from extensions.ext_database import db
 from .account import Account, Tenant
 
 

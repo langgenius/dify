@@ -1,10 +1,8 @@
 # -*- coding:utf-8 -*-
-from flask_restful import marshal_with, fields
-from flask import current_app
-
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
-
+from flask import current_app
+from flask_restful import fields, marshal_with
 from models.model import InstalledApp
 
 
