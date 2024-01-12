@@ -158,6 +158,7 @@ class ToolProviderCredentials(BaseModel):
     required: bool = False
     default: Optional[str] = None
     options: Optional[List[ToolCredentialsOption]] = None
+    label: I18nObject = Field(..., description="The label presented to the user")
     help: Optional[I18nObject] = None
     url: Optional[str] = None
     placeholder: Optional[I18nObject] = None
@@ -170,6 +171,7 @@ class ToolProviderCredentials(BaseModel):
             'default': self.default,
             'options': self.options,
             'help': self.help.to_dict() if self.help else None,
+            'label': self.label.to_dict(),
             'url': self.url,
             'placeholder': self.placeholder.to_dict() if self.placeholder else None,
         }

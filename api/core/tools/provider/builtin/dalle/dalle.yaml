@@ -12,6 +12,9 @@ credentails_for_provider:
   openai_api_key:
     type: secret-input
     required: true
+    label:
+      en_US: OpenAI API key
+      zh_Hans: OpenAI API key
     help:
       en_US: Please input your OpenAI API key
       zh_Hans: 请输入你的 OpenAI API key
@@ -21,6 +24,9 @@ credentails_for_provider:
   openai_organizaion_id:
     type: text-input
     required: false
+    label:
+      en_US: OpenAI organization ID
+      zh_Hans: OpenAI organization ID
     help:
       en_US: Please input your OpenAI organization ID
       zh_Hans: 请输入你的 OpenAI organization ID
@@ -30,6 +36,9 @@ credentails_for_provider:
   openai_base_url:
     type: text-input
     required: false
+    label:
+      en_US: OpenAI base URL
+      zh_Hans: OpenAI base URL
     help:
       en_US: Please input your OpenAI base URL
       zh_Hans: 请输入你的 OpenAI base URL

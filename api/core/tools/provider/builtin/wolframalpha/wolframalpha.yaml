@@ -12,6 +12,9 @@ credentails_for_provider:
   appid:
     type: secret-input
     required: true
+    label:
+      en_US: WolframAlpha AppID
+      zh_Hans: WolframAlpha AppID
     placeholder:
       en_US: Please input your WolframAlpha AppID
       zh_Hans: 请输入你的 WolframAlpha AppID
