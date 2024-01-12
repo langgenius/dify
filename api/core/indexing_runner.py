@@ -13,7 +13,7 @@ from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.errors.error import ProviderTokenNotInitError
 from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
-from core.model_manager import ModelManager
+from core.model_manager import ModelManager, ModelInstance
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
@@ -61,8 +61,24 @@ class IndexingRunner:
                 # load file
                 text_docs = self._load_data(dataset_document, processing_rule.mode == 'automatic')
 
+                # get embedding model instance
+                embedding_model_instance = None
+                if dataset.indexing_technique == 'high_quality':
+                    if dataset.embedding_model_provider:
+                        embedding_model_instance = self.model_manager.get_model_instance(
+                            tenant_id=dataset.tenant_id,
+                            provider=dataset.embedding_model_provider,
+                            model_type=ModelType.TEXT_EMBEDDING,
+                            model=dataset.embedding_model
+                        )
+                    else:
+                        embedding_model_instance = self.model_manager.get_default_model_instance(
+                            tenant_id=dataset.tenant_id,
+                            model_type=ModelType.TEXT_EMBEDDING,
+                        )
+
                 # get splitter
-                splitter = self._get_splitter(processing_rule)
+                splitter = self._get_splitter(processing_rule, embedding_model_instance)
 
                 # split to documents
                 documents = self._step_split(
@@ -121,8 +137,24 @@ class IndexingRunner:
             # load file
             text_docs = self._load_data(dataset_document, processing_rule.mode == 'automatic')
 
+            # get embedding model instance
+            embedding_model_instance = None
+            if dataset.indexing_technique == 'high_quality':
+                if dataset.embedding_model_provider:
+                    embedding_model_instance = self.model_manager.get_model_instance(
+                        tenant_id=dataset.tenant_id,
+                        provider=dataset.embedding_model_provider,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=dataset.embedding_model
+                    )
+                else:
+                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                        tenant_id=dataset.tenant_id,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                    )
+
             # get splitter
-            splitter = self._get_splitter(processing_rule)
+            splitter = self._get_splitter(processing_rule, embedding_model_instance)
 
             # split to documents
             documents = self._step_split(
@@ -253,7 +285,7 @@ class IndexingRunner:
             text_docs = FileExtractor.load(file_detail, is_automatic=processing_rule.mode == 'automatic')
 
             # get splitter
-            splitter = self._get_splitter(processing_rule)
+            splitter = self._get_splitter(processing_rule, embedding_model_instance)
 
             # split to documents
             documents = self._split_to_documents_for_estimate(
@@ -384,7 +416,7 @@ class IndexingRunner:
                 )
 
                 # get splitter
-                splitter = self._get_splitter(processing_rule)
+                splitter = self._get_splitter(processing_rule, embedding_model_instance)
 
                 # split to documents
                 documents = self._split_to_documents_for_estimate(
@@ -502,7 +534,8 @@ class IndexingRunner:
         text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\xFF]', '', text)
         return text
 
-    def _get_splitter(self, processing_rule: DatasetProcessRule) -> TextSplitter:
+    def _get_splitter(self, processing_rule: DatasetProcessRule,
+                      embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
@@ -517,19 +550,20 @@ class IndexingRunner:
             if separator:
                 separator = separator.replace('\\n', '\n')
 
-
-            character_splitter = FixedRecursiveCharacterTextSplitter.from_gpt2_encoder(
+            character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=segmentation["max_tokens"],
                 chunk_overlap=0,
                 fixed_separator=separator,
-                separators=["\n\n", "。", ".", " ", ""]
+                separators=["\n\n", "。", ".", " ", ""],
+                embedding_model_instance=embedding_model_instance
             )
         else:
             # Automatic segmentation
-            character_splitter = EnhanceRecursiveCharacterTextSplitter.from_gpt2_encoder(
+            character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens'],
                 chunk_overlap=0,
-                separators=["\n\n", "。", ".", " ", ""]
+                separators=["\n\n", "。", ".", " ", ""],
+                embedding_model_instance=embedding_model_instance
             )
 
         return character_splitter
@@ -714,7 +748,7 @@ class IndexingRunner:
         return text
 
     def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)" 
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)"
         matches = re.findall(regex, text, re.UNICODE)
 
         return [
