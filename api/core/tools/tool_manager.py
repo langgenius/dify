@@ -158,9 +158,16 @@ class ToolManager:
             if builtin_provider is None:
                 raise ToolProviderNotFoundError(f'builtin provider {provider_name} not found')
             
+            # decrypt the credentials
+            credentials = builtin_provider.credentials
+            controller = ToolManager.get_builtin_provider(provider_name)
+            tool_configuration = ToolConfiguration(tenant_id=tanent_id, provider_controller=controller)
+
+            decrypted_credentails = tool_configuration.decrypt_tool_credentials(credentials)
+
             return builtin_tool.fork_tool_runtime(meta={
                 'tenant_id': tanent_id,
-                'credentials': builtin_provider.credentials,
+                'credentials': decrypted_credentails,
             })
         
         elif provider_type == 'api':
@@ -169,9 +176,13 @@ class ToolManager:
             
             api_provider, credentials = ToolManager.get_api_provider_controller(tanent_id, provider_name)
 
+            # decrypt the credentials
+            tool_configuration = ToolConfiguration(tenant_id=tanent_id, provider_controller=api_provider)
+            decrypted_credentails = tool_configuration.decrypt_tool_credentials(credentials)
+
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tanent_id,
-                'credentials': credentials,
+                'credentials': decrypted_credentails,
             })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')

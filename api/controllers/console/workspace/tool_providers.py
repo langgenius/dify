@@ -252,6 +252,7 @@ class ToolApiProviderPreviousTestApi(Resource):
         args = parser.parse_args()
 
         return ToolManageService.test_api_tool_preview(
+            current_user.current_tenant_id,
             args['tool_name'],
             args['credentials'],
             args['parameters'],

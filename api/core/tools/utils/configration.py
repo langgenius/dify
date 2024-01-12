@@ -9,23 +9,27 @@ class ToolConfiguration(BaseModel):
     tenant_id: str
     provider_controller: ToolProviderController
 
+    def _deep_copy(self, credentails: Dict[str, str]) -> Dict[str, str]:
+        """
+        deep copy credentials
+        """
+        return {key: value for key, value in credentails.items()}
+    
     def encrypt_tool_credentials(self, credentails: Dict[str, str]) -> Dict[str, str]:
         """
         encrypt tool credentials with tanent id
 
         return a deep copy of credentials with encrypted values
         """
-        # TODO: deep copy
-        credentials = credentials.copy()
+        credentials = self._deep_copy(credentails)
 
         # get fields need to be decrypted
-        decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(self.tenant_id)
         fields = self.provider_controller.get_credentails_schema()
         for field_name, field in fields.items():
             if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
                 if field_name in credentials:
-                    # TODO: encrypt
-                    pass
+                    encrypted = encrypter.encrypt_token(self.tenant_id, credentials[field_name])
+                    credentials[field_name] = encrypted
         
         return credentials
     
@@ -35,6 +39,21 @@ class ToolConfiguration(BaseModel):
 
         return a deep copy of credentials with masked values
         """
+        credentials = self._deep_copy(credentials)
+
+        # get fields need to be decrypted
+        fields = self.provider_controller.get_credentails_schema()
+        for field_name, field in fields.items():
+            if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
+                if field_name in credentials:
+                    if len(credentials[field_name]) > 6:
+                        credentials[field_name] = \
+                            credentials[field_name][:2] + \
+                            '*' * (len(credentials[field_name]) - 4) +\
+                            credentials[field_name][-2:]
+                    else:
+                        credentials[field_name] = '*' * len(credentials[field_name])
+
         return credentials
 
     def decrypt_tool_credentials(self, credentials: Dict[str, str]) -> Dict[str, str]:
@@ -43,17 +62,16 @@ class ToolConfiguration(BaseModel):
 
         return a deep copy of credentials with decrypted values
         """
-
-        # TODO: deep copy
-        credentials = credentials.copy()
+        credentials = self._deep_copy(credentials)
 
         # get fields need to be decrypted
-        decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(self.tenant_id)
         fields = self.provider_controller.get_credentails_schema()
         for field_name, field in fields.items():
             if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
                 if field_name in credentials:
-                    # TODO: decrypt
-                    credentials[field_name] = '****'
+                    try:
+                        credentials[field_name] = encrypter.decrypt_token(self.tenant_id, credentials[field_name])
+                    except:
+                        pass
         
         return credentials

@@ -15,6 +15,20 @@ class ApiTool(Tool):
     """
     Api tool
     """
+    def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
+        """
+            fork a new tool with meta data
+
+            :param meta: the meta data of a tool call processing, tenant_id is required
+            :return: the new tool
+        """
+        return self.__class__(
+            identity=self.identity.copy() if self.identity else None,
+            parameters=self.parameters.copy() if self.parameters else None,
+            description=self.description.copy() if self.description else None,
+            api_bundle=self.api_bundle.copy() if self.api_bundle else None,
+            meta=Tool.Meta(**meta)
+        )
 
     def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
         """
