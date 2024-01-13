@@ -5,7 +5,7 @@ from typing import Union, Generator, Dict, Any, Tuple, List
 
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, UserPromptMessage,\
       SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage
-from core.model_runtime.entities.llm_entities import LLMResultChunk
+from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult, LLMUsage
 from core.model_manager import ModelInstance
 
 from core.tools.provider.tool import Tool
@@ -20,7 +20,7 @@ from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
-class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
+class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, model_instance: ModelInstance,
         conversation: Conversation,
         tool_instances: Dict[str, Tool],
@@ -42,7 +42,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         )
 
         # recale llm max tokens
-        self.recale_llm_max_tokens(model_instance, prompt_messages)
+        self.recale_llm_max_tokens(self.model_config, prompt_messages)
 
         iteration_step = 1
         max_iteration_steps = 5
@@ -50,12 +50,26 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         # continue to run until there is not any tool call
         function_call_state = True
         agent_thought: MessageAgentThought = None
+        llm_usage = {
+            'usage': None
+        }
+        final_answer = ''
+
+        def increse_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
+            if not final_llm_usage_dict['usage']:
+                final_llm_usage_dict['usage'] = usage
+            else:
+                llm_usage = final_llm_usage_dict['usage']
+                llm_usage.prompt_tokens += usage.prompt_tokens
+                llm_usage.completion_tokens += usage.completion_tokens
+                llm_usage.prompt_price += usage.prompt_price
+                llm_usage.completion_price += usage.completion_price
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
             
             # invoke model
-            llm_result: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
+            chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_orchestration_config.model_config.parameters,
                 tools=prompt_messages_tools,
@@ -70,7 +84,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # save full response
             response = ''
 
-            for chunk in llm_result:
+            for chunk in chunks:
                 # check if there is any tool call
                 if self.check_tool_calls(chunk):
                     function_call_state = True
@@ -82,11 +96,16 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                               and isinstance(prompt_message.content, str):
                             response += prompt_message.content
 
+                if chunk.delta.usage:
+                    increse_usage(llm_usage, chunk.delta.usage)
+
                 yield chunk
 
             if agent_thought is not None:
                 # save last agent thought's response
                 self.save_agent_thought(agent_thought, thought=None, answer=response)
+
+            final_answer += response + '\n'
 
             # call tools
             tool_responses = []
@@ -155,14 +174,22 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     query=query,
                     tool_call_id=tool_call_id,
                     tool_call_name=tool_call_name,
-                    tool_response=tool_response,
+                    tool_response=self._handle_tool_response(tool_response),
                     prompt_messages=prompt_messages,
                 )
 
             iteration_step += 1
 
         # publish end event
-        self.queue_manager.publish_message_end()
+        self.queue_manager.publish_message_end(LLMResult(
+            model=model_instance.model,
+            prompt_messages=prompt_messages,
+            message=AssistantPromptMessage(
+                content=final_answer,
+            ),
+            usage=llm_usage['usage'],
+            system_fingerprint=''
+        ))
 
     def check_tool_calls(self, llm_result_chunk: LLMResultChunk) -> bool:
         """

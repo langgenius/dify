@@ -6,6 +6,7 @@ from datetime import datetime
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
 from core.features.assistant_cot_runner import AssistantCotApplicationRunner
+from core.features.assistant_fc_runner import AssistantFunctionCallApplicationRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
     AgentEntity, AgentToolEntity
@@ -148,8 +149,26 @@ class AssistantApplicationRunner(AppRunner):
                 query=query,
             )
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
-            # TODO: implement function calling
-            pass
+            assistant_cot_runner = AssistantFunctionCallApplicationRunner(
+                tenant_id=application_generate_entity.tenant_id,
+                app_orchestration_config=app_orchestration_config,
+                model_config=app_orchestration_config.model_config,
+                config=agent_entity,
+                queue_manager=queue_manager,
+                message=message,
+                user_id=application_generate_entity.user_id,
+                agent_llm_callback=agent_llm_callback,
+                callback=agent_callback,
+                memory=memory,
+            )
+            invoke_result = assistant_cot_runner.run(
+                model_instance=model_instance,
+                conversation=conversation,
+                tool_instances=tool_instances,
+                message=message,
+                prompt_messages_tools=prompt_messages_tools,
+                query=query,
+            )
 
         # handle invoke result
         self._handle_invoke_result(
@@ -176,7 +195,7 @@ class AssistantApplicationRunner(AppRunner):
                 conversation_id=conversation_id,
                 user_id=user_id,
                 tenant_id=tanent_id,
-                variables_str='{}',
+                variables_str='[]',
             )
             db.session.add(tool_variables)
             db.session.commit()
@@ -187,7 +206,12 @@ class AssistantApplicationRunner(AppRunner):
         """
         convert db variables to tool variables
         """
-        return ToolRuntimeVariablePool(**db_variables.variables)
+        return ToolRuntimeVariablePool(**{
+            'conversation_id': db_variables.conversation_id,
+            'user_id': db_variables.user_id,
+            'tenant_id': db_variables.tenant_id,
+            'pool': db_variables.variables
+        })
     
     def _update_db_variables(self, tool_variables: ToolRuntimeVariablePool, db_variables: ToolConversationVariables):
         """

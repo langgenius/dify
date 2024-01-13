@@ -13,7 +13,7 @@ from core.entities.application_entities import (AdvancedChatPromptTemplateEntity
                                                 ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
                                                 DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
                                                 FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
-                                                SensitiveWordAvoidanceEntity)
+                                                SensitiveWordAvoidanceEntity, AgentPromptEntity)
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj
@@ -376,82 +376,90 @@ class ApplicationManager:
 
         properties['show_retrieve_source'] = show_retrieve_source
 
+        if 'datasets' in copy_app_model_config_dict:
+            datasets = copy_app_model_config_dict.get('dataset_configs', {
+                'strategy': 'router',
+                'datasets': []
+            })
+
+            dataset_ids = []
+
+            for dataset in datasets.get('datasets', []):
+                if 'enabled' not in dataset or not dataset['enabled']:
+                    continue
+
+                dataset_id = dataset.get('id', None)
+                dataset_ids.append(dataset_id)
+
+            dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
+            query_variable = copy_app_model_config_dict.get('dataset_query_variable')
+
+            if dataset_configs['retrieval_model'] == 'single':
+                properties['dataset'] = DatasetEntity(
+                    dataset_ids=dataset_ids,
+                    retrieve_config=DatasetRetrieveConfigEntity(
+                        query_variable=query_variable,
+                        retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                            dataset_configs['retrieval_model']
+                        ),
+                        single_strategy=datasets.get('strategy', 'router')
+                    )
+                )
+            else:
+                properties['dataset'] = DatasetEntity(
+                    dataset_ids=dataset_ids,
+                    retrieve_config=DatasetRetrieveConfigEntity(
+                        query_variable=query_variable,
+                        retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                            dataset_configs['retrieval_model']
+                        ),
+                        top_k=dataset_configs.get('top_k'),
+                        score_threshold=dataset_configs.get('score_threshold'),
+                        reranking_model=dataset_configs.get('reranking_model')
+                    )
+                )
+
         if 'agent_mode' in copy_app_model_config_dict and copy_app_model_config_dict['agent_mode'] \
                 and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
             'enabled']:
-            agent_dict = copy_app_model_config_dict.get('agent_mode')
+            agent_dict = copy_app_model_config_dict.get('agent_mode', {})
             agent_strategy = agent_dict.get('strategy', 'router')
-            if agent_strategy in ['router', 'react_router']:
-                dataset_ids = []
-                for tool in agent_dict.get('tools', []):
-                    key = list(tool.keys())[0]
 
-                    if key != 'dataset':
-                        continue
-
-                    tool_item = tool[key]
-
-                    if "enabled" not in tool_item or not tool_item["enabled"]:
-                        continue
-
-                    dataset_id = tool_item['id']
-                    dataset_ids.append(dataset_id)
-
-                dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
-                query_variable = copy_app_model_config_dict.get('dataset_query_variable')
-                if dataset_configs['retrieval_model'] == 'single':
-                    properties['dataset'] = DatasetEntity(
-                        dataset_ids=dataset_ids,
-                        retrieve_config=DatasetRetrieveConfigEntity(
-                            query_variable=query_variable,
-                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieval_model']
-                            ),
-                            single_strategy=agent_strategy
-                        )
-                    )
-                else:
-                    properties['dataset'] = DatasetEntity(
-                        dataset_ids=dataset_ids,
-                        retrieve_config=DatasetRetrieveConfigEntity(
-                            query_variable=query_variable,
-                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieval_model']
-                            ),
-                            top_k=dataset_configs.get('top_k'),
-                            score_threshold=dataset_configs.get('score_threshold'),
-                            reranking_model=dataset_configs.get('reranking_model')
-                        )
-                    )
+            if agent_strategy == 'react':
+                strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
             else:
-                if agent_strategy == 'react':
-                    strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
-                else:
-                    strategy = AgentEntity.Strategy.FUNCTION_CALLING
+                strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
-                agent_tools = []
-                for tool in agent_dict.get('tools', []):
-                    if 'provider_type' not in tool:
-                        continue
+            agent_tools = []
+            for tool in agent_dict.get('tools', []):
+                if 'provider_type' not in tool:
+                    continue
 
-                    agent_tool_properties = {
-                        'provider_type': tool['provider_type'],
-                        'provider_name': tool['provider_name'],
-                        'tool_name': tool['tool_name'],
-                        'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
-                    }
+                agent_tool_properties = {
+                    'provider_type': tool['provider_type'],
+                    'provider_name': tool['provider_name'],
+                    'tool_name': tool['tool_name'],
+                    'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
+                }
 
-                    if "enabled" not in tool_item or not tool_item["enabled"]:
-                        continue
+                if "enabled" not in tool or not tool["enabled"]:
+                    continue
 
-                    agent_tools.append(AgentToolEntity(**agent_tool_properties))
+                agent_tools.append(AgentToolEntity(**agent_tool_properties))
 
-                properties['agent'] = AgentEntity(
-                    provider=properties['model_config'].provider,
-                    model=properties['model_config'].model,
-                    strategy=strategy,
-                    tools=agent_tools
-                )
+            agent_prompt = agent_dict.get('prompt', {})
+            agent_prompt_entity = AgentPromptEntity(
+                first_prompt=agent_prompt.get('first_prompt', ''),
+                next_iteration=agent_prompt.get('next_iteration', ''),
+            )
+
+            properties['agent'] = AgentEntity(
+                provider=properties['model_config'].provider,
+                model=properties['model_config'].model,
+                strategy=strategy,
+                prompt=agent_prompt_entity,
+                tools=agent_tools
+            )
 
         # file upload
         file_upload_dict = copy_app_model_config_dict.get('file_upload')

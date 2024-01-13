@@ -53,8 +53,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         if not llm_result:
             raise ValueError("failed to invoke llm")
         
-        # parse llm result
-        llm_result = self._parse_llm_result(llm_result.message.content)
 
     def _parse_cot_agent_tool_call(self, content: str) -> Union[None, str, Dict[str, Any]]:
         """
