@@ -14,6 +14,8 @@ import Loading from '../../base/loading'
 import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
+import { useDebugWithSingleOrMultipleModel } from './debug/hooks'
+import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
 import type {
   AnnotationReplyConfig,
   DatasetConfigs,
@@ -542,6 +544,12 @@ const Configuration: FC = () => {
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const { locale } = useContext(I18n)
 
+  const {
+    debugWithMultipleModel,
+    multipleModelConfigs,
+    handleMultipleModelConfigsChange,
+  } = useDebugWithSingleOrMultipleModel(appId)
+
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
@@ -651,11 +659,27 @@ const Configuration: FC = () => {
                   <CodeBracketIcon className="h-4 w-4 text-gray-500" />
                 </Button>
               )}
-              <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
+              {
+                debugWithMultipleModel
+                  ? (
+                    <PublishWithMultipleModel
+                      multipleModelConfigs={multipleModelConfigs}
+                    />
+                  )
+                  : (
+                    <Button
+                      type='primary'
+                      onClick={() => handlePublish(false)}
+                      className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}
+                    >
+                      {t('appDebug.operation.applyConfig')}
+                    </Button>
+                  )
+              }
             </div>
           </div>
           <div className='flex grow h-[200px]'>
-            <div className="w-full sm:w-1/2 shrink-0">
+            <div className={`w-full sm:w-1/2 shrink-0 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
               <Config />
             </div>
             {!isMobile && <div className="relative w-1/2 grow h-full overflow-y-auto py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
@@ -667,6 +691,9 @@ const Configuration: FC = () => {
                   setModel: setModel as any,
                   onCompletionParamsChange: setCompletionParams,
                 }}
+                debugWithMultipleModel={debugWithMultipleModel}
+                multipleModelConfigs={multipleModelConfigs}
+                onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
               />
             </div>}
           </div>
@@ -726,6 +753,9 @@ const Configuration: FC = () => {
                 setModel: setModel as any,
                 onCompletionParamsChange: setCompletionParams,
               }}
+              debugWithMultipleModel={debugWithMultipleModel}
+              multipleModelConfigs={multipleModelConfigs}
+              onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
             />
           </Drawer>
         )}

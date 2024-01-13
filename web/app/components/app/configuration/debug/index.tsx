@@ -13,7 +13,7 @@ import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
 import DebugWithMultipleModel from './debug-with-multiple-model'
-import { useDebugWithSingleOrMultipleModel } from './hooks'
+import type { ModelAndParameter } from './types'
 import { AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
@@ -40,6 +40,9 @@ type IDebug = {
   onSetting: () => void
   inputs: Inputs
   modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
+  debugWithMultipleModel: boolean
+  multipleModelConfigs: ModelAndParameter[]
+  onMultipleModelConfigsChange: (multiple: boolean, modelConfigs: ModelAndParameter[]) => void
 }
 
 const Debug: FC<IDebug> = ({
@@ -47,6 +50,9 @@ const Debug: FC<IDebug> = ({
   onSetting,
   inputs,
   modelParameterParams,
+  debugWithMultipleModel,
+  multipleModelConfigs,
+  onMultipleModelConfigsChange,
 }) => {
   const { t } = useTranslation()
   const {
@@ -78,11 +84,6 @@ const Debug: FC<IDebug> = ({
     visionConfig,
     annotationConfig,
   } = useContext(ConfigContext)
-  const {
-    debugWithMultipleModel,
-    multipleModelConfigs,
-    handleMultipleModelConfigsChange,
-  } = useDebugWithSingleOrMultipleModel(appId)
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
@@ -521,7 +522,7 @@ const Debug: FC<IDebug> = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   const handleDebugWithMultipleModelChange = () => {
-    handleMultipleModelConfigsChange(
+    onMultipleModelConfigsChange(
       true,
       [
         { id: `${Date.now()}`, model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams },
@@ -547,7 +548,7 @@ const Debug: FC<IDebug> = ({
                       h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white
                       ${multipleModelConfigs.length >= 4 && ''}
                     `}
-                    onClick={() => handleMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
+                    onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                     disabled={multipleModelConfigs.length >= 4}
                   >
                     <Plus className='mr-1 w-3.5 h-3.5' />
@@ -597,7 +598,7 @@ const Debug: FC<IDebug> = ({
           <div className='grow'>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
-              onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
+              onMultipleModelConfigsChange={onMultipleModelConfigsChange}
             />
           </div>
         )
