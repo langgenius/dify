@@ -33,6 +33,7 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -80,16 +81,8 @@ const Debug: FC<IDebug> = ({
   const {
     debugWithMultipleModel,
     multipleModelConfigs,
-    handleAddModel,
-    handleDebugWithSingleModel,
-    handleDebugWithMultipleModel,
+    handleMultipleModelConfigsChange,
   } = useDebugWithSingleOrMultipleModel(appId)
-  const handleToggleDebugWithMultipleModel = () => {
-    if (debugWithMultipleModel)
-      handleDebugWithSingleModel()
-    else
-      handleDebugWithMultipleModel({ model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams })
-  }
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
@@ -526,6 +519,20 @@ const Debug: FC<IDebug> = ({
     }
   })
 
+  const { eventEmitter } = useEventEmitterContextContext()
+  const handleDebugWithMultipleModelChange = () => {
+    handleMultipleModelConfigsChange(
+      true,
+      [
+        { id: `${Date.now()}`, model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams },
+        { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
+      ],
+    )
+    eventEmitter?.emit({
+      type: 'app-sidebar-should-collapse',
+    } as any)
+  }
+
   return (
     <>
       <div className="shrink-0">
@@ -536,8 +543,11 @@ const Debug: FC<IDebug> = ({
               debugWithMultipleModel
                 ? (
                   <Button
-                    className='h-8 px-2.5 text-primary-600 text-[13px] font-medium'
-                    onClick={handleAddModel}
+                    className={`
+                      h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white
+                      ${multipleModelConfigs.length >= 4 && ''}
+                    `}
+                    onClick={() => handleMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                     disabled={multipleModelConfigs.length >= 4}
                   >
                     <Plus className='mr-1 w-3.5 h-3.5' />
@@ -554,7 +564,7 @@ const Debug: FC<IDebug> = ({
                     setModel={modelParameterParams.setModel}
                     onCompletionParamsChange={modelParameterParams.onCompletionParamsChange}
                     debugWithMultipleModel={debugWithMultipleModel}
-                    onDebugWithMultipleModelChange={handleToggleDebugWithMultipleModel}
+                    onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
                   />
                 )
             }
@@ -587,6 +597,7 @@ const Debug: FC<IDebug> = ({
           <div className='grow'>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
+              onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
             />
           </div>
         )

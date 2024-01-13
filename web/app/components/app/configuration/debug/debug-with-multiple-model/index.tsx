@@ -1,17 +1,19 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
-import type { ModelAndParameter } from '../types'
-import ChatItem from './chat-item'
+import DebugItem from './debug-item'
+import {
+  DebugWithMultipleModelContextProvider,
+  useDebugWithMultipleModelContext,
+} from './context'
+import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import ChatInput from '@/app/components/base/chat/input-area/chat-input'
 import type { VisionFile } from '@/app/components/base/chat/types'
 
-type DebugWithMultipleModelProps = {
-  multipleModelConfigs: ModelAndParameter[]
-}
-const DebugWithMultipleModel: FC<DebugWithMultipleModelProps> = ({
-  multipleModelConfigs,
-}) => {
+const DebugWithMultipleModel = () => {
+  const {
+    multipleModelConfigs,
+  } = useDebugWithMultipleModelContext()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleSend = useCallback((message: string, files?: VisionFile[]) => {
@@ -38,10 +40,9 @@ const DebugWithMultipleModel: FC<DebugWithMultipleModelProps> = ({
         `}
       >
         {
-          (twoLine || threeLine) && multipleModelConfigs.map((modelConfig, index) => (
-            <ChatItem
-              key={index}
-              index={index}
+          (twoLine || threeLine) && multipleModelConfigs.map(modelConfig => (
+            <DebugItem
+              key={modelConfig.id}
               modelAndParameter={modelConfig}
               className={`
                 ${twoLine && 'w-1/2 h-full'}
@@ -55,10 +56,9 @@ const DebugWithMultipleModel: FC<DebugWithMultipleModelProps> = ({
             <>
               <div className='flex gap-2'>
                 {
-                  multipleModelConfigs.slice(0, 2).map((modelConfig, index) => (
-                    <ChatItem
-                      key={index}
-                      index={index}
+                  multipleModelConfigs.slice(0, 2).map(modelConfig => (
+                    <DebugItem
+                      key={modelConfig.id}
                       modelAndParameter={modelConfig}
                       className='w-1/2 h-full'
                     />
@@ -67,10 +67,9 @@ const DebugWithMultipleModel: FC<DebugWithMultipleModelProps> = ({
               </div>
               <div className='flex gap-2'>
                 {
-                  multipleModelConfigs.slice(2, 4).map((modelConfig, index) => (
-                    <ChatItem
-                      key={index}
-                      index={index}
+                  multipleModelConfigs.slice(2, 4).map(modelConfig => (
+                    <DebugItem
+                      key={modelConfig.id}
                       modelAndParameter={modelConfig}
                       className='w-1/2 h-full'
                     />
@@ -88,4 +87,18 @@ const DebugWithMultipleModel: FC<DebugWithMultipleModelProps> = ({
   )
 }
 
-export default DebugWithMultipleModel
+const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
+  onMultipleModelConfigsChange,
+  multipleModelConfigs,
+}) => {
+  return (
+    <DebugWithMultipleModelContextProvider
+      onMultipleModelConfigsChange={onMultipleModelConfigsChange}
+      multipleModelConfigs={multipleModelConfigs}
+    >
+      <DebugWithMultipleModel />
+    </DebugWithMultipleModelContextProvider>
+  )
+}
+
+export default DebugWithMultipleModelWrapper

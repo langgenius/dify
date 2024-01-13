@@ -32,41 +32,13 @@ export const useDebugWithSingleOrMultipleModel = (appId: string) => {
     setMultipleModelConfigs,
   ] = useState(debugWithSingleOrMultipleModelConfigs.current[appId]?.configs || [])
 
-  const handleAddModel = useCallback(() => {
+  const handleMultipleModelConfigsChange = useCallback((
+    multiple: boolean,
+    modelConfigs: ModelAndParameter[],
+  ) => {
     const value = {
-      multiple: true,
-      configs: [
-        ...debugWithSingleOrMultipleModelConfigs.current[appId].configs!,
-        { model: '', provider: '', parameters: {} },
-      ],
-    }
-    debugWithSingleOrMultipleModelConfigs.current[appId] = value
-    localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify(debugWithSingleOrMultipleModelConfigs.current))
-    setDebugWithMultipleModel(value.multiple)
-    setMultipleModelConfigs(value.configs)
-  }, [appId])
-  // const handleRemoveModel = useCallback((index: number) => {
-  //   setMultipleModelConfigs((prev) => {
-  //     const newModelsConfig = prev.filter((_, i) => i !== index)
-  //     debugWithSingleOrMultipleModelConfigs[appId].configs = newModelsConfig
-  //     localStorage.setItem('app-debug-with-multiple-models', JSON.stringify(debugWithSingleOrMultipleModelConfigs))
-  //     return newModelsConfig
-  //   })
-  // }, [appId])
-  const handleDebugWithMultipleModel = useCallback((currentModelConfig?: ModelAndParameter) => {
-    const value = {
-      multiple: true,
-      configs: currentModelConfig ? [currentModelConfig, { model: '', provider: '', parameters: {} }] : [],
-    }
-    debugWithSingleOrMultipleModelConfigs.current[appId] = value
-    localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify(debugWithSingleOrMultipleModelConfigs.current))
-    setDebugWithMultipleModel(value.multiple)
-    setMultipleModelConfigs(value.configs)
-  }, [appId])
-  const handleDebugWithSingleModel = useCallback(() => {
-    const value = {
-      multiple: false,
-      configs: [],
+      multiple,
+      configs: modelConfigs,
     }
     debugWithSingleOrMultipleModelConfigs.current[appId] = value
     localStorage.setItem('app-debug-with-single-or-multiple-models', JSON.stringify(debugWithSingleOrMultipleModelConfigs.current))
@@ -77,9 +49,6 @@ export const useDebugWithSingleOrMultipleModel = (appId: string) => {
   return {
     debugWithMultipleModel,
     multipleModelConfigs,
-    handleDebugWithMultipleModel,
-    handleDebugWithSingleModel,
-    handleAddModel,
-    // handleRemoveModel,
+    handleMultipleModelConfigsChange,
   }
 }
