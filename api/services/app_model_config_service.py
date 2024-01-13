@@ -262,28 +262,39 @@ class AppModelConfigService:
 
         for tool in config["agent_mode"]["tools"]:
             key = list(tool.keys())[0]
-            if key not in SUPPORT_TOOLS:
-                raise ValueError("Keys in agent_mode.tools must be in the specified tool list")
+            if key in SUPPORT_TOOLS:
+                # old style, use tool name as key
+                tool_item = tool[key]
 
-            tool_item = tool[key]
+                if "enabled" not in tool_item or not tool_item["enabled"]:
+                    tool_item["enabled"] = False
 
-            if "enabled" not in tool_item or not tool_item["enabled"]:
-                tool_item["enabled"] = False
+                if not isinstance(tool_item["enabled"], bool):
+                    raise ValueError("enabled in agent_mode.tools must be of boolean type")
 
-            if not isinstance(tool_item["enabled"], bool):
-                raise ValueError("enabled in agent_mode.tools must be of boolean type")
+                if key == "dataset":
+                    if 'id' not in tool_item:
+                        raise ValueError("id is required in dataset")
 
-            if key == "dataset":
-                if 'id' not in tool_item:
-                    raise ValueError("id is required in dataset")
+                    try:
+                        uuid.UUID(tool_item["id"])
+                    except ValueError:
+                        raise ValueError("id in dataset must be of UUID type")
 
-                try:
-                    uuid.UUID(tool_item["id"])
-                except ValueError:
-                    raise ValueError("id in dataset must be of UUID type")
-
-                if not cls.is_dataset_exists(account, tool_item["id"]):
-                    raise ValueError("Dataset ID does not exist, please check your permission.")
+                    if not cls.is_dataset_exists(account, tool_item["id"]):
+                        raise ValueError("Dataset ID does not exist, please check your permission.")
+            else:
+                # latest style, use key-value pair
+                if "enabled" not in tool or not tool["enabled"]:
+                    tool["enabled"] = False
+                if "provider_type" not in tool:
+                    raise ValueError("provider_type is required in agent_mode.tools")
+                if "provider_name" not in tool:
+                    raise ValueError("provider_name is required in agent_mode.tools")
+                if "tool_name" not in tool:
+                    raise ValueError("tool_name is required in agent_mode.tools")
+                if "tool_parameters" not in tool:
+                    raise ValueError("tool_parameters is required in agent_mode.tools")
 
         # dataset_query_variable
         cls.is_dataset_query_variable_valid(config, app_mode)

@@ -423,18 +423,15 @@ class ApplicationManager:
                 and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
             'enabled']:
             agent_dict = copy_app_model_config_dict.get('agent_mode', {})
-            agent_strategy = agent_dict.get('strategy', 'router')
+            agent_strategy = agent_dict.get('strategy', 'cot')
 
-            if agent_strategy == 'react':
-                strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
-            else:
+            if agent_strategy == 'function_call':
                 strategy = AgentEntity.Strategy.FUNCTION_CALLING
+            else:
+                strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
 
             agent_tools = []
             for tool in agent_dict.get('tools', []):
-                if 'provider_type' not in tool:
-                    continue
-
                 agent_tool_properties = {
                     'provider_type': tool['provider_type'],
                     'provider_name': tool['provider_name'],

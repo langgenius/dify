@@ -149,6 +149,15 @@ class ToolManager:
         """
         if provider_type == 'builtin':
             builtin_tool = ToolManager.get_builtin_tool(provider_name, tool_name)
+
+            # check if the builtin tool need credentials
+            provider_controller = ToolManager.get_builtin_provider(provider_name)
+            if not provider_controller.need_credentials:
+                return builtin_tool.fork_tool_runtime(meta={
+                    'tenant_id': tanent_id,
+                    'credentials': {},
+                })
+
             # get credentials
             builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
                 BuiltinToolProvider.tenant_id == tanent_id,

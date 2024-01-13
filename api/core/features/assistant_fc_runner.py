@@ -195,14 +195,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
         """
         Check if there is any tool call in llm result chunk
         """
-        for prompt_message in llm_result_chunk.prompt_messages:
-            if isinstance(prompt_message, AssistantPromptMessage):
-                if not prompt_message.tool_calls:
-                    continue
-
-                if len(prompt_message.tool_calls) > 0:
-                    return True
-
+        if llm_result_chunk.delta.message.tool_calls:
+            return True
         return False
 
     def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> Union[None, List[Tuple[str, str, Dict[str, Any]]]]:
