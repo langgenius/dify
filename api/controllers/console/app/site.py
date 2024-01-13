@@ -1,17 +1,16 @@
 # -*- coding:utf-8 -*-
-from flask_login import current_user
-from libs.login import login_required
-from flask_restful import Resource, reqparse, marshal_with
-from werkzeug.exceptions import NotFound, Forbidden
-
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from fields.app_fields import app_site_fields
-from libs.helper import supported_language
 from extensions.ext_database import db
+from fields.app_fields import app_site_fields
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+from libs.helper import supported_language
+from libs.login import login_required
 from models.model import Site
+from werkzeug.exceptions import Forbidden, NotFound
 
 
 def parse_app_site_args():

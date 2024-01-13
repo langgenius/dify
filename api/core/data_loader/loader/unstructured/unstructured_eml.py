@@ -1,6 +1,7 @@
-import logging
 import base64
+import logging
 from typing import List
+
 from bs4 import BeautifulSoup
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document

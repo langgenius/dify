@@ -1,15 +1,14 @@
-from typing import List, Dict, Any, Optional
-
-from langchain import LLMChain as LCLLMChain
-from langchain.callbacks.manager import CallbackManagerForChainRun
-from langchain.schema import LLMResult, Generation
-from langchain.schema.language_model import BaseLanguageModel
+from typing import Any, Dict, List, Optional
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.entities.application_entities import ModelConfigEntity
-from core.model_manager import ModelInstance
 from core.entities.message_entities import lc_messages_to_prompt_messages
+from core.model_manager import ModelInstance
 from core.third_party.langchain.llms.fake import FakeLLM
+from langchain import LLMChain as LCLLMChain
+from langchain.callbacks.manager import CallbackManagerForChainRun
+from langchain.schema import Generation, LLMResult
+from langchain.schema.language_model import BaseLanguageModel
 
 
 class LLMChain(LCLLMChain):

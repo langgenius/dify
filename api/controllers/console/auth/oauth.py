@@ -3,13 +3,13 @@ from datetime import datetime
 from typing import Optional
 
 import requests
-from flask import request, redirect, current_app
-from flask_restful import Resource
-
-from libs.oauth import OAuthUserInfo, GitHubOAuth, GoogleOAuth
 from extensions.ext_database import db
+from flask import current_app, redirect, request
+from flask_restful import Resource
+from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService
+
 from .. import api
 
 

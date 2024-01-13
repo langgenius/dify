@@ -63,4 +63,4 @@ If you see a model provider not yet supported by Dify that you'd like to use, fo
 ### i18n (Internationalization) Support
 
 We are looking for contributors to help with translations in other languages. If you are interested in helping, please join the [Discord Community Server](https://discord.gg/AhzKf7dNgk) and let us know.  
-Also check out the [Frontend i18n README]((web/i18n/README_EN.md)) for more information.
+Also check out the [Frontend i18n README](web/i18n/README_EN.md) for more information.

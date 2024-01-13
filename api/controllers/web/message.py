@@ -3,27 +3,27 @@ import json
 import logging
 from typing import Generator, Union
 
-from flask import stream_with_context, Response
-from flask_restful import reqparse, fields, marshal_with
-from flask_restful.inputs import int_range
-from werkzeug.exceptions import NotFound, InternalServerError
-
 import services
 from controllers.web import api
-from controllers.web.error import NotChatAppError, CompletionRequestError, ProviderNotInitializeError, \
-    AppMoreLikeThisDisabledError, NotCompletionAppError, AppSuggestedQuestionsAfterAnswerDisabledError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
+from controllers.web.error import (AppMoreLikeThisDisabledError, AppSuggestedQuestionsAfterAnswerDisabledError,
+                                   CompletionRequestError, NotChatAppError, NotCompletionAppError,
+                                   ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
+                                   ProviderQuotaExceededError)
 from controllers.web.wraps import WebApiResource
 from core.entities.application_entities import InvokeFrom
-from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from libs.helper import uuid_value, TimestampField
+from fields.conversation_fields import message_file_fields
+from flask import Response, stream_with_context
+from flask_restful import fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
+from libs.helper import TimestampField, uuid_value
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
-from fields.conversation_fields import message_file_fields
+from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class MessageListApi(WebApiResource):

@@ -2,9 +2,8 @@ import json
 import urllib.parse
 
 import requests
-from flask_login import current_user
-
 from extensions.ext_database import db
+from flask_login import current_user
 from models.source import DataSourceBinding
 
 

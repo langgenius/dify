@@ -1,19 +1,19 @@
 import json
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 from core.generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.model import App, EndUser, Message, MessageFeedback, AppModelConfig
+from models.model import App, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.conversation import ConversationNotExistsError, ConversationCompletedError
-from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError, LastMessageNotExistsError, \
-    SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
+from services.errors.message import (FirstMessageNotExistsError, LastMessageNotExistsError, MessageNotExistsError,
+                                     SuggestedQuestionsAfterAnswerDisabledError)
 
 
 class MessageService:

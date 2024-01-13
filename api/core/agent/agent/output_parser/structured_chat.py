@@ -2,8 +2,8 @@ import json
 import re
 from typing import Union
 
-from langchain.agents.structured_chat.output_parser import StructuredChatOutputParser as LCStructuredChatOutputParser, \
-    logger
+from langchain.agents.structured_chat.output_parser import StructuredChatOutputParser as LCStructuredChatOutputParser
+from langchain.agents.structured_chat.output_parser import logger
 from langchain.schema import AgentAction, AgentFinish, OutputParserException
 
 

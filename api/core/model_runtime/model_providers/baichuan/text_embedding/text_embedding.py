@@ -1,19 +1,22 @@
+import time
+from json import dumps, loads
 from typing import Optional, Tuple
 
 from core.model_runtime.entities.model_entities import PriceType
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
+from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.errors.invoke import InvokeError, InvokeConnectionError, InvokeServerUnavailableError, \
-    InvokeRateLimitError, InvokeAuthorizationError, InvokeBadRequestError
 from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import BaichuanTokenizer
-from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import InvalidAPIKeyError, InsufficientAccountBalance, \
-    InvalidAuthenticationError, RateLimitReachedError, InternalServerError, BadRequestError
-
+from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (BadRequestError,
+                                                                                   InsufficientAccountBalance,
+                                                                                   InternalServerError,
+                                                                                   InvalidAPIKeyError,
+                                                                                   InvalidAuthenticationError,
+                                                                                   RateLimitReachedError)
 from requests import post
-from json import dumps, loads
 
-import time
 
 class BaichuanTextEmbeddingModel(TextEmbeddingModel):
     """

@@ -1,6 +1,6 @@
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
+from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
 
 
 class OpenAIModeration(Moderation):

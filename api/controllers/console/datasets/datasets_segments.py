@@ -1,11 +1,8 @@
 # -*- coding:utf-8 -*-
 import uuid
 from datetime import datetime
-from flask import request
-from flask_login import current_user
-from flask_restful import Resource, reqparse, marshal
-from werkzeug.exceptions import NotFound, Forbidden
 
+import pandas as pd
 import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
@@ -15,17 +12,19 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from libs.login import login_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
+from flask import request
+from flask_login import current_user
+from flask_restful import Resource, marshal, reqparse
+from libs.login import login_required
 from models.dataset import DocumentSegment
-
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from tasks.enable_segment_to_index_task import enable_segment_to_index_task
-from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
-import pandas as pd
+from tasks.disable_segment_from_index_task import disable_segment_from_index_task
+from tasks.enable_segment_to_index_task import enable_segment_to_index_task
+from werkzeug.exceptions import Forbidden, NotFound
 
 
 class DatasetDocumentSegmentListApi(Resource):

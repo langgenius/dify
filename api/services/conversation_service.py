@@ -1,10 +1,10 @@
-from typing import Union, Optional
+from typing import Optional, Union
 
 from core.generator.llm_generator import LLMGenerator
-from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.model import Conversation, App, EndUser, Message
+from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 

@@ -1,10 +1,9 @@
-from pydantic import BaseModel
-
-from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import ModelFeature, ModelType, FetchFrom, ParameterRule, \
-    DefaultParameterName, PriceConfig, ModelPropertyKey
-from core.model_runtime.entities.model_entities import AIModelEntity, I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
+from core.model_runtime.entities.llm_entities import LLMMode
+from core.model_runtime.entities.model_entities import (AIModelEntity, DefaultParameterName, FetchFrom, I18nObject,
+                                                        ModelFeature, ModelPropertyKey, ModelType, ParameterRule,
+                                                        PriceConfig)
+from pydantic import BaseModel
 
 AZURE_OPENAI_API_VERSION = '2023-12-01-preview'
 
