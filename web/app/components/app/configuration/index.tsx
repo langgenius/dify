@@ -37,7 +37,7 @@ import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
+import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
@@ -48,7 +48,6 @@ import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-
 type PublichConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
@@ -494,8 +493,9 @@ const Configuration: FC = () => {
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
       agent_mode: {
-        enabled: true,
+        enabled: isAgent,
         tools: [...postDatasets],
+        strategy: modelConfig.provider === 'openai' ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelConfig.provider,

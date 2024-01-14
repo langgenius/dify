@@ -111,6 +111,11 @@ export type ToolItem = {
   }
 } | AgentTool
 
+export enum AgentStrategy {
+  functionCall = 'function_call',
+  react = 'react',
+}
+
 /**
  * Model configuration. The backend type.
  */
@@ -145,7 +150,7 @@ export type ModelConfig = {
       first_prompt: string
       next_iteration: string
     }
-    strategy: string
+    strategy: AgentStrategy
     tools: ToolItem[]
   }
   model: {
