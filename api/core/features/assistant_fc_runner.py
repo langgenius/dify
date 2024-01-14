@@ -171,7 +171,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
                 prompt_messages = self.originze_prompt_messages(
                     prompt_template=prompt_template,
-                    query=query,
+                    query=None,
                     tool_call_id=tool_call_id,
                     tool_call_name=tool_call_name,
                     tool_response=self._handle_tool_response(tool_response),
@@ -207,13 +207,12 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             List[Tuple[str, str, Dict[str, Any]]]: [(tool_call_id, tool_call_name, tool_call_args)]
         """
         tool_calls = []
-        for prompt_message in llm_result_chunk.prompt_messages:
-            if isinstance(prompt_message, AssistantPromptMessage):
-                for tool_call in prompt_message.tool_calls:
-                    try:
-                        tool_calls.append((tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)))
-                    except Exception as e:
-                        logger.error(f"failed to parse tool call: {tool_call}")
+        for prompt_message in llm_result_chunk.delta.message.tool_calls:
+            tool_calls.append((
+                prompt_message.id,
+                prompt_message.function.name,
+                json.loads(prompt_message.function.arguments),
+            ))
 
         return tool_calls
     
@@ -233,7 +232,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             ]
         else:
             if tool_response:
-                prompt_messages = prompt_messages.copy().append(
+                prompt_messages = prompt_messages.copy()
+                prompt_messages.append(
                     ToolPromptMessage(
                         content=tool_response,
                         tool_call_id=tool_call_id,
@@ -241,7 +241,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     )
                 )
             if query:
-                prompt_messages = prompt_messages.copy().append(
+                prompt_messages = prompt_messages.copy()
+                prompt_messages.append(
                     UserPromptMessage(content=query)
                 )
 

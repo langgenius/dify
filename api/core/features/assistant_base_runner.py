@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional
+from typing import Optional, List
 
 from core.app_runner.app_runner import AppRunner
 from extensions.ext_database import db
@@ -56,20 +56,29 @@ class BaseAssistantApplicationRunner(AppRunner):
         self.callback = callback
         self.memory = memory
 
-    def _handle_tool_response(self, tool_response: ToolInvokeMessage) -> str:
+        # get how many agent thoughts have been created
+        self.agent_thought_count = db.session.query(MessageAgentThought).filter(
+            MessageAgentThought.message_id == self.message.id,
+        ).count()
+
+    def _handle_tool_response(self, tool_response: List[ToolInvokeMessage]) -> str:
         """
         Handle tool response
         """
-        if tool_response.type == ToolInvokeMessage.MessageType.TEXT:
-            return tool_response.message
-        elif tool_response.type == ToolInvokeMessage.MessageType.LINK:
-            return f"result link: {tool_response.message}"
-        elif tool_response.type == ToolInvokeMessage.MessageType.IMAGE:
-            return f"result image url: {tool_response.message}"
-        elif tool_response.type == ToolInvokeMessage.MessageType.BLOB:
-            return f"result has been sent to dialog of the assistant"
-        else:
-            return f"Here is the message: {tool_response.message}"
+        result = ''
+        for response in tool_response:
+            if response.type == ToolInvokeMessage.MessageType.TEXT:
+                result += response.message
+            elif response.type == ToolInvokeMessage.MessageType.LINK:
+                result += f"result link: {response.message}"
+            elif response.type == ToolInvokeMessage.MessageType.IMAGE:
+                result += f"result image url: {response.message}"
+            elif response.type == ToolInvokeMessage.MessageType.BLOB:
+                result += f"result has been sent to dialog of the assistant"
+            else:
+                result += f"Here is the message: {response.message}"
+
+        return result
         
     def create_agent_thought(self, message_id: str, message: str, 
                              tool_name: str, tool_input: str,
@@ -93,13 +102,17 @@ class BaseAssistantApplicationRunner(AppRunner):
             answer_price_unit=0,
             tokens=0,
             total_price=0,
+            position=self.agent_thought_count + 1,
             currency='USD',
             latency=0,
             created_by_role='account',
+            created_by=self.user_id,
         )
 
         db.session.add(thought)
         db.session.commit()
+
+        self.agent_thought_count += 1
 
         return thought
 
