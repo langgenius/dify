@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Any, cast, Literal
+from typing import Optional, Any, cast, Literal, Union
 
 from pydantic import BaseModel
 
@@ -165,6 +165,24 @@ class AgentPromptEntity(BaseModel):
     """
     first_prompt: str
     next_iteration: str
+
+class AgentScratchpadUnit(BaseModel):
+    """
+    Agent First Prompt Entity.
+    """
+
+    class Action(BaseModel):
+        """
+        Action Entity.
+        """
+        action_name: str
+        action_input: Union[dict, str]
+
+    agent_response: Optional[str] = None
+    thought: Optional[str] = None
+    action_str: Optional[str] = None
+    observation: Optional[str] = None
+    action: Optional[Action] = None    
 
 class AgentEntity(BaseModel):
     """

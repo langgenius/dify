@@ -29,20 +29,17 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
         query: str,
     ) -> Generator[LLMResultChunk, None, None]:
         """
-        Run Cot agent application
+        Run FunctionCall agent application
         """
         app_orchestration_config = self.app_orchestration_config
 
-        # get application generate entity
         prompt_template = self.app_orchestration_config.prompt_template.simple_prompt_template or ''
-
+        prompt_messages = self.history_prompt_messages
         prompt_messages = self.originze_prompt_messages(
             prompt_template=prompt_template,
             query=query,
+            prompt_messages=prompt_messages
         )
-
-        # recale llm max tokens
-        self.recale_llm_max_tokens(self.model_config, prompt_messages)
 
         iteration_step = 1
         max_iteration_steps = 5
@@ -66,8 +63,10 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 llm_usage.completion_price += usage.completion_price
 
         while function_call_state and iteration_step <= max_iteration_steps:
-            function_call_state = False
             
+            function_call_state = False
+            # recale llm max tokens
+            self.recale_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
@@ -90,11 +89,12 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     function_call_state = True
                     tool_calls.extend(self.extract_tool_calls(chunk))
 
-                for prompt_message in chunk.prompt_messages:
-                    if isinstance(prompt_message, AssistantPromptMessage):
-                        if prompt_message.content and prompt_message.content != '' \
-                              and isinstance(prompt_message.content, str):
-                            response += prompt_message.content
+                if chunk.delta.message and chunk.delta.message.content:
+                    if isinstance(chunk.delta.message.content, list):
+                        for content in chunk.delta.message.content:
+                            response += content.data
+                    else:
+                        response += chunk.delta.message.content
 
                 if chunk.delta.usage:
                     increse_usage(llm_usage, chunk.delta.usage)
@@ -103,7 +103,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
             if agent_thought is not None:
                 # save last agent thought's response
-                self.save_agent_thought(agent_thought, thought=None, answer=response)
+                self.save_agent_thought(agent_thought, thought=None, observation='', answer=response)
 
             final_answer += response + '\n'
 
@@ -127,7 +127,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         "tool_call_name": tool_call_name,
                         "tool_response": f"there is not a tool named {tool_call_name}"
                     })
-                    self.save_agent_thought(agent_thought, thought=None, answer=f"there is not a tool named {tool_call_name}")
+                    self.save_agent_thought(agent_thought, thought=None, observation='', answer=f"there is not a tool named {tool_call_name}")
                 else:
                     # invoke tool
                     error_response = None
@@ -152,7 +152,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         error_response = f"unknown error: {e}"
                     
                     if error_response:
-                        thought = error_response
+                        observation = error_response
                         logger.error(error_response)
                         tool_responses.append({
                             "tool_call_id": tool_call_id,
@@ -160,14 +160,14 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                             "tool_response": error_response
                         })
                     else:
-                        thought = self._handle_tool_response(tool_response)
+                        observation = self._handle_tool_response(tool_response)
                         tool_responses.append({
                             "tool_call_id": tool_call_id,
                             "tool_call_name": tool_call_name,
                             "tool_response": self._handle_tool_response(tool_response)
                         })
                     
-                    self.save_agent_thought(agent_thought, thought=thought, answer='')
+                    self.save_agent_thought(agent_thought, thought='', observation=observation, answer='')
 
                 prompt_messages = self.originze_prompt_messages(
                     prompt_template=prompt_template,
@@ -239,11 +239,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         tool_call_id=tool_call_id,
                         name=tool_call_name,
                     )
-                )
-            if query:
-                prompt_messages = prompt_messages.copy()
-                prompt_messages.append(
-                    UserPromptMessage(content=query)
                 )
 
         return prompt_messages

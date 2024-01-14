@@ -17,6 +17,7 @@ from core.application_queue_manager import ApplicationQueueManager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.entities.application_entities import ModelConfigEntity, \
     AgentEntity, AppOrchestrationConfigEntity
+from core.model_runtime.entities.message_entities import PromptMessage
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                  agent_llm_callback: AgentLLMCallback,
                  callback: AgentLoopGatherCallbackHandler,
                  memory: Optional[TokenBufferMemory] = None,
+                 prompt_messages: Optional[List[PromptMessage]] = None,
                  ) -> None:
         """
         Agent runner
@@ -55,6 +57,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         self.agent_llm_callback = agent_llm_callback
         self.callback = callback
         self.memory = memory
+        self.history_prompt_messages = prompt_messages
 
         # get how many agent thoughts have been created
         self.agent_thought_count = db.session.query(MessageAgentThought).filter(
@@ -116,14 +119,28 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return thought
 
-    def save_agent_thought(self, agent_thought: MessageAgentThought, thought: str, answer: str) -> MessageAgentThought:
+    def save_agent_thought(self, agent_thought: MessageAgentThought, thought: str, observation: str, answer: str) -> MessageAgentThought:
         """
         Save agent thought
         """
         if thought is not None:
             agent_thought.thought = thought
 
+        if observation is not None:
+            agent_thought.observation = observation
+
         if answer is not None:
             agent_thought.answer = answer
 
         db.session.commit()
+
+    def get_history_prompt_messages(self) -> List[PromptMessage]:
+        """
+        Get history prompt messages
+        """
+        if self.history_prompt_messages is None:
+            self.history_prompt_messages = db.session.query(PromptMessage).filter(
+                PromptMessage.message_id == self.message.id,
+            ).order_by(PromptMessage.position.asc()).all()
+
+        return self.history_prompt_messages

@@ -126,6 +126,16 @@ class AssistantApplicationRunner(AppRunner):
             model=app_orchestration_config.model_config.model
         )
 
+        prompt_message, _ = self.originze_prompt_messages(
+            app_record=app_record,
+            model_config=app_orchestration_config.model_config,
+            prompt_template_entity=app_orchestration_config.prompt_template,
+            inputs=inputs,
+            files=files,
+            query=query,
+            memory=memory,
+        )
+
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             assistant_cot_runner = AssistantCotApplicationRunner(
@@ -139,6 +149,7 @@ class AssistantApplicationRunner(AppRunner):
                 agent_llm_callback=agent_llm_callback,
                 callback=agent_callback,
                 memory=memory,
+                prompt_messages=prompt_message
             )
             invoke_result = assistant_cot_runner.run(
                 model_instance=model_instance,
@@ -160,6 +171,7 @@ class AssistantApplicationRunner(AppRunner):
                 agent_llm_callback=agent_llm_callback,
                 callback=agent_callback,
                 memory=memory,
+                prompt_messages=prompt_message
             )
             invoke_result = assistant_cot_runner.run(
                 model_instance=model_instance,

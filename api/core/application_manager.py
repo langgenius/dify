@@ -375,14 +375,14 @@ class ApplicationManager:
                 show_retrieve_source = True
 
         properties['show_retrieve_source'] = show_retrieve_source
-
+        
+        dataset_ids = []
         if 'datasets' in copy_app_model_config_dict:
             datasets = copy_app_model_config_dict.get('dataset_configs', {
                 'strategy': 'router',
                 'datasets': []
             })
 
-            dataset_ids = []
 
             for dataset in datasets.get('datasets', []):
                 if 'enabled' not in dataset or not dataset['enabled']:
@@ -390,34 +390,6 @@ class ApplicationManager:
 
                 dataset_id = dataset.get('id', None)
                 dataset_ids.append(dataset_id)
-
-            dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
-            query_variable = copy_app_model_config_dict.get('dataset_query_variable')
-
-            if dataset_configs['retrieval_model'] == 'single':
-                properties['dataset'] = DatasetEntity(
-                    dataset_ids=dataset_ids,
-                    retrieve_config=DatasetRetrieveConfigEntity(
-                        query_variable=query_variable,
-                        retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                            dataset_configs['retrieval_model']
-                        ),
-                        single_strategy=datasets.get('strategy', 'router')
-                    )
-                )
-            else:
-                properties['dataset'] = DatasetEntity(
-                    dataset_ids=dataset_ids,
-                    retrieve_config=DatasetRetrieveConfigEntity(
-                        query_variable=query_variable,
-                        retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                            dataset_configs['retrieval_model']
-                        ),
-                        top_k=dataset_configs.get('top_k'),
-                        score_threshold=dataset_configs.get('score_threshold'),
-                        reranking_model=dataset_configs.get('reranking_model')
-                    )
-                )
 
         if 'agent_mode' in copy_app_model_config_dict and copy_app_model_config_dict['agent_mode'] \
                 and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
@@ -427,22 +399,44 @@ class ApplicationManager:
 
             if agent_strategy == 'function_call':
                 strategy = AgentEntity.Strategy.FUNCTION_CALLING
-            else:
+            elif agent_strategy == 'cot' or agent_strategy == 'react':
                 strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
+            else:
+                # old configs, try to detect default strategy
+                if copy_app_model_config_dict['model']['provider'] == 'openai':
+                    strategy = AgentEntity.Strategy.FUNCTION_CALLING
+                else:
+                    strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
 
             agent_tools = []
             for tool in agent_dict.get('tools', []):
-                agent_tool_properties = {
-                    'provider_type': tool['provider_type'],
-                    'provider_name': tool['provider_name'],
-                    'tool_name': tool['tool_name'],
-                    'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
-                }
+                keys = tool.keys()
+                if len(keys) >= 4:
+                    agent_tool_properties = {
+                        'provider_type': tool['provider_type'],
+                        'provider_name': tool['provider_name'],
+                        'tool_name': tool['tool_name'],
+                        'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
+                    }
 
-                if "enabled" not in tool or not tool["enabled"]:
-                    continue
+                    if "enabled" not in tool or not tool["enabled"]:
+                        continue
 
-                agent_tools.append(AgentToolEntity(**agent_tool_properties))
+                    agent_tools.append(AgentToolEntity(**agent_tool_properties))
+                elif len(keys) == 1:
+                    # old style
+                    key = list(tool.keys())[0]
+
+                    if key != 'dataset':
+                        continue
+
+                    tool_item = tool[key]
+
+                    if "enabled" not in tool_item or not tool_item["enabled"]:
+                        continue
+
+                    dataset_id = tool_item['id']
+                    dataset_ids.append(dataset_id)
 
             agent_prompt = agent_dict.get('prompt', {})
             agent_prompt_entity = AgentPromptEntity(
@@ -457,6 +451,36 @@ class ApplicationManager:
                 prompt=agent_prompt_entity,
                 tools=agent_tools
             )
+
+            if len(dataset_ids) > 0:
+                # dataset configs
+                dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
+                query_variable = copy_app_model_config_dict.get('dataset_query_variable')
+
+                if dataset_configs['retrieval_model'] == 'single':
+                    properties['dataset'] = DatasetEntity(
+                        dataset_ids=dataset_ids,
+                        retrieve_config=DatasetRetrieveConfigEntity(
+                            query_variable=query_variable,
+                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                                dataset_configs['retrieval_model']
+                            ),
+                            single_strategy=datasets.get('strategy', 'router')
+                        )
+                    )
+                else:
+                    properties['dataset'] = DatasetEntity(
+                        dataset_ids=dataset_ids,
+                        retrieve_config=DatasetRetrieveConfigEntity(
+                            query_variable=query_variable,
+                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                                dataset_configs['retrieval_model']
+                            ),
+                            top_k=dataset_configs.get('top_k'),
+                            score_threshold=dataset_configs.get('score_threshold'),
+                            reranking_model=dataset_configs.get('reranking_model')
+                        )
+                    )
 
         # file upload
         file_upload_dict = copy_app_model_config_dict.get('file_upload')
