@@ -531,7 +531,7 @@ class IndexingRunner:
     def filter_string(self, text):
         text = re.sub(r'<\|', '<', text)
         text = re.sub(r'\|>', '>', text)
-        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xA0-\xFF]', '', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xA0-\xFF\xEF\xBF\xBE]', '', text)
 
         return text
 
