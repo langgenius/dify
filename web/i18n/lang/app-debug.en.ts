@@ -361,6 +361,7 @@ const translation = {
     agentMode: 'Agent Mode',
     agentModeType: {
       cot: 'COT',
+      functionCall: 'Function Call',
     },
     setting: {
       name: 'Agent Settings',

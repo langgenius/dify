@@ -1,4 +1,4 @@
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ReactStrategyConfig, ToolItem } from '@/types/app'
+import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -98,7 +98,12 @@ export type ModerationConfig = MoreLikeThisConfig & {
 }
 
 export type RetrieverResourceConfig = MoreLikeThisConfig
-
+export type AgentConfig = {
+  enabled: boolean
+  strategy: AgentStrategy
+  max_iteration: number
+  tools: ToolItem[]
+}
 // frontend use. Not the same as backend
 export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
@@ -112,12 +117,7 @@ export type ModelConfig = {
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
   dataSets: any[]
-  agentConfig: {
-    enabled: boolean
-    strategy: AgentStrategy
-    reactStrategyConfig?: ReactStrategyConfig
-    tools: ToolItem[]
-  }
+  agentConfig: AgentConfig
 }
 export type DatasetConfigItem = {
   enable: boolean

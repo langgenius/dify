@@ -39,7 +39,7 @@ import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -139,16 +139,7 @@ const Configuration: FC = () => {
     retriever_resource: null,
     sensitive_word_avoidance: null,
     dataSets: [],
-    agentConfig: {
-      enabled: false,
-      strategy: {},
-      reactStrategyConfig: {
-        first_prompt: '',
-        next_iteration: '',
-        max_iterations: 5,
-      },
-      tools: [],
-    },
+    agentConfig: DEFAULT_AGENT_SETTING,
   })
   const isChatApp = mode === AppType.chat
   const isAgent = modelConfig.agentConfig.enabled
@@ -181,7 +172,7 @@ const Configuration: FC = () => {
   }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+  const contextVar = modelConfig.configs.prompt_variables.find((item: any) => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
@@ -413,16 +404,7 @@ const Configuration: FC = () => {
           sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
-          agentConfig: {
-            enabled: modelConfig.agent_mode?.enabled,
-            strategy: modelConfig.agent_mode?.strategy || {},
-            reactStrategyConfig: modelConfig.agent_mode?.prompt || {
-              first_prompt: '',
-              next_iteration: '',
-              max_iterations: 5,
-            },
-            tools: modelConfig.agent_mode?.tools || [],
-          },
+          agentConfig: modelConfig.agent_mode || DEFAULT_AGENT_SETTING,
         },
         completionParams: model.completion_params,
       }
@@ -519,11 +501,12 @@ const Configuration: FC = () => {
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
+      datasets: {
+        datasets: [...postDatasets],
+      } as any,
       agent_mode: {
-        enabled: isAgent,
-        tools: [...postDatasets],
+        ...modelConfig.agentConfig,
         strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
-        prompt: modelConfig.agentConfig.reactStrategyConfig,
       },
       model: {
         provider: modelConfig.provider,
@@ -576,8 +559,6 @@ const Configuration: FC = () => {
       <Loading type='area' />
     </div>
   }
-
-  console.log(modelConfig)
 
   return (
     <ConfigContext.Provider value={{
@@ -662,14 +643,15 @@ const Configuration: FC = () => {
                   <AssistantTypePicker
                     value={isAgent ? 'agent' : 'assistant'}
                     onChange={(value: string) => setIsAgent(value === 'agent')}
+                    isOpenAI={isOpenAI}
+                    isChatModel={modelConfig.mode === ModelModeType.chat}
+                    agentConfig={modelConfig.agentConfig}
                     onAgentSettingChange={(config) => {
                       const nextConfig = produce(modelConfig, (draft: ModelConfig) => {
-                        draft.agentConfig.reactStrategyConfig = config
+                        draft.agentConfig = config
                       })
                       setModelConfig(nextConfig)
                     }}
-                    isOpenAI={isOpenAI}
-                    reactStrategyConfig={modelConfig.agentConfig.reactStrategyConfig}
                   />
                 )}
               </div>

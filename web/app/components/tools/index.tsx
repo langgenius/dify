@@ -19,7 +19,7 @@ import { createCustomCollection, fetchCollectionList as doFetchCollectionList, f
 type Props = {
   loc: LOC
   addedToolNames?: string[]
-  onAddTool?: (payload: Tool) => void
+  onAddTool?: (collection: Collection, payload: Tool) => void
 }
 
 const Tools: FC<Props> = ({
@@ -40,7 +40,7 @@ const Tools: FC<Props> = ({
     const list = await doFetchCollectionList() as Collection[]
     setCollectionList(list)
     if (list.length > 0 && currCollectionIndex === null)
-      setCurrCollectionIndex(1) // test wolfram
+      setCurrCollectionIndex(0)
   }
   useEffect(() => {
     fetchCollectionList()

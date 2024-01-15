@@ -21,7 +21,7 @@ type Props = {
   // onToolListChange: () => void // custom tools change
   loc: LOC
   addedToolNames?: string[]
-  onAddTool?: (payload: Tool) => void
+  onAddTool?: (collection: Collection, payload: Tool) => void
   onRefreshData: () => void
   onCollectionRemoved: () => void
   isLoading: boolean
@@ -143,7 +143,7 @@ const ToolList: FC<Props> = ({
               collection={collection}
               isInToolsPage={isInToolsPage}
               added={addedToolNames?.includes(item.name)}
-              onAdd={onAddTool}
+              onAdd={tool => onAddTool?.(collection as Collection, tool)}
             />
           ))}
         </div>

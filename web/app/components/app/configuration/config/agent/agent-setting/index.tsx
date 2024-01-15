@@ -2,25 +2,30 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import PromptEditor from '../prompt-editor'
 import ItemPanel from './item-panel'
 import Button from '@/app/components/base/button'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
-import type { ReactStrategyConfig } from '@/types/app'
+import type { AgentConfig } from '@/models/debug'
+import { DEFAULT_AGENT_PROMPT } from '@/config'
+
 type Props = {
-  payload: ReactStrategyConfig
+  isChatModel: boolean
+  payload: AgentConfig
+  isOpenAI: boolean
   onCancel: () => void
   onSave: (payload: any) => void
 }
 
 const maxIterationsMin = 1
-const maxIterationsMax = 10
+const maxIterationsMax = 5
 
 const AgentSetting: FC<Props> = ({
+  isChatModel,
   payload,
+  isOpenAI,
   onCancel,
   onSave,
 }) => {
@@ -65,35 +70,8 @@ const AgentSetting: FC<Props> = ({
             name={t('appDebug.agent.agentMode')}
             description={t('appDebug.assistantType.agentAssistant.description')}
           >
-            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appDebug.agent.agentModeType.cot')}</div>
+            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isOpenAI ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
           </ItemPanel>
-
-          <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
-            {t('appDebug.agent.buildInPrompt')}
-          </div>
-          <PromptEditor
-            className='mb-2'
-            type='first-prompt'
-            value={tempPayload.first_prompt}
-            onChange={(value) => {
-              setTempPayload({
-                ...tempPayload,
-                first_prompt: value,
-              })
-            }}
-          />
-
-          <PromptEditor
-            className='mb-2'
-            type='next-iteration'
-            value={tempPayload.next_iteration}
-            onChange={(value) => {
-              setTempPayload({
-                ...tempPayload,
-                next_iteration: value,
-              })
-            }}
-          />
 
           <ItemPanel
             className='mb-4'
@@ -108,11 +86,11 @@ const AgentSetting: FC<Props> = ({
                 className='mr-3 w-[156px]'
                 min={maxIterationsMin}
                 max={maxIterationsMax}
-                value={tempPayload.max_iterations}
+                value={tempPayload.max_iteration}
                 onChange={(value) => {
                   setTempPayload({
                     ...tempPayload,
-                    max_iterations: value,
+                    max_iteration: value,
                   })
                 }}
               />
@@ -122,7 +100,7 @@ const AgentSetting: FC<Props> = ({
                 min={maxIterationsMin}
                 max={maxIterationsMax} step={1}
                 className="block w-11 h-7 leading-7 rounded-lg border-0 pl-1 px-1.5 bg-gray-100 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600"
-                value={tempPayload.max_iterations}
+                value={tempPayload.max_iteration}
                 onChange={(e) => {
                   let value = parseInt(e.target.value, 10)
                   if (value < maxIterationsMin)
@@ -132,11 +110,25 @@ const AgentSetting: FC<Props> = ({
                     value = maxIterationsMax
                   setTempPayload({
                     ...tempPayload,
-                    max_iterations: value,
+                    max_iteration: value,
                   })
                 }} />
             </div>
           </ItemPanel>
+
+          {!isOpenAI && (
+            <>
+              <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
+                {t('appDebug.agent.buildInPrompt')}
+              </div>
+              <div
+                className='mb-2'
+              >
+                {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
+              </div>
+            </>
+          )}
+
         </div>
         <div
           className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '

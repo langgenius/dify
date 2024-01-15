@@ -32,6 +32,7 @@ const Config: FC = () => {
     mode,
     isAdvancedMode,
     modelModeType,
+    isAgent,
     canReturnToSimpleMode,
     setPromptMode,
     hasSetBlockStatus,
@@ -225,11 +226,9 @@ const Config: FC = () => {
         <DatasetConfig />
 
         {/* Tools */}
-        <AgentTools
-          onAdd={() => { }}
-          onDeleted={() => { }}
-          onChange={() => { }}
-        />
+        {isAgent && (
+          <AgentTools />
+        )}
         <ConfigVision />
 
         {/* Chat History */}

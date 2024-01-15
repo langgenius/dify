@@ -27,6 +27,7 @@ export type Emoji = {
 }
 
 export type Collection = {
+  id: string
   name: string
   author: string
   description: TypeWithI18N

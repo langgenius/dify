@@ -92,10 +92,12 @@ export type UserInputFormItem = {
 }
 
 export type AgentTool = {
+  provider_id: string
   provider_type: CollectionType
   provider_name: string
   tool_name: string
-  tool_parameters: string
+  tool_parameters: Record<string, any>
+  enable: boolean
 }
 
 export type ToolItem = {
@@ -114,12 +116,6 @@ export type ToolItem = {
 export enum AgentStrategy {
   functionCall = 'function_call',
   react = 'react',
-}
-
-export type ReactStrategyConfig = {
-  first_prompt: string
-  next_iteration: string
-  max_iterations: number// TODO:
 }
 
 /**
@@ -150,9 +146,14 @@ export type ModelConfig = {
   }
   external_data_tools: ExternalDataTool[]
   annotation_reply?: AnnotationReplyConfig
+  datasets: {
+    datasets: {
+      enabled: boolean
+      id: string
+    }[]
+  }
   agent_mode: {
     enabled: boolean
-    prompt?: ReactStrategyConfig
     strategy: AgentStrategy
     tools: ToolItem[]
   }

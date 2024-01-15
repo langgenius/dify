@@ -2,9 +2,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import Tools from '@/app/components/tools'
 import { LOC } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
+import ConfigContext from '@/context/debug-configuration'
+import type { ModelConfig } from '@/models/debug'
 
 type Props = {
   show: boolean
@@ -16,7 +20,10 @@ const ChooseTool: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
-
+  const {
+    modelConfig,
+    setModelConfig,
+  } = useContext(ConfigContext)
   if (!show)
     return null
 
@@ -33,7 +40,26 @@ const ChooseTool: FC<Props> = ({
       body={
         <Tools
           loc={LOC.app}
-          onAddTool={() => { }}
+          onAddTool={(collection, tool) => {
+            const parameters: Record<string, string> = {}
+            if (tool.parameters) {
+              tool.parameters.forEach((item) => {
+                parameters[item.name] = ''
+              })
+            }
+
+            const nexModelConfig = produce(modelConfig, (draft: ModelConfig) => {
+              draft.agentConfig.tools.push({
+                provider_id: collection.id || collection.name,
+                provider_type: collection.type,
+                provider_name: collection.name,
+                tool_name: tool.name,
+                tool_parameters: parameters,
+                enable: true,
+              })
+            })
+            setModelConfig(nexModelConfig)
+          }}
           addedToolNames={['Add Pet']}
         />
       }
