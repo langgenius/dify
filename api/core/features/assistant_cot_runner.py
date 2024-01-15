@@ -60,7 +60,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        agent_thought: MessageAgentThought = None
+        agent_thoughts: List[MessageAgentThought] = []
         llm_usage = {
             'usage': None
         }
