@@ -23,6 +23,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeErr
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_template import PromptTemplateParser
 from core.provider_manager import ProviderManager
+from core.tools.prompt.template import REACT_PROMPT_TEMPLATES
 from extensions.ext_database import db
 from flask import Flask, current_app
 from models.account import Account
@@ -439,10 +440,18 @@ class ApplicationManager:
                     dataset_ids.append(dataset_id)
 
             agent_prompt = agent_dict.get('prompt', {})
-            agent_prompt_entity = AgentPromptEntity(
-                first_prompt=agent_prompt.get('first_prompt', ''),
-                next_iteration=agent_prompt.get('next_iteration', ''),
-            )
+            # check model mode
+            model_mode = copy_app_model_config_dict.get('model', {}).get('mode', 'completion')
+            if model_mode == 'completion':
+                agent_prompt_entity = AgentPromptEntity(
+                    first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['completion']['prompt']),
+                    next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['completion']['agent_scratchpad']),
+                )
+            else:
+                agent_prompt_entity = AgentPromptEntity(
+                    first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['chat']['prompt']),
+                    next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['chat']['agent_scratchpad']),
+                )
 
             properties['agent'] = AgentEntity(
                 provider=properties['model_config'].provider,

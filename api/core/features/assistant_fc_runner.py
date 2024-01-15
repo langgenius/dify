@@ -7,6 +7,7 @@ from core.model_runtime.entities.message_entities import PromptMessageTool, Prom
       SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage
 from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult, LLMUsage
 from core.model_manager import ModelInstance
+from core.application_queue_manager import PublishFrom
 
 from core.tools.provider.tool import Tool
 from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
@@ -35,7 +36,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         prompt_template = self.app_orchestration_config.prompt_template.simple_prompt_template or ''
         prompt_messages = self.history_prompt_messages
-        prompt_messages = self.originze_prompt_messages(
+        prompt_messages = self.organize_prompt_messages(
             prompt_template=prompt_template,
             query=query,
             prompt_messages=prompt_messages
@@ -123,7 +124,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     tool_name=tool_call_name,
                     tool_input=json.dumps(tool_call_args),
                 )
-                self.queue_manager.publish_agent_thought(agent_thought)
+                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
                 if not tool_instance:
                     logger.error(f"failed to find tool instance: {tool_call_name}")
@@ -139,7 +140,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         observation=tool_response['tool_response'], 
                         answer=None
                     )
-                    self.queue_manager.publish_agent_thought(agent_thought)
+                    self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
                 else:
                     # invoke tool
                     error_response = None
@@ -187,9 +188,9 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         observation=observation, 
                         answer=None
                     )
-                    self.queue_manager.publish_agent_thought(agent_thought)
+                    self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
-                prompt_messages = self.originze_prompt_messages(
+                prompt_messages = self.organize_prompt_messages(
                     prompt_template=prompt_template,
                     query=None,
                     tool_call_id=tool_call_id,
@@ -209,7 +210,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             ),
             usage=llm_usage['usage'],
             system_fingerprint=''
-        ))
+        ), PublishFrom.APPLICATION_MANAGER)
 
     def check_tool_calls(self, llm_result_chunk: LLMResultChunk) -> bool:
         """
@@ -236,7 +237,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         return tool_calls
     
-    def originze_prompt_messages(self, prompt_template: str,
+    def organize_prompt_messages(self, prompt_template: str,
                                  query: str = None, 
                                  tool_call_id: str = None, tool_call_name: str = None, tool_response: str = None,
                                  prompt_messages: list[PromptMessage] = None

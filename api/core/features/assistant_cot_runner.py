@@ -4,6 +4,7 @@ import re
 from typing import Literal, Union, Generator, Dict, Any, List, Tuple
 
 from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
+from core.application_queue_manager import PublishFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, \
     UserPromptMessage, SystemPromptMessage, AssistantPromptMessage
@@ -37,9 +38,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         agent_scratchpad: List[AgentScratchpadUnit] = []
 
-        # TODO: stop words
-        if 'Thought' not in app_orchestration_config.model_config.stop:
-            app_orchestration_config.model_config.stop.append('Thought')
+        # check model mode
+        if self.app_orchestration_config.model_config.mode == "completion":
+            # TODO: stop words
+            if 'Thought' not in app_orchestration_config.model_config.stop:
+                app_orchestration_config.model_config.stop.append('Thought')
 
         prompt_messages = self.history_prompt_messages
         prompt_messages = self._originze_cot_prompt_messages(
@@ -124,12 +127,13 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         tool_name=tool_call_name,
                         tool_input=tool_call_args if isinstance(tool_call_args, str) else json.dumps(tool_call_args),
                     )
-                    self.queue_manager.publish_agent_thought(agent_thought)
+                    self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
                     if not tool_instance:
                         logger.error(f"failed to find tool instance: {tool_call_name}")
                         answer = f"there is not a tool named {tool_call_name}"
-                        self.save_agent_thought(agent_thought, thought=None, observation='', answer=answer)
+                        self.save_agent_thought(agent_thought, thought=None, observation=answer, answer=answer)
+                        self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
                     else:
                         # invoke tool
                         error_response = None
@@ -170,6 +174,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             observation=observation, 
                             answer=''
                         )
+                        self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
                         # update prompt messages
                         prompt_messages = self._originze_cot_prompt_messages(
@@ -206,36 +211,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             ),
             usage=llm_usage['usage'],
             system_fingerprint=''
-        ))
+        ), PublishFrom.APPLICATION_MANAGER)
 
     def _extract_response_scratchpad(self, content: str) -> AgentScratchpadUnit:
         """
         extract response from llm response
-
-        content should be like:
-            我需要通过 wikipedia 查询特朗普的出生日期
-            Action:
-            ```
-            {
-            "action": "wikipedia",
-            "action_input": "{\"query\": \"特朗普\"}"
-            }
-            ```
-            Observation: 唐纳德·约翰·特朗普（英语：Donald John Trump([注 4])；1946年6月14日—），美国政治人物，第45任美国总统。从政前为企业家、媒体名人。
-            Thought: ......
-            Action:
-            ...
-            Observation: ...
-            Thought: I know what to respond
-            Action:
-            ```
-            {
-            "action": "Final Answer",
-            "action_input": "特朗普 77 岁"
-            }
-            ```
-
-        what we need to do is try to extract action from content
         """
         def extra_quotes() -> AgentScratchpadUnit:
             # try to extract all quotes

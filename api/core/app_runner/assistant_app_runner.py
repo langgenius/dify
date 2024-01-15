@@ -125,7 +125,7 @@ class AssistantApplicationRunner(AppRunner):
             provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
             model=app_orchestration_config.model_config.model
         )
-        prompt_message, _ = self.originze_prompt_messages(
+        prompt_message, _ = self.organize_prompt_messages(
             app_record=app_record,
             model_config=app_orchestration_config.model_config,
             prompt_template_entity=app_orchestration_config.prompt_template,
