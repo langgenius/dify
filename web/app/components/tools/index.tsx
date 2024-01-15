@@ -15,16 +15,17 @@ import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import TabSlider from '@/app/components/base/tab-slider'
 import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
+import type { AgentTool } from '@/types/app'
 
 type Props = {
   loc: LOC
-  addedToolNames?: string[]
+  addedTools?: AgentTool[]
   onAddTool?: (collection: Collection, payload: Tool) => void
 }
 
 const Tools: FC<Props> = ({
   loc,
-  addedToolNames,
+  addedTools,
   onAddTool,
 }) => {
   const { t } = useTranslation()
@@ -176,7 +177,7 @@ const Tools: FC<Props> = ({
               collection={currCollection}
               list={currTools}
               loc={loc}
-              addedToolNames={addedToolNames}
+              addedTools={addedTools}
               onAddTool={onAddTool}
               onRefreshData={fetchCollectionList}
               onCollectionRemoved={() => {

@@ -17,6 +17,7 @@ type Props = {
   icon: JSX.Element
   payload: Tool
   isInToolsPage: boolean
+  isToolNumMax: boolean
   added?: boolean
   onAdd?: (payload: Tool) => void
 }
@@ -26,6 +27,7 @@ const Item: FC<Props> = ({
   icon,
   payload,
   isInToolsPage,
+  isToolNumMax,
   added,
   onAdd,
 }) => {
@@ -51,7 +53,7 @@ const Item: FC<Props> = ({
             </div>
           </div>
         </div>
-        {onAdd && (
+        {!isToolNumMax && onAdd && (
           <Button className='flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
         )}
 

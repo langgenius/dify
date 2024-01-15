@@ -60,7 +60,7 @@ const ChooseTool: FC<Props> = ({
             })
             setModelConfig(nexModelConfig)
           }}
-          addedToolNames={['Add Pet']}
+          addedTools={(modelConfig?.agentConfig?.tools as any) || []}
         />
       }
       isShowMask={true}

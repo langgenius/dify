@@ -6,7 +6,6 @@ import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import ChooseTool from './choose-tool'
-import { selectedToolList as list } from '@/app/components/tools/mock-data'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle, Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
@@ -17,9 +16,8 @@ import Switch from '@/app/components/base/switch'
 import ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
 import { fetchCollectionList } from '@/service/tools'
-import type { Collection } from '@/app/components/tools/types'
-
-const MAX_TOOLS_NUM = 5
+import { type Collection, CollectionType } from '@/app/components/tools/types'
+import { MAX_TOOLS_NUM } from '@/config'
 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
@@ -61,7 +59,7 @@ const AgentTools: FC = () => {
         headerRight={
           <div className='flex items-center'>
             <div className='leading-[18px] text-xs font-normal text-gray-500'>{tools.length}/{MAX_TOOLS_NUM}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
-            {list.length < MAX_TOOLS_NUM && (
+            {tools.length < MAX_TOOLS_NUM && (
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
                 <OperationBtn type="add" onClick={() => {
@@ -112,11 +110,13 @@ const AgentTools: FC = () => {
               </div>
               <div className='flex items-center'>
                 <div className='hidden group-hover:flex items-center'>
-                  <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                  {item.provider_type === CollectionType.builtIn && (
+                    <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                    }}>
+                      <Settings01 className='w-4 h-4 text-gray-500' />
+                    </div>
+                  )}
 
-                  }}>
-                    <Settings01 className='w-4 h-4 text-gray-500' />
-                  </div>
                   <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                     const newModelConfig = produce(modelConfig, (draft) => {
                       draft.agentConfig.tools.splice(index, 1)

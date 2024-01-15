@@ -14,13 +14,15 @@ import AppIcon from '@/app/components/base/app-icon'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { fetchCustomCollection, removeBuiltInToolCredential, removeCustomCollection, updateBuiltInToolCredential, updateCustomCollection } from '@/service/tools'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+import type { AgentTool } from '@/types/app'
+import { MAX_TOOLS_NUM } from '@/config'
 
 type Props = {
   collection: Collection | null
   list: Tool[]
   // onToolListChange: () => void // custom tools change
   loc: LOC
-  addedToolNames?: string[]
+  addedTools?: AgentTool[]
   onAddTool?: (collection: Collection, payload: Tool) => void
   onRefreshData: () => void
   onCollectionRemoved: () => void
@@ -31,7 +33,7 @@ const ToolList: FC<Props> = ({
   collection,
   list,
   loc,
-  addedToolNames,
+  addedTools,
   onAddTool,
   onRefreshData,
   onCollectionRemoved,
@@ -142,7 +144,8 @@ const ToolList: FC<Props> = ({
               payload={item}
               collection={collection}
               isInToolsPage={isInToolsPage}
-              added={addedToolNames?.includes(item.name)}
+              isToolNumMax={(addedTools?.length || 0) >= MAX_TOOLS_NUM}
+              added={!!addedTools?.find(v => v.provider_id === collection.id && v.tool_name === item.name)}
               onAdd={tool => onAddTool?.(collection as Collection, tool)}
             />
           ))}
