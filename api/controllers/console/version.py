@@ -5,7 +5,7 @@ import logging
 
 import requests
 from flask import current_app
-from flask_restful import reqparse, Resource
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError
 
 from . import api

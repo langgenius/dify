@@ -539,7 +539,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/datasets/{dataset_id}/batch/{batch}/indexing-status'
+  url='/datasets/{dataset_id}/documents/{batch}/indexing-status'
   method='GET'
   title='获取文档嵌入状态（进度）'
   name='#indexing_status'
@@ -560,7 +560,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="GET"
-      label="/datasets/{dataset_id}/batch/{batch}/indexing-status"
+      label="/datasets/{dataset_id}/documents/{batch}/indexing-status"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}

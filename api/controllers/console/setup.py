@@ -1,15 +1,13 @@
 # -*- coding:utf-8 -*-
 from functools import wraps
 
-from flask import request, current_app
-from flask_restful import Resource, reqparse
-
 from extensions.ext_database import db
-from models.model import DifySetup
-from services.account_service import AccountService, TenantService, RegisterService
-
+from flask import current_app, request
+from flask_restful import Resource, reqparse
 from libs.helper import email, str_len
 from libs.password import valid_password
+from models.model import DifySetup
+from services.account_service import AccountService, RegisterService, TenantService
 
 from . import api
 from .error import AlreadySetupError, NotSetupError

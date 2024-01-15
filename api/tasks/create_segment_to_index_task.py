@@ -1,17 +1,16 @@
 import datetime
 import logging
 import time
-from typing import Optional, List
+from typing import List, Optional
 
 import click
 from celery import shared_task
-from langchain.schema import Document
-from werkzeug.exceptions import NotFound
-
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from langchain.schema import Document
 from models.dataset import DocumentSegment
+from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')

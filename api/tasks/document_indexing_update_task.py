@@ -4,12 +4,11 @@ import time
 
 import click
 from celery import shared_task
-from werkzeug.exceptions import NotFound
-
 from core.index.index import IndexBuilder
-from core.indexing_runner import IndexingRunner, DocumentIsPausedException
+from core.indexing_runner import DocumentIsPausedException, IndexingRunner
 from extensions.ext_database import db
-from models.dataset import Document, Dataset, DocumentSegment
+from models.dataset import Dataset, Document, DocumentSegment
+from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')

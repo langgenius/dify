@@ -1,14 +1,13 @@
 import logging
 import threading
 import time
-from typing import Any, Optional, Dict
-
-from flask import current_app, Flask
-from pydantic import BaseModel
+from typing import Any, Dict, Optional
 
 from core.application_queue_manager import PublishFrom
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
+from flask import Flask, current_app
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

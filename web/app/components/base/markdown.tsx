@@ -87,7 +87,7 @@ export function Markdown(props: { content: string; className?: string }) {
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
-        remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
+        remarkPlugins={[[RemarkMath, { singleDollarTextMath: false }], RemarkGfm, RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
         ]}

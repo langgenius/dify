@@ -1,10 +1,9 @@
-from typing import cast, Any
-
-from langchain.schema import Document
-from qdrant_client.http.models import Filter, PointIdsList, FilterSelector
-from qdrant_client.local.qdrant_local import QdrantLocal
+from typing import Any, cast
 
 from core.vector_store.vector.qdrant import Qdrant
+from langchain.schema import Document
+from qdrant_client.http.models import Filter, FilterSelector, PointIdsList
+from qdrant_client.local.qdrant_local import QdrantLocal
 
 
 class QdrantVectorStore(Qdrant):

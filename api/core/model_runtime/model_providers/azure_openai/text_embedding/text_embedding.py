@@ -4,14 +4,13 @@ from typing import Optional, Tuple
 
 import numpy as np
 import tiktoken
-from openai import AzureOpenAI
-
-from core.model_runtime.entities.model_entities import PriceType, AIModelEntity
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
+from core.model_runtime.entities.model_entities import AIModelEntity, PriceType
+from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
 from core.model_runtime.model_providers.azure_openai._constant import EMBEDDING_BASE_MODELS, AzureBaseModel
+from openai import AzureOpenAI
 
 
 class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):

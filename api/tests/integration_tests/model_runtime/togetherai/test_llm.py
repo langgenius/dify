@@ -2,11 +2,9 @@ import os
 from typing import Generator
 
 import pytest
-
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage, \
-    SystemPromptMessage, PromptMessageTool
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
-    LLMResultChunk
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessageTool,
+                                                          SystemPromptMessage, UserPromptMessage)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.togetherai.llm.llm import TogetherAILargeLanguageModel
 

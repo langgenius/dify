@@ -1,6 +1,7 @@
-from extensions.ext_database import db
-from celery import states
 from datetime import datetime
+
+from celery import states
+from extensions.ext_database import db
 
 
 class CeleryTask(db.Model):

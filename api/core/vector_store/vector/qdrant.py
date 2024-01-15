@@ -7,28 +7,14 @@ import uuid
 import warnings
 from itertools import islice
 from operator import itemgetter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy as np
-
 from langchain.docstore.document import Document
 from langchain.embeddings.base import Embeddings
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
-from qdrant_client.http.models import PayloadSchemaType, FilterSelector, TextIndexParams, TokenizerType, TextIndexType
+from qdrant_client.http.models import FilterSelector, PayloadSchemaType, TextIndexParams, TextIndexType, TokenizerType
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa

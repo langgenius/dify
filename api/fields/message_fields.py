@@ -1,7 +1,6 @@
-from flask_restful import fields
-
-from libs.helper import TimestampField
 from fields.conversation_fields import message_file_fields
+from flask_restful import fields
+from libs.helper import TimestampField
 
 feedback_fields = {
     'rating': fields.String

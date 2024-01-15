@@ -6,9 +6,8 @@ import os
 import time
 from typing import Optional
 
-from flask import current_app
-
 from extensions.ext_storage import storage
+from flask import current_app
 
 SUPPORT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 

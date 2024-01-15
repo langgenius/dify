@@ -1,21 +1,19 @@
 import json
 import logging
 import time
-
-from typing import Any, Dict, List, Union, Optional, cast
-
-from langchain.agents import openai_functions_agent, openai_functions_multi_agent
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration, BaseMessage
+from typing import Any, Dict, List, Optional, Union, cast
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.entities.application_entities import ModelConfigEntity
 from core.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
-from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage, PromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
-from models.model import MessageChain, MessageAgentThought, Message
+from langchain.agents import openai_functions_agent, openai_functions_multi_agent
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.schema import AgentAction, AgentFinish, BaseMessage, ChatGeneration, LLMResult
+from models.model import Message, MessageAgentThought, MessageChain
 
 
 class AgentLoopGatherCallbackHandler(BaseCallbackHandler):

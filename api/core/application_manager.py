@@ -2,31 +2,32 @@ import json
 import logging
 import threading
 import uuid
-from typing import cast, Optional, Any, Union, Generator, Tuple
-
-from flask import Flask, current_app
-from pydantic import ValidationError
+from typing import Any, Generator, Optional, Tuple, Union, cast
 
 from core.app_runner.agent_app_runner import AgentApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
-from core.entities.application_entities import ApplicationGenerateEntity, AppOrchestrationConfigEntity, \
-    ModelConfigEntity, PromptTemplateEntity, AdvancedChatPromptTemplateEntity, \
-    AdvancedCompletionPromptTemplateEntity, ExternalDataVariableEntity, DatasetEntity, DatasetRetrieveConfigEntity, \
-    AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, InvokeFrom
+from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
+from core.entities.application_entities import (AdvancedChatPromptTemplateEntity,
+                                                AdvancedCompletionPromptTemplateEntity, AgentEntity, AgentToolEntity,
+                                                ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
+                                                DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
+                                                FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
+                                                SensitiveWordAvoidanceEntity)
 from core.entities.model_entities import ModelStatus
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj
-from core.errors.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_template import PromptTemplateParser
 from core.provider_manager import ProviderManager
-from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
 from extensions.ext_database import db
+from flask import Flask, current_app
 from models.account import Account
-from models.model import EndUser, Conversation, Message, MessageFile, App
+from models.model import App, Conversation, EndUser, Message, MessageFile
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 

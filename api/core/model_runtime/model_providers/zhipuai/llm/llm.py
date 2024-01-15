@@ -1,18 +1,9 @@
 import json
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Generator, 
-    Union
-)
+from typing import Any, Dict, Generator, List, Optional, Union
 
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage, \
-    AssistantPromptMessage, \
-    SystemPromptMessage, PromptMessageRole
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, \
-    LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageRole,
+                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.zhipuai._client import ZhipuModelAPI

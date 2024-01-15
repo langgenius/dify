@@ -1,10 +1,10 @@
 import os
 
 import pytest
-
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.baichuan.text_embedding.text_embedding import BaichuanTextEmbeddingModel
+
 
 def test_validate_credentials():
     model = BaichuanTextEmbeddingModel()
@@ -59,3 +59,40 @@ def test_get_num_tokens():
     )
 
     assert num_tokens == 2
+
+def test_max_chunks():
+    model = BaichuanTextEmbeddingModel()
+
+    result = model.invoke(
+        model='baichuan-text-embedding',
+        credentials={
+            'api_key': os.environ.get('BAICHUAN_API_KEY'),
+        },
+        texts=[
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+            "hello",
+            "world",
+        ]
+    )
+
+    assert isinstance(result, TextEmbeddingResult)
+    assert len(result.embeddings) == 22

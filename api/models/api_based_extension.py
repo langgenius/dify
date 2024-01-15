@@ -1,8 +1,7 @@
 import enum
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from extensions.ext_database import db
+from sqlalchemy.dialects.postgresql import UUID
 
 
 class APIBasedExtensionPoint(enum.Enum):
