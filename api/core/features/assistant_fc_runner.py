@@ -47,7 +47,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        agent_thought: MessageAgentThought = None
+        agent_thoughts: List[MessageAgentThought] = []
         llm_usage = {
             'usage': None
         }
@@ -102,14 +102,17 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
                 yield chunk
 
-            if agent_thought is not None:
-                # save last agent thought's response
-                self.save_agent_thought(
-                    agent_thought=agent_thought, 
-                    thought=None, 
-                    observation=None, 
-                    answer=response
-                )
+            if len(agent_thoughts) > 0:
+                for thought in agent_thoughts:
+                    # save last agent thought's response
+                    self.save_agent_thought(
+                        agent_thought=thought, 
+                        thought=None, 
+                        observation=None, 
+                        answer=response
+                    )
+                # clear agent thoughts of last iteration
+                agent_thoughts = []
 
             final_answer += response + '\n'
 
@@ -124,6 +127,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     tool_name=tool_call_name,
                     tool_input=json.dumps(tool_call_args),
                 )
+                agent_thoughts.append(agent_thought)
                 self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
                 if not tool_instance:
