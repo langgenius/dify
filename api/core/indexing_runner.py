@@ -531,7 +531,9 @@ class IndexingRunner:
     def filter_string(self, text):
         text = re.sub(r'<\|', '<', text)
         text = re.sub(r'\|>', '>', text)
-        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\xFF]', '', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]', '', text)
+        # Unicode  U+FFFE
+        text = re.sub(u'\uFFFE', '', text)
         return text
 
     def _get_splitter(self, processing_rule: DatasetProcessRule,
