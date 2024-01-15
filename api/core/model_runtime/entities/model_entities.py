@@ -125,7 +125,7 @@ class ModelPropertyKey(Enum):
     SUPPORTED_FILE_EXTENSIONS = "supported_file_extensions"
     MAX_CHARACTERS_PER_CHUNK = "max_characters_per_chunk"
     VOICE = "voice"
-    WORD_LIMIT = "word_limt"
+    WORD_LIMIT = "word_limit"
     AUDOI_TYPE = "audio_type"
 
 
