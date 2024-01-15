@@ -1,6 +1,6 @@
 model: tts-1
 model_type: tts
 model_properties:
-  voice: 'alloy'
+  default_voice: 'alloy'
   word_limit: 120
   audio_type: 'mp3'
