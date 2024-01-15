@@ -6,10 +6,12 @@ import type { ModelAndParameter } from '../types'
 export type DebugWithMultipleModelContextType = {
   multipleModelConfigs: ModelAndParameter[]
   onMultipleModelConfigsChange: (multiple: boolean, modelConfigs: ModelAndParameter[]) => void
+  onDebugWithMultipleModelChange: (singleModelConfig: ModelAndParameter) => void
 }
 const DebugWithMultipleModelContext = createContext<DebugWithMultipleModelContextType>({
   multipleModelConfigs: [],
   onMultipleModelConfigsChange: () => {},
+  onDebugWithMultipleModelChange: () => {},
 })
 
 export const useDebugWithMultipleModelContext = () => useContext(DebugWithMultipleModelContext)
@@ -21,11 +23,13 @@ export const DebugWithMultipleModelContextProvider = ({
   children,
   onMultipleModelConfigsChange,
   multipleModelConfigs,
+  onDebugWithMultipleModelChange,
 }: DebugWithMultipleModelContextProviderProps) => {
   return (
     <DebugWithMultipleModelContext.Provider value={{
       onMultipleModelConfigsChange,
       multipleModelConfigs,
+      onDebugWithMultipleModelChange,
     }}>
       {children}
     </DebugWithMultipleModelContext.Provider>

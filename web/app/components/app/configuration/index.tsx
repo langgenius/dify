@@ -15,6 +15,7 @@ import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import { useDebugWithSingleOrMultipleModel } from './debug/hooks'
+import type { ModelAndParameter } from './debug/types'
 import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
 import type {
   AnnotationReplyConfig,
@@ -446,8 +447,8 @@ const Configuration: FC = () => {
     else { return promptEmpty }
   })()
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
-  const handlePublish = async (isSilence?: boolean) => {
-    const modelId = modelConfig.model_id
+  const handlePublish = async (isSilence?: boolean, modelAndParameter?: ModelAndParameter) => {
+    const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
@@ -499,10 +500,10 @@ const Configuration: FC = () => {
         tools: [...postDatasets],
       },
       model: {
-        provider: modelConfig.provider,
+        provider: modelAndParameter?.provider || modelConfig.provider,
         name: modelId,
         mode: modelConfig.mode,
-        completion_params: completionParams as any,
+        completion_params: modelAndParameter?.parameters || completionParams as any,
       },
       dataset_configs: datasetConfigs,
       file_upload: {
@@ -664,6 +665,7 @@ const Configuration: FC = () => {
                   ? (
                     <PublishWithMultipleModel
                       multipleModelConfigs={multipleModelConfigs}
+                      onSelect={item => handlePublish(false, item)}
                     />
                   )
                   : (

@@ -15,9 +15,11 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 
 type PublishWithMultipleModelProps = {
   multipleModelConfigs: ModelAndParameter[]
+  onSelect: (v: ModelAndParameter) => void
 }
 const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   multipleModelConfigs,
+  onSelect,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -49,6 +51,11 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       setOpen(v => !v)
   }
 
+  const handleSelect = (item: ModelAndParameter) => {
+    onSelect(item)
+    setOpen(false)
+  }
+
   return (
     <PortalToFollowElem
       open={open}
@@ -73,6 +80,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
               <div
                 key={item.id}
                 className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-500'
+                onClick={() => handleSelect(item)}
               >
                 #{index + 1}
                 <div

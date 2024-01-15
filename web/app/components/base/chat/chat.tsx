@@ -14,18 +14,21 @@ type ChatProps = {
   onSend?: (message: string, files?: VisionFile[]) => void
   chatList: ChatItem[]
   noChatInput?: boolean
+  conversationClassName?: string
 }
 const Chat: FC<ChatProps> = ({
   config = INITIAL_CONFIG,
   onSend,
   chatList,
   noChatInput,
+  conversationClassName,
 }) => {
   return (
     <ChatContextProvider config={config}>
-      <div>
+      <div className='flex flex-col h-full'>
         <Conversation
           chatList={chatList}
+          className={conversationClassName}
         />
         <InputArea
           noChatInput={noChatInput}

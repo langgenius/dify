@@ -34,6 +34,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useProviderContext } from '@/context/provider-context'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -520,6 +521,7 @@ const Debug: FC<IDebug> = ({
     }
   })
 
+  const { textGenerationModelList } = useProviderContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const handleDebugWithMultipleModelChange = () => {
     onMultipleModelConfigsChange(
@@ -532,6 +534,22 @@ const Debug: FC<IDebug> = ({
     eventEmitter?.emit({
       type: 'app-sidebar-should-collapse',
     } as any)
+  }
+  const handleChangeToSingleModel = (item: ModelAndParameter) => {
+    const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === item.provider)
+    const currentModel = currentProvider?.models.find(model => model.model === item.model)
+
+    modelParameterParams.setModel({
+      modelId: item.model,
+      provider: item.provider,
+      mode: currentModel?.model_properties.mode as string,
+      features: currentModel?.features,
+    })
+    modelParameterParams.onCompletionParamsChange(item.parameters)
+    onMultipleModelConfigsChange(
+      false,
+      [],
+    )
   }
 
   return (
@@ -599,6 +617,7 @@ const Debug: FC<IDebug> = ({
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
+              onDebugWithMultipleModelChange={handleChangeToSingleModel}
             />
           </div>
         )

@@ -11,11 +11,9 @@ import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 
 type ModelParameterTriggerProps = {
   modelAndParameter: ModelAndParameter
-  index: number
 }
 const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   modelAndParameter,
-  index,
 }) => {
   const {
     mode,
@@ -24,7 +22,10 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   const {
     multipleModelConfigs,
     onMultipleModelConfigsChange,
+    onDebugWithMultipleModelChange,
   } = useDebugWithMultipleModelContext()
+  const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
+
   const handleSelectModel = ({ modelId, provider }: { modelId: string; provider: string }) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
@@ -53,7 +54,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
       onCompletionParamsChange={handleParamsChange}
       setModel={handleSelectModel}
       debugWithMultipleModel
-      onDebugWithMultipleModelChange={() => {}}
+      onDebugWithMultipleModelChange={() => onDebugWithMultipleModelChange(modelAndParameter)}
       renderTrigger={({
         open,
         currentProvider,

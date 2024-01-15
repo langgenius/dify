@@ -1,13 +1,15 @@
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import type { ChatItem } from '../types'
 import Avatar from './avatar'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type AnswerProps = {
   item: ChatItem
+  icon?: ReactNode
 }
 const Answer: FC<AnswerProps> = ({
   item,
+  icon,
 }) => {
   return (
     <div className='flex mb-2 last:mb-0 pr-10'>
@@ -19,7 +21,7 @@ const Answer: FC<AnswerProps> = ({
         </div>
         <div className='flex items-center mt-1 h-[18px] text-xs text-gray-400 opacity-0 group-hover:opacity-100'>
           <div className='mr-2'>5.6s</div>
-          <div>Tokens spent 200</div>
+          <div className='turncate'>Tokens spent 200</div>
           <div className='mx-2'>·</div>
           <div>1:20 PM</div>
         </div>

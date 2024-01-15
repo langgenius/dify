@@ -31,7 +31,7 @@ const DebugWithMultipleModel = () => {
   const fourLine = multipleModelConfigs.length === 4
 
   return (
-    <div className='flex flex-col h-full pt-3'>
+    <div className='flex flex-col h-[300px] pt-3'>
       <div
         className={`
           grow mb-3 min-h-[400px] overflow-auto
@@ -54,7 +54,7 @@ const DebugWithMultipleModel = () => {
         {
           fourLine && (
             <>
-              <div className='flex gap-2'>
+              <div className='flex gap-2 h-1/2'>
                 {
                   multipleModelConfigs.slice(0, 2).map(modelConfig => (
                     <DebugItem
@@ -65,7 +65,7 @@ const DebugWithMultipleModel = () => {
                   ))
                 }
               </div>
-              <div className='flex gap-2'>
+              <div className='flex gap-2 h-1/2'>
                 {
                   multipleModelConfigs.slice(2, 4).map(modelConfig => (
                     <DebugItem
@@ -90,11 +90,13 @@ const DebugWithMultipleModel = () => {
 const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
   onMultipleModelConfigsChange,
   multipleModelConfigs,
+  onDebugWithMultipleModelChange,
 }) => {
   return (
     <DebugWithMultipleModelContextProvider
       onMultipleModelConfigsChange={onMultipleModelConfigsChange}
       multipleModelConfigs={multipleModelConfigs}
+      onDebugWithMultipleModelChange={onDebugWithMultipleModelChange}
     >
       <DebugWithMultipleModel />
     </DebugWithMultipleModelContextProvider>

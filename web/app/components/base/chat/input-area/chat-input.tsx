@@ -68,6 +68,7 @@ const ChatInput: FC<ChatInputProps> = ({
         url: fileItem.url,
         upload_file_id: fileItem.fileId,
       })))
+      setQuery('')
     }
     if (!files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
       if (files.length)

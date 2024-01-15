@@ -219,6 +219,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           {
             renderTrigger
               ? renderTrigger({
+                open,
                 disabled,
                 modelDisabled,
                 hasDeprecated,
