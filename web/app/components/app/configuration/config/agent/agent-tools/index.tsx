@@ -6,6 +6,7 @@ import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import ChooseTool from './choose-tool'
+import SettingBuiltInTool from './setting-built-in-tool'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle, Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
@@ -18,7 +19,6 @@ import type { AgentTool } from '@/types/app'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
-// import SettingBuiltInTool from './setting-built-in-tool'
 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
@@ -26,6 +26,8 @@ const AgentTools: FC = () => {
   const { modelConfig, setModelConfig } = useContext(ConfigContext)
   const [collectionList, setCollectionList] = useState<Collection[]>([])
 
+  const [currentTool, setCurrentTool] = useState<AgentTool & { icon: any; collection?: Collection } | null>(null)
+  const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
     const collection = collectionList.find(collection => collection.id === item.provider_id)
     const icon = collection?.icon
@@ -39,7 +41,6 @@ const AgentTools: FC = () => {
   useEffect(() => {
     fetchCollectionList().then((list: any) => {
       setCollectionList(list as Collection[])
-      console.log(list)
     })
   }, [])
 
@@ -47,6 +48,7 @@ const AgentTools: FC = () => {
     <>
       <Panel
         className="mt-4"
+        noBodySpacing={tools.length === 0}
         headerIcon={
           <ToolsActive className='w-4 h-4 text-primary-500' />
         }
@@ -75,7 +77,7 @@ const AgentTools: FC = () => {
         }
       >
         <div className='flex items-center flex-wrap justify-between'>
-          {tools.map((item: (AgentTool & { icon: any }), index) => (
+          {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
             <div key={index}
               className={cn(item.enable && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 ')}
               style={{
@@ -116,6 +118,8 @@ const AgentTools: FC = () => {
                 <div className='hidden group-hover:flex items-center'>
                   {item.provider_type === CollectionType.builtIn && (
                     <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                      setCurrentTool(item)
+                      setIsShowSettingTool(true)
                     }}>
                       <Settings01 className='w-4 h-4 text-gray-500' />
                     </div>
@@ -148,6 +152,13 @@ const AgentTools: FC = () => {
           onHide={() => setIsShowChooseTool(false)}
         />
       )}
+      {isShowSettingTool && (
+        <SettingBuiltInTool
+          toolName={currentTool?.tool_name as string}
+          setting={currentTool?.tool_parameters as any}
+          collection={currentTool?.collection as Collection}
+          onHide={() => setIsShowSettingTool(false)}
+        />)}
     </>
   )
 }
