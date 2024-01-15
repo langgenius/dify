@@ -118,6 +118,23 @@ class ToolApiProviderAddApi(Resource):
             args['schema'],
             args.get('privacy_policy', ''),
         )
+
+class ToolApiProviderGetRemoteSchemaApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        parser = reqparse.RequestParser()
+
+        parser.add_argument('url', type=str, required=True, nullable=False, location='args')
+
+        args = parser.parse_args()
+
+        return ToolManageService.get_api_tool_provider_remote_schema(
+            current_user.id,
+            current_user.current_tenant_id,
+            args['url'],
+        )
     
 class ToolApiProviderListToolsApi(Resource):
     @setup_required
@@ -262,7 +279,6 @@ class ToolApiProviderPreviousTestApi(Resource):
             args['schema'],
         )
 
-# new apis
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
 api.add_resource(ToolBuiltinProviderListToolsApi, '/workspaces/current/tool-provider/builtin/<provider>/tools')
 api.add_resource(ToolBuiltinProviderDeleteApi, '/workspaces/current/tool-provider/builtin/<provider>/delete')
@@ -270,6 +286,7 @@ api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provide
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
+api.add_resource(ToolApiProviderGetRemoteSchemaApi, '/workspaces/current/tool-provider/api/remote')
 api.add_resource(ToolApiProviderListToolsApi, '/workspaces/current/tool-provider/api/tools')
 api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update') 
 api.add_resource(ToolApiProviderDeleteApi, '/workspaces/current/tool-provider/api/delete')

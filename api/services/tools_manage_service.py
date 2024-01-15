@@ -18,6 +18,8 @@ from core.tools.errors import ToolProviderCredentialValidationError, ToolProvide
 from extensions.ext_database import db
 from models.tools import BuiltinToolProvider, ApiToolProvider
 
+from httpx import get
+
 import json
 
 class ToolManageService:
@@ -240,6 +242,33 @@ class ToolManageService:
         db.session.commit()
 
         return { 'result': 'success' }
+    
+    @staticmethod
+    def get_api_tool_provider_remote_schema(
+        user_id: str, tenant_id: str, url: str
+    ):
+        """
+            get api tool provider remote schema
+        """
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+            "Accept": "*/*",
+        }
+
+        try:
+            response = get(url, headers=headers, timeout=10)
+            if response.status_code != 200:
+                raise ValueError(f'Got status code {response.status_code}')
+            schema = response.text
+
+            # try to parse schema, avoid SSRF attack
+            ToolManageService.parser_api_schema(schema)
+        except Exception as e:
+            raise ValueError(f'invalid schema, please check the url you provided')
+        
+        return {
+            'schema': schema
+        }
 
     @staticmethod
     def list_api_tool_provider_tools(
