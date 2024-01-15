@@ -30,7 +30,7 @@ const ItemPanel: FC<Props> = ({
               {description}
             </div>
           }
-          selector='agent-setting-tooltip'
+          selector={`agent-setting-tooltip-${name}`}
         >
           <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
         </Tooltip>

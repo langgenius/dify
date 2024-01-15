@@ -9,8 +9,9 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
+import type { ReactStrategyConfig } from '@/types/app'
 type Props = {
-  payload: any
+  payload: ReactStrategyConfig
   onCancel: () => void
   onSave: (payload: any) => void
 }
@@ -24,9 +25,9 @@ const AgentSetting: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const [maxIterations, setMaxIterations] = useState(5)
+  const [tempPayload, setTempPayload] = useState(payload)
   const handleSave = () => {
-    onSave(payload)
+    onSave(tempPayload)
   }
 
   return (
@@ -73,15 +74,25 @@ const AgentSetting: FC<Props> = ({
           <PromptEditor
             className='mb-2'
             type='first-prompt'
-            value='aaa'
-            onChange={() => { }}
+            value={tempPayload.first_prompt}
+            onChange={(value) => {
+              setTempPayload({
+                ...tempPayload,
+                first_prompt: value,
+              })
+            }}
           />
 
           <PromptEditor
             className='mb-2'
             type='next-iteration'
-            value='bbb'
-            onChange={() => { }}
+            value={tempPayload.next_iteration}
+            onChange={(value) => {
+              setTempPayload({
+                ...tempPayload,
+                next_iteration: value,
+              })
+            }}
           />
 
           <ItemPanel
@@ -97,19 +108,33 @@ const AgentSetting: FC<Props> = ({
                 className='mr-3 w-[156px]'
                 min={maxIterationsMin}
                 max={maxIterationsMax}
-                value={maxIterations}
-                onChange={setMaxIterations}
+                value={tempPayload.max_iterations}
+                onChange={(value) => {
+                  setTempPayload({
+                    ...tempPayload,
+                    max_iterations: value,
+                  })
+                }}
               />
 
-              <input type="number" min={maxIterationsMin} max={maxIterationsMax} step={1} className="block w-11 h-7 leading-7 rounded-lg border-0 pl-1 px-1.5 bg-gray-100 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={maxIterations} onChange={(e) => {
-                let value = parseInt(e.target.value, 10)
-                if (value < maxIterationsMin)
-                  value = maxIterationsMin
+              <input
+                type="number"
+                min={maxIterationsMin}
+                max={maxIterationsMax} step={1}
+                className="block w-11 h-7 leading-7 rounded-lg border-0 pl-1 px-1.5 bg-gray-100 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600"
+                value={tempPayload.max_iterations}
+                onChange={(e) => {
+                  let value = parseInt(e.target.value, 10)
+                  if (value < maxIterationsMin)
+                    value = maxIterationsMin
 
-                if (value > maxIterationsMax)
-                  value = maxIterationsMax
-                setMaxIterations(value)
-              }} />
+                  if (value > maxIterationsMax)
+                    value = maxIterationsMax
+                  setTempPayload({
+                    ...tempPayload,
+                    max_iterations: value,
+                  })
+                }} />
             </div>
           </ItemPanel>
         </div>

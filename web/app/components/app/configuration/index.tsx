@@ -139,9 +139,25 @@ const Configuration: FC = () => {
     retriever_resource: null,
     sensitive_word_avoidance: null,
     dataSets: [],
+    agentConfig: {
+      enabled: false,
+      strategy: {},
+      reactStrategyConfig: {
+        first_prompt: '',
+        next_iteration: '',
+        max_iterations: 5,
+      },
+      tools: [],
+    },
   })
   const isChatApp = mode === AppType.chat
-  const [isAgent, setIsAgent] = useState(false)
+  const isAgent = modelConfig.agentConfig.enabled
+  const setIsAgent = (value: boolean) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
+      draft.agentConfig.enabled = value
+    })
+    doSetModelConfig(newModelConfig)
+  }
   const isOpenAI = modelConfig.provider === 'openai'
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
@@ -397,6 +413,16 @@ const Configuration: FC = () => {
           sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
+          agentConfig: {
+            enabled: modelConfig.agent_mode?.enabled,
+            strategy: modelConfig.agent_mode?.strategy || {},
+            reactStrategyConfig: modelConfig.agent_mode?.prompt || {
+              first_prompt: '',
+              next_iteration: '',
+              max_iterations: 5,
+            },
+            tools: modelConfig.agent_mode?.tools || [],
+          },
         },
         completionParams: model.completion_params,
       }
@@ -420,7 +446,7 @@ const Configuration: FC = () => {
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
-        return chatPromptConfig.prompt.every(({ text }) => !text)
+        return chatPromptConfig.prompt.every(({ text }: any) => !text)
 
       else
         return !completionPromptConfig.prompt.text
@@ -497,6 +523,7 @@ const Configuration: FC = () => {
         enabled: isAgent,
         tools: [...postDatasets],
         strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
+        prompt: modelConfig.agentConfig.reactStrategyConfig,
       },
       model: {
         provider: modelConfig.provider,
@@ -549,6 +576,8 @@ const Configuration: FC = () => {
       <Loading type='area' />
     </div>
   }
+
+  console.log(modelConfig)
 
   return (
     <ConfigContext.Provider value={{
@@ -633,8 +662,14 @@ const Configuration: FC = () => {
                   <AssistantTypePicker
                     value={isAgent ? 'agent' : 'assistant'}
                     onChange={(value: string) => setIsAgent(value === 'agent')}
-                    onAgentSettingChange={() => { }}
+                    onAgentSettingChange={(config) => {
+                      const nextConfig = produce(modelConfig, (draft: ModelConfig) => {
+                        draft.agentConfig.reactStrategyConfig = config
+                      })
+                      setModelConfig(nextConfig)
+                    }}
                     isOpenAI={isOpenAI}
+                    reactStrategyConfig={modelConfig.agentConfig.reactStrategyConfig}
                   />
                 )}
               </div>

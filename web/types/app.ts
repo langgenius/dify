@@ -1,4 +1,4 @@
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { CollectionType } from '@/app/components/tools/types'
 export enum ProviderType {
@@ -116,6 +116,12 @@ export enum AgentStrategy {
   react = 'react',
 }
 
+export type ReactStrategyConfig = {
+  first_prompt: string
+  next_iteration: string
+  max_iterations: number// TODO:
+}
+
 /**
  * Model configuration. The backend type.
  */
@@ -146,10 +152,7 @@ export type ModelConfig = {
   annotation_reply?: AnnotationReplyConfig
   agent_mode: {
     enabled: boolean
-    prompt?: {
-      first_prompt: string
-      next_iteration: string
-    }
+    prompt?: ReactStrategyConfig
     strategy: AgentStrategy
     tools: ToolItem[]
   }

@@ -1,4 +1,4 @@
-import type { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ReactStrategyConfig, ToolItem } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -112,6 +112,12 @@ export type ModelConfig = {
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
   dataSets: any[]
+  agentConfig: {
+    enabled: boolean
+    strategy: AgentStrategy
+    reactStrategyConfig?: ReactStrategyConfig
+    tools: ToolItem[]
+  }
 }
 export type DatasetConfigItem = {
   enable: boolean

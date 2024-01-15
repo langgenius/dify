@@ -15,12 +15,14 @@ import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows
 import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import type { ReactStrategyConfig } from '@/types/app'
 
 type Props = {
   value: string
   onChange: (value: string) => void
   onAgentSettingChange: (payload: any) => void
   isOpenAI: boolean
+  reactStrategyConfig?: ReactStrategyConfig
 }
 
 type ItemProps = {
@@ -57,6 +59,7 @@ const AssistantTypePicker: FC<Props> = ({
   onChange,
   onAgentSettingChange,
   isOpenAI,
+  reactStrategyConfig,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -71,7 +74,7 @@ const AssistantTypePicker: FC<Props> = ({
   const isAgent = value === 'agent'
   const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
 
-  const reactStrategyConfig = (
+  const reactStrategyConfigUI = (
     <>
       <div className='my-4 h-[1px] bg-gray-100'></div>
       <div
@@ -133,13 +136,13 @@ const AssistantTypePicker: FC<Props> = ({
               isChecked={isAgent}
               onClick={handleChange}
             />
-            {!isOpenAI && reactStrategyConfig}
+            {!isOpenAI && reactStrategyConfigUI}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
       {isShowAgentSetting && (
         <AgentSetting
-          payload={{}}
+          payload={reactStrategyConfig as ReactStrategyConfig}
           onSave={(payloadNew) => {
             onAgentSettingChange(payloadNew)
             setIsShowAgentSetting(false)
