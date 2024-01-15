@@ -1,17 +1,17 @@
 import queue
 import time
 from enum import Enum
-from typing import Generator, Any
-
-from sqlalchemy.orm import DeclarativeMeta
+from typing import Any, Generator
 
 from core.entities.application_entities import InvokeFrom
-from core.entities.queue_entities import QueueStopEvent, AppQueueEvent, QueuePingEvent, QueueErrorEvent, \
-    QueueAgentThoughtEvent, QueueMessageEndEvent, QueueRetrieverResourcesEvent, QueueMessageReplaceEvent, \
-    QueueMessageEvent, QueueMessage, AnnotationReplyEvent
+from core.entities.queue_entities import (AnnotationReplyEvent, AppQueueEvent, QueueAgentThoughtEvent, QueueErrorEvent,
+                                          QueueMessage, QueueMessageEndEvent, QueueMessageEvent,
+                                          QueueMessageReplaceEvent, QueuePingEvent, QueueRetrieverResourcesEvent,
+                                          QueueStopEvent)
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from extensions.ext_redis import redis_client
 from models.model import MessageAgentThought
+from sqlalchemy.orm import DeclarativeMeta
 
 
 class PublishFrom(Enum):

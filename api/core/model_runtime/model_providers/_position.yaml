@@ -6,6 +6,7 @@
 - huggingface_hub
 - cohere
 - togetherai
+- ollama
 - zhipuai
 - baichuan
 - spark

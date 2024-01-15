@@ -1,34 +1,34 @@
 import json
 import logging
-from typing import Union, Generator
-
-from flask import Response, stream_with_context
-from flask_login import current_user
-from flask_restful import Resource, reqparse, marshal_with, fields
-from flask_restful.inputs import int_range
-from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
+from typing import Generator, Union
 
 from controllers.console import api
 from controllers.console.app import _get_app
-from controllers.console.app.error import CompletionRequestError, ProviderNotInitializeError, \
-    AppMoreLikeThisDisabledError, ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
+from controllers.console.app.error import (AppMoreLikeThisDisabledError, CompletionRequestError,
+                                           ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
+                                           ProviderQuotaExceededError)
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.entities.application_entities import InvokeFrom
-from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from libs.login import login_required
-from fields.conversation_fields import message_detail_fields, annotation_fields
+from extensions.ext_database import db
+from fields.conversation_fields import annotation_fields, message_detail_fields
+from flask import Response, stream_with_context
+from flask_login import current_user
+from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from extensions.ext_database import db
-from models.model import MessageAnnotation, Conversation, Message, MessageFeedback
+from libs.login import login_required
+from models.model import Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_service import MessageService
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 
 class ChatMessageListApi(Resource):

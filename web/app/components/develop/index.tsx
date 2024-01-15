@@ -9,20 +9,17 @@ import { fetchAppDetail } from '@/service/apps'
 
 type IDevelopMainProps = {
   appId: string
-  dictionary: any
 }
 
-const DevelopMain = ({ appId, dictionary }: IDevelopMainProps) => {
+const DevelopMain = ({ appId }: IDevelopMainProps) => {
   const commonParams = { url: '/apps', id: appId }
   const { data: appDetail } = useSWR(commonParams, fetchAppDetail)
   const { t } = useTranslation()
 
-  // const serverApi = `${appDetail?.site?.app_base_url}/api/${appDetail?.site?.access_token}`
-
   return (
     <div className='relative flex flex-col h-full overflow-hidden'>
       <div className='flex items-center justify-between flex-shrink-0 px-6 border-b border-solid py-2 border-b-gray-100'>
-        <div className='text-lg font-medium text-gray-900'>{dictionary.app?.develop?.title}</div>
+        <div className='text-lg font-medium text-gray-900'></div>
         <div className='flex items-center flex-wrap gap-y-1'>
           <InputCopy className='flex-shrink-0 mr-1 w-52 sm:w-80' value={appDetail?.api_base_url}>
             <div className={`ml-2 border border-gray-200 border-solid flex-shrink-0 px-2 py-0.5 rounded-[6px] text-gray-500 text-[0.625rem] ${s.customApi}`}>

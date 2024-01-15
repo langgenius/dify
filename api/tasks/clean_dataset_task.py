@@ -3,13 +3,12 @@ import time
 
 import click
 from celery import shared_task
-from flask import current_app
-
 from core.index.index import IndexBuilder
 from core.index.vector_index.vector_index import VectorIndex
 from extensions.ext_database import db
-from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, DatasetQuery, DatasetProcessRule, \
-    AppDatasetJoin, Document
+from flask import current_app
+from models.dataset import (AppDatasetJoin, Dataset, DatasetKeywordTable, DatasetProcessRule, DatasetQuery, Document,
+                            DocumentSegment)
 
 
 @shared_task(queue='dataset')

@@ -1,12 +1,11 @@
 from typing import List, cast
 
-from langchain.schema import BaseMessage
-
 from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from langchain.schema import BaseMessage
 
 
 class CalcTokenMixin:

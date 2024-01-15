@@ -1,10 +1,10 @@
-import json
 import enum
+import json
 from math import e
 from typing import List
 
-from flask_login import UserMixin
 from extensions.ext_database import db
+from flask_login import UserMixin
 from sqlalchemy.dialects.postgresql import UUID
 
 

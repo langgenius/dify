@@ -1,19 +1,14 @@
 import logging
-from typing import cast, Optional, List
-
-from langchain import WikipediaAPIWrapper
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.tools import BaseTool, WikipediaQueryRun, Tool
-from pydantic import BaseModel, Field
+from typing import List, Optional, cast
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
-from core.agent.agent_executor import PlanningStrategy, AgentConfiguration, AgentExecutor
+from core.agent.agent_executor import AgentConfiguration, AgentExecutor, PlanningStrategy
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.entities.application_entities import ModelConfigEntity, InvokeFrom, \
-    AgentEntity, AgentToolEntity, AppOrchestrationConfigEntity
+from core.entities.application_entities import (AgentEntity, AgentToolEntity, AppOrchestrationConfigEntity, InvokeFrom,
+                                                ModelConfigEntity)
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers import model_provider_factory
@@ -21,11 +16,15 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.tool.current_datetime_tool import DatetimeTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tool.provider.serpapi_provider import SerpAPIToolProvider
-from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
+from core.tool.serpapi_wrapper import OptimizedSerpAPIInput, OptimizedSerpAPIWrapper
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
+from langchain import WikipediaAPIWrapper
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 from models.dataset import Dataset
 from models.model import Message
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

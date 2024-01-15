@@ -1,12 +1,12 @@
 import json
 from functools import wraps
 
-from flask_login import current_user
-from libs.login import login_required
-from flask_restful import Resource
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
+from flask_login import current_user
+from flask_restful import Resource
+from libs.login import login_required
 from models.model import App, AppModelConfig
 
 

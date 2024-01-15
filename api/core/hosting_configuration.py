@@ -1,12 +1,11 @@
 import os
 from typing import Optional
 
-from flask import Flask
-from pydantic import BaseModel
-
 from core.entities.provider_entities import QuotaUnit, RestrictModel
 from core.model_runtime.entities.model_entities import ModelType
+from flask import Flask
 from models.provider import ProviderQuotaType
+from pydantic import BaseModel
 
 
 class HostingQuota(BaseModel):
@@ -49,6 +48,8 @@ class HostingConfiguration:
     moderation_config: HostedModerationConfig = None
 
     def init_app(self, app: Flask) -> None:
+        if app.config.get('EDITION') != 'CLOUD':
+            return
 
         self.provider_map["azure_openai"] = self.init_azure_openai()
         self.provider_map["openai"] = self.init_openai()

@@ -1,12 +1,11 @@
-from typing import List, Union, Optional, Dict
+from typing import Dict, List, Optional, Union
 
 import requests
-
-from core.file.file_obj import FileObj, FileType, FileTransferMethod
+from core.file.file_obj import FileObj, FileTransferMethod, FileType
 from core.file.upload_file_parser import SUPPORT_EXTENSIONS
 from extensions.ext_database import db
 from models.account import Account
-from models.model import MessageFile, EndUser, AppModelConfig, UploadFile
+from models.model import AppModelConfig, EndUser, MessageFile, UploadFile
 
 
 class MessageFileParser:

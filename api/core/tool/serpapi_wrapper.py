@@ -1,5 +1,5 @@
 from langchain import SerpAPIWrapper
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 
 class OptimizedSerpAPIInput(BaseModel):

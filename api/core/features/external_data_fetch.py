@@ -1,14 +1,12 @@
 import concurrent
 import json
 import logging
-
 from concurrent.futures import ThreadPoolExecutor
-from typing import Tuple, Optional
-
-from flask import current_app, Flask
+from typing import Optional, Tuple
 
 from core.entities.application_entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
+from flask import Flask, current_app
 
 logger = logging.getLogger(__name__)
 

@@ -1,14 +1,14 @@
 from typing import Optional
 
-from core.model_runtime.entities.rerank_entities import RerankResult, RerankDocument
-from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeError, InvokeServerUnavailableError, InvokeRateLimitError, \
-    InvokeAuthorizationError, InvokeBadRequestError
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
-from core.model_runtime.entities.model_entities import FetchFrom, ModelType, AIModelEntity
-from core.model_runtime.entities.common_entities import I18nObject
+from xinference_client.client.restful.restful_client import Client, RESTfulRerankModelHandle
 
-from xinference_client.client.restful.restful_client import RESTfulRerankModelHandle, Client
 
 class XinferenceRerankModel(RerankModel):
     """

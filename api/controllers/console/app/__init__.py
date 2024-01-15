@@ -1,9 +1,8 @@
-from flask_login import current_user
-from werkzeug.exceptions import NotFound
-
 from controllers.console.app.error import AppUnavailableError
 from extensions.ext_database import db
+from flask_login import current_user
 from models.model import App
+from werkzeug.exceptions import NotFound
 
 
 def _get_app(app_id, mode=None):

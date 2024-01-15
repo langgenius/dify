@@ -4,10 +4,9 @@ from typing import List
 
 import click
 from celery import shared_task
-
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
-from models.dataset import DocumentSegment, Dataset, Document
+from models.dataset import Dataset, Document, DocumentSegment
 
 
 @shared_task(queue='dataset')

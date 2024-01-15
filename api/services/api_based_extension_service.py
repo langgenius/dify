@@ -1,7 +1,7 @@
+from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
+from core.helper.encrypter import decrypt_token, encrypt_token
 from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from core.helper.encrypter import encrypt_token, decrypt_token
-from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 
 
 class APIBasedExtensionService:

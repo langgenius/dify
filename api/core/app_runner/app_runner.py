@@ -1,12 +1,12 @@
 import time
-from typing import cast, Optional, List, Tuple, Generator, Union
+from typing import Generator, List, Optional, Tuple, Union, cast
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.application_entities import ModelConfigEntity, PromptTemplateEntity, AppOrchestrationConfigEntity
+from core.entities.application_entities import AppOrchestrationConfigEntity, ModelConfigEntity, PromptTemplateEntity
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessage, AssistantPromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -256,6 +256,9 @@ class AppRunner:
 
             if not usage and result.delta.usage:
                 usage = result.delta.usage
+
+        if not usage:
+            usage = LLMUsage.empty_usage()
 
         llm_result = LLMResult(
             model=model,

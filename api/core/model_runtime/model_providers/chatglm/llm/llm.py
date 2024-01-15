@@ -1,30 +1,22 @@
-from typing import Generator, List, Optional
-from requests import post
-
-
-from os.path import join
-from typing import cast
+import logging
 from json import dumps
+from os.path import join
+from typing import Generator, List, Optional, cast
 
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, UserPromptMessage, AssistantPromptMessage, \
-    SystemPromptMessage
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, \
-    LLMResultChunkDelta
-from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
-    InvokeAuthorizationError, InvokeBadRequestError, InvokeError
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageFunction,
+                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage)
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, AssistantPromptMessage, \
-    PromptMessageFunction, UserPromptMessage, SystemPromptMessage
 from core.model_runtime.utils import helper
-from openai import OpenAI, Stream, \
-    APIConnectionError, APITimeoutError, AuthenticationError, InternalServerError, \
-    RateLimitError, ConflictError, NotFoundError, UnprocessableEntityError, PermissionDeniedError
-from openai.types.chat import ChatCompletionChunk, ChatCompletion
-from openai.types.chat.chat_completion_message import FunctionCall
 from httpx import Timeout
-
-import logging
+from openai import (APIConnectionError, APITimeoutError, AuthenticationError, ConflictError, InternalServerError,
+                    NotFoundError, OpenAI, PermissionDeniedError, RateLimitError, Stream, UnprocessableEntityError)
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.types.chat.chat_completion_message import FunctionCall
+from requests import post
 
 logger = logging.getLogger(__name__)
 

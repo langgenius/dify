@@ -1,5 +1,7 @@
+from os.path import abspath, dirname, join
+
 from transformers import AutoTokenizer
-from os.path import join, abspath, dirname
+
 
 class JinaTokenizer:
     @staticmethod

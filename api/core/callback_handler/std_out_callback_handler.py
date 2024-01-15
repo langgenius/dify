@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
-from langchain.schema import AgentAction, AgentFinish, LLMResult, BaseMessage
+from langchain.schema import AgentAction, AgentFinish, BaseMessage, LLMResult
 
 
 class DifyStdOutCallbackHandler(BaseCallbackHandler):

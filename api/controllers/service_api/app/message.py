@@ -1,18 +1,18 @@
 # -*- coding:utf-8 -*-
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
-from werkzeug.exceptions import NotFound
-
 import services
 from controllers.service_api import api
 from controllers.service_api.app import create_or_update_end_user_for_user_id
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import AppApiResource
-from libs.helper import TimestampField, uuid_value
-from services.message_service import MessageService
 from extensions.ext_database import db
-from models.model import Message, EndUser
 from fields.conversation_fields import message_file_fields
+from flask_restful import fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
+from libs.helper import TimestampField, uuid_value
+from models.model import EndUser, Message
+from services.message_service import MessageService
+from werkzeug.exceptions import NotFound
+
 
 class MessageListApi(AppApiResource):
     feedback_fields = {

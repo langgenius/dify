@@ -1,8 +1,8 @@
-from flask_restful import Resource
 from flask_login import current_user
+from flask_restful import Resource
+from services.feature_service import FeatureService
 
 from . import api
-from services.feature_service import FeatureService
 
 
 class FeatureApi(Resource):

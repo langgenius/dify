@@ -1,12 +1,8 @@
 import tempfile
 from pathlib import Path
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 import requests
-from flask import current_app
-from langchain.document_loaders import TextLoader, Docx2txtLoader
-from langchain.schema import Document
-
 from core.data_loader.loader.csv_loader import CSVLoader
 from core.data_loader.loader.excel import ExcelLoader
 from core.data_loader.loader.html import HTMLLoader
@@ -20,6 +16,9 @@ from core.data_loader.loader.unstructured.unstructured_pptx import UnstructuredP
 from core.data_loader.loader.unstructured.unstructured_text import UnstructuredTextLoader
 from core.data_loader.loader.unstructured.unstructured_xml import UnstructuredXmlLoader
 from extensions.ext_storage import storage
+from flask import current_app
+from langchain.document_loaders import Docx2txtLoader, TextLoader
+from langchain.schema import Document
 from models.model import UploadFile
 
 SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
