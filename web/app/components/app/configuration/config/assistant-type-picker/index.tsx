@@ -20,6 +20,7 @@ type Props = {
   value: string
   onChange: (value: string) => void
   onAgentSettingChange: (payload: any) => void
+  isOpenAI: boolean
 }
 
 type ItemProps = {
@@ -55,6 +56,7 @@ const AssistantTypePicker: FC<Props> = ({
   value,
   onChange,
   onAgentSettingChange,
+  isOpenAI,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -68,6 +70,32 @@ const AssistantTypePicker: FC<Props> = ({
   }
   const isAgent = value === 'agent'
   const [isShowAgentSetting, setIsShowAgentSetting] = useState(false)
+
+  const reactStrategyConfig = (
+    <>
+      <div className='my-4 h-[1px] bg-gray-100'></div>
+      <div
+        className={cn(isAgent ? 'group cursor-pointer hover:bg-primary-50' : 'opacity-30', 'p-3 pr-4 rounded-xl bg-gray-50 ')}
+        onClick={() => {
+          if (isAgent) {
+            setOpen(false)
+            setIsShowAgentSetting(true)
+          }
+        }}
+      >
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center '>
+            <div className='mr-3 p-1 bg-gray-200 group-hover:bg-white rounded-lg'>
+              <Settings04 className='w-4 h-4 text-gray-600 group-hover:text-[#155EEF]' />
+            </div>
+            <div className='leading-5 text-sm font-medium text-gray-900 group-hover:text-[#155EEF]'>{t('appDebug.agent.setting.name')}</div>
+          </div>
+          <ArrowUpRight className='w-4 h-4 text-gray-500 group-hover:text-[#155EEF]' />
+        </div>
+        <div className='ml-9 leading-[18px] text-xs font-normal text-gray-500'>{t('appDebug.agent.setting.description')}</div>
+      </div>
+    </>
+  )
   return (
     <>
       <PortalToFollowElem
@@ -105,27 +133,7 @@ const AssistantTypePicker: FC<Props> = ({
               isChecked={isAgent}
               onClick={handleChange}
             />
-            <div className='my-4 h-[1px] bg-gray-100'></div>
-            <div
-              className={cn(isAgent ? 'group cursor-pointer hover:bg-primary-50' : 'opacity-30', 'p-3 pr-4 rounded-xl bg-gray-50 ')}
-              onClick={() => {
-                if (isAgent) {
-                  setOpen(false)
-                  setIsShowAgentSetting(true)
-                }
-              }}
-            >
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center '>
-                  <div className='mr-3 p-1 bg-gray-200 group-hover:bg-white rounded-lg'>
-                    <Settings04 className='w-4 h-4 text-gray-600 group-hover:text-[#155EEF]' />
-                  </div>
-                  <div className='leading-5 text-sm font-medium text-gray-900 group-hover:text-[#155EEF]'>{t('appDebug.agent.setting.name')}</div>
-                </div>
-                <ArrowUpRight className='w-4 h-4 text-gray-500 group-hover:text-[#155EEF]' />
-              </div>
-              <div className='ml-9 leading-[18px] text-xs font-normal text-gray-500'>{t('appDebug.agent.setting.description')}</div>
-            </div>
+            {!isOpenAI && reactStrategyConfig}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

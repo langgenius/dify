@@ -142,6 +142,7 @@ const Configuration: FC = () => {
   })
   const isChatApp = mode === AppType.chat
   const [isAgent, setIsAgent] = useState(false)
+  const isOpenAI = modelConfig.provider === 'openai'
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
     reranking_model: {
@@ -495,7 +496,7 @@ const Configuration: FC = () => {
       agent_mode: {
         enabled: isAgent,
         tools: [...postDatasets],
-        strategy: modelConfig.provider === 'openai' ? AgentStrategy.functionCall : AgentStrategy.react,
+        strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelConfig.provider,
@@ -559,6 +560,7 @@ const Configuration: FC = () => {
       promptMode,
       isAdvancedMode,
       isAgent,
+      isOpenAI,
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
@@ -628,7 +630,12 @@ const Configuration: FC = () => {
                   </div>
                 </div>
                 {isChatApp && (
-                  <AssistantTypePicker value={isAgent ? 'agent' : 'assistant'} onChange={value => setIsAgent(value === 'agent')} onAgentSettingChange={() => { }} />
+                  <AssistantTypePicker
+                    value={isAgent ? 'agent' : 'assistant'}
+                    onChange={(value: string) => setIsAgent(value === 'agent')}
+                    onAgentSettingChange={() => { }}
+                    isOpenAI={isOpenAI}
+                  />
                 )}
               </div>
               <Config />
