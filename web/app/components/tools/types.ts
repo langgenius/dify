@@ -77,6 +77,7 @@ export type ToolCredential = {
 
 export type CustomCollectionBackend = {
   provider: string
+  original_provider?: string
   credentials: Credential
   icon: Emoji
   schema_type: string

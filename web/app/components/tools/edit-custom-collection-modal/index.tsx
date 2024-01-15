@@ -54,6 +54,8 @@ const EditCustomCollectionModal: FC<Props> = ({
     }
     : payload)
 
+  const originalProvider = isEdit ? payload.provider : ''
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
   const setEmoji = (emoji: Emoji) => {
@@ -113,11 +115,15 @@ const EditCustomCollectionModal: FC<Props> = ({
   const handleSave = () => {
     const postData = clone(customCollection)
     delete postData.tools
-    if (isAdd)
+    if (isAdd) {
       onAdd?.(postData)
+      return
+    }
 
-    else
-      onEdit?.(postData)
+    onEdit?.({
+      ...postData,
+      original_provider: originalProvider,
+    })
   }
 
   return (
