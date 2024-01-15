@@ -39,8 +39,8 @@ const TestApi: FC<Props> = ({
       schema: customCollection.schema,
       parameters: parametersValue,
     }
-    const res = await testAPIAvailable(data)
-    setResult(res as string)
+    const res = await testAPIAvailable(data) as any
+    setResult(res.error || res.result)
   }
 
   return (
@@ -100,8 +100,8 @@ const TestApi: FC<Props> = ({
                 <div className='leading-[18px] text-xs font-semibold text-gray-500'>{t('tools.test.testResult')}</div>
                 <div className='grow w-0 h-px bg-[rgb(243, 244, 246)]'></div>
               </div>
-              <div className='mt-2 px-3 py-2 h-[200px] overflow-y-auto overflow-x-hidden rounded-lg bg-gray-100 leading-4 text-xs font-normal text-gray-400'>
-                {result || t('tools.test.testResultPlaceholder')}
+              <div className='mt-2 px-3 py-2 h-[200px] overflow-y-auto overflow-x-hidden rounded-lg bg-gray-100 leading-4 text-xs font-normal text-gray-700'>
+                {result || <span className='text-gray-400'>{t('tools.test.testResultPlaceholder')}</span>}
               </div>
             </div>
           </div>

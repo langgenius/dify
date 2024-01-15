@@ -67,7 +67,7 @@ export const removeCustomCollection = (collectionName: string) => {
 }
 
 export const testAPIAvailable = (payload: any) => {
-  return post('/workspaces/current/tool-provider/test/pre', {
+  return post('/workspaces/current/tool-provider/api/test/pre', {
     body: {
       ...payload,
     },
