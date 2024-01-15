@@ -528,7 +528,6 @@ class IndexingRunner:
 
         return text_docs
 
-    65534
     def filter_string(self, text):
         text = re.sub(r'<\|', '<', text)
         text = re.sub(r'\|>', '>', text)
