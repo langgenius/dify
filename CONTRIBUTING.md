@@ -4,7 +4,7 @@ We need to be nimble and ship fast given where we are, but we also want to make 
 
 This guide, like Dify itself, is a constant work in progress. We highly appreciate your understanding if at times it lags behind the actual project, and welcome any feedback for us to improve.
 
-In terms of licensing, please take a minute to read our short [License and Contributor Agreement](./license).
+In terms of licensing, please take a minute to read our short [License and Contributor Agreement](./license). The community also adheres to the [code of conduct](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## Before you jump in
 
@@ -12,7 +12,7 @@ In terms of licensing, please take a minute to read our short [License and Contr
 
 ### Feature requests:
 
-* If you're opening a new feature request, we'd like you to explain what the proposed feature achieves, and include as much context as possible. Use this [feature request drafting bot](TODO) made by [@perzeusss](https://github.com/perzeuss) to save time fleshing out the issue.
+* If you're opening a new feature request, we'd like you to explain what the proposed feature achieves, and include as much context as possible.
 
 * If you want to pick one up from the existing issues, simply drop a comment below it saying so.
 
@@ -84,13 +84,13 @@ Check the [installation FAQ](https://docs.dify.ai/getting-started/faq/install-fa
 
 ### 5. Visit dify in your browser
 
-You should now be able to visit [http://localhost:3000](http://localhost:3000) (the default, or your self-configured URL and port) and see Dify up and running. 
+To validate your set up, head over to [http://localhost:3000](http://localhost:3000) (the default, or your self-configured URL and port) in your browser. You should now see Dify up and running. 
 
 ## Developing
 
 If you are adding a model provider, [this guide](https://github.com/langgenius/dify/blob/main/api/core/model_runtime/README.md) is for you.
 
-To help you quickly navigate where your contribution fits, here's a breakdown of Dify's backend and frontend architecture.
+To help you quickly navigate where your contribution fits, a brief, annotated outline of Dify's backend & frontend is as follows:
 
 ### Backend
 
@@ -146,7 +146,7 @@ The website is bootstrapped on [Next.js](https://nextjs.org/) boilerplate in Typ
 
 ## Submitting your PR
 
-At last, time to open a pull request (PR) to our repo 🎉. If you run into issues like merge conflicts or don't know how to open a pull request, check out [GitHub's pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests). 
+At last, time to open a pull request (PR) to our repo. If you run into issues like merge conflicts or don't know how to open a pull request, check out [GitHub's pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests). 
 
 And that's it! Once your PR is merged, you will be featured as a contributor in our [README](https://github.com/langgenius/dify/blob/main/README.md).
 
