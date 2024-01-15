@@ -38,6 +38,7 @@ In terms of licensing, please take a minute to read our short [License and Contr
   | High-Priority Features as being labeled by a team member     | High Priority   |
   | Popular feature requests from our [community feedback board](https://feedback.dify.ai/) | Medium Priority |
   | Non-core features and minor enhancements                     | Low Priority    |
+  | Valuable but not immediate                                   | Future-Feature  |
 
 ### Anything else (e.g. bug report, performance optimization, typo correction):
 
