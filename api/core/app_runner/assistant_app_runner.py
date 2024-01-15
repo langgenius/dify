@@ -239,7 +239,7 @@ class AssistantApplicationRunner(AppRunner):
             convert tool to prompt message tool
         """
         tool_entity = ToolManager.get_tool_runtime(
-            provider_type=tool.provider_type, provider_name=tool.provider_name, tool_name=tool.tool_name, 
+            provider_type=tool.provider_type, provider_name=tool.provider_id, tool_name=tool.tool_name, 
             tanent_id=application_generate_entity.tenant_id
         )
 

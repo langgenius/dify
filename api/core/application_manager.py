@@ -412,15 +412,15 @@ class ApplicationManager:
             for tool in agent_dict.get('tools', []):
                 keys = tool.keys()
                 if len(keys) >= 4:
+                    if "enabled" not in tool or not tool["enabled"]:
+                        continue
+
                     agent_tool_properties = {
                         'provider_type': tool['provider_type'],
-                        'provider_name': tool['provider_name'],
+                        'provider_id': tool['provider_id'],
                         'tool_name': tool['tool_name'],
                         'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
                     }
-
-                    if "enabled" not in tool or not tool["enabled"]:
-                        continue
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))
                 elif len(keys) == 1:

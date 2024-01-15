@@ -289,8 +289,8 @@ class AppModelConfigService:
                     tool["enabled"] = False
                 if "provider_type" not in tool:
                     raise ValueError("provider_type is required in agent_mode.tools")
-                if "provider_name" not in tool:
-                    raise ValueError("provider_name is required in agent_mode.tools")
+                if "provider_id" not in tool:
+                    raise ValueError("provider_id is required in agent_mode.tools")
                 if "tool_name" not in tool:
                     raise ValueError("tool_name is required in agent_mode.tools")
                 if "tool_parameters" not in tool:

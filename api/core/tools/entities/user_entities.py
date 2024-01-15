@@ -12,6 +12,7 @@ class UserToolProvider(BaseModel):
         APP = "app"
         API = "api"
 
+    id: str
     author: str
     name: str # identifier
     description: I18nObject
@@ -24,6 +25,7 @@ class UserToolProvider(BaseModel):
 
     def to_dict(self) -> dict:
         return {
+            'id': self.id,
             'author': self.author,
             'name': self.name,
             'description': self.description.to_dict(),

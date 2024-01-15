@@ -155,6 +155,7 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('original_provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
 
@@ -164,6 +165,7 @@ class ToolApiProviderUpdateApi(Resource):
             user_id,
             tenant_id,
             args['provider'],
+            args['original_provider'],
             args['icon'],
             args['credentials'],
             args['schema_type'],
@@ -269,7 +271,7 @@ api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/t
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
 api.add_resource(ToolApiProviderListToolsApi, '/workspaces/current/tool-provider/api/tools')
-api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update')
+api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update') 
 api.add_resource(ToolApiProviderDeleteApi, '/workspaces/current/tool-provider/api/delete')
 api.add_resource(ToolApiProviderGetApi, '/workspaces/current/tool-provider/api/get')
 api.add_resource(ToolApiProviderSchemaApi, '/workspaces/current/tool-provider/api/schema')

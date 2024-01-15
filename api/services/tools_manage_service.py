@@ -319,7 +319,7 @@ class ToolManageService:
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, icon: str, credentials: dict, 
+        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: str, credentials: dict, 
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -331,7 +331,7 @@ class ToolManageService:
         # check if the provider exists
         provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
             ApiToolProvider.tenant_id == tenant_id,
-            ApiToolProvider.name == provider_name,
+            ApiToolProvider.name == original_provider,
         ).first()
 
         if provider is None:
@@ -343,6 +343,7 @@ class ToolManageService:
         tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
         # update db provider
+        provider.name = provider_name
         provider.icon = icon
         provider.schema = schema
         provider.description = extra_info.get('description', '')
