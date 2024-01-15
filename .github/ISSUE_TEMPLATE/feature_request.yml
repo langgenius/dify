@@ -39,9 +39,9 @@ body:
   - type: checkboxes
     attributes:
       label: 5. Can you help us with this feature?
-      description: Let us know! This is not a commitment, but but a starting point for collaboration.
+      description: Let us know! This is not a commitment, but a starting point for collaboration.
       options:
-      - label: I am interested in contributing to this feature
+      - label: I am interested in contributing to this feature.
         required: false
   - type: markdown
     attributes:
