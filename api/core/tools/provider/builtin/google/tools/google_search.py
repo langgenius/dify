@@ -119,7 +119,7 @@ class GoogleSearchTool(BuiltinTool):
         """
         query = tool_paramters['query']
         result_type = tool_paramters['result_type']
-        api_key = self.meta.credentials['serpapi_api_key']
+        api_key = self.runtime.credentials['serpapi_api_key']
         result = SerpAPI(api_key).run(query)
         if result_type == 'text':
             return self.create_text_message(text=result)

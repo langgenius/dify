@@ -73,6 +73,7 @@ class ToolInvokeMessage(BaseModel):
         IMAGE = "image"
         LINK = "link"
         BLOB = "blob"
+        IMAGE_LINK = "image_link"
 
     type: MessageType = MessageType.TEXT
     """
@@ -80,6 +81,10 @@ class ToolInvokeMessage(BaseModel):
     """
     message: Union[str, bytes] = None
     meta: Dict[str, Any] = None
+
+class ToolInvokeMessageBinary(BaseModel):
+    mimetype: str = Field(..., description="The mimetype of the binary")
+    url: str = Field(..., description="The url of the binary")
 
 class ToolParamterOption(BaseModel):
     value: str = Field(..., description="The value of the option")

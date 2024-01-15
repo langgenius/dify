@@ -7,10 +7,10 @@ from core.entities.application_entities import InvokeFrom
 from core.entities.queue_entities import (AnnotationReplyEvent, AppQueueEvent, QueueAgentThoughtEvent, QueueErrorEvent,
                                           QueueMessage, QueueMessageEndEvent, QueueMessageEvent,
                                           QueueMessageReplaceEvent, QueuePingEvent, QueueRetrieverResourcesEvent,
-                                          QueueStopEvent)
+                                          QueueStopEvent, QueueMessageFileEvent)
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from extensions.ext_redis import redis_client
-from models.model import MessageAgentThought
+from models.model import MessageAgentThought, MessageFile
 from sqlalchemy.orm import DeclarativeMeta
 
 
@@ -142,6 +142,17 @@ class ApplicationQueueManager:
         """
         self.publish(QueueAgentThoughtEvent(
             agent_thought_id=message_agent_thought.id
+        ), pub_from)
+
+    def publish_message_file(self, message_file: MessageFile, pub_from: PublishFrom) -> None:
+        """
+        Publish agent thought
+        :param message_file: message file
+        :param pub_from: publish from
+        :return:
+        """
+        self.publish(QueueMessageFileEvent(
+            message_file_id=message_file.id
         ), pub_from)
 
     def publish_error(self, e, pub_from: PublishFrom) -> None:

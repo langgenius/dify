@@ -153,6 +153,16 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                             user_id=self.user_id, 
                             tool_paramters=tool_call_args, 
                         )
+                        # transform tool invoke message to get LLM friendly message
+                        tool_invoke_message = self.transform_tool_invoke_messages(tool_invoke_message)
+                        # extract binary data from tool invoke message
+                        binary_files = self.extract_tool_response_binary(tool_invoke_message)
+                        # create message file
+                        message_files = self.create_message_files(binary_files)
+                        # publish files
+                        for message_file in message_files:
+                            self.queue_manager.publish_message_file(message_file, PublishFrom.APPLICATION_MANAGER)
+                            
                     except ToolProviderCredentialValidationError as e:
                         error_response = f"Plese check your tool provider credentials"
                     except (
@@ -178,7 +188,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         }
                         tool_responses.append(tool_response)
                     else:
-                        observation = self._handle_tool_response(tool_invoke_message)
+                        observation = self._convert_tool_response_to_str(tool_invoke_message)
                         tool_response = {
                             "tool_call_id": tool_call_id,
                             "tool_call_name": tool_call_name,
@@ -240,7 +250,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             ))
 
         return tool_calls
-    
+
     def organize_prompt_messages(self, prompt_template: str,
                                  query: str = None, 
                                  tool_call_id: str = None, tool_call_name: str = None, tool_response: str = None,

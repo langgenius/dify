@@ -26,7 +26,7 @@ class BuiltinTool(Tool):
         # invoke model
         return ToolModelManager.invoke(
             user_id=user_id,
-            tenant_id=self.meta.tenant_id,
+            tenant_id=self.runtime.tenant_id,
             tool_type='builtin',
             tool_name=self.identity.name,
             prompt_messages=prompt_messages,
@@ -40,7 +40,7 @@ class BuiltinTool(Tool):
             :return: the max tokens
         """
         return ToolModelManager.get_max_llm_context_tokens(
-            tenant_id=self.meta.tenant_id,
+            tenant_id=self.runtime.tenant_id,
         )
 
     def get_prompt_tokens(self, prompt_messages: List[PromptMessage]) -> int:
@@ -51,6 +51,6 @@ class BuiltinTool(Tool):
             :return: the tokens
         """
         return ToolModelManager.calculate_tokens(
-            tenant_id=self.meta.tenant_id,
+            tenant_id=self.runtime.tenant_id,
             prompt_messages=prompt_messages
         )

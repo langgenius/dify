@@ -177,6 +177,7 @@ class ToolManager:
             return builtin_tool.fork_tool_runtime(meta={
                 'tenant_id': tanent_id,
                 'credentials': decrypted_credentails,
+                'runtime_parameters': {}
             })
         
         elif provider_type == 'api':

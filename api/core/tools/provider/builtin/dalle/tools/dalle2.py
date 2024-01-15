@@ -16,11 +16,11 @@ class DallE2Tool(BuiltinTool):
         """
             invoke tools
         """
-        openai_organization = self.meta.credentials.get('openai_organizaion_id', None)
-        openai_base_url = self.meta.credentials.get('openai_base_url', None)
+        openai_organization = self.runtime.credentials.get('openai_organizaion_id', None)
+        openai_base_url = self.runtime.credentials.get('openai_base_url', None)
 
         client = OpenAI(
-            api_key=self.meta.credentials['openai_api_key'],
+            api_key=self.runtime.credentials['openai_api_key'],
             base_url=openai_base_url,
             organization=openai_organization
         )

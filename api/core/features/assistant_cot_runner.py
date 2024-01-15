@@ -18,7 +18,6 @@ from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
 
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 
-from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -35,6 +34,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         Run Cot agent application
         """
         app_orchestration_config = self.app_orchestration_config
+        self._repacket_app_orchestration_config(app_orchestration_config)
 
         agent_scratchpad: List[AgentScratchpadUnit] = []
 
@@ -142,6 +142,16 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                                 user_id=self.user_id, 
                                 tool_paramters=tool_call_args if isinstance(tool_call_args, dict) else json.loads(tool_call_args)
                             )
+                            # transform tool response to llm friendly response
+                            tool_response = self.transform_tool_invoke_messages(tool_response)
+                            # extract binary data from tool invoke message
+                            binary_files = self.extract_tool_response_binary(tool_response)
+                            # create message file
+                            message_files = self.create_message_files(binary_files)
+                            # publish files
+                            for message_file in message_files:
+                                self.queue_manager.publish_message_file(message_file, PublishFrom.APPLICATION_MANAGER)
+                                
                         except ToolProviderCredentialValidationError as e:
                             error_response = f"Plese check your tool provider credentials"
                         except (
@@ -161,7 +171,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             observation = error_response
                             logger.error(error_response)
                         else:
-                            observation = self._handle_tool_response(tool_response)
+                            observation = self._convert_tool_response_to_str(tool_response)
 
                         # save scratchpad
                         scratchpad.observation = observation

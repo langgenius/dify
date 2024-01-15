@@ -643,6 +643,7 @@ class ApplicationManager:
                 message_id=message.id,
                 type=file.type.value,
                 transfer_method=file.transfer_method.value,
+                belongs_to='user',
                 url=file.url,
                 upload_file_id=file.upload_file_id,
                 created_by_role=('account' if account_id else 'end_user'),

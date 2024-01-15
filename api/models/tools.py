@@ -199,3 +199,26 @@ class ToolConversationVariables(db.Model):
     @property
     def variables(self) -> dict:
         return json.loads(self.variables_str)
+    
+class ToolFile(db.Model):
+    """
+    store the file created by agent
+    """
+    __tablename__ = "tool_files"
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tool_file_pkey'),
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    # conversation user id
+    user_id = db.Column(UUID, nullable=False)
+    # tanent id
+    tenant_id = db.Column(UUID, nullable=False)
+    # conversation id
+    conversation_id = db.Column(UUID, nullable=False)
+    # file key
+    file_key = db.Column(db.String(255), nullable=False)
+    # mime type
+    mimetype = db.Column(db.String(255), nullable=False)
+    # original url
+    original_url = db.Column(db.String(255), nullable=True)

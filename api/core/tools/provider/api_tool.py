@@ -27,7 +27,7 @@ class ApiTool(Tool):
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
             api_bundle=self.api_bundle.copy() if self.api_bundle else None,
-            meta=Tool.Meta(**meta)
+            meta=Tool.Runtime(**meta)
         )
 
     def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
@@ -46,7 +46,7 @@ class ApiTool(Tool):
 
     def assembling_request(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         headers = {}
-        credentials = self.meta.credentials or {}
+        credentials = self.runtime.credentials or {}
 
         if 'auth_type' not in credentials:
             raise ToolProviderCredentialValidationError('Missing auth_type')

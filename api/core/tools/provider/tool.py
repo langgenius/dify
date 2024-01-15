@@ -4,8 +4,7 @@ from typing import List, Dict, Any, Union, Optional
 from abc import abstractmethod, ABC
 
 from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage,\
-    ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable, \
-    ToolRuntimeImageVariable
+    ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable
 
 class Tool(BaseModel, ABC):
     identity: ToolIdentity = None
@@ -13,15 +12,21 @@ class Tool(BaseModel, ABC):
     description: ToolDescription = None
     is_team_authorization: bool = False
 
-    class Meta(BaseModel):
+    class Runtime(BaseModel):
         """
             Meta data of a tool call processing
         """
+        def __init__(self, **data: Any):
+            super().__init__(**data)
+            if not self.runtime_parameters:
+                self.runtime_parameters = {}
+
         tenant_id: str = None
         tool_id: str = None
         credentials: Dict[str, Any] = None
+        runtime_parameters: Dict[str, Any] = None
 
-    meta: Meta = None
+    runtime: Runtime = None
     variables: ToolRuntimeVariablePool = None
 
     def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
@@ -35,7 +40,7 @@ class Tool(BaseModel, ABC):
             identity=self.identity.copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
-            meta=Tool.Meta(**meta)
+            runtime=Tool.Runtime(**meta)
         )
     
     def load_variables(self, variables: ToolRuntimeVariablePool):
@@ -81,6 +86,10 @@ class Tool(BaseModel, ABC):
         return None
 
     def invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> List[ToolInvokeMessage]:
+        # update tool_paramters
+        if self.runtime.runtime_parameters:
+            tool_paramters.update(self.runtime.runtime_parameters)
+
         result = self._invoke(
             user_id=user_id,
             tool_paramters=tool_paramters,

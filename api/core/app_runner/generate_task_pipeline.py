@@ -8,7 +8,7 @@ from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
 from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
                                           QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
-                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent)
+                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent, QueueMessageFileEvent)
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
@@ -20,7 +20,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageAgentThought
+from models.model import Conversation, Message, MessageAgentThought, MessageFile
 from pydantic import BaseModel
 from services.annotation_service import AppAnnotationService
 
@@ -304,6 +304,28 @@ class GenerateTaskPipeline:
                         response['conversation_id'] = self._conversation.id
 
                     yield self._yield_response(response)
+            elif isinstance(event, QueueMessageFileEvent):
+                message_file = (
+                    db.session.query(MessageFile)
+                    .filter(MessageFile.id == event.message_file_id)
+                    .first()
+                )
+
+                if message_file:
+                    response = {
+                        'event': 'message_file',
+                        'id': message_file.id,
+                        'type': message_file.type,
+                        'belongs_to': message_file.belongs_to or 'user',
+                        # TODO: sign url
+                        'url': message_file.url
+                    }
+
+                    if self._conversation.mode == 'chat':
+                        response['conversation_id'] = self._conversation.id
+
+                    yield self._yield_response(response)
+
             elif isinstance(event, QueueMessageEvent):
                 chunk = event.chunk
                 delta_text = chunk.delta.message.content

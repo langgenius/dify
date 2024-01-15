@@ -15,6 +15,7 @@ class QueueEvent(Enum):
     RETRIEVER_RESOURCES = "retriever-resources"
     ANNOTATION_REPLY = "annotation-reply"
     AGENT_THOUGHT = "agent-thought"
+    MESSAGE_FILE = "message-file"
     ERROR = "error"
     PING = "ping"
     STOP = "stop"
@@ -73,7 +74,13 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     """
     event = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
-    
+
+class QueueMessageFileEvent(AppQueueEvent):
+    """
+    QueueAgentThoughtEvent entity
+    """
+    event = QueueEvent.MESSAGE_FILE
+    message_file_id: str
     
 class QueueErrorEvent(AppQueueEvent):
     """

@@ -39,6 +39,7 @@ message_file_fields = {
     'id': fields.String,
     'type': fields.String,
     'url': fields.String,
+    'belongs_to': fields.String(default='user'),
 }
 
 message_detail_fields = {

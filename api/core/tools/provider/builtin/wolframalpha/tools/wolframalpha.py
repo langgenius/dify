@@ -20,7 +20,7 @@ class WolframAlphaTool(BuiltinTool):
         query = tool_paramters.get('query', '')
         if not query:
             return self.create_text_message('Please input query')
-        appid = self.meta.credentials.get('appid', '')
+        appid = self.runtime.credentials.get('appid', '')
         if not appid:
             raise ToolProviderCredentialValidationError('Please input appid')
         

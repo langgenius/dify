@@ -139,6 +139,7 @@ class AssistantApplicationRunner(AppRunner):
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             assistant_cot_runner = AssistantCotApplicationRunner(
                 tenant_id=application_generate_entity.tenant_id,
+                application_generate_entity=application_generate_entity,
                 app_orchestration_config=app_orchestration_config,
                 model_config=app_orchestration_config.model_config,
                 config=agent_entity,
@@ -161,6 +162,7 @@ class AssistantApplicationRunner(AppRunner):
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
             assistant_cot_runner = AssistantFunctionCallApplicationRunner(
                 tenant_id=application_generate_entity.tenant_id,
+                application_generate_entity=application_generate_entity,
                 app_orchestration_config=app_orchestration_config,
                 model_config=app_orchestration_config.model_config,
                 config=agent_entity,
@@ -252,6 +254,8 @@ class AssistantApplicationRunner(AppRunner):
             }
         )
 
+        runtime_parameters = {}
+
         for parameter in tool_entity.parameters:
             parameter_type = 'string'
             enum = []
@@ -268,16 +272,35 @@ class AssistantApplicationRunner(AppRunner):
             else:
                 raise ValueError(f"parameter type {parameter.type} is not supported")
             
-            message_tool.parameters['properties'][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or '',
-            }
+            app_orchestration_config = application_generate_entity.app_orchestration_config_entity
+            if parameter.form == ToolParamter.ToolParameterForm.FORM:
+                # get tool parameter from form
+                tool_parameter_config = tool.tool_parameters.get(parameter.name)
+                if not tool_parameter_config:
+                    raise ValueError(f"tool parameter {parameter.name} not found in tool config")
+                
+                if parameter.type == ToolParamter.ToolParameterType.SELECT:
+                    # check if tool_parameter_config in options
+                    options = list(map(lambda x: x.value, parameter.options))
+                    if tool_parameter_config not in options:
+                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
+                    
+                # save tool parameter to tool entity memory
+                runtime_parameters[parameter.name] = tool_parameter_config
+            
+            elif parameter.form == ToolParamter.ToolParameterForm.LLM:
+                message_tool.parameters['properties'][parameter.name] = {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or '',
+                }
 
-            if len(enum) > 0:
-                message_tool.parameters['properties'][parameter.name]['enum'] = enum
+                if len(enum) > 0:
+                    message_tool.parameters['properties'][parameter.name]['enum'] = enum
 
-            if parameter.required:
-                message_tool.parameters['required'].append(parameter.name)
+                if parameter.required:
+                    message_tool.parameters['required'].append(parameter.name)
+
+        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
 
         return message_tool, tool_entity
 
