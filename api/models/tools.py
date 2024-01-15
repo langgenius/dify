@@ -181,6 +181,9 @@ class ToolConversationVariables(db.Model):
     __tablename__ = "tool_conversation_variables"
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_conversation_variables_pkey'),
+        # add index for user_id and conversation_id
+        db.Index('user_id_idx', 'user_id'),
+        db.Index('conversation_id_idx', 'conversation_id'),
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))

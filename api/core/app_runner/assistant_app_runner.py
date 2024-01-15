@@ -1,7 +1,6 @@
 import json
 import logging
 from typing import cast, Tuple
-from datetime import datetime
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
@@ -149,7 +148,9 @@ class AssistantApplicationRunner(AppRunner):
                 agent_llm_callback=agent_llm_callback,
                 callback=agent_callback,
                 memory=memory,
-                prompt_messages=prompt_message
+                prompt_messages=prompt_message,
+                variables_pool=tool_variables,
+                db_variables=tool_conversation_variables,
             )
             invoke_result = assistant_cot_runner.run(
                 model_instance=model_instance,
@@ -172,7 +173,9 @@ class AssistantApplicationRunner(AppRunner):
                 agent_llm_callback=agent_llm_callback,
                 callback=agent_callback,
                 memory=memory,
-                prompt_messages=prompt_message
+                prompt_messages=prompt_message,
+                variables_pool=tool_variables,
+                db_variables=tool_conversation_variables
             )
             invoke_result = assistant_cot_runner.run(
                 model_instance=model_instance,
@@ -225,14 +228,6 @@ class AssistantApplicationRunner(AppRunner):
             'tenant_id': db_variables.tenant_id,
             'pool': db_variables.variables
         })
-    
-    def _update_db_variables(self, tool_variables: ToolRuntimeVariablePool, db_variables: ToolConversationVariables):
-        """
-        convert tool variables to db variables
-        """
-        db_variables.updated_at = datetime.utcnow()
-        db_variables.variables_str = tool_variables.json()
-        db.session.commit()
 
     def _convert_tool_to_prompt_message_tool(self, application_generate_entity: ApplicationGenerateEntity, tool: AgentToolEntity
                                              ) -> Tuple[PromptMessageTool, Tool]:

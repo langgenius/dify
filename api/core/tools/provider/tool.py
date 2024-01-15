@@ -58,7 +58,7 @@ class Tool(BaseModel, ABC):
         if not self.variables:
             return
         
-        self.variables.set_image(self.identity.name, variable_name, image_key)
+        self.variables.set_file(self.identity.name, variable_name, image_key)
 
     def set_text_variable(self, variable_name: str, text: str) -> None:
         """
@@ -114,38 +114,48 @@ class Tool(BaseModel, ABC):
         """
         pass
 
-    def create_image_message(self, image: str) -> ToolInvokeMessage:
+    def create_image_message(self, image: str, save_as_variable: bool = False) -> ToolInvokeMessage:
         """
             create an image message
 
             :param image: the url of the image
             :return: the image message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, message=image)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
+                                 message=image, 
+                                 save_as_variable=save_as_variable)
     
-    def create_link_message(self, link: str) -> ToolInvokeMessage:
+    def create_link_message(self, link: str, save_as_variable: bool = False) -> ToolInvokeMessage:
         """
             create a link message
 
             :param link: the url of the link
             :return: the link message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, message=link)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, 
+                                 message=link, 
+                                 save_as_variable=save_as_variable)
     
-    def create_text_message(self, text: str) -> ToolInvokeMessage:
+    def create_text_message(self, text: str, save_as_variable: bool = False) -> ToolInvokeMessage:
         """
             create a text message
 
             :param text: the text
             :return: the text message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=text)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
+                                 message=text,
+                                 save_as_variable=save_as_variable
+                                 )
     
-    def create_blob_message(self, blob: bytes, meta: dict = None) -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict = None, save_as_variable: bool = False) -> ToolInvokeMessage:
         """
             create a blob message
 
             :param blob: the blob
             :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, message=blob, meta=meta)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
+                                 message=blob, meta=meta,
+                                 save_as_variable=save_as_variable
+                                 )

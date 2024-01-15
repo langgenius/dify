@@ -1,13 +1,16 @@
 import logging
+import json
 
-from typing import Optional, List
+from typing import Optional, List, Tuple
+from datetime import datetime
 
 from core.app_runner.app_runner import AppRunner
 from extensions.ext_database import db
 
 from models.model import MessageAgentThought, Message, MessageFile
+from models.tools import ToolConversationVariables
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolRuntimeVariablePool
 from core.tools.tool_file_manager import ToolFileManager
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
@@ -18,6 +21,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.entities.application_entities import ModelConfigEntity, \
     AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
 from core.model_runtime.entities.message_entities import PromptMessage
+from core.model_runtime.utils.encoders import jsonable_encoder
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,8 @@ class BaseAssistantApplicationRunner(AppRunner):
                  callback: AgentLoopGatherCallbackHandler,
                  memory: Optional[TokenBufferMemory] = None,
                  prompt_messages: Optional[List[PromptMessage]] = None,
+                 variables_pool: Optional[ToolRuntimeVariablePool] = None,
+                 db_variables: Optional[ToolConversationVariables] = None,
                  ) -> None:
         """
         Agent runner
@@ -60,6 +66,8 @@ class BaseAssistantApplicationRunner(AppRunner):
         self.callback = callback
         self.memory = memory
         self.history_prompt_messages = prompt_messages
+        self.variables_pool = variables_pool
+        self.db_variables_pool = db_variables
 
         # get how many agent thoughts have been created
         self.agent_thought_count = db.session.query(MessageAgentThought).filter(
@@ -105,11 +113,13 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result.append(ToolInvokeMessageBinary(
                     mimetype=response.meta.get('mime_type', 'octet/stream'),
                     url=response.message,
+                    save_as_variable=response.save_as_variable,
                 ))
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 result.append(ToolInvokeMessageBinary(
                     mimetype=response.meta.get('mime_type', 'octet/stream'),
                     url=response.message,
+                    save_as_variable=response.save_as_variable,
                 ))
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 # check if there is a mime type in meta
@@ -117,12 +127,16 @@ class BaseAssistantApplicationRunner(AppRunner):
                     result.append(ToolInvokeMessageBinary(
                         mimetype=response.meta.get('mime_type', 'octet/stream'),
                         url=response.message,
+                        save_as_variable=response.save_as_variable,
                     ))
         return result
     
-    def create_message_files(self, messages: List[ToolInvokeMessageBinary]) -> List[MessageFile]:
+    def create_message_files(self, messages: List[ToolInvokeMessageBinary]) -> List[Tuple[MessageFile, bool]]:
         """
         Create message file
+
+        :param messages: messages
+        :return: message files, should save as variable
         """
         result = []
 
@@ -155,7 +169,10 @@ class BaseAssistantApplicationRunner(AppRunner):
                 created_by=self.user_id,
             )
             db.session.add(message_file)
-            result.append(message_file)
+            result.append((
+                message_file,
+                message.save_as_variable
+            ))
             
         db.session.commit()
 
@@ -246,6 +263,8 @@ class BaseAssistantApplicationRunner(AppRunner):
                     result.append(ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=url,
+                        save_as_variable=message.save_as_variable,
+                        meta=message.meta.copy() if message.meta is not None else {},
                     ))
                 except Exception as e:
                     logger.exception(e)
@@ -253,6 +272,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                         type=ToolInvokeMessage.MessageType.TEXT,
                         message=f"Failed to download image: {message.message}, you can try to download it yourself.",
                         meta=message.meta.copy() if message.meta is not None else {},
+                        save_as_variable=message.save_as_variable,
                     ))
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
@@ -267,8 +287,17 @@ class BaseAssistantApplicationRunner(AppRunner):
                     type=ToolInvokeMessage.MessageType.LINK,
                     message=url,
                     meta=message.meta.copy() if message.meta is not None else {},
+                    save_as_variable=message.save_as_variable,
                 ))
             else:
                 result.append(message)
 
         return result
+    
+    def update_db_variables(self, tool_variables: ToolRuntimeVariablePool, db_variables: ToolConversationVariables):
+        """
+        convert tool variables to db variables
+        """
+        db_variables.updated_at = datetime.utcnow()
+        db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
+        db.session.commit()

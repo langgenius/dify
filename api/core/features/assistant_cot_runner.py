@@ -149,7 +149,10 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             # create message file
                             message_files = self.create_message_files(binary_files)
                             # publish files
-                            for message_file in message_files:
+                            for message_file, save_as_variable in message_files:
+                                if save_as_variable:
+                                    self.variables_pool.set_file(tool_name=tool_call_name,
+                                                                  value=message_file.id)
                                 self.queue_manager.publish_message_file(message_file, PublishFrom.APPLICATION_MANAGER)
                                 
                         except ToolProviderCredentialValidationError as e:
@@ -212,6 +215,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             system_fingerprint=''
         )
 
+        self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish_message_end(LLMResult(
             model=model_instance.model,

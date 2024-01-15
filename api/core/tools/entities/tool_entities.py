@@ -81,10 +81,12 @@ class ToolInvokeMessage(BaseModel):
     """
     message: Union[str, bytes] = None
     meta: Dict[str, Any] = None
+    save_as_variable: bool = False
 
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
+    save_as_variable: bool = False
 
 class ToolParamterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
@@ -233,10 +235,22 @@ class ToolRuntimeVariablePool(BaseModel):
 
         self.pool.append(variable)
 
-    def set_image(self, tool_name: str, name: str, value: str) -> None:
+    def set_file(self, tool_name: str, value: str, name: str = None) -> None:
         """
             set an image variable
+
+            :param tool_name: the name of the tool
+            :param value: the id of the file
         """
+        # check how many image variables are there
+        image_variable_count = 0
+        for variable in self.pool:
+            if variable.type == ToolRuntimeVariableType.IMAGE:
+                image_variable_count += 1
+
+        if name is None:
+            name = f"file_{image_variable_count}"
+
         for variable in self.pool:
             if variable.name == name:
                 if variable.type == ToolRuntimeVariableType.IMAGE:
