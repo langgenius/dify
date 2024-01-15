@@ -78,10 +78,16 @@ const DebugItem: FC<DebugItemProps> = ({
                 ]
                 : []
             ),
-            {
-              value: 'debug-as-single-model',
-              text: 'Debug as Single Model',
-            },
+            ...(
+              (modelAndParameter.provider && modelAndParameter.model)
+                ? [
+                  {
+                    value: 'debug-as-single-model',
+                    text: 'Debug as Single Model',
+                  },
+                ]
+                : []
+            ),
           ]}
           secondItems={
             multipleModelConfigs.length > 2

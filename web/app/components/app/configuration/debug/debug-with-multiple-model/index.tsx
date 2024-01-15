@@ -7,7 +7,7 @@ import {
 } from './context'
 import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import ChatInput from '@/app/components/base/chat/input-area/chat-input'
+import ChatInput from '@/app/components/base/chat/chat-input'
 import type { VisionFile } from '@/app/components/base/chat/types'
 
 const DebugWithMultipleModel = () => {

@@ -11,8 +11,8 @@ import type {
   EnableType,
   OnSend,
   VisionConfig,
-} from '../types'
-import { TransferMethod } from '../types'
+} from './types'
+import { TransferMethod } from './types'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'

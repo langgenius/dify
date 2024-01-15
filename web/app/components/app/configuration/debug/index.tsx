@@ -85,6 +85,7 @@ const Debug: FC<IDebug> = ({
     visionConfig,
     annotationConfig,
   } = useContext(ConfigContext)
+  const { eventEmitter } = useEventEmitterContextContext()
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
@@ -122,7 +123,7 @@ const Debug: FC<IDebug> = ({
     setFormattingChanged(false)
   }, [formattingChanged])
 
-  const clearConversation = async () => {
+  const handleClearConversation = () => {
     setConversationId(null)
     abortController?.abort()
     setResponsingFalse()
@@ -135,6 +136,16 @@ const Debug: FC<IDebug> = ({
       }]
       : [])
     setIsShowSuggestion(false)
+  }
+  const clearConversation = async () => {
+    if (debugWithMultipleModel) {
+      eventEmitter?.emit({
+        type: 'app-chat-with-multiple-model-restart',
+      } as any)
+      return
+    }
+
+    handleClearConversation()
   }
 
   const handleConfirm = () => {
@@ -522,7 +533,6 @@ const Debug: FC<IDebug> = ({
   })
 
   const { textGenerationModelList } = useProviderContext()
-  const { eventEmitter } = useEventEmitterContextContext()
   const handleDebugWithMultipleModelChange = () => {
     onMultipleModelConfigsChange(
       true,

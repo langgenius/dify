@@ -1,4 +1,8 @@
-import type { VisionFile, VisionSettings } from '@/types/app'
+import type {
+  ModelConfig,
+  VisionFile,
+  VisionSettings,
+} from '@/types/app'
 import type { IChatItem } from '@/app/components/app/chat/type'
 
 export type { VisionFile } from '@/types/app'
@@ -33,15 +37,7 @@ export type EnableType = {
   enabled: boolean
 }
 
-export type ChatConfig = {
-  opening_statement: string
-  speech_to_text: EnableType
-  user_input_form?: (UserInputFormTextInput | UserInputFormSelect | UserInputFormParagraph)[]
-  suggested_questions_after_answer: EnableType
-  file_upload?: {
-    image: VisionConfig
-  }
-}
+export type ChatConfig = Omit<ModelConfig, 'model'>
 
 export type ChatItem = IChatItem
 

@@ -1,40 +1,28 @@
 import type { FC } from 'react'
-import {
-  useEffect,
-  useRef,
-} from 'react'
 import type { ChatItem } from '../types'
+import { useChatContext } from '../context'
 import Question from './question'
 import Answer from './answer'
 
 type ConversationProps = {
   chatList: ChatItem[]
-  className?: string
 }
 const Conversation: FC<ConversationProps> = ({
   chatList,
-  className,
 }) => {
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // scroll to bottom
-    if (ref.current)
-      ref.current.scrollTop = ref.current.scrollHeight
-  }, [chatList])
+  const { isResponsing } = useChatContext()
 
   return (
-    <div
-      className={`grow overflow-y-auto ${className}`}
-      ref={ref}
-    >
+    <div>
       {
         chatList.map((item) => {
           if (item.isAnswer) {
+            const isLast = item.id === chatList[chatList.length - 1]?.id
             return (
               <Answer
                 key={item.id}
                 item={item}
+                responsing={isLast && isResponsing}
               />
             )
           }

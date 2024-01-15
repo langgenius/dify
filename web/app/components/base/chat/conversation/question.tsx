@@ -1,13 +1,18 @@
-import type { FC } from 'react'
+import type {
+  FC,
+  ReactNode,
+} from 'react'
 import type { ChatItem } from '../types'
-import Avatar from './avatar'
 import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/general'
+import { User } from '@/app/components/base/icons/src/public/avatar'
 
 type QuestionProps = {
   item: ChatItem
+  icon?: ReactNode
 }
 const Question: FC<QuestionProps> = ({
   item,
+  icon,
 }) => {
   return (
     <div className='flex justify-end mb-2 last:mb-0 pl-10'>
@@ -18,7 +23,15 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className='mt-1 h-[18px]' />
       </div>
-      <Avatar className='shrink-0' />
+      <div className='shrink-0 w-10 h-10'>
+        {
+          icon || (
+            <div className='w-full h-full rounded-full border-[0.5px] border-black/5'>
+              <User className='w-full h-full' />
+            </div>
+          )
+        }
+      </div>
     </div>
   )
 }
