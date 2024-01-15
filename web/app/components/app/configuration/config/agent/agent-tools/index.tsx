@@ -18,6 +18,7 @@ import type { AgentTool } from '@/types/app'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
+// import SettingBuiltInTool from './setting-built-in-tool'
 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
@@ -26,16 +27,19 @@ const AgentTools: FC = () => {
   const [collectionList, setCollectionList] = useState<Collection[]>([])
 
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
-    const icon = collectionList.find(collection => collection.id === item.provider_id)?.icon
+    const collection = collectionList.find(collection => collection.id === item.provider_id)
+    const icon = collection?.icon
     return {
       ...item,
       icon,
+      collection,
     }
   })
 
   useEffect(() => {
     fetchCollectionList().then((list: any) => {
       setCollectionList(list as Collection[])
+      console.log(list)
     })
   }, [])
 
