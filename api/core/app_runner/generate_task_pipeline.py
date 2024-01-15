@@ -284,6 +284,7 @@ class GenerateTaskPipeline:
                     .filter(MessageAgentThought.id == event.agent_thought_id)
                     .first()
                 )
+                db.session.refresh(agent_thought)
 
                 if agent_thought:
                     response = {
@@ -293,6 +294,7 @@ class GenerateTaskPipeline:
                         'message_id': self._message.id,
                         'position': agent_thought.position,
                         'thought': agent_thought.thought,
+                        'observation': agent_thought.observation,
                         'tool': agent_thought.tool,
                         'tool_input': agent_thought.tool_input,
                         'created_at': int(self._message.created_at.timestamp())

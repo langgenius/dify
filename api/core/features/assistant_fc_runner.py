@@ -63,8 +63,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 llm_usage.completion_price += usage.completion_price
 
         while function_call_state and iteration_step <= max_iteration_steps:
-            
             function_call_state = False
+
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
@@ -103,7 +103,12 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
             if agent_thought is not None:
                 # save last agent thought's response
-                self.save_agent_thought(agent_thought, thought=None, observation='', answer=response)
+                self.save_agent_thought(
+                    agent_thought=agent_thought, 
+                    thought=None, 
+                    observation=None, 
+                    answer=response
+                )
 
             final_answer += response + '\n'
 
@@ -122,17 +127,24 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
                 if not tool_instance:
                     logger.error(f"failed to find tool instance: {tool_call_name}")
-                    tool_responses.append({
+                    tool_response = {
                         "tool_call_id": tool_call_id,
                         "tool_call_name": tool_call_name,
                         "tool_response": f"there is not a tool named {tool_call_name}"
-                    })
-                    self.save_agent_thought(agent_thought, thought=None, observation='', answer=f"there is not a tool named {tool_call_name}")
+                    }
+                    tool_responses.append(tool_response)
+                    self.save_agent_thought(
+                        agent_thought=agent_thought, 
+                        thought=None, 
+                        observation=tool_response['tool_response'], 
+                        answer=None
+                    )
+                    self.queue_manager.publish_agent_thought(agent_thought)
                 else:
                     # invoke tool
                     error_response = None
                     try:
-                        tool_response = tool_instance.invoke(
+                        tool_invoke_message = tool_instance.invoke(
                             user_id=self.user_id, 
                             tool_paramters=tool_call_args, 
                         )
@@ -150,31 +162,39 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         error_response = f"tool invoke error: {e}"
                     except Exception as e:
                         error_response = f"unknown error: {e}"
-                    
+
                     if error_response:
                         observation = error_response
                         logger.error(error_response)
-                        tool_responses.append({
+                        tool_response = {
                             "tool_call_id": tool_call_id,
                             "tool_call_name": tool_call_name,
                             "tool_response": error_response
-                        })
+                        }
+                        tool_responses.append(tool_response)
                     else:
-                        observation = self._handle_tool_response(tool_response)
-                        tool_responses.append({
+                        observation = self._handle_tool_response(tool_invoke_message)
+                        tool_response = {
                             "tool_call_id": tool_call_id,
                             "tool_call_name": tool_call_name,
-                            "tool_response": self._handle_tool_response(tool_response)
-                        })
+                            "tool_response": observation
+                        }
+                        tool_responses.append(tool_response)
                     
-                    self.save_agent_thought(agent_thought, thought='', observation=observation, answer='')
+                    self.save_agent_thought(
+                        agent_thought=agent_thought, 
+                        thought=None, 
+                        observation=observation, 
+                        answer=None
+                    )
+                    self.queue_manager.publish_agent_thought(agent_thought)
 
                 prompt_messages = self.originze_prompt_messages(
                     prompt_template=prompt_template,
                     query=None,
                     tool_call_id=tool_call_id,
                     tool_call_name=tool_call_name,
-                    tool_response=self._handle_tool_response(tool_response),
+                    tool_response=tool_response['tool_response'],
                     prompt_messages=prompt_messages,
                 )
 

@@ -100,6 +100,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             message_unit_price=0,
             message_price_unit=0,
             answer='',
+            observation='',
             answer_token=0,
             answer_unit_price=0,
             answer_price_unit=0,
@@ -144,3 +145,8 @@ class BaseAssistantApplicationRunner(AppRunner):
             ).order_by(PromptMessage.position.asc()).all()
 
         return self.history_prompt_messages
+    
+    def transform_agent_thought(message: ToolInvokeMessage) -> None:
+        """
+        Transform tool message into agent thought
+        """
