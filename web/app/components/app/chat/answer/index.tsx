@@ -13,6 +13,7 @@ import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
 import Thought from '../thought'
 import Citation from '../citation'
+import AudioBtn from '@/app/components/base/audio-btn'
 import { randomString } from '@/utils'
 import type { MessageRating } from '@/models/log'
 import Tooltip from '@/app/components/base/tooltip'
@@ -273,6 +274,12 @@ const Answer: FC<IAnswerProps> = ({
                   <CopyBtn
                     value={content}
                     className={cn(s.copyBtn, 'mr-1')}
+                  />
+                )}
+                {!item.isOpeningStatement && (
+                  <AudioBtn
+                    value={content}
+                    className={cn(s.playBtn, 'mr-1')}
                   />
                 )}
                 {(supportAnnotation && !item.isOpeningStatement) && (

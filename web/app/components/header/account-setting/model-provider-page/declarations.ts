@@ -24,6 +24,7 @@ export enum ModelTypeEnum {
   rerank = 'rerank',
   speech2text = 'speech2text',
   moderation = 'moderation',
+  tts = 'tts',
 }
 
 export const MODEL_TYPE_TEXT = {
@@ -32,6 +33,7 @@ export const MODEL_TYPE_TEXT = {
   [ModelTypeEnum.rerank]: 'Rerank',
   [ModelTypeEnum.speech2text]: 'Speech2text',
   [ModelTypeEnum.moderation]: 'Moderation',
+  [ModelTypeEnum.tts]: 'TTS',
 }
 
 export enum ConfigurateMethodEnum {

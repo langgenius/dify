@@ -552,6 +552,51 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
+  url='/text-to-audio'
+  method='POST'
+  title='文字转语音'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    文字转语音，仅支持 openai 模型。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='text' type='str' key='text'>
+        语音生成内容。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=你好Dify;user=abc-123'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/parameters'
   method='GET'
   title='获取应用配置信息'

@@ -5,10 +5,12 @@ const translation = {
   disabled: '已停用',
   ok: '运行中',
   copy: '复制',
+  copied: '已复制',
+  play: '播放',
+  played: '播放中',
   merMaind: {
     rerender: '重新渲染',
   },
-  copied: '已复制',
   never: '从未',
   apiKeyModal: {
     apiSecretKey: 'API 密钥',

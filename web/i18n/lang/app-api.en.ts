@@ -6,6 +6,8 @@ const translation = {
   ok: 'In Service',
   copy: 'Copy',
   copied: 'Copied',
+  play: 'Play',
+  played: 'Play in',
   merMaind: {
     rerender: 'Redo Rerender',
   },
