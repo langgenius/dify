@@ -391,6 +391,8 @@ class ApplicationManager:
 
                 dataset_id = dataset.get('id', None)
                 dataset_ids.append(dataset_id)
+        else:
+            datasets = {'strategy': 'router', 'datasets': []}
 
         if 'agent_mode' in copy_app_model_config_dict and copy_app_model_config_dict['agent_mode'] \
                 and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
