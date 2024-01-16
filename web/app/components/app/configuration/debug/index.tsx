@@ -283,6 +283,7 @@ const Debug: FC<IDebug> = ({
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
       isAnswer: true,
     }
 
@@ -351,6 +352,26 @@ const Debug: FC<IDebug> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+      },
+      onThought(thought) {
+        console.log(thought)
+        // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
+        responseItem.id = thought.message_id;
+        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
+        // has switched to other conversation
+
+        // if (prevTempNewConversationId !== getCurrConversationId()) {
+        //   setIsResponsingConCurrCon(false)
+        //   return
+        // }
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {

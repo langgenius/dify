@@ -90,7 +90,7 @@ const AgentTools: FC = () => {
         <div className='flex items-center flex-wrap justify-between'>
           {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
             <div key={index}
-              className={cn(item.enable && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 ')}
+              className={cn(item.enabled && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 ')}
               style={{
                 width: 'calc(50% - 2px)',
               }}
@@ -146,9 +146,9 @@ const AgentTools: FC = () => {
                   </div>
                   <div className='ml-2 mr-3 w-px h-3.5 bg-gray-200'></div>
                 </div>
-                <Switch defaultValue={item.enable} size='md' onChange={(enable) => {
+                <Switch defaultValue={item.enabled} size='md' onChange={(enabled) => {
                   const newModelConfig = produce(modelConfig, (draft) => {
-                    (draft.agentConfig.tools[index] as any).enable = enable
+                    (draft.agentConfig.tools[index] as any).enabled = enabled
                   })
                   setModelConfig(newModelConfig)
                 }} />

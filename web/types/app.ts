@@ -97,7 +97,7 @@ export type AgentTool = {
   provider_name: string
   tool_name: string
   tool_parameters: Record<string, any>
-  enable: boolean
+  enabled: boolean
 }
 
 export type ToolItem = {
