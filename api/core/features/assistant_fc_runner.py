@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, model_instance: ModelInstance,
-        conversation: Conversation,
-        message: Message,
-        query: str,
+                conversation: Conversation,
+                message: Message,
+                query: str,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
@@ -47,6 +47,14 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             tool_instances[tool.tool_name] = tool_entity
             # save prompt tool
             prompt_messages_tools.append(prompt_tool)
+
+        # convert dataset tools into ModelRuntime Tool format
+        for dataset_tool in self.dataset_tools:
+            prompt_tool = self._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
+            # save prompt tool
+            prompt_messages_tools.append(prompt_tool)
+            # save tool entity
+            tool_instances[dataset_tool.identity.name] = dataset_tool
 
         iteration_step = 1
         max_iteration_steps = min(app_orchestration_config.agent.max_iteration, 5)

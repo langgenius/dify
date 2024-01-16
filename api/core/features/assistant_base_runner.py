@@ -16,9 +16,11 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessa
 from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import ModelConfigEntity, AgentEntity, AgentToolEntity
 from core.application_queue_manager import ApplicationQueueManager
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -73,6 +75,22 @@ class BaseAssistantApplicationRunner(AppRunner):
         self.variables_pool = variables_pool
         self.db_variables_pool = db_variables
 
+        # init dataset tools
+        hit_callback = DatasetIndexToolCallbackHandler(
+            queue_manager=queue_manager,
+            app_id=self.application_generate_entity.app_id,
+            message_id=message.id,
+            user_id=user_id,
+            invoke_from=self.application_generate_entity.invoke_from,
+        )
+        self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
+            tenant_id=tenant_id,
+            dataset_ids=app_orchestration_config.dataset.dataset_ids or [],
+            retrieve_config=app_orchestration_config.dataset.retrieve_config or {},
+            return_resource=app_orchestration_config.show_retrieve_source,
+            invoke_from=application_generate_entity.invoke_from,
+            hit_callback=hit_callback
+        )
         # get how many agent thoughts have been created
         self.agent_thought_count = db.session.query(MessageAgentThought).filter(
             MessageAgentThought.message_id == self.message.id,
@@ -176,6 +194,34 @@ class BaseAssistantApplicationRunner(AppRunner):
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
 
         return message_tool, tool_entity
+    
+    def _convert_dataset_retriever_tool_to_prompt_message_tool(self, tool: DatasetRetrieverTool) -> PromptMessageTool:
+        """
+        convert dataset retriever tool to prompt message tool
+        """
+        prompt_tool = PromptMessageTool(
+            name=tool.identity.name,
+            description=tool.description.llm,
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        )
+
+        for parameter in tool.parameters:
+            parameter_type = 'string'
+        
+            prompt_tool.parameters['properties'][parameter.name] = {
+                "type": parameter_type,
+                "description": parameter.llm_description or '',
+            }
+
+            if parameter.required:
+                if parameter.name not in prompt_tool.parameters['required']:
+                    prompt_tool.parameters['required'].append(parameter.name)
+
+        return prompt_tool
     
     def update_prompt_message_tool(self, tool: Tool, prompt_tool: PromptMessageTool) -> PromptMessageTool:
         """

@@ -56,6 +56,14 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # save prompt tool
             prompt_messages_tools.append(prompt_tool)
 
+        # convert dataset tools into ModelRuntime Tool format
+        for dataset_tool in self.dataset_tools:
+            prompt_tool = self._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
+            # save prompt tool
+            prompt_messages_tools.append(prompt_tool)
+            # save tool entity
+            tool_instances[dataset_tool.identity.name] = dataset_tool
+
         function_call_state = True
         agent_thoughts: List[MessageAgentThought] = []
         llm_usage = {

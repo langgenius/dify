@@ -18,7 +18,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.tool.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.model import Message
