@@ -96,14 +96,15 @@ const AgentTools: FC = () => {
                     typeof item.icon === 'string'
                       ? (
                         <div
-                          className='w-6 h-6 bg-cover bg-center'
+                          className='w-6 h-6 bg-cover bg-center rounded-md'
                           style={{
-                            backgroundImage: `url(${item.icon}?_token=${localStorage.getItem('console_token')})`,
+                            backgroundImage: `url(${item.icon})`,
                           }}
                         ></div>
                       )
                       : (
                         <AppIcon
+                          className='rounded-md'
                           size='tiny'
                           icon={item.icon?.content}
                           background={item.icon?.background}

@@ -189,7 +189,7 @@ const Config: FC = () => {
     <>
       <div
         ref={wrapRef}
-        className="relative px-6 pb-[50px] overflow-y-auto h-full"
+        className="grow h-0 relative px-6 pb-[50px] overflow-y-auto"
       >
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
         {

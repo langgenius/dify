@@ -69,14 +69,15 @@ const Item: FC<Props> = ({
               {typeof collection.icon === 'string'
                 ? (
                   <div
-                    className='w-6 h-6 bg-cover bg-center'
+                    className='w-6 h-6 bg-cover bg-center rounded-md'
                     style={{
-                      backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
+                      backgroundImage: `url(${collection.icon})`,
                     }}
                   ></div>
                 )
                 : (
                   <AppIcon
+                    className='rounded-md'
                     size='tiny'
                     innerIcon={(collection.icon as any).content}
                     background={(collection.icon as any).content}

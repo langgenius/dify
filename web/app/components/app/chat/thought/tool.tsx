@@ -28,14 +28,15 @@ const getIcon = (toolName: string, allToolIcons: Record<string, string | Emoji>)
     typeof icon === 'string'
       ? (
         <div
-          className='w-3 h-3 bg-cover bg-center'
+          className='w-3 h-3 bg-cover bg-center rounded-[3px]'
           style={{
-            backgroundImage: `url(${icon}?_token=${localStorage.getItem('console_token')})`,
+            backgroundImage: `url(${icon})`,
           }}
         ></div>
       )
       : (
         <AppIcon
+          className='rounded-[3px]'
           size='xs'
           icon={icon?.content}
           background={icon?.background}
