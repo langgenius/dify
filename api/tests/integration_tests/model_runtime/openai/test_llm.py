@@ -327,10 +327,35 @@ def test_get_num_tokens():
             UserPromptMessage(
                 content='Hello World!'
             )
+        ],
+        tools=[
+            PromptMessageTool(
+                name='get_weather',
+                description='Determine weather in my location',
+                parameters={
+                    "type": "object",
+                    "properties": {
+                      "location": {
+                        "type": "string",
+                        "description": "The city and state e.g. San Francisco, CA"
+                      },
+                      "unit": {
+                        "type": "string",
+                        "enum": [
+                          "c",
+                          "f"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "location"
+                    ]
+                }
+            ),
         ]
     )
 
-    assert num_tokens == 21
+    assert num_tokens == 72
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat', 'remote']], indirect=True)
 def test_fine_tuned_models(setup_openai_mock):
