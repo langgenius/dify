@@ -155,6 +155,7 @@ class GenerateTaskPipeline:
                     'event': 'message',
                     'task_id': self._application_generate_entity.task_id,
                     'id': self._message.id,
+                    'message_id': self._message.id,
                     'mode': self._conversation.mode,
                     'answer': event.llm_result.message.content,
                     'metadata': {},
@@ -252,6 +253,7 @@ class GenerateTaskPipeline:
                     'event': 'message_end',
                     'task_id': self._application_generate_entity.task_id,
                     'id': self._message.id,
+                    'message_id': self._message.id,
                 }
 
                 if self._conversation.mode == 'chat':
