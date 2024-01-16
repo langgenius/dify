@@ -146,7 +146,7 @@ const ToolList: FC<Props> = ({
               isInToolsPage={isInToolsPage}
               isToolNumMax={(addedTools?.length || 0) >= MAX_TOOLS_NUM}
               added={!!addedTools?.find(v => v.provider_id === collection.id && v.tool_name === item.name)}
-              onAdd={tool => onAddTool?.(collection as Collection, tool)}
+              onAdd={!isInToolsPage ? tool => onAddTool?.(collection as Collection, tool) : undefined}
             />
           ))}
         </div>
