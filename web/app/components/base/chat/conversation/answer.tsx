@@ -8,6 +8,7 @@ import { MessageHeartCircle } from '@/app/components/base/icons/src/vender/solid
 import { Markdown } from '@/app/components/base/markdown'
 import { formatNumber } from '@/utils/format'
 import Citation from '@/app/components/app/chat/citation'
+import CopyBtn from '@/app/components/app/chat/copy-btn'
 
 type AnswerProps = {
   item: ChatItem
@@ -51,7 +52,17 @@ const Answer: FC<AnswerProps> = ({
       <div className='group ml-4'>
         <div className='relative pr-10'>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
-          <div className='inline-block px-4 py-3 bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
+          <div className='group relative inline-block px-4 py-3 bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
+            <div className='hidden absolute top-[-14px] right-[-14px] group-hover:flex flex-row justify-end gap-1'>
+              {
+                !item.isOpeningStatement && !responsing && (
+                  <CopyBtn
+                    value={content}
+                    className='mr-1'
+                  />
+                )
+              }
+            </div>
             {
               isOpeningStatement && (
                 <div className='flex items-center mb-1 h-[18px]'>

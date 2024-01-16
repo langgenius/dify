@@ -31,6 +31,7 @@ import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -84,6 +85,7 @@ const Debug: FC<IDebug> = ({
     externalDataToolsConfig,
     visionConfig,
     annotationConfig,
+    setVisionConfig,
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: speech2textDefaultModel } = useDefaultModel(4)
@@ -577,6 +579,34 @@ const Debug: FC<IDebug> = ({
     )
   }
 
+  const handleVisionConfigInMultipleModel = () => {
+    if (debugWithMultipleModel && !visionConfig.enabled) {
+      const supportedVision = multipleModelConfigs.some((modelConfig) => {
+        const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === modelConfig.provider)
+        const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model)
+
+        return currentModel?.features?.includes(ModelFeatureEnum.vision)
+      })
+
+      if (supportedVision) {
+        setVisionConfig({
+          ...visionConfig,
+          enabled: true,
+        })
+      }
+      else {
+        setVisionConfig({
+          ...visionConfig,
+          enabled: false,
+        })
+      }
+    }
+  }
+
+  useEffect(() => {
+    handleVisionConfigInMultipleModel()
+  }, [multipleModelConfigs])
+
   return (
     <>
       <div className="shrink-0">
@@ -638,7 +668,7 @@ const Debug: FC<IDebug> = ({
       </div>
       {
         debugWithMultipleModel && (
-          <div className='grow'>
+          <div className='grow mt-3 overflow-hidden'>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}

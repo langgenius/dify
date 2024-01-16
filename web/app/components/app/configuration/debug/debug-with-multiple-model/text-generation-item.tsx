@@ -79,7 +79,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
 
-    const data = {
+    const configData = {
       ...config,
       model: {
         provider: modelAndParameter.provider,
@@ -87,6 +87,11 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
         mode: currentModel?.model_properties.mode,
         completion_params: modelAndParameter.parameters,
       },
+    }
+
+    const data: any = {
+      inputs,
+      model_config: configData,
     }
 
     if (visionConfig.enabled && files && files?.length > 0) {
@@ -103,10 +108,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
 
     handleSend(
       `apps/${appId}/completion-messages`,
-      {
-        inputs,
-        model_config: data,
-      },
+      data,
     )
   }
 

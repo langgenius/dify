@@ -7,7 +7,6 @@ import type {
   ChatConfig,
   OnSend,
 } from '@/app/components/base/chat/types'
-import { TransferMethod } from '@/app/components/base/chat/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -16,6 +15,9 @@ import {
   stopChatMessageResponding,
 } from '@/service/debug'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
+import Avatar from '@/app/components/base/avatar'
+import { useAppContext } from '@/context/app-context'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -23,6 +25,7 @@ type ChatItemProps = {
 const ChatItem: FC<ChatItemProps> = ({
   modelAndParameter,
 }) => {
+  const { userProfile } = useAppContext()
   const {
     isAdvancedMode,
     modelConfig,
@@ -90,8 +93,9 @@ const ChatItem: FC<ChatItemProps> = ({
   const doSend: OnSend = (message, files) => {
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
+    const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
-    const data = {
+    const configData = {
       ...config,
       model: {
         provider: modelAndParameter.provider,
@@ -101,25 +105,18 @@ const ChatItem: FC<ChatItemProps> = ({
       },
     }
 
-    if (visionConfig.enabled && files && files?.length > 0) {
-      data.files = files.map((item) => {
-        if (item.transfer_method === TransferMethod.local_file) {
-          return {
-            ...item,
-            url: '',
-          }
-        }
-        return item
-      })
+    const data: any = {
+      query: message,
+      inputs,
+      model_config: configData,
     }
+
+    if (visionConfig.enabled && files?.length && supportVision)
+      data.files = files
 
     handleSend(
       `apps/${appId}/chat-messages`,
-      {
-        query: message,
-        inputs,
-        model_config: data,
-      },
+      data,
       {
         onGetConvesationMessages: (conversationId, getAbortController) => fetchConvesationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
@@ -144,6 +141,8 @@ const ChatItem: FC<ChatItemProps> = ({
       className='p-4'
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
+      showPromptLog
+      questionIcon={<Avatar name={userProfile.name} size={40} />}
     />
   )
 }

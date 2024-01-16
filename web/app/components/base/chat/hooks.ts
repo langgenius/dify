@@ -10,7 +10,9 @@ import dayjs from 'dayjs'
 import type {
   ChatConfig,
   ChatItem,
+  VisionFile,
 } from './types'
+import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
 
@@ -114,14 +116,27 @@ export const useChat = (
 
     setIsResponsing(true)
     hasStopResponded.current = false
+
+    const bodyParams = {
+      response_mode: 'streaming',
+      conversation_id: connversationId.current,
+      ...data,
+    }
+    if (bodyParams?.files?.length) {
+      bodyParams.files = bodyParams.files.map((item: VisionFile) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
+    }
     ssePost(
       url,
       {
-        body: {
-          response_mode: 'streaming',
-          conversation_id: connversationId.current,
-          ...data,
-        },
+        body: bodyParams,
       },
       {
         getAbortController: (abortController) => {

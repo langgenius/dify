@@ -1,4 +1,7 @@
-import type { FC } from 'react'
+import type {
+  FC,
+  ReactNode,
+} from 'react'
 import {
   useEffect,
   useRef,
@@ -14,7 +17,7 @@ import type {
 import { ChatContextProvider } from './context'
 import { INITIAL_CONFIG } from './constants'
 
-type ChatProps = {
+export type ChatProps = {
   config: ChatConfig
   onSend?: OnSend
   chatList: ChatItem[]
@@ -22,6 +25,8 @@ type ChatProps = {
   noChatInput?: boolean
   className?: string
   suggestedQuestions?: string[]
+  showPromptLog?: boolean
+  questionIcon?: ReactNode
 }
 const Chat: FC<ChatProps> = ({
   config = INITIAL_CONFIG,
@@ -31,6 +36,8 @@ const Chat: FC<ChatProps> = ({
   noChatInput,
   className,
   suggestedQuestions,
+  showPromptLog,
+  questionIcon,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -44,6 +51,8 @@ const Chat: FC<ChatProps> = ({
     <ChatContextProvider
       config={config}
       isResponsing={isResponsing}
+      showPromptLog={showPromptLog}
+      questionIcon={questionIcon}
     >
       <div
         ref={ref}

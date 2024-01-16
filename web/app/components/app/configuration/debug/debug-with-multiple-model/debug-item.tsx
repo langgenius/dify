@@ -102,16 +102,18 @@ const DebugItem: FC<DebugItemProps> = ({
           }
         />
       </div>
-      {
-        mode === 'chat' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
-          <ChatItem modelAndParameter={modelAndParameter} />
-        )
-      }
-      {
-        mode === 'completion' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
-          <TextGenerationItem modelAndParameter={modelAndParameter}/>
-        )
-      }
+      <div style={{ height: 'calc(100% - 40px)' }}>
+        {
+          mode === 'chat' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+            <ChatItem modelAndParameter={modelAndParameter} />
+          )
+        }
+        {
+          mode === 'completion' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+            <TextGenerationItem modelAndParameter={modelAndParameter}/>
+          )
+        }
+      </div>
     </div>
   )
 }

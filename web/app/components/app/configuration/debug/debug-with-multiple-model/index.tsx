@@ -12,7 +12,11 @@ import type { VisionFile } from '@/app/components/base/chat/types'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 
 const DebugWithMultipleModel = () => {
-  const { mode } = useDebugConfigurationContext()
+  const {
+    mode,
+    speechToTextConfig,
+    visionConfig,
+  } = useDebugConfigurationContext()
   const { multipleModelConfigs } = useDebugWithMultipleModelContext()
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -31,13 +35,13 @@ const DebugWithMultipleModel = () => {
   const fourLine = multipleModelConfigs.length === 4
 
   return (
-    <div className='flex flex-col pt-3 h-full'>
+    <div className='flex flex-col h-full'>
       <div
         className={`
-          grow mb-3 min-h-[400px] max-h-[800px] overflow-auto
+          mb-3 overflow-auto
           ${(twoLine || threeLine) && 'flex gap-2'}
-          ${fourLine && 'grid grid-rows-2 gap-y-2'}
         `}
+        style={{ height: 'calc(100% - 60px)' }}
       >
         {
           (twoLine || threeLine) && multipleModelConfigs.map(modelConfig => (
@@ -45,8 +49,9 @@ const DebugWithMultipleModel = () => {
               key={modelConfig.id}
               modelAndParameter={modelConfig}
               className={`
-                ${twoLine && 'w-1/2 h-full'}
-                ${threeLine && 'w-1/3 h-full'}
+                h-full min-h-[200px]
+                ${twoLine && 'w-1/2'}
+                ${threeLine && 'w-1/3'}
               `}
             />
           ))
@@ -54,7 +59,10 @@ const DebugWithMultipleModel = () => {
         {
           fourLine && (
             <>
-              <div className='flex gap-2 h-full'>
+              <div
+                className='flex space-x-2  mb-2 min-h-[200px]'
+                style={{ height: 'calc(50% - 4px)' }}
+              >
                 {
                   multipleModelConfigs.slice(0, 2).map(modelConfig => (
                     <DebugItem
@@ -65,7 +73,10 @@ const DebugWithMultipleModel = () => {
                   ))
                 }
               </div>
-              <div className='flex gap-2 h-full'>
+              <div
+                className='flex space-x-2 min-h-[200px]'
+                style={{ height: 'calc(50% - 4px)' }}
+              >
                 {
                   multipleModelConfigs.slice(2, 4).map(modelConfig => (
                     <DebugItem
@@ -83,7 +94,11 @@ const DebugWithMultipleModel = () => {
       {
         mode === 'chat' && (
           <div className='shrink-0'>
-            <ChatInput onSend={handleSend} />
+            <ChatInput
+              onSend={handleSend}
+              speechToTextConfig={speechToTextConfig}
+              visionConfig={visionConfig}
+            />
           </div>
         )
       }
