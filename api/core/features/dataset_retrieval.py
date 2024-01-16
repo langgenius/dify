@@ -166,8 +166,7 @@ class DatasetRetrievalFeature:
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,
                 top_k=retrieve_config.top_k or 2,
-                score_threshold=(retrieve_config.score_threshold or 0.5)
-                if retrieve_config.reranking_model.get('score_threshold_enabled', False) else None,
+                score_threshold=retrieve_config.score_threshold,
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,
                 retriever_from=invoke_from.to_source(),
