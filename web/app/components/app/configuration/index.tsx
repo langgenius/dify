@@ -356,8 +356,12 @@ const Configuration: FC = () => {
       const model = res.model_config.model
 
       let datasets: any = null
-      if (modelConfig.agent_mode?.enabled)
+      // old dataset struct
+      if (modelConfig.agent_mode?.tools?.length > 0)
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
+      // new dataset struct
+      else if (modelConfig.datasets?.datasets?.length > 0)
+        datasets = modelConfig.datasets?.datasets
 
       if (dataSets && datasets?.length && datasets?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasets.map(({ dataset }: any) => dataset.id) } })
