@@ -4,6 +4,7 @@ import cn from 'classnames'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
+  CredentialFormSchemaNumberInput,
   CredentialFormSchemaRadio,
   CredentialFormSchemaSecretInput,
   CredentialFormSchemaSelect,
@@ -26,6 +27,7 @@ type FormProps = {
   isEditMode: boolean
   readonly?: boolean
   inputClassName?: string
+  isShowDefaultValue?: boolean
 }
 
 const Form: FC<FormProps> = ({
@@ -38,6 +40,7 @@ const Form: FC<FormProps> = ({
   isEditMode,
   readonly,
   inputClassName,
+  isShowDefaultValue = false,
 }) => {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
@@ -69,7 +72,7 @@ const Form: FC<FormProps> = ({
           <HelpCircle className='w-3 h-3  text-gray-500' />
         </Tooltip>
       </span>))
-    if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput) {
+    if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
         variable,
         label,
@@ -82,7 +85,6 @@ const Form: FC<FormProps> = ({
         return null
 
       const disabed = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
-
       return (
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
@@ -96,11 +98,13 @@ const Form: FC<FormProps> = ({
           </div>
           <Input
             className={cn(inputClassName, `${disabed && 'cursor-not-allowed opacity-60'}`)}
-            value={value[variable] as string}
+            value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
             placeholder={placeholder?.[language]}
             disabled={disabed}
+            type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
+            {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -191,7 +195,7 @@ const Form: FC<FormProps> = ({
           <SimpleSelect
             className={cn(inputClassName)}
             disabled={readonly}
-            defaultValue={value[variable] as string}
+            defaultValue={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
             items={options.filter((option) => {
               if (option.show_on.length)
                 return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)

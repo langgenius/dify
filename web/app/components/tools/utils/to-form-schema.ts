@@ -1,4 +1,14 @@
 import type { ToolCredential, ToolParameter } from '../types'
+const toType = (type: string) => {
+  switch (type) {
+    case 'string':
+      return 'text-input'
+    case 'number':
+      return 'number-input'
+    default:
+      return type
+  }
+}
 export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
   if (!parameters)
     return []
@@ -7,7 +17,7 @@ export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
     return {
       ...parameter,
       variable: parameter.name,
-      type: parameter.type === 'string' ? 'text-input' : parameter.type,
+      type: toType(parameter.type),
       show_on: [],
       options: parameter.options?.map((option) => {
         return {
@@ -15,6 +25,7 @@ export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
           show_on: [],
         }
       }),
+      tooltip: parameter.human_description,
     }
   })
   return formSchemas
@@ -43,4 +54,14 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]) => {
     }
   })
   return formSchemas
+}
+
+export const addDefaultValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any }[]) => {
+  const newValues = { ...value }
+  formSchemas.forEach((formSchema) => {
+    const itemValue = value[formSchema.variable]
+    if (formSchema.default && (value === undefined || itemValue === null || itemValue === ''))
+      newValues[formSchema.variable] = formSchema.default
+  })
+  return newValues
 }

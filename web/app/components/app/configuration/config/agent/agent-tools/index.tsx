@@ -20,13 +20,14 @@ import { fetchCollectionList } from '@/service/tools'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
 
+type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { modelConfig, setModelConfig } = useContext(ConfigContext)
   const [collectionList, setCollectionList] = useState<Collection[]>([])
 
-  const [currentTool, setCurrentTool] = useState<AgentTool & { icon: any; collection?: Collection } | null>(null)
+  const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
     const collection = collectionList.find(collection => collection.id === item.provider_id)
@@ -43,6 +44,16 @@ const AgentTools: FC = () => {
       setCollectionList(list as Collection[])
     })
   }, [])
+
+  const handleToolSettingChange = (value: Record<string, any>) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.collection?.id && item.tool_name === currentTool?.tool_name)
+      if (tool)
+        (tool as AgentTool).tool_parameters = value
+    })
+    setModelConfig(newModelConfig)
+    setIsShowSettingTool(false)
+  }
 
   return (
     <>
@@ -157,6 +168,7 @@ const AgentTools: FC = () => {
           toolName={currentTool?.tool_name as string}
           setting={currentTool?.tool_parameters as any}
           collection={currentTool?.collection as Collection}
+          onSave={handleToolSettingChange}
           onHide={() => setIsShowSettingTool(false)}
         />)}
     </>
