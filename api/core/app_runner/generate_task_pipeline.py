@@ -5,7 +5,7 @@ from typing import Generator, Optional, Union, cast
 
 from core.app_runner.moderation_handler import ModerationRule, OutputModerationHandler
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.application_entities import ApplicationGenerateEntity
+from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
 from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
                                           QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
                                           QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent)
@@ -15,6 +15,7 @@ from core.model_runtime.entities.message_entities import (AssistantPromptMessage
                                                           TextPromptMessageContent)
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -135,6 +136,8 @@ class GenerateTaskPipeline:
                         completion_tokens
                     )
 
+                self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
+
                 # response moderation
                 if self._output_moderation_handler:
                     self._output_moderation_handler.stop_thread()
@@ -161,7 +164,7 @@ class GenerateTaskPipeline:
                     response['conversation_id'] = self._conversation.id
 
                 if self._task_state.metadata:
-                    response['metadata'] = self._task_state.metadata
+                    response['metadata'] = self._get_response_metadata()
 
                 return response
             else:
@@ -213,6 +216,8 @@ class GenerateTaskPipeline:
                         completion_tokens
                     )
 
+                self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
+
                 # response moderation
                 if self._output_moderation_handler:
                     self._output_moderation_handler.stop_thread()
@@ -250,7 +255,7 @@ class GenerateTaskPipeline:
                     response['conversation_id'] = self._conversation.id
 
                 if self._task_state.metadata:
-                    response['metadata'] = self._task_state.metadata
+                    response['metadata'] = self._get_response_metadata()
 
                 yield self._yield_response(response)
             elif isinstance(event, QueueRetrieverResourcesEvent):
@@ -409,6 +414,34 @@ class GenerateTaskPipeline:
             return e
         else:
             return Exception(e.description if getattr(e, 'description', None) is not None else str(e))
+
+    def _get_response_metadata(self):
+        """
+        Get response metadata.
+        :return:
+        """
+        metadata = {}
+
+        # show_retrieve_source
+        if 'retriever_resources' in self._task_state.metadata:
+            if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
+                metadata['retriever_resources'] = self._task_state.metadata['retriever_resources']
+            else:
+                metadata['retriever_resources'] = []
+                for resource in self._task_state.metadata['retriever_resources']:
+                    metadata['retriever_resources'].append({
+                        'segment_id': resource['segment_id'],
+                        'position': resource['position'],
+                        'document_name': resource['document_name'],
+                        'score': resource['score'],
+                        'content': resource['content'],
+                    })
+
+        # show usage
+        if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
+            metadata['usage'] = self._task_state.metadata['usage']
+
+        return metadata
 
     def _yield_response(self, response: dict) -> str:
         """
