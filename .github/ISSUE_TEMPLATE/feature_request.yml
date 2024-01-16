@@ -41,8 +41,8 @@ body:
       label: 5. Can you help us with this feature?
       description: Let us know! This is not a commitment, but a starting point for collaboration.
       options:
-      - label: I am interested in contributing to this feature.
-        required: false
+        - label: I am interested in contributing to this feature.
+          required: false
   - type: markdown
     attributes:
       value: Please limit one request per issue.
