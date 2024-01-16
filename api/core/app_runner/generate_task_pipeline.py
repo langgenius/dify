@@ -472,9 +472,9 @@ class GenerateTaskPipeline:
             **data
         }
 
-    def _get_response_metadata(self):
+    def _get_response_metadata(self) -> dict:
         """
-        Get response metadata.
+        Get response metadata by invoke from.
         :return:
         """
         metadata = {}
