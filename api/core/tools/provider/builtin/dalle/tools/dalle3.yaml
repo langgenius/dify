@@ -2,11 +2,11 @@ identity:
   name: dalle3
   author: Dify
   label:
-    en_US: DALL-E
-    zh_Hans: DALL-E 画画
+    en_US: DALL-E 3
+    zh_Hans: DALL-E 3 画画
   description:
-    en_US: DALL-E draw
-    zh_Hans: DALL-E 画画
+    en_US: DALL-E 3 draw
+    zh_Hans: DALL-E 3 画画
 description:
   human:
     en_US: DALL-E is a text to image tool

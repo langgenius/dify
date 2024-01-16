@@ -1,11 +1,19 @@
 import logging
+import time
+import os
+import hmac
+import base64
+import hashlib
 
 from typing import Union, Tuple, Generator
 from uuid import uuid4
 from mimetypes import guess_extension, guess_type
 from httpx import get
 
+from flask import current_app
+
 from models.tools import ToolFile
+from models.model import MessageFile
 
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -13,6 +21,40 @@ from extensions.ext_storage import storage
 logger = logging.getLogger(__name__)
 
 class ToolFileManager:
+    @staticmethod
+    def sign_file(file_id: str, extension: str) -> str:
+        """
+        sign file to get a temporary url
+        """
+        base_url = current_app.config.get('FILES_URL')
+        file_preview_url = f'{base_url}/files/tools/{file_id}{extension}'
+
+        timestamp = str(int(time.time()))
+        nonce = os.urandom(16).hex()
+        data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
+        secret_key = current_app.config['SECRET_KEY'].encode()
+        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+        return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+
+    @staticmethod
+    def verify_file(file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
+        """
+        verify signature
+        """
+        data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
+        secret_key = current_app.config['SECRET_KEY'].encode()
+        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+        recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
+
+        # verify signature
+        if sign != recalculated_encoded_sign:
+            return False
+
+        current_time = int(time.time())
+        return current_time - int(timestamp) <= 300  # expired after 5 minutes
+
     @staticmethod
     def create_file_by_raw(user_id: str, tenant_id: str, 
                             conversation_id: str, file_binary: bytes,
@@ -101,8 +143,17 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
+        message_file: MessageFile = db.session.query(MessageFile).filter(
+            MessageFile.id == id,
+        ).first()
+
+        # get tool file id
+        tool_file_id = message_file.url.split('/')[-1]
+        # trim extension
+        tool_file_id = tool_file_id.split('.')[0]
+
         tool_file: ToolFile = db.session.query(ToolFile).filter(
-            ToolFile.id == id,
+            ToolFile.id == tool_file_id,
         ).first()
 
         if not tool_file:

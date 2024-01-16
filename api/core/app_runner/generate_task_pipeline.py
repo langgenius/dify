@@ -16,6 +16,7 @@ from core.model_runtime.entities.message_entities import (AssistantPromptMessage
                                                           TextPromptMessageContent)
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.tools.tool_file_manager import ToolFileManager
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
@@ -305,11 +306,20 @@ class GenerateTaskPipeline:
 
                     yield self._yield_response(response)
             elif isinstance(event, QueueMessageFileEvent):
-                message_file = (
+                message_file: MessageFile = (
                     db.session.query(MessageFile)
                     .filter(MessageFile.id == event.message_file_id)
                     .first()
                 )
+                # get extension
+                if '.' in message_file.url:
+                    extension = f'.{message_file.url.split(".")[-1]}'
+                    if len(extension) > 10:
+                        extension = '.bin'
+                else:
+                    extension = '.bin'
+                # add sign url
+                url = ToolFileManager.sign_file(file_id=message_file.id, extension=extension)
 
                 if message_file:
                     response = {
@@ -317,8 +327,7 @@ class GenerateTaskPipeline:
                         'id': message_file.id,
                         'type': message_file.type,
                         'belongs_to': message_file.belongs_to or 'user',
-                        # TODO: sign url
-                        'url': message_file.url
+                        'url': url
                     }
 
                     if self._conversation.mode == 'chat':

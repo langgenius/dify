@@ -3,6 +3,7 @@ import json
 
 from typing import Optional, List, Tuple
 from datetime import datetime
+from mimetypes import guess_extension
 
 from core.app_runner.app_runner import AppRunner
 from extensions.ext_database import db
@@ -258,7 +259,8 @@ class BaseAssistantApplicationRunner(AppRunner):
                     file = ToolFileManager.create_file_by_url(user_id=self.user_id, tenant_id=self.tenant_id,
                                                                conversation_id=self.message.conversation_id,
                                                                file_url=message.message)
-                    url = f'/files/tools/{file.id}'
+                    
+                    url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".png"}'
 
                     result.append(ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
@@ -281,7 +283,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                                                             conversation_id=self.message.conversation_id,
                                                             file_binary=message.message,
                                                             mimetype=mimetype)
-                url = f'/files/tools/{file.id}'
+                url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".bin"}'
 
                 result.append(ToolInvokeMessage(
                     type=ToolInvokeMessage.MessageType.LINK,

@@ -1,18 +1,30 @@
-import services
 from controllers.files import api
-from flask import Response, request
-from flask_restful import Resource
+from flask import Response
+from flask_restful import Resource, reqparse
 from libs.exception import BaseHTTPException
-from services.account_service import TenantService
-from services.file_service import FileService
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, Forbidden
 
 from core.tools.tool_file_manager import ToolFileManager
 
-class ImagePreviewApi(Resource):
+class ToolFilePreviewApi(Resource):
     def get(self, file_id, extension):
         file_id = str(file_id)
 
+        parser = reqparse.RequestParser()
+
+        parser.add_argument('timestamp', type=str, required=True, location='args')
+        parser.add_argument('nonce', type=str, required=True, location='args')
+        parser.add_argument('sign', type=str, required=True, location='args')
+
+        args = parser.parse_args()
+
+        if not ToolFileManager.verify_file(file_id=file_id,
+                                            timestamp=args['timestamp'],
+                                            nonce=args['nonce'],
+                                            sign=args['sign'],
+        ):
+            raise Forbidden('Invalid request.')
+        
         try:
             result = ToolFileManager.get_file_generator(
                 file_id,
@@ -27,7 +39,7 @@ class ImagePreviewApi(Resource):
 
         return Response(generator, mimetype=mimetype)
 
-api.add_resource(ImagePreviewApi, '/files/tools/<uuid:file_id>.<string:extension>')
+api.add_resource(ToolFilePreviewApi, '/files/tools/<uuid:file_id>.<string:extension>')
 
 class UnsupportedFileTypeError(BaseHTTPException):
     error_code = 'unsupported_file_type'

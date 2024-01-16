@@ -317,6 +317,9 @@ class ToolManageService:
                 raise ValueError(f'provider {provider_name} does not need credentials')
             # validate credentials
             provider_controller.validate_credentials(credentials)
+            # encrypt credentials
+            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+            credentials = tool_configuration.encrypt_tool_credentials(credentials)
         except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
             raise ValueError(str(e))
 

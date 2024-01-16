@@ -2,7 +2,7 @@ import json
 
 from libs.login import login_required
 from flask_login import current_user
-from flask_restful import Resource, abort, reqparse
+from flask_restful import Resource, reqparse
 from flask import send_file
 from werkzeug.exceptions import Forbidden
 
