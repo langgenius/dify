@@ -159,6 +159,9 @@ const Configuration: FC = () => {
     top_k: 2,
     score_threshold_enabled: false,
     score_threshold: 0.7,
+    datasets: {
+      datasets: [],
+    },
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -357,11 +360,11 @@ const Configuration: FC = () => {
 
       let datasets: any = null
       // old dataset struct
-      if (modelConfig.agent_mode?.tools?.length > 0)
+      if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
       // new dataset struct
-      else if (modelConfig.datasets?.datasets?.length > 0)
-        datasets = modelConfig.datasets?.datasets
+      else if (modelConfig.dataset_configs.datasets?.datasets?.length > 0)
+        datasets = modelConfig.dataset_configs?.datasets?.datasets
 
       if (dataSets && datasets?.length && datasets?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasets.map(({ dataset }: any) => dataset.id) } })
@@ -505,9 +508,6 @@ const Configuration: FC = () => {
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
-      datasets: {
-        datasets: [...postDatasets],
-      } as any,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
@@ -518,7 +518,12 @@ const Configuration: FC = () => {
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },

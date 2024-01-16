@@ -12,7 +12,7 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
-import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -44,6 +44,7 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
+    isOpenAI,
     modelModeType,
     hasSetBlockStatus,
     isAdvancedMode,
@@ -214,8 +215,8 @@ const Debug: FC<IDebug> = ({
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
       agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
+        ...modelConfig.agentConfig,
+        strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelConfig.provider,
@@ -223,7 +224,12 @@ const Debug: FC<IDebug> = ({
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },
@@ -437,17 +443,22 @@ const Debug: FC<IDebug> = ({
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
       more_like_this: moreLikeThisConfig,
-      agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
-      },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      agent_mode: {
+        enabled: false,
+        tools: [],
+      },
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },

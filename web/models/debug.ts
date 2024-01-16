@@ -133,6 +133,12 @@ export type DatasetConfigs = {
   top_k: number
   score_threshold_enabled: boolean
   score_threshold: number
+  datasets: {
+    datasets: {
+      enabled: boolean
+      id: string
+    }[]
+  }
 }
 
 export type DebugRequestBody = {

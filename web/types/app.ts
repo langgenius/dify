@@ -146,15 +146,9 @@ export type ModelConfig = {
   }
   external_data_tools: ExternalDataTool[]
   annotation_reply?: AnnotationReplyConfig
-  datasets: {
-    datasets: {
-      enabled: boolean
-      id: string
-    }[]
-  }
   agent_mode: {
     enabled: boolean
-    strategy: AgentStrategy
+    strategy?: AgentStrategy
     tools: ToolItem[]
   }
   model: {
