@@ -69,6 +69,12 @@ const translation = {
     testResult: 'Test Results',
     testResultPlaceholder: 'Test result will show here',
   },
+  thought: {
+    using: 'Using',
+    used: 'Used',
+    requestTitle: 'Request to',
+    responseTitle: 'Response from',
+  },
 }
 
 export default translation

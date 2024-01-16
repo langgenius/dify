@@ -3,7 +3,6 @@ import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd, IOnMessageReplace,
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { ModelModeType } from '@/types/app'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-
 export type AutomaticRes = {
   prompt: string
   variables: string[]

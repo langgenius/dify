@@ -23,6 +23,12 @@ export type ThoughtItem = {
   tool_input: string
   message_id: string
 }
+
+export type ToolThought = {
+  input: ThoughtItem
+  output?: ThoughtItem
+}
+
 export type CitationItem = {
   content: string
   data_source_type: string
