@@ -120,12 +120,13 @@ class HostingConfiguration:
                 trial_quota = TrialHostingQuota(
                     quota_limit=hosted_quota_limit,
                     restrict_models=[
-                        RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
-                        RestrictModel(model="gpt-3.5-turbo-1106", model_type=ModelType.LLM),
-                        RestrictModel(model="gpt-3.5-turbo-instruct", model_type=ModelType.LLM),
-                        RestrictModel(model="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
-                        RestrictModel(model="text-davinci-003", model_type=ModelType.LLM),
-                        RestrictModel(model="tts-1", model_type=ModelType.TTS),
+                        RestrictModel(model="gpt-3.5-turbo", base_model_name="gpt-3.5-turbo", model_type=ModelType.LLM),
+                        RestrictModel(model="gpt-3.5-turbo-1106", base_model_name="gpt-3.5-turbo-1106", model_type=ModelType.LLM),
+                        RestrictModel(model="gpt-3.5-turbo-instruct", base_model_name="gpt-3.5-turbo-instruct", model_type=ModelType.LLM),
+                        RestrictModel(model="gpt-3.5-turbo-16k", base_model_name="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
+                        RestrictModel(model="text-davinci-003", base_model_name="text-davinci-003", model_type=ModelType.LLM),
+                        RestrictModel(model="tts-1", base_model_name="tts-1", model_type=ModelType.TTS),
+                        RestrictModel(model="whisper-1", base_model_name="whisper-1", model_type=ModelType.SPEECH2TEXT),
                     ]
                 )
                 quotas.append(trial_quota)
