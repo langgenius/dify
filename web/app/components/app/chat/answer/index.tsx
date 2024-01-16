@@ -24,6 +24,7 @@ import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import type { Emoji } from '@/app/components/tools/types'
 import type { File } from '@/types/app'
+import ImageGallery from '@/app/components/base/image-gallery'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -239,11 +240,7 @@ const Answer: FC<IAnswerProps> = ({
                   />
                 )}
                 {imgs.length > 0 && (
-                  <>
-                    {imgs.map((img, index) => (
-                      <img src={img.url} key={index} className='mb-2 w-full h-auto' />
-                    ))}
-                  </>
+                  <ImageGallery srcs={imgs.map(item => item.url)} />
                 )}
                 {(isResponsing && !content)
                   ? (
