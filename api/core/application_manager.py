@@ -401,9 +401,14 @@ class ApplicationManager:
 
 
             for dataset in datasets.get('datasets', []):
+                keys = list(dataset.keys())
+                if len(keys) == 0 or keys[0] != 'dataset':
+                    continue
+                dataset = dataset['dataset']
+                
                 if 'enabled' not in dataset or not dataset['enabled']:
                     continue
-
+                
                 dataset_id = dataset.get('id', None)
                 if dataset_id:
                     dataset_ids.append(dataset_id)

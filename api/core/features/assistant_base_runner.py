@@ -231,7 +231,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             }
         )
 
-        for parameter in tool.parameters:
+        for parameter in tool.get_runtime_parameters():
             parameter_type = 'string'
         
             prompt_tool.parameters['properties'][parameter.name] = {

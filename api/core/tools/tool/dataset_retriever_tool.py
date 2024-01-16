@@ -43,13 +43,14 @@ class DatasetRetrieverTool(Tool):
         for langchain_tool in langchain_tools:
             tool = DatasetRetrieverTool(
                 langchain_tool=langchain_tool,
-                identity=ToolIdentity(name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
+                identity=ToolIdentity(author='', name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
                 parameters=[],
                 is_team_authorization=True,
                 description=ToolDescription(
                     human=I18nObject(en_US='', zh_Hans=''),
-                    llm=langchain_tool.description)
-                )
+                    llm=langchain_tool.description),
+                runtime=DatasetRetrieverTool.Runtime()
+            )
             
             tools.append(tool)
 
@@ -60,6 +61,7 @@ class DatasetRetrieverTool(Tool):
             ToolParamter(name='query',
                          label=I18nObject(en_US='', zh_Hans=''),
                          human_description=I18nObject(en_US='', zh_Hans=''),
+                         type=ToolParamter.ToolParameterType.STRING,
                          form=ToolParamter.ToolParameterForm.LLM,
                          llm_description='Query for the dataset to be used to retrieve the dataset.',
                          required=True,
