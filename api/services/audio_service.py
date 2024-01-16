@@ -1,5 +1,4 @@
 import io
-from flask_login import current_user
 from typing import Optional
 
 from core.model_manager import ModelManager
@@ -11,14 +10,14 @@ from services.errors.audio import (AudioTooLargeServiceError,
                                    UnsupportedAudioTypeServiceError)
 from werkzeug.datastructures import FileStorage
 
-FILE_SIZE = 30
+FILE_SIZE = 15
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
 ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm', 'amr']
 
 
 class AudioService:
     @classmethod
-    def transcript_asr(cls, tenant_id: str, file: FileStorage, promot: str, end_user: Optional[str] = None):
+    def transcript_asr(cls, tenant_id: str, file: FileStorage, end_user: Optional[str] = None):
         if file is None:
             raise NoAudioUploadedServiceError()
 
@@ -44,8 +43,7 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.mp3'
 
-        params = {"promot": promot, "end_user": end_user}
-        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user, **params)}
+        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
 
     @classmethod
     def transcript_tts(cls, tenant_id: str, text: str, end_user: Optional[str] = None):
