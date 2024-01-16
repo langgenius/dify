@@ -9,6 +9,7 @@ from core.entities.application_entities import ApplicationGenerateEntity, Invoke
 from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
                                           QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
                                           QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent)
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
                                                           PromptMessage, PromptMessageContentType, PromptMessageRole,
@@ -179,7 +180,9 @@ class GenerateTaskPipeline:
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                raise self._handle_error(event)
+                data = self._error_to_stream_response_data(self._handle_error(event))
+                yield self._yield_response(data)
+                break
             elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
@@ -414,6 +417,58 @@ class GenerateTaskPipeline:
             return e
         else:
             return Exception(e.description if getattr(e, 'description', None) is not None else str(e))
+
+    def _error_to_stream_response_data(self, e: Exception) -> dict:
+        """
+        Error to stream response.
+        :param e: exception
+        :return:
+        """
+        if isinstance(e, ValueError):
+            data = {
+                'code': 'invalid_param',
+                'message': str(e),
+                'status': 400
+            }
+        elif isinstance(e, ProviderTokenNotInitError):
+            data = {
+                'code': 'provider_not_initialize',
+                'message': e.description,
+                'status': 400
+            }
+        elif isinstance(e, QuotaExceededError):
+            data = {
+                'code': 'provider_quota_exceeded',
+                'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
+                           "Please go to Settings -> Model Provider to complete your own provider credentials.",
+                'status': 400
+            }
+        elif isinstance(e, ModelCurrentlyNotSupportError):
+            data = {
+                'code': 'model_currently_not_support',
+                'message': e.description,
+                'status': 400
+            }
+        elif isinstance(e, InvokeError):
+            data = {
+                'code': 'completion_request_error',
+                'message': e.description,
+                'status': 400
+            }
+        else:
+            logging.error(e)
+            data = {
+                'code': 'internal_server_error',
+                'message': 'Internal Server Error, please contact support.',
+                'status': 500
+            }
+
+        return {
+            'event': 'error',
+            'task_id': self._application_generate_entity.task_id,
+            'message_id': self._message.id,
+            **data
+        }
 
     def _get_response_metadata(self):
         """
