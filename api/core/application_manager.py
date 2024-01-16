@@ -378,8 +378,8 @@ class ApplicationManager:
         properties['show_retrieve_source'] = show_retrieve_source
         
         dataset_ids = []
-        if 'datasets' in copy_app_model_config_dict:
-            datasets = copy_app_model_config_dict.get('dataset_configs', {
+        if 'datasets' in copy_app_model_config_dict.get('dataset_configs', {}):
+            datasets = copy_app_model_config_dict.get('dataset_configs', {}).get('datasets', {
                 'strategy': 'router',
                 'datasets': []
             })
@@ -390,7 +390,8 @@ class ApplicationManager:
                     continue
 
                 dataset_id = dataset.get('id', None)
-                dataset_ids.append(dataset_id)
+                if dataset_id:
+                    dataset_ids.append(dataset_id)
         else:
             datasets = {'strategy': 'router', 'datasets': []}
 

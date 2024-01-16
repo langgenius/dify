@@ -465,6 +465,12 @@ class AppModelConfigService:
         if 'dataset_configs' not in config or not config["dataset_configs"]:
             config["dataset_configs"] = {'retrieval_model': 'single'}
 
+        if 'datasets' not in config["dataset_configs"] or not config["dataset_configs"]["datasets"]:
+            config["dataset_configs"]["datasets"] = {
+                "strategy": "router",
+                "datasets": []
+            }
+
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")
 
