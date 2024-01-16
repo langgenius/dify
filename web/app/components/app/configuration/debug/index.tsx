@@ -625,7 +625,7 @@ const Debug: FC<IDebug> = ({
                     disabled={multipleModelConfigs.length >= 4}
                   >
                     <Plus className='mr-1 w-3.5 h-3.5' />
-                    Add Model({multipleModelConfigs.length}/4)
+                    {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                   </Button>
                 )
                 : (

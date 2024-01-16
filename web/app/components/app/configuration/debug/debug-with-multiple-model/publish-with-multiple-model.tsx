@@ -74,7 +74,9 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
         <div className='p-1 w-[168px] rounded-lg border-[0.5px] border-gray-200 shadow-lg bg-white'>
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>Publish as</div>
+          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
+            {t('appDebug.publishAs')}
+          </div>
           {
             validModelConfigs.map((item, index) => (
               <div

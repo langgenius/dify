@@ -344,6 +344,10 @@ const translation = {
     score_thresholdTip: 'Used to set the similarity threshold for chunks filtering.',
     retrieveChangeTip: 'Modifying the index mode and retrieval mode may affect applications associated with this Knowledge.',
   },
+  debugAsSingleModel: 'Debug as Single Model',
+  debugAsMultipleModel: 'Debug as Multiple Models',
+  duplicateModel: 'Duplicate',
+  publishAs: 'Publish as',
 }
 
 export default translation

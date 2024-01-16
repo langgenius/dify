@@ -333,8 +333,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             >
               {
                 debugWithMultipleModel
-                  ? 'Debug as Single Model'
-                  : 'Debug as Multiple Model'
+                  ? t('appDebug.debugAsSingleModel')
+                  : t('appDebug.debugAsMultipleModel')
               }
               <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
             </div>

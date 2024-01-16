@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
 import type { ModelAndParameter } from '../types'
 import ModelParameterTrigger from './model-parameter-trigger'
@@ -19,6 +20,7 @@ const DebugItem: FC<DebugItemProps> = ({
   modelAndParameter,
   className,
 }) => {
+  const { t } = useTranslation()
   const { mode } = useDebugConfigurationContext()
   const {
     multipleModelConfigs,
@@ -39,11 +41,12 @@ const DebugItem: FC<DebugItemProps> = ({
       onMultipleModelConfigsChange(
         true,
         [
-          ...multipleModelConfigs,
+          ...multipleModelConfigs.slice(0, index + 1),
           {
             ...modelAndParameter,
             id: `${Date.now()}`,
           },
+          ...multipleModelConfigs.slice(index + 1),
         ],
       )
     }
@@ -74,7 +77,7 @@ const DebugItem: FC<DebugItemProps> = ({
                 ? [
                   {
                     value: 'duplicate',
-                    text: 'Duplicate',
+                    text: t('appDebug.duplicateModel'),
                   },
                 ]
                 : []
@@ -84,7 +87,7 @@ const DebugItem: FC<DebugItemProps> = ({
                 ? [
                   {
                     value: 'debug-as-single-model',
-                    text: 'Debug as Single Model',
+                    text: t('appDebug.debugAsSingleModel'),
                   },
                 ]
                 : []
@@ -95,7 +98,7 @@ const DebugItem: FC<DebugItemProps> = ({
               ? [
                 {
                   value: 'remove',
-                  text: 'Remove',
+                  text: t('common.operation.remove'),
                 },
               ]
               : undefined

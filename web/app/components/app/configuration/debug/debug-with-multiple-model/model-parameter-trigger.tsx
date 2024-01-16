@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ModelAndParameter } from '../types'
 import { useDebugWithMultipleModelContext } from './context'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -22,6 +23,7 @@ type ModelParameterTriggerProps = {
 const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   modelAndParameter,
 }) => {
+  const { t } = useTranslation()
   const {
     mode,
     isAdvancedMode,
@@ -102,7 +104,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           {
             !currentModel && (
               <div className='mr-0.5 text-[13px] font-medium text-primary-600 truncate'>
-                Select Model
+                {t('common.modelProvider.selectModel')}
               </div>
             )
           }
