@@ -32,15 +32,6 @@
 
 You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free requests to OpenAI GPT-3.5.
 
-## Contact Us
-
-**Help Us Make Dify Better. Share Your Thoughts Directly with us.** 
-
-|                       Point of Contact                       |                       Purpose                        |
-| :----------------------------------------------------------: | :--------------------------------------------------: |
-| <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="80"/></a> | Product design feedback, user experience discussions |
-| <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="80"/></a> |    Technical support, issues, or feature requests    |
-
 ## Dify vs. LangChain vs. Assistants API
 
 | Feature | Dify.AI | Assistants API | LangChain |
