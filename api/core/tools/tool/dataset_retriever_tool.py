@@ -22,23 +22,35 @@ class DatasetRetrieverTool(Tool):
         """
         get dataset tool
         """
+        # check if retrieve_config is valid
+        if dataset_ids is None or len(dataset_ids) == 0:
+            return []
+        if retrieve_config is None:
+            return []
+
         feature = DatasetRetrievalFeature()
-        langchain_tools = feature.to_dataset_retriever_tool(tenant_id=tenant_id,
-                                                            dataset_ids=dataset_ids,
-                                                            retrieve_config=retrieve_config,
-                                                            return_resource=return_resource,
-                                                            invoke_from=invoke_from,
-                                                            hit_callback=hit_callback)
+        langchain_tools = feature.to_dataset_retriever_tool(
+            tenant_id=tenant_id,
+            dataset_ids=dataset_ids,
+            retrieve_config=retrieve_config,
+            return_resource=return_resource,
+            invoke_from=invoke_from,
+            hit_callback=hit_callback
+        )
         
         # convert langchain tools to Tools
         tools = []
         for langchain_tool in langchain_tools:
-            tool = DatasetRetrieverTool(langchain_tool=langchain_tool,
-                                        identity=ToolIdentity(name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
-                                        parameters=[],
-                                        is_team_authorization=True,
-                                        description=ToolDescription(human=I18nObject(en_US='', zh_Hans=''),
-                                                                    llm=langchain_tool.description))
+            tool = DatasetRetrieverTool(
+                langchain_tool=langchain_tool,
+                identity=ToolIdentity(name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
+                parameters=[],
+                is_team_authorization=True,
+                description=ToolDescription(
+                    human=I18nObject(en_US='', zh_Hans=''),
+                    llm=langchain_tool.description)
+                )
+            
             tools.append(tool)
 
         return tools

@@ -85,8 +85,8 @@ class BaseAssistantApplicationRunner(AppRunner):
         )
         self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
             tenant_id=tenant_id,
-            dataset_ids=app_orchestration_config.dataset.dataset_ids or [],
-            retrieve_config=app_orchestration_config.dataset.retrieve_config or {},
+            dataset_ids=app_orchestration_config.dataset.dataset_ids if app_orchestration_config.dataset else [],
+            retrieve_config=app_orchestration_config.dataset.retrieve_config if app_orchestration_config.dataset else None,
             return_resource=app_orchestration_config.show_retrieve_source,
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback
