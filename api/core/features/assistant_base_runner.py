@@ -117,7 +117,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result += f"result link: {response.message}."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += f"image has been created already and sent to user, you should tell user to check it now."
+                result += f"image has been created and sent to user already, you should tell user to check it now."
             else:
                 result += f"tool response: {response.message}."
 
@@ -464,14 +464,24 @@ class BaseAssistantApplicationRunner(AppRunner):
                                                             conversation_id=self.message.conversation_id,
                                                             file_binary=message.message,
                                                             mimetype=mimetype)
+                                                            
                 url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".bin"}'
 
-                result.append(ToolInvokeMessage(
-                    type=ToolInvokeMessage.MessageType.LINK,
-                    message=url,
-                    meta=message.meta.copy() if message.meta is not None else {},
-                    save_as_variable=message.save_as_variable,
-                ))
+                # check if file is image
+                if 'image' in mimetype:
+                    result.append(ToolInvokeMessage(
+                        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+                        message=url,
+                        save_as_variable=message.save_as_variable,
+                        meta=message.meta.copy() if message.meta is not None else {},
+                    ))
+                else:
+                    result.append(ToolInvokeMessage(
+                        type=ToolInvokeMessage.MessageType.LINK,
+                        message=url,
+                        save_as_variable=message.save_as_variable,
+                        meta=message.meta.copy() if message.meta is not None else {},
+                    ))
             else:
                 result.append(message)
 
