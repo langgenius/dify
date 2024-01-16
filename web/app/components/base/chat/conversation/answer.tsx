@@ -49,7 +49,7 @@ const Answer: FC<AnswerProps> = ({
           )
         }
       </div>
-      <div className='group ml-4'>
+      <div className='grow w-0 group ml-4'>
         <div className='relative pr-10'>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div className='group relative inline-block px-4 py-3 bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
@@ -96,15 +96,25 @@ const Answer: FC<AnswerProps> = ({
           {
             more && (
               <>
-                <div className='mr-2'>{`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}</div>
                 <div
-                  className='turncate'
+                  className='mr-2 shrink-0 truncate max-w-[33.3%]'
+                  title={`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}
+                >
+                  {`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}
+                </div>
+                <div
+                  className='shrink-0 truncate max-w-[33.3%]'
                   title={`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}
                 >
                   {`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}
                 </div>
-                <div className='mx-2'>·</div>
-                <div>{more.time}</div>
+                <div className='shrink-0 mx-2'>·</div>
+                <div
+                  className='shrink-0 truncate max-w-[33.3%]'
+                  title={more.time}
+                >
+                  {more.time}
+                </div>
               </>
             )
           }

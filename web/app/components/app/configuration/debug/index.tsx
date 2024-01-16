@@ -603,9 +603,9 @@ const Debug: FC<IDebug> = ({
     }
   }
 
-  useEffect(() => {
-    handleVisionConfigInMultipleModel()
-  }, [multipleModelConfigs])
+  // useEffect(() => {
+  //   handleVisionConfigInMultipleModel()
+  // }, [multipleModelConfigs])
 
   return (
     <>

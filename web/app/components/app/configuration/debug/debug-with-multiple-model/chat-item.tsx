@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import type { ModelAndParameter } from '../types'
 import { Chat } from '@/app/components/base/chat'
 import { useChat } from '@/app/components/base/chat/hooks'
@@ -132,6 +133,9 @@ const ChatItem: FC<ChatItemProps> = ({
       handleRestart()
   })
 
+  if (!chatList.length)
+    return null
+
   return (
     <Chat
       config={config}
@@ -147,4 +151,4 @@ const ChatItem: FC<ChatItemProps> = ({
   )
 }
 
-export default ChatItem
+export default memo(ChatItem)

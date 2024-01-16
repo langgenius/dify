@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import type { ModelAndParameter } from '../types'
 import type {
   OnSend,
@@ -143,4 +144,4 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
   )
 }
 
-export default TextGenerationItem
+export default memo(TextGenerationItem)

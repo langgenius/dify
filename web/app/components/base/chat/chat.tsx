@@ -3,9 +3,10 @@ import type {
   ReactNode,
 } from 'react'
 import {
-  useEffect,
+  memo,
   useRef,
 } from 'react'
+import { useThrottleEffect } from 'ahooks'
 import Conversation from './conversation'
 import ChatInput from './chat-input'
 import TryToAsk from './try-to-ask'
@@ -41,11 +42,10 @@ const Chat: FC<ChatProps> = ({
 }) => {
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    // scroll to bottom
+  useThrottleEffect(() => {
     if (ref.current)
       ref.current.scrollTop = ref.current.scrollHeight
-  }, [chatList])
+  }, [chatList], { wait: 500 })
 
   return (
     <ChatContextProvider
@@ -85,4 +85,4 @@ const Chat: FC<ChatProps> = ({
   )
 }
 
-export default Chat
+export default memo(Chat)

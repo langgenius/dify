@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import type { ChatItem } from '../types'
 import { useChatContext } from '../context'
 import Question from './question'
@@ -38,4 +39,4 @@ const Conversation: FC<ConversationProps> = ({
   )
 }
 
-export default Conversation
+export default memo(Conversation)

@@ -1,5 +1,8 @@
 import type { FC } from 'react'
-import { useCallback } from 'react'
+import {
+  memo,
+  useCallback,
+} from 'react'
 import DebugItem from './debug-item'
 import {
   DebugWithMultipleModelContextProvider,
@@ -106,6 +109,8 @@ const DebugWithMultipleModel = () => {
   )
 }
 
+const DebugWithMultipleModelMemoed = memo(DebugWithMultipleModel)
+
 const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
   onMultipleModelConfigsChange,
   multipleModelConfigs,
@@ -117,9 +122,9 @@ const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
       multipleModelConfigs={multipleModelConfigs}
       onDebugWithMultipleModelChange={onDebugWithMultipleModelChange}
     >
-      <DebugWithMultipleModel />
+      <DebugWithMultipleModelMemoed />
     </DebugWithMultipleModelContextProvider>
   )
 }
 
-export default DebugWithMultipleModelWrapper
+export default memo(DebugWithMultipleModelWrapper)
