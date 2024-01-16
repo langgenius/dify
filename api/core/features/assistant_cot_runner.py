@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import Literal, Union, Generator, Dict, Any, List, Tuple
+from typing import Literal, Union, Generator, Dict, List
 
 from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
 from core.application_queue_manager import PublishFrom
@@ -11,7 +11,6 @@ from core.model_runtime.entities.message_entities import PromptMessageTool, Prom
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
 from core.model_manager import ModelInstance
 
-from core.tools.provider.tool import Tool
 from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
     ToolNotSupportedError, ToolProviderNotFoundError, ToolParamterValidationError, \
           ToolProviderCredentialValidationError
@@ -43,7 +42,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 app_orchestration_config.model_config.stop.append('Thought')
 
         iteration_step = 1
-        max_iteration_steps = 5
+        max_iteration_steps = min(self.app_orchestration_config.agent.max_iteration, 5)
 
         prompt_messages = self.history_prompt_messages
 

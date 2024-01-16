@@ -443,7 +443,7 @@ class ApplicationManager:
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))
                 elif len(keys) == 1:
-                    # old style
+                    # old standard
                     key = list(tool.keys())[0]
 
                     if key != 'dataset':
@@ -476,7 +476,8 @@ class ApplicationManager:
                 model=properties['model_config'].model,
                 strategy=strategy,
                 prompt=agent_prompt_entity,
-                tools=agent_tools
+                tools=agent_tools,
+                max_iteration=agent_dict.get('max_iteration', 5)
             )
 
             if len(dataset_ids) > 0:

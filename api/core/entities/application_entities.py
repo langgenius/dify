@@ -200,6 +200,7 @@ class AgentEntity(BaseModel):
     strategy: Strategy
     prompt: Optional[AgentPromptEntity] = None
     tools: list[AgentToolEntity] = None
+    max_iteration: int = 5
 
 class AppOrchestrationConfigEntity(BaseModel):
     """

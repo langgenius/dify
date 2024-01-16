@@ -3,20 +3,18 @@ import logging
 
 from typing import Union, Generator, Dict, Any, Tuple, List
 
-from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, UserPromptMessage,\
+from core.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage,\
       SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage
 from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult, LLMUsage
 from core.model_manager import ModelInstance
 from core.application_queue_manager import PublishFrom
 
-from core.tools.provider.tool import Tool
 from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
     ToolNotSupportedError, ToolProviderNotFoundError, ToolParamterValidationError, \
           ToolProviderCredentialValidationError
 
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 
-from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
         )
 
         iteration_step = 1
-        max_iteration_steps = 5
+        max_iteration_steps = min(app_orchestration_config.agent.max_iteration, 5)
 
         # continue to run until there is not any tool call
         function_call_state = True
