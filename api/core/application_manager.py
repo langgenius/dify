@@ -355,6 +355,8 @@ class ApplicationManager:
 
         # external data variables
         properties['external_data_variables'] = []
+
+        # old external_data_tools
         external_data_tools = copy_app_model_config_dict.get('external_data_tools', [])
         for external_data_tool in external_data_tools:
             if 'enabled' not in external_data_tool or not external_data_tool['enabled']:
@@ -367,6 +369,19 @@ class ApplicationManager:
                     config=external_data_tool['config']
                 )
             )
+        
+        # current external_data_tools
+        for variable in copy_app_model_config_dict.get('user_input_form', []):
+            typ = variable.keys()[0]
+            if typ == 'external_data_tool':
+                val = variable[typ]
+                properties['external_data_variables'].append(
+                    ExternalDataVariableEntity(
+                        variable=val['variable'],
+                        type=val['type'],
+                        config=val['config']
+                    )
+                )
 
         # show retrieve source
         show_retrieve_source = False
