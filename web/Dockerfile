@@ -1,5 +1,5 @@
 # base image
-FROM node:18.17.0-alpine AS base
+FROM node:20.11.0-alpine AS base
 
 # install packages
 FROM base as packages
