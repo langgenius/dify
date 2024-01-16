@@ -100,6 +100,7 @@ const Item: FC<Props> = ({
                 showOnVariableMap={{}}
                 validating={false}
                 inputClassName='!bg-gray-50'
+                isShowDefaultValue
               />
             </div>
           }
