@@ -24,9 +24,7 @@ logger = logging.getLogger(__name__)
 class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, model_instance: ModelInstance,
         conversation: Conversation,
-        tool_instances: Dict[str, Tool],
         message: Message,
-        prompt_messages_tools: list[PromptMessageTool],
         query: str,
     ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -65,6 +63,16 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
+
+            # convert tools into ModelRuntime Tool format
+            prompt_messages_tools = []
+            tool_instances = {}
+            for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
+                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
+                # save tool entity
+                tool_instances[tool.tool_name] = tool_entity
+                # save prompt tool
+                prompt_messages_tools.append(prompt_tool)
 
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)

@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import cast, Tuple
+from typing import cast
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
@@ -8,18 +8,14 @@ from core.features.assistant_cot_runner import AssistantCotApplicationRunner
 from core.features.assistant_fc_runner import AssistantFunctionCallApplicationRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
-    AgentEntity, AgentToolEntity
+    AgentEntity
 from core.application_queue_manager import ApplicationQueueManager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
-from core.tools.tool_manager import ToolManager
-from core.tools.entities.tool_entities import ToolParamter, ToolRuntimeVariablePool
-from core.tools.provider.tool import Tool
-
+from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
 from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
 from models.tools import ToolConversationVariables
@@ -80,7 +76,6 @@ class AssistantApplicationRunner(AppRunner):
             )
 
         agent_entity = app_orchestration_config.agent
-        tools = agent_entity.tools
 
         # load tool variables
         tool_conversation_variables = self._load_tool_variables(conversation_id=conversation.id,
@@ -89,17 +84,6 @@ class AssistantApplicationRunner(AppRunner):
 
         # convert db variables to tool variables
         tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
-
-        # convert tools into ModelRuntime Tool format
-        prompt_messages_tools = []
-        tool_instances = {}
-        for tool in tools:
-            prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(application_generate_entity, tool)
-            # load tool variables into tool entity memory
-            tool_entity.load_variables(tool_variables)
-            prompt_messages_tools.append(prompt_tool)
-            # save tool entity
-            tool_instances[tool.tool_name] = tool_entity
         
         message_chain = self._init_message_chain(
             message=message,
@@ -155,9 +139,7 @@ class AssistantApplicationRunner(AppRunner):
             invoke_result = assistant_cot_runner.run(
                 model_instance=model_instance,
                 conversation=conversation,
-                tool_instances=tool_instances,
                 message=message,
-                prompt_messages_tools=prompt_messages_tools,
                 query=query,
             )
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
@@ -180,9 +162,7 @@ class AssistantApplicationRunner(AppRunner):
             invoke_result = assistant_cot_runner.run(
                 model_instance=model_instance,
                 conversation=conversation,
-                tool_instances=tool_instances,
                 message=message,
-                prompt_messages_tools=prompt_messages_tools,
                 query=query,
             )
 
@@ -228,76 +208,6 @@ class AssistantApplicationRunner(AppRunner):
             'tenant_id': db_variables.tenant_id,
             'pool': db_variables.variables
         })
-
-    def _convert_tool_to_prompt_message_tool(self, application_generate_entity: ApplicationGenerateEntity, tool: AgentToolEntity
-                                             ) -> Tuple[PromptMessageTool, Tool]:
-        """
-            convert tool to prompt message tool
-        """
-        tool_entity = ToolManager.get_tool_runtime(
-            provider_type=tool.provider_type, provider_name=tool.provider_id, tool_name=tool.tool_name, 
-            tanent_id=application_generate_entity.tenant_id
-        )
-
-        message_tool = PromptMessageTool(
-            name=tool.tool_name,
-            description=tool_entity.description.llm,
-            parameters={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            }
-        )
-
-        runtime_parameters = {}
-
-        for parameter in tool_entity.parameters:
-            parameter_type = 'string'
-            enum = []
-            if parameter.type == ToolParamter.ToolParameterType.STRING:
-                parameter_type = 'string'
-            elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
-                parameter_type = 'boolean'
-            elif parameter.type == ToolParamter.ToolParameterType.NUMBER:
-                parameter_type = 'number'
-            elif parameter.type == ToolParamter.ToolParameterType.SELECT:
-                for option in parameter.options:
-                    enum.append(option.value)
-                parameter_type = 'string'
-            else:
-                raise ValueError(f"parameter type {parameter.type} is not supported")
-            
-            app_orchestration_config = application_generate_entity.app_orchestration_config_entity
-            if parameter.form == ToolParamter.ToolParameterForm.FORM:
-                # get tool parameter from form
-                tool_parameter_config = tool.tool_parameters.get(parameter.name)
-                if not tool_parameter_config:
-                    raise ValueError(f"tool parameter {parameter.name} not found in tool config")
-                
-                if parameter.type == ToolParamter.ToolParameterType.SELECT:
-                    # check if tool_parameter_config in options
-                    options = list(map(lambda x: x.value, parameter.options))
-                    if tool_parameter_config not in options:
-                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
-                    
-                # save tool parameter to tool entity memory
-                runtime_parameters[parameter.name] = tool_parameter_config
-            
-            elif parameter.form == ToolParamter.ToolParameterForm.LLM:
-                message_tool.parameters['properties'][parameter.name] = {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or '',
-                }
-
-                if len(enum) > 0:
-                    message_tool.parameters['properties'][parameter.name]['enum'] = enum
-
-                if parameter.required:
-                    message_tool.parameters['required'].append(parameter.name)
-
-        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
-
-        return message_tool, tool_entity
 
     def _init_message_chain(self, message: Message, query: str) -> MessageChain:
         """

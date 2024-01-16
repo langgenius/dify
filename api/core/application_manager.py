@@ -457,7 +457,7 @@ class ApplicationManager:
                     dataset_id = tool_item['id']
                     dataset_ids.append(dataset_id)
 
-            agent_prompt = agent_dict.get('prompt', {})
+            agent_prompt = agent_dict.get('prompt', None) or {}
             # check model mode
             model_mode = copy_app_model_config_dict.get('model', {}).get('mode', 'completion')
             if model_mode == 'completion':

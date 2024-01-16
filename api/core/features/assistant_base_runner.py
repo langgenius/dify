@@ -11,17 +11,20 @@ from extensions.ext_database import db
 from models.model import MessageAgentThought, Message, MessageFile
 from models.tools import ToolConversationVariables
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolRuntimeVariablePool
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, \
+    ToolRuntimeVariablePool, ToolParamter
+from core.tools.provider.tool import Tool
+from core.tools.tool_manager import ToolManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
-from core.entities.application_entities import ModelConfigEntity, AgentEntity
+from core.entities.application_entities import ModelConfigEntity, AgentEntity, AgentToolEntity
 from core.application_queue_manager import ApplicationQueueManager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.entities.application_entities import ModelConfigEntity, \
     AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
-from core.model_runtime.entities.message_entities import PromptMessage
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.utils.encoders import jsonable_encoder
 
 logger = logging.getLogger(__name__)
@@ -101,6 +104,75 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result += f"tool response: {response.message}."
 
         return result
+    
+    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> Tuple[PromptMessageTool, Tool]:
+        """
+            convert tool to prompt message tool
+        """
+        tool_entity = ToolManager.get_tool_runtime(
+            provider_type=tool.provider_type, provider_name=tool.provider_id, tool_name=tool.tool_name, 
+            tanent_id=self.application_generate_entity.tenant_id
+        )
+        tool_entity.load_variables(self.variables_pool)
+
+        message_tool = PromptMessageTool(
+            name=tool.tool_name,
+            description=tool_entity.description.llm,
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            }
+        )
+
+        runtime_parameters = {}
+
+        for parameter in tool_entity.parameters:
+            parameter_type = 'string'
+            enum = []
+            if parameter.type == ToolParamter.ToolParameterType.STRING:
+                parameter_type = 'string'
+            elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+                parameter_type = 'boolean'
+            elif parameter.type == ToolParamter.ToolParameterType.NUMBER:
+                parameter_type = 'number'
+            elif parameter.type == ToolParamter.ToolParameterType.SELECT:
+                for option in parameter.options:
+                    enum.append(option.value)
+                parameter_type = 'string'
+            else:
+                raise ValueError(f"parameter type {parameter.type} is not supported")
+            
+            if parameter.form == ToolParamter.ToolParameterForm.FORM:
+                # get tool parameter from form
+                tool_parameter_config = tool.tool_parameters.get(parameter.name)
+                if not tool_parameter_config:
+                    raise ValueError(f"tool parameter {parameter.name} not found in tool config")
+                
+                if parameter.type == ToolParamter.ToolParameterType.SELECT:
+                    # check if tool_parameter_config in options
+                    options = list(map(lambda x: x.value, parameter.options))
+                    if tool_parameter_config not in options:
+                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
+                    
+                # save tool parameter to tool entity memory
+                runtime_parameters[parameter.name] = tool_parameter_config
+            
+            elif parameter.form == ToolParamter.ToolParameterForm.LLM:
+                message_tool.parameters['properties'][parameter.name] = {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or '',
+                }
+
+                if len(enum) > 0:
+                    message_tool.parameters['properties'][parameter.name]['enum'] = enum
+
+                if parameter.required:
+                    message_tool.parameters['required'].append(parameter.name)
+
+        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+
+        return message_tool, tool_entity
     
     def extract_tool_response_binary(self, tool_response: List[ToolInvokeMessage]) -> List[ToolInvokeMessageBinary]:
         """

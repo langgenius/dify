@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, model_instance: ModelInstance,
         conversation: Conversation,
-        tool_instances: Dict[str, Tool],
         message: Message,
-        prompt_messages_tools: list[PromptMessageTool],
         query: str,
     ) -> Union[Generator, LLMResult]:
         """
@@ -44,21 +42,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             if 'Thought' not in app_orchestration_config.model_config.stop:
                 app_orchestration_config.model_config.stop.append('Thought')
 
-        prompt_messages = self.history_prompt_messages
-        prompt_messages = self._originze_cot_prompt_messages(
-            mode=app_orchestration_config.model_config.mode,
-            prompt_messages=prompt_messages,
-            tools=prompt_messages_tools,
-            agent_scratchpad=agent_scratchpad,
-            agent_prompt_message=app_orchestration_config.agent.prompt,
-            instruction=app_orchestration_config.prompt_template.simple_prompt_template,
-            input=query
-        )
-
         iteration_step = 1
         max_iteration_steps = 5
 
-        # continue to run until there is not any tool call
+        prompt_messages = self.history_prompt_messages
+
         function_call_state = True
         agent_thoughts: List[MessageAgentThought] = []
         llm_usage = {
@@ -77,8 +65,30 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 llm_usage.completion_price += usage.completion_price
 
         while function_call_state and iteration_step <= max_iteration_steps:
+            # continue to run until there is not any tool call
             
             function_call_state = False
+            # convert tools into ModelRuntime Tool format
+            prompt_messages_tools = []
+            tool_instances = {}
+            for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
+                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
+                # save tool entity
+                tool_instances[tool.tool_name] = tool_entity
+                # save prompt tool
+                prompt_messages_tools.append(prompt_tool)
+
+            # update prompt messages
+            prompt_messages = self._originze_cot_prompt_messages(
+                mode=app_orchestration_config.model_config.mode,
+                prompt_messages=prompt_messages,
+                tools=prompt_messages_tools,
+                agent_scratchpad=agent_scratchpad,
+                agent_prompt_message=app_orchestration_config.agent.prompt,
+                instruction=app_orchestration_config.prompt_template.simple_prompt_template,
+                input=query
+            )
+
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
@@ -188,17 +198,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             answer=''
                         )
                         self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
-
-                        # update prompt messages
-                        prompt_messages = self._originze_cot_prompt_messages(
-                            mode=app_orchestration_config.model_config.mode,
-                            prompt_messages=prompt_messages,
-                            tools=prompt_messages_tools,
-                            agent_scratchpad=agent_scratchpad,
-                            agent_prompt_message=app_orchestration_config.agent.prompt,
-                            instruction=app_orchestration_config.prompt_template.simple_prompt_template,
-                            input=query
-                        )
 
             iteration_step += 1
 
