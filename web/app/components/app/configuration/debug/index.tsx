@@ -525,6 +525,21 @@ const Debug: FC<IDebug> = ({
     })
   }
 
+  const handleSendTextCompletion = () => {
+    if (debugWithMultipleModel) {
+      eventEmitter?.emit({
+        type: 'app-chat-with-multiple-model',
+        payload: {
+          message: '',
+          files: completionFiles,
+        },
+      } as any)
+      return
+    }
+
+    sendTextCompletion()
+  }
+
   const varList = modelConfig.configs.prompt_variables.map((item: any) => {
     return {
       label: item.key,
@@ -612,7 +627,7 @@ const Debug: FC<IDebug> = ({
         </div>
         <PromptValuePanel
           appType={mode as AppType}
-          onSend={sendTextCompletion}
+          onSend={handleSendTextCompletion}
           inputs={inputs}
           visionConfig={{
             ...visionConfig,

@@ -241,7 +241,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
+        <PortalToFollowElemContent className='z-[60]'>
           <div className='w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl'>
             <div className='flex items-center px-4 h-12 rounded-t-xl border-b border-gray-100 bg-gray-50 text-md font-medium text-gray-900'>
               <CubeOutline className='mr-2 w-4 h-4 text-primary-600' />

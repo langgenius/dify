@@ -3,6 +3,7 @@ import { memo } from 'react'
 import type { ModelAndParameter } from '../types'
 import ModelParameterTrigger from './model-parameter-trigger'
 import ChatItem from './chat-item'
+import TextGenerationItem from './text-generation-item'
 import { useDebugWithMultipleModelContext } from './context'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import Dropdown from '@/app/components/base/dropdown'
@@ -104,6 +105,11 @@ const DebugItem: FC<DebugItemProps> = ({
       {
         mode === 'chat' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
           <ChatItem modelAndParameter={modelAndParameter} />
+        )
+      }
+      {
+        mode === 'completion' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+          <TextGenerationItem modelAndParameter={modelAndParameter}/>
         )
       }
     </div>

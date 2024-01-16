@@ -9,11 +9,11 @@ import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import ChatInput from '@/app/components/base/chat/chat-input'
 import type { VisionFile } from '@/app/components/base/chat/types'
+import { useDebugConfigurationContext } from '@/context/debug-configuration'
 
 const DebugWithMultipleModel = () => {
-  const {
-    multipleModelConfigs,
-  } = useDebugWithMultipleModelContext()
+  const { mode } = useDebugConfigurationContext()
+  const { multipleModelConfigs } = useDebugWithMultipleModelContext()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleSend = useCallback((message: string, files?: VisionFile[]) => {
@@ -31,10 +31,10 @@ const DebugWithMultipleModel = () => {
   const fourLine = multipleModelConfigs.length === 4
 
   return (
-    <div className='flex flex-col h-[300px] pt-3'>
+    <div className='flex flex-col pt-3 h-full'>
       <div
         className={`
-          grow mb-3 min-h-[400px] overflow-auto
+          grow mb-3 min-h-[400px] max-h-[800px] overflow-auto
           ${(twoLine || threeLine) && 'flex gap-2'}
           ${fourLine && 'grid grid-rows-2 gap-y-2'}
         `}
@@ -54,7 +54,7 @@ const DebugWithMultipleModel = () => {
         {
           fourLine && (
             <>
-              <div className='flex gap-2 h-1/2'>
+              <div className='flex gap-2 h-full'>
                 {
                   multipleModelConfigs.slice(0, 2).map(modelConfig => (
                     <DebugItem
@@ -65,7 +65,7 @@ const DebugWithMultipleModel = () => {
                   ))
                 }
               </div>
-              <div className='flex gap-2 h-1/2'>
+              <div className='flex gap-2 h-full'>
                 {
                   multipleModelConfigs.slice(2, 4).map(modelConfig => (
                     <DebugItem
@@ -80,9 +80,13 @@ const DebugWithMultipleModel = () => {
           )
         }
       </div>
-      <div className='shrink-0'>
-        <ChatInput onSend={handleSend} />
-      </div>
+      {
+        mode === 'chat' && (
+          <div className='shrink-0'>
+            <ChatInput onSend={handleSend} />
+          </div>
+        )
+      }
     </div>
   )
 }

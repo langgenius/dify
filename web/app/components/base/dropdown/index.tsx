@@ -49,37 +49,43 @@ const Dropdown: FC<DropdownProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
         <div className='rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg text-sm text-gray-700'>
-          <div className='p-1'>
-            {
-              items.map(item => (
-                <div
-                  key={item.value}
-                  className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
-                  onClick={() => onSelect(item)}
-                >
-                  {item.text}
-                </div>
-              ))
-            }
-          </div>
           {
-            secondItems && (
-              <>
-                <div className='h-[1px] bg-gray-100' />
-                <div className='p-1'>
-                  {
-                    secondItems.map(item => (
-                      <div
-                        key={item.value}
-                        className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
-                        onClick={() => onSelect(item)}
-                      >
-                        {item.text}
-                      </div>
-                    ))
-                  }
-                </div>
-              </>
+            !!items.length && (
+              <div className='p-1'>
+                {
+                  items.map(item => (
+                    <div
+                      key={item.value}
+                      className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
+                      onClick={() => onSelect(item)}
+                    >
+                      {item.text}
+                    </div>
+                  ))
+                }
+              </div>
+            )
+          }
+          {
+            (!!items.length && !!secondItems?.length) && (
+              <div className='h-[1px] bg-gray-100' />
+            )
+          }
+          {
+            !!secondItems?.length && (
+              <div className='p-1'>
+                {
+                  secondItems.map(item => (
+                    <div
+                      key={item.value}
+                      className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
+                      onClick={() => onSelect(item)}
+                    >
+                      {item.text}
+                    </div>
+                  ))
+                }
+              </div>
             )
           }
         </div>

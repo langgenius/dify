@@ -21,7 +21,6 @@ type ChatProps = {
   isResponsing: boolean
   noChatInput?: boolean
   className?: string
-  conversationClassName?: string
   suggestedQuestions?: string[]
 }
 const Chat: FC<ChatProps> = ({
@@ -31,7 +30,6 @@ const Chat: FC<ChatProps> = ({
   isResponsing,
   noChatInput,
   className,
-  conversationClassName,
   suggestedQuestions,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
@@ -51,8 +49,6 @@ const Chat: FC<ChatProps> = ({
         ref={ref}
         className={`relative h-full overflow-y-auto ${className}`}
       >
-        {/* <div className='h-full overflow-y-auto'>
-        </div> */}
         <Conversation
           chatList={chatList}
         />

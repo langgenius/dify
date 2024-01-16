@@ -5,9 +5,16 @@ import { useDebugWithMultipleModelContext } from './context'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import {
+  MODEL_STATUS_TEXT,
+  ModelStatusEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type ModelParameterTriggerProps = {
   modelAndParameter: ModelAndParameter
@@ -24,6 +31,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
     onMultipleModelConfigsChange,
     onDebugWithMultipleModelChange,
   } = useDebugWithMultipleModelContext()
+  const language = useLanguage()
   const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
 
   const handleSelectModel = ({ modelId, provider }: { modelId: string; provider: string }) => {
@@ -64,6 +72,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           className={`
             flex items-center max-w-[200px] h-8 px-2 rounded-lg cursor-pointer
             ${open && 'bg-gray-100'}
+            ${currentModel && currentModel.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]'}
           `}
         >
           {
@@ -98,6 +107,13 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             )
           }
           <ChevronDown className={`w-3 h-3 ${(currentModel && currentProvider) ? 'text-gray-800' : 'text-primary-600'}`} />
+          {
+            currentModel && currentModel.status !== ModelStatusEnum.active && (
+              <TooltipPlus popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
+                <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+              </TooltipPlus>
+            )
+          }
         </div>
       )}
     />
