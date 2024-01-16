@@ -372,7 +372,7 @@ class ApplicationManager:
         
         # current external_data_tools
         for variable in copy_app_model_config_dict.get('user_input_form', []):
-            typ = variable.keys()[0]
+            typ = list(variable.keys())[0]
             if typ == 'external_data_tool':
                 val = variable[typ]
                 properties['external_data_variables'].append(
