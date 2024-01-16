@@ -1,4 +1,4 @@
-from core.tools.provider.builtin_tool import BuiltinTool
+from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
 from core.tools.provider.builtin.webscraper.tools.web_reader_tool import get_url

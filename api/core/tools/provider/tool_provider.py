@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from core.tools.entities.tool_entities import ToolProviderType, \
     ToolProviderIdentity, ToolParamter, ToolProviderCredentials
-from core.tools.provider.tool import Tool
+from core.tools.tool.tool import Tool
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, \
     ToolParamterValidationError, ToolProviderCredentialValidationError

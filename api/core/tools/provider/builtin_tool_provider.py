@@ -6,8 +6,8 @@ from yaml import load, FullLoader
 
 from core.tools.entities.tool_entities import ToolProviderType, \
       ToolParamter, ToolProviderCredentials
-from core.tools.provider.tool import Tool
-from core.tools.provider.builtin_tool import BuiltinTool
+from core.tools.tool.tool import Tool
+from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError, \

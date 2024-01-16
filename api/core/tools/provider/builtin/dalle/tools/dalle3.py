@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Union
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.provider.builtin_tool import BuiltinTool
+from core.tools.tool.builtin_tool import BuiltinTool
 from core.model_runtime.entities.message_entities import PromptMessage
 
 from base64 import b64decode

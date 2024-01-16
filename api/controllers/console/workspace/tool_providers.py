@@ -80,8 +80,6 @@ class ToolBuiltinProviderUpdateApi(Resource):
 
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
-    @login_required
-    @account_initialization_required
     def get(self, provider):
         icon_bytes, minetype = ToolManageService.get_builtin_tool_provider_icon(provider)
         return send_file(io.BytesIO(icon_bytes), mimetype=minetype)

@@ -13,7 +13,7 @@ from models.tools import ToolConversationVariables
 
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, \
     ToolRuntimeVariablePool, ToolParamter
-from core.tools.provider.tool import Tool
+from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.agent.agent.agent_llm_callback import AgentLLMCallback

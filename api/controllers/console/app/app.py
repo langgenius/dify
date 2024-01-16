@@ -16,10 +16,12 @@ from events.app_event import app_was_created, app_was_deleted
 from extensions.ext_database import db
 from fields.app_fields import (app_detail_fields, app_detail_fields_with_site, app_pagination_fields,
                                template_list_fields)
+from flask import current_app
 from flask_login import current_user
 from flask_restful import Resource, abort, inputs, marshal_with, reqparse
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
+from models.tools import ApiToolProvider
 from services.app_model_config_service import AppModelConfigService
 from werkzeug.exceptions import Forbidden
 
@@ -189,7 +191,7 @@ class AppListApi(Resource):
         app_was_created.send(app)
 
         return app, 201
-
+    
 
 class AppTemplateApi(Resource):
 

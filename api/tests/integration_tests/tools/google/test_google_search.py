@@ -1,7 +1,7 @@
 import pytest
 
 from core.tools.provider.builtin.google.google import GoogleProvider
-from core.tools.provider.tool import Tool
+from core.tools.tool.tool import Tool
 from core.tools.errors import ToolParamterValidationError
 
 def test_google_search():

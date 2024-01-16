@@ -3,8 +3,8 @@ from os import listdir, path
 
 from core.tools.entities.tool_entities import ToolInvokeMessage, ApiProviderAuthType, ToolProviderCredentials
 from core.tools.provider.tool_provider import ToolProviderController
-from core.tools.provider.builtin_tool import BuiltinTool
-from core.tools.provider.api_tool import ApiTool
+from core.tools.tool.builtin_tool import BuiltinTool
+from core.tools.tool.api_tool import ApiTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.common_entities import I18nObject

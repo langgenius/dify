@@ -1,4 +1,4 @@
-from core.tools.provider.tool import Tool
+from core.tools.tool.tool import Tool
 from core.tools.model.tool_model_manager import ToolModelManager
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.llm_entities import LLMResult

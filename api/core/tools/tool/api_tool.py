@@ -3,7 +3,7 @@ from json import dumps
 
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.provider.tool import Tool
+from core.tools.tool.tool import Tool
 from core.tools.errors import ToolProviderCredentialValidationError
 
 import httpx

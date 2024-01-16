@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 from core.tools.entities.tool_entities import ToolProviderType, ToolParamter, ToolParamterOption
-from core.tools.provider.tool import Tool
+from core.tools.tool.tool import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.provider.tool_provider import ToolProviderController
 
