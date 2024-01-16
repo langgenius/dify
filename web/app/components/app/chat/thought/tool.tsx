@@ -9,12 +9,43 @@ import Panel from './panel'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { DataSet as DataSetIcon } from '@/app/components/base/icons/src/public/thought'
+import type { Emoji } from '@/app/components/tools/types'
+import AppIcon from '@/app/components/base/app-icon'
+
 type Props = {
   payload: ToolThought
+  allToolIcons?: Record<string, string | Emoji>
+}
+
+const getIcon = (toolName: string, allToolIcons: Record<string, string | Emoji>) => {
+  if (toolName.startsWith('dataset-'))
+    return <DataSetIcon ></DataSetIcon>
+  const icon = allToolIcons[toolName]
+  if (!icon)
+    return null
+  return (
+    typeof icon === 'string'
+      ? (
+        <div
+          className='w-3 h-3 bg-cover bg-center'
+          style={{
+            backgroundImage: `url(${icon}?_token=${localStorage.getItem('console_token')})`,
+          }}
+        ></div>
+      )
+      : (
+        <AppIcon
+          size='xs'
+          icon={icon?.content}
+          background={icon?.background}
+        />
+      ))
 }
 
 const Tool: FC<Props> = ({
   payload,
+  allToolIcons = {},
 }) => {
   const { t } = useTranslation()
 
@@ -23,6 +54,7 @@ const Tool: FC<Props> = ({
   const isFinished = !!payload.output
   const output = payload.output
   const [isShowDetail, setIsShowDetail] = useState(false)
+  const icon = getIcon(toolName, allToolIcons) as any
   return (
     <div>
       <div className={cn(!isShowDetail && 'shadow-sm', !isShowDetail && 'inline-block', 'max-w-full overflow-x-auto bg-white rounded-md')}>
@@ -36,16 +68,17 @@ const Tool: FC<Props> = ({
             {!isFinished && (
               <Loading02 className='w-3 h-3 text-gray-500 animate-spin' />
             )}
-            {isFinished && isShowDetail && (
-              <CheckCircle className='w-3 h-3 text-[#12B76A]' />
-            )}
             {isFinished && !isShowDetail && (
               <CheckCircle className='w-3 h-3 text-[#12B76A]' />
             )}
+            {isFinished && isShowDetail && (
+              icon
+            )}
             <div className='ml-1 text-xs font-medium text-gray-700'>
-              <span className=' text-gray-500'>        {t(`tools.thought.${isFinished ? 'used' : 'using'}`)} {toolName}
-              </span>&nbsp;
-              {toolName}
+              <span className=' text-gray-500'>
+                {t(`tools.thought.${isFinished ? 'used' : 'using'}`)}
+              </span>
+              &nbsp;{toolName}
             </div>
           </div>
           <ChevronDown
@@ -62,7 +95,7 @@ const Tool: FC<Props> = ({
               <Panel
                 isRequest={false}
                 toolName={toolName}
-                content={output?.tool_input as string} />
+                content={output?.observation as string} />
             )}
           </div>
         )}

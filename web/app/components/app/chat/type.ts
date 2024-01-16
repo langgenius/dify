@@ -22,6 +22,7 @@ export type ThoughtItem = {
   thought: string
   tool_input: string
   message_id: string
+  observation: string
 }
 
 export type ToolThought = {

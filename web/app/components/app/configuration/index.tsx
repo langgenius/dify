@@ -48,6 +48,9 @@ import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { fetchCollectionList } from '@/service/tools'
+import { type Collection } from '@/app/components/tools/types'
+
 type PublichConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
@@ -150,6 +153,12 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
+  const [collectionList, setCollectionList] = useState<Collection[]>([])
+  useEffect(() => {
+    fetchCollectionList().then((list: any) => {
+      setCollectionList(list as Collection[])
+    })
+  }, [])
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
     reranking_model: {
@@ -580,6 +589,7 @@ const Configuration: FC = () => {
       isAdvancedMode,
       isAgent,
       isOpenAI,
+      collectionList,
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,

@@ -22,6 +22,7 @@ import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annota
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import type { Emoji } from '@/app/components/tools/types'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -58,6 +59,7 @@ export type IAnswerProps = {
   onAnnotationEdited?: (question: string, answer: string) => void
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string) => void
   onAnnotationRemoved?: () => void
+  allToolIcons?: Record<string, string | Emoji>
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -71,7 +73,6 @@ const Answer: FC<IAnswerProps> = ({
   thoughts,
   citation,
   isThinking,
-  dataSets,
   isShowCitation,
   isShowCitationHitInfo = false,
   supportAnnotation,
@@ -80,6 +81,7 @@ const Answer: FC<IAnswerProps> = ({
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
+  allToolIcons,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation } = item
   const hasAnnotation = !!annotation?.id
@@ -229,8 +231,7 @@ const Answer: FC<IAnswerProps> = ({
                 {(thoughts && thoughts.length > 0) && (
                   <Thought
                     list={thoughts || []}
-                    isThinking={isThinking}
-                    dataSets={dataSets}
+                    allToolIcons={allToolIcons || {}}
                   />
                 )}
                 {(isResponsing && !content)

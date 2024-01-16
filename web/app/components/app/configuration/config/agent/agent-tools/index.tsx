@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
@@ -16,7 +16,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import Switch from '@/app/components/base/switch'
 import ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
-import { fetchCollectionList } from '@/service/tools'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
 
@@ -24,8 +23,7 @@ type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const { modelConfig, setModelConfig } = useContext(ConfigContext)
-  const [collectionList, setCollectionList] = useState<Collection[]>([])
+  const { modelConfig, setModelConfig, collectionList } = useContext(ConfigContext)
 
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
@@ -38,12 +36,6 @@ const AgentTools: FC = () => {
       collection,
     }
   })
-
-  useEffect(() => {
-    fetchCollectionList().then((list: any) => {
-      setCollectionList(list as Collection[])
-    })
-  }, [])
 
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
@@ -116,7 +108,6 @@ const AgentTools: FC = () => {
                           icon={item.icon?.content}
                           background={item.icon?.background}
                         />
-
                       ))}
                 <div
                   title={item.tool_name}

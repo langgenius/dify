@@ -28,7 +28,6 @@ import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import Tool from '@/app/components/app/chat/thought/tool'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -46,6 +45,7 @@ const Debug: FC<IDebug> = ({
     appId,
     mode,
     isOpenAI,
+    collectionList,
     modelModeType,
     hasSetBlockStatus,
     isAdvancedMode,
@@ -539,34 +539,17 @@ const Debug: FC<IDebug> = ({
     }
   })
 
+  const allToolIcons = (() => {
+    const icons: Record<string, any> = {}
+    modelConfig.agentConfig.tools?.forEach((item: any) => {
+      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+    })
+    return icons
+  })()
+
   return (
     <>
       <div className="shrink-0">
-        <div className='space-y-2'>
-          <Tool
-            payload={{
-              input: {
-                id: '1',
-                tool: 'xxx',
-                tool_input: 'aaaa',
-              },
-              output: {
-                id: '1',
-                tool: 'xxx',
-                tool_input: 'aaaa',
-              },
-            } as any}
-          />
-          <Tool
-            payload={{
-              input: {
-                id: '1',
-                tool: 'dfdfdff',
-                tool_input: 'aaaa',
-              },
-            } as any}
-          />
-        </div>
         <div className='flex items-center justify-between mb-2'>
           <div className='h2 '>{t('appDebug.inputs.title')}</div>
           {mode === 'chat' && (
@@ -621,6 +604,7 @@ const Debug: FC<IDebug> = ({
                   supportAnnotation
                   appId={appId}
                   onChatListChange={setChatList}
+                  allToolIcons={allToolIcons}
                 />
               </div>
             </div>
