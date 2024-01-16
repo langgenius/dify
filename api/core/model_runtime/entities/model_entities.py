@@ -149,8 +149,8 @@ class ParameterRule(BaseModel):
     help: Optional[I18nObject] = None
     required: bool = False
     default: Optional[Any] = None
-    min: Optional[float | int] = None
-    max: Optional[float | int] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
     precision: Optional[int] = None
     options: list[str] = []
 

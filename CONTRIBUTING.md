@@ -84,13 +84,13 @@ Check the [installation FAQ](https://docs.dify.ai/getting-started/faq/install-fa
 
 ### 5. Visit dify in your browser
 
-You should now be able to visit [http://localhost:3000](http://localhost:3000) (the default, or your self-configured URL and port) and see Dify up and running. 
+To validate your set up, head over to [http://localhost:3000](http://localhost:3000) (the default, or your self-configured URL and port) in your browser. You should now see Dify up and running. 
 
 ## Developing
 
 If you are adding a model provider, [this guide](https://github.com/langgenius/dify/blob/main/api/core/model_runtime/README.md) is for you.
 
-To help you quickly navigate where your contribution fits, here's a breakdown of Dify's backend and frontend architecture.
+To help you quickly navigate where your contribution fits, a brief, annotated outline of Dify's backend & frontend is as follows:
 
 ### Backend
 
@@ -146,7 +146,7 @@ The website is bootstrapped on [Next.js](https://nextjs.org/) boilerplate in Typ
 
 ## Submitting your PR
 
-At last, time to open a pull request (PR) to our repo 🎉. If you run into issues like merge conflicts or don't know how to open a pull request, check out [GitHub's pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests). 
+At last, time to open a pull request (PR) to our repo. For major features, we first merge them into the `deploy/dev` branch for testing, before they go into the `main` branch. If you run into issues like merge conflicts or don't know how to open a pull request, check out [GitHub's pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests). 
 
 And that's it! Once your PR is merged, you will be featured as a contributor in our [README](https://github.com/langgenius/dify/blob/main/README.md).
 

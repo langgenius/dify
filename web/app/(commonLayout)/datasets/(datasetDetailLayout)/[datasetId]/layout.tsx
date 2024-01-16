@@ -55,8 +55,8 @@ const LikedItem = ({
   isMobile,
 }: ILikedItemProps) => {
   return (
-    <Link className={classNames(s.itemWrapper, 'px-0 sm:px-3 justify-center sm:justify-start')} href={`/app/${detail?.id}/overview`}>
-      <div className={classNames(s.iconWrapper, 'mr-0 sm:mr-2')}>
+    <Link className={classNames(s.itemWrapper, 'px-0', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
+      <div className={classNames(s.iconWrapper, 'mr-0')}>
         <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background}/>
         {type === 'app' && (
           <div className={s.statusPoint}>
@@ -64,7 +64,7 @@ const LikedItem = ({
           </div>
         )}
       </div>
-      {!isMobile && <div className={s.appInfo}>{detail?.name || '--'}</div>}
+      {!isMobile && <div className={classNames(s.appInfo, 'ml-2')}>{detail?.name || '--'}</div>}
     </Link>
   )
 }
@@ -197,14 +197,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return <Loading />
 
   return (
-    <div className='flex overflow-hidden'>
+    <div className='grow flex overflow-hidden'>
       {!hideSideBar && <AppSideBar
         title={datasetRes?.name || '--'}
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
         icon_background={datasetRes?.icon_background || '#F5F5F5'}
         desc={datasetRes?.description || '--'}
         navigation={navigation}
-        extraInfo={<ExtraInfo isMobile={isMobile} relatedApps={relatedApps} />}
+        extraInfo={mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} />}
         iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
       />}
       <DatasetDetailContext.Provider value={{
