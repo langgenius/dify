@@ -94,8 +94,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         """
         model_schema = self.get_model_schema(model, credentials)
 
-        if model_schema and ModelPropertyKey.VOICE in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.VOICE]
+        if model_schema and ModelPropertyKey.DEFAULT_VOICE in model_schema.model_properties:
+            return model_schema.model_properties[ModelPropertyKey.DEFAULT_VOICE]
 
     def _get_model_audio_type(self, model: str, credentials: dict) -> str:
         """
