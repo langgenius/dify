@@ -313,7 +313,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             elif 'pdf' in message.mimetype:
                 file_type = 'pdf'
             elif 'zip' in message.mimetype:
-                file_type = 'zip'
+                file_type = 'archive'
             # ...
 
             invoke_from = self.application_generate_entity.invoke_from
