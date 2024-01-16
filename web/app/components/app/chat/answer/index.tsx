@@ -23,6 +23,7 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import type { Emoji } from '@/app/components/tools/types'
+import type { File } from '@/types/app'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -46,6 +47,7 @@ export type IAnswerProps = {
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIcon?: ReactNode
+  files?: File[]
   thoughts?: ThoughtItem[]
   citation?: CitationItem[]
   isThinking?: boolean
@@ -70,6 +72,7 @@ const Answer: FC<IAnswerProps> = ({
   displayScene = 'web',
   isResponsing,
   answerIcon,
+  files = [],
   thoughts,
   citation,
   isThinking,
@@ -94,6 +97,7 @@ const Answer: FC<IAnswerProps> = ({
   const { t } = useTranslation()
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
+  const imgs = files.filter(file => file.type === 'image')
 
   /**
  * Render feedback results (distinguish between users and administrators)
@@ -233,6 +237,13 @@ const Answer: FC<IAnswerProps> = ({
                     list={thoughts || []}
                     allToolIcons={allToolIcons || {}}
                   />
+                )}
+                {imgs.length > 0 && (
+                  <>
+                    {imgs.map((img, index) => (
+                      <img src={img.url} key={index} className='mb-2 w-full h-auto' />
+                    ))}
+                  </>
                 )}
                 {(isResponsing && !content)
                   ? (

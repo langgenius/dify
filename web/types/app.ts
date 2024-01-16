@@ -335,6 +335,11 @@ export type ImageFile = {
   deleted?: boolean
 }
 
+export type File = {
+  type: string // 'image'
+  url: string
+}
+
 export type VisionFile = {
   id?: string
   type: string

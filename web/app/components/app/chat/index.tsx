@@ -214,6 +214,7 @@ const Chat: FC<IChatProps> = ({
               isResponsing={isResponsing && isLast}
               answerIcon={answerIcon}
               thoughts={thoughts}
+              files={item.files}
               citation={citation}
               isThinking={isThinking}
               dataSets={dataSets}

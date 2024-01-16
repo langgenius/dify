@@ -1,5 +1,6 @@
 import type { Annotation, MessageRating } from '@/models/log'
-import type { VisionFile } from '@/types/app'
+import type { File, VisionFile } from '@/types/app'
+
 export type MessageMore = {
   time: string
   tokens: number
@@ -49,6 +50,7 @@ export type IChatItem = {
   id: string
   content: string
   agent_thoughts?: ThoughtItem[]
+  files?: File[]
   citation?: CitationItem[]
   /**
    * Specific message type

@@ -1,5 +1,5 @@
 import { get, post, ssePost } from './base'
-import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { ModelModeType } from '@/types/app'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -9,9 +9,10 @@ export type AutomaticRes = {
   opening_statement: string
 }
 
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onError, getAbortController, onMessageEnd, onMessageReplace }: {
+export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
   onData: IOnData
   onCompleted: IOnCompleted
+  onFile: IOnFile
   onThought: IOnThought
   onMessageEnd: IOnMessageEnd
   onMessageReplace: IOnMessageReplace
@@ -23,7 +24,7 @@ export const sendChatMessage = async (appId: string, body: Record<string, any>, 
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onThought, onError, getAbortController, onMessageEnd, onMessageReplace })
+  }, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
