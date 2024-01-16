@@ -420,7 +420,14 @@ const Configuration: FC = () => {
           sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
-          agentConfig: modelConfig.agent_mode || DEFAULT_AGENT_SETTING,
+          // eslint-disable-next-line multiline-ternary
+          agentConfig: modelConfig.agent_mode ? {
+            ...modelConfig.agent_mode,
+            // remove dataset
+            tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
+              return !tool.dataset
+            }),
+          } : DEFAULT_AGENT_SETTING,
         },
         completionParams: model.completion_params,
       }
