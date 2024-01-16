@@ -147,7 +147,10 @@ class BaseAssistantApplicationRunner(AppRunner):
                 # get tool parameter from form
                 tool_parameter_config = tool.tool_parameters.get(parameter.name)
                 if not tool_parameter_config:
-                    raise ValueError(f"tool parameter {parameter.name} not found in tool config")
+                    # get default value
+                    tool_parameter_config = parameter.default
+                    if not tool_parameter_config:
+                        raise ValueError(f"tool parameter {parameter.name} not found in tool config")
                 
                 if parameter.type == ToolParamter.ToolParameterType.SELECT:
                     # check if tool_parameter_config in options
@@ -173,6 +176,44 @@ class BaseAssistantApplicationRunner(AppRunner):
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
 
         return message_tool, tool_entity
+    
+    def update_prompt_message_tool(self, tool: Tool, prompt_tool: PromptMessageTool) -> PromptMessageTool:
+        """
+        update prompt message tool
+        """
+        # try to get tool runtime parameters
+        tool_runtime_parameters = tool.get_runtime_parameters()
+
+        for parameter in tool_runtime_parameters:
+            parameter_type = 'string'
+            enum = []
+            if parameter.type == ToolParamter.ToolParameterType.STRING:
+                parameter_type = 'string'
+            elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+                parameter_type = 'boolean'
+            elif parameter.type == ToolParamter.ToolParameterType.NUMBER:
+                parameter_type = 'number'
+            elif parameter.type == ToolParamter.ToolParameterType.SELECT:
+                for option in parameter.options:
+                    enum.append(option.value)
+                parameter_type = 'string'
+            else:
+                raise ValueError(f"parameter type {parameter.type} is not supported")
+        
+            if parameter.form == ToolParamter.ToolParameterForm.LLM:
+                prompt_tool.parameters['properties'][parameter.name] = {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or '',
+                }
+
+                if len(enum) > 0:
+                    prompt_tool.parameters['properties'][parameter.name]['enum'] = enum
+
+                if parameter.required:
+                    if parameter.name not in prompt_tool.parameters['required']:
+                        prompt_tool.parameters['required'].append(parameter.name)
+
+        return prompt_tool
     
     def extract_tool_response_binary(self, tool_response: List[ToolInvokeMessage]) -> List[ToolInvokeMessageBinary]:
         """

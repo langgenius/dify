@@ -114,6 +114,16 @@ class Tool(BaseModel, ABC):
         """
         pass
 
+    def get_runtime_parameters(self) -> List[ToolParamter]:
+        """
+            get the runtime parameters
+
+            interface for developer to dynamic change the parameters of a tool depends on the variables pool
+
+            :return: the runtime parameters
+        """
+        return self.parameters
+
     def create_image_message(self, image: str, save_as_variable: bool = False) -> ToolInvokeMessage:
         """
             create an image message

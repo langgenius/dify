@@ -46,6 +46,16 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         prompt_messages = self.history_prompt_messages
 
+        # convert tools into ModelRuntime Tool format
+        prompt_messages_tools: PromptMessageTool = []
+        tool_instances = {}
+        for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
+            prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
+            # save tool entity
+            tool_instances[tool.tool_name] = tool_entity
+            # save prompt tool
+            prompt_messages_tools.append(prompt_tool)
+
         function_call_state = True
         agent_thoughts: List[MessageAgentThought] = []
         llm_usage = {
@@ -65,17 +75,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         while function_call_state and iteration_step <= max_iteration_steps:
             # continue to run until there is not any tool call
-            
             function_call_state = False
-            # convert tools into ModelRuntime Tool format
-            prompt_messages_tools = []
-            tool_instances = {}
-            for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
-                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
-                # save tool entity
-                tool_instances[tool.tool_name] = tool_entity
-                # save prompt tool
-                prompt_messages_tools.append(prompt_tool)
 
             # update prompt messages
             prompt_messages = self._originze_cot_prompt_messages(
@@ -197,6 +197,10 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             answer=''
                         )
                         self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+
+                # update prompt tool message
+                for prompt_tool in prompt_messages_tools:
+                    self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
 

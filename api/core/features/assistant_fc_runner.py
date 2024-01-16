@@ -4,7 +4,7 @@ import logging
 from typing import Union, Generator, Dict, Any, Tuple, List
 
 from core.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage,\
-      SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage
+      SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage, PromptMessageTool
 from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult, LLMUsage
 from core.model_manager import ModelInstance
 from core.application_queue_manager import PublishFrom
@@ -38,6 +38,16 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             prompt_messages=prompt_messages
         )
 
+        # convert tools into ModelRuntime Tool format
+        prompt_messages_tools: List[PromptMessageTool] = []
+        tool_instances = {}
+        for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
+            prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
+            # save tool entity
+            tool_instances[tool.tool_name] = tool_entity
+            # save prompt tool
+            prompt_messages_tools.append(prompt_tool)
+
         iteration_step = 1
         max_iteration_steps = min(app_orchestration_config.agent.max_iteration, 5)
 
@@ -61,16 +71,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
-
-            # convert tools into ModelRuntime Tool format
-            prompt_messages_tools = []
-            tool_instances = {}
-            for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
-                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
-                # save tool entity
-                tool_instances[tool.tool_name] = tool_entity
-                # save prompt tool
-                prompt_messages_tools.append(prompt_tool)
 
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
@@ -223,6 +223,10 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     tool_response=tool_response['tool_response'],
                     prompt_messages=prompt_messages,
                 )
+            
+            # update prompt tool
+            for prompt_tool in prompt_messages_tools:
+                self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
 

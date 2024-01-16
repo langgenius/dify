@@ -37,6 +37,52 @@ message_fields = {
     'created_at': TimestampField
 }
 
+feedback_fields = {
+    'rating': fields.String
+}
+
+agent_thought_fields = {
+    'id': fields.String,
+    'chain_id': fields.String,
+    'message_id': fields.String,
+    'position': fields.Integer,
+    'thought': fields.String,
+    'tool': fields.String,
+    'tool_input': fields.String,
+    'created_at': TimestampField
+}
+
+retriever_resource_fields = {
+    'id': fields.String,
+    'message_id': fields.String,
+    'position': fields.Integer,
+    'dataset_id': fields.String,
+    'dataset_name': fields.String,
+    'document_id': fields.String,
+    'document_name': fields.String,
+    'data_source_type': fields.String,
+    'segment_id': fields.String,
+    'score': fields.Float,
+    'hit_count': fields.Integer,
+    'word_count': fields.Integer,
+    'segment_position': fields.Integer,
+    'index_node_hash': fields.String,
+    'content': fields.String,
+    'created_at': TimestampField
+}
+
+message_fields = {
+    'id': fields.String,
+    'conversation_id': fields.String,
+    'inputs': fields.Raw,
+    'query': fields.String,
+    'answer': fields.String,
+    'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
+    'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
+    'created_at': TimestampField,
+    'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
+}
+
 message_infinite_scroll_pagination_fields = {
     'limit': fields.Integer,
     'has_more': fields.Boolean,
