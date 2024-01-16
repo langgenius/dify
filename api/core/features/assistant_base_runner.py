@@ -169,13 +169,35 @@ class BaseAssistantApplicationRunner(AppRunner):
                     tool_parameter_config = parameter.default
                     if not tool_parameter_config:
                         raise ValueError(f"tool parameter {parameter.name} not found in tool config")
-                
+                    
                 if parameter.type == ToolParamter.ToolParameterType.SELECT:
                     # check if tool_parameter_config in options
                     options = list(map(lambda x: x.value, parameter.options))
                     if tool_parameter_config not in options:
                         raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
                     
+                # convert tool parameter config to correct type
+                try:
+                    if parameter.type == ToolParamter.ToolParameterType.NUMBER:
+                        # check if tool parameter is integer
+                        if isinstance(tool_parameter_config, int):
+                            tool_parameter_config = tool_parameter_config
+                        elif isinstance(tool_parameter_config, float):
+                            tool_parameter_config = tool_parameter_config
+                        elif isinstance(tool_parameter_config, str):
+                            if '.' in tool_parameter_config:
+                                tool_parameter_config = float(tool_parameter_config)
+                            else:
+                                tool_parameter_config = int(tool_parameter_config)
+                    elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+                        tool_parameter_config = bool(tool_parameter_config)
+                    elif parameter.type not in [ToolParamter.ToolParameterType.SELECT, ToolParamter.ToolParameterType.STRING]:
+                        tool_parameter_config = str(tool_parameter_config)
+                    elif parameter.type == ToolParamter.ToolParameterType:
+                        tool_parameter_config = str(tool_parameter_config)
+                except Exception as e:
+                    raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} is not correct type")
+                
                 # save tool parameter to tool entity memory
                 runtime_parameters[parameter.name] = tool_parameter_config
             
