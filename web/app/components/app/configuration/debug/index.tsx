@@ -367,7 +367,6 @@ const Debug: FC<IDebug> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        console.log(thought)
         // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
         responseItem.id = thought.message_id;
         (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]

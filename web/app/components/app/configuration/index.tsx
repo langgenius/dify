@@ -422,6 +422,7 @@ const Configuration: FC = () => {
           dataSets: datasets || [],
           // eslint-disable-next-line multiline-ternary
           agentConfig: modelConfig.agent_mode ? {
+            max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             ...modelConfig.agent_mode,
             // remove dataset
             tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
