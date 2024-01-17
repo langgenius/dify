@@ -202,7 +202,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3">{item.operation_id}</td>
                           <td className="p-2 pl-3 text-gray-500 w-[236px]">{item.summary}</td>
                           <td className="p-2 pl-3">{item.method}</td>
-                          <td className="p-2 pl-3">{item.server_url ? item.server_url.split('/').slice(1).join('/') : ''}</td>
+                          <td className="p-2 pl-3">{item.server_url ? new URL(item.server_url).pathname : ''}</td>
                           <td className="p-2 pl-3 w-[54px]">
                             <Button
                               className='!h-6 !px-2 text-xs font-medium text-gray-700'
