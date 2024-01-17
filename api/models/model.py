@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from core.file.upload_file_parser import UploadFileParser
 from core.file.tool_file_parser import ToolFileParser
@@ -6,7 +7,7 @@ from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import UserMixin
 from libs.helper import generate_string
-from sqlalchemy import Float
+from sqlalchemy import Float, text
 from sqlalchemy.dialects.postgresql import UUID
 
 from .account import Account, Tenant
@@ -79,6 +80,53 @@ class App(db.Model):
             and self.app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
             return True
         return False
+    
+    @property
+    def deleted_tools(self) -> list:
+        # get agent mode tools
+        app_model_config = self.app_model_config
+        if not app_model_config:
+            return []
+        if not app_model_config.agent_mode:
+            return []
+        agent_mode = app_model_config.agent_mode_dict
+        tools = agent_mode.get('tools', [])
+        
+        provider_ids = []
+
+        for tool in tools:
+            keys = list(tool.keys())
+            if len(keys) >= 4:
+                provider_type = tool.get('provider_type', '')
+                provider_id = tool.get('provider_id', '')
+                if provider_type == 'api':
+                    # check if provider id is a uuid string, if not, skip
+                    try:
+                        uuid.UUID(provider_id)
+                    except Exception:
+                        continue
+                    provider_ids.append(provider_id)
+
+        if not provider_ids:
+            return []
+
+        api_providers = db.session.execute(
+            text('SELECT id FROM tool_api_providers WHERE id IN :provider_ids'),
+            {'provider_ids': tuple(provider_ids)}
+        ).fetchall()
+
+        deleted_tools = []
+        current_api_provider_ids = [str(api_provider.id) for api_provider in api_providers]
+
+        for tool in tools:
+            keys = list(tool.keys())
+            if len(keys) >= 4:
+                provider_type = tool.get('provider_type', '')
+                provider_id = tool.get('provider_id', '')
+                if provider_type == 'api' and provider_id not in current_api_provider_ids:
+                    deleted_tools.append(tool['tool_name'])
+
+        return deleted_tools
 
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'

@@ -126,7 +126,8 @@ app_detail_fields_with_site = {
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
     'site': fields.Nested(site_fields),
     'api_base_url': fields.String,
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'deleted_tools': fields.List(fields.String),
 }
 
 app_site_fields = {
