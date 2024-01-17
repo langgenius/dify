@@ -18,6 +18,7 @@ import Header from '@/app/components/share/header'
 import {
   delConversation,
   fetchAppInfo,
+  fetchAppMeta,
   fetchAppParams,
   fetchChatList,
   fetchConversations,
@@ -29,7 +30,7 @@ import {
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
-import type { ConversationItem, SiteInfo } from '@/models/share'
+import type { AppMeta, ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -73,6 +74,7 @@ const Main: FC<IMainProps> = ({
   const [plan, setPlan] = useState<string>('basic') // basic/plus/pro
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [customConfig, setCustomConfig] = useState<any>(null)
+  const [appMeta, setAppMeta] = useState<AppMeta | null>(null)
   // in mobile, show sidebar by click button
   const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
@@ -357,7 +359,7 @@ const Main: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchAppMeta(isInstalledApp, installedAppInfo?.id)])
   }
 
   const { data: fileUploadConfigResponse } = useSWR(isInstalledApp ? { url: '/files/upload' } : null, fetchFileUploadConfig)
@@ -366,7 +368,8 @@ const Main: FC<IMainProps> = ({
   useEffect(() => {
     (async () => {
       try {
-        const [appData, conversationData, appParams]: any = await fetchInitData()
+        const [appData, conversationData, appParams, appMeta]: any = await fetchInitData()
+        setAppMeta(appMeta)
         const { app_id: appId, site: siteInfo, plan, can_replace_logo, custom_config }: any = appData
         setAppId(appId)
         setPlan(plan)
@@ -472,7 +475,6 @@ const Main: FC<IMainProps> = ({
     transfer_methods: [TransferMethod.local_file],
   })
 
-  const allToolIcons = {}
   const handleSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -819,7 +821,7 @@ const Main: FC<IMainProps> = ({
                       ...visionConfig,
                       image_file_size_limit: fileUploadConfigResponse ? fileUploadConfigResponse.image_file_size_limit : visionConfig.image_file_size_limit,
                     }}
-                    allToolIcons={allToolIcons}
+                    allToolIcons={appMeta?.tool_icons || {}}
                   />
                 </div>
               </div>)

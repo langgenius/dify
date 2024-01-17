@@ -100,6 +100,10 @@ export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '
   return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId))
 }
 
+export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {
+  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId))
+}
+
 export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('post', isInstalledApp))(getUrl(url, isInstalledApp, installedAppId), { body })
 }
