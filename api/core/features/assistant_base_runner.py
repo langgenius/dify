@@ -28,6 +28,7 @@ from core.entities.application_entities import ModelConfigEntity, \
     AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.file.message_file_parser import FileTransferMethod
 
 logger = logging.getLogger(__name__)
 
@@ -343,7 +344,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             message_file = MessageFile(
                 message_id=self.message.id,
                 type=file_type,
-                transfer_method='remote_file',
+                transfer_method=FileTransferMethod.TOOL_FILE.value,
                 belongs_to='assistant',
                 url=message.url,
                 upload_file_id=None,

@@ -162,3 +162,7 @@ class ToolFileManager:
         generator = storage.load_stream(tool_file.file_key)
 
         return generator, tool_file.mimetype
+    
+# init tool_file_parser
+from core.file.tool_file_parser import tool_file_manager
+tool_file_manager['manager'] = ToolFileManager

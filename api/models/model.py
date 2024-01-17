@@ -1,6 +1,7 @@
 import json
 
 from core.file.upload_file_parser import UploadFileParser
+from core.file.tool_file_parser import ToolFileParser
 from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import UserMixin
@@ -593,11 +594,22 @@ class Message(db.Model):
                         upload_file=upload_file,
                         force_url=True
                     )
+                if message_file.transfer_method == 'tool_file':
+                    # get extension
+                    if '.' in message_file.url:
+                        extension = f'.{message_file.url.split(".")[-1]}'
+                        if len(extension) > 10:
+                            extension = '.bin'
+                    else:
+                        extension = '.bin'
+                    # add sign url
+                    url = ToolFileParser.get_tool_file_manager().sign_file(file_id=message_file.id, extension=extension)
 
             files.append({
                 'id': message_file.id,
                 'type': message_file.type,
-                'url': url
+                'url': url,
+                'belongs_to': message_file.belongs_to if message_file.belongs_to else 'user'
             })
 
         return files

@@ -49,7 +49,8 @@ agent_thought_fields = {
     'thought': fields.String,
     'tool': fields.String,
     'tool_input': fields.String,
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'observation': fields.String
 }
 
 retriever_resource_fields = {
