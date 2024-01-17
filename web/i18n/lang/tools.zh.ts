@@ -67,6 +67,15 @@ const translation = {
     requestTitle: '请求来自',
     responseTitle: '响应来自',
   },
+  setBuiltInTools: {
+    info: '信息',
+    setting: '设置',
+    toolDescription: '工具描述',
+    parameters: '参数',
+    string: '字符串',
+    number: '数字',
+    required: '必填',
+  },
 }
 
 export default translation
