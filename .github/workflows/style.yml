@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - deploy/dev
 
 concurrency:
   group: dep-${{ github.head_ref || github.run_id }}

@@ -23,6 +23,9 @@ export const languageMaps = {
   'zh-Hans': 'zh_Hans'
 }
 
+export const MODEL_PROVIDER_QUOTA_GET_FREE = ['minimax', 'spark', 'zhipuai']
+export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai']
+
 export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
 
 export const isNullOrUndefined = (value: any) => {
