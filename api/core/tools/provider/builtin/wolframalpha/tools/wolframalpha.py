@@ -1,9 +1,8 @@
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError, ToolInvokeError
-from core.model_runtime.entities.message_entities import PromptMessage
 
-from typing import Any, Dict, List, Union, Optional, Tuple
+from typing import Any, Dict, List, Union
 
 from httpx import get
 

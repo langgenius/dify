@@ -2,10 +2,8 @@ from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
 from core.tools.provider.builtin.webscraper.tools.web_reader_tool import get_url
-from core.tools.model.tool_model_manager import ToolModelManager
-from core.tools.model.entities import ToolModelConfig
 
-from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
 from typing import Any, Dict, List, Union
 

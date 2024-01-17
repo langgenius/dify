@@ -1,10 +1,9 @@
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.model_runtime.entities.message_entities import PromptMessage
 
 from pydantic import BaseModel, Field
 
-from typing import Any, Dict, List, Union, Optional, Tuple
+from typing import Any, Dict, List, Union
 
 from langchain import WikipediaAPIWrapper
 from langchain.tools import WikipediaQueryRun

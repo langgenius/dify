@@ -1,8 +1,7 @@
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.model_runtime.entities.message_entities import PromptMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-from typing import Any, Dict, List, Union, Optional, Tuple
+from typing import Any, Dict, List, Union
 
 import datetime
 
