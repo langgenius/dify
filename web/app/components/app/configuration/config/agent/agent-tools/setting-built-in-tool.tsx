@@ -64,9 +64,13 @@ const SettingBuiltInTool: FC<Props> = ({
     })()
   }, [collection?.name])
 
+  useEffect(() => {
+    setCurrType((!readonly && hasSetting) ? 'setting' : 'info')
+  }, [hasSetting])
+
   const isValid = (() => {
     let valid = true
-    formSchemas.forEach((item: any) => {
+    settingSchemas.forEach((item: any) => {
       if (item.required && !tempSetting[item.name])
         valid = false
     })
