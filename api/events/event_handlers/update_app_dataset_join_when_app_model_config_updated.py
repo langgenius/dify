@@ -53,10 +53,7 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set:
     if agent_mode.get('enabled') is False:
         return dataset_ids
 
-    if not agent_mode.get('tools'):
-        return dataset_ids
-
-    tools = agent_mode.get('tools')
+    tools = agent_mode.get('tools', []) or []
     for tool in tools:
         tool_type = list(tool.keys())[0]
         tool_config = list(tool.values())[0]
