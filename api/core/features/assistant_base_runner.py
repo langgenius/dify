@@ -115,7 +115,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}."
+                result += f"result link: {response.message}. please dirct user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
                 result += f"image has been created and sent to user already, you should tell user to check it now."
@@ -306,12 +306,13 @@ class BaseAssistantApplicationRunner(AppRunner):
                 ))
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 # check if there is a mime type in meta
-                if 'mime_type' in response.meta:
+                if response.meta and 'mime_type' in response.meta:
                     result.append(ToolInvokeMessageBinary(
-                        mimetype=response.meta.get('mime_type', 'octet/stream'),
+                        mimetype=response.meta.get('mime_type', 'octet/stream') if response.meta else 'octet/stream',
                         url=response.message,
                         save_as_variable=response.save_as_variable,
                     ))
+
         return result
     
     def create_message_files(self, messages: List[ToolInvokeMessageBinary]) -> List[Tuple[MessageFile, bool]]:
