@@ -11,6 +11,7 @@ import uuid
 
 import click
 import qdrant_client
+from constants.languages import user_input_form_template
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.index import IndexBuilder
 from core.model_manager import ModelManager
@@ -583,28 +584,6 @@ def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count:
 @click.option("--batch-size", default=500, help="Number of records to migrate in each batch.")
 def update_app_model_configs(batch_size):
     pre_prompt_template = '{{default_input}}'
-    user_input_form_template = {
-        "en-US": [
-            {
-                "paragraph": {
-                    "label": "Query",
-                    "variable": "default_input",
-                    "required": False,
-                    "default": ""
-                }
-            }
-        ],
-        "zh-Hans": [
-            {
-                "paragraph": {
-                    "label": "查询内容",
-                    "variable": "default_input",
-                    "required": False,
-                    "default": ""
-                }
-            }
-        ]
-    }
 
     click.secho("Start migrate old data that the text generator can support paragraph variable.", fg='green')
 

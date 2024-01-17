@@ -5,7 +5,7 @@ import click
 from celery import shared_task
 from extensions.ext_mail import mail
 from flask import current_app, render_template
-
+from constants.languages import languages
 
 @shared_task(queue='mail')
 def send_invite_member_mail_task(language: str, to: str, token: str, inviter_name: str, workspace_name: str):
