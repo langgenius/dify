@@ -14,7 +14,7 @@ import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
 import DebugWithMultipleModel from './debug-with-multiple-model'
 import type { ModelAndParameter } from './types'
-import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -60,6 +60,8 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
+    isOpenAI,
+    collectionList,
     modelModeType,
     hasSetBlockStatus,
     isAdvancedMode,
@@ -242,8 +244,8 @@ const Debug: FC<IDebug> = ({
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
       agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
+        ...modelConfig.agentConfig,
+        strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelConfig.provider,
@@ -251,7 +253,12 @@ const Debug: FC<IDebug> = ({
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },
@@ -305,6 +312,8 @@ const Debug: FC<IDebug> = ({
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
+      files: [],
       isAnswer: true,
     }
 
@@ -373,6 +382,36 @@ const Debug: FC<IDebug> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+      },
+      onFile(file) {
+        responseItem.files = [...(responseItem as any).files, file]
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
+      onThought(thought) {
+        // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
+        responseItem.id = thought.message_id;
+        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
+        // has switched to other conversation
+
+        // if (prevTempNewConversationId !== getCurrConversationId()) {
+        //   setIsResponsingConCurrCon(false)
+        //   return
+        // }
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
@@ -465,17 +504,22 @@ const Debug: FC<IDebug> = ({
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
       more_like_this: moreLikeThisConfig,
-      agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
-      },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      agent_mode: {
+        enabled: false,
+        tools: [],
+      },
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },
@@ -603,9 +647,16 @@ const Debug: FC<IDebug> = ({
     }
   }
 
-  // useEffect(() => {
-  //   handleVisionConfigInMultipleModel()
-  // }, [multipleModelConfigs])
+  useEffect(() => {
+    handleVisionConfigInMultipleModel()
+  }, [multipleModelConfigs])
+  const allToolIcons = (() => {
+    const icons: Record<string, any> = {}
+    modelConfig.agentConfig.tools?.forEach((item: any) => {
+      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+    })
+    return icons
+  })()
 
   return (
     <>
@@ -711,6 +762,7 @@ const Debug: FC<IDebug> = ({
                       supportAnnotation
                       appId={appId}
                       onChatListChange={setChatList}
+                      allToolIcons={allToolIcons}
                     />
                   </div>
                 </div>

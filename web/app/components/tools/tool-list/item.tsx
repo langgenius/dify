@@ -54,7 +54,7 @@ const Item: FC<Props> = ({
           </div>
         </div>
         {!isToolNumMax && onAdd && (
-          <Button className='flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
+          <Button className='shrink-0 flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
         )}
 
       </div>
@@ -69,14 +69,15 @@ const Item: FC<Props> = ({
               {typeof collection.icon === 'string'
                 ? (
                   <div
-                    className='w-6 h-6 bg-cover bg-center'
+                    className='w-6 h-6 bg-cover bg-center rounded-md'
                     style={{
-                      backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
+                      backgroundImage: `url(${collection.icon})`,
                     }}
                   ></div>
                 )
                 : (
                   <AppIcon
+                    className='rounded-md'
                     size='tiny'
                     innerIcon={(collection.icon as any).content}
                     background={(collection.icon as any).content}

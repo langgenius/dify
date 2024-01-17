@@ -1450,7 +1450,7 @@ class Qdrant(VectorStore):
                 wal_config=wal_config,
                 quantization_config=quantization_config,
                 init_from=init_from,
-                timeout=timeout,  # type: ignore[arg-type]
+                timeout=int(timeout),  # type: ignore[arg-type]
             )
             is_new_collection = True
         if force_recreate:

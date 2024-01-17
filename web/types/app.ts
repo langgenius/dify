@@ -97,7 +97,7 @@ export type AgentTool = {
   provider_name: string
   tool_name: string
   tool_parameters: Record<string, any>
-  enable: boolean
+  enabled: boolean
 }
 
 export type ToolItem = {
@@ -146,15 +146,9 @@ export type ModelConfig = {
   }
   external_data_tools: ExternalDataTool[]
   annotation_reply?: AnnotationReplyConfig
-  datasets: {
-    datasets: {
-      enabled: boolean
-      id: string
-    }[]
-  }
   agent_mode: {
     enabled: boolean
-    strategy: AgentStrategy
+    strategy?: AgentStrategy
     tools: ToolItem[]
   }
   model: {
@@ -339,6 +333,11 @@ export type ImageFile = {
   url: string
   base64Url?: string
   deleted?: boolean
+}
+
+export type File = {
+  type: string // 'image'
+  url: string
 }
 
 export type VisionFile = {

@@ -227,7 +227,7 @@ const translation = {
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
   },
-  chatSubTitle: 'Pre Prompt',
+  chatSubTitle: 'Instructions',
   completionSubTitle: 'Prefix Prompt',
   promptTip:
     'Prompts guide AI responses with instructions and constraints. Insert variables like {{input}}. This prompt won\'t be visible to users.',

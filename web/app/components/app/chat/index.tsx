@@ -25,6 +25,7 @@ import ImageList from '@/app/components/base/image-uploader/image-list'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { useClipboardUploader, useDraggableUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
 import type { Annotation } from '@/models/log'
+import type { Emoji } from '@/app/components/tools/types'
 
 export type IChatProps = {
   appId?: string
@@ -62,6 +63,7 @@ export type IChatProps = {
   isShowPromptLog?: boolean
   visionConfig?: VisionSettings
   supportAnnotation?: boolean
+  allToolIcons?: Record<string, string | Emoji>
 }
 
 const Chat: FC<IChatProps> = ({
@@ -94,6 +96,7 @@ const Chat: FC<IChatProps> = ({
   appId,
   supportAnnotation,
   onChatListChange,
+  allToolIcons,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -211,6 +214,7 @@ const Chat: FC<IChatProps> = ({
               isResponsing={isResponsing && isLast}
               answerIcon={answerIcon}
               thoughts={thoughts}
+              files={item.files}
               citation={citation}
               isThinking={isThinking}
               dataSets={dataSets}
@@ -285,7 +289,7 @@ const Chat: FC<IChatProps> = ({
                   return item
                 }))
               }}
-
+              allToolIcons={allToolIcons}
             />
           }
           return (

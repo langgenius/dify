@@ -55,7 +55,7 @@ const ChooseTool: FC<Props> = ({
                 provider_name: collection.name,
                 tool_name: tool.name,
                 tool_parameters: parameters,
-                enable: true,
+                enabled: true,
               })
             })
             setModelConfig(nexModelConfig)

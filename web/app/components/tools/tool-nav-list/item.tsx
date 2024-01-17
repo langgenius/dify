@@ -28,9 +28,9 @@ const Item: FC<Props> = ({
       {typeof payload.icon === 'string'
         ? (
           <div
-            className='w-6 h-6 bg-cover bg-center'
+            className='w-6 h-6 bg-cover bg-center rounded-md'
             style={{
-              backgroundImage: `url(${payload.icon}?_token=${localStorage.getItem('console_token')})`,
+              backgroundImage: `url(${payload.icon})`,
             }}
           ></div>
         )

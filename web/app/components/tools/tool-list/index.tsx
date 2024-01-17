@@ -90,9 +90,9 @@ const ToolList: FC<Props> = ({
       <div
         className='p-2 bg-cover bg-center border border-gray-100 rounded-lg'
       >
-        <div className='w-6 h-6 bg-center bg-contain'
+        <div className='w-6 h-6 bg-center bg-contain rounded-md'
           style={{
-            backgroundImage: `url(${collection.icon}?_token=${localStorage.getItem('console_token')})`,
+            backgroundImage: `url(${collection.icon})`,
           }}
         ></div>
       </div>

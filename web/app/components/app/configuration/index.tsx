@@ -50,6 +50,9 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { fetchCollectionList } from '@/service/tools'
+import { type Collection } from '@/app/components/tools/types'
+
 type PublichConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
@@ -152,6 +155,12 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
+  const [collectionList, setCollectionList] = useState<Collection[]>([])
+  useEffect(() => {
+    fetchCollectionList().then((list: any) => {
+      setCollectionList(list as Collection[])
+    })
+  }, [])
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
     reranking_model: {
@@ -161,6 +170,9 @@ const Configuration: FC = () => {
     top_k: 2,
     score_threshold_enabled: false,
     score_threshold: 0.7,
+    datasets: {
+      datasets: [],
+    },
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -359,11 +371,11 @@ const Configuration: FC = () => {
 
       let datasets: any = null
       // old dataset struct
-      if (modelConfig.agent_mode?.tools?.length > 0)
+      if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
       // new dataset struct
-      else if (modelConfig.datasets?.datasets?.length > 0)
-        datasets = modelConfig.datasets?.datasets
+      else if (modelConfig.dataset_configs.datasets?.datasets?.length > 0)
+        datasets = modelConfig.dataset_configs?.datasets?.datasets
 
       if (dataSets && datasets?.length && datasets?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasets.map(({ dataset }: any) => dataset.id) } })
@@ -410,7 +422,15 @@ const Configuration: FC = () => {
           sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
-          agentConfig: modelConfig.agent_mode || DEFAULT_AGENT_SETTING,
+          // eslint-disable-next-line multiline-ternary
+          agentConfig: modelConfig.agent_mode ? {
+            max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
+            ...modelConfig.agent_mode,
+            // remove dataset
+            tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
+              return !tool.dataset
+            }),
+          } : DEFAULT_AGENT_SETTING,
         },
         completionParams: model.completion_params,
       }
@@ -507,9 +527,6 @@ const Configuration: FC = () => {
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
-      datasets: {
-        datasets: [...postDatasets],
-      } as any,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
@@ -520,7 +537,12 @@ const Configuration: FC = () => {
         mode: modelConfig.mode,
         completion_params: modelAndParameter?.parameters || completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },
@@ -583,6 +605,7 @@ const Configuration: FC = () => {
       isAdvancedMode,
       isAgent,
       isOpenAI,
+      collectionList,
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
@@ -640,7 +663,7 @@ const Configuration: FC = () => {
       <>
         <div className="flex flex-col h-full">
           <div className='flex grow h-[200px]'>
-            <div className="w-full sm:w-1/2 shrink-0">
+            <div className="w-full sm:w-1/2 shrink-0 flex flex-col h-full">
               {/* Header Left */}
               <div className='flex justify-between items-center px-6 h-14'>
                 <div className='flex items-center'>

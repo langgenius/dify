@@ -61,6 +61,12 @@ const translation = {
     privacyPolicy: '隐私协议',
     privacyPolicyPlaceholder: '请输入隐私协议',
   },
+  thought: {
+    using: '正在使用',
+    used: '已使用',
+    requestTitle: '请求来自',
+    responseTitle: '响应来自',
+  },
 }
 
 export default translation

@@ -224,7 +224,7 @@ const translation = {
     notSelectModel: '请选择模型',
     waitForImgUpload: '请等待图片上传完成',
   },
-  chatSubTitle: '对话前提示词',
+  chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
   promptTip:
     '提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。',
