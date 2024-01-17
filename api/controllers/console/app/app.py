@@ -44,6 +44,7 @@ class AppListApi(Resource):
         parser.add_argument('page', type=inputs.int_range(1, 99999), required=False, default=1, location='args')
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
         parser.add_argument('mode', type=str, choices=['chat', 'completion', 'all'], default='all', location='args', required=False)
+        parser.add_argument('name', type=str, location='args', required=False)
         args = parser.parse_args()
 
         filters = [
@@ -56,6 +57,9 @@ class AppListApi(Resource):
             filters.append(App.mode == 'chat')
         else:
             pass
+
+        if 'name' in args and args['name']:
+            filters.append(App.name.ilike(f'%{args["name"]}%'))
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),
