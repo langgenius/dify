@@ -27,10 +27,15 @@ class CompletionService:
         auto_generate_name = args['auto_generate_name'] \
             if 'auto_generate_name' in args else True
 
-        if app_model.mode != 'completion' and not query:
-            raise ValueError('query is required')
+        if app_model.mode != 'completion':
+            if not query:
+                raise ValueError('query is required')
 
-        query = query.replace('\x00', '')
+        if query:
+            if not isinstance(query, str):
+                raise ValueError('query must be a string')
+
+            query = query.replace('\x00', '')
 
         conversation_id = args['conversation_id'] if 'conversation_id' in args else None
 
@@ -230,6 +235,10 @@ class CompletionService:
 
             value = user_inputs[variable]
 
+            if value:
+                if not isinstance(value, str):
+                    raise ValueError(f"{variable} in input form must be a string")
+
             if input_type == "select":
                 options = input_config["options"] if "options" in input_config else []
                 if value not in options:
@@ -243,4 +252,3 @@ class CompletionService:
             filtered_inputs[variable] = value.replace('\x00', '') if value else None
 
         return filtered_inputs
-

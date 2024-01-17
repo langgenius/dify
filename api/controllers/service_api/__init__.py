@@ -6,5 +6,6 @@ bp = Blueprint('service_api', __name__, url_prefix='/v1')
 api = ExternalApi(bp)
 
 
+from . import index
 from .app import app, audio, completion, conversation, file, message
 from .dataset import dataset, document, segment
