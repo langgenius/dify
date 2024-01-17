@@ -29,9 +29,9 @@
 }
 
 .textToSpeechPreview {
-  background-image: url(./preview-imgs/text-to-speech.svg);
+  background-image: url(./preview-imgs/textToSpeech.png);
 }
 
 .citationPreview {
-  background-image: url(./preview-imgs/citation.svg);
+  background-image: url(./preview-imgs/citeAndAttrs.png);
 }
