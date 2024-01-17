@@ -149,7 +149,7 @@ class GenerateTaskPipeline:
                     )
 
                 # Save message
-                self._save_message(event.llm_result)
+                self._save_message(self._task_state.llm_result)
 
                 response = {
                     'event': 'message',
