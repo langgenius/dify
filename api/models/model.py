@@ -349,6 +349,12 @@ class InstalledApp(db.Model):
         tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
         return tenant
 
+    @property
+    def is_agent(self) -> bool:
+        app = self.app
+        if not app:
+            return False
+        return app.is_agent
 
 class Conversation(db.Model):
     __tablename__ = 'conversations'
