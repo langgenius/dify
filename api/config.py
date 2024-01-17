@@ -41,11 +41,17 @@ DEFAULTS = {
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_PAID_ENABLED': 'False',
+    'HOSTED_OPENAI_PAID_INCREASE_QUOTA': 1,
+    'HOSTED_OPENAI_PAID_MIN_QUANTITY': 1,
+    'HOSTED_OPENAI_PAID_MAX_QUANTITY': 1,
     'HOSTED_AZURE_OPENAI_ENABLED': 'False',
     'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
     'HOSTED_ANTHROPIC_TRIAL_ENABLED': 'False',
     'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
+    'HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA': 1,
+    'HOSTED_ANTHROPIC_PAID_MIN_QUANTITY': 1,
+    'HOSTED_ANTHROPIC_PAID_MAX_QUANTITY': 1,
     'HOSTED_MODERATION_ENABLED': 'False',
     'HOSTED_MODERATION_PROVIDERS': '',
     'CLEAN_DAY_SETTING': 30,
@@ -67,7 +73,7 @@ def get_env(key):
 
 def get_bool_env(key):
     value = get_env(key)
-    return value.lower() == 'true' if value else False
+    return value.lower() == 'true' if value is not None else False
 
 
 def get_cors_allow_origins(env, default):
