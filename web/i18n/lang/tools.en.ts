@@ -94,6 +94,7 @@ const translation = {
     content: 'We couldn\'t find any tools that match your search.',
     reset: 'Reset Search',
   },
+  builtInPromptTitle: 'Prompt',
 }
 
 export default translation

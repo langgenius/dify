@@ -117,16 +117,15 @@ const AgentSetting: FC<Props> = ({
           </ItemPanel>
 
           {!isFunctionCall && (
-            <>
-              <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
-                {t('appDebug.agent.buildInPrompt')}
-              </div>
-              <div
-                className='mb-2'
-              >
+            <div className='py-2 bg-gray-50 rounded-xl shadow-xs'>
+              <div className='flex items-center h-8 px-4 leading-6 text-sm font-semibold text-gray-700'>{t('tools.builtInPromptTitle')}</div>
+              <div className='h-[396px] px-4 overflow-y-auto leading-5 text-sm font-normal text-gray-700 whitespace-pre-line'>
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
-            </>
+              <div className='px-4'>
+                <div className='inline-flex items-center h-5 px-1 rounded-md bg-gray-100 leading-[18px] text-xs font-medium text-gray-500'>{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
+              </div>
+            </div>
           )}
 
         </div>

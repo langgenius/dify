@@ -86,6 +86,7 @@ const translation = {
     content: '我们找不到任何与您的搜索相匹配的工具。',
     reset: '重置搜索',
   },
+  builtInPromptTitle: '提示词',
 }
 
 export default translation
