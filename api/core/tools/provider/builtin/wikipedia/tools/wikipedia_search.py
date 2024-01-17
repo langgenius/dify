@@ -33,5 +33,5 @@ class WikiPediaSearchTool(BuiltinTool):
             'query': query
         })
 
-        return self.create_text_message(result)
+        return self.create_text_message(self.summary(user_id=user_id,content=result))
     
