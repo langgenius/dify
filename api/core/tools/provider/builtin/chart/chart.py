@@ -1,19 +1,19 @@
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
 
-from core.tools.provider.builtin.wikipedia.tools.wikipedia_search import WikiPediaSearchTool
+from core.tools.provider.builtin.chart.tools.line import LinearChartTool
 
-class WikiPediaProvider(BuiltinToolProviderController):
+class ChartProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
-            WikiPediaSearchTool().fork_tool_runtime(
+            LinearChartTool().fork_tool_runtime(
                 meta={
                     "credentials": credentials,
                 }
             ).invoke(
                 user_id='',
                 tool_paramters={
-                    "query": "misaka mikoto",
+                    "data": "1,3,5,7,9,2,4,6,8,10",
                 },
             )
         except Exception as e:
