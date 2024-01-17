@@ -672,7 +672,12 @@ const Configuration: FC = () => {
                 {isChatApp && (
                   <AssistantTypePicker
                     value={isAgent ? 'agent' : 'assistant'}
-                    onChange={(value: string) => setIsAgent(value === 'agent')}
+                    disabled={isAdvancedMode && !canReturnToSimpleMode}
+                    onChange={(value: string) => {
+                      setIsAgent(value === 'agent')
+                      if (value === 'agent')
+                        setPromptMode(PromptMode.simple)
+                    }}
                     isFunctionCall={isFunctionCall}
                     isChatModel={modelConfig.mode === ModelModeType.chat}
                     agentConfig={modelConfig.agentConfig}
