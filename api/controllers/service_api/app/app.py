@@ -63,7 +63,7 @@ class AppParameterApi(AppApiResource):
             }
         }
 
-class AppMeta(AppApiResource):
+class AppMetaApi(AppApiResource):
     def get(self, app_model: App, end_user):
         """Get app meta"""
         app_model_config: AppModelConfig = app_model.app_model_config
@@ -101,4 +101,4 @@ class AppMeta(AppApiResource):
         return meta
 
 api.add_resource(AppParameterApi, '/parameters')
-api.add_resource(AppMeta, '/meta')
+api.add_resource(AppMetaApi, '/meta')
