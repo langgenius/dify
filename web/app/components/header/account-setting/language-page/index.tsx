@@ -23,12 +23,13 @@ export default function LanguagePage() {
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const handleSelect = async (type: string, item: Item) => {
+    console.log(item)
     let url = ''
     let bodyKey = ''
     if (type === 'language') {
       url = '/account/interface-language'
       bodyKey = 'interface_language'
-      setLocaleOnClient(item.value === 'en-US' ? 'en' : 'zh-Hans')
+      setLocaleOnClient(item.value as keyof typeof languageMaps)
     }
     if (type === 'timezone') {
       url = '/account/timezone'
@@ -52,7 +53,7 @@ export default function LanguagePage() {
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
         <SimpleSelect
-          defaultValue={languageMaps[locale] || userProfile.interface_language}
+          defaultValue={languageMaps[locale as keyof typeof languageMaps] || userProfile.interface_language as keyof typeof languageMaps}
           items={languages}
           onSelect={item => handleSelect('language', item)}
           disabled={editing}

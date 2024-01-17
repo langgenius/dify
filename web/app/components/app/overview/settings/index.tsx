@@ -34,11 +34,6 @@ export type ConfigParams = {
   icon_background: string
 }
 
-const LANGUAGE_MAP: Record<Language, string> = {
-  'en-US': 'English(United States)',
-  'zh-Hans': '简体中文',
-}
-
 const prefixSettings = 'appOverview.overview.appInfo.settings'
 
 const SettingsModal: FC<ISettingsModalProps> = ({
