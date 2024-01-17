@@ -71,6 +71,3 @@ class DallE3Tool(BuiltinTool):
                                                     save_as_variable=True))
 
         return result
-
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
-        pass

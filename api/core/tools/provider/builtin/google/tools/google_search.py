@@ -124,5 +124,3 @@ class GoogleSearchTool(BuiltinTool):
             return self.create_text_message(text=result)
         return self.create_link_message(link='https://www.google.com')
     
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
-        self._invoke(parameters, credentails, [])

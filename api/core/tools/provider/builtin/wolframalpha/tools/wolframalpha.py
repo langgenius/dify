@@ -75,5 +75,3 @@ class WolframAlphaTool(BuiltinTool):
 
         return self.create_text_message(result)
     
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
-        pass

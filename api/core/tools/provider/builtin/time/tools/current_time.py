@@ -15,5 +15,3 @@ class CurrentTimeTool(BuiltinTool):
         """
         return self.create_text_message(f'{datetime.datetime.now()}')
     
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
-        pass

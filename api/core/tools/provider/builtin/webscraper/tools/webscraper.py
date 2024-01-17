@@ -96,6 +96,4 @@ class WebscraperTool(BuiltinTool):
             return self.summary(user_id=user_id, content=result)
         
         return result
-
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
-        pass
+    
