@@ -313,7 +313,7 @@ const Debug: FC<IDebug> = ({
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
-      files: [],
+      message_files: [],
       isAnswer: true,
     }
 
@@ -384,7 +384,7 @@ const Debug: FC<IDebug> = ({
         }
       },
       onFile(file) {
-        responseItem.files = [...(responseItem as any).files, file]
+        responseItem.message_files = [...(responseItem as any).message_files, file]
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
@@ -395,7 +395,6 @@ const Debug: FC<IDebug> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
         responseItem.id = thought.message_id;
         (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
         // has switched to other conversation

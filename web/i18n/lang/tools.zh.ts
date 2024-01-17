@@ -13,7 +13,7 @@ const translation = {
   },
   author: '作者',
   auth: {
-    unauthorized: '未经授权',
+    unauthorized: '未授权',
     authorized: '已授权',
     setup: '要使用请先授权',
     setupModalTitle: '设置授权',
@@ -66,6 +66,15 @@ const translation = {
     used: '已使用',
     requestTitle: '请求来自',
     responseTitle: '响应来自',
+  },
+  setBuiltInTools: {
+    info: '信息',
+    setting: '设置',
+    toolDescription: '工具描述',
+    parameters: '参数',
+    string: '字符串',
+    number: '数字',
+    required: '必填',
   },
 }
 

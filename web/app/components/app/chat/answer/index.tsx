@@ -23,7 +23,7 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import type { Emoji } from '@/app/components/tools/types'
-import type { File } from '@/types/app'
+import type { VisionFile } from '@/types/app'
 import ImageGallery from '@/app/components/base/image-gallery'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
@@ -48,7 +48,7 @@ export type IAnswerProps = {
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIcon?: ReactNode
-  files?: File[]
+  files?: VisionFile[]
   thoughts?: ThoughtItem[]
   citation?: CitationItem[]
   isThinking?: boolean
@@ -98,7 +98,7 @@ const Answer: FC<IAnswerProps> = ({
   const { t } = useTranslation()
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const imgs = files.filter(file => file.type === 'image')
+  const imgs = files.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
 
   /**
  * Render feedback results (distinguish between users and administrators)

@@ -7,11 +7,9 @@ import { useTranslation } from 'react-i18next'
 import type { Collection, Tool } from '../types'
 import Button from '../../base/button'
 import { CollectionType } from '../types'
-import AppIcon from '../../base/app-icon'
-import { toolParametersToFormSchemas } from '../utils/to-form-schema'
-import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import I18n from '@/context/i18n'
-import Drawer from '@/app/components/base/drawer-plus'
+import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
+
 type Props = {
   collection: Collection
   icon: JSX.Element
@@ -36,7 +34,6 @@ const Item: FC<Props> = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
   const [showDetail, setShowDetail] = useState(false)
-  const formSchemas = toolParametersToFormSchemas(payload.parameters)
 
   return (
     <>
@@ -59,55 +56,15 @@ const Item: FC<Props> = ({
 
       </div>
       {showDetail && isBuiltIn && (
-        <Drawer
-          isShow
+        <SettingBuiltInTool
+          collection={collection}
+          toolName={payload.name}
+          readonly
           onHide={() => {
             setShowDetail(false)
           }}
-          title={(
-            <div className='flex'>
-              {typeof collection.icon === 'string'
-                ? (
-                  <div
-                    className='w-6 h-6 bg-cover bg-center rounded-md'
-                    style={{
-                      backgroundImage: `url(${collection.icon})`,
-                    }}
-                  ></div>
-                )
-                : (
-                  <AppIcon
-                    className='rounded-md'
-                    size='tiny'
-                    innerIcon={(collection.icon as any).content}
-                    background={(collection.icon as any).content}
-                  />
-                )}
-              <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{payload.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
-            </div>
-          )}
-          panelClassName='mt-[65px] !w-[480px]'
-          maxWidthClassName='!max-w-[480px]'
-          height='calc(100vh - 65px)'
-          headerClassName='!border-b-black/5'
-          body={
-            <div className='px-6 py-3'>
-              <Form
-                value={{}}
-                onChange={() => { }}
-                formSchemas={formSchemas as any}
-                isEditMode={false}
-                readonly
-                showOnVariableMap={{}}
-                validating={false}
-                inputClassName='!bg-gray-50'
-                isShowDefaultValue
-              />
-            </div>
-          }
-          isShowMask={true}
-          clickOutsideNotOpen={false}
-        />)}
+        />
+      )}
     </>
 
   )

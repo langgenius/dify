@@ -75,6 +75,15 @@ const translation = {
     requestTitle: 'Request to',
     responseTitle: 'Response from',
   },
+  setBuiltInTools: {
+    info: 'Info',
+    setting: 'Setting',
+    toolDescription: 'Tool description',
+    parameters: 'parameters',
+    string: 'string',
+    number: 'number',
+    required: 'Required',
+  },
 }
 
 export default translation
