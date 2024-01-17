@@ -226,7 +226,7 @@ const Config: FC = () => {
         <DatasetConfig />
 
         {/* Tools */}
-        {isAgent && (
+        {(isAgent && isChatApp) && (
           <AgentTools />
         )}
         <ConfigVision />
