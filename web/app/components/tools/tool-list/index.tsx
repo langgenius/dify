@@ -112,7 +112,7 @@ const ToolList: FC<Props> = ({
         icon={icon}
         collection={collection}
         loc={loc}
-        onShowAuth={() => isInToolsPage && setShowSettingAuth(true)}
+        onShowAuth={() => setShowSettingAuth(true)}
         onShowEditCustomCollection={() => setIsShowEditCustomCollectionModal(true)}
       />
       <div className={cn(isInToolsPage ? 'px-6 pt-4' : 'px-4 pt-3')}>
