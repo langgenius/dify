@@ -14,6 +14,11 @@ import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
 import DebugWithMultipleModel from './debug-with-multiple-model'
 import type { ModelAndParameter } from './types'
+import {
+  APP_CHAT_WITH_MULTIPLE_MODEL,
+  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
+  APP_SIDEBAR_SHOULD_COLLAPSE,
+} from './types'
 import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
@@ -144,7 +149,7 @@ const Debug: FC<IDebug> = ({
   const clearConversation = async () => {
     if (debugWithMultipleModel) {
       eventEmitter?.emit({
-        type: 'app-chat-with-multiple-model-restart',
+        type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
       } as any)
       return
     }
@@ -573,7 +578,7 @@ const Debug: FC<IDebug> = ({
   const handleSendTextCompletion = () => {
     if (debugWithMultipleModel) {
       eventEmitter?.emit({
-        type: 'app-chat-with-multiple-model',
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
         payload: {
           message: '',
           files: completionFiles,
@@ -602,7 +607,7 @@ const Debug: FC<IDebug> = ({
       ],
     )
     eventEmitter?.emit({
-      type: 'app-sidebar-should-collapse',
+      type: APP_SIDEBAR_SHOULD_COLLAPSE,
     } as any)
   }
   const handleChangeToSingleModel = (item: ModelAndParameter) => {

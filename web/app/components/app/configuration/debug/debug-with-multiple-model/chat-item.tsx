@@ -4,6 +4,10 @@ import {
   useMemo,
 } from 'react'
 import type { ModelAndParameter } from '../types'
+import {
+  APP_CHAT_WITH_MULTIPLE_MODEL,
+  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
+} from '../types'
 import { AgentStrategy } from '@/types/app'
 import { Chat } from '@/app/components/base/chat'
 import { useChat } from '@/app/components/base/chat/hooks'
@@ -139,9 +143,9 @@ const ChatItem: FC<ChatItemProps> = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === 'app-chat-with-multiple-model')
+    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL)
       doSend(v.payload.message, v.payload.files)
-    if (v.type === 'app-chat-with-multiple-model-restart')
+    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL_RESTART)
       handleRestart()
   })
 

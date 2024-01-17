@@ -3,6 +3,7 @@ import {
   memo,
   useCallback,
 } from 'react'
+import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 import DebugItem from './debug-item'
 import {
   DebugWithMultipleModelContextProvider,
@@ -25,7 +26,7 @@ const DebugWithMultipleModel = () => {
 
   const handleSend = useCallback((message: string, files?: VisionFile[]) => {
     eventEmitter?.emit({
-      type: 'app-chat-with-multiple-model',
+      type: APP_CHAT_WITH_MULTIPLE_MODEL,
       payload: {
         message,
         files,

@@ -8,6 +8,7 @@ import {
   AlignRight01,
 } from '@/app/components/base/icons/src/vender/line/layout'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { APP_SIDEBAR_SHOULD_COLLAPSE } from '@/app/components/app/configuration/debug/types'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
@@ -42,7 +43,7 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === 'app-sidebar-should-collapse') {
+    if (v.type === APP_SIDEBAR_SHOULD_COLLAPSE) {
       setModeState('collapse')
       localStorage.setItem('app-detail-collapse-or-expand', 'collapse')
     }

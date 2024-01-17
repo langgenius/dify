@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import type { ModelAndParameter } from '../types'
+import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 import type {
   OnSend,
   TextGenerationConfig,
@@ -115,7 +116,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === 'app-chat-with-multiple-model')
+    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL)
       doSend(v.payload.message, v.payload.files)
   })
 
