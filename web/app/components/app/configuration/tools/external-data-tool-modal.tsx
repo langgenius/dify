@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import FormGeneration from '../toolbox/moderation/form-generation'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
@@ -184,7 +183,8 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => {}}
+      onClose={() => { }}
+      wrapperClassName='z-[101]'
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
@@ -216,12 +216,12 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             className='grow block mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
             placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
           />
-          <AppIcon size='large'
+          {/* <AppIcon size='large'
             onClick={() => { setShowEmojiPicker(true) }}
             className='!w-9 !h-9 rounded-lg border-[0.5px] border-black/5 cursor-pointer '
             icon={localeData.icon}
             background={localeData.icon_background}
-          />
+          /> */}
         </div>
       </div>
       <div className='py-2'>

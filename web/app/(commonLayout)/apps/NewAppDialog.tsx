@@ -7,6 +7,7 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import style from '../list.module.css'
 import AppModeLabel from './AppModeLabel'
 import Button from '@/app/components/base/button'
@@ -19,6 +20,7 @@ import AppsContext from '@/context/app-context'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { AiText } from '@/app/components/base/icons/src/vender/solid/communication'
 
 type NewAppDialogProps = {
   show: boolean
@@ -119,13 +121,6 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         </>
       }
     >
-      <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
-
-      <div className='flex items-center justify-between gap-3 mb-8'>
-        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
-        <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''}/>
-      </div>
-
       <div className='overflow-y-auto'>
         <div className={style.newItemCaption}>
           <h3 className='inline'>{t('app.newApp.captionAppType')}</h3>
@@ -141,29 +136,9 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
             </>
           )}
         </div>
-        {isWithTemplate
-          ? (
-            <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              {templates?.data?.map((template, index) => (
-                <li
-                  key={index}
-                  className={classNames(style.listItem, style.selectable, selectedTemplateIndex === index && style.selected)}
-                  onClick={() => setSelectedTemplateIndex(index)}
-                >
-                  <div className={style.listItemTitle}>
-                    <AppIcon size='small' />
-                    <div className={style.listItemHeading}>
-                      <div className={style.listItemHeadingContent}>{template.name}</div>
-                    </div>
-                  </div>
-                  <div className={style.listItemDescription}>{template.model_config?.pre_prompt}</div>
-                  <AppModeLabel mode={template.mode} className='mt-2' />
-                  {/* <AppModeLabel mode='chat' className='mt-2' /> */}
-                </li>
-              ))}
-            </ul>
-          )
-          : (
+
+        {!isWithTemplate && (
+          (
             <>
               <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <li
@@ -178,10 +153,10 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                       <div className={style.listItemHeadingContent}>{t('app.newApp.chatApp')}</div>
                     </div>
                   </div>
-                  <div className={style.listItemDescription}>{t('app.newApp.chatAppIntro')}</div>
-                  <div className={classNames(style.listItemFooter, 'justify-end')}>
+                  <div className={`${style.listItemDescription} ${style.noClip}`}>{t('app.newApp.chatAppIntro')}</div>
+                  {/* <div className={classNames(style.listItemFooter, 'justify-end')}>
                     <a className={style.listItemLink} href='https://udify.app/chat/7CQBa5yyvYLSkZtx' target='_blank'>{t('app.newApp.previewDemo')}<span className={classNames(style.linkIcon, style.grayLinkIcon)} /></a>
-                  </div>
+                  </div> */}
                 </li>
                 <li
                   className={classNames(style.listItem, style.selectable, newAppMode === 'completion' && style.selected)}
@@ -189,28 +164,63 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                 >
                   <div className={style.listItemTitle}>
                     <span className={style.newItemIcon}>
-                      <span className={classNames(style.newItemIconImage, style.newItemIconComplete)} />
+                      {/* <span className={classNames(style.newItemIconImage, style.newItemIconComplete)} /> */}
+                      <AiText className={cn('w-5 h-5', newAppMode === 'completion' ? 'text-[#155EEF]' : 'text-gray-700')} />
                     </span>
                     <div className={style.listItemHeading}>
                       <div className={style.listItemHeadingContent}>{t('app.newApp.completeApp')}</div>
                     </div>
                   </div>
-                  <div className={style.listItemDescription}>{t('app.newApp.completeAppIntro')}</div>
-                  <div className={classNames(style.listItemFooter, 'justify-end')}>
-                    <a className={style.listItemLink} href='https://udify.app/completion/aeFTj0VCb3Ok3TUE' target='_blank'>{t('app.newApp.previewDemo')}<span className={classNames(style.linkIcon, style.grayLinkIcon)} /></a>
-                  </div>
+                  <div className={`${style.listItemDescription} ${style.noClip}`}>{t('app.newApp.completeAppIntro')}</div>
                 </li>
               </ul>
-              <div className='flex items-center h-[34px] mt-2'>
-                <span
-                  className='inline-flex items-center gap-1 text-xs font-medium cursor-pointer text-primary-600'
-                  onClick={() => setIsWithTemplate(true)}
-                >
-                  {t('app.newApp.showTemplates')}<span className={style.rightIcon} />
-                </span>
-              </div>
+
             </>
-          )}
+          )
+        )}
+
+        {isWithTemplate && (
+          <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {templates?.data?.map((template, index) => (
+              <li
+                key={index}
+                className={classNames(style.listItem, style.selectable, selectedTemplateIndex === index && style.selected)}
+                onClick={() => setSelectedTemplateIndex(index)}
+              >
+                <div className={style.listItemTitle}>
+                  <AppIcon size='small' />
+                  <div className={style.listItemHeading}>
+                    <div className={style.listItemHeadingContent}>{template.name}</div>
+                  </div>
+                </div>
+                <div className={style.listItemDescription}>{template.model_config?.pre_prompt}</div>
+                <AppModeLabel mode={template.mode} className='mt-2' />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className='mt-8'>
+          <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
+          <div className='flex items-center justify-between gap-3'>
+            <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
+            <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''} />
+          </div>
+        </div>
+
+        {
+          !isWithTemplate && (
+            <div className='flex items-center h-[34px] mt-2'>
+              <span
+                className='inline-flex items-center gap-1 text-xs font-medium cursor-pointer text-primary-600'
+                onClick={() => setIsWithTemplate(true)}
+              >
+                {t('app.newApp.showTemplates')}<span className={style.rightIcon} />
+              </span>
+            </div>
+          )
+        }
+
       </div>
       {isAppsFull && <AppsFull loc='app-create' />}
     </Dialog>

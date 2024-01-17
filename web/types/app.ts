@@ -1,5 +1,6 @@
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
+import type { CollectionType } from '@/app/components/tools/types'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -90,6 +91,15 @@ export type UserInputFormItem = {
   'select': SelectTypeFormItem
 }
 
+export type AgentTool = {
+  provider_id: string
+  provider_type: CollectionType
+  provider_name: string
+  tool_name: string
+  tool_parameters: Record<string, any>
+  enable: boolean
+}
+
 export type ToolItem = {
   dataset: {
     enabled: boolean
@@ -101,6 +111,11 @@ export type ToolItem = {
     words: string[]
     canned_response: string
   }
+} | AgentTool
+
+export enum AgentStrategy {
+  functionCall = 'function_call',
+  react = 'react',
 }
 
 /**
@@ -131,8 +146,15 @@ export type ModelConfig = {
   }
   external_data_tools: ExternalDataTool[]
   annotation_reply?: AnnotationReplyConfig
+  datasets: {
+    datasets: {
+      enabled: boolean
+      id: string
+    }[]
+  }
   agent_mode: {
     enabled: boolean
+    strategy: AgentStrategy
     tools: ToolItem[]
   }
   model: {

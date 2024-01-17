@@ -215,6 +215,7 @@ const VariablePicker: FC<VariablePickerProps> = ({
       options={mergedOptions}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
+      anchorClassName='z-[999999]'
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },

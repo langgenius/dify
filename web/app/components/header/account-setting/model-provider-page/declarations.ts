@@ -7,6 +7,7 @@ export type TypeWithI18N<T = string> = {
 
 export enum FormTypeEnum {
   textInput = 'text-input',
+  textNumber = 'number-input',
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
@@ -92,10 +93,12 @@ export type CredentialFormSchemaBase = {
   type: FormTypeEnum
   required: boolean
   default?: string
+  tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number; max?: number; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }

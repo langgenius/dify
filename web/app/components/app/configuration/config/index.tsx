@@ -5,7 +5,6 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean, useScroll } from 'ahooks'
 import DatasetConfig from '../dataset-config'
-import Tools from '../tools'
 import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
@@ -15,11 +14,12 @@ import useAnnotationConfig from '../toolbox/annotation/use-annotation-config'
 import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
+import AgentTools from './agent/agent-tools'
 import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/advanced-mode-waring'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import { type CitationConfig, type ModelConfig, type ModerationConfig, type MoreLikeThisConfig, PromptMode, type PromptVariable, type SpeechToTextConfig, type SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
@@ -32,7 +32,9 @@ const Config: FC = () => {
     mode,
     isAdvancedMode,
     modelModeType,
+    isAgent,
     canReturnToSimpleMode,
+    setPromptMode,
     hasSetBlockStatus,
     showHistoryModal,
     introduction,
@@ -192,7 +194,7 @@ const Config: FC = () => {
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
         {
           (isAdvancedMode && canReturnToSimpleMode) && (
-            <AdvancedModeWaring />
+            <AdvancedModeWaring onReturnToSimpleMode={() => setPromptMode(PromptMode.simple)} />
           )
         }
         {showChooseFeature && (
@@ -223,8 +225,10 @@ const Config: FC = () => {
         {/* Dataset */}
         <DatasetConfig />
 
-        <Tools />
-
+        {/* Tools */}
+        {isAgent && (
+          <AgentTools />
+        )}
         <ConfigVision />
 
         {/* Chat History */}

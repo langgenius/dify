@@ -11,12 +11,12 @@ import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
-import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import { useDebugWithSingleOrMultipleModel } from './debug/hooks'
 import type { ModelAndParameter } from './debug/types'
 import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
+import AssistantTypePicker from './config/assistant-type-picker'
 import type {
   AnnotationReplyConfig,
   DatasetConfigs,
@@ -40,10 +40,9 @@ import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
-import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
+import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -51,7 +50,6 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-
 type PublichConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
@@ -143,8 +141,17 @@ const Configuration: FC = () => {
     retriever_resource: null,
     sensitive_word_avoidance: null,
     dataSets: [],
+    agentConfig: DEFAULT_AGENT_SETTING,
   })
-
+  const isChatApp = mode === AppType.chat
+  const isAgent = modelConfig.agentConfig.enabled
+  const setIsAgent = (value: boolean) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
+      draft.agentConfig.enabled = value
+    })
+    doSetModelConfig(newModelConfig)
+  }
+  const isOpenAI = modelConfig.provider === 'openai'
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
     reranking_model: {
@@ -167,7 +174,7 @@ const Configuration: FC = () => {
   }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+  const contextVar = modelConfig.configs.prompt_variables.find((item: any) => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
@@ -351,8 +358,12 @@ const Configuration: FC = () => {
       const model = res.model_config.model
 
       let datasets: any = null
-      if (modelConfig.agent_mode?.enabled)
+      // old dataset struct
+      if (modelConfig.agent_mode?.tools?.length > 0)
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
+      // new dataset struct
+      else if (modelConfig.datasets?.datasets?.length > 0)
+        datasets = modelConfig.datasets?.datasets
 
       if (dataSets && datasets?.length && datasets?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasets.map(({ dataset }: any) => dataset.id) } })
@@ -399,6 +410,7 @@ const Configuration: FC = () => {
           sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
+          agentConfig: modelConfig.agent_mode || DEFAULT_AGENT_SETTING,
         },
         completionParams: model.completion_params,
       }
@@ -422,7 +434,7 @@ const Configuration: FC = () => {
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
-        return chatPromptConfig.prompt.every(({ text }) => !text)
+        return chatPromptConfig.prompt.every(({ text }: any) => !text)
 
       else
         return !completionPromptConfig.prompt.text
@@ -495,9 +507,12 @@ const Configuration: FC = () => {
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
       external_data_tools: externalDataToolsConfig,
+      datasets: {
+        datasets: [...postDatasets],
+      } as any,
       agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
+        ...modelConfig.agentConfig,
+        strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelAndParameter?.provider || modelConfig.provider,
@@ -566,6 +581,8 @@ const Configuration: FC = () => {
       modelModeType,
       promptMode,
       isAdvancedMode,
+      isAgent,
+      isOpenAI,
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
@@ -622,81 +639,80 @@ const Configuration: FC = () => {
     >
       <>
         <div className="flex flex-col h-full">
-          <div className='flex items-center justify-between px-6 shrink-0 py-3 flex-wrap gap-y-2'>
-            <div className='flex items-end'>
-              <div className={s.promptTitle}></div>
-              <div className='flex items-center h-[14px] space-x-1 text-xs'>
-                {/* modelModeType missing can not load template */}
-                {(!isAdvancedMode && modelModeType) && (
-                  <div
-                    onClick={() => setPromptMode(PromptMode.advanced)}
-                    className={'cursor-pointer text-indigo-600'}
-                  >
-                    {t('appDebug.promptMode.simple')}
-                  </div>
-                )}
-                {isAdvancedMode && (
-                  <div className='flex items-center space-x-2'>
-                    <div className={cn(locale === 'en' && 'italic', `${s.advancedPromptMode}  text-indigo-600`)}>{t('appDebug.promptMode.advanced')}</div>
-                    {canReturnToSimpleMode && (
-                      <div
-                        onClick={() => setPromptMode(PromptMode.simple)}
-                        className='flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
-                      >
-                        <FlipBackward className='w-3 h-3 text-white' />
-                        <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
-                      </div>
+          <div className='flex grow h-[200px]'>
+            <div className="w-full sm:w-1/2 shrink-0">
+              {/* Header Left */}
+              <div className='flex justify-between items-center px-6 h-14'>
+                <div className='flex items-center'>
+                  <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
+                  <div className='flex items-center h-[14px] space-x-1 text-xs'>
+                    {isAdvancedMode && (
+                      <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-
-            <div className='flex items-center flex-wrap gap-y-2 gap-x-2'>
-              <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
-              {isMobile && (
-                <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
-                  <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                  <CodeBracketIcon className="h-4 w-4 text-gray-500" />
-                </Button>
-              )}
-              {
-                debugWithMultipleModel
-                  ? (
-                    <PublishWithMultipleModel
-                      multipleModelConfigs={multipleModelConfigs}
-                      onSelect={item => handlePublish(false, item)}
-                    />
-                  )
-                  : (
-                    <Button
-                      type='primary'
-                      onClick={() => handlePublish(false)}
-                      className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}
-                    >
-                      {t('appDebug.operation.applyConfig')}
-                    </Button>
-                  )
-              }
-            </div>
-          </div>
-          <div className='flex grow h-[200px]'>
-            <div className={`w-full sm:w-1/2 shrink-0 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
               <Config />
             </div>
-            {!isMobile && <div className="relative w-1/2 grow h-full overflow-y-auto py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <Debug
-                hasSetAPIKEY={hasSettedApiKey}
-                onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
-                inputs={inputs}
-                modelParameterParams={{
-                  setModel: setModel as any,
-                  onCompletionParamsChange: setCompletionParams,
-                }}
-                debugWithMultipleModel={debugWithMultipleModel}
-                multipleModelConfigs={multipleModelConfigs}
-                onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
-              />
+            {!isMobile && <div className="relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              {/* Header Right */}
+              <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
+                {isChatApp && (
+                  <AssistantTypePicker
+                    value={isAgent ? 'agent' : 'assistant'}
+                    onChange={(value: string) => setIsAgent(value === 'agent')}
+                    isOpenAI={isOpenAI}
+                    isChatModel={modelConfig.mode === ModelModeType.chat}
+                    agentConfig={modelConfig.agentConfig}
+                    onAgentSettingChange={(config) => {
+                      const nextConfig = produce(modelConfig, (draft: ModelConfig) => {
+                        draft.agentConfig = config
+                      })
+                      setModelConfig(nextConfig)
+                    }}
+                  />
+                )}
+                <div className='w-[1px] h-[14px] bg-gray-200'></div>
+                <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
+                {isMobile && (
+                  <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                    <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
+                    <CodeBracketIcon className="h-4 w-4 text-gray-500" />
+                  </Button>
+                )}
+                {
+                  debugWithMultipleModel
+                    ? (
+                      <PublishWithMultipleModel
+                        multipleModelConfigs={multipleModelConfigs}
+                        onSelect={item => handlePublish(false, item)}
+                      />
+                    )
+                    : (
+                      <Button
+                        type='primary'
+                        onClick={() => handlePublish(false)}
+                        className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}
+                      >
+                        {t('appDebug.operation.applyConfig')}
+                      </Button>
+                    )
+                }
+              </div>
+              <div className='flex flex-col grow h-0 px-6 py-4 rounded-tl-2xl border-t border-l bg-gray-50 '>
+                <Debug
+                  hasSetAPIKEY={hasSettedApiKey}
+                  onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                  inputs={inputs}
+                  modelParameterParams={{
+                    setModel: setModel as any,
+                    onCompletionParamsChange: setCompletionParams,
+                  }}
+                  debugWithMultipleModel={debugWithMultipleModel}
+                  multipleModelConfigs={multipleModelConfigs}
+                  onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
+                />
+              </div>
             </div>}
           </div>
         </div>

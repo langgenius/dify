@@ -3,6 +3,7 @@ const translation = {
     line1: '提示词',
     line2: '编排',
   },
+  orchestrate: '编排',
   promptMode: {
     simple: '切换到专家模式以编辑完整的提示词',
     advanced: '专家模式',
@@ -267,6 +268,7 @@ const translation = {
     maxLength: '最大长度',
     options: '选项',
     addOption: '添加选项',
+    apiBasedVar: '基于API的变量',
   },
   vision: {
     name: '视觉',
@@ -342,6 +344,37 @@ const translation = {
   debugAsMultipleModel: '多个模型进行调试',
   duplicateModel: '复制模型',
   publishAs: '发布为',
+  assistantType: {
+    name: '助手类型',
+    chatAssistant: {
+      name: '聊天助手',
+      description: 'todo',
+    },
+    agentAssistant: {
+      name: '代理助手',
+      description: 'todo',
+    },
+  },
+  agent: {
+    agentMode: 'Agent Mode',
+    agentModeType: {
+      cot: 'COT',
+      functionCall: 'Function Call',
+    },
+    setting: {
+      name: '代理设置',
+      description: '代理设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
+    },
+    buildInPrompt: '内置提示词',
+    firstPrompt: '第一次提示词',
+    nextIteration: '下一次迭代',
+    promptPlaceholder: '在这里写下您的提示词',
+    tools: {
+      name: '工具',
+      description: 'Tools des',
+      enabled: '启用',
+    },
+  },
 }
 
 export default translation

@@ -8,7 +8,7 @@ import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import s from './style.module.css'
-import type { PromptVariable } from '@/models/debug'
+import { PromptMode, type PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
@@ -21,6 +21,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
+import { ArrowNarrowRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -48,6 +49,9 @@ const Prompt: FC<ISimplePromptInput> = ({
     showSelectDataSet,
     externalDataToolsConfig,
     setExternalDataToolsConfig,
+    isAdvancedMode,
+    isAgent,
+    setPromptMode,
   } = useContext(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
@@ -138,7 +142,21 @@ const Prompt: FC<ISimplePromptInput> = ({
               </Tooltip>
             )}
           </div>
-          <AutomaticBtn onClick={showAutomaticTrue}/>
+          <div className='flex items-center'>
+            <AutomaticBtn onClick={showAutomaticTrue} />
+            {!isAgent && !isAdvancedMode && (
+              <>
+                <div className='mx-1 w-px h-3.5 bg-black/5'></div>
+                <div
+                  className='flex items-center px-2 space-x-1 leading-[18px] text-xs font-semibold text-[#444CE7] cursor-pointer'
+                  onClick={() => setPromptMode(PromptMode.advanced)}
+                >
+                  <div>{t('appDebug.promptMode.advanced')}</div>
+                  <ArrowNarrowRight className='w-3 h-3'></ArrowNarrowRight>
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <div className='px-4 py-2 min-h-[228px] max-h-[156px] overflow-y-auto bg-white rounded-xl text-sm text-gray-700'>
           <PromptEditor
@@ -174,7 +192,7 @@ const Prompt: FC<ISimplePromptInput> = ({
                 user: '',
                 assistant: '',
               },
-              onEditRole: () => {},
+              onEditRole: () => { },
             }}
             queryBlock={{
               show: false,

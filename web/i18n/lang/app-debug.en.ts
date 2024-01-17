@@ -3,6 +3,7 @@ const translation = {
     line1: 'PROMPT',
     line2: 'Engineering',
   },
+  orchestrate: 'Orchestrate',
   promptMode: {
     simple: 'Switch to Expert Mode to edit the whole PROMPT',
     advanced: 'Expert Mode',
@@ -271,6 +272,7 @@ const translation = {
     maxLength: 'Max length',
     options: 'Options',
     addOption: 'Add option',
+    apiBasedVar: 'API-based Variable',
   },
   vision: {
     name: 'Vision',
@@ -348,6 +350,41 @@ const translation = {
   debugAsMultipleModel: 'Debug as Multiple Models',
   duplicateModel: 'Duplicate',
   publishAs: 'Publish as',
+  assistantType: {
+    name: 'Assistant Type',
+    chatAssistant: {
+      name: 'Chat Assistant',
+      description: 'Description text here, chat mode can do that',
+    },
+    agentAssistant: {
+      name: 'Agent Assistant',
+      description: 'Description text here, agent mod can use tools',
+    },
+  },
+  agent: {
+    agentMode: 'Agent Mode',
+    agentModeType: {
+      cot: 'COT',
+      functionCall: 'Function Call',
+    },
+    setting: {
+      name: 'Agent Settings',
+      description: 'Agent settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
+      maximumIterations: {
+        name: 'Maximum Iterations',
+        description: 'Maximum Iterations des',
+      },
+    },
+    buildInPrompt: 'Build-In Prompt',
+    firstPrompt: 'First Prompt',
+    nextIteration: 'Next Iteration',
+    promptPlaceholder: 'Write your prompt here',
+    tools: {
+      name: 'Tools',
+      description: 'Tools des',
+      enabled: 'Enabled',
+    },
+  },
 }
 
 export default translation
