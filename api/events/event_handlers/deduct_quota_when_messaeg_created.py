@@ -31,8 +31,8 @@ def handle(sender, **kwargs):
 
     used_quota = None
     if quota_unit:
-        if quota_unit == QuotaUnit.TOKENS.value:
-            used_quota = message.message_tokens + message.prompt_tokens
+        if quota_unit == QuotaUnit.TOKENS:
+            used_quota = message.message_tokens + message.answer_tokens
         else:
             used_quota = 1
 
