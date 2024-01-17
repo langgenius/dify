@@ -14,17 +14,34 @@ class LinearChartTool(BuiltinTool):
         if not data:
             return self.create_text_message('Please input data')
         data = data.split(',')
-        data = [float(i) for i in data]
+
+        axis = tool_paramters.get('x_axis', None) or None
+        if axis:
+            axis = axis.split(',')
+            if len(axis) != len(data):
+                axis = None
+
+        # if all data is int, convert to int
+        if all([i.isdigit() for i in data]):
+            data = [int(i) for i in data]
+        else:
+            data = [float(i) for i in data]
 
         flg, ax = plt.subplots()
-        ax.plot([1, 2, 3, 4], [1, 4, 2, 3])
+
+        if axis:
+            ax.plot(axis, data)
+        else:
+            ax.plot(data)
 
         buf = io.BytesIO()
         flg.savefig(buf, format='png')
         buf.seek(0)
+        plt.close(flg)
 
-        return self.create_blob_message(blob=buf.read(),
-                                        meta={
-                                            'type': 'image/png'
-                                        })
+        return [
+            self.create_text_message('the linear chart is saved as an image.'),
+            self.create_blob_message(blob=buf.read(),
+                                    meta={'mime_type': 'image/png'})
+        ]
     

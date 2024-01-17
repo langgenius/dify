@@ -22,3 +22,14 @@ parameters:
       zh_Hans: 用于生成饼图的数据
     llm_description: data for generating pie chart, data should be a string contains a list of numbers like "1,2,3,4,5"
     form: llm
+  - name: categories
+    type: string
+    required: true
+    label:
+      en_US: Categories
+      zh_Hans: 分类
+    human_description:
+      en_US: Categories for pie chart
+      zh_Hans: 饼图的分类
+    llm_description: categories for pie chart, categories should be a string contains a list of texts like "a,b,c,1,2" in order to match the data
+    form: llm
