@@ -62,7 +62,7 @@ class AppParameterApi(InstalledAppResource):
             }
         }
 
-class AppMetaApi(InstalledAppResource):
+class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
         app_model_config: AppModelConfig = installed_app.app.app_model_config
@@ -100,4 +100,4 @@ class AppMetaApi(InstalledAppResource):
         return meta
 
 api.add_resource(AppParameterApi, '/installed-apps/<uuid:installed_app_id>/parameters', endpoint='installed_app_parameters')
-api.add_resource(AppMetaApi, '/installed-apps/<uuid:installed_app_id>/meta', endpoint='installed_app_parameters')
+api.add_resource(ExploreAppMetaApi, '/installed-apps/<uuid:installed_app_id>/meta', endpoint='installed_app_meta')
