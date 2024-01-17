@@ -29,40 +29,42 @@ const AudioBtn = ({
 
   const playAudio = async () => {
     const formData = new FormData()
-    formData.append('text', removeCodeBlocks(value))
-    let url = '/universal-chat/text-to-audio'
-    let isPublic = false
+    if (value !== '') {
+      formData.append('text', removeCodeBlocks(value))
 
-    if (params.token) {
-      url = '/text-to-audio'
-      isPublic = true
-    }
-    else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
-        url = `/installed-apps/${params.appId}/text-to-audio`
-      else
-        url = `/apps/${params.appId}/text-to-audio`
-    }
+      let url = '/universal-chat/text-to-audio'
+      let isPublic = false
 
-    try {
-      const audioResponse = await textToAudio(url, isPublic, formData)
-      const blob_bytes = Buffer.from(audioResponse.data, 'latin1')
-      const blob = new Blob([blob_bytes], { type: 'audio/wav' })
-      const audioUrl = URL.createObjectURL(blob)
-      const audio = new Audio(audioUrl)
-      audio.play().then(() => {
-        setIsPlayed(true)
-      }).catch(() => {
+      if (params.token) {
+        url = '/text-to-audio'
+        isPublic = true
+      }
+      else if (params.appId) {
+        if (pathname.search('explore/installed') > -1)
+          url = `/installed-apps/${params.appId}/text-to-audio`
+        else
+          url = `/apps/${params.appId}/text-to-audio`
+      }
+
+      try {
+        const audioResponse = await textToAudio(url, isPublic, formData)
+        const blob_bytes = Buffer.from(audioResponse.data, 'latin1')
+        const blob = new Blob([blob_bytes], { type: 'audio/wav' })
+        const audioUrl = URL.createObjectURL(blob)
+        const audio = new Audio(audioUrl)
+        audio.play().then(() => {
+          setIsPlayed(true)
+        }).catch(() => {
+          setIsPlayed(false)
+          URL.revokeObjectURL(audioUrl)
+        })
+      }
+      catch (error) {
         setIsPlayed(false)
-        URL.revokeObjectURL(audioUrl)
-      })
-    }
-    catch (error) {
-      setIsPlayed(false)
-      console.error('Error playing audio:', error)
+        console.error('Error playing audio:', error)
+      }
     }
   }
-
   return (
     <div className={`${className}`}>
       <Tooltip
