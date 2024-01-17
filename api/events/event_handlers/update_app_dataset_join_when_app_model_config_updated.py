@@ -50,11 +50,12 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set:
         return dataset_ids
 
     agent_mode = app_model_config.agent_mode_dict
-    if agent_mode.get('enabled') is False:
-        return dataset_ids
 
     tools = agent_mode.get('tools', []) or []
     for tool in tools:
+        if len(list(tool.keys())) != 1:
+            continue
+
         tool_type = list(tool.keys())[0]
         tool_config = list(tool.values())[0]
         if tool_type == "dataset":
@@ -62,10 +63,8 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set:
 
     # get dataset from dataset_configs
     dataset_configs = app_model_config.dataset_configs_dict
-
-    datasets = dataset_configs.get('datasets', {})
-
-    for dataset in datasets.get('datasets', []):
+    datasets = dataset_configs.get('datasets', {}) or {}
+    for dataset in datasets.get('datasets', []) or []:
         keys = list(dataset.keys())
         if len(keys) == 1 and keys[0] == 'dataset':
             if dataset['dataset'].get('id'):
