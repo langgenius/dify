@@ -79,7 +79,12 @@ class CompletionStopApi(AppApiResource):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        end_user_id = request.get_json().get('user')
+        parser = reqparse.RequestParser()
+        parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+
+        args = parser.parse_args()
+
+        end_user_id = args.get('user')
 
         ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user_id)
 
