@@ -112,7 +112,7 @@ const AgentTools: FC = () => {
                       ))}
                 <div
                   title={item.tool_name}
-                  className='ml-2 max-w-[70px] leading-[18px] text-[13px] font-medium text-gray-800  truncate'
+                  className={cn('ml-2 max-w-[200px] group-hover:max-w-[70px] leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
                   {item.tool_name}
                 </div>
