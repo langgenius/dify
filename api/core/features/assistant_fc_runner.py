@@ -135,12 +135,21 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
                 tool_instance = tool_instances.get(tool_call_name)
                 # create agent thought
-                agent_thought = self.create_agent_thought(
-                    message_id=message.id,
-                    message=message.message,
-                    tool_name=tool_call_name,
-                    tool_input=json.dumps(tool_call_args),
-                )
+                try:
+                    agent_thought = self.create_agent_thought(
+                        message_id=message.id,
+                        message=message.message,
+                        tool_name=tool_call_name,
+                        tool_input=json.dumps(tool_call_args, ensure_ascii=False),
+                    )
+                except json.JSONDecodeError as e:
+                    # ensure ascii to avoid encoding error
+                    agent_thought = self.create_agent_thought(
+                        message_id=message.id,
+                        message=message.message,
+                        tool_name=tool_call_name,
+                        tool_input=json.dumps(tool_call_args),
+                    )
                 agent_thoughts.append(agent_thought)
                 self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 

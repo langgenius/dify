@@ -127,9 +127,12 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             else:
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
-                    final_answer = scratchpad.action.action_input if \
-                        isinstance(scratchpad.action.action_input, str) else \
-                            json.dumps(scratchpad.action.action_input)
+                    try:
+                        final_answer = scratchpad.action.action_input if \
+                            isinstance(scratchpad.action.action_input, str) else \
+                                json.dumps(scratchpad.action.action_input)
+                    except json.JSONDecodeError:
+                        final_answer = f'{scratchpad.action.action_input}'
                 else:
                     function_call_state = True
 
@@ -138,12 +141,22 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     tool_call_args = scratchpad.action.action_input
                     tool_instance = tool_instances.get(tool_call_name)
                     # create agent thought
-                    agent_thought = self.create_agent_thought(
-                        message_id=message.id,
-                        message=message.message,
-                        tool_name=tool_call_name,
-                        tool_input=tool_call_args if isinstance(tool_call_args, str) else json.dumps(tool_call_args),
-                    )
+                    try:
+                        agent_thought = self.create_agent_thought(
+                            message_id=message.id,
+                            message=message.message,
+                            tool_name=tool_call_name,
+                            tool_input=tool_call_args if isinstance(tool_call_args, str) else 
+                                json.dumps(tool_call_args, ensure_ascii=False),
+                        )
+                    except json.JSONDecodeError:
+                        agent_thought = self.create_agent_thought(
+                            message_id=message.id,
+                            message=message.message,
+                            tool_name=tool_call_name,
+                            tool_input=tool_call_args if isinstance(tool_call_args, str) else 
+                                json.dumps(tool_call_args),
+                        )
                     self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
                     if not tool_instance:
@@ -487,4 +500,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             jsonify tool prompt messages
         """
         tools = jsonable_encoder(tools)
-        return json.dumps(tools)
+        try:
+            return json.dumps(tools, ensure_ascii=False)
+        except json.JSONDecodeError:
+            return json.dumps(tools)
