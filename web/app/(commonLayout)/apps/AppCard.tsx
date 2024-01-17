@@ -173,7 +173,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           {app.model_config?.pre_prompt}
         </div>
         <div className={style.listItemFooter}>
-          <AppModeLabel mode={app.mode} />
+          <AppModeLabel mode={app.mode} isAgent={app.is_agent} />
         </div>
 
         {showConfirmDelete && (

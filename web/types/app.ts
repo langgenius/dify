@@ -268,6 +268,7 @@ export type App = {
 
   /** Mode */
   mode: AppMode
+  is_agent: boolean
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
