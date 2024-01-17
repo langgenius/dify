@@ -111,6 +111,8 @@ export const useChat = (
     const responseItem: ChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
+      files: [],
       isAnswer: true,
     }
 
@@ -203,6 +205,30 @@ export const useChat = (
             )
             setSuggestQuestions(data)
           }
+        },
+        onFile(file) {
+          responseItem.files = [...(responseItem as any).files, file]
+          const newListWithAnswer = produce(
+            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+            (draft) => {
+              if (!draft.find(item => item.id === questionId))
+                draft.push({ ...questionItem })
+              draft.push({ ...responseItem })
+            })
+          setChatList(newListWithAnswer)
+        },
+        onThought(thought) {
+          responseItem.id = thought.message_id;
+          (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
+
+          const newListWithAnswer = produce(
+            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+            (draft) => {
+              if (!draft.find(item => item.id === questionId))
+                draft.push({ ...questionItem })
+              draft.push({ ...responseItem })
+            })
+          setChatList(newListWithAnswer)
         },
         onMessageEnd: (messageEnd) => {
           if (messageEnd.metadata?.annotation_reply) {

@@ -4,12 +4,14 @@ import type { ReactNode } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import type { ChatConfig } from './types'
 import { INITIAL_CONFIG } from './constants'
+import type { Emoji } from '@/app/components/tools/types'
 
 export type ChatContextValue = {
   config: ChatConfig
   isResponsing: boolean
   showPromptLog?: boolean
   questionIcon?: ReactNode
+  allToolIcons?: Record<string, string | Emoji>
 }
 
 const ChatContext = createContext<ChatContextValue>({
@@ -28,6 +30,7 @@ export const ChatContextProvider = ({
   isResponsing,
   showPromptLog,
   questionIcon,
+  allToolIcons,
 }: ChatContextProviderProps) => {
   return (
     <ChatContext.Provider value={{
@@ -35,6 +38,7 @@ export const ChatContextProvider = ({
       isResponsing,
       showPromptLog,
       questionIcon,
+      allToolIcons,
     }}>
       {children}
     </ChatContext.Provider>

@@ -17,6 +17,7 @@ import type {
 } from './types'
 import { ChatContextProvider } from './context'
 import { INITIAL_CONFIG } from './constants'
+import type { Emoji } from '@/app/components/tools/types'
 
 export type ChatProps = {
   config: ChatConfig
@@ -28,6 +29,7 @@ export type ChatProps = {
   suggestedQuestions?: string[]
   showPromptLog?: boolean
   questionIcon?: ReactNode
+  allToolIcons?: Record<string, string | Emoji>
 }
 const Chat: FC<ChatProps> = ({
   config = INITIAL_CONFIG,
@@ -39,6 +41,7 @@ const Chat: FC<ChatProps> = ({
   suggestedQuestions,
   showPromptLog,
   questionIcon,
+  allToolIcons,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -53,6 +56,7 @@ const Chat: FC<ChatProps> = ({
       isResponsing={isResponsing}
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
+      allToolIcons={allToolIcons}
     >
       <div
         ref={ref}

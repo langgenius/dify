@@ -9,6 +9,8 @@ import { Markdown } from '@/app/components/base/markdown'
 import { formatNumber } from '@/utils/format'
 import Citation from '@/app/components/app/chat/citation'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
+import Thought from '@/app/components/app/chat/thought'
+import ImageGallery from '@/app/components/base/image-gallery'
 
 type AnswerProps = {
   item: ChatItem
@@ -21,15 +23,21 @@ const Answer: FC<AnswerProps> = ({
   responsing,
 }) => {
   const { t } = useTranslation()
-  const { config } = useChatContext()
+  const {
+    config,
+    allToolIcons,
+  } = useChatContext()
   const {
     isOpeningStatement,
     content,
     citation,
     agent_thoughts,
     more,
+    files,
   } = item
+  const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
   const isThinking = !content && agent_thoughts && agent_thoughts?.length > 0 && !agent_thoughts.some(agent => agent.thought === '[DONE]')
+  const imgs = files?.filter(file => file.type === 'image') || []
 
   return (
     <div className='flex mb-2 last:mb-0'>
@@ -71,6 +79,15 @@ const Answer: FC<AnswerProps> = ({
                 </div>
               )
             }
+            {!!thoughts?.length && (
+              <Thought
+                list={thoughts || []}
+                allToolIcons={allToolIcons || {}}
+              />
+            )}
+            {!!imgs.length && (
+              <ImageGallery srcs={imgs.map(item => item.url)} />
+            )}
             {
               !content && responsing && (
                 <div className='flex items-center justify-center w-6 h-5'>

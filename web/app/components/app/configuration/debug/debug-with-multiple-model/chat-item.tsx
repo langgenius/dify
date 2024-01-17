@@ -1,6 +1,10 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import type { ModelAndParameter } from '../types'
+import { AgentStrategy } from '@/types/app'
 import { Chat } from '@/app/components/base/chat'
 import { useChat } from '@/app/components/base/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
@@ -28,6 +32,7 @@ const ChatItem: FC<ChatItemProps> = ({
 }) => {
   const { userProfile } = useAppContext()
   const {
+    isOpenAI,
     isAdvancedMode,
     modelConfig,
     appId,
@@ -45,8 +50,15 @@ const ChatItem: FC<ChatItemProps> = ({
     datasetConfigs,
     visionConfig,
     annotationConfig,
+    collectionList,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
+  const postDatasets = dataSets.map(({ id }) => ({
+    dataset: {
+      enabled: true,
+      id,
+    },
+  }))
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const config: ChatConfig = {
     pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
@@ -65,15 +77,15 @@ const ChatItem: FC<ChatItemProps> = ({
     sensitive_word_avoidance: moderationConfig,
     external_data_tools: externalDataToolsConfig,
     agent_mode: {
-      enabled: true,
-      tools: [...dataSets.map(({ id }) => ({
-        dataset: {
-          enabled: true,
-          id,
-        },
-      }))],
+      ...modelConfig.agentConfig,
+      strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
     },
-    dataset_configs: datasetConfigs,
+    dataset_configs: {
+      ...datasetConfigs,
+      datasets: {
+        datasets: [...postDatasets],
+      } as any,
+    },
     file_upload: {
       image: visionConfig,
     },
@@ -133,6 +145,14 @@ const ChatItem: FC<ChatItemProps> = ({
       handleRestart()
   })
 
+  const allToolIcons = useMemo(() => {
+    const icons: Record<string, any> = {}
+    modelConfig.agentConfig.tools?.forEach((item: any) => {
+      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+    })
+    return icons
+  }, [collectionList, modelConfig.agentConfig.tools])
+
   if (!chatList.length)
     return null
 
@@ -147,6 +167,7 @@ const ChatItem: FC<ChatItemProps> = ({
       onSend={doSend}
       showPromptLog
       questionIcon={<Avatar name={userProfile.name} size={40} />}
+      allToolIcons={allToolIcons}
     />
   )
 }
