@@ -663,7 +663,7 @@ const Configuration: FC = () => {
       <>
         <div className="flex flex-col h-full">
           <div className='flex grow h-[200px]'>
-            <div className="w-full sm:w-1/2 shrink-0 flex flex-col h-full">
+            <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
               {/* Header Left */}
               <div className='flex justify-between items-center px-6 h-14'>
                 <div className='flex items-center'>
@@ -677,7 +677,7 @@ const Configuration: FC = () => {
               </div>
               <Config />
             </div>
-            {!isMobile && <div className="relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+            {!isMobile && <div className="grow relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               {/* Header Right */}
               <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
                 {isChatApp && (
