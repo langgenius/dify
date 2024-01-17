@@ -251,7 +251,7 @@ const Main: FC<IMainProps> = ({
             id: `question-${item.id}`,
             content: item.query,
             isAnswer: false,
-            message_files: item.message_files,
+            message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
           })
           newChatList.push({
             id: item.id,
@@ -259,6 +259,7 @@ const Main: FC<IMainProps> = ({
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,
+            message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
           })
         })
         setChatList(newChatList)
@@ -470,6 +471,8 @@ const Main: FC<IMainProps> = ({
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
+
+  const allToolIcons = {}
   const handleSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -522,6 +525,8 @@ const Main: FC<IMainProps> = ({
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
+      message_files: [],
       isAnswer: true,
     }
     const prevTempNewConversationId = getCurrConversationId() || '-1'
@@ -582,6 +587,35 @@ const Main: FC<IMainProps> = ({
           setIsShowSuggestion(true)
         }
         setResponsingFalse()
+      },
+      onFile(file) {
+        responseItem.message_files = [...(responseItem as any).message_files, file]
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
+      onThought(thought) {
+        responseItem.id = thought.message_id;
+        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
+        // has switched to other conversation
+
+        // if (prevTempNewConversationId !== getCurrConversationId()) {
+        //   setIsResponsingConCurrCon(false)
+        //   return
+        // }
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
@@ -785,6 +819,7 @@ const Main: FC<IMainProps> = ({
                       ...visionConfig,
                       image_file_size_limit: fileUploadConfigResponse ? fileUploadConfigResponse.image_file_size_limit : visionConfig.image_file_size_limit,
                     }}
+                    allToolIcons={allToolIcons}
                   />
                 </div>
               </div>)

@@ -1,7 +1,7 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
-import type { File } from '@/types/app'
+import type { VisionFile } from '@/types/app'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -32,7 +32,7 @@ export type IOnDataMoreInfo = {
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
 export type IOnThought = (though: ThoughtItem) => void
-export type IOnFile = (file: File) => void
+export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
@@ -138,7 +138,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               onThought?.(bufferObj as ThoughtItem)
             }
             else if (bufferObj.event === 'message_file') {
-              onFile?.(bufferObj as File)
+              onFile?.(bufferObj as VisionFile)
             }
             else if (bufferObj.event === 'message_end') {
               onMessageEnd?.(bufferObj as MessageEnd)
