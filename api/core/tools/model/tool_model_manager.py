@@ -14,7 +14,6 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.model_manager import ModelManager
 
 from core.tools.model.errors import InvokeModelError
-from core.tools.model.entities import ToolModelConfig
 
 from extensions.ext_database import db
 
@@ -141,6 +140,8 @@ class ToolModelManager:
 
         try:
             response: LLMResult = llm_model.invoke(
+                model=model_instance.model,
+                credentials=model_credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=[], stop=[], stream=False, user=user_id, callbacks=[]

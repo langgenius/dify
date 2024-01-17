@@ -16,8 +16,6 @@ however, the text you got is too long, what you got is possible a part of the te
 Please summarize the text you got.
 """
 
-_THRESHOLD = 1.33
-
 class WebscraperTool(BuiltinTool):
     def _invoke(self,
                user_id: str,
@@ -41,13 +39,18 @@ class WebscraperTool(BuiltinTool):
             raise ToolInvokeError(str(e))
         
     def summary(self, user_id: str, content: str) -> str:
-        original_max_tokens = self.get_max_tokens()
-        max_tokens = original_max_tokens * _THRESHOLD
+        max_tokens = self.get_max_tokens()
 
         if self.get_prompt_tokens(prompt_messages=[
             UserPromptMessage(content=content)
-        ]) < original_max_tokens * 0.7:
+        ]) < max_tokens * 0.6:
             return content
+        
+        def get_prompt_tokens(content: str) -> int:
+            return self.get_prompt_tokens(prompt_messages=[
+                SystemPromptMessage(content=_SUMMARY_PROMPT),
+                UserPromptMessage(content=content)
+            ])
         
         def summarize(content: str) -> str:
             summary = self.invoke_model(user_id=user_id, prompt_messages=[
@@ -62,12 +65,12 @@ class WebscraperTool(BuiltinTool):
         # split long line into multiple lines
         for i in range(len(lines)):
             line = lines[i]
-            if len(line) > max_tokens:
-                # split by length
-                new_line = ''
-                while len(line) > max_tokens:
-                    new_line += line[:max_tokens] + '\n'
-                    line = line[max_tokens:]
+            if len(line) < max_tokens * 0.5:
+                new_lines.append(line)
+            elif get_prompt_tokens(line) > max_tokens * 0.7:
+                while get_prompt_tokens(line) > max_tokens * 0.7:
+                    new_lines.append(line[:max_tokens * 0.5])
+                    line = line[max_tokens * 0.7:]
             else:
                 new_lines.append(line)
 
@@ -77,7 +80,9 @@ class WebscraperTool(BuiltinTool):
             if len(messages) == 0:
                 messages.append(i)
             else:
-                if len(messages[-1]) + len(i) > max_tokens:
+                if len(messages[-1]) + len(i) < max_tokens * 0.5:
+                    messages[-1] += i
+                if get_prompt_tokens(messages[-1] + i) > max_tokens * 0.7:
                     messages.append(i)
                 else:
                     messages[-1] += i
@@ -92,7 +97,7 @@ class WebscraperTool(BuiltinTool):
 
         if self.get_prompt_tokens(prompt_messages=[
             UserPromptMessage(content=result)
-        ]) > original_max_tokens * 0.7:
+        ]) > max_tokens * 0.7:
             return self.summary(user_id=user_id, content=result)
         
         return result
