@@ -44,7 +44,6 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
-    isOpenAI,
     isFunctionCall,
     collectionList,
     modelModeType,

@@ -83,6 +83,7 @@ const translation = {
     string: 'string',
     number: 'number',
     required: 'Required',
+    infoAndSetting: 'Info & Settings',
   },
   noCustomTool: {
     title: 'No custom tools',

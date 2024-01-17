@@ -98,6 +98,7 @@ export type AgentTool = {
   tool_name: string
   tool_parameters: Record<string, any>
   enabled: boolean
+  isDeleted?: boolean
 }
 
 export type ToolItem = {

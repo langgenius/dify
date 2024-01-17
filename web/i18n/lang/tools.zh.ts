@@ -75,6 +75,7 @@ const translation = {
     string: '字符串',
     number: '数字',
     required: '必填',
+    infoAndSetting: '信息和设置',
   },
   noCustomTool: {
     title: '没有自定义工具',
