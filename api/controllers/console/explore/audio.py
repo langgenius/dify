@@ -64,12 +64,16 @@ class ChatAudioApi(InstalledAppResource):
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
+        app_model_config: AppModelConfig = app_model.app_model_config
+
+        if not app_model_config.text_to_speech_dict['enabled']:
+            raise AppUnavailableError()
+
         try:
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=request.form['text']
             )
-
             return {'data': response.data.decode('latin1')}
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")

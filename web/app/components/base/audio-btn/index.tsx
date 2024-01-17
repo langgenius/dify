@@ -51,11 +51,14 @@ const AudioBtn = ({
       const audioUrl = URL.createObjectURL(blob)
       const audio = new Audio(audioUrl)
       audio.play().then(() => {
+        setIsPlayed(true)
       }).catch(() => {
+        setIsPlayed(false)
         URL.revokeObjectURL(audioUrl)
       })
     }
     catch (error) {
+      setIsPlayed(false)
       console.error('Error playing audio:', error)
     }
   }
@@ -76,7 +79,6 @@ const AudioBtn = ({
             : {}}
           onClick={() => {
             playAudio().then()
-            setIsPlayed(true)
           }}
         >
           <div className={`w-6 h-6 rounded-md hover:bg-gray-50 ${s.playIcon} ${isPlayed ? s.played : ''}`}></div>

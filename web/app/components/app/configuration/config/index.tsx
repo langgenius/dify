@@ -19,7 +19,7 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig, TextToSpeechConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
@@ -47,6 +47,8 @@ const Config: FC = () => {
     setSuggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
     setSpeechToTextConfig,
+    textToSpeechConfig,
+    setTextToSpeechConfig,
     citationConfig,
     setCitationConfig,
     annotationConfig,
@@ -56,6 +58,7 @@ const Config: FC = () => {
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
   const { data: speech2textDefaultModel } = useDefaultModel(4)
+  const { data: text2speechDefaultModel } = useDefaultModel(5)
   const { setShowModerationSettingModal } = useModalContext()
 
   const promptTemplate = modelConfig.configs.prompt_template
@@ -104,6 +107,12 @@ const Config: FC = () => {
     speechToText: speechToTextConfig.enabled,
     setSpeechToText: (value) => {
       setSpeechToTextConfig(produce(speechToTextConfig, (draft: SpeechToTextConfig) => {
+        draft.enabled = value
+      }))
+    },
+    textToSpeech: textToSpeechConfig.enabled,
+    setTextToSpeech: (value) => {
+      setTextToSpeechConfig(produce(textToSpeechConfig, (draft: TextToSpeechConfig) => {
         draft.enabled = value
       }))
     },
@@ -169,7 +178,7 @@ const Config: FC = () => {
     setAnnotationConfig,
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || (featureConfig.textToSpeech && !!text2speechDefaultModel) || featureConfig.citation)
   const hasToolbox = moderationConfig.enabled || featureConfig.annotation
 
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -203,6 +212,7 @@ const Config: FC = () => {
             config={featureConfig}
             onChange={handleFeatureChange}
             showSpeechToTextItem={!!speech2textDefaultModel}
+            showTextToSpeechItem={!!text2speechDefaultModel}
           />
         )}
 
@@ -247,16 +257,21 @@ const Config: FC = () => {
                 }
               }
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
+              isShowTextToSpeech={featureConfig.textToSpeech && !!text2speechDefaultModel}
               isShowSpeechText={featureConfig.speechToText && !!speech2textDefaultModel}
               isShowCitation={featureConfig.citation}
             />
           )
         }
 
-        {/* TextnGeneration config */}
-        {moreLikeThisConfig.enabled && (
-          <ExperienceEnchanceGroup />
-        )}
+        {/* TextnGeneration config */}{
+          !hasChatConfig && (
+            <ExperienceEnchanceGroup
+              isShowMoreLike={moreLikeThisConfig.enabled}
+              isShowTextToSpeech={featureConfig.textToSpeech && !!text2speechDefaultModel}
+            />
+          )
+        }
 
         {/* Toolbox */}
         {

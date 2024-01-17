@@ -12,6 +12,7 @@ import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
+import AudioBtn from '@/app/components/base/audio-btn'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/files'
@@ -21,6 +22,7 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import { fetchTextGenerationMessge } from '@/service/debug'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+import s from '@/app/components/app/chat/style.module.css'
 
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
@@ -45,6 +47,7 @@ export type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   supportAnnotation?: boolean
+  isShowTextToSpeech?: boolean
   appId?: string
   varList?: { label: string; value: string | number | object }[]
 }
@@ -90,6 +93,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   supportAnnotation,
+  isShowTextToSpeech,
   appId,
   varList,
 }) => {
@@ -124,6 +128,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isLoading: isQuerying,
     feedback: childFeedback,
     onSave,
+    isShowTextToSpeech,
     isMobile,
     isInstalledApp,
     installedAppId,
@@ -328,6 +333,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   </>
                 )}
 
+                {isShowTextToSpeech && (
+                  <>
+                    <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
+                    <AudioBtn
+                      value={content}
+                      className={cn(s.playBtn, 'mr-1')}
+                    />
+                  </>
+                )}
+
                 {supportAnnotation && (
                   <>
                     <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
@@ -340,7 +355,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       // not support cache. So can not be cached
                       cached={false}
                       onAdded={() => {
-
                       }}
                       onEdit={() => setIsShowReplyModal(true)}
                       onRemoved={() => { }}

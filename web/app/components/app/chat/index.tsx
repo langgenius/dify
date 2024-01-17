@@ -54,6 +54,7 @@ export type IChatProps = {
   isShowSuggestion?: boolean
   suggestionList?: string[]
   isShowSpeechToText?: boolean
+  isShowTextToSpeech?: boolean
   isShowCitation?: boolean
   answerIcon?: ReactNode
   isShowConfigElem?: boolean
@@ -84,6 +85,7 @@ const Chat: FC<IChatProps> = ({
   isShowSuggestion,
   suggestionList,
   isShowSpeechToText,
+  isShowTextToSpeech,
   isShowCitation,
   answerIcon,
   isShowConfigElem,
@@ -216,6 +218,7 @@ const Chat: FC<IChatProps> = ({
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}
+              isShowTextToSpeech={isShowTextToSpeech}
               supportAnnotation={supportAnnotation}
               appId={appId}
               question={chatList[index - 1]?.content}

@@ -11,8 +11,7 @@ class TTSModel(AIModel):
     """
     model_type: ModelType = ModelType.TTS
 
-    def invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) \
-            -> str:
+    def invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None):
         """
         Invoke large language model
 
@@ -28,7 +27,7 @@ class TTSModel(AIModel):
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> str:
+    def _invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None):
         """
         Invoke large language model
 

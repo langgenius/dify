@@ -16,6 +16,7 @@ import type {
   PromptItem,
   SpeechToTextConfig,
   SuggestedQuestionsAfterAnswerConfig,
+  TextToSpeechConfig,
 } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
@@ -57,6 +58,8 @@ type IDebugConfiguration = {
   setSuggestedQuestionsAfterAnswerConfig: (suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig) => void
   speechToTextConfig: SpeechToTextConfig
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
+  textToSpeechConfig: TextToSpeechConfig
+  setTextToSpeechConfig: (textToSpeechConfig: TextToSpeechConfig) => void
   citationConfig: CitationConfig
   setCitationConfig: (citationConfig: CitationConfig) => void
   annotationConfig: AnnotationReplyConfig
@@ -138,6 +141,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     enabled: false,
   },
   setSpeechToTextConfig: () => { },
+  textToSpeechConfig: {
+    enabled: false,
+  },
+  setTextToSpeechConfig: () => { },
   citationConfig: {
     enabled: false,
   },
@@ -184,6 +191,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     more_like_this: null,
     suggested_questions_after_answer: null,
     speech_to_text: null,
+    text_to_speech: null,
     retriever_resource: null,
     sensitive_word_avoidance: null,
     dataSets: [],

@@ -59,7 +59,7 @@ class UniversalChatAudioApi(UniversalChatResource):
         except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
-        
+
 
 class UniversalChatTextApi(UniversalChatResource):
     def post(self, universal_app):

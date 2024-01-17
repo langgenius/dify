@@ -174,6 +174,7 @@ const Main: FC<IMainProps> = ({
 
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
@@ -380,7 +381,7 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, text_to_speech, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
         setVisionConfig({
           ...file_upload.image,
           image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
@@ -400,6 +401,7 @@ const Main: FC<IMainProps> = ({
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
+        setTextToSpeechConfig(text_to_speech)
         setCitationConfig(retriever_resource)
 
         // setConversationList(conversations as ConversationItem[])
@@ -780,6 +782,7 @@ const Main: FC<IMainProps> = ({
                     isShowSuggestion={doShowSuggestion}
                     suggestionList={suggestQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
+                    isShowTextToSpeech={textToSpeechConfig?.enabled}
                     isShowCitation={citationConfig?.enabled && isInstalledApp}
                     visionConfig={{
                       ...visionConfig,

@@ -28,6 +28,10 @@
   background-image: url(./preview-imgs/speech-to-text.svg);
 }
 
+.textToSpeechPreview {
+  background-image: url(./preview-imgs/text-to-speech.svg);
+}
+
 .citationPreview {
   background-image: url(./preview-imgs/citation.svg);
 }
