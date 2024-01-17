@@ -2,6 +2,8 @@
 from datetime import datetime
 from functools import wraps
 
+from sqlalchemy import or_
+
 from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -75,7 +77,7 @@ def validate_dataset_token(view=None):
             tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role == 'owner') \
+                .filter(or_(TenantAccountJoin.role == 'owner', TenantAccountJoin.role == 'admin')) \
                 .one_or_none()
             if tenant_account_join:
                 tenant, ta = tenant_account_join
