@@ -6,6 +6,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import AppApiResource
 from extensions.ext_database import db
 from fields.conversation_fields import message_file_fields
+from fields.message_fields import agent_thought_fields
 from flask_restful import fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from libs.helper import TimestampField, uuid_value
@@ -46,7 +47,8 @@ class MessageListApi(AppApiResource):
         'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
         'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
-        'created_at': TimestampField
+        'created_at': TimestampField,
+        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
     }
 
     message_infinite_scroll_pagination_fields = {
