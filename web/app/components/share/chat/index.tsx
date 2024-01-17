@@ -30,7 +30,13 @@ import {
   updateFeedback,
 } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
-import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type {
+  CitationConfig,
+  PromptConfig,
+  SpeechToTextConfig,
+  SuggestedQuestionsAfterAnswerConfig,
+  TextToSpeechConfig,
+} from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
@@ -173,9 +179,9 @@ const Main: FC<IMainProps> = ({
   }
 
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
-  const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
-  const [textToSpeechConfig, setTextToSpeechConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
-  const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [speechToTextConfig, setSpeechToTextConfig] = useState<SpeechToTextConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
+  const [citationConfig, setCitationConfig] = useState<CitationConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
   const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
@@ -323,7 +329,6 @@ const Main: FC<IMainProps> = ({
     if (caculatedIntroduction && caculatedPromptVariables)
       caculatedIntroduction = replaceStringWithValues(caculatedIntroduction, promptConfig?.prompt_variables || [], caculatedPromptVariables)
 
-    // console.log(isPublicVersion)
     const openstatement = {
       id: `${Date.now()}`,
       content: caculatedIntroduction,

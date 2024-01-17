@@ -178,6 +178,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
     const data = await fetchTextGenerationMessge({
+      // @ts-ignore
       appId: params.appId,
       messageId: messageId!,
     })
@@ -333,16 +334,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   </>
                 )}
 
-                {isShowTextToSpeech && (
-                  <>
-                    <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
-                    <AudioBtn
-                      value={content}
-                      className={cn(s.playBtn, 'mr-1')}
-                    />
-                  </>
-                )}
-
                 {supportAnnotation && (
                   <>
                     <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
@@ -380,8 +371,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   <div className='ml-1'>
                     {ratingContent}
                   </div>
-                )
-                }
+                )}
+
+                {isShowTextToSpeech && (
+                  <>
+                    <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
+                    <AudioBtn
+                      value={content}
+                      className={cn(s.playBtn, 'mr-1')}
+                    />
+                  </>
+                )}
               </div>
               <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
             </div>

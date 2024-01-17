@@ -586,6 +586,7 @@ const Debug: FC<IDebug> = ({
                 className="mt-2"
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
+                isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                 isResponsing={isResponsing}
                 isInstalledApp={false}
                 messageId={messageId}
