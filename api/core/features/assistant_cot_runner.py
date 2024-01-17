@@ -40,6 +40,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # TODO: stop words
             if 'Thought' not in app_orchestration_config.model_config.stop:
                 app_orchestration_config.model_config.stop.append('Thought')
+            if 'Observation' not in app_orchestration_config.model_config.stop:
+                app_orchestration_config.model_config.stop.append('Observation')
 
         iteration_step = 1
         max_iteration_steps = min(self.app_orchestration_config.agent.max_iteration, 5)
@@ -401,7 +403,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         result = ''
         for scratchpad in agent_scratchpad:
-            result += next_iteration.replace("{{observation}}", scratchpad.observation) + "\n"
+            result += scratchpad.thought + next_iteration.replace("{{observation}}", scratchpad.observation) + "\n"
 
         return result
     
