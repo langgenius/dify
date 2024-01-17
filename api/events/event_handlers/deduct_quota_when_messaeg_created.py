@@ -23,6 +23,10 @@ def handle(sender, **kwargs):
     for quota_configuration in system_configuration.quota_configurations:
         if quota_configuration.quota_type == system_configuration.current_quota_type:
             quota_unit = quota_configuration.quota_unit
+
+            if quota_configuration.quota_limit == -1:
+                return
+
             break
 
     used_quota = None
