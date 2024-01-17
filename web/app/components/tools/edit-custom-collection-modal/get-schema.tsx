@@ -8,6 +8,7 @@ import { Plus } from '../../base/icons/src/vender/line/general'
 import { ChevronDown } from '../../base/icons/src/vender/line/arrows'
 import examples from './examples'
 import Button from '@/app/components/base/button'
+import { importSchemaFromURL } from '@/service/tools'
 
 type Props = {
   onChange: (value: string) => void
@@ -19,7 +20,8 @@ const GetSchema: FC<Props> = ({
   const { t } = useTranslation()
   const [showImportFromUrl, setShowImportFromUrl] = useState(false)
   const [importUrl, setImportUrl] = useState('')
-  const handleImportFromUrl = () => {
+  const [isParsing, setIsParsing] = useState(false)
+  const handleImportFromUrl = async () => {
     if (!importUrl.startsWith('http://') && !importUrl.startsWith('https://')) {
       Toast.notify({
         type: 'error',
@@ -27,10 +29,16 @@ const GetSchema: FC<Props> = ({
       })
       return
     }
-    setShowImportFromUrl(false)
-    setImportUrl('')
-    // TODO: get schema from url
-    onChange('xdfdffdfdf')
+    setIsParsing(true)
+    try {
+      const { schema } = await importSchemaFromURL(importUrl) as any
+      setImportUrl('')
+      onChange(schema)
+    }
+    finally {
+      setIsParsing(false)
+      setShowImportFromUrl(false)
+    }
   }
 
   const importURLRef = React.useRef(null)
@@ -59,7 +67,7 @@ const GetSchema: FC<Props> = ({
             <div className='relative'>
               <input
                 type='text'
-                className='w-[244px] h-8 pl-1.5 border border-gray-200 rounded-lg text-[13px]'
+                className='w-[244px] h-8 pl-1.5 pr-[44px] overflow-x-auto border border-gray-200 rounded-lg text-[13px]'
                 placeholder={t('tools.createTool.importFromUrlPlaceHolder')!}
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
@@ -69,8 +77,9 @@ const GetSchema: FC<Props> = ({
                 type='primary'
                 disabled={!importUrl}
                 onClick={handleImportFromUrl}
+                loading={isParsing}
               >
-                {t('common.operation.ok')}
+                {isParsing ? '' : t('common.operation.ok')}
               </Button>
             </div>
           </div>
