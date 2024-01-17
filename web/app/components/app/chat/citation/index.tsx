@@ -15,10 +15,12 @@ export type Resources = {
 type CitationProps = {
   data: CitationItem[]
   showHitInfo?: boolean
+  containerClassName?: string
 }
 const Citation: FC<CitationProps> = ({
   data,
   showHitInfo,
+  containerClassName = 'chat-answer-container',
 }) => {
   const { t } = useTranslation()
   const elesRef = useRef<HTMLDivElement[]>([])
@@ -46,7 +48,7 @@ const Citation: FC<CitationProps> = ({
   }, []), [data])
 
   const handleAdjustResourcesLayout = () => {
-    const containerWidth = document.querySelector('.chat-answer-container')!.clientWidth - 40
+    const containerWidth = document.querySelector(`.${containerClassName}`)!.clientWidth - 40
     let totalWidth = 0
     for (let i = 0; i < resources.length; i++) {
       totalWidth += elesRef.current[i].clientWidth
