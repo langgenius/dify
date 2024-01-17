@@ -35,6 +35,7 @@ type IDebugConfiguration = {
   setPromptMode: (promptMode: PromptMode) => void
   isAdvancedMode: boolean
   isAgent: boolean
+  isFunctionCall: boolean
   isOpenAI: boolean
   collectionList: Collection[]
   canReturnToSimpleMode: boolean
@@ -103,6 +104,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setPromptMode: () => { },
   isAdvancedMode: false,
   isAgent: false,
+  isFunctionCall: false,
   isOpenAI: false,
   collectionList: [],
   canReturnToSimpleMode: false,

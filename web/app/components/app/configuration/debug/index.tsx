@@ -45,6 +45,7 @@ const Debug: FC<IDebug> = ({
     appId,
     mode,
     isOpenAI,
+    isFunctionCall,
     collectionList,
     modelModeType,
     hasSetBlockStatus,
@@ -217,7 +218,7 @@ const Debug: FC<IDebug> = ({
       external_data_tools: externalDataToolsConfig,
       agent_mode: {
         ...modelConfig.agentConfig,
-        strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
+        strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelConfig.provider,

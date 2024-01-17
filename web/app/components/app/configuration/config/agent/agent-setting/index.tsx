@@ -14,7 +14,7 @@ import { DEFAULT_AGENT_PROMPT } from '@/config'
 type Props = {
   isChatModel: boolean
   payload: AgentConfig
-  isOpenAI: boolean
+  isFunctionCall: boolean
   onCancel: () => void
   onSave: (payload: any) => void
 }
@@ -25,7 +25,7 @@ const maxIterationsMax = 5
 const AgentSetting: FC<Props> = ({
   isChatModel,
   payload,
-  isOpenAI,
+  isFunctionCall,
   onCancel,
   onSave,
 }) => {
@@ -70,7 +70,7 @@ const AgentSetting: FC<Props> = ({
             name={t('appDebug.agent.agentMode')}
             description={t('appDebug.assistantType.agentAssistant.description')}
           >
-            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isOpenAI ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
+            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
           </ItemPanel>
 
           <ItemPanel
@@ -116,7 +116,7 @@ const AgentSetting: FC<Props> = ({
             </div>
           </ItemPanel>
 
-          {!isOpenAI && (
+          {!isFunctionCall && (
             <>
               <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
                 {t('appDebug.agent.buildInPrompt')}

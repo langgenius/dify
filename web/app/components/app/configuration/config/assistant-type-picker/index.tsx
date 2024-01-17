@@ -20,7 +20,7 @@ import type { AgentConfig } from '@/models/debug'
 type Props = {
   value: string
   onChange: (value: string) => void
-  isOpenAI: boolean
+  isFunctionCall: boolean
   isChatModel: boolean
   agentConfig?: AgentConfig
   onAgentSettingChange: (payload: AgentConfig) => void
@@ -59,7 +59,7 @@ const AssistantTypePicker: FC<Props> = ({
   value,
   onChange,
   onAgentSettingChange,
-  isOpenAI,
+  isFunctionCall,
   isChatModel,
   agentConfig,
 }) => {
@@ -144,7 +144,7 @@ const AssistantTypePicker: FC<Props> = ({
       </PortalToFollowElem>
       {isShowAgentSetting && (
         <AgentSetting
-          isOpenAI={isOpenAI}
+          isFunctionCall={isFunctionCall}
           payload={agentConfig as AgentConfig}
           isChatModel={isChatModel}
           onSave={(payloadNew) => {
