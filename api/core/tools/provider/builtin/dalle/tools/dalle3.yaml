@@ -3,10 +3,10 @@ identity:
   author: Dify
   label:
     en_US: DALL-E 3
-    zh_Hans: DALL-E 3 画画
+    zh_Hans: DALL-E 3 绘画
   description:
-    en_US: DALL-E 3 draw
-    zh_Hans: DALL-E 3 画画
+    en_US: DALL-E 3 is a powerful drawing tool that can draw the image you want based on your prompt, compared to DallE 2, DallE 3 has stronger drawing ability, but it will consume more resources
+    zh_Hans: DALL-E 3 是一个强大的绘画工具，它可以根据您的提示词绘制出您想要的图像，相比于DallE 2， DallE 3拥有更强的绘画能力，但会消耗更多的资源
 description:
   human:
     en_US: DALL-E is a text to image tool

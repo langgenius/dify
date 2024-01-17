@@ -3,10 +3,10 @@ identity:
   author: Dify
   label:
     en_US: DALL-E 2
-    zh_Hans: DALL-E 2 画画
+    zh_Hans: DALL-E 2 绘画
   description:
-    en_US: DALL-E 2 draw
-    zh_Hans: DALL-E 2 画画
+    en_US: DALL-E 2 is a powerful drawing tool that can draw the image you want based on your prompt
+    zh_Hans: DALL-E 2 是一个强大的绘画工具，它可以根据您的提示词绘制出您想要的图像
 description:
   human:
     en_US: DALL-E is a text to image tool
