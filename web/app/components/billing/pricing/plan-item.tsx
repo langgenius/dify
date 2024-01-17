@@ -107,7 +107,6 @@ const PlanItem: FC<Props> = ({
             <div>{t('billing.plansCommon.supportItems.emailSupport')}</div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
-              <div>{comingSoon}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div className='flex items-center'>
@@ -135,7 +134,6 @@ const PlanItem: FC<Props> = ({
             <div>{t('billing.plansCommon.supportItems.priorityEmail')}</div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
-              <div>{comingSoon}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.SSOAuthentication')}</div>
