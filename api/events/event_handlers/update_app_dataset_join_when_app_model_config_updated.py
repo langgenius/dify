@@ -63,4 +63,15 @@ def get_dataset_ids_from_model_config(app_model_config: AppModelConfig) -> set:
         if tool_type == "dataset":
             dataset_ids.add(tool_config.get("id"))
 
+    # get dataset from dataset_configs
+    dataset_configs = app_model_config.dataset_configs_dict
+
+    datasets = dataset_configs.get('datasets', {})
+
+    for dataset in datasets.get('datasets', []):
+        keys = list(dataset.keys())
+        if len(keys) == 1 and keys[0] == 'dataset':
+            if dataset['dataset'].get('id'):
+                dataset_ids.add(dataset['dataset'].get('id'))
+
     return dataset_ids
