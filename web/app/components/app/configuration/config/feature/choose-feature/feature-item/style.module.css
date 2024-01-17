@@ -13,25 +13,31 @@
 }
 
 .openingStatementPreview {
-  background-image: url(./preview-imgs/opening-statement.svg);
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/opening-suggestion-preview@2x.png);
 }
 
 .suggestedQuestionsAfterAnswerPreview {
-  background-image: url(./preview-imgs/suggested-questions-after-answer.svg);
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/next-question-suggestion-preview@2x.png);
 }
 
 .moreLikeThisPreview {
-  background-image: url(./preview-imgs/more-like-this.svg);
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/more-like-this-preview@2x.png);
 }
 
 .speechToTextPreview {
-  background-image: url(./preview-imgs/speech-to-text.svg);
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/speech-to-text-preview@2x.png);
 }
 
 .textToSpeechPreview {
-  background-image: url(./preview-imgs/textToSpeech.png);
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/text-to-audio-preview-assistant@2x.png);
 }
 
 .citationPreview {
-  background-image: url(./preview-imgs/citeAndAttrs.png);
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/citations-and-attributions-preview@2x.png);
 }
