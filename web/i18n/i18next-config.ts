@@ -58,9 +58,13 @@ import billingPt from './lang/billing.pt' // Portuguese import
 import customEn from './lang/custom.en'
 import customZh from './lang/custom.zh'
 import customPt from './lang/custom.pt' // Portuguese import
+<<<<<<< HEAD
 import toolsEn from './lang/tools.en'
 import toolsZh from './lang/tools.zh'
 // Portuguese import
+=======
+import toolsPt from './lang/tools.pt' // Portuguese import
+>>>>>>> 2d0e32da (feat: add tools pt)
 
 const resources = {
   'en-US': {
@@ -141,6 +145,7 @@ const resources = {
       explore: explorePt,
       billing: billingPt,
       custom: customPt,
+      tools: toolsPt,
     },
   },
 }
