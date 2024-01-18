@@ -75,7 +75,19 @@ const translation = {
     string: '字符串',
     number: '数字',
     required: '必填',
+    infoAndSetting: '信息和设置',
   },
+  noCustomTool: {
+    title: '没有自定义工具',
+    content: '您没有自定义工具。',
+    createTool: '创建工具',
+  },
+  noSearchRes: {
+    title: '抱歉，没有结果！',
+    content: '我们找不到任何与您的搜索相匹配的工具。',
+    reset: '重置搜索',
+  },
+  builtInPromptTitle: '提示词',
 }
 
 export default translation

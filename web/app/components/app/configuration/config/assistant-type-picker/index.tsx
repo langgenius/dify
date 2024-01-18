@@ -19,8 +19,9 @@ import type { AgentConfig } from '@/models/debug'
 
 type Props = {
   value: string
+  disabled: boolean
   onChange: (value: string) => void
-  isOpenAI: boolean
+  isFunctionCall: boolean
   isChatModel: boolean
   agentConfig?: AgentConfig
   onAgentSettingChange: (payload: AgentConfig) => void
@@ -28,6 +29,7 @@ type Props = {
 
 type ItemProps = {
   text: string
+  disabled: boolean
   value: string
   isChecked: boolean
   description: string
@@ -35,11 +37,11 @@ type ItemProps = {
   onClick: (value: string) => void
 }
 
-const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, onClick }) => {
+const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, onClick, disabled }) => {
   return (
     <div
-      className={cn(isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 p-3 pr-4 rounded-xl bg-gray-25 hover:bg-gray-50 cursor-pointer')}
-      onClick={() => onClick(value)}
+      className={cn(disabled ? 'opacity-50' : 'cursor-pointer', isChecked ? 'border-[2px] border-indigo-600 shadow-sm' : 'border border-gray-100', 'mb-2 p-3 pr-4 rounded-xl bg-gray-25 hover:bg-gray-50')}
+      onClick={() => !disabled && onClick(value)}
     >
       <div className='flex items-center justify-between'>
         <div className='flex items-center '>
@@ -57,9 +59,10 @@ const SelectItem: FC<ItemProps> = ({ text, value, Icon, isChecked, description, 
 
 const AssistantTypePicker: FC<Props> = ({
   value,
+  disabled,
   onChange,
   onAgentSettingChange,
-  isOpenAI,
+  isFunctionCall,
   isChatModel,
   agentConfig,
 }) => {
@@ -125,6 +128,7 @@ const AssistantTypePicker: FC<Props> = ({
             <SelectItem
               Icon={BubbleText}
               value='chat'
+              disabled={disabled}
               text={t('appDebug.assistantType.chatAssistant.name')}
               description={t('appDebug.assistantType.chatAssistant.description')}
               isChecked={!isAgent}
@@ -133,18 +137,19 @@ const AssistantTypePicker: FC<Props> = ({
             <SelectItem
               Icon={CuteRobote}
               value='agent'
+              disabled={disabled}
               text={t('appDebug.assistantType.agentAssistant.name')}
               description={t('appDebug.assistantType.agentAssistant.description')}
               isChecked={isAgent}
               onClick={handleChange}
             />
-            {agentConfigUI}
+            {!disabled && agentConfigUI}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      {isShowAgentSetting && (
+      {isShowAgentSetting && disabled && (
         <AgentSetting
-          isOpenAI={isOpenAI}
+          isFunctionCall={isFunctionCall}
           payload={agentConfig as AgentConfig}
           isChatModel={isChatModel}
           onSave={(payloadNew) => {

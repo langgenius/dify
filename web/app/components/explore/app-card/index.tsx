@@ -40,7 +40,7 @@ const AppCard = ({
       <div className='mb-3 px-[14px] h-9 text-xs leading-normal text-gray-500 line-clamp-2'>{app.description}</div>
       <div className='flex items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px]'>
         <div className={s.mode}>
-          <AppModeLabel mode={appBasicInfo.mode} />
+          <AppModeLabel mode={appBasicInfo.mode} isAgent={appBasicInfo.is_agent} />
         </div>
         <div className={cn(s.opWrap, 'flex items-center w-full space-x-2')}>
           <Button type='primary' className='grow flex items-center !h-7' onClick={() => onAddToWorkspace(appBasicInfo.id)}>

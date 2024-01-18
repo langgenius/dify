@@ -7,7 +7,6 @@ import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import style from '../list.module.css'
 import AppModeLabel from './AppModeLabel'
 import Button from '@/app/components/base/button'
@@ -165,7 +164,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                   <div className={style.listItemTitle}>
                     <span className={style.newItemIcon}>
                       {/* <span className={classNames(style.newItemIconImage, style.newItemIconComplete)} /> */}
-                      <AiText className={cn('w-5 h-5', newAppMode === 'completion' ? 'text-[#155EEF]' : 'text-gray-700')} />
+                      <AiText className={classNames('w-5 h-5', newAppMode === 'completion' ? 'text-[#155EEF]' : 'text-gray-700')} />
                     </span>
                     <div className={style.listItemHeading}>
                       <div className={style.listItemHeadingContent}>{t('app.newApp.completeApp')}</div>
@@ -194,7 +193,9 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                   </div>
                 </div>
                 <div className={style.listItemDescription}>{template.model_config?.pre_prompt}</div>
-                <AppModeLabel mode={template.mode} className='mt-2' />
+                <div className='inline-block pl-3.5'>
+                  <AppModeLabel mode={template.mode} isAgent={template.model_config.agent_mode.enabled} className='mt-2' />
+                </div>
               </li>
             ))}
           </ul>

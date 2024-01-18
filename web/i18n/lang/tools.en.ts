@@ -83,7 +83,19 @@ const translation = {
     string: 'string',
     number: 'number',
     required: 'Required',
+    infoAndSetting: 'Info & Settings',
   },
+  noCustomTool: {
+    title: 'No custom tools',
+    content: 'You have no custom tools. ',
+    createTool: 'Create Tool',
+  },
+  noSearchRes: {
+    title: 'Sorry, no results!',
+    content: 'We couldn\'t find any tools that match your search.',
+    reset: 'Reset Search',
+  },
+  builtInPromptTitle: 'Prompt',
 }
 
 export default translation

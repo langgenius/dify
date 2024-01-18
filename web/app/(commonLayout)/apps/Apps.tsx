@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
-import {
-  MagnifyingGlassIcon,
-} from '@heroicons/react/24/solid'
+import { useDebounceFn } from 'ahooks'
 import AppCard from './AppCard'
 import NewAppCard from './NewAppCard'
 import type { AppListResponse } from '@/models/app'
@@ -14,50 +12,45 @@ import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
 import TabSlider from '@/app/components/base/tab-slider'
-const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
-  if (!pageIndex || previousPageData.has_more)
-    return { url: 'apps', params: { page: pageIndex + 1, limit: 30 } }
+import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+
+const getKey = (
+  pageIndex: number,
+  previousPageData: AppListResponse,
+  activeTab: string,
+  keywords: string,
+) => {
+  if (!pageIndex || previousPageData.has_more) {
+    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords } }
+
+    if (activeTab !== 'all')
+      params.params.mode = activeTab
+
+    return params
+  }
   return null
 }
 
 const Apps = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { data: allData, isLoading: allIsLoading, setSize: allSetSize, mutate: allMute } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
-  const { data: assistantData, isLoading: assistantIsLoading, setSize: assistantSetSize, mutate: assistantMute } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
-  const { data: completionData, isLoading: completionIsLoading, setSize: completionSetSize, mutate: completionMute } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
+  const [activeTab, setActiveTab] = useState('all')
+  const [keywords, setKeywords] = useState('')
+  const [searchKeywords, setSearchKeywords] = useState('')
+
+  const { data, isLoading, setSize, mutate } = useSWRInfinite(
+    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, searchKeywords),
+    fetchAppList,
+    { revalidateFirstPage: false },
+  )
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
     { value: 'all', text: t('app.types.all') },
-    { value: 'assistant', text: t('app.types.assistant') },
+    { value: 'chat', text: t('app.types.assistant') },
     { value: 'completion', text: t('app.types.completion') },
   ]
-  const [activeTab, setActiveTab] = useState('all')
-  const [keywords, setKeywords] = useState('')
-
-  const { data, isLoading, setSize, mutate } = (() => {
-    return ({
-      all: {
-        data: allData,
-        isLoading: allIsLoading,
-        setSize: allSetSize,
-        mutate: allMute,
-      },
-      assistant: {
-        data: assistantData,
-        isLoading: assistantIsLoading,
-        setSize: assistantSetSize,
-        mutate: assistantMute,
-      },
-      completion: {
-        data: completionData,
-        isLoading: completionIsLoading,
-        setSize: completionSetSize,
-        mutate: completionMute,
-      },
-    })[activeTab] as any
-  })()
 
   useEffect(() => {
     document.title = `${t('app.title')} -  Dify`
@@ -71,13 +64,26 @@ const Apps = () => {
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting)
+        if (entries[0].isIntersecting && !isLoading)
           setSize((size: number) => size + 1)
       }, { rootMargin: '100px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
   }, [isLoading, setSize, anchorRef, mutate])
+
+  const { run: handleSearch } = useDebounceFn(() => {
+    setSearchKeywords(keywords)
+  }, { wait: 500 })
+
+  const handleKeywordsChange = (value: string) => {
+    setKeywords(value)
+    handleSearch()
+  }
+
+  const handleClear = () => {
+    handleKeywordsChange('')
+  }
 
   return (
     <>
@@ -87,26 +93,37 @@ const Apps = () => {
           onChange={setActiveTab}
           options={options}
         />
-        <div className="ml-3 relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+        <div className="flex items-center ml-3 px-2 w-[200px] h-8 rounded-lg bg-gray-200">
+          <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
+            <SearchLg className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
           </div>
           <input
             type="text"
             name="query"
-            className="block w-[200px] bg-gray-200 shadow-sm rounded-md border-0 pl-10 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none sm:text-sm sm:leading-8"
+            className="grow block h-[18px] bg-gray-200 rounded-md border-0 text-gray-600 text-[13px] placeholder:text-gray-500 appearance-none outline-none"
             placeholder={t('common.operation.search')!}
             value={keywords}
             onChange={(e) => {
-              setKeywords(e.target.value)
+              handleKeywordsChange(e.target.value)
             }}
+            autoComplete="off"
           />
+          {
+            keywords && (
+              <div
+                className='shrink-0 flex items-center justify-center w-4 h-4 cursor-pointer'
+                onClick={handleClear}
+              >
+                <XCircle className='w-3.5 h-3.5 text-gray-400' />
+              </div>
+            )
+          }
         </div>
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceManager
           && <NewAppCard onSuccess={mutate} />}
-        {data?.map(({ data: apps }) => apps.map(app => (
+        {data?.map(({ data: apps }: any) => apps.map((app: any) => (
           <AppCard key={app.id} app={app} onRefresh={mutate} />
         )))}
         <CheckModal />

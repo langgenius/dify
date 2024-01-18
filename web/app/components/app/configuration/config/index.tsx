@@ -193,7 +193,7 @@ const Config: FC = () => {
       >
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
         {
-          (isAdvancedMode && canReturnToSimpleMode) && (
+          (isAdvancedMode && canReturnToSimpleMode && !isAgent) && (
             <AdvancedModeWaring onReturnToSimpleMode={() => setPromptMode(PromptMode.simple)} />
           )
         }
@@ -226,7 +226,7 @@ const Config: FC = () => {
         <DatasetConfig />
 
         {/* Tools */}
-        {isAgent && (
+        {(isAgent && isChatApp) && (
           <AgentTools />
         )}
         <ConfigVision />

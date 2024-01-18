@@ -9,7 +9,7 @@ import ChooseTool from './choose-tool'
 import SettingBuiltInTool from './setting-built-in-tool'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
-import { HelpCircle, Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle, InfoCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import { ToolsActive } from '@/app/components/base/icons/src/public/header-nav/tools'
 import AppIcon from '@/app/components/base/app-icon'
@@ -18,6 +18,8 @@ import ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -82,7 +84,7 @@ const AgentTools: FC = () => {
         <div className='flex items-center flex-wrap justify-between'>
           {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
             <div key={index}
-              className={cn(item.enabled && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 ')}
+              className={cn(item.isDeleted ? 'bg-white/50' : 'bg-white', item.enabled && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full  rounded-lg border-[0.5px] border-gray-200 ')}
               style={{
                 width: 'calc(50% - 2px)',
               }}
@@ -112,38 +114,68 @@ const AgentTools: FC = () => {
                       ))}
                 <div
                   title={item.tool_name}
-                  className='ml-2 max-w-[70px] leading-[18px] text-[13px] font-medium text-gray-800  truncate'
+                  className={cn(item.isDeleted && 'line-through opacity-50', 'ml-2 max-w-[200px] group-hover:max-w-[70px] leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
                   {item.tool_name}
                 </div>
               </div>
               <div className='flex items-center'>
-                <div className='hidden group-hover:flex items-center'>
-                  {item.provider_type === CollectionType.builtIn && (
-                    <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
-                      setCurrentTool(item)
-                      setIsShowSettingTool(true)
-                    }}>
-                      <Settings01 className='w-4 h-4 text-gray-500' />
+                {item.isDeleted
+                  ? (
+                    <div className='flex items-center'>
+                      <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer'>
+                        <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+                      </div>
+
+                      <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
+                        const newModelConfig = produce(modelConfig, (draft) => {
+                          draft.agentConfig.tools.splice(index, 1)
+                        })
+                        setModelConfig(newModelConfig)
+                      }}>
+                        <Trash03 className='w-4 h-4 text-gray-500' />
+                      </div>
+                      <div className='ml-2 mr-3 w-px h-3.5 bg-gray-200'></div>
+                    </div>
+                  )
+                  : (
+                    <div className='hidden group-hover:flex items-center'>
+                      {item.provider_type === CollectionType.builtIn && (
+                        <TooltipPlus
+                          popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        >
+                          <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                            setCurrentTool(item)
+                            setIsShowSettingTool(true)
+                          }}>
+                            <InfoCircle className='w-4 h-4 text-gray-500' />
+                          </div>
+                        </TooltipPlus>
+                      )}
+
+                      <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
+                        const newModelConfig = produce(modelConfig, (draft) => {
+                          draft.agentConfig.tools.splice(index, 1)
+                        })
+                        setModelConfig(newModelConfig)
+                      }}>
+                        <Trash03 className='w-4 h-4 text-gray-500' />
+                      </div>
+                      <div className='ml-2 mr-3 w-px h-3.5 bg-gray-200'></div>
                     </div>
                   )}
-
-                  <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
-                    const newModelConfig = produce(modelConfig, (draft) => {
-                      draft.agentConfig.tools.splice(index, 1)
-                    })
-                    setModelConfig(newModelConfig)
-                  }}>
-                    <Trash03 className='w-4 h-4 text-gray-500' />
-                  </div>
-                  <div className='ml-2 mr-3 w-px h-3.5 bg-gray-200'></div>
+                <div className={cn(item.isDeleted && 'opacity-50')}>
+                  <Switch
+                    defaultValue={item.isDeleted ? false : item.enabled}
+                    disabled={item.isDeleted}
+                    size='md'
+                    onChange={(enabled) => {
+                      const newModelConfig = produce(modelConfig, (draft) => {
+                        (draft.agentConfig.tools[index] as any).enabled = enabled
+                      })
+                      setModelConfig(newModelConfig)
+                    }} />
                 </div>
-                <Switch defaultValue={item.enabled} size='md' onChange={(enabled) => {
-                  const newModelConfig = produce(modelConfig, (draft) => {
-                    (draft.agentConfig.tools[index] as any).enabled = enabled
-                  })
-                  setModelConfig(newModelConfig)
-                }} />
               </div>
             </div>
           ))}

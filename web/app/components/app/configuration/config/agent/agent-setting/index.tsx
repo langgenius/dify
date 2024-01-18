@@ -14,7 +14,7 @@ import { DEFAULT_AGENT_PROMPT } from '@/config'
 type Props = {
   isChatModel: boolean
   payload: AgentConfig
-  isOpenAI: boolean
+  isFunctionCall: boolean
   onCancel: () => void
   onSave: (payload: any) => void
 }
@@ -25,7 +25,7 @@ const maxIterationsMax = 5
 const AgentSetting: FC<Props> = ({
   isChatModel,
   payload,
-  isOpenAI,
+  isFunctionCall,
   onCancel,
   onSave,
 }) => {
@@ -70,7 +70,7 @@ const AgentSetting: FC<Props> = ({
             name={t('appDebug.agent.agentMode')}
             description={t('appDebug.assistantType.agentAssistant.description')}
           >
-            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isOpenAI ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
+            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
           </ItemPanel>
 
           <ItemPanel
@@ -116,17 +116,16 @@ const AgentSetting: FC<Props> = ({
             </div>
           </ItemPanel>
 
-          {!isOpenAI && (
-            <>
-              <div className='mb-2 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
-                {t('appDebug.agent.buildInPrompt')}
-              </div>
-              <div
-                className='mb-2'
-              >
+          {!isFunctionCall && (
+            <div className='py-2 bg-gray-50 rounded-xl shadow-xs'>
+              <div className='flex items-center h-8 px-4 leading-6 text-sm font-semibold text-gray-700'>{t('tools.builtInPromptTitle')}</div>
+              <div className='h-[396px] px-4 overflow-y-auto leading-5 text-sm font-normal text-gray-700 whitespace-pre-line'>
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
-            </>
+              <div className='px-4'>
+                <div className='inline-flex items-center h-5 px-1 rounded-md bg-gray-100 leading-[18px] text-xs font-medium text-gray-500'>{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
+              </div>
+            </div>
           )}
 
         </div>

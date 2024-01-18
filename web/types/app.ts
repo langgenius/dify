@@ -98,6 +98,7 @@ export type AgentTool = {
   tool_name: string
   tool_parameters: Record<string, any>
   enabled: boolean
+  isDeleted?: boolean
 }
 
 export type ToolItem = {
@@ -268,6 +269,7 @@ export type App = {
 
   /** Mode */
   mode: AppMode
+  is_agent: boolean
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */

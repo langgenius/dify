@@ -66,6 +66,14 @@ export const removeCustomCollection = (collectionName: string) => {
   })
 }
 
+export const importSchemaFromURL = (url: string) => {
+  return get('/workspaces/current/tool-provider/api/remote', {
+    params: {
+      url,
+    },
+  })
+}
+
 export const testAPIAvailable = (payload: any) => {
   return post('/workspaces/current/tool-provider/api/test/pre', {
     body: {

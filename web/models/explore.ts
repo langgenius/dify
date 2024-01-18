@@ -6,6 +6,7 @@ export type AppBasicInfo = {
   mode: AppMode
   icon: string
   icon_background: string
+  is_agent: boolean
 }
 
 export type AppCategory = 'Writing' | 'Translate' | 'HR' | 'Programming' | 'Assistant'

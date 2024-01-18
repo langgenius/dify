@@ -155,6 +155,8 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
+  const isFunctionCall = isOpenAI && modelConfig.mode === ModelModeType.chat
+
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
     fetchCollectionList().then((list: any) => {
@@ -529,7 +531,7 @@ const Configuration: FC = () => {
       external_data_tools: externalDataToolsConfig,
       agent_mode: {
         ...modelConfig.agentConfig,
-        strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
+        strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelAndParameter?.provider || modelConfig.provider,
@@ -605,6 +607,7 @@ const Configuration: FC = () => {
       isAdvancedMode,
       isAgent,
       isOpenAI,
+      isFunctionCall,
       collectionList,
       setPromptMode,
       canReturnToSimpleMode,
@@ -683,8 +686,13 @@ const Configuration: FC = () => {
                 {isChatApp && (
                   <AssistantTypePicker
                     value={isAgent ? 'agent' : 'assistant'}
-                    onChange={(value: string) => setIsAgent(value === 'agent')}
-                    isOpenAI={isOpenAI}
+                    disabled={isAdvancedMode && !canReturnToSimpleMode}
+                    onChange={(value: string) => {
+                      setIsAgent(value === 'agent')
+                      if (value === 'agent')
+                        setPromptMode(PromptMode.simple)
+                    }}
+                    isFunctionCall={isFunctionCall}
                     isChatModel={modelConfig.mode === ModelModeType.chat}
                     agentConfig={modelConfig.agentConfig}
                     onAgentSettingChange={(config) => {

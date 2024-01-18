@@ -13,6 +13,8 @@ import Search from './search'
 import Contribute from './contribute'
 import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
+import NoCustomTool from './info/no-custom-tool'
+import NoSearchRes from './info/no-search-res'
 import TabSlider from '@/app/components/base/tab-slider'
 import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
 import type { AgentTool } from '@/types/app'
@@ -71,6 +73,8 @@ const Tools: FC<Props> = ({
 
     return typeFilteredList
   })()
+
+  const hasNoCustomCollection = !collectionList.find(item => item.type === CollectionType.custom)
 
   useEffect(() => {
     setCurrCollectionIndex(0)
@@ -159,12 +163,29 @@ const Tools: FC<Props> = ({
             />
           )}
 
-          <ToolNavList
-            className='mt-2 grow height-0 overflow-y-auto'
-            currentName={currCollection?.name || ''}
-            list={showCollectionList}
-            onChosen={setCurrCollectionIndex}
-          />
+          {(collectionType === CollectionType.custom && hasNoCustomCollection)
+            ? (
+              <div className='grow h-0 p-2 pt-8'>
+                <NoCustomTool onCreateTool={handleCreateToolCollection} />
+              </div>
+            )
+            : (
+              showCollectionList.length > 0
+                ? <ToolNavList
+                  className='mt-2 grow height-0 overflow-y-auto'
+                  currentName={currCollection?.name || ''}
+                  list={showCollectionList}
+                  onChosen={setCurrCollectionIndex}
+                />
+                : (
+                  <div className='grow h-0 p-2 pt-8'>
+                    <NoSearchRes
+                      onReset={() => { setQuery('') }}
+                    />
+                  </div>
+                )
+            )}
+
           {loc === LOC.tools && (
             <Contribute />
           )}
@@ -173,19 +194,21 @@ const Tools: FC<Props> = ({
         {/* tools */}
         <div className={cn('grow h-full overflow-hidden p-2')}>
           <div className='h-full bg-white rounded-2xl'>
-            <ToolList
-              collection={currCollection}
-              list={currTools}
-              loc={loc}
-              addedTools={addedTools}
-              onAddTool={onAddTool}
-              onRefreshData={fetchCollectionList}
-              onCollectionRemoved={() => {
-                setCurrCollectionIndex(0)
-                fetchCollectionList()
-              }}
-              isLoading={isDetailLoading}
-            />
+            {!(collectionType === CollectionType.custom && hasNoCustomCollection) && showCollectionList.length > 0 && (
+              <ToolList
+                collection={currCollection}
+                list={currTools}
+                loc={loc}
+                addedTools={addedTools}
+                onAddTool={onAddTool}
+                onRefreshData={fetchCollectionList}
+                onCollectionRemoved={() => {
+                  setCurrCollectionIndex(0)
+                  fetchCollectionList()
+                }}
+                isLoading={isDetailLoading}
+              />
+            )}
           </div>
         </div>
       </div>
