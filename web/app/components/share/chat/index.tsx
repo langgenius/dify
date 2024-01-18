@@ -10,6 +10,7 @@ import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import { checkOrSetAccessToken } from '../utils'
+import { sortAgentSorts } from '../../tools/utils'
 import useConversation from './hooks/use-conversation'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
@@ -258,7 +259,7 @@ const Main: FC<IMainProps> = ({
           newChatList.push({
             id: item.id,
             content: item.answer,
-            agent_thoughts: item.agent_thoughts,
+            agent_thoughts: item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,
