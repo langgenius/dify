@@ -75,7 +75,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "luowei"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \
@@ -86,7 +86,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "query": "eh",
         "response_mode": "streaming",
         "conversation_id": "",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -144,7 +144,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "luowei"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
@@ -152,7 +152,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -262,10 +262,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id=' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=luowei&conversation_id=' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
+    curl --location --request GET '${props.appDetail.api_base_url}/messages?user=luowei&conversation_id='
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -324,10 +324,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'\\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=luowei&last_id=&limit=20'\\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
+    curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=luowei&last_id=&limit=20' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -431,7 +431,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "luowei"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
         curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
@@ -439,7 +439,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         --header 'Accept: application/json' \
         --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
         --data '{
-            "user": "abc-123"
+            "user": "luowei"
         }'
       ```
 
@@ -523,7 +523,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <Properties>
       <Property name='file' type='file' key='file'>
         语音文件。
-        文件上传当前限制为 15 MB，并且支持以下输入文件类型：mp3、mp4、mpeg、mpga、m4a、wav 和 webm。
+        文件上传当前限制为 15 MB，并且支持以下输入文件类型：mp3、mp4、mpeg、mpga、m4a、wav、webm 和 amr。
       </Property>
     </Properties>
   </Col>
@@ -532,7 +532,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \
+    curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --form 'file=@localfile;type=audio/mp3'
     ```
@@ -570,16 +570,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
+      <Property name='streaming' type='bool' key='streaming'>
+        是否启用流式输出true、false。
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123;streaming=false`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=你好Dify;user=abc-123'
+    --form 'file=你好Dify;user=abc-123;streaming=false'
     ```
 
     </CodeGroup>
@@ -621,7 +624,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl --location --request GET '${props.appDetail.api_base_url}/parameters'\\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=luowei' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 

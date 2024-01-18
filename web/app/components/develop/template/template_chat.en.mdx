@@ -1,5 +1,5 @@
 import { CodeGroup } from '../code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # Chat App API
 
@@ -75,7 +75,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "luowei"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \
@@ -86,7 +86,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
         "query": "eh",
         "response_mode": "streaming",
         "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -144,7 +144,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "luowei"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
@@ -152,7 +152,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -262,10 +262,10 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=luowei&conversation_id='\\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
+    curl --location --request GET '${props.appDetail.api_base_url}/messages?user=luowei&conversation_id='
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -324,10 +324,10 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=luowei&last_id=&limit=20'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
+    curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=luowei&last_id=&limit=20' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -385,7 +385,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "luowei"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
@@ -393,7 +393,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --data-raw '{
         "name": "",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -432,7 +432,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "luowei"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
         curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
@@ -440,7 +440,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
         --header 'Accept: application/json' \
         --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
         --data '{
-            "user": "abc-123"
+            "user": "luowei"
         }'
       ```
 
@@ -481,7 +481,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=luowei'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \
@@ -524,7 +524,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <Properties>
       <Property name='file' type='file' key='file'>
         Audio file.
-        File uploads are currently limited to 15 MB and the following input file types are supported: mp3, mp4, mpeg, mpga, m4a, wav, and webm.
+        File uploads are currently limited to 15 MB and the following input file types are supported: mp3, mp4, mpeg, mpga, m4a, wav, webm and amr.
       </Property>
     </Properties>
   </Col>
@@ -571,16 +571,19 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the app.
       </Property>
+      <Property name='streaming' type='bool' key='streaming'>
+        Whether to enable streaming output, true、false。
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=Hello Dify;user=abc-123`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=Hello Dify;user=abc-123;streaming=false`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=Hello Dify;user=abc-123'
+    --form 'file=Hello Dify;user=abc-123;streaming=false'
     ```
 
     </CodeGroup>
@@ -619,10 +622,10 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=luowei'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=luowei' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 

@@ -213,12 +213,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
       "name": "example.png",
       "size": 1024,
       "extension": "png",
       "mime_type": "image/png",
-      "created_by": 123,
+      "created_by": 123,  
       "created_at": 1577836800,
     }
     ```
@@ -314,16 +314,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
+      <Property name='streaming' type='bool' key='streaming'>
+        是否启用流式输出true、false。
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123;streaming=false`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=你好Dify;user=abc-123'
+    --form 'file=你好Dify;user=abc-123;streaming=false'
     ```
 
     </CodeGroup>
