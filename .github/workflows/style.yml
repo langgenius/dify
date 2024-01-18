@@ -21,7 +21,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: yarn
           cache-dependency-path: ./web/package.json
 
