@@ -429,6 +429,11 @@ const Configuration: FC = () => {
             // remove dataset
             tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
               return !tool.dataset
+            }).map((tool: any) => {
+              return {
+                ...tool,
+                isDeleted: res.deleted_tools?.includes(tool.tool_name),
+              }
             }),
           } : DEFAULT_AGENT_SETTING,
         },
