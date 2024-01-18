@@ -51,7 +51,7 @@ agent_thought_fields = {
     'tool_input': fields.String,
     'created_at': TimestampField,
     'observation': fields.String,
-    'message_files_array': fields.List(fields.String, attribute='message_files'),
+    'files': fields.List(fields.String)
 }
 
 retriever_resource_fields = {

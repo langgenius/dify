@@ -1015,7 +1015,7 @@ class MessageAgentThought(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
     @property
-    def message_files_array(self) -> list:
+    def files(self) -> list:
         if self.message_files:
             return json.loads(self.message_files)
         else:
