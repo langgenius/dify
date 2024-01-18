@@ -1,37 +1,58 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { ThoughtItem, ToolThought } from '../type'
+import type { ThoughtItem, ToolInfoInThought } from '../type'
 import Tool from '@/app/components/app/chat/thought/tool'
 import type { Emoji } from '@/app/components/tools/types'
 
 export type IThoughtProps = {
-  list: ThoughtItem[]
+  thought: ThoughtItem
   allToolIcons: Record<string, string | Emoji>
+  isFinished: boolean
+}
+
+function getValue(value: string, isValueArray: boolean, index: number) {
+  if (isValueArray) {
+    try {
+      return JSON.parse(value)[index]
+    }
+    catch (e) {
+    }
+  }
+  return value
 }
 
 const Thought: FC<IThoughtProps> = ({
-  list,
+  thought,
   allToolIcons,
+  isFinished,
 }) => {
-  const toolThoughtList = (() => {
-    const tools: ToolThought[] = []
-    list.forEach((item) => {
-      const tool = tools.find(tool => tool.input.id === item.id)
-      if (tool) {
-        tool.output = item
-        return
-      }
-      tools.push({ input: item })
-    })
-    return tools
+  const [toolNames, isValueArray]: [string[], boolean] = (() => {
+    try {
+      if (Array.isArray(JSON.parse(thought.tool)))
+        return [JSON.parse(thought.tool), true]
+    }
+    catch (e) {
+    }
+    return [[thought.tool], false]
   })()
+  const lastToolIndex = toolNames.length - 1
+
+  const toolThoughtList = toolNames.map((toolName, index) => {
+    const isLastTool = index === lastToolIndex
+    return {
+      name: toolName,
+      input: getValue(thought.tool_input, isValueArray, index),
+      output: getValue(thought.observation, isValueArray, index),
+      isFinished: !isLastTool || (isLastTool && isFinished),
+    }
+  })
 
   return (
     <div className='mb-2 space-y-2'>
-      {toolThoughtList.map((item: ToolThought) => (
+      {toolThoughtList.map((item: ToolInfoInThought, index) => (
         <Tool
-          key={item.input.id}
+          key={index}
           payload={item}
           allToolIcons={allToolIcons}
         />

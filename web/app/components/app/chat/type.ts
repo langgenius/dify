@@ -17,18 +17,21 @@ export type SubmitAnnotationFunc = (messageId: string, content: string) => Promi
 
 export type DisplayScene = 'web' | 'console'
 
+export type ToolInfoInThought = {
+  name: string
+  input: string
+  output: string
+  isFinished: boolean
+}
+
 export type ThoughtItem = {
   id: string
-  tool: string // plugin or dataset
+  tool: string // plugin or dataset. May has multi.
   thought: string
   tool_input: string
   message_id: string
   observation: string
-}
-
-export type ToolThought = {
-  input: ThoughtItem
-  output?: ThoughtItem
+  position: number
 }
 
 export type CitationItem = {
@@ -49,7 +52,6 @@ export type CitationItem = {
 export type IChatItem = {
   id: string
   content: string
-  agent_thoughts?: ThoughtItem[]
   citation?: CitationItem[]
   /**
    * Specific message type
@@ -75,6 +77,7 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   log?: { role: string; text: string }[]
+  agent_thoughts?: ThoughtItem[]
   message_files?: VisionFile[]
 }
 

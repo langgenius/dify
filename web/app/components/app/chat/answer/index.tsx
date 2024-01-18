@@ -87,7 +87,8 @@ const Answer: FC<IAnswerProps> = ({
   onAnnotationRemoved,
   allToolIcons,
 }) => {
-  const { id, content, more, feedback, adminFeedback, annotation } = item
+  const { id, content, more, feedback, adminFeedback, annotation, agent_thoughts } = item
+  const isAgentMode = !!agent_thoughts
   const hasAnnotation = !!annotation?.id
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -209,6 +210,30 @@ const Answer: FC<IAnswerProps> = ({
     )
   }
 
+  const agentModeAnswer = (
+    <div>
+      {thoughts!.map(item => (
+        <div key={item.id}>
+          {item.thought && (
+            <Markdown content={item.thought} />
+          )}
+          {/* perhaps not use tool */}
+          {!!item.tool && (
+            <Thought
+              thought={item}
+              allToolIcons={allToolIcons || {}}
+              isFinished={!isResponsing}
+            />
+          )}
+
+          {imgs.length > 0 && (
+            <ImageGallery srcs={imgs.map(item => item.url)} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div key={id}>
       <div className='flex items-start'>
@@ -233,16 +258,8 @@ const Answer: FC<IAnswerProps> = ({
                     <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
                   </div>
                 )}
-                {(thoughts && thoughts.length > 0) && (
-                  <Thought
-                    list={thoughts || []}
-                    allToolIcons={allToolIcons || {}}
-                  />
-                )}
-                {imgs.length > 0 && (
-                  <ImageGallery srcs={imgs.map(item => item.url)} />
-                )}
-                {(isResponsing && !content)
+
+                {(isResponsing && (!content || (isAgentMode && (thoughts || []).length === 0)))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
@@ -253,7 +270,11 @@ const Answer: FC<IAnswerProps> = ({
                       {annotation?.logAnnotation && (
                         <div className='mb-1'>
                           <div className='mb-3'>
-                            <Markdown className='line-through !text-gray-400' content={content} />
+                            {isAgentMode
+                              ? (<div className='line-through !text-gray-400'>{agentModeAnswer}</div>)
+                              : (
+                                <Markdown className='line-through !text-gray-400' content={content} />
+                              )}
                           </div>
                           <EditTitle title={t('appAnnotation.editBy', {
                             author: annotation?.logAnnotation.account?.name,
@@ -262,7 +283,15 @@ const Answer: FC<IAnswerProps> = ({
                       )}
 
                       <div>
-                        <Markdown content={annotation?.logAnnotation ? annotation?.logAnnotation.content : content} />
+                        {annotation?.logAnnotation
+                          ? (
+                            <Markdown content={annotation?.logAnnotation.content || ''} />
+                          )
+                          : (isAgentMode
+                            ? agentModeAnswer
+                            : (
+                              <Markdown content={content} />
+                            ))}
                       </div>
                       {(hasAnnotation && !annotation?.logAnnotation) && (
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {

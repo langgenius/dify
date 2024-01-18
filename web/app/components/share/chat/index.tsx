@@ -258,6 +258,7 @@ const Main: FC<IMainProps> = ({
           newChatList.push({
             id: item.id,
             content: item.answer,
+            agent_thoughts: item.agent_thoughts,
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,

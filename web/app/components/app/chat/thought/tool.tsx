@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import cn from 'classnames'
-import type { ToolThought } from '../type'
+import type { ToolInfoInThought } from '../type'
 import Panel from './panel'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -14,7 +14,7 @@ import type { Emoji } from '@/app/components/tools/types'
 import AppIcon from '@/app/components/base/app-icon'
 
 type Props = {
-  payload: ToolThought
+  payload: ToolInfoInThought
   allToolIcons?: Record<string, string | Emoji>
 }
 
@@ -49,11 +49,7 @@ const Tool: FC<Props> = ({
   allToolIcons = {},
 }) => {
   const { t } = useTranslation()
-
-  const toolName = payload.input.tool
-  const input = payload.input
-  const isFinished = !!payload.output
-  const output = payload.output
+  const { name: toolName, input, isFinished, output } = payload
   const [isShowDetail, setIsShowDetail] = useState(false)
   const icon = getIcon(toolName, allToolIcons) as any
   return (
@@ -90,12 +86,12 @@ const Tool: FC<Props> = ({
             <Panel
               isRequest={true}
               toolName={toolName}
-              content={input.tool_input} />
-            {isFinished && (
+              content={input} />
+            {output && (
               <Panel
                 isRequest={false}
                 toolName={toolName}
-                content={output?.observation as string} />
+                content={output as string} />
             )}
           </div>
         )}
