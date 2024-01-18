@@ -10,7 +10,7 @@ import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import { checkOrSetAccessToken } from '../utils'
-import { sortAgentSorts } from '../../tools/utils'
+import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import useConversation from './hooks/use-conversation'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
@@ -259,7 +259,7 @@ const Main: FC<IMainProps> = ({
           newChatList.push({
             id: item.id,
             content: item.answer,
-            agent_thoughts: item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts,
+            agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,
@@ -532,7 +532,6 @@ const Main: FC<IMainProps> = ({
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
-      message_files: [],
       isAnswer: true,
     }
     const prevTempNewConversationId = getCurrConversationId() || '-1'
@@ -551,11 +550,13 @@ const Main: FC<IMainProps> = ({
           responseItem.content = responseItem.content + message
         }
         else {
-          responseItem = produce(responseItem, (draft) => {
-            const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
-            if (lastThought)
-              lastThought.thought = lastThought.thought + message
-          })
+          responseItem = {
+            ...produce(responseItem, (draft) => {
+              const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
+              if (lastThought)
+                lastThought.thought = lastThought.thought + message
+            }),
+          }
         }
         responseItem.id = messageId
         if (isFirstMessage && newConversationId)
@@ -604,7 +605,10 @@ const Main: FC<IMainProps> = ({
         setResponsingFalse()
       },
       onFile(file) {
-        responseItem.message_files = [...(responseItem as any).message_files, file]
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          lastThought.message_files = [...(lastThought as any).message_files, file]
+
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {

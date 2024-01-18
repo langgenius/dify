@@ -32,6 +32,8 @@ export type ThoughtItem = {
   message_id: string
   observation: string
   position: number
+  message_file_id?: string[]
+  message_files?: VisionFile[]
 }
 
 export type CitationItem = {

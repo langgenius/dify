@@ -280,8 +280,10 @@ const Debug: FC<IDebug> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    const isAgentMode = false
+
     // answer
-    const responseItem: IChatItem = {
+    let responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
@@ -299,7 +301,18 @@ const Debug: FC<IDebug> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          responseItem = {
+            ...produce(responseItem, (draft) => {
+              const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
+              if (lastThought)
+                lastThought.thought = lastThought.thought + message
+            }),
+          }
+        }
         if (isFirstMessage && newConversationId) {
           setConversationId(newConversationId)
           _newConversationId = newConversationId
