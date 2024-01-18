@@ -41,10 +41,12 @@ export type PromptVariable = {
   name: string
   type: string // "string" | "number" | "select",
   default?: string | number
-  required: boolean
+  required?: boolean
   options?: string[]
   max_length?: number
   is_context_var?: boolean
+  enabled?: boolean
+  config?: Record<string, any>
 }
 
 export type CompletionParams = {

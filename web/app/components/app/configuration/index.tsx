@@ -412,7 +412,28 @@ const Configuration: FC = () => {
           mode: model.mode,
           configs: {
             prompt_template: modelConfig.pre_prompt,
-            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form, modelConfig.dataset_query_variable),
+            prompt_variables: userInputsFormToPromptVariables(
+              [
+                ...modelConfig.user_input_form,
+                ...(
+                  modelConfig.external_data_tools?.length
+                    ? modelConfig.external_data_tools.map((item: any) => {
+                      return {
+                        external_data_tool: {
+                          variable: item.variable as string,
+                          label: item.label as string,
+                          enabled: item.enabled,
+                          type: item.type as string,
+                          config: item.config,
+                          required: true,
+                        },
+                      }
+                    })
+                    : []
+                ),
+              ],
+              modelConfig.dataset_query_variable,
+            ),
           },
           opening_statement: modelConfig.opening_statement,
           more_like_this: modelConfig.more_like_this,
@@ -531,7 +552,6 @@ const Configuration: FC = () => {
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,

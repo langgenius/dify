@@ -68,7 +68,6 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
-    externalDataToolsConfig,
     visionConfig,
     annotationConfig,
   } = useContext(ConfigContext)
@@ -152,7 +151,9 @@ const Debug: FC<IDebug> = ({
       }
     }
     let hasEmptyInput = ''
-    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required }) => {
+    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
+      if (type === 'api')
+        return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) // compatible with old version
@@ -214,7 +215,6 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
@@ -473,7 +473,6 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       more_like_this: moreLikeThisConfig,
       model: {
         provider: modelConfig.provider,

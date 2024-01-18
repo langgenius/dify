@@ -24,6 +24,17 @@ import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
 import type { ExternalDataTool } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+
+export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
+
+type ExternalDataToolParams = {
+  key: string
+  type: string
+  index: number
+  name: string
+  config?: Record<string, any>
+}
 
 export type IConfigVarProps = {
   promptVariables: PromptVariable[]
@@ -39,18 +50,10 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     mode,
     dataSets,
     externalDataToolsConfig,
-    setExternalDataToolsConfig,
   } = useContext(ConfigContext)
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const hasVar = promptVariables.length > 0
-  const promptVariableObj = (() => {
-    const obj: Record<string, boolean> = {}
-    promptVariables.forEach((item) => {
-      obj[item.key] = true
-    })
-    return obj
-  })()
-
   const updatePromptVariable = (key: string, updateKey: string, newValue: string | boolean) => {
     const newPromptVariables = promptVariables.map((item) => {
       if (item.key === key) {
@@ -134,10 +137,82 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     onPromptVariablesChange?.(newPromptVariables)
   }
 
+  const { setShowExternalDataToolModal } = useModalContext()
+
+  const handleOpenExternalDataToolModal = (
+    { key, type, index, name, config }: ExternalDataToolParams,
+    oldPromptVariables: PromptVariable[],
+  ) => {
+    setShowExternalDataToolModal({
+      payload: {
+        variable: key,
+        label: name,
+        config,
+      },
+      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        const newPromptVariables = oldPromptVariables.map((item, i) => {
+          if (i === index) {
+            return {
+              key: newExternalDataTool.variable as string,
+              name: newExternalDataTool.label as string,
+              enabled: newExternalDataTool.enabled,
+              type: newExternalDataTool.type as string,
+              config: newExternalDataTool.config,
+              required: item.required,
+            }
+          }
+          return item
+        })
+        onPromptVariablesChange?.(newPromptVariables)
+      },
+      onCancelCallback: () => {
+        if (!key)
+          onPromptVariablesChange?.(promptVariables.filter((_, i) => i !== index))
+      },
+      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        for (let i = 0; i < promptVariables.length; i++) {
+          if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
+            Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            return false
+          }
+        }
+
+        return true
+      },
+    })
+  }
+
   const handleAddVar = (type: string) => {
     const newVar = getNewVar('', type)
-    onPromptVariablesChange?.([...promptVariables, newVar])
+    const newPromptVariables = [...promptVariables, newVar]
+    onPromptVariablesChange?.(newPromptVariables)
+
+    if (type === 'api') {
+      handleOpenExternalDataToolModal({
+        type,
+        key: newVar.key,
+        name: newVar.name,
+        index: promptVariables.length,
+      }, newPromptVariables)
+    }
   }
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === ADD_EXTERNAL_DATA_TOOL) {
+      const payload = v.payload
+      onPromptVariablesChange?.([
+        ...promptVariables,
+        {
+          key: payload.variable as string,
+          name: payload.label as string,
+          enabled: payload.enabled,
+          type: payload.type as string,
+          config: payload.config,
+          required: true,
+        },
+      ])
+    }
+  })
 
   const [isShowDeleteContextVarModal, { setTrue: showDeleteContextVarModal, setFalse: hideDeleteContextVarModal }] = useBoolean(false)
   const [removeIndex, setRemoveIndex] = useState<number | null>(null)
@@ -159,34 +234,11 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const [currKey, setCurrKey] = useState<string | null>(null)
   const currItem = currKey ? promptVariables.find(item => item.key === currKey) : null
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
-  const { setShowExternalDataToolModal } = useModalContext()
 
-  const handleConfig = ({ key, type }: { key: string; type: string }) => {
+  const handleConfig = ({ key, type, index, name, config }: ExternalDataToolParams) => {
     setCurrKey(key)
     if (type === 'api') {
-      setShowExternalDataToolModal({
-        payload: {},
-        onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-          setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
-        },
-        onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-          for (let i = 0; i < promptVariables.length; i++) {
-            if (promptVariables[i].key === newExternalDataTool.variable) {
-              Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
-              return false
-            }
-          }
-
-          for (let i = 0; i < externalDataToolsConfig.length; i++) {
-            if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
-              Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
-              return false
-            }
-          }
-
-          return true
-        },
-      })
+      handleOpenExternalDataToolModal({ key, type, index, name, config }, promptVariables)
       return
     }
 
@@ -232,7 +284,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
               </tr>
             </thead>
             <tbody className="text-gray-700">
-              {promptVariables.map(({ key, name, type, required }, index) => (
+              {promptVariables.map(({ key, name, type, required, config }, index) => (
                 <tr key={index} className="h-9 leading-9">
                   <td className="w-[160px] border-b border-gray-100 pl-3">
                     <div className='flex items-center space-x-1'>
@@ -278,7 +330,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                       </td>
                       <td className='w-20  border-b border-gray-100'>
                         <div className='flex h-full items-center space-x-1'>
-                          <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleConfig({ type, key })}>
+                          <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleConfig({ type, key, index, name, config })}>
                             <Settings01 className='w-4 h-4 text-gray-500' />
                           </div>
                           <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleRemoveVar(index)} >
