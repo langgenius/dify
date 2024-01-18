@@ -151,6 +151,8 @@ def jsonable_encoder(
         return str(obj)
     if isinstance(obj, (str, int, float, type(None))):
         return obj
+    if isinstance(obj, Decimal):
+        return format(obj, 'f')
     if isinstance(obj, dict):
         encoded_dict = {}
         allowed_keys = set(obj.keys())
