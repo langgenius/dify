@@ -619,9 +619,27 @@ const Main: FC<IMainProps> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
+        // console.log(thought)
         isAgentMode = true
-        responseItem.id = thought.message_id;
-        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
+        const response = responseItem as any
+        // responseItem.id = thought.message_id;
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          let lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            const prevThoughtContent = lastThought.thought
+            lastThought = thought
+            thought.thought = prevThoughtContent
+            response.agent_thoughts.pop()
+            response.agent_thoughts.push(thought)
+          }
+          else {
+            response.agent_thoughts.push(thought)
+          }
+        }
         // has switched to other conversation
 
         // if (prevTempNewConversationId !== getCurrConversationId()) {

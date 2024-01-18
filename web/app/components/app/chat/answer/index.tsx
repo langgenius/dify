@@ -99,7 +99,6 @@ const Answer: FC<IAnswerProps> = ({
   const { t } = useTranslation()
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const imgs = files.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
 
   /**
  * Render feedback results (distinguish between users and administrators)
@@ -210,13 +209,20 @@ const Answer: FC<IAnswerProps> = ({
     )
   }
 
+  const getImgs = (list?: VisionFile[]) => {
+    if (!list)
+      return []
+    return list.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
+  }
+
   const agentModeAnswer = (
     <div>
-      {thoughts?.map(item => (
-        <div key={item.id}>
+      {thoughts?.map((item, index) => (
+        <div key={index}>
           {item.thought && (
             <Markdown content={item.thought} />
           )}
+          {item.tool}
           {/* perhaps not use tool */}
           {!!item.tool && (
             <Thought
@@ -226,8 +232,8 @@ const Answer: FC<IAnswerProps> = ({
             />
           )}
 
-          {imgs.length > 0 && (
-            <ImageGallery srcs={imgs.map(item => item.url)} />
+          {getImgs(item.message_files).length > 0 && (
+            <ImageGallery srcs={getImgs(item.message_files).map(item => item.url)} />
           )}
         </div>
       ))}
@@ -259,7 +265,7 @@ const Answer: FC<IAnswerProps> = ({
                   </div>
                 )}
 
-                {(isResponsing && (!content || (isAgentMode && (thoughts || []).length === 0)))
+                {(isResponsing && (!content && (isAgentMode && (thoughts || []).length === 0)))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
