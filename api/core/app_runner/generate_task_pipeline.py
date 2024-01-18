@@ -300,7 +300,7 @@ class GenerateTaskPipeline:
                         'tool': agent_thought.tool,
                         'tool_input': agent_thought.tool_input,
                         'created_at': int(self._message.created_at.timestamp()),
-                        'message_files': agent_thought.message_files_array
+                        'message_files': agent_thought.files
                     }
 
                     if self._conversation.mode == 'chat':
