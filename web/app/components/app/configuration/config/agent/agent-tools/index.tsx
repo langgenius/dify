@@ -124,9 +124,13 @@ const AgentTools: FC = () => {
                 {item.isDeleted
                   ? (
                     <div className='flex items-center'>
-                      <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer'>
-                        <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-                      </div>
+                      <TooltipPlus
+                        popupContent={t('tools.toolRemoved')}
+                      >
+                        <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer'>
+                          <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+                        </div>
+                      </TooltipPlus>
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {

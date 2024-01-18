@@ -96,6 +96,7 @@ const translation = {
     reset: 'Reset Search',
   },
   builtInPromptTitle: 'Prompt',
+  toolRemoved: 'Tool removed',
 }
 
 export default translation
