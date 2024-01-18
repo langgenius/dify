@@ -8,7 +8,10 @@ import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from '../types'
-import { AgentStrategy } from '@/types/app'
+import {
+  AgentStrategy,
+  ModelModeType,
+} from '@/types/app'
 import { Chat } from '@/app/components/base/chat'
 import { useChat } from '@/app/components/base/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
@@ -36,7 +39,6 @@ const ChatItem: FC<ChatItemProps> = ({
 }) => {
   const { userProfile } = useAppContext()
   const {
-    isOpenAI,
     isAdvancedMode,
     modelConfig,
     appId,
@@ -82,7 +84,7 @@ const ChatItem: FC<ChatItemProps> = ({
     external_data_tools: externalDataToolsConfig,
     agent_mode: {
       ...modelConfig.agentConfig,
-      strategy: isOpenAI ? AgentStrategy.functionCall : AgentStrategy.react,
+      strategy: (modelAndParameter.provider === 'openai' && modelConfig.mode === ModelModeType.chat) ? AgentStrategy.functionCall : AgentStrategy.react,
     },
     dataset_configs: {
       ...datasetConfigs,

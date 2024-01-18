@@ -62,10 +62,15 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     external_data_tools: externalDataToolsConfig,
     more_like_this: moreLikeThisConfig,
     agent_mode: {
-      enabled: true,
-      tools: [...postDatasets],
+      enabled: false,
+      tools: [],
     },
-    dataset_configs: datasetConfigs,
+    dataset_configs: {
+      ...datasetConfigs,
+      datasets: {
+        datasets: [...postDatasets],
+      } as any,
+    },
     file_upload: {
       image: visionConfig,
     },

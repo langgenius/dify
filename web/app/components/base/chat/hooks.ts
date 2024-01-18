@@ -112,7 +112,7 @@ export const useChat = (
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
-      files: [],
+      message_files: [],
       isAnswer: true,
     }
 
@@ -207,7 +207,7 @@ export const useChat = (
           }
         },
         onFile(file) {
-          responseItem.files = [...(responseItem as any).files, file]
+          responseItem.message_files = [...(responseItem as any).message_files, file]
           const newListWithAnswer = produce(
             getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
             (draft) => {

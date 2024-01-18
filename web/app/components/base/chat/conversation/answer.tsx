@@ -33,11 +33,11 @@ const Answer: FC<AnswerProps> = ({
     citation,
     agent_thoughts,
     more,
-    files,
+    message_files,
   } = item
   const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
   const isThinking = !content && agent_thoughts && agent_thoughts?.length > 0 && !agent_thoughts.some(agent => agent.thought === '[DONE]')
-  const imgs = files?.filter(file => file.type === 'image') || []
+  const imgs = message_files?.filter(file => file.type === 'image') || []
 
   return (
     <div className='flex mb-2 last:mb-0'>
