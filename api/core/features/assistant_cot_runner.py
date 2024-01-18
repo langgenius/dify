@@ -50,7 +50,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         prompt_messages_tools: List[PromptMessageTool] = []
         tool_instances = {}
         for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
-            prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
+            try:
+                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
+            except Exception:
+                # api tool may be deleted
+                continue
             # save tool entity
             tool_instances[tool.tool_name] = tool_entity
             # save prompt tool
