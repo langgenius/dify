@@ -10,14 +10,14 @@ parameter_rules:
     use_template: temperature
   - name: top_p
     use_template: top_p
-  - name: max_tokens_to_sample
+  - name: max_gen_len
     use_template: max_tokens
     required: true
     default: 2048
     min: 1
     max: 2048
 pricing:
-  input: '0.00'
-  output: '0.00'
-  unit: '0.000001'
+  input: '0.00075'
+  output: '0.00100'
+  unit: '0.001'
   currency: USD
