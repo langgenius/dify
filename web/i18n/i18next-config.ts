@@ -60,6 +60,7 @@ import customZh from './lang/custom.zh'
 import customPt from './lang/custom.pt' // Portuguese import
 import toolsEn from './lang/tools.en'
 import toolsZh from './lang/tools.zh'
+// Portuguese import
 
 const resources = {
   'en-US': {
