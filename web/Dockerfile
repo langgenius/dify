@@ -1,16 +1,16 @@
 # base image
 FROM node:20.11.0-alpine AS base
+LABEL maintainer="takatost@gmail.com"
 
 # install packages
 FROM base as packages
-LABEL maintainer="takatost@gmail.com"
 
 WORKDIR /app/web
 
 COPY package.json .
 COPY yarn.lock .
 
-RUN yarn --only=prod
+RUN yarn install --frozen-lockfile
 
 
 # build resources
@@ -40,7 +40,6 @@ COPY --from=builder /app/web/.next/static ./.next/static
 
 
 COPY docker/entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA ${COMMIT_SHA}
