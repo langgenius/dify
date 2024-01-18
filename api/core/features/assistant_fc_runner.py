@@ -57,7 +57,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             tool_instances[dataset_tool.identity.name] = dataset_tool
 
         iteration_step = 1
-        max_iteration_steps = min(app_orchestration_config.agent.max_iteration, 5)
+        max_iteration_steps = min(app_orchestration_config.agent.max_iteration, 5) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True
@@ -79,6 +79,10 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
+
+            if iteration_step == max_iteration_steps:
+                # the last iteration, remove all tools
+                prompt_messages_tools = []
 
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)

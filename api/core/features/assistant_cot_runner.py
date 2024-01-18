@@ -44,7 +44,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 app_orchestration_config.model_config.stop.append('Observation')
 
         iteration_step = 1
-        max_iteration_steps = min(self.app_orchestration_config.agent.max_iteration, 5)
+        max_iteration_steps = min(self.app_orchestration_config.agent.max_iteration, 5) + 1
 
         prompt_messages = self.history_prompt_messages
 
@@ -86,6 +86,10 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         while function_call_state and iteration_step <= max_iteration_steps:
             # continue to run until there is not any tool call
             function_call_state = False
+
+            if iteration_step == max_iteration_steps:
+                # the last iteration, remove all tools
+                prompt_messages_tools = []
 
             # update prompt messages
             prompt_messages = self._originze_cot_prompt_messages(
