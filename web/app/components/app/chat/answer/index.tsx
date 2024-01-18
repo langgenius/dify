@@ -212,7 +212,7 @@ const Answer: FC<IAnswerProps> = ({
 
   const agentModeAnswer = (
     <div>
-      {thoughts!.map(item => (
+      {thoughts?.map(item => (
         <div key={item.id}>
           {item.thought && (
             <Markdown content={item.thought} />

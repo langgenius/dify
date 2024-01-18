@@ -525,8 +525,10 @@ const Main: FC<IMainProps> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    let isAgentMode = false
+
     // answer
-    const responseItem: IChatItem = {
+    let responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
@@ -545,7 +547,16 @@ const Main: FC<IMainProps> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          responseItem = produce(responseItem, (draft) => {
+            const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
+            if (lastThought)
+              lastThought.thought = lastThought.thought + message
+          })
+        }
         responseItem.id = messageId
         if (isFirstMessage && newConversationId)
           tempNewConversationId = newConversationId
@@ -604,6 +615,7 @@ const Main: FC<IMainProps> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
+        isAgentMode = true
         responseItem.id = thought.message_id;
         (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
         // has switched to other conversation
