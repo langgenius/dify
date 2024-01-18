@@ -15,7 +15,7 @@ def test_validate_provider_credentials():
     provider.validate_provider_credentials(
         credentials={
             "aws_region": os.getenv("AWS_REGION"),
-            "aws_access_key": os.getenv("BEDROCK_ACCESS_KEY"),
-            "aws_secret_access_key": os.getenv("BEDROCK_SECRET_ACCESS_KEY")
+            "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         }
     )

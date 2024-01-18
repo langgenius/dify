@@ -5,21 +5,21 @@ model_type: llm
 features:
   - agent-thought
 model_properties:
-  mode: completion
+  mode: chat
   context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
-  - name: top_p
+  - name: topP
     use_template: top_p
-  - name: max_tokens_to_sample
+  - name: maxTokenCount
     use_template: max_tokens
     required: true
     default: 2048
     min: 1
     max: 8000
 pricing:
-  input: '0.00'
-  output: '0.00'
-  unit: '0.000001'
+  input: '0.0008'
+  output: '0.0016'
+  unit: '0.001'
   currency: USD

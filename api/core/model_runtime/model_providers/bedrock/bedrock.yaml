@@ -1,12 +1,12 @@
-provider: aws
+provider: bedrock
 label:
   en_US: AWS
 description:
-  en_US: AWS's Bedrock models.
+  en_US: AWS Bedrock's models.
 icon_small:
   en_US: icon_s_en.png
 icon_large:
-  en_US: icon_l_en.svg
+  en_US: icon_l_en.png
 background: "#FCFDFF"
 help:
   title:
@@ -19,7 +19,7 @@ configurate_methods:
   - predefined-model
 provider_credential_schema:
   credential_form_schemas:
-    - variable: aws_access_key
+    - variable: aws_access_key_id
       required: true
       label:
         en_US: Access Key
@@ -47,12 +47,12 @@ provider_credential_schema:
       options:
         - value: us-east-1
           label:
-            en_US: US East (N. Virginia)	
-            zh_Hans: US East (N. Virginia)	
+            en_US: US East (N. Virginia)
+            zh_Hans: US East (N. Virginia)
         - value: us-west-2
           label:
-            en_US: US West (Oregon)	
-            zh_Hans: US West (Oregon)	
+            en_US: US West (Oregon)
+            zh_Hans: US West (Oregon)
         - value: ap-southeast-1
           label:
             en_US: Asia Pacific (Singapore)

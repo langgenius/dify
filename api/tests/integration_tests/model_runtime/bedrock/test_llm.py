@@ -12,18 +12,18 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='claude-instant-1',
+            model='meta.llama2-13b-chat-v1',
             credentials={
                 'anthropic_api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
-        model='claude-instant-1',
+        model='meta.llama2-13b-chat-v1',
         credentials={
             "aws_region": os.getenv("AWS_REGION"),
-            "aws_access_key": os.getenv("BEDROCK_ACCESS_KEY"),
-            "aws_secret_access_key": os.getenv("BEDROCK_SECRET_ACCESS_KEY")
+            "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         }
     )
 
@@ -31,11 +31,11 @@ def test_invoke_model():
     model = BedrockLargeLanguageModel()
 
     response = model.invoke(
-        model='claude-instant-1',
+        model='meta.llama2-13b-chat-v1',
         credentials={
             "aws_region": os.getenv("AWS_REGION"),
-            "aws_access_key": os.getenv("BEDROCK_ACCESS_KEY"),
-            "aws_secret_access_key": os.getenv("BEDROCK_SECRET_ACCESS_KEY")
+            "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         },
         prompt_messages=[
             SystemPromptMessage(
@@ -56,17 +56,17 @@ def test_invoke_model():
     )
 
     assert isinstance(response, LLMResult)
-    # assert len(response.message.content) > 0
+    assert len(response.message.content) > 0
 
 def test_invoke_stream_model():
     model = BedrockLargeLanguageModel()
 
     response = model.invoke(
-        model='claude-instant-1',
+        model='meta.llama2-13b-chat-v1',
         credentials={
             "aws_region": os.getenv("AWS_REGION"),
-            "aws_access_key": os.getenv("BEDROCK_ACCESS_KEY"),
-            "aws_secret_access_key": os.getenv("BEDROCK_SECRET_ACCESS_KEY")
+            "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         },
         prompt_messages=[
             SystemPromptMessage(
@@ -87,6 +87,7 @@ def test_invoke_stream_model():
     assert isinstance(response, Generator)
 
     for chunk in response:
+        print(chunk)
         assert isinstance(chunk, LLMResultChunk)
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
@@ -100,10 +101,10 @@ def test_get_num_tokens():
         model='meta.llama2-13b-chat-v1',
         credentials = {
             "aws_region": os.getenv("AWS_REGION"),
-            "aws_access_key": os.getenv("BEDROCK_ACCESS_KEY"),
-            "aws_secret_access_key": os.getenv("BEDROCK_SECRET_ACCESS_KEY")
+            "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         },
-        prompt_messages=[
+        messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',
             ),

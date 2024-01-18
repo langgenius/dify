@@ -26,7 +26,7 @@ parameter_rules:
     min: 1
     max: 4096
 pricing:
-  input: '0.00'
-  output: '0.00'
-  unit: '0.000001'
+  input: '0.0015'
+  output: '0.0020'
+  unit: '0.001'
   currency: USD
