@@ -47,6 +47,12 @@ export const languages = [
   // },
 ]
 
+export const getModelRuntimeSupported = (locale: string) => {
+  if (locale === 'zh-Hans')
+    return locale.replace('-', '_')
+
+  return LanguagesSupported[0].replace('-', '_')
+}
 export const languageMaps = {
   'en-US': 'en-US',
   'zh-Hans': 'zh-Hans',

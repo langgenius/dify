@@ -10,7 +10,7 @@ import Tooltip from '@/app/components/base/tooltip/index'
 
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { languageMaps, languages } from '@/utils/language'
+import { LanguagesSupported, languages } from '@/utils/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import I18n from '@/context/i18n'
@@ -121,7 +121,7 @@ const OneMoreStep = () => {
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
               <SimpleSelect
-                defaultValue={languageMaps.en}
+                defaultValue={LanguagesSupported[0]}
                 items={languages}
                 onSelect={(item) => {
                   dispatch({ type: 'interface_language', value: item.value })
