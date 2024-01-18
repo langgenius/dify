@@ -18,7 +18,7 @@ const Panel: FC<Props> = ({
 
   return (
     <div className='rounded-md bg-gray-100 overflow-hidden border border-black/5'>
-      <div className='flex items-center h-[26px] px-2 bg-gray-50 uppercase text-xs font-medium text-gray-500'>
+      <div className='flex items-center px-2 py-1 leading-[18px] bg-gray-50 uppercase text-xs font-medium text-gray-500'>
         {t(`tools.thought.${isRequest ? 'requestTitle' : 'responseTitle'}`)} {toolName}
       </div>
       <div className='p-2 border-t border-black/5 leading-4 text-xs text-gray-700'>{content}</div>
