@@ -17,7 +17,7 @@ from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
 
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 
-from models.model import Conversation, Message, MessageAgentThought
+from models.model import Conversation, Message
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         # check model mode
         if self.app_orchestration_config.model_config.mode == "completion":
             # TODO: stop words
-            if 'Thought' not in app_orchestration_config.model_config.stop:
-                app_orchestration_config.model_config.stop.append('Thought')
             if 'Observation' not in app_orchestration_config.model_config.stop:
                 app_orchestration_config.model_config.stop.append('Observation')
 
@@ -49,7 +47,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         prompt_messages = self.history_prompt_messages
 
         # convert tools into ModelRuntime Tool format
-        prompt_messages_tools: PromptMessageTool = []
+        prompt_messages_tools: List[PromptMessageTool] = []
         tool_instances = {}
         for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
             prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
@@ -67,7 +65,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             tool_instances[dataset_tool.identity.name] = dataset_tool
 
         function_call_state = True
-        agent_thoughts: List[MessageAgentThought] = []
         llm_usage = {
             'usage': None
         }
@@ -90,6 +87,16 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             if iteration_step == max_iteration_steps:
                 # the last iteration, remove all tools
                 prompt_messages_tools = []
+
+            message_file_ids = []
+            agent_thought = self.create_agent_thought(
+                message_id=message.id,
+                message='',
+                tool_name='',
+                tool_input='',
+                messages_ids=message_file_ids
+            )
+            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
             # update prompt messages
             prompt_messages = self._originze_cot_prompt_messages(
@@ -118,14 +125,41 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # check llm result
             if not llm_result:
                 raise ValueError("failed to invoke llm")
-            
-            # get llm usage
-            if llm_result.usage:
-                increse_usage(llm_usage, llm_result.usage)
 
             # get scratchpad
             scratchpad = self._extract_response_scratchpad(llm_result.message.content)
             agent_scratchpad.append(scratchpad)
+                        
+            # get llm usage
+            if llm_result.usage:
+                increse_usage(llm_usage, llm_result.usage)
+                
+            self.save_agent_thought(agent_thought=agent_thought,
+                                    tool_name=scratchpad.action.action_name if scratchpad.action else '',
+                                    tool_input=scratchpad.action.action_input if scratchpad.action else '',
+                                    thought=scratchpad.thought,
+                                    observation='',
+                                    answer=llm_result.message.content,
+                                    messages_ids=[],
+                                    llm_usage=llm_result.usage)
+            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+
+            # publish agent thought if it's not empty and there is a action
+            if scratchpad.thought and scratchpad.action:
+                # check if final answer
+                if not scratchpad.action.action_name.lower() == "final answer":
+                    yield LLMResultChunk(
+                        model=model_instance.model,
+                        prompt_messages=prompt_messages,
+                        delta=LLMResultChunkDelta(
+                            index=0,
+                            message=AssistantPromptMessage(
+                                content=scratchpad.thought
+                            ),
+                            usage=llm_result.usage,
+                        ),
+                        system_fingerprint=''
+                    )
 
             if not scratchpad.action:
                 # failed to extract action, return final answer directly
@@ -146,29 +180,16 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     tool_call_name = scratchpad.action.action_name
                     tool_call_args = scratchpad.action.action_input
                     tool_instance = tool_instances.get(tool_call_name)
-                    # create agent thought
-                    try:
-                        agent_thought = self.create_agent_thought(
-                            message_id=message.id,
-                            message=message.message,
-                            tool_name=tool_call_name,
-                            tool_input=tool_call_args if isinstance(tool_call_args, str) else 
-                                json.dumps(tool_call_args, ensure_ascii=False),
-                        )
-                    except json.JSONDecodeError:
-                        agent_thought = self.create_agent_thought(
-                            message_id=message.id,
-                            message=message.message,
-                            tool_name=tool_call_name,
-                            tool_input=tool_call_args if isinstance(tool_call_args, str) else 
-                                json.dumps(tool_call_args),
-                        )
-                    self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
-
                     if not tool_instance:
                         logger.error(f"failed to find tool instance: {tool_call_name}")
                         answer = f"there is not a tool named {tool_call_name}"
-                        self.save_agent_thought(agent_thought, thought=None, observation=answer, answer=answer)
+                        self.save_agent_thought(agent_thought=agent_thought, 
+                                                tool_name='',
+                                                tool_input='',
+                                                thought=None, 
+                                                observation=answer, 
+                                                answer=answer,
+                                                messages_ids=[])
                         self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
                     else:
                         # invoke tool
@@ -191,7 +212,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                                                                   value=message_file.id,
                                                                   name=save_as)
                                 self.queue_manager.publish_message_file(message_file, PublishFrom.APPLICATION_MANAGER)
-                                
+
+                            message_file_ids = [message_file.id for message_file, _ in message_files]
                         except ToolProviderCredentialValidationError as e:
                             error_response = f"Plese check your tool provider credentials"
                         except (
@@ -220,9 +242,12 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         # save agent thought
                         self.save_agent_thought(
                             agent_thought=agent_thought, 
-                            thought=llm_result.message.content, 
+                            tool_name=tool_call_name,
+                            tool_input=tool_call_args,
+                            thought=None,
                             observation=observation, 
-                            answer=''
+                            answer=llm_result.message.content,
+                            messages_ids=message_file_ids,
                         )
                         self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
@@ -245,6 +270,17 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             system_fingerprint=''
         )
 
+        # save agent thought
+        self.save_agent_thought(
+            agent_thought=agent_thought, 
+            tool_name='',
+            tool_input='',
+            thought=final_answer,
+            observation='', 
+            answer=final_answer,
+            messages_ids=[]
+        )
+
         self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish_message_end(LLMResult(
@@ -262,6 +298,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         extract response from llm response
         """
         def extra_quotes() -> AgentScratchpadUnit:
+            agent_response = content
             # try to extract all quotes
             pattern = re.compile(r'```(.*?)```', re.DOTALL)
             quotes = pattern.findall(content)
@@ -273,13 +310,15 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     2. use plain text `Action: xxx` to parse action
                 """
                 try:
-                    action = json.loads(quotes[i])
+                    action = json.loads(quotes[i].replace('```', ''))
                     action_name = action.get("action")
                     action_input = action.get("action_input")
+                    agent_thought = agent_response.replace(quotes[i], '')
+
                     if action_name and action_input:
                         return AgentScratchpadUnit(
                             agent_response=content,
-                            thought=content,
+                            thought=agent_thought,
                             action_str=quotes[i],
                             action=AgentScratchpadUnit.Action(
                                 action_name=action_name,
@@ -288,12 +327,19 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         )
                 except:
                     # try to parse action from plain text
-                    action_name = re.findall(r'Action: (.*)', quotes[i])
-                    action_input = re.findall(r'Action Input: (.*)', quotes[i])
+                    action_name = re.findall(r'action: (.*)', quotes[i], re.IGNORECASE)
+                    action_input = re.findall(r'action input: (.*)', quotes[i], re.IGNORECASE)
+                    # delete action from agent response
+                    agent_thought = agent_response.replace(quotes[i], '')
+                    # remove extra quotes
+                    agent_thought = agent_thought.replace('```\n\n```', '')
+                    # remove Action: xxx from agent thought
+                    agent_thought = re.sub(r'Action:.*', '', agent_thought, flags=re.IGNORECASE)
+
                     if action_name and action_input:
                         return AgentScratchpadUnit(
                             agent_response=content,
-                            thought=content,
+                            thought=agent_thought,
                             action_str=quotes[i],
                             action=AgentScratchpadUnit.Action(
                                 action_name=action_name[0],
@@ -302,31 +348,44 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         )
 
         def extra_json():
+            agent_response = content
             # try to extract all json
             structures, pair_match_stack = [], []
+            started_at, end_at = 0, 0
             for i in range(len(content)):
                 if content[i] == '{':
                     pair_match_stack.append(i)
+                    if len(pair_match_stack) == 1:
+                        started_at = i
                 elif content[i] == '}':
                     begin = pair_match_stack.pop()
                     if not pair_match_stack:
-                        print(content[begin:i+1])
-                        structures.append(content[begin:i+1])
+                        end_at = i + 1
+                        structures.append((content[begin:i+1], (started_at, end_at)))
 
             # handle the last character
             if pair_match_stack:
-                structures.append(content[pair_match_stack[0]:])
+                end_at = len(content)
+                structures.append((content[pair_match_stack[0]:], (started_at, end_at)))
             
             for i in range(len(structures), 0, -1):
                 try:
-                    action = json.loads(structures[i - 1])
+                    json_content, (started_at, end_at) = structures[i - 1]
+                    action = json.loads(json_content)
                     action_name = action.get("action")
                     action_input = action.get("action_input")
+                    # delete json content from agent response
+                    agent_thought = agent_response[:started_at] + agent_response[end_at:]
+                    # remove extra quotes
+                    agent_thought = agent_thought.replace('```\n\n```', '')
+                    # remove Action: xxx from agent thought
+                    agent_thought = re.sub(r'Action:.*', '', agent_thought, flags=re.IGNORECASE)
+
                     if action_name and action_input:
                         return AgentScratchpadUnit(
                             agent_response=content,
-                            thought=content,
-                            action_str=structures[i - 1],
+                            thought=agent_thought,
+                            action_str=json_content,
                             action=AgentScratchpadUnit.Action(
                                 action_name=action_name,
                                 action_input=action_input,

@@ -84,6 +84,16 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 # the last iteration, remove all tools
                 prompt_messages_tools = []
 
+            message_file_ids = []
+            agent_thought = self.create_agent_thought(
+                message_id=message.id,
+                message='',
+                tool_name='',
+                tool_input='',
+                messages_ids=message_file_ids
+            )
+            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
@@ -102,11 +112,27 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             # save full response
             response = ''
 
+            # save tool call names and inputs
+            tool_call_names = ''
+            tool_call_inputs = ''
+
+            current_llm_usage = None
+
             for chunk in chunks:
                 # check if there is any tool call
                 if self.check_tool_calls(chunk):
                     function_call_state = True
                     tool_calls.extend(self.extract_tool_calls(chunk))
+                    tool_call_names = ';'.join([tool_call[1] for tool_call in tool_calls])
+                    try:
+                        tool_call_inputs = json.dumps({
+                            tool_call[1]: tool_call[2] for tool_call in tool_calls
+                        }, ensure_ascii=False)
+                    except json.JSONDecodeError as e:
+                        # ensure ascii to avoid encoding error
+                        tool_call_inputs = json.dumps({
+                            tool_call[1]: tool_call[2] for tool_call in tool_calls
+                        })
 
                 if chunk.delta.message and chunk.delta.message.content:
                     if isinstance(chunk.delta.message.content, list):
@@ -117,46 +143,30 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
                 if chunk.delta.usage:
                     increse_usage(llm_usage, chunk.delta.usage)
+                    current_llm_usage = chunk.delta.usage
 
                 yield chunk
 
-            if len(agent_thoughts) > 0:
-                for thought in agent_thoughts:
-                    # save last agent thought's response
-                    self.save_agent_thought(
-                        agent_thought=thought, 
-                        thought=None, 
-                        observation=None, 
-                        answer=response
-                    )
-                # clear agent thoughts of last iteration
-                agent_thoughts = []
+            # save thought
+            self.save_agent_thought(
+                agent_thought=agent_thought, 
+                tool_name=tool_call_names,
+                tool_input=tool_call_inputs,
+                thought=response,
+                observation=None,
+                answer=response,
+                messages_ids=[],
+                llm_usage=current_llm_usage
+            )
 
+            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+            
             final_answer += response + '\n'
 
             # call tools
             tool_responses = []
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
                 tool_instance = tool_instances.get(tool_call_name)
-                # create agent thought
-                try:
-                    agent_thought = self.create_agent_thought(
-                        message_id=message.id,
-                        message=message.message,
-                        tool_name=tool_call_name,
-                        tool_input=json.dumps(tool_call_args, ensure_ascii=False),
-                    )
-                except json.JSONDecodeError as e:
-                    # ensure ascii to avoid encoding error
-                    agent_thought = self.create_agent_thought(
-                        message_id=message.id,
-                        message=message.message,
-                        tool_name=tool_call_name,
-                        tool_input=json.dumps(tool_call_args),
-                    )
-                agent_thoughts.append(agent_thought)
-                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
-
                 if not tool_instance:
                     logger.error(f"failed to find tool instance: {tool_call_name}")
                     tool_response = {
@@ -165,13 +175,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         "tool_response": f"there is not a tool named {tool_call_name}"
                     }
                     tool_responses.append(tool_response)
-                    self.save_agent_thought(
-                        agent_thought=agent_thought, 
-                        thought=None, 
-                        observation=tool_response['tool_response'], 
-                        answer=None
-                    )
-                    self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
                 else:
                     # invoke tool
                     error_response = None
@@ -193,6 +196,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
                             # publish message file
                             self.queue_manager.publish_message_file(message_file, PublishFrom.APPLICATION_MANAGER)
+                            # add message file ids
+                            message_file_ids.append(message_file.id)
                             
                     except ToolProviderCredentialValidationError as e:
                         error_response = f"Plese check your tool provider credentials"
@@ -227,14 +232,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         }
                         tool_responses.append(tool_response)
                     
-                    self.save_agent_thought(
-                        agent_thought=agent_thought, 
-                        thought=None, 
-                        observation=observation, 
-                        answer=None
-                    )
-                    self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
-
                 prompt_messages = self.organize_prompt_messages(
                     prompt_template=prompt_template,
                     query=None,
@@ -243,7 +240,20 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     tool_response=tool_response['tool_response'],
                     prompt_messages=prompt_messages,
                 )
-            
+
+            if len(tool_responses) > 0:
+                # save agent thought
+                self.save_agent_thought(
+                    agent_thought=agent_thought, 
+                    tool_name=None,
+                    tool_input=None,
+                    thought=None, 
+                    observation=tool_response['tool_response'], 
+                    answer=None,
+                    messages_ids=message_file_ids
+                )
+                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
                 self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)

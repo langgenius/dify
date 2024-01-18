@@ -1,7 +1,7 @@
 import logging
 import json
 
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from datetime import datetime
 from mimetypes import guess_extension
 
@@ -27,6 +27,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.entities.application_entities import ModelConfigEntity, \
     AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.file.message_file_parser import FileTransferMethod
 
@@ -365,7 +366,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         return result
         
     def create_agent_thought(self, message_id: str, message: str, 
-                             tool_name: str, tool_input: str,
+                             tool_name: str, tool_input: str, messages_ids: List[str]
                              ) -> MessageAgentThought:
         """
         Create agent thought
@@ -380,6 +381,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             message_token=0,
             message_unit_price=0,
             message_price_unit=0,
+            message_files=json.dumps(messages_ids) if messages_ids else '',
             answer='',
             observation='',
             answer_token=0,
@@ -401,18 +403,51 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return thought
 
-    def save_agent_thought(self, agent_thought: MessageAgentThought, thought: str, observation: str, answer: str) -> MessageAgentThought:
+    def save_agent_thought(self, 
+                           agent_thought: MessageAgentThought, 
+                           tool_name: str,
+                           tool_input: Union[str, dict],
+                           thought: str, 
+                           observation: str, 
+                           answer: str,
+                           messages_ids: List[str],
+                           llm_usage: LLMUsage = None) -> MessageAgentThought:
         """
         Save agent thought
         """
         if thought is not None:
             agent_thought.thought = thought
 
+        if tool_name is not None:
+            agent_thought.tool = tool_name
+
+        if tool_input is not None:
+            if isinstance(tool_input, dict):
+                try:
+                    tool_input = json.dumps(tool_input, ensure_ascii=False)
+                except Exception as e:
+                    tool_input = json.dumps(tool_input)
+
+            agent_thought.tool_input = tool_input
+
         if observation is not None:
             agent_thought.observation = observation
 
         if answer is not None:
             agent_thought.answer = answer
+
+        if messages_ids is not None and len(messages_ids) > 0:
+            agent_thought.message_files = json.dumps(messages_ids)
+        
+        if llm_usage:
+            agent_thought.message_token = llm_usage.prompt_tokens
+            agent_thought.message_price_unit = llm_usage.prompt_price_unit
+            agent_thought.message_unit_price = llm_usage.prompt_unit_price
+            agent_thought.answer_token = llm_usage.completion_tokens
+            agent_thought.answer_price_unit = llm_usage.completion_price_unit
+            agent_thought.answer_unit_price = llm_usage.completion_unit_price
+            agent_thought.tokens = llm_usage.total_tokens
+            agent_thought.total_price = llm_usage.total_price
 
         db.session.commit()
 

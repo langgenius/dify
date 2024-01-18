@@ -1001,6 +1001,7 @@ class MessageAgentThought(db.Model):
     message_token = db.Column(db.Integer, nullable=True)
     message_unit_price = db.Column(db.Numeric, nullable=True)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
+    message_files = db.Column(db.Text, nullable=True)
     answer = db.Column(db.Text, nullable=True)
     answer_token = db.Column(db.Integer, nullable=True)
     answer_unit_price = db.Column(db.Numeric, nullable=True)
@@ -1013,6 +1014,12 @@ class MessageAgentThought(db.Model):
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
+    @property
+    def message_files_array(self) -> list:
+        if self.message_files:
+            return json.loads(self.message_files)
+        else:
+            return []
 
 class DatasetRetrieverResource(db.Model):
     __tablename__ = 'dataset_retriever_resources'

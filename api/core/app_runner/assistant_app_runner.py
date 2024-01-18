@@ -170,7 +170,8 @@ class AssistantApplicationRunner(AppRunner):
         self._handle_invoke_result(
             invoke_result=invoke_result,
             queue_manager=queue_manager,
-            stream=application_generate_entity.stream
+            stream=application_generate_entity.stream,
+            agent=True
         )
 
     def _load_tool_variables(self, conversation_id: str, user_id: str, tanent_id: str) -> ToolConversationVariables:

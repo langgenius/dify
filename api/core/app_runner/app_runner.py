@@ -199,7 +199,8 @@ class AppRunner:
 
     def _handle_invoke_result(self, invoke_result: Union[LLMResult, Generator],
                               queue_manager: ApplicationQueueManager,
-                              stream: bool) -> None:
+                              stream: bool,
+                              agent: bool = False) -> None:
         """
         Handle invoke result
         :param invoke_result: invoke result
@@ -210,16 +211,19 @@ class AppRunner:
         if not stream:
             self._handle_invoke_result_direct(
                 invoke_result=invoke_result,
-                queue_manager=queue_manager
+                queue_manager=queue_manager,
+                agent=agent
             )
         else:
             self._handle_invoke_result_stream(
                 invoke_result=invoke_result,
-                queue_manager=queue_manager
+                queue_manager=queue_manager,
+                agent=agent
             )
 
     def _handle_invoke_result_direct(self, invoke_result: LLMResult,
-                                     queue_manager: ApplicationQueueManager) -> None:
+                                     queue_manager: ApplicationQueueManager,
+                                     agent: bool) -> None:
         """
         Handle invoke result direct
         :param invoke_result: invoke result
@@ -232,7 +236,8 @@ class AppRunner:
         )
 
     def _handle_invoke_result_stream(self, invoke_result: Generator,
-                                     queue_manager: ApplicationQueueManager) -> None:
+                                     queue_manager: ApplicationQueueManager,
+                                     agent: bool) -> None:
         """
         Handle invoke result
         :param invoke_result: invoke result
@@ -244,7 +249,10 @@ class AppRunner:
         text = ''
         usage = None
         for result in invoke_result:
-            queue_manager.publish_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
+            if not agent:
+                queue_manager.publish_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
+            else:
+                queue_manager.publish_agent_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
 
             text += result.delta.message.content
 

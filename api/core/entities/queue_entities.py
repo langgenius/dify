@@ -10,6 +10,7 @@ class QueueEvent(Enum):
     QueueEvent enum
     """
     MESSAGE = "message"
+    AGENT_MESSAGE = "agent_message"
     MESSAGE_REPLACE = "message-replace"
     MESSAGE_END = "message-end"
     RETRIEVER_RESOURCES = "retriever-resources"
@@ -34,7 +35,14 @@ class QueueMessageEvent(AppQueueEvent):
     """
     event = QueueEvent.MESSAGE
     chunk: LLMResultChunk
-    
+
+class QueueAgentMessageEvent(AppQueueEvent):
+    """
+    QueueMessageEvent entity
+    """
+    event = QueueEvent.AGENT_MESSAGE
+    chunk: LLMResultChunk
+
     
 class QueueMessageReplaceEvent(AppQueueEvent):
     """

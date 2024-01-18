@@ -8,7 +8,8 @@ from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
 from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
                                           QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
-                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent, QueueMessageFileEvent)
+                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent,
+                                          QueueMessageFileEvent, QueueAgentMessageEvent)
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
@@ -298,7 +299,8 @@ class GenerateTaskPipeline:
                         'observation': agent_thought.observation,
                         'tool': agent_thought.tool,
                         'tool_input': agent_thought.tool_input,
-                        'created_at': int(self._message.created_at.timestamp())
+                        'created_at': int(self._message.created_at.timestamp()),
+                        'message_files': agent_thought.message_files_array
                     }
 
                     if self._conversation.mode == 'chat':
@@ -335,7 +337,7 @@ class GenerateTaskPipeline:
 
                     yield self._yield_response(response)
 
-            elif isinstance(event, QueueMessageEvent):
+            elif isinstance(event, (QueueMessageEvent, QueueAgentMessageEvent)):
                 chunk = event.chunk
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
@@ -365,7 +367,7 @@ class GenerateTaskPipeline:
                         self._output_moderation_handler.append_new_token(delta_text)
 
                 self._task_state.llm_result.message.content += delta_text
-                response = self._handle_chunk(delta_text)
+                response = self._handle_chunk(delta_text, agent=isinstance(event, QueueAgentMessageEvent))
                 yield self._yield_response(response)
             elif isinstance(event, QueueMessageReplaceEvent):
                 response = {
@@ -417,14 +419,14 @@ class GenerateTaskPipeline:
             extras=self._application_generate_entity.extras
         )
 
-    def _handle_chunk(self, text: str) -> dict:
+    def _handle_chunk(self, text: str, agent: bool = False) -> dict:
         """
         Handle completed event.
         :param text: text
         :return:
         """
         response = {
-            'event': 'message',
+            'event': 'message' if not agent else 'agent_message',
             'id': self._message.id,
             'task_id': self._application_generate_entity.task_id,
             'message_id': self._message.id,
