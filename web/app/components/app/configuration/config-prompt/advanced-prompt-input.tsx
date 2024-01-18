@@ -205,13 +205,13 @@ const AdvancedPromptInput: FC<Props> = ({
               onAddContext: showSelectDataSet,
             }}
             variableBlock={{
-              variables: modelConfig.configs.prompt_variables.map(item => ({
+              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
                 name: item.name,
                 value: item.key,
               })),
-              externalTools: externalDataToolsConfig.map(item => ({
-                name: item.label!,
-                variableName: item.variable!,
+              externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
+                name: item.name,
+                variableName: item.key,
                 icon: item.icon,
                 icon_background: item.icon_background,
               })),

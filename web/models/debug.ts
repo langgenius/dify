@@ -47,6 +47,8 @@ export type PromptVariable = {
   is_context_var?: boolean
   enabled?: boolean
   config?: Record<string, any>
+  icon?: string
+  icon_background?: string
 }
 
 export type CompletionParams = {

@@ -41,6 +41,8 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type: content.type,
         enabled: content.enabled,
         config: content.config,
+        icon: content.icon,
+        icon_background: content.icon_background,
         is_context_var,
       })
     }
@@ -86,6 +88,8 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           type: item.type,
           config: item.config,
           required: item.required,
+          icon: item.icon,
+          icon_background: item.icon_background,
         },
       } as any)
     }

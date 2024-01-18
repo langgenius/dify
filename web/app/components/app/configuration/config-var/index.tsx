@@ -34,6 +34,8 @@ type ExternalDataToolParams = {
   index: number
   name: string
   config?: Record<string, any>
+  icon?: string
+  icon_background?: string
 }
 
 export type IConfigVarProps = {
@@ -140,7 +142,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const { setShowExternalDataToolModal } = useModalContext()
 
   const handleOpenExternalDataToolModal = (
-    { key, type, index, name, config }: ExternalDataToolParams,
+    { key, type, index, name, config, icon, icon_background }: ExternalDataToolParams,
     oldPromptVariables: PromptVariable[],
   ) => {
     setShowExternalDataToolModal({
@@ -148,6 +150,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         variable: key,
         label: name,
         config,
+        icon,
+        icon_background,
       },
       onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         const newPromptVariables = oldPromptVariables.map((item, i) => {
@@ -159,6 +163,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
               type: newExternalDataTool.type as string,
               config: newExternalDataTool.config,
               required: item.required,
+              icon: newExternalDataTool.icon,
+              icon_background: newExternalDataTool.icon_background,
             }
           }
           return item
@@ -209,6 +215,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           type: payload.type as string,
           config: payload.config,
           required: true,
+          icon: payload.icon,
+          icon_background: payload.icon_background,
         },
       ])
     }
@@ -235,10 +243,10 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const currItem = currKey ? promptVariables.find(item => item.key === currKey) : null
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
-  const handleConfig = ({ key, type, index, name, config }: ExternalDataToolParams) => {
+  const handleConfig = ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
     setCurrKey(key)
     if (type === 'api') {
-      handleOpenExternalDataToolModal({ key, type, index, name, config }, promptVariables)
+      handleOpenExternalDataToolModal({ key, type, index, name, config, icon, icon_background }, promptVariables)
       return
     }
 
@@ -284,7 +292,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
               </tr>
             </thead>
             <tbody className="text-gray-700">
-              {promptVariables.map(({ key, name, type, required, config }, index) => (
+              {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
                 <tr key={index} className="h-9 leading-9">
                   <td className="w-[160px] border-b border-gray-100 pl-3">
                     <div className='flex items-center space-x-1'>
@@ -330,7 +338,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                       </td>
                       <td className='w-20  border-b border-gray-100'>
                         <div className='flex h-full items-center space-x-1'>
-                          <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleConfig({ type, key, index, name, config })}>
+                          <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleConfig({ type, key, index, name, config, icon, icon_background })}>
                             <Settings01 className='w-4 h-4 text-gray-500' />
                           </div>
                           <div className=' p-1 rounded-md hover:bg-black/5 w-6 h-6 cursor-pointer' onClick={() => handleRemoveVar(index)} >

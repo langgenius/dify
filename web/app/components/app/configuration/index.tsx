@@ -426,6 +426,8 @@ const Configuration: FC = () => {
                           type: item.type as string,
                           config: item.config,
                           required: true,
+                          icon: item.icon,
+                          icon_background: item.icon_background,
                         },
                       }
                     })
