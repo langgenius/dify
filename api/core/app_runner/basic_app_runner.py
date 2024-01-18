@@ -146,7 +146,7 @@ class BasicApplicationRunner(AppRunner):
 
         # get context from datasets
         context = None
-        if app_orchestration_config.dataset:
+        if app_orchestration_config.dataset and app_orchestration_config.dataset.dataset_ids:
             context = self.retrieve_dataset_context(
                 tenant_id=app_record.tenant_id,
                 app_record=app_record,

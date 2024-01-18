@@ -20,7 +20,7 @@ export type IAppDetailNavProps = {
     icon: NavIcon
     selectedIcon: NavIcon
   }>
-  extraInfo?: React.ReactNode
+  extraInfo?: (modeState: string) => React.ReactNode
 }
 
 const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
@@ -72,7 +72,7 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
             <NavLink key={index} mode={modeState} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
           )
         })}
-        {extraInfo ?? null}
+        {extraInfo && extraInfo(modeState)}
       </nav>
       {
         !isMobile && (
