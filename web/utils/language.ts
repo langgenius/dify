@@ -17,34 +17,34 @@ export const languages = [
     value: 'pt-BR',
     name: 'Português(Brasil)',
   },
-  {
-    value: 'es-ES',
-    name: 'Español(España)',
-  },
-  {
-    value: 'fr-FR',
-    name: 'Français(France)',
-  },
-  {
-    value: 'de-DE',
-    name: 'Deutsch(Deutschland)',
-  },
-  {
-    value: 'ja-JP',
-    name: '日本語(日本)',
-  },
-  {
-    value: 'ko-KR',
-    name: '한국어(대한민국)',
-  },
-  {
-    value: 'ru-RU',
-    name: 'Русский(Россия)',
-  },
-  {
-    value: 'it-IT',
-    name: 'Italiano(Italia)',
-  },
+  // {
+  //   value: 'es-ES',
+  //   name: 'Español(España)',
+  // },
+  // {
+  //   value: 'fr-FR',
+  //   name: 'Français(France)',
+  // },
+  // {
+  //   value: 'de-DE',
+  //   name: 'Deutsch(Deutschland)',
+  // },
+  // {
+  //   value: 'ja-JP',
+  //   name: '日本語(日本)',
+  // },
+  // {
+  //   value: 'ko-KR',
+  //   name: '한국어(대한민국)',
+  // },
+  // {
+  //   value: 'ru-RU',
+  //   name: 'Русский(Россия)',
+  // },
+  // {
+  //   value: 'it-IT',
+  //   name: 'Italiano(Italia)',
+  // },
 ]
 
 export const languageMaps = {
