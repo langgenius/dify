@@ -70,7 +70,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :return: Combined string with necessary human_prompt and ai_prompt tags.
         """
         messages = messages.copy()  # don't mutate the original list
-
+        
         text = "".join(
             self._convert_one_message_to_text(message, model_prefix)
             for message in messages
@@ -93,7 +93,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                            credentials=credentials,
                            prompt_messages=[ping_message],
                            model_parameters={},
-                           stream=false)
+                           stream=False)
         
         except ClientError as ex:
             error_code = ex.response['Error']['Code']
@@ -122,10 +122,15 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             human_prompt_postfix = "[\\INST]\n"
             ai_prompt = ""
 
-        else:
+        elif model_prefix == "amazon":
             human_prompt_prefix = "\n\nUser:"
             human_prompt_postfix = ""
             ai_prompt = "\n\nBot:"
+        
+        else:
+            human_prompt_prefix = ""
+            human_prompt_postfix = ""
+            ai_prompt = ""
 
         content = message.content
 
@@ -209,12 +214,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        config_kwargs = model_parameters.copy()
-        config_kwargs['maxTokenCount'] = config_kwargs.pop('max_tokens_to_sample', None)
-
-        if stop:
-            config_kwargs["stopSequences"] = stop
-
         client_config = Config(
             region_name=credentials["aws_region"]
         )
@@ -226,7 +225,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             aws_secret_access_key=credentials["aws_secret_access_key"]
         )
 
-        payload = self._create_payload(model.split('.')[0], prompt_messages, model_parameters, stop)
+        payload = self._create_payload(model.split('.')[0], prompt_messages, model_parameters, stop, stream)
 
 
         if stream:
@@ -358,8 +357,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 finish_reason = payload.get("stop_reason")
 
             elif model_prefix == "cohere":
-                content_delta = payload.get("generations")[0].get("text")
-                finish_reason = payload.get("generations")[0].get("finish_reason")
+                content_delta = payload.get("text")
+                finish_reason = payload.get("finish_reason")
             
             elif model_prefix == "meta":
                 content_delta = payload.get("generation").strip('\n')
