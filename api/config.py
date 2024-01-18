@@ -22,7 +22,6 @@ DEFAULTS = {
     'CONSOLE_API_URL': 'https://cloud.dify.ai',
     'SERVICE_API_URL': 'https://api.dify.ai',
     'APP_WEB_URL': 'https://udify.app',
-    'APP_API_URL': 'https://udify.app',
     'FILES_URL': '',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -94,7 +93,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.4.8"
+        self.CURRENT_VERSION = "0.4.7"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -103,34 +102,24 @@ class Config:
 
         # The backend URL prefix of the console API.
         # used to concatenate the login authorization callback or notion integration callback.
-        self.CONSOLE_API_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_API_URL')
+        self.CONSOLE_API_URL = get_env('CONSOLE_API_URL')
 
         # The front-end URL prefix of the console web.
         # used to concatenate some front-end addresses and for CORS configuration use.
-        self.CONSOLE_WEB_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_WEB_URL')
-
-        # WebApp API backend Url prefix.
-        # used to declare the back-end URL for the front-end API.
-        self.APP_API_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_API_URL')
+        self.CONSOLE_WEB_URL = get_env('CONSOLE_WEB_URL')
 
         # WebApp Url prefix.
         # used to display WebAPP API Base Url to the front-end.
-        self.APP_WEB_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_WEB_URL')
+        self.APP_WEB_URL = get_env('APP_WEB_URL')
 
         # Service API Url prefix.
         # used to display Service API Base Url to the front-end.
-        self.SERVICE_API_URL = get_env('API_URL') if get_env('API_URL') else get_env('SERVICE_API_URL')
+        self.SERVICE_API_URL = get_env('SERVICE_API_URL')
 
         # File preview or download Url prefix.
         # used to display File preview or download Url to the front-end or as Multi-model inputs;
         # Url is signed and has expiration time.
         self.FILES_URL = get_env('FILES_URL') if get_env('FILES_URL') else self.CONSOLE_API_URL
-
-        # Fallback Url prefix.
-        # Will be deprecated in the future.
-        self.CONSOLE_URL = get_env('CONSOLE_URL')
-        self.API_URL = get_env('API_URL')
-        self.APP_URL = get_env('APP_URL')
 
         # Your App secret key will be used for securely signing the session cookie
         # Make sure you are changing this key for your deployment with a strong key.

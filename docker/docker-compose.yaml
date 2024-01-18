@@ -23,10 +23,6 @@ services:
       # different from console domain.
       # example: http://api.dify.ai
       SERVICE_API_URL: ''
-      # The URL prefix for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
-      # console or api domain.
-      # example: http://udify.app
-      APP_API_URL: ''
       # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
