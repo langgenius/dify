@@ -7,7 +7,8 @@ const translation = {
   copy: '复制',
   copied: '已复制',
   play: '播放',
-  played: '播放中',
+  pause: '暂停',
+  playing: '播放中',
   merMaind: {
     rerender: '重新渲染',
   },

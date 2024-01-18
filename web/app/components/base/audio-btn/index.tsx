@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
 import { t } from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
 import s from './style.module.css'
@@ -74,14 +74,17 @@ const AudioBtn = ({
       if (isPlaying) {
         setPause(true)
         audioRef.current.pause()
-      } else if (!hasEnded) {
+      }
+      else if (!hasEnded) {
         setPause(false)
         audioRef.current.play()
-      } else if (!isPlaying) {
+      }
+      else if (!isPlaying) {
         playAudio().then()
       }
       setIsPlaying(prevIsPlaying => !prevIsPlaying)
-    } else {
+    }
+    else {
       playAudio().then()
     }
   }
@@ -90,14 +93,14 @@ const AudioBtn = ({
     <div className={`${className}`}>
       <Tooltip
         selector={selector.current}
-        content={(!isPause ? (isPlaying && !hasEnded ? t('appApi.playing') : t('appApi.play')) : t('appApi.pause')) as string}
+        content={(!isPause ? ((isPlaying && !hasEnded) ? t('appApi.playing') : t('appApi.play')) : t('appApi.pause')) as string}
         className='z-10'
       >
         <div
-            className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
-            style={{boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)'}}
-            onClick={togglePlayPause}>
-          <div className={`w-6 h-6 rounded-md hover:bg-gray-50 ${!isPause ? (isPlaying && !hasEnded ? s.playIcon : s.stopIcon) : s.pauseIcon}`}></div>
+          className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
+          style={{ boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)' }}
+          onClick={togglePlayPause}>
+          <div className={`w-6 h-6 rounded-md hover:bg-gray-50 ${!isPause ? ((isPlaying && !hasEnded) ? s.playIcon : s.stopIcon) : s.pauseIcon}`}></div>
         </div>
       </Tooltip>
     </div>

@@ -7,7 +7,8 @@ const translation = {
   copy: 'Copy',
   copied: 'Copied',
   play: 'Play',
-  played: 'Play in',
+  pause: 'Pause',
+  playing: 'Playing',
   merMaind: {
     rerender: 'Redo Rerender',
   },
