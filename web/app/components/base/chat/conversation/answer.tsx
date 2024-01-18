@@ -60,7 +60,7 @@ const Answer: FC<AnswerProps> = ({
       <div className='chat-answer-container grow w-0 group ml-4'>
         <div className='relative pr-10'>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
-          <div className='group relative inline-block px-4 py-3 bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
+          <div className='group relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
             <div className='hidden absolute top-[-14px] right-[-14px] group-hover:flex flex-row justify-end gap-1'>
               {
                 !item.isOpeningStatement && !responsing && (
