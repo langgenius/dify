@@ -31,6 +31,7 @@ class CacheEmbedding(Embeddings):
             embedding_cache_key = f'{self._model_instance.provider}_{self._model_instance.model}_{hash}'
             embedding = redis_client.get(embedding_cache_key)
             if embedding:
+                redis_client.expire(embedding_cache_key, 3600)
                 text_embeddings[i] = list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
 
             else:
@@ -81,6 +82,7 @@ class CacheEmbedding(Embeddings):
         embedding_cache_key = f'{self._model_instance.provider}_{self._model_instance.model}_{hash}'
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
+            redis_client.expire(embedding_cache_key, 3600)
             return list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
 
 
