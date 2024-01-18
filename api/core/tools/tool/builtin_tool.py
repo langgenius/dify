@@ -5,6 +5,7 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 
 from typing import List
+from enum import Enum
 
 _SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but 

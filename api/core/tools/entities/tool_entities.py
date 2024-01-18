@@ -81,12 +81,12 @@ class ToolInvokeMessage(BaseModel):
     """
     message: Union[str, bytes] = None
     meta: Dict[str, Any] = None
-    save_as_variable: bool = False
+    save_as: str = ''
 
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
-    save_as_variable: bool = False
+    save_as: str = ''
 
 class ToolParamterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
@@ -115,6 +115,33 @@ class ToolParamter(BaseModel):
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
     options: Optional[List[ToolParamterOption]] = None
+
+    @classmethod
+    def get_simple_instance(cls, 
+                       name: str, llm_description: str, type: ToolParameterType, 
+                       required: bool, options: Optional[List[str]] = None) -> 'ToolParamter':
+        """
+            get a simple tool parameter
+
+            :param name: the name of the parameter
+            :param llm_description: the description presented to the LLM
+            :param type: the type of the parameter
+            :param required: if the parameter is required
+            :param options: the options of the parameter
+        """
+        # convert options to ToolParamterOption
+        if options:
+            options = [ToolParamterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
+        return cls(
+            name=name,
+            label=I18nObject(en_US='', zh_Hans=''),
+            human_description=I18nObject(en_US='', zh_Hans=''),
+            type=type,
+            form=cls.ToolParameterForm.LLM,
+            llm_description=llm_description,
+            required=required,
+            options=options,
+        )
 
 class ToolProviderIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
@@ -204,6 +231,16 @@ class ToolRuntimeVariablePool(BaseModel):
     tenant_id: str = Field(..., description="The tenant id of assistant")
 
     pool: List[ToolRuntimeVariable] = Field(..., description="The pool of variables")
+
+    def __init__(self, **data: Any):
+        pool = data.get('pool', [])
+        # convert pool into correct type
+        for index, variable in enumerate(pool):
+            if variable['type'] == ToolRuntimeVariableType.TEXT.value:
+                pool[index] = ToolRuntimeTextVariable(**variable)
+            elif variable['type'] == ToolRuntimeVariableType.IMAGE.value:
+                pool[index] = ToolRuntimeImageVariable(**variable)
+        super().__init__(**data)
 
     def dict(self) -> dict:
         return {

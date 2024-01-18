@@ -146,7 +146,9 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         runtime_parameters = {}
 
-        for parameter in tool_entity.parameters:
+        parameters = tool_entity.get_runtime_parameters() or []
+
+        for parameter in parameters:
             parameter_type = 'string'
             enum = []
             if parameter.type == ToolParamter.ToolParameterType.STRING:
@@ -251,7 +253,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         update prompt message tool
         """
         # try to get tool runtime parameters
-        tool_runtime_parameters = tool.get_runtime_parameters()
+        tool_runtime_parameters = tool.get_runtime_parameters() or []
 
         for parameter in tool_runtime_parameters:
             parameter_type = 'string'
@@ -296,13 +298,13 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result.append(ToolInvokeMessageBinary(
                     mimetype=response.meta.get('mime_type', 'octet/stream'),
                     url=response.message,
-                    save_as_variable=response.save_as_variable,
+                    save_as=response.save_as,
                 ))
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 result.append(ToolInvokeMessageBinary(
                     mimetype=response.meta.get('mime_type', 'octet/stream'),
                     url=response.message,
-                    save_as_variable=response.save_as_variable,
+                    save_as=response.save_as,
                 ))
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 # check if there is a mime type in meta
@@ -310,7 +312,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                     result.append(ToolInvokeMessageBinary(
                         mimetype=response.meta.get('mime_type', 'octet/stream') if response.meta else 'octet/stream',
                         url=response.message,
-                        save_as_variable=response.save_as_variable,
+                        save_as=response.save_as,
                     ))
 
         return result
@@ -355,7 +357,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             db.session.add(message_file)
             result.append((
                 message_file,
-                message.save_as_variable
+                message.save_as
             ))
             
         db.session.commit()
@@ -448,7 +450,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                     result.append(ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=url,
-                        save_as_variable=message.save_as_variable,
+                        save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     ))
                 except Exception as e:
@@ -457,11 +459,14 @@ class BaseAssistantApplicationRunner(AppRunner):
                         type=ToolInvokeMessage.MessageType.TEXT,
                         message=f"Failed to download image: {message.message}, you can try to download it yourself.",
                         meta=message.meta.copy() if message.meta is not None else {},
-                        save_as_variable=message.save_as_variable,
+                        save_as=message.save_as,
                     ))
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
                 mimetype = message.meta.get('mime_type', 'octet/stream')
+                # if message is str, encode it to bytes
+                if isinstance(message.message, str):
+                    message.message = message.message.encode('utf-8')
                 file = ToolFileManager.create_file_by_raw(user_id=self.user_id, tenant_id=self.tenant_id,
                                                             conversation_id=self.message.conversation_id,
                                                             file_binary=message.message,
@@ -474,14 +479,14 @@ class BaseAssistantApplicationRunner(AppRunner):
                     result.append(ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=url,
-                        save_as_variable=message.save_as_variable,
+                        save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     ))
                 else:
                     result.append(ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.LINK,
                         message=url,
-                        save_as_variable=message.save_as_variable,
+                        save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     ))
             else:

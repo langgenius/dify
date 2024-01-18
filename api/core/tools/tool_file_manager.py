@@ -133,9 +133,38 @@ class ToolFileManager:
         blob = storage.load_once(tool_file.file_key)
 
         return blob, tool_file.mimetype
+    
+    @staticmethod
+    def get_file_binary_by_message_file_id(id: str) -> Union[Tuple[bytes, str], None]:
+        """
+        get file binary
+
+        :param id: the id of the file
+
+        :return: the binary of the file, mime type
+        """
+        message_file: MessageFile = db.session.query(MessageFile).filter(
+            MessageFile.id == id,
+        ).first()
+
+        # get tool file id
+        tool_file_id = message_file.url.split('/')[-1]
+        # trim extension
+        tool_file_id = tool_file_id.split('.')[0]
+
+        tool_file: ToolFile = db.session.query(ToolFile).filter(
+            ToolFile.id == tool_file_id,
+        ).first()
+
+        if not tool_file:
+            return None
+
+        blob = storage.load_once(tool_file.file_key)
+
+        return blob, tool_file.mimetype
         
     @staticmethod
-    def get_file_generator(id: str) -> Union[Tuple[Generator, str], None]:
+    def get_file_generator_by_message_file_id(id: str) -> Union[Tuple[Generator, str], None]:
         """
         get file binary
 

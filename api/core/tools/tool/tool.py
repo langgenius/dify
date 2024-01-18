@@ -2,9 +2,12 @@ from pydantic import BaseModel
 
 from typing import List, Dict, Any, Union, Optional
 from abc import abstractmethod, ABC
+from enum import Enum
+from uuid import UUID
 
 from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage,\
-    ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable
+    ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable, ToolRuntimeImageVariable
+from core.tools.tool_file_manager import ToolFileManager
 
 class Tool(BaseModel, ABC):
     identity: ToolIdentity = None
@@ -28,6 +31,9 @@ class Tool(BaseModel, ABC):
 
     runtime: Runtime = None
     variables: ToolRuntimeVariablePool = None
+
+    class VARIABLE_KEY(Enum):
+        IMAGE = 'image'
 
     def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
         """
@@ -69,7 +75,7 @@ class Tool(BaseModel, ABC):
         
         self.variables.set_text(self.identity.name, variable_name, text)
         
-    def get_variable(self, name: str) -> Optional[ToolRuntimeVariable]:
+    def get_variable(self, name: Union[str, Enum]) -> Optional[ToolRuntimeVariable]:
         """
             get a variable
 
@@ -79,11 +85,75 @@ class Tool(BaseModel, ABC):
         if not self.variables:
             return None
         
+        if isinstance(name, Enum):
+            name = name.value
+        
         for variable in self.variables.pool:
             if variable.name == name:
                 return variable
             
         return None
+
+    def get_default_image_variable(self) -> Optional[ToolRuntimeVariable]:
+        """
+            get the default image variable
+
+            :return: the image variable
+        """
+        if not self.variables:
+            return None
+        
+        return self.get_variable(self.VARIABLE_KEY.IMAGE)
+    
+    def get_variable_file(self, name: Union[str, Enum]) -> Optional[bytes]:
+        """
+            get a variable file
+
+            :param name: the name of the variable
+            :return: the variable file
+        """
+        variable = self.get_variable(name)
+        if not variable:
+            return None
+        
+        if not isinstance(variable, ToolRuntimeImageVariable):
+            return None
+
+        message_file_id = variable.value
+        # get file binary
+        file_binary = ToolFileManager.get_file_binary_by_message_file_id(message_file_id)
+        if not file_binary:
+            return None
+        
+        return file_binary[0]
+    
+    def list_variables(self) -> List[ToolRuntimeVariable]:
+        """
+            list all variables
+
+            :return: the variables
+        """
+        if not self.variables:
+            return []
+        
+        return self.variables.pool
+    
+    def list_default_image_variables(self) -> List[ToolRuntimeVariable]:
+        """
+            list all image variables
+
+            :return: the image variables
+        """
+        if not self.variables:
+            return []
+        
+        result = []
+        
+        for variable in self.variables.pool:
+            if variable.name.startswith(self.VARIABLE_KEY.IMAGE.value):
+                result.append(variable)
+
+        return result
 
     def invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> List[ToolInvokeMessage]:
         # update tool_paramters
@@ -122,8 +192,16 @@ class Tool(BaseModel, ABC):
             :return: the runtime parameters
         """
         return self.parameters
+    
+    def is_tool_avaliable(self) -> bool:
+        """
+            check if the tool is avaliable
 
-    def create_image_message(self, image: str, save_as_variable: bool = False) -> ToolInvokeMessage:
+            :return: if the tool is avaliable
+        """
+        return True
+
+    def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create an image message
 
@@ -132,9 +210,9 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
                                  message=image, 
-                                 save_as_variable=save_as_variable)
+                                 save_as=save_as)
     
-    def create_link_message(self, link: str, save_as_variable: bool = False) -> ToolInvokeMessage:
+    def create_link_message(self, link: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create a link message
 
@@ -143,9 +221,9 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, 
                                  message=link, 
-                                 save_as_variable=save_as_variable)
+                                 save_as=save_as)
     
-    def create_text_message(self, text: str, save_as_variable: bool = False) -> ToolInvokeMessage:
+    def create_text_message(self, text: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create a text message
 
@@ -154,10 +232,10 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
                                  message=text,
-                                 save_as_variable=save_as_variable
+                                 save_as=save_as
                                  )
     
-    def create_blob_message(self, blob: bytes, meta: dict = None, save_as_variable: bool = False) -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
         """
             create a blob message
 
@@ -166,5 +244,5 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
                                  message=blob, meta=meta,
-                                 save_as_variable=save_as_variable
+                                 save_as=save_as
                                  )
