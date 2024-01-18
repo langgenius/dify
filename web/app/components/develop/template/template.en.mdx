@@ -1,5 +1,5 @@
 import { CodeGroup } from '../code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # Completion App API
 
@@ -69,7 +69,7 @@ For high-quality text generation, such as articles, summaries, and translations,
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming"\n    "user": "luowei"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \
@@ -78,7 +78,7 @@ For high-quality text generation, such as articles, summaries, and translations,
     --data-raw '{
         "inputs": {},
         "response_mode": "streaming",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -136,7 +136,7 @@ For high-quality text generation, such as articles, summaries, and translations,
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "luowei"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
@@ -144,7 +144,7 @@ For high-quality text generation, such as articles, summaries, and translations,
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
-        "user": "abc-123"
+        "user": "luowei"
     }'
     ```
 
@@ -213,12 +213,12 @@ For high-quality text generation, such as articles, summaries, and translations,
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
       "name": "example.png",
       "size": 1024,
       "extension": "png",
       "mime_type": "image/png",
-      "created_by": 123,  
+      "created_by": 123,
       "created_at": 1577836800,
     }
     ```
@@ -250,10 +250,10 @@ For high-quality text generation, such as articles, summaries, and translations,
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=luowei' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=luowei' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -287,6 +287,51 @@ For high-quality text generation, such as articles, summaries, and translations,
           ]
         }
       }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='text to audio'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    Text to speech, only supports openai model.
+
+    ### Request Body
+
+    <Properties>
+      <Property name='text' type='str' key='text'>
+        Speech generated content。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=Hello Dify;user=abc-123`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=Hello Dify;user=abc-123'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
     }
     ```
     </CodeGroup>
