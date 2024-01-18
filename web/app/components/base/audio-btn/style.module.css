@@ -3,12 +3,14 @@
   background-position: center;
   background-repeat: no-repeat;
 }
-.playIcon:hover {
+.pauseIcon {
   background-image: url(~@/app/components/develop/secret-key/assets/pause.svg);
   background-position: center;
   background-repeat: no-repeat;
 }
 
-.playIcon.played {
-  background-image: url(~@/app/components/develop/secret-key/assets/play.svg);
+.stopIcon {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-image: url(~@/app/components/develop/secret-key/assets/stop.svg);
 }

@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { t } from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
 import s from './style.module.css'
@@ -10,15 +10,16 @@ import { textToAudio } from '@/service/share'
 type AudioBtnProps = {
   value: string
   className?: string
-  isPlain?: boolean
 }
 
 const AudioBtn = ({
   value,
   className,
-  isPlain,
 }: AudioBtnProps) => {
-  const [isPlayed, setIsPlayed] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isPause, setPause] = useState(false)
+  const [hasEnded, setHasEnded] = useState(false)
   const selector = useRef(`play-tooltip-${randomString(4)}`)
   const params = useParams()
   const pathname = usePathname()
@@ -52,38 +53,51 @@ const AudioBtn = ({
         const blob = new Blob([blob_bytes], { type: 'audio/wav' })
         const audioUrl = URL.createObjectURL(blob)
         const audio = new Audio(audioUrl)
+        audioRef.current = audio
         audio.play().then(() => {
-          setIsPlayed(true)
+          setIsPlaying(true)
         }).catch(() => {
-          setIsPlayed(false)
+          setIsPlaying(false)
           URL.revokeObjectURL(audioUrl)
         })
+        audio.onended = () => setHasEnded(true)
       }
       catch (error) {
-        setIsPlayed(false)
+        setIsPlaying(false)
         console.error('Error playing audio:', error)
       }
     }
   }
+
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        setPause(true)
+        audioRef.current.pause()
+      } else if (!hasEnded) {
+        setPause(false)
+        audioRef.current.play()
+      } else if (!isPlaying) {
+        playAudio().then()
+      }
+      setIsPlaying(prevIsPlaying => !prevIsPlaying)
+    } else {
+      playAudio().then()
+    }
+  }
+
   return (
     <div className={`${className}`}>
       <Tooltip
         selector={selector.current}
-        content={(isPlayed ? t('appApi.played') : t('appApi.play')) as string}
+        content={(!isPause ? (isPlaying && !hasEnded ? t('appApi.playing') : t('appApi.play')) : t('appApi.pause')) as string}
         className='z-10'
       >
         <div
-          className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
-          style={!isPlain
-            ? {
-              boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
-            }
-            : {}}
-          onClick={() => {
-            playAudio().then()
-          }}
-        >
-          <div className={`w-6 h-6 rounded-md hover:bg-gray-50 ${s.playIcon} ${isPlayed ? s.played : ''}`}></div>
+            className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
+            style={{boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)'}}
+            onClick={togglePlayPause}>
+          <div className={`w-6 h-6 rounded-md hover:bg-gray-50 ${!isPause ? (isPlaying && !hasEnded ? s.playIcon : s.stopIcon) : s.pauseIcon}`}></div>
         </div>
       </Tooltip>
     </div>
