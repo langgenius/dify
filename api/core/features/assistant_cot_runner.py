@@ -146,7 +146,9 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                                     answer=llm_result.message.content,
                                     messages_ids=[],
                                     llm_usage=llm_result.usage)
-            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+            
+            if scratchpad.action and scratchpad.action.action_name.lower() != "final answer":
+                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
             # publish agent thought if it's not empty and there is a action
             if scratchpad.thought and scratchpad.action:
