@@ -95,6 +95,7 @@ export type AgentTool = {
   provider_type: CollectionType
   provider_name: string
   tool_name: string
+  tool_label: string
   tool_parameters: Record<string, any>
   enabled: boolean
   isDeleted?: boolean

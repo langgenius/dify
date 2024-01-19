@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import Tools from '@/app/components/tools'
 import { LOC } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
 import ConfigContext from '@/context/debug-configuration'
 import type { ModelConfig } from '@/models/debug'
-
+import I18n from '@/context/i18n'
 type Props = {
   show: boolean
   onHide: () => void
@@ -20,6 +20,8 @@ const ChooseTool: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
+
   const {
     modelConfig,
     setModelConfig,
@@ -54,6 +56,7 @@ const ChooseTool: FC<Props> = ({
                 provider_type: collection.type,
                 provider_name: collection.name,
                 tool_name: tool.name,
+                tool_label: tool.label[locale === 'en' ? 'en_US' : 'zh_Hans'],
                 tool_parameters: parameters,
                 enabled: true,
               })

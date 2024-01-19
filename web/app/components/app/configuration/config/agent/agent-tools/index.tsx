@@ -117,7 +117,7 @@ const AgentTools: FC = () => {
                   title={item.tool_name}
                   className={cn(item.isDeleted ? 'line-through opacity-50' : 'group-hover:max-w-[70px]', 'ml-2 max-w-[200px]  leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
-                  {item.tool_name}
+                  {item.tool_label || item.tool_name}
                 </div>
               </div>
               <div className='flex items-center'>
