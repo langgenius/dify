@@ -49,7 +49,8 @@ const Tool: FC<Props> = ({
   allToolIcons = {},
 }) => {
   const { t } = useTranslation()
-  const { name: toolName, input, isFinished, output } = payload
+  const { name, input, isFinished, output } = payload
+  const toolName = name.startsWith('dataset-') ? t('dataset.knowledge') : name
   const [isShowDetail, setIsShowDetail] = useState(false)
   const icon = getIcon(toolName, allToolIcons) as any
   return (
