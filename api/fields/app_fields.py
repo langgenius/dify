@@ -122,6 +122,7 @@ app_detail_fields_with_site = {
     'enable_api': fields.Boolean,
     'api_rpm': fields.Integer,
     'api_rph': fields.Integer,
+    'is_agent': fields.Boolean,
     'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
     'site': fields.Nested(site_fields),
