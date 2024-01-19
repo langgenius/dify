@@ -6,15 +6,15 @@ LABEL maintainer="takatost@gmail.com"
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
 
-# set timezone
-ENV TZ UTC
-
 COPY requirements.txt /requirements.txt
 
 RUN pip install --prefix=/pkg -r requirements.txt
 
 # build stage
 FROM python:3.10-slim AS builder
+
+# set timezone
+ENV TZ UTC
 
 ENV FLASK_APP app.py
 ENV EDITION SELF_HOSTED
