@@ -446,10 +446,11 @@ const Configuration: FC = () => {
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
           // eslint-disable-next-line multiline-ternary
-          agentConfig: modelConfig.agent_mode ? {
+          agentConfig: res.is_agent ? {
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             ...modelConfig.agent_mode,
             // remove dataset
+            enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
             tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
               return !tool.dataset
             }).map((tool: any) => {

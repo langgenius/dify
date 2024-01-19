@@ -50,7 +50,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (response?.mode?.toUpperCase() === 'COMPLETION')
       return t('app.newApp.completeApp')
 
-    const isAgent = !!response?.model_config?.agent_mode?.enabled
+    const isAgent = !!response?.is_agent
     if (isAgent)
       return t('appDebug.assistantType.agentAssistant.name')
 
