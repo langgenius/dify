@@ -6,6 +6,7 @@ LABEL maintainer="takatost@gmail.com"
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
 
+# set timezone
 ENV TZ UTC
 
 COPY requirements.txt /requirements.txt
