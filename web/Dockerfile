@@ -1,6 +1,8 @@
 # base image
 FROM node:20.11.0-alpine AS base
 
+RUN apk add --no-cache tzdata
+
 # install packages
 FROM base as packages
 LABEL maintainer="takatost@gmail.com"
