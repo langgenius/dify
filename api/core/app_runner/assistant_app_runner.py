@@ -2,11 +2,9 @@ import json
 import logging
 from typing import cast
 
-from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
 from core.features.assistant_cot_runner import AssistantCotApplicationRunner
 from core.features.assistant_fc_runner import AssistantFunctionCallApplicationRunner
-from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
     AgentEntity
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
@@ -181,19 +179,6 @@ class AssistantApplicationRunner(AppRunner):
             query=query
         )
 
-        # add agent callback to record agent thoughts
-        agent_callback = AgentLoopGatherCallbackHandler(
-            model_config=app_orchestration_config.model_config,
-            message=message,
-            queue_manager=queue_manager,
-            message_chain=message_chain
-        )
-
-        # init LLM Callback
-        agent_llm_callback = AgentLLMCallback(
-            agent_callback=agent_callback
-        )
-
         # init model instance
         model_instance = ModelInstance(
             provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
@@ -220,8 +205,6 @@ class AssistantApplicationRunner(AppRunner):
                 queue_manager=queue_manager,
                 message=message,
                 user_id=application_generate_entity.user_id,
-                agent_llm_callback=agent_llm_callback,
-                callback=agent_callback,
                 memory=memory,
                 prompt_messages=prompt_message,
                 variables_pool=tool_variables,
@@ -243,8 +226,6 @@ class AssistantApplicationRunner(AppRunner):
                 queue_manager=queue_manager,
                 message=message,
                 user_id=application_generate_entity.user_id,
-                agent_llm_callback=agent_llm_callback,
-                callback=agent_callback,
                 memory=memory,
                 prompt_messages=prompt_message,
                 variables_pool=tool_variables,

@@ -108,7 +108,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 stop=app_orchestration_config.model_config.stop,
                 stream=True,
                 user=self.user_id,
-                callbacks=[self.agent_llm_callback],
+                callbacks=[],
             )
 
             tool_calls: List[Tuple[str, str, Dict[str, Any]]] = []

@@ -17,9 +17,8 @@ from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
-from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
-from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import ModelConfigEntity, AgentEntity, AgentToolEntity
 from core.application_queue_manager import ApplicationQueueManager
@@ -42,8 +41,6 @@ class BaseAssistantApplicationRunner(AppRunner):
                  queue_manager: ApplicationQueueManager,
                  message: Message,
                  user_id: str,
-                 agent_llm_callback: AgentLLMCallback,
-                 callback: AgentLoopGatherCallbackHandler,
                  memory: Optional[TokenBufferMemory] = None,
                  prompt_messages: Optional[List[PromptMessage]] = None,
                  variables_pool: Optional[ToolRuntimeVariablePool] = None,
@@ -70,13 +67,13 @@ class BaseAssistantApplicationRunner(AppRunner):
         self.queue_manager = queue_manager
         self.message = message
         self.user_id = user_id
-        self.agent_llm_callback = agent_llm_callback
-        self.callback = callback
         self.memory = memory
         self.history_prompt_messages = prompt_messages
         self.variables_pool = variables_pool
         self.db_variables_pool = db_variables
 
+        # init callback
+        self.agent_callback = DifyAgentCallbackHandler()
         # init dataset tools
         hit_callback = DatasetIndexToolCallbackHandler(
             queue_manager=queue_manager,
@@ -131,7 +128,8 @@ class BaseAssistantApplicationRunner(AppRunner):
         """
         tool_entity = ToolManager.get_tool_runtime(
             provider_type=tool.provider_type, provider_name=tool.provider_id, tool_name=tool.tool_name, 
-            tanent_id=self.application_generate_entity.tenant_id
+            tanent_id=self.application_generate_entity.tenant_id,
+            agent_callback=self.agent_callback
         )
         tool_entity.load_variables(self.variables_pool)
 

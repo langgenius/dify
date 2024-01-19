@@ -16,6 +16,7 @@ from core.tools.utils.configration import ToolConfiguration
 from core.tools.utils.encoder import serialize_base_model_dict
 
 from core.model_runtime.entities.message_entities import PromptMessage
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 
 from extensions.ext_database import db
 
@@ -136,7 +137,8 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
         
     @staticmethod
-    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tanent_id) \
+    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tanent_id, 
+                         agent_callback: DifyAgentCallbackHandler = None) \
         -> Union[BuiltinTool, ApiTool]:
         """
             get the tool runtime
@@ -156,7 +158,7 @@ class ToolManager:
                 return builtin_tool.fork_tool_runtime(meta={
                     'tenant_id': tanent_id,
                     'credentials': {},
-                })
+                }, agent_callback=agent_callback)
 
             # get credentials
             builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
@@ -178,7 +180,7 @@ class ToolManager:
                 'tenant_id': tanent_id,
                 'credentials': decrypted_credentails,
                 'runtime_parameters': {}
-            })
+            }, agent_callback=agent_callback)
         
         elif provider_type == 'api':
             if tanent_id is None:
@@ -193,7 +195,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tanent_id,
                 'credentials': decrypted_credentails,
-            })
+            }, agent_callback=agent_callback)
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
         else:

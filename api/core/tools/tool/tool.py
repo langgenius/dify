@@ -3,17 +3,19 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Union, Optional
 from abc import abstractmethod, ABC
 from enum import Enum
-from uuid import UUID
 
 from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage,\
     ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable, ToolRuntimeImageVariable
 from core.tools.tool_file_manager import ToolFileManager
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 
 class Tool(BaseModel, ABC):
     identity: ToolIdentity = None
     parameters: Optional[List[ToolParamter]] = None
     description: ToolDescription = None
     is_team_authorization: bool = False
+    agent_callback: Optional[DifyAgentCallbackHandler] = None
+    use_callback: bool = False
 
     class Runtime(BaseModel):
         """
@@ -32,10 +34,18 @@ class Tool(BaseModel, ABC):
     runtime: Runtime = None
     variables: ToolRuntimeVariablePool = None
 
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+
+        if not self.agent_callback:
+            self.use_callback = False
+        else:
+            self.use_callback = True
+
     class VARIABLE_KEY(Enum):
         IMAGE = 'image'
 
-    def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, meta: Dict[str, Any], agent_callback: DifyAgentCallbackHandler = None) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -46,7 +56,8 @@ class Tool(BaseModel, ABC):
             identity=self.identity.copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
-            runtime=Tool.Runtime(**meta)
+            runtime=Tool.Runtime(**meta),
+            agent_callback=agent_callback
         )
     
     def load_variables(self, variables: ToolRuntimeVariablePool):
@@ -160,15 +171,58 @@ class Tool(BaseModel, ABC):
         if self.runtime.runtime_parameters:
             tool_paramters.update(self.runtime.runtime_parameters)
 
-        result = self._invoke(
-            user_id=user_id,
-            tool_paramters=tool_paramters,
-        )
+        # hit callback
+        if self.use_callback:
+            self.agent_callback.on_tool_start(
+                tool_name=self.identity.name,
+                tool_inputs=tool_paramters
+            )
 
-        if isinstance(result, list):
-            return result
+        try:
+            result = self._invoke(
+                user_id=user_id,
+                tool_paramters=tool_paramters,
+            )
+        except Exception as e:
+            if self.use_callback:
+                self.agent_callback.on_tool_error(e)
+            raise e
+
+        if not isinstance(result, list):
+            result = [result]
+
+        # hit callback
+        if self.use_callback:
+            self.agent_callback.on_tool_end(
+                tool_name=self.identity.name,
+                tool_inputs=tool_paramters,
+                tool_outputs=self._convert_tool_response_to_str(result)
+            )
         
-        return [result]
+        return result
+    
+    def _convert_tool_response_to_str(self, tool_response: List[ToolInvokeMessage]) -> str:
+        """
+        Handle tool response
+        """
+        result = ''
+        for response in tool_response:
+            if response.type == ToolInvokeMessage.MessageType.TEXT:
+                result += response.message
+            elif response.type == ToolInvokeMessage.MessageType.LINK:
+                result += f"result link: {response.message}. please dirct user to check it."
+            elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
+                 response.type == ToolInvokeMessage.MessageType.IMAGE:
+                result += f"image has been created and sent to user already, you should tell user to check it now."
+            elif response.type == ToolInvokeMessage.MessageType.BLOB:
+                if len(response.message) > 114:
+                    result += str(response.message[:114]) + '...'
+                else:
+                    result += str(response.message)
+            else:
+                result += f"tool response: {response.message}."
+
+        return result
 
     @abstractmethod
     def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:

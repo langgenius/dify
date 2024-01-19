@@ -123,7 +123,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 stop=app_orchestration_config.model_config.stop,
                 stream=False,
                 user=self.user_id,
-                callbacks=[self.agent_llm_callback],
+                callbacks=[],
             )
 
             # check llm result
