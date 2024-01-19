@@ -200,6 +200,14 @@ const Main: FC<IMainProps> = ({
   const conversationIntroduction = currConversationInfo?.introduction || ''
   const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
 
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
+
   useEffect(() => {
     (async () => {
       if (controlChatUpdateAllConversation && !isNewConversation) {
@@ -215,14 +223,6 @@ const Main: FC<IMainProps> = ({
       }
     })()
   }, [controlChatUpdateAllConversation])
-
-  // in onThought and ondata change the produce obj. https://github.com/immerjs/immer/issues/576
-  useEffect(() => {
-    setAutoFreeze(false)
-    return () => {
-      setAutoFreeze(true)
-    }
-  }, [])
 
   const handleConversationSwitch = () => {
     if (!inited)
@@ -536,7 +536,7 @@ const Main: FC<IMainProps> = ({
     let isAgentMode = false
 
     // answer
-    let responseItem: IChatItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
@@ -554,16 +554,14 @@ const Main: FC<IMainProps> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        console.log(message, messageId)
+        // console.log(message, messageId)
         if (!isAgentMode) {
           responseItem.content = responseItem.content + message
         }
         else {
-          responseItem = produce(responseItem, (draft) => {
-            const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
-            if (lastThought)
-              lastThought.thought = lastThought.thought + message
-          })
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
         }
         responseItem.id = messageId
         if (isFirstMessage && newConversationId)
@@ -585,6 +583,7 @@ const Main: FC<IMainProps> = ({
             draft.push({ ...responseItem })
           })
         setChatList(newListWithAnswer)
+        console.log(responseItem)
       },
       async onCompleted(hasError?: boolean) {
         if (hasError)
@@ -612,9 +611,10 @@ const Main: FC<IMainProps> = ({
         setResponsingFalse()
       },
       onFile(file) {
+        console.log('file', file)
         const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
         if (lastThought)
-          lastThought.message_files = [...(lastThought as any).message_files, file]
+          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
 
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -622,13 +622,12 @@ const Main: FC<IMainProps> = ({
             if (!draft.find(item => item.id === questionId))
               draft.push({ ...questionItem })
             draft.push({ ...responseItem })
-            console.log(responseItem)
           })
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        console.log(thought)
-        console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
+        // console.log(thought)
+        // console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
 
         isAgentMode = true
         const response = responseItem as any
@@ -643,14 +642,10 @@ const Main: FC<IMainProps> = ({
           if (lastThought.id === thought.id) {
             const prevThoughtContent = lastThought.thought
             thought.thought = prevThoughtContent
-            responseItem = produce(responseItem, (draft) => {
-              draft.agent_thoughts![response.agent_thoughts.length - 1] = thought
-            })
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
           }
           else {
-            responseItem = produce(responseItem, (draft) => {
-              draft.agent_thoughts!.push(thought)
-            })
+            responseItem.agent_thoughts!.push(thought)
           }
         }
         // has switched to other conversation

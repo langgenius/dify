@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
-import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, ThoughtItem } from '../type'
+import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
 import { EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
@@ -48,10 +48,7 @@ export type IAnswerProps = {
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIcon?: ReactNode
-  files?: VisionFile[]
-  thoughts?: ThoughtItem[]
   citation?: CitationItem[]
-  isThinking?: boolean
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
@@ -73,10 +70,7 @@ const Answer: FC<IAnswerProps> = ({
   displayScene = 'web',
   isResponsing,
   answerIcon,
-  files = [],
-  thoughts,
   citation,
-  isThinking,
   isShowCitation,
   isShowCitationHitInfo = false,
   supportAnnotation,
@@ -217,7 +211,7 @@ const Answer: FC<IAnswerProps> = ({
 
   const agentModeAnswer = (
     <div>
-      {thoughts?.map((item, index) => (
+      {agent_thoughts?.map((item, index) => (
         <div key={index}>
           {item.thought && (
             <Markdown content={item.thought} />
@@ -228,7 +222,7 @@ const Answer: FC<IAnswerProps> = ({
             <Thought
               thought={item}
               allToolIcons={allToolIcons || {}}
-              isFinished={!isResponsing}
+              isFinished={!!item.observation}
             />
           )}
 
@@ -265,7 +259,7 @@ const Answer: FC<IAnswerProps> = ({
                   </div>
                 )}
 
-                {(isResponsing && (!content && (isAgentMode && (thoughts || []).length === 0)))
+                {(isResponsing && (!content && (isAgentMode && (agent_thoughts || []).length === 0)))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
@@ -307,7 +301,7 @@ const Answer: FC<IAnswerProps> = ({
                     </div>
                   )}
                 {
-                  !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
+                  !!citation?.length && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
                   )
                 }

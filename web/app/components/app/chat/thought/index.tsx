@@ -36,15 +36,13 @@ const Thought: FC<IThoughtProps> = ({
     }
     return [[thought.tool], false]
   })()
-  const lastToolIndex = toolNames.length - 1
 
   const toolThoughtList = toolNames.map((toolName, index) => {
-    const isLastTool = index === lastToolIndex
     return {
       name: toolName,
       input: getValue(thought.tool_input, isValueArray, index),
       output: getValue(thought.observation, isValueArray, index),
-      isFinished: !isLastTool || (isLastTool && isFinished),
+      isFinished,
     }
   })
 

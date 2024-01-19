@@ -201,9 +201,7 @@ const Chat: FC<IChatProps> = ({
         {chatList.map((item, index) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
-            const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
             const citation = item.citation
-            const isThinking = !item.content && item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.some(item => item.thought === '[DONE]')
             return <Answer
               key={item.id}
               item={item}
@@ -213,10 +211,7 @@ const Chat: FC<IChatProps> = ({
               displayScene={displayScene ?? 'web'}
               isResponsing={isResponsing && isLast}
               answerIcon={answerIcon}
-              thoughts={thoughts}
-              files={item.message_files}
               citation={citation}
-              isThinking={isThinking}
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}

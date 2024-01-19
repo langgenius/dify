@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import dayjs from 'dayjs'
@@ -75,6 +75,13 @@ const Debug: FC<IDebug> = ({
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
   useEffect(() => {
     // scroll to bottom
     if (chatListDomRef.current)
@@ -280,10 +287,10 @@ const Debug: FC<IDebug> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
-    const isAgentMode = false
+    let isAgentMode = false
 
     // answer
-    let responseItem: IChatItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       agent_thoughts: [],
@@ -305,21 +312,17 @@ const Debug: FC<IDebug> = ({
           responseItem.content = responseItem.content + message
         }
         else {
-          responseItem = {
-            ...produce(responseItem, (draft) => {
-              const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
-              if (lastThought)
-                lastThought.thought = lastThought.thought + message
-            }),
-          }
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
         }
+
+        responseItem.id = messageId
         if (isFirstMessage && newConversationId) {
           setConversationId(newConversationId)
           _newConversationId = newConversationId
         }
         setMessageTaskId(taskId)
-        if (messageId)
-          responseItem.id = messageId
 
         // closesure new list is outdated.
         const newListWithAnswer = produce(
@@ -369,7 +372,10 @@ const Debug: FC<IDebug> = ({
         }
       },
       onFile(file) {
-        responseItem.message_files = [...(responseItem as any).message_files, file]
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
+
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
@@ -380,14 +386,25 @@ const Debug: FC<IDebug> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        responseItem.id = thought.message_id;
-        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
-        // has switched to other conversation
+        isAgentMode = true
+        const response = responseItem as any
+        response.id = thought.message_id
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            const prevThoughtContent = lastThought.thought
+            thought.thought = prevThoughtContent
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+          }
+          else {
+            responseItem.agent_thoughts!.push(thought)
+          }
+        }
 
-        // if (prevTempNewConversationId !== getCurrConversationId()) {
-        //   setIsResponsingConCurrCon(false)
-        //   return
-        // }
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
