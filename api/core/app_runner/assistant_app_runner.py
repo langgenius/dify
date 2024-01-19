@@ -9,12 +9,12 @@ from core.features.assistant_fc_runner import AssistantFunctionCallApplicationRu
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
     AgentEntity
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-
+from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
 from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
@@ -74,6 +74,97 @@ class AssistantApplicationRunner(AppRunner):
                 conversation=conversation,
                 model_instance=model_instance
             )
+        
+        # organize all inputs and template to prompt messages
+        # Include: prompt template, inputs, query(optional), files(optional)
+        #          memory(optional)
+        prompt_messages, _ = self.organize_prompt_messages(
+            app_record=app_record,
+            model_config=app_orchestration_config.model_config,
+            prompt_template_entity=app_orchestration_config.prompt_template,
+            inputs=inputs,
+            files=files,
+            query=query,
+            memory=memory
+        )
+
+        # moderation
+        try:
+            # process sensitive_word_avoidance
+            _, inputs, query = self.moderation_for_inputs(
+                app_id=app_record.id,
+                tenant_id=application_generate_entity.tenant_id,
+                app_orchestration_config_entity=app_orchestration_config,
+                inputs=inputs,
+                query=query,
+            )
+        except ModerationException as e:
+            self.direct_output(
+                queue_manager=queue_manager,
+                app_orchestration_config=app_orchestration_config,
+                prompt_messages=prompt_messages,
+                text=str(e),
+                stream=application_generate_entity.stream
+            )
+            return
+
+        if query:
+            # annotation reply
+            annotation_reply = self.query_app_annotations_to_reply(
+                app_record=app_record,
+                message=message,
+                query=query,
+                user_id=application_generate_entity.user_id,
+                invoke_from=application_generate_entity.invoke_from
+            )
+
+            if annotation_reply:
+                queue_manager.publish_annotation_reply(
+                    message_annotation_id=annotation_reply.id,
+                    pub_from=PublishFrom.APPLICATION_MANAGER
+                )
+                self.direct_output(
+                    queue_manager=queue_manager,
+                    app_orchestration_config=app_orchestration_config,
+                    prompt_messages=prompt_messages,
+                    text=annotation_reply.content,
+                    stream=application_generate_entity.stream
+                )
+                return
+
+        # fill in variable inputs from external data tools if exists
+        external_data_tools = app_orchestration_config.external_data_variables
+        if external_data_tools:
+            inputs = self.fill_in_inputs_from_external_data_tools(
+                tenant_id=app_record.tenant_id,
+                app_id=app_record.id,
+                external_data_tools=external_data_tools,
+                inputs=inputs,
+                query=query
+            )
+
+        # reorganize all inputs and template to prompt messages
+        # Include: prompt template, inputs, query(optional), files(optional)
+        #          memory(optional), external data, dataset context(optional)
+        prompt_messages, _ = self.organize_prompt_messages(
+            app_record=app_record,
+            model_config=app_orchestration_config.model_config,
+            prompt_template_entity=app_orchestration_config.prompt_template,
+            inputs=inputs,
+            files=files,
+            query=query,
+            memory=memory
+        )
+
+        # check hosting moderation
+        hosting_moderation_result = self.check_hosting_moderation(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            prompt_messages=prompt_messages
+        )
+
+        if hosting_moderation_result:
+            return
 
         agent_entity = app_orchestration_config.agent
 
