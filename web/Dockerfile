@@ -2,6 +2,9 @@
 FROM node:20.11.0-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
+RUN apk add --no-cache tzdata
+
+
 # install packages
 FROM base as packages
 
@@ -32,6 +35,10 @@ ENV CONSOLE_API_URL http://127.0.0.1:5001
 ENV APP_API_URL http://127.0.0.1:5001
 ENV PORT 3000
 
+# set timezone
+ENV TZ UTC
+RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone
 
 WORKDIR /app/web
 COPY --from=builder /app/web/public ./public
