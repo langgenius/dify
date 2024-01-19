@@ -78,10 +78,10 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             audio_bytes_list = list()
 
             # Create a thread pool and map the function to the list of sentences
-            with concurrent.futures.ThreadPoolExecutor(max_workers=int(max_workers)) as executor:
-                futures = {executor.submit(self._process_sentence, sentence, model, credentials): sentence for
-                           sentence in sentences}
-                for future in concurrent.futures.as_completed(futures):
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(self._process_sentence, sentence, model, credentials) for sentence
+                           in sentences]
+                for future in futures:
                     try:
                         audio_bytes_list.append(future.result())
                     except Exception as ex:
