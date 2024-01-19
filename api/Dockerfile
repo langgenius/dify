@@ -6,6 +6,8 @@ LABEL maintainer="takatost@gmail.com"
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
 
+ENV TZ UTC
+
 COPY requirements.txt /requirements.txt
 
 RUN pip install --prefix=/pkg -r requirements.txt
