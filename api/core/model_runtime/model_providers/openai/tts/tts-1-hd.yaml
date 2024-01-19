@@ -1,4 +1,4 @@
-model: tts-1
+model: tts-1-hd
 model_type: tts
 model_properties:
   default_voice: 'alloy'

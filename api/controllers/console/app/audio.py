@@ -75,7 +75,8 @@ class ChatMessageTextApi(Resource):
         try:
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
-                text=request.form['text']
+                text=request.form['text'],
+                streaming=False
             )
 
             return {'data': response.data.decode('latin1')}

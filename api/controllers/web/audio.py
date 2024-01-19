@@ -66,7 +66,8 @@ class TextApi(WebApiResource):
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=request.form['text'],
-                end_user=end_user.external_user_id
+                end_user=end_user.external_user_id,
+                streaming=False
             )
 
             return {'data': response.data.decode('latin1')}

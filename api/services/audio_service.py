@@ -46,7 +46,7 @@ class AudioService:
         return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
 
     @classmethod
-    def transcript_tts(cls, tenant_id: str, text: str, end_user: Optional[str] = None):
+    def transcript_tts(cls, tenant_id: str, text: str, streaming: bool, end_user: Optional[str] = None):
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
@@ -56,7 +56,7 @@ class AudioService:
             raise ProviderNotSupportTextToSpeechServiceError()
 
         try:
-            audio_response = model_instance.invoke_tts(content_text=text.strip(), user=end_user)
+            audio_response = model_instance.invoke_tts(content_text=text.strip(), user=end_user, streaming=streaming)
             return audio_response
         except Exception as e:
             raise e

@@ -127,6 +127,7 @@ class ModelPropertyKey(Enum):
     DEFAULT_VOICE = "default_voice"
     WORD_LIMIT = "word_limit"
     AUDOI_TYPE = "audio_type"
+    MAX_WORKERS = "max_workers"
 
 
 class ProviderModel(BaseModel):

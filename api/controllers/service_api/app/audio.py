@@ -72,7 +72,8 @@ class TextApi(AppApiResource):
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=args['text'],
-                end_user=args['user']
+                end_user=args['user'],
+                streaming=False
             )
 
             return response
