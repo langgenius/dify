@@ -5,7 +5,7 @@ Here, we will use GoogleSearch as an example to demonstrate how to quickly integ
 ## 1. Prepare the Tool Provider yaml
 
 ### Introduction
-This yaml will contain information about the tool provider, including the provider's name, icon, author, and other details to help the frontend display flexibly.
+This yaml declares a new tool provider, and includes information like the provider's name, icon, author, and other details that are fetched by the frontend for display.
 
 ### Example
 
@@ -62,7 +62,7 @@ credentails_for_provider: # Credential field
 
 ```
 
-- `type`: Credential field type, currently supports `secret-input`, `text-input`, `select` three types, corresponding to password input box, text input box, drop-down box, if it is `secret-input`, it will hide the input content on the frontend, and the backend will encrypt the input content.
+- `type`: Credential field type, currently can be either `secret-input`, `text-input`, or `select` , corresponding to password input box, text input box, and drop-down box, respectively. If set to `secret-input`, it will mask the input content on the frontend, and the backend will encrypt the input content.
 
 ## 3. Prepare Tool yaml
 A provider can have multiple tools, each tool needs a yaml file to describe, this file contains the basic information, parameters, output, etc. of the tool.
@@ -132,8 +132,8 @@ parameters: # Parameter list
     - `llm_description` Introduction passed to LLM, in order to make LLM better understand this parameter, we suggest to write as detailed information about this parameter as possible here, so that LLM can understand this parameter
     - `form` Form type, currently supports `llm`, `form` two types, corresponding to Agent self-inference and frontend filling
 
-## 4. Prepare Tool Code
-After completing the tool configuration, we can start writing the tool code, mainly used to implement the tool logic.
+## 4. Add Tool Logic
+After completing the tool configuration, we can start writing the tool code that defines how it is invoked.
 
 Create `google_search.py` under the `google/tools` module, the content is as follows.
 
@@ -168,7 +168,7 @@ The overall logic of the tool is in the `_invoke` method, this method accepts tw
 ### Return Data
 When the tool returns, you can choose to return one message or multiple messages, here we return one message, using `create_text_message` and `create_link_message` can create a text message or a link message.
 
-## 5. Prepare Provider Code
+## 5. Add Provider Code
 Finally, we need to create a provider class under the provider module to implement the provider's credential verification logic. If the credential verification fails, it will throw a `ToolProviderCredentialValidationError` exception.
 
 Create `google.py` under the `google` module, the content is as follows.
@@ -207,6 +207,6 @@ class GoogleProvider(BuiltinToolProviderController):
 ## Completion
 After the above steps are completed, we can see this tool on the frontend, and it can be used in the Agent.
 
-Of course, because google_search needs a credential, before using it, you also need to configure its credentials on the frontend.
+Of course, because google_search needs a credential, before using it, you also need to input your credentials on the frontend.
 
 ![Alt text](../zh_Hans/images/index/image-2.png)

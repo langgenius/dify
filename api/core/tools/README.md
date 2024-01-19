@@ -1,15 +1,12 @@
 # Tools
 
-This module provides the invocation and authentication interfaces for built-in tools used in various Agents and Workflows. It also provides Dify with a unified information and credential form rules for tool providers.
-
-- On one hand, it decouples tools from business code, making it easier for developers to scale out models.
-- On the other hand, it allows for tool and provider definitions to be made in the backend, which can then be directly displayed on the frontend page without modifying frontend logic.
+This module implements built-in tools used in Agent Assistants and Workflows within Dify. You could define and display your own tools in this module, without modifying the frontend logic. This decoupling allows for easier horizontal scaling of Dify's capabilities.
 
 ## Feature Introduction
 
 The tools provided for Agents and Workflows are currently divided into two categories:
-- `Built-in Tools` are tools implemented internally by Dify, provided to Agents and Workflows through hard coding.
-- `Api-Based Tools` are tools implemented by calling third-party APIs. `Api-Based Tools` do not need to be defined additionally, only the provision of interface documents such as `OpenAPI`, `Swagger`, `OpenAI plugin` is required.
+- `Built-in Tools` are internally implemented within our product and are hardcoded for use in Agents and Workflows. 
+- `Api-Based Tools`  leverage third-party APIs for implementation. You don't need to code to integrate these -- simply provide interface definitions in formats like `OpenAPI` , `Swagger`, or the `OpenAI-plugin` on the front-end.
 
 ### Built-in Tool Providers
 ![Alt text](docs/zh_Hans/images/index/image.png)
@@ -19,10 +16,10 @@ The tools provided for Agents and Workflows are currently divided into two categ
 
 ## Tool Integration
 
-To achieve more flexible and powerful features, Tools provides a series of interfaces to help developers quickly build the tools they want. This guide for developers will introduce how to integrate tools in two parts: [Quick Integration](./docs/en_US/tool_scale_out.md) and [Advanced Integration](./docs/en_US/advanced_scale_out.md).
+To enable developers to build flexible and powerful tools, we provide two guides:
 
 ### [Quick Integration 👈🏻](./docs/en_US/tool_scale_out.md)
-Quick integration can help you complete tool integration in 10~20 minutes. However, this method can only implement simple features. If you want to implement more complex features, you can refer to the advanced integration below.
+Quick integration aims at quickly getting you up to speed with tool integration by walking over an example Google Search tool.
 
 ### [Advanced Integration 👈🏻](./docs/en_US/advanced_scale_out.md)
-Advanced integration will introduce how to implement more complex feature configurations, including generating graphs, combining multiple tools, and implementing the flow of parameters, images, and files between multiple tools.
+Advanced integration will offer a deeper dive into the module interfaces, and explain how to implement more complex capabilities, such as generating images, combining multiple tools, and managing the flow of parameters, images, and files between different tools.
