@@ -3,6 +3,7 @@ from core.tools.model.tool_model_manager import ToolModelManager
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
+from core.tools.utils.web_reader_tool import get_url
 
 from typing import List
 from enum import Enum
@@ -129,3 +130,8 @@ class BuiltinTool(Tool):
         
         return result
     
+    def get_url(self, url: str, user_agent: str = None) -> str:
+        """
+            get url
+        """
+        return get_url(url, user_agent=user_agent)
