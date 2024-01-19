@@ -15,10 +15,10 @@ export const addFileInfos = (list: ThoughtItem[], messageFiles: VisionFile[]) =>
   if (!list)
     return list
   return list.map((item) => {
-    if (item.message_file_id && item.message_file_id?.length > 0) {
+    if (item.files && item.files?.length > 0) {
       return {
         ...item,
-        message_files: item.message_file_id.map(fileId => messageFiles.find(file => file.id === fileId)) as VisionFile[],
+        message_files: item.files.map(fileId => messageFiles.find(file => file.id === fileId)) as VisionFile[],
       }
     }
     return item

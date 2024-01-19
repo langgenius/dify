@@ -47,9 +47,6 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
 
-// in onThought and ondata change the produce obj. https://github.com/immerjs/immer/issues/576
-// setAutoFreeze(false)
-
 export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
@@ -219,9 +216,9 @@ const Main: FC<IMainProps> = ({
     })()
   }, [controlChatUpdateAllConversation])
 
+  // in onThought and ondata change the produce obj. https://github.com/immerjs/immer/issues/576
   useEffect(() => {
     setAutoFreeze(false)
-
     return () => {
       setAutoFreeze(true)
     }
@@ -625,14 +622,17 @@ const Main: FC<IMainProps> = ({
             if (!draft.find(item => item.id === questionId))
               draft.push({ ...questionItem })
             draft.push({ ...responseItem })
+            console.log(responseItem)
           })
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        console.log(`${thought.id};${thought.thought};${thought.tool_input}`)
+        console.log(thought)
+        console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
 
         isAgentMode = true
         const response = responseItem as any
+        response.id = thought.message_id
         // responseItem.id = thought.message_id;
         if (response.agent_thoughts.length === 0) {
           response.agent_thoughts.push(thought)
@@ -659,6 +659,14 @@ const Main: FC<IMainProps> = ({
         //   setIsResponsingConCurrCon(false)
         //   return
         // }
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
