@@ -645,18 +645,8 @@ const Main: FC<IMainProps> = ({
           }
         }
         // has switched to other conversation
-        if (prevTempNewConversationId !== getCurrConversationId()) {
+        if (prevTempNewConversationId !== getCurrConversationId())
           setIsResponsingConCurrCon(false)
-          return
-        }
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {

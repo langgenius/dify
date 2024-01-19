@@ -404,15 +404,6 @@ const Debug: FC<IDebug> = ({
             responseItem.agent_thoughts!.push(thought)
           }
         }
-
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
