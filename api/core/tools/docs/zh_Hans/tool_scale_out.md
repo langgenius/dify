@@ -168,6 +168,42 @@ class GoogleSearchTool(BuiltinTool):
 ### 返回数据
 在工具返回时，你可以选择返回一个消息或者多个消息，这里我们返回一个消息，使用`create_text_message`和`create_link_message`可以创建一个文本消息或者一个链接消息。
 
+## 5. 准备供应商代码
+最后，我们需要在供应商模块下创建一个供应商类，用于实现供应商的凭据验证逻辑，如果凭据验证失败，将会抛出`ToolProviderCredentialValidationError`异常。
+
+在`google`模块下创建`google.py`，内容如下。
+
+```python
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.tool.tool import Tool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.errors import ToolProviderCredentialValidationError
+
+from core.tools.provider.builtin.google.tools.google_search import GoogleSearchTool
+
+from typing import Any, Dict
+
+class GoogleProvider(BuiltinToolProviderController):
+    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+        try:
+            # 1. 此处需要使用GoogleSearchTool()实例化一个GoogleSearchTool，它会自动加载GoogleSearchTool的yaml配置，但是此时它内部没有凭据信息
+            # 2. 随后需要使用fork_tool_runtime方法，将当前的凭据信息传递给GoogleSearchTool
+            # 3. 最后invoke即可，参数需要根据GoogleSearchTool的yaml中配置的参数规则进行传递
+            GoogleSearchTool().fork_tool_runtime(
+                meta={
+                    "credentials": credentials,
+                }
+            ).invoke(
+                user_id='',
+                tool_paramters={
+                    "query": "test",
+                    "result_type": "link"
+                },
+            )
+        except Exception as e:
+            raise ToolProviderCredentialValidationError(str(e))
+```
+
 ## 完成
 当上述步骤完成以后，我们就可以在前端看到这个工具了，并且可以在Agent中使用这个工具。
 
