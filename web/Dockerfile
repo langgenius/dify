@@ -5,7 +5,7 @@ RUN apk add --no-cache tzdata
 
 # set timezone
 ENV TZ UTC
-RUN ln -s /usr/share/zoneinfo/$TZ /etc/localtime
+RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime
 
 # install packages
 FROM base as packages
