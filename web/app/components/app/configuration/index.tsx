@@ -145,7 +145,7 @@ const Configuration: FC = () => {
     agentConfig: DEFAULT_AGENT_SETTING,
   })
   const isChatApp = mode === AppType.chat
-  const isAgent = modelConfig.agentConfig.enabled
+  const isAgent = modelConfig.agentConfig?.enabled
   const setIsAgent = (value: boolean) => {
     const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.agentConfig.enabled = value
