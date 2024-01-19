@@ -3,10 +3,10 @@ identity:
   name: dalle
   label:
     en_US: DALL-E
-    zh_Hans: DALL-E 画画
+    zh_Hans: DALL-E 绘画
   description:
     en_US: DALL-E art
-    zh_Hans: DALL-E 画画
+    zh_Hans: DALL-E 绘画
   icon: icon.png
 credentails_for_provider:
   openai_api_key:
