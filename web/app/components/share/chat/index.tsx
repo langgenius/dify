@@ -6,7 +6,7 @@ import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import { checkOrSetAccessToken } from '../utils'
@@ -46,6 +46,9 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
+
+// in onThought and ondata change the produce obj. https://github.com/immerjs/immer/issues/576
+// setAutoFreeze(false)
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -215,6 +218,14 @@ const Main: FC<IMainProps> = ({
       }
     })()
   }, [controlChatUpdateAllConversation])
+
+  useEffect(() => {
+    setAutoFreeze(false)
+
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
 
   const handleConversationSwitch = () => {
     if (!inited)
@@ -546,17 +557,16 @@ const Main: FC<IMainProps> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        console.log(message, messageId)
         if (!isAgentMode) {
           responseItem.content = responseItem.content + message
         }
         else {
-          responseItem = {
-            ...produce(responseItem, (draft) => {
-              const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
-              if (lastThought)
-                lastThought.thought = lastThought.thought + message
-            }),
-          }
+          responseItem = produce(responseItem, (draft) => {
+            const lastThought = draft.agent_thoughts?.[draft.agent_thoughts?.length - 1]
+            if (lastThought)
+              lastThought.thought = lastThought.thought + message
+          })
         }
         responseItem.id = messageId
         if (isFirstMessage && newConversationId)
@@ -619,7 +629,8 @@ const Main: FC<IMainProps> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        // console.log(thought)
+        console.log(`${thought.id};${thought.thought};${thought.tool_input}`)
+
         isAgentMode = true
         const response = responseItem as any
         // responseItem.id = thought.message_id;
@@ -627,17 +638,19 @@ const Main: FC<IMainProps> = ({
           response.agent_thoughts.push(thought)
         }
         else {
-          let lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
             const prevThoughtContent = lastThought.thought
-            lastThought = thought
             thought.thought = prevThoughtContent
-            response.agent_thoughts.pop()
-            response.agent_thoughts.push(thought)
+            responseItem = produce(responseItem, (draft) => {
+              draft.agent_thoughts![response.agent_thoughts.length - 1] = thought
+            })
           }
           else {
-            response.agent_thoughts.push(thought)
+            responseItem = produce(responseItem, (draft) => {
+              draft.agent_thoughts!.push(thought)
+            })
           }
         }
         // has switched to other conversation
@@ -646,14 +659,6 @@ const Main: FC<IMainProps> = ({
         //   setIsResponsingConCurrCon(false)
         //   return
         // }
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {

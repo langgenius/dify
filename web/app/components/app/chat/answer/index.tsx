@@ -222,7 +222,7 @@ const Answer: FC<IAnswerProps> = ({
           {item.thought && (
             <Markdown content={item.thought} />
           )}
-          {item.tool}
+          {/* {item.tool} */}
           {/* perhaps not use tool */}
           {!!item.tool && (
             <Thought
