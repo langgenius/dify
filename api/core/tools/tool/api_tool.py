@@ -27,7 +27,7 @@ class ApiTool(Tool):
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
             api_bundle=self.api_bundle.copy() if self.api_bundle else None,
-            meta=Tool.Runtime(**meta)
+            runtime=Tool.Runtime(**meta)
         )
 
     def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:

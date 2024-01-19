@@ -195,7 +195,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tanent_id,
                 'credentials': decrypted_credentails,
-            }, agent_callback=agent_callback)
+            })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
         else:
