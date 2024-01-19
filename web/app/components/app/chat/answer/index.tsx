@@ -82,7 +82,7 @@ const Answer: FC<IAnswerProps> = ({
   allToolIcons,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation, agent_thoughts } = item
-  const isAgentMode = !!agent_thoughts
+  const isAgentMode = !!agent_thoughts && agent_thoughts.length > 0
   const hasAnnotation = !!annotation?.id
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -281,7 +281,6 @@ const Answer: FC<IAnswerProps> = ({
                           })} />
                         </div>
                       )}
-
                       <div>
                         {annotation?.logAnnotation
                           ? (

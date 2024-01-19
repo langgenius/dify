@@ -554,7 +554,6 @@ const Main: FC<IMainProps> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        // console.log(message, messageId)
         if (!isAgentMode) {
           responseItem.content = responseItem.content + message
         }
