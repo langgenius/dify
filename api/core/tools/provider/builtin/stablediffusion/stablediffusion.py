@@ -1,22 +1,25 @@
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
 
-from core.tools.provider.builtin.google.tools.google_search import GoogleSearchTool
+from core.tools.provider.builtin.stablediffusion.tools.stable_diffusion import StableDiffusionTool
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-class GoogleProvider(BuiltinToolProviderController):
+class StableDiffusionProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
-            GoogleSearchTool().fork_tool_runtime(
+            StableDiffusionTool().fork_tool_runtime(
                 meta={
                     "credentials": credentials,
                 }
             ).invoke(
                 user_id='',
                 tool_paramters={
-                    "query": "test",
-                    "result_type": "link"
+                    "prompt": "cat",
+                    "lora": "",
+                    "steps": 1,
+                    "width": 512,
+                    "height": 512,
                 },
             )
         except Exception as e:

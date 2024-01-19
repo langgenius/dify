@@ -169,7 +169,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                 if not tool_parameter_config:
                     # get default value
                     tool_parameter_config = parameter.default
-                    if not tool_parameter_config:
+                    if not tool_parameter_config and parameter.required:
                         raise ValueError(f"tool parameter {parameter.name} not found in tool config")
                     
                 if parameter.type == ToolParamter.ToolParameterType.SELECT:
