@@ -1,9 +1,7 @@
 import logging
-import re
-from typing import List, Optional, Tuple, cast
+from typing import List
 
 from langchain.document_loaders.base import BaseLoader
-from langchain.document_loaders.helpers import detect_file_encodings
 from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
