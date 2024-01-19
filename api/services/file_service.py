@@ -15,11 +15,10 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'doc', 'csv', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
-UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-                                      'docx', 'doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', '.epub',
-                                      'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'doc', 'csv'] + IMAGE_EXTENSIONS
+UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
+                                      'docx', 'doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml'] + IMAGE_EXTENSIONS
 PREVIEW_WORDS_LIMIT = 3000
 
 
