@@ -6,8 +6,6 @@ from botocore.exceptions import ClientError, EndpointConnectionError, NoRegionEr
 from botocore.config import Config
 import json
 
-from sympy import false
-
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage,
@@ -179,6 +177,23 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             
             payload["inputText"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
         
+        elif model_prefix == "ai21":
+            payload["temperature"] = model_parameters.get("temperature")
+            payload["topP"] = model_parameters.get("topP")
+            payload["maxTokens"] = model_parameters.get("maxTokens")
+            payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
+
+            # jurassic models only support a single stop sequence
+            if stop:
+                payload["stopSequences"] = stop[0]
+
+            if model_parameters.get("presencePenalty"):
+                payload["presencePenalty"] = {model_parameters.get("presencePenalty")}
+            if model_parameters.get("frequencyPenalty"):
+                payload["frequencyPenalty"] = {model_parameters.get("frequencyPenalty")}
+            if model_parameters.get("countPenalty"):
+                payload["countPenalty"] = {model_parameters.get("countPenalty")}
+
         elif model_prefix == "anthropic":
             payload = { **model_parameters }
             payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
@@ -225,10 +240,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             aws_secret_access_key=credentials["aws_secret_access_key"]
         )
 
-        payload = self._create_payload(model.split('.')[0], prompt_messages, model_parameters, stop, stream)
+        model_prefix = model.split('.')[0]
+        payload = self._create_payload(model_prefix, prompt_messages, model_parameters, stop, stream)
 
-
-        if stream:
+        # need workaround for ai21 models which doesn't support streaming
+        if stream and model_prefix != "ai21":
             invoke = runtime_client.invoke_model_with_response_stream
         else:
             invoke = runtime_client.invoke_model
@@ -251,7 +267,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         except Exception as ex:
             raise InvokeError(str(ex))
-      
+        
 
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
@@ -280,10 +296,15 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         model_prefix = model.split('.')[0]
 
         if model_prefix == "amazon":
-            output = response_body.get("results").get("outputText").strip('\n')
+            output = response_body.get("results")[0].get("outputText").strip('\n')
             prompt_tokens = response_body.get("inputTextTokenCount")
-            completion_tokens = response_body.get("results").get("tokenCount")
- 
+            completion_tokens = response_body.get("results")[0].get("tokenCount")
+
+        elif model_prefix == "ai21":
+            output = response_body.get('completions')[0].get('data').get('text')
+            prompt_tokens = len(response_body.get("prompt").get("tokens"))
+            completion_tokens = len(response_body.get('completions')[0].get('data').get('tokens'))
+
         elif model_prefix == "anthropic":
             output = response_body.get("completion")
             prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
@@ -331,6 +352,28 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
+        model_prefix = model.split('.')[0]
+        if model_prefix == "ai21":
+            response_body = json.loads(response.get('body').read().decode('utf-8'))
+
+            content = response_body.get('completions')[0].get('data').get('text')
+            finish_reason = response_body.get('completions')[0].get('finish_reason')
+
+            prompt_tokens = len(response_body.get("prompt").get("tokens"))
+            completion_tokens = len(response_body.get('completions')[0].get('data').get('tokens'))
+            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+            yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content=content),
+                        finish_reason=finish_reason,
+                        usage=usage
+                    )
+                )
+            return
+        
         stream = response.get('body')
         if not stream:
             raise InvokeError('No response body')
