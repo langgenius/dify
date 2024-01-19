@@ -26,8 +26,6 @@ EXPOSE 5001
 
 # set timezone
 ENV TZ UTC
-RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone
 
 WORKDIR /app/api
 
