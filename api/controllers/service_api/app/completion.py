@@ -79,7 +79,12 @@ class CompletionStopApi(AppApiResource):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        end_user_id = request.get_json().get('user')
+        parser = reqparse.RequestParser()
+        parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+
+        args = parser.parse_args()
+
+        end_user_id = args.get('user')
 
         ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user_id)
 
@@ -157,29 +162,8 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            try:
-                for chunk in response:
-                    yield chunk
-            except services.errors.conversation.ConversationNotExistsError:
-                yield "data: " + json.dumps(api.handle_error(NotFound("Conversation Not Exists.")).get_json()) + "\n\n"
-            except services.errors.conversation.ConversationCompletedError:
-                yield "data: " + json.dumps(api.handle_error(ConversationCompletedError()).get_json()) + "\n\n"
-            except services.errors.app_model_config.AppModelConfigBrokenError:
-                logging.exception("App model config broken.")
-                yield "data: " + json.dumps(api.handle_error(AppUnavailableError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError as ex:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
-            except QuotaExceededError:
-                yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
-            except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except InvokeError as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(e.description)).get_json()) + "\n\n"
-            except ValueError as e:
-                yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
-            except Exception:
-                logging.exception("internal server error.")
-                yield "data: " + json.dumps(api.handle_error(InternalServerError()).get_json()) + "\n\n"
+            for chunk in response:
+                yield chunk
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

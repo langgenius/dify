@@ -4,10 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - deploy/dev
-      - feat/model-runtime
 
 jobs:
   test:
