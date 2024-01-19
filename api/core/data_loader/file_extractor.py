@@ -68,7 +68,7 @@ class FileExtractor:
                     else MarkdownLoader(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
                 loader = HTMLLoader(file_path)
-            elif file_extension == '.docx':
+            elif file_extension in ['.docx', '.doc']:
                 loader = Docx2txtLoader(file_path)
             elif file_extension == '.csv':
                 loader = CSVLoader(file_path, autodetect_encoding=True)
@@ -95,7 +95,7 @@ class FileExtractor:
                 loader = MarkdownLoader(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
                 loader = HTMLLoader(file_path)
-            elif file_extension == '.docx':
+            elif file_extension in ['.docx', '.doc']:
                 loader = Docx2txtLoader(file_path)
             elif file_extension == '.csv':
                 loader = CSVLoader(file_path, autodetect_encoding=True)
