@@ -90,7 +90,7 @@ const AudioBtn = ({
   }
 
   return (
-    <div className={`${className}`}>
+    <div className={`${(isPlaying && !hasEnded) ? 'mr-1' : className}`}>
       <Tooltip
         selector={selector.current}
         content={(!isPause ? ((isPlaying && !hasEnded) ? t('appApi.playing') : t('appApi.play')) : t('appApi.pause')) as string}
