@@ -396,8 +396,8 @@ const Debug: FC<IDebug> = ({
           const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
-            const prevThoughtContent = lastThought.thought
-            thought.thought = prevThoughtContent
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
             responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
           }
           else {

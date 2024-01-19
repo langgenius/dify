@@ -335,7 +335,6 @@ const Main: FC<IMainProps> = ({
     if (caculatedIntroduction && caculatedPromptVariables)
       caculatedIntroduction = replaceStringWithValues(caculatedIntroduction, promptConfig?.prompt_variables || [], caculatedPromptVariables)
 
-    // console.log(isPublicVersion)
     const openstatement = {
       id: `${Date.now()}`,
       content: caculatedIntroduction,
@@ -521,6 +520,7 @@ const Main: FC<IMainProps> = ({
       content: message,
       isAnswer: false,
       message_files: files,
+
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -583,7 +583,6 @@ const Main: FC<IMainProps> = ({
             draft.push({ ...responseItem })
           })
         setChatList(newListWithAnswer)
-        console.log(responseItem)
       },
       async onCompleted(hasError?: boolean) {
         if (hasError)
@@ -611,10 +610,9 @@ const Main: FC<IMainProps> = ({
         setResponsingFalse()
       },
       onFile(file) {
-        console.log('file', file)
         const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
         if (lastThought)
-          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
+          lastThought.message_files = [...(lastThought as any).message_files, { ...file }]
 
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -626,7 +624,6 @@ const Main: FC<IMainProps> = ({
         setChatList(newListWithAnswer)
       },
       onThought(thought) {
-        // console.log(thought)
         // console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
 
         isAgentMode = true
@@ -640,8 +637,8 @@ const Main: FC<IMainProps> = ({
           const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
           // thought changed but still the same thought, so update.
           if (lastThought.id === thought.id) {
-            const prevThoughtContent = lastThought.thought
-            thought.thought = prevThoughtContent
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
             responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
           }
           else {
@@ -649,11 +646,10 @@ const Main: FC<IMainProps> = ({
           }
         }
         // has switched to other conversation
-
-        // if (prevTempNewConversationId !== getCurrConversationId()) {
-        //   setIsResponsingConCurrCon(false)
-        //   return
-        // }
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return
+        }
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
