@@ -12,7 +12,7 @@ export const sortAgentSorts = (list: ThoughtItem[]) => {
 }
 
 export const addFileInfos = (list: ThoughtItem[], messageFiles: VisionFile[]) => {
-  if (!list)
+  if (!list || !messageFiles)
     return list
   return list.map((item) => {
     if (item.files && item.files?.length > 0) {
