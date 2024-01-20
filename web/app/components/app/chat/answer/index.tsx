@@ -235,7 +235,8 @@ const Answer: FC<IAnswerProps> = ({
   )
 
   return (
-    <div key={id}>
+    // data-id for debug the item message is right
+    <div key={id} data-id={id}>
       <div className='flex items-start'>
         {
           answerIcon || (

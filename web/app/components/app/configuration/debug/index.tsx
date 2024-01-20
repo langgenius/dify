@@ -206,7 +206,28 @@ const Debug: FC<IDebug> = ({
       },
     }))
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+    const updateCurrentQA = ({
+      responseItem,
+      questionId,
+      placeholderAnswerId,
+      questionItem,
+    }: {
+      responseItem: IChatItem
+      questionId: string
+      placeholderAnswerId: string
+      questionItem: IChatItem
+    }) => {
+      // closesure new list is outdated.
+      const newListWithAnswer = produce(
+        getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+        (draft) => {
+          if (!draft.find(item => item.id === questionId))
+            draft.push({ ...questionItem })
 
+          draft.push({ ...responseItem })
+        })
+      setChatList(newListWithAnswer)
+    }
     const postModelConfig: BackendModelConfig = {
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
@@ -297,6 +318,7 @@ const Debug: FC<IDebug> = ({
       message_files: [],
       isAnswer: true,
     }
+    let hasSetResponseId = false
 
     let _newConversationId: null | string = null
 
@@ -308,6 +330,7 @@ const Debug: FC<IDebug> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        // console.log('onData', message)
         if (!isAgentMode) {
           responseItem.content = responseItem.content + message
         }
@@ -316,24 +339,23 @@ const Debug: FC<IDebug> = ({
           if (lastThought)
             lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
         }
+        if (messageId && !hasSetResponseId) {
+          responseItem.id = messageId
+          hasSetResponseId = true
+        }
 
-        responseItem.id = messageId
         if (isFirstMessage && newConversationId) {
           setConversationId(newConversationId)
           _newConversationId = newConversationId
         }
         setMessageTaskId(taskId)
 
-        // closesure new list is outdated.
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       async onCompleted(hasError?: boolean) {
         setResponsingFalse()
@@ -376,19 +398,18 @@ const Debug: FC<IDebug> = ({
         if (lastThought)
           responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
 
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onThought(thought) {
         isAgentMode = true
         const response = responseItem as any
-        response.id = thought.message_id
+        if (thought.message_id && !hasSetResponseId)
+          response.id = thought.message_id
         if (response.agent_thoughts.length === 0) {
           response.agent_thoughts.push(thought)
         }
@@ -404,6 +425,12 @@ const Debug: FC<IDebug> = ({
             responseItem.agent_thoughts!.push(thought)
           }
         }
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
