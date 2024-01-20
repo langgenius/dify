@@ -5,7 +5,7 @@ const translation = {
     encourage: '立即升级',
     encourageShort: '升级',
   },
-  viewBilling: '查看账单信息',
+  viewBilling: '管理账单及订阅',
   buyPermissionDeniedTip: '请联系企业管理员订阅',
   plansCommon: {
     title: '选择适合您的套餐',

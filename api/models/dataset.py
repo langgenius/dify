@@ -17,7 +17,7 @@ class Dataset(db.Model):
         db.Index('retrieval_model_idx', "retrieval_model", postgresql_using='gin')
     )
 
-    INDEXING_TECHNIQUE_LIST = ['high_quality', 'economy']
+    INDEXING_TECHNIQUE_LIST = ['high_quality', 'economy', None]
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(UUID, nullable=False)
