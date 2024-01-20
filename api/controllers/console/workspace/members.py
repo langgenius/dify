@@ -1,15 +1,16 @@
 # -*- coding:utf-8 -*-
+from flask import current_app
+from flask_login import current_user
+from flask_restful import Resource, abort, fields, marshal_with, reqparse
+
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
-from flask import current_app
-from flask_login import current_user
-from flask_restful import Resource, abort, fields, marshal, marshal_with, reqparse
 from libs.helper import TimestampField
 from libs.login import login_required
-from models.account import Account, TenantAccountJoin
+from models.account import Account
 from services.account_service import RegisterService, TenantService
 
 account_fields = {
@@ -64,18 +65,12 @@ class MemberInviteEmailApi(Resource):
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role,
-                                                        inviter=inviter)
-                account = db.session.query(Account, TenantAccountJoin.role).join(
-                    TenantAccountJoin, Account.id == TenantAccountJoin.account_id
-                ).filter(Account.email == invitee_email).first()
-                account, role = account
+                                                          inviter=inviter)
                 invitation_results.append({
                     'status': 'success',
                     'email': invitee_email,
                     'url': f'{console_web_url}/activate?email={invitee_email}&token={token}'
                 })
-                account = marshal(account, account_fields)
-                account['role'] = role
             except Exception as e:
                 invitation_results.append({
                     'status': 'failed',
