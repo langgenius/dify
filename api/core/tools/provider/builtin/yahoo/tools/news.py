@@ -18,11 +18,11 @@ class YahooFinanceSearchTickerTool(BuiltinTool):
             return self.create_text_message('Please input symbol')
         
         try:
-            return self.create_text_message(self.run(ticker=query, user_id=user_id))
+            return self.run(ticker=query, user_id=user_id)
         except (HTTPError, ReadTimeout):
             return self.create_text_message(f'There is a internet connection problem. Please try again later.')
 
-    def run(self, ticker: str, user_id: str) -> str:
+    def run(self, ticker: str, user_id: str) -> ToolInvokeMessage:
         company = yfinance.Ticker(ticker)
         try:
             if company.isin is None:
