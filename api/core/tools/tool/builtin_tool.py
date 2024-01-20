@@ -93,12 +93,15 @@ class BuiltinTool(Tool):
         # split long line into multiple lines
         for i in range(len(lines)):
             line = lines[i]
+            if not line.strip():
+                continue
             if len(line) < max_tokens * 0.5:
                 new_lines.append(line)
             elif get_prompt_tokens(line) > max_tokens * 0.7:
                 while get_prompt_tokens(line) > max_tokens * 0.7:
-                    new_lines.append(line[:max_tokens * 0.5])
-                    line = line[max_tokens * 0.7:]
+                    new_lines.append(line[:int(max_tokens * 0.5)])
+                    line = line[int(max_tokens * 0.5):]
+                new_lines.append(line)
             else:
                 new_lines.append(line)
 
