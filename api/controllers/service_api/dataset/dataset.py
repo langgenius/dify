@@ -1,3 +1,4 @@
+from models.dataset import Dataset
 import services.dataset_service
 from controllers.service_api import api
 from controllers.service_api.dataset.error import DatasetNameDuplicateError
@@ -68,7 +69,7 @@ class DatasetApi(DatasetApiResource):
                             help='type is required. Name must be between 1 to 40 characters.',
                             type=_validate_name)
         parser.add_argument('indexing_technique', type=str, location='json',
-                            choices=('high_quality', 'economy'),
+                            choices=Dataset.INDEXING_TECHNIQUE_LIST,
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 

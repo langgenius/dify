@@ -116,7 +116,7 @@ class OutputModerationHandler(BaseModel):
 
                 # trigger replace event
                 if self.thread_running:
-                    self.on_message_replace_func(final_output)
+                    self.on_message_replace_func(final_output, PublishFrom.TASK_PIPELINE)
 
                 if result.action == ModerationAction.DIRECT_OUTPUT:
                     break
