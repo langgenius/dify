@@ -307,7 +307,7 @@ const Chat: FC<IChatProps> = ({
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
             {/* Thinking is sync and can not be stopped */}
-            {(isResponsing && canStopResponsing && !!chatList[chatList.length - 1]?.content) && (
+            {(isResponsing && canStopResponsing && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
               <div className='flex justify-center mb-4'>
                 <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponsing?.()}>
                   {stopIcon}
