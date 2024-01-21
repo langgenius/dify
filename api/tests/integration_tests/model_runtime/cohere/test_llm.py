@@ -214,14 +214,44 @@ def test_get_num_tokens():
     assert num_tokens == 15
 
 
-def test_fine_tuned_models():
+def test_fine_tuned_model():
     model = CohereLargeLanguageModel()
 
     # test invoke
     result = model.invoke(
-        model='# TODO',
+        model='85ec47be-6139-4f75-a4be-0f0ec1ef115c-ft',
         credentials={
-            'api_key': os.environ.get('COHERE_API_KEY')
+            'api_key': os.environ.get('COHERE_API_KEY'),
+            'mode': 'completion'
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant.',
+            ),
+            UserPromptMessage(
+                content='Hello World!'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.0,
+            'max_tokens': 100
+        },
+        stream=False,
+        user="abc-123"
+    )
+
+    assert isinstance(result, LLMResult)
+
+
+def test_fine_tuned_chat_model():
+    model = CohereLargeLanguageModel()
+
+    # test invoke
+    result = model.invoke(
+        model='94f2d55a-4c79-4c00-bde4-23962e74b170-ft',
+        credentials={
+            'api_key': os.environ.get('COHERE_API_KEY'),
+            'mode': 'chat'
         },
         prompt_messages=[
             SystemPromptMessage(
