@@ -1,7 +1,7 @@
 """add_assistant_app
 
 Revision ID: 3ef9b2b6bee6
-Revises: 187385f442fc
+Revises: 89c7899ca936
 Create Date: 2024-01-05 15:26:25.117551
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '3ef9b2b6bee6'
-down_revision = '187385f442fc'
+down_revision = '89c7899ca936'
 branch_labels = None
 depends_on = None
 
