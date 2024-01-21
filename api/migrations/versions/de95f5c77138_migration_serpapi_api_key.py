@@ -77,18 +77,22 @@ def upgrade():
         updated_at = tool_provider['updated_at']
 
         # insert to tool_builtin_providers
-        op.get_bind().execute(
-            sa.text(
-                "INSERT INTO tool_builtin_providers (id, tenant_id, user_id, provider, encrypted_credentials, created_at, updated_at) VALUES (:id, :tenant_id, :user_id, :provider, :encrypted_credentials, :created_at, :updated_at)"
-            ),
-            id=id,
-            tenant_id=tenant_id,
-            user_id=user_id,
-            provider='google',            
-            encrypted_credentials=encrypted_credentials,
-            created_at=created_at,
-            updated_at=updated_at
-        )
+        try:
+            op.get_bind().execute(
+                sa.text(
+                    "INSERT INTO tool_builtin_providers (id, tenant_id, user_id, provider, encrypted_credentials, created_at, updated_at) VALUES (:id, :tenant_id, :user_id, :provider, :encrypted_credentials, :created_at, :updated_at)"
+                ),
+                id=id,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                provider='google',            
+                encrypted_credentials=encrypted_credentials,
+                created_at=created_at,
+                updated_at=updated_at
+            )
+        except Exception as e:
+            print(e)
+            continue
     # ### end Alembic commands ###
 
 
