@@ -24,7 +24,7 @@ export const languageMaps = {
 }
 
 export const MODEL_PROVIDER_QUOTA_GET_FREE = ['minimax', 'spark', 'zhipuai']
-export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai']
+export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai', 'azure_openai']
 
 export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
 
