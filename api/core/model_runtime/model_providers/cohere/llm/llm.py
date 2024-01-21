@@ -1,17 +1,17 @@
 import logging
-from decimal import Decimal
 from typing import Generator, List, Optional, Union, cast, Tuple
 
 import cohere
-from cohere.responses import Chat
+from cohere.responses import Chat, Generations
 from cohere.responses.chat import StreamingChat, StreamTextGeneration, StreamEnd
+from cohere.responses.generation import StreamingText, StreamingGenerations
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
-                                                          PromptMessage, PromptMessageContentType, SystemPromptMessage,
-                                                          TextPromptMessageContent, ToolPromptMessage,
-                                                          UserPromptMessage, PromptMessageTool)
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType, PriceConfig
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage,
+                                                          PromptMessageContentType, SystemPromptMessage,
+                                                          TextPromptMessageContent, UserPromptMessage,
+                                                          PromptMessageTool)
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType
 from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeError, \
     InvokeRateLimitError, InvokeAuthorizationError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -43,15 +43,29 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        return self._chat_generate(
-            model=model,
-            credentials=credentials,
-            prompt_messages=prompt_messages,
-            model_parameters=model_parameters,
-            stop=stop,
-            stream=stream,
-            user=user
-        )
+        # get model mode
+        model_mode = self.get_model_mode(model, credentials)
+
+        if model_mode == LLMMode.CHAT:
+            return self._chat_generate(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                stop=stop,
+                stream=stream,
+                user=user
+            )
+        else:
+            return self._generate(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                stop=stop,
+                stream=stream,
+                user=user
+            )
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -64,7 +78,13 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
-        return self._num_tokens_from_messages(model, credentials, prompt_messages)
+        # get model mode
+        model_mode = self.get_model_mode(model)
+
+        if model_mode == LLMMode.CHAT:
+            return self._num_tokens_from_messages(model, credentials, prompt_messages)
+        else:
+            return self._num_tokens_from_string(model, credentials, prompt_messages[0].content)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -75,18 +95,159 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         try:
-            self._chat_generate(
-                model=model,
-                credentials=credentials,
-                prompt_messages=[UserPromptMessage(content='ping')],
-                model_parameters={
-                    'max_tokens': 20,
-                    'temperature': 0,
-                },
-                stream=False
-            )
+            # get model mode
+            model_mode = self.get_model_mode(model)
+
+            if model_mode == LLMMode.CHAT:
+                self._chat_generate(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=[UserPromptMessage(content='ping')],
+                    model_parameters={
+                        'max_tokens': 20,
+                        'temperature': 0,
+                    },
+                    stream=False
+                )
+            else:
+                self._generate(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=[UserPromptMessage(content='ping')],
+                    model_parameters={
+                        'max_tokens': 20,
+                        'temperature': 0,
+                    },
+                    stream=False
+                )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
+
+    def _generate(self, model: str, credentials: dict,
+                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
+                  stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
+        """
+        Invoke llm model
+
+        :param model: model name
+        :param credentials: credentials
+        :param prompt_messages: prompt messages
+        :param model_parameters: model parameters
+        :param stop: stop words
+        :param stream: is stream response
+        :param user: unique user id
+        :return: full response or stream response chunk generator result
+        """
+        # initialize client
+        client = cohere.Client(credentials.get('api_key'))
+
+        if stop:
+            model_parameters['end_sequences'] = stop
+
+        response = client.generate(
+            prompt=prompt_messages[0].content,
+            model=model,
+            stream=stream,
+            **model_parameters,
+        )
+
+        if stream:
+            return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
+
+        return self._handle_generate_response(model, credentials, response, prompt_messages)
+
+    def _handle_generate_response(self, model: str, credentials: dict, response: Generations,
+                                  prompt_messages: list[PromptMessage]) \
+            -> LLMResult:
+        """
+        Handle llm response
+
+        :param model: model name
+        :param credentials: credentials
+        :param response: response
+        :param prompt_messages: prompt messages
+        :return: llm response
+        """
+        assistant_text = response.generations[0].text
+
+        # transform assistant message to prompt message
+        assistant_prompt_message = AssistantPromptMessage(
+            content=assistant_text
+        )
+
+        # calculate num tokens
+        prompt_tokens = response.meta['billed_units']['input_tokens']
+        completion_tokens = response.meta['billed_units']['output_tokens']
+
+        # transform usage
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+
+        # transform response
+        response = LLMResult(
+            model=model,
+            prompt_messages=prompt_messages,
+            message=assistant_prompt_message,
+            usage=usage
+        )
+
+        return response
+
+    def _handle_generate_stream_response(self, model: str, credentials: dict, response: StreamingGenerations,
+                                         prompt_messages: list[PromptMessage]) -> Generator:
+        """
+        Handle llm stream response
+
+        :param model: model name
+        :param response: response
+        :param prompt_messages: prompt messages
+        :return: llm response chunk generator
+        """
+        index = 1
+        full_assistant_content = ''
+        for chunk in response:
+            if isinstance(chunk, StreamingText):
+                chunk = cast(StreamingText, chunk)
+                text = chunk.text
+
+                if text is None:
+                    continue
+
+                # transform assistant message to prompt message
+                assistant_prompt_message = AssistantPromptMessage(
+                    content=text
+                )
+
+                full_assistant_content += text
+
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=index,
+                        message=assistant_prompt_message,
+                    )
+                )
+
+                index += 1
+            elif chunk is None:
+                # calculate num tokens
+                prompt_tokens = response.meta['billed_units']['input_tokens']
+                completion_tokens = response.meta['billed_units']['output_tokens']
+
+                # transform usage
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=index,
+                        message=AssistantPromptMessage(content=''),
+                        finish_reason=response.finish_reason,
+                        usage=usage
+                    )
+                )
+                break
 
     def _chat_generate(self, model: str, credentials: dict,
                        prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
@@ -112,10 +273,14 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         message, chat_histories = self._convert_prompt_messages_to_message_and_chat_histories(prompt_messages)
 
         # chat model
+        real_model = model
+        if self.get_model_schema(model, credentials).fetch_from == FetchFrom.PREDEFINED_MODEL:
+            real_model = model.removesuffix('-chat')
+
         response = client.chat(
             message=message,
             chat_history=chat_histories,
-            model=model,
+            model=real_model,
             stream=stream,
             return_preamble=True,
             **model_parameters,
@@ -182,8 +347,9 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :param stop: stop words
         :return: llm response chunk generator
         """
+
         def final_response(full_text: str, index: int, finish_reason: Optional[str] = None,
-                           preamble:  Optional[str] = None) -> LLMResultChunk:
+                           preamble: Optional[str] = None) -> LLMResultChunk:
             # calculate num tokens
             prompt_tokens = self._num_tokens_from_messages(model, credentials, prompt_messages)
 
@@ -295,21 +461,32 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
         return message_dict
 
+    def _num_tokens_from_string(self, model: str, credentials: dict, text: str) -> int:
+        """
+        Calculate num tokens for text completion model.
+
+        :param model: model name
+        :param credentials: credentials
+        :param text: prompt text
+        :return: number of tokens
+        """
+        # initialize client
+        client = cohere.Client(credentials.get('api_key'))
+
+        response = client.tokenize(
+            text=text,
+            model=model
+        )
+
+        return response.length
+
     def _num_tokens_from_messages(self, model: str, credentials: dict, messages: List[PromptMessage]) -> int:
         """Calculate num tokens Cohere model."""
         messages = [self._convert_prompt_message_to_dict(m) for m in messages]
         message_strs = [f"{message['role']}: {message['message']}" for message in messages]
         message_str = "\n".join(message_strs)
 
-        # initialize client
-        client = cohere.Client(credentials.get('api_key'))
-
-        response = client.tokenize(
-            text=message_str,
-            model=model
-        )
-
-        return response.length
+        return self._num_tokens_from_string(model, credentials, message_str)
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
@@ -325,7 +502,13 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         models = self.predefined_models()
         model_map = {model.model: model for model in models}
 
-        base_model_schema = model_map['command_light']
+        mode = credentials.get('mode')
+
+        if mode == 'chat':
+            base_model_schema = model_map['command-light-chat']
+        else:
+            base_model_schema = model_map['command-light']
+
         base_model_schema = cast(AIModelEntity, base_model_schema)
 
         base_model_schema_features = base_model_schema.features or []
