@@ -31,6 +31,7 @@ parameter_rules:
     max: 500
   - name: max_tokens
     use_template: max_tokens
+    default: 256
     max: 4096
   - name: preamble_override
     label:
@@ -50,10 +51,10 @@ parameter_rules:
       zh_Hans: 指定如何构造 Prompt。当 prompt_truncation 设置为 "AUTO" 时，将会丢弃一些来自聊天记录的元素，以尝试构造一个符合模型上下文长度限制的 Prompt。
       en_US: Dictates how the prompt will be constructed. With prompt_truncation set to "AUTO", some elements from chat histories will be dropped in an attempt to construct a prompt that fits within the model's context length limit.
     required: true
-    default: AUTO
+    default: 'AUTO'
     options:
-      - AUTO
-      - OFF
+      - 'AUTO'
+      - 'OFF'
 pricing:
   input: '0.3'
   output: '0.6'

@@ -35,6 +35,7 @@ parameter_rules:
     use_template: frequency_penalty
   - name: max_tokens
     use_template: max_tokens
+    default: 256
     max: 4096
 pricing:
   input: '0.3'

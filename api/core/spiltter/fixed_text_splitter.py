@@ -24,6 +24,9 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
             **kwargs: Any,
     ):
         def _token_encoder(text: str) -> int:
+            if not text:
+                return 0
+
             if embedding_model_instance:
                 embedding_model_type_instance = embedding_model_instance.model_type_instance
                 embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)

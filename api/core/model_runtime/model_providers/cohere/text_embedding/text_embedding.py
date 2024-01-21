@@ -111,11 +111,15 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
             return 0
 
         full_text = ' '.join(texts)
-        response = self._tokenize(
-            model=model,
-            credentials=credentials,
-            text=full_text
-        )
+
+        try:
+            response = self._tokenize(
+                model=model,
+                credentials=credentials,
+                text=full_text
+            )
+        except Exception as e:
+            raise self._transform_invoke_error(e)
 
         return response.length
 

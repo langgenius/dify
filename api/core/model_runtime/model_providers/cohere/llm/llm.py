@@ -81,10 +81,13 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         # get model mode
         model_mode = self.get_model_mode(model)
 
-        if model_mode == LLMMode.CHAT:
-            return self._num_tokens_from_messages(model, credentials, prompt_messages)
-        else:
-            return self._num_tokens_from_string(model, credentials, prompt_messages[0].content)
+        try:
+            if model_mode == LLMMode.CHAT:
+                return self._num_tokens_from_messages(model, credentials, prompt_messages)
+            else:
+                return self._num_tokens_from_string(model, credentials, prompt_messages[0].content)
+        except Exception as e:
+            raise self._transform_invoke_error(e)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -362,7 +365,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             # transform usage
             usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
-            yield LLMResultChunk(
+            return LLMResultChunk(
                 model=model,
                 prompt_messages=prompt_messages,
                 system_fingerprint=preamble,
