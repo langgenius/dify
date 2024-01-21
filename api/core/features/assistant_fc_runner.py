@@ -71,7 +71,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
         }
         final_answer = ''
 
-        def increse_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
             else:
