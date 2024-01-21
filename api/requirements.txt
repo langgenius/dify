@@ -35,7 +35,7 @@ chardet~=5.1.0
 docx2txt==0.8
 pypdfium2==4.16.0
 resend~=0.7.0
-pyjwt~=2.6.0
+pyjwt~=2.8.0
 anthropic~=0.7.7
 newspaper3k==0.2.8
 google-api-python-client==2.90.0
@@ -48,7 +48,7 @@ dashscope[tokenizer]~=1.14.0
 huggingface_hub~=0.16.4
 transformers~=4.31.0
 pandas==1.5.3
-xinference-client~=0.6.4
+xinference-client~=0.8.1
 safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug==2.3.8
