@@ -9,8 +9,8 @@ from typing import Optional
 from extensions.ext_storage import storage
 from flask import current_app
 
-SUPPORT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
-
+IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
 class UploadFileParser:
     @classmethod
@@ -18,7 +18,7 @@ class UploadFileParser:
         if not upload_file:
             return None
 
-        if upload_file.extension not in SUPPORT_EXTENSIONS:
+        if upload_file.extension not in IMAGE_EXTENSIONS:
             return None
 
         if current_app.config['MULTIMODAL_SEND_IMAGE_FORMAT'] == 'url' or force_url:
