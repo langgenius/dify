@@ -54,7 +54,7 @@ zhipuai==1.0.7
 werkzeug==2.3.8
 pymilvus==2.3.0
 qdrant-client==1.6.4
-cohere~=4.32
+cohere~=4.44
 pyyaml~=6.0.1
 numpy~=1.25.2
 unstructured[docx,pptx,msg,md,ppt]~=0.10.27
