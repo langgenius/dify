@@ -318,11 +318,12 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
-        # enforce stop tokens
-        assistant_text = self.enforce_stop_tokens(assistant_text, stop)
-        assistant_prompt_message = AssistantPromptMessage(
-            content=assistant_text
-        )
+        if stop:
+            # enforce stop tokens
+            assistant_text = self.enforce_stop_tokens(assistant_text, stop)
+            assistant_prompt_message = AssistantPromptMessage(
+                content=assistant_text
+            )
 
         # transform response
         response = LLMResult(
@@ -452,7 +453,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             message_dict = {"role": "CHATBOT", "message": message.content}
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
-            message_dict = {"role": "USER", "content": message.content}
+            message_dict = {"role": "USER", "message": message.content}
         else:
             raise ValueError(f"Got unknown type {message}")
 
@@ -486,7 +487,11 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         message_strs = [f"{message['role']}: {message['message']}" for message in messages]
         message_str = "\n".join(message_strs)
 
-        return self._num_tokens_from_string(model, credentials, message_str)
+        real_model = model
+        if self.get_model_schema(model, credentials).fetch_from == FetchFrom.PREDEFINED_MODEL:
+            real_model = model.removesuffix('-chat')
+
+        return self._num_tokens_from_string(real_model, credentials, message_str)
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """

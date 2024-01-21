@@ -4,10 +4,9 @@ import pytest
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.cohere.text_embedding.text_embedding import CohereTextEmbeddingModel
-from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 
 
-def test_validate_credentials(setup_openai_mock):
+def test_validate_credentials():
     model = CohereTextEmbeddingModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -26,7 +25,7 @@ def test_validate_credentials(setup_openai_mock):
     )
 
 
-def test_invoke_model(setup_openai_mock):
+def test_invoke_model():
     model = CohereTextEmbeddingModel()
 
     result = model.invoke(
