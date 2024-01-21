@@ -18,7 +18,7 @@ def parse_app_site_args():
     parser.add_argument('title', type=str, required=False, location='json')
     parser.add_argument('icon', type=str, required=False, location='json')
     parser.add_argument('icon_background', type=str, required=False, location='json')
-    parser.add_argument('description', type=str, required=False, location='json')
+    parser.add_argument('description', type= str, required=False, location='json')
     parser.add_argument('default_language', type=supported_language, required=False, location='json')
     parser.add_argument('customize_domain', type=str, required=False, location='json')
     parser.add_argument('copyright', type=str, required=False, location='json')
