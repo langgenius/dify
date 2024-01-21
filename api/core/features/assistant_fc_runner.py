@@ -146,7 +146,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                         response += chunk.delta.message.content
 
                 if chunk.delta.usage:
-                    increse_usage(llm_usage, chunk.delta.usage)
+                    increase_usage(llm_usage, chunk.delta.usage)
                     current_llm_usage = chunk.delta.usage
 
                 yield chunk
