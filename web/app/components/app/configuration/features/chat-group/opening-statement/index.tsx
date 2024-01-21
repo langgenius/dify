@@ -107,7 +107,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
 
   const autoAddVar = () => {
     const newModelConfig = produce(modelConfig, (draft) => {
-      draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...notIncludeKeys.map(key => getNewVar(key))]
+      draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...notIncludeKeys.map(key => getNewVar(key, 'string'))]
     })
     onChange?.(tempValue)
     setModelConfig(newModelConfig)
@@ -116,7 +116,15 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   }
 
   const headerRight = !readonly ? (
-    <OperationBtn type='edit' actionName={hasValue ? '' : t('appDebug.openingStatement.writeOpner') as string} onClick={handleEdit} />
+    isFocus ? (
+      <div className='flex items-center space-x-1'>
+        <div className='px-3 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer' onClick={handleCancel}>{t('common.operation.cancel')}</div>
+        <Button className='!h-8 !px-3 text-xs' onClick={handleConfirm} type="primary">{t('common.operation.save')}</Button>
+      </div>
+    ) : (
+      <OperationBtn type='edit' actionName={hasValue ? '' : t('appDebug.openingStatement.writeOpner') as string} onClick={handleEdit} />
+
+    )
   ) : null
 
   return (
@@ -152,19 +160,6 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                   __html: coloredContent,
                 }}></div>
               )}
-
-            {/* Operation Bar */}
-            {isFocus && (
-              <div className='mt-2 flex items-center justify-between'>
-                <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.varTip')}</div>
-
-                <div className='flex gap-2'>
-                  <Button className='!h-8 text-sm' onClick={handleCancel}>{t('common.operation.cancel')}</Button>
-                  <Button className='!h-8 text-sm' onClick={handleConfirm} type="primary">{t('common.operation.save')}</Button>
-                </div>
-              </div>
-            )}
-
           </>) : (
           <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.openingStatement.noDataPlaceHolder')}</div>
         )}
