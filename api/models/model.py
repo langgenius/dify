@@ -792,7 +792,7 @@ class Site(db.Model):
     title = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
-    description = db.Column(db.String(255))
+    description = db.Column(db.Text)
     default_language = db.Column(db.String(255), nullable=False)
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
