@@ -235,7 +235,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                             "tool_response": observation
                         }
                         tool_responses.append(tool_response)
-                    
+
                 prompt_messages = self.organize_prompt_messages(
                     prompt_template=prompt_template,
                     query=None,
@@ -257,6 +257,12 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     messages_ids=message_file_ids
                 )
                 self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+
+            # update prompt messages
+            if response.strip():
+                prompt_messages.append(AssistantPromptMessage(
+                    content=response,
+                ))
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
