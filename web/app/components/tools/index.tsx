@@ -170,7 +170,7 @@ const Tools: FC<Props> = ({
               </div>
             )
             : (
-              showCollectionList.length > 0
+              (showCollectionList.length > 0 || !query)
                 ? <ToolNavList
                   className='mt-2 grow height-0 overflow-y-auto'
                   currentName={currCollection?.name || ''}
