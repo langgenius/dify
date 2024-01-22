@@ -362,7 +362,7 @@ const translation = {
     agentMode: 'Agent Mode',
     agentModeDes: 'Set the type of inference mode for the agent',
     agentModeType: {
-      cot: 'COT',
+      ReACT: 'ReACT',
       functionCall: 'Function Call',
     },
     setting: {
