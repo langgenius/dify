@@ -189,7 +189,8 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
 
         data = BillingService.get_model_provider_payment_link(provider_name=provider,
                                                               tenant_id=current_user.current_tenant_id,
-                                                              account_id=current_user.id)
+                                                              account_id=current_user.id,
+                                                              prefilled_email=current_user.email)
         return data
 
 
