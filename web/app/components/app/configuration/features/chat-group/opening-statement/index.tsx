@@ -183,7 +183,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                       return item
                     }))
                   }}
-                  className={'w-full px-1.5 text-sm leading-9 text-gray-900 border-0 grow h-9 bg-transparent focus:outline-none cursor-pointer rounded-lg'}
+                  className={'w-full overflow-x-auto pl-1.5 pr-8 text-sm leading-9 text-gray-900 border-0 grow h-9 bg-transparent focus:outline-none cursor-pointer rounded-lg'}
                 />
 
                 <div

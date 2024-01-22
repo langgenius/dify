@@ -3,14 +3,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # 对话型应用 API
 
-可用于大部分场景的对话型应用，采用一问一答模式与用户持续对话。要开始一个对话请调用 chat-messages 接口，通过继续传入返回的 conversation_id 可持续保持该会话。**[开始前请阅读 !! 什么是 Bearer Token ？](https://swagger.io/docs/specification/authentication/bearer-authentication/)**
+对话应用支持会话持久化，可将之前的聊天记录作为上下进行回答，可适用于聊天/客服 AI 等。
 
 <div>
+  ### 基础 URL
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
   ### 鉴权
 
   Dify Service API 使用 `API-Key` 进行鉴权。
 
-  建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
+  强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
 
   所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
 
@@ -32,25 +37,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-    创建会话消息，或基于此前的对话继续发送消息。
+    创建会话消息。
 
     ### Request Body
 
     <Properties>
+      <Property name='query' type='string' key='query'>
+        用户输入/提问内容。
+      </Property>
       <Property name='inputs' type='object' key='inputs'>
         （选填）以键值对方式提供用户输入字段，与提示词编排中的变量对应。Key 为变量名称，Value 是参数值。如果字段类型为 Select，传入的 Value 需为预设选项之一。
         <ul>
          {!!props.variables.length && props.variables.map(
             val => (
                 <SubProperty name={val.key} type={val.type} key={val.key}>
-                  {val.name ? `${val.name}` : ''}
+                  {val.name ? `val.name}` : ''}
                 </SubProperty>
             )
         )}
         </ul>
-      </Property>
-      <Property name='query' type='string' key='query'>
-        用户输入/提问内容
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         - blocking 阻塞型，等待执行完毕后返回结果。（请求若流程较长可能会被中断）
