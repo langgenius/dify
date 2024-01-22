@@ -33,8 +33,8 @@ const Header: FC<Props> = ({
   // const isBuiltIn = collection.type === CollectionType.builtIn
   const isAuthed = collection.is_team_authorization
   return (
-    <div className={cn(isInToolsPage ? 'py-4 px-6' : 'py-[11px] pl-4 pr-3', 'flex justify-between  items-center border-b border-gray-200')}>
-      <div className='flex items-center w-full'>
+    <div className={cn(isInToolsPage ? 'py-4 px-6' : 'py-[11px] pl-4 pr-3', 'flex justify-between items-start border-b border-gray-200')}>
+      <div className='flex items-start w-full'>
         {icon}
         <div className='ml-3 grow w-0'>
           <div className='flex items-center h-6 space-x-1'>
@@ -43,7 +43,7 @@ const Header: FC<Props> = ({
             <div className='text-xs font-normal text-gray-500'>{t('tools.author')}&nbsp;{collection.author}</div>
           </div>
           {collection.description && (
-            <div className={cn(isInDebugPage && 'truncate', 'leading-[18px] text-[13px] font-normal text-gray-500')}>
+            <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500')}>
               {collection.description[locale === 'en' ? 'en_US' : 'zh_Hans']}
             </div>
           )}
