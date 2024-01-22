@@ -41,7 +41,7 @@ const Answer: FC<AnswerProps> = ({
     annotation,
     suggestedQuestions,
   } = item
-  const isAgentMode = agent_thoughts?.length
+  const hasAgentThoughts = agent_thoughts?.length
 
   const getImgs = (list?: VisionFile[]) => {
     if (!list)
@@ -118,21 +118,21 @@ const Answer: FC<AnswerProps> = ({
               }
             </div>
             {
-              responsing && !content && !isAgentMode && (
+              responsing && !content && !hasAgentThoughts && (
                 <div className='flex items-center justify-center w-6 h-5'>
                   <LoadingAnim type='text' />
                 </div>
               )
             }
             {
-              (content || isAgentMode) && (
+              (content || hasAgentThoughts) && (
                 <>
                   <div>
                     {annotation?.logAnnotation
                       ? (
                         <Markdown content={annotation?.logAnnotation.content || ''} />
                       )
-                      : (isAgentMode
+                      : (hasAgentThoughts
                         ? agentModeAnswer
                         : (
                           <Markdown content={content} />
