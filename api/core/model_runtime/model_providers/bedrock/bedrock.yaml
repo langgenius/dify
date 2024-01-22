@@ -4,9 +4,9 @@ label:
 description:
   en_US: AWS Bedrock's models.
 icon_small:
-  en_US: icon_s_en.png
+  en_US: icon_s_en.svg
 icon_large:
-  en_US: icon_l_en.png
+  en_US: icon_l_en.svg
 background: "#FCFDFF"
 help:
   title:
