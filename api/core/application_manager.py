@@ -94,6 +94,9 @@ class ApplicationManager:
             extras=extras
         )
 
+        if not stream and application_generate_entity.app_orchestration_config_entity.agent:
+            raise ValueError("Agent app is not supported in blocking mode.")
+
         # init generate records
         (
             conversation,
