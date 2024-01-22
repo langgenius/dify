@@ -114,6 +114,7 @@ const Main: FC<IMainProps> = ({
     existConversationInfo,
     setExistConversationInfo,
   } = useConversation()
+  const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const [hasMore, setHasMore] = useState<boolean>(true)
   const [hasPinnedMore, setHasPinnedMore] = useState<boolean>(true)
   const onMoreLoaded = ({ data: conversations, has_more }: any) => {
@@ -334,13 +335,13 @@ const Main: FC<IMainProps> = ({
     const caculatedPromptVariables = inputs || currInputs || null
     if (caculatedIntroduction && caculatedPromptVariables)
       caculatedIntroduction = replaceStringWithValues(caculatedIntroduction, promptConfig?.prompt_variables || [], caculatedPromptVariables)
-
     const openstatement = {
       id: `${Date.now()}`,
       content: caculatedIntroduction,
       isAnswer: true,
       feedbackDisabled: true,
       isOpeningStatement: true,
+      suggestedQuestions: openingSuggestedQuestions,
     }
     if (caculatedIntroduction)
       return [openstatement]
@@ -393,7 +394,7 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions, suggested_questions_after_answer, speech_to_text, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
         setVisionConfig({
           ...file_upload.image,
           image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
@@ -406,6 +407,8 @@ const Main: FC<IMainProps> = ({
           name: t('share.chat.newChatDefaultName'),
           introduction,
         })
+        setOpeningSuggestedQuestions(suggested_questions || [])
+
         setSiteInfo(siteInfo as SiteInfo)
         setPromptConfig({
           prompt_template,
@@ -473,10 +476,11 @@ const Main: FC<IMainProps> = ({
   const [controlFocus, setControlFocus] = useState(0)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const doShowSuggestion = isShowSuggestion && !isResponsing
-  const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [openingSuggestedQuestions, setOpeningSuggestedQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
+  const [userQuery, setUserQuery] = useState('')
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
@@ -866,6 +870,8 @@ const Main: FC<IMainProps> = ({
                 <div className='h-full overflow-y-auto' ref={chatListDomRef}>
                   <Chat
                     chatList={chatList}
+                    query={userQuery}
+                    onQueryChange={setUserQuery}
                     onSend={handleSend}
                     isHideFeedbackEdit
                     onFeedback={handleFeedback}
@@ -879,7 +885,7 @@ const Main: FC<IMainProps> = ({
                     checkCanSend={checkCanSend}
                     controlFocus={controlFocus}
                     isShowSuggestion={doShowSuggestion}
-                    suggestionList={suggestQuestions}
+                    suggestionList={suggestedQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     isShowCitation={citationConfig?.enabled && isInstalledApp}
                     visionConfig={{
