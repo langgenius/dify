@@ -87,13 +87,8 @@ const Apps = () => {
 
   return (
     <>
-      <div className='sticky top-0 flex items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
-        <TabSlider
-          value={activeTab}
-          onChange={setActiveTab}
-          options={options}
-        />
-        <div className="flex items-center ml-3 px-2 w-[200px] h-8 rounded-lg bg-gray-200">
+      <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+        <div className="flex items-center px-2 w-[200px] h-8 rounded-lg bg-gray-200">
           <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
             <SearchLg className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
           </div>
@@ -119,6 +114,12 @@ const Apps = () => {
             )
           }
         </div>
+        <TabSlider
+          value={activeTab}
+          onChange={setActiveTab}
+          options={options}
+        />
+
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceManager
