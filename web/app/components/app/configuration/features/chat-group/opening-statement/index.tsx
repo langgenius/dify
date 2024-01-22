@@ -16,13 +16,16 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { Plus, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 const MAX_QUESTION_NUM = 3
+
 export type IOpeningStatementProps = {
   value: string
   readonly?: boolean
   onChange?: (value: string) => void
+  suggestedQuestions?: string[]
+  onSuggestedQuestionsChange?: (value: string[]) => void
 }
 
 // regex to match the {{}} and replace it with a span
@@ -32,6 +35,8 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   value = '',
   readonly,
   onChange,
+  suggestedQuestions = [],
+  onSuggestedQuestionsChange = () => { },
 }) => {
   const { t } = useTranslation()
   const {
@@ -40,12 +45,12 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   } = useContext(ConfigContext)
   const promptVariables = modelConfig.configs.prompt_variables
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
-  const [questions, setQuestions] = useState(['What\'s the game about?', 'How are you going?'])
 
   const hasValue = !!(value || '').trim()
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const [isFocus, { setTrue: didSetFocus, setFalse: setBlur }] = useBoolean(false)
+
   const setFocus = () => {
     didSetFocus()
     setTimeout(() => {
@@ -61,6 +66,8 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   useEffect(() => {
     setTempValue(value || '')
   }, [value])
+
+  const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(suggestedQuestions || [])
 
   const coloredContent = (tempValue || '')
     .replace(/</g, '&lt;')
@@ -79,6 +86,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   const handleCancel = () => {
     setBlur()
     setTempValue(value)
+    setTempSuggestedQuestions(suggestedQuestions)
   }
 
   const handleConfirm = () => {
@@ -101,6 +109,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
     }
     setBlur()
     onChange?.(tempValue)
+    onSuggestedQuestionsChange(tempSuggestedQuestions)
   }
 
   const cancelAutoAddVar = () => {
@@ -133,62 +142,76 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   const renderQuestions = () => {
     return isFocus ? (
       <div>
+        <div className='flex items-center py-2'>
+          <div className='shrink-0 flex space-x-0.5 leading-[18px] text-xs font-medium text-gray-500'>
+            <div className='uppercase'>{t('appDebug.openingStatement.openingQuestion')}</div>
+            <div>·</div>
+            <div>{tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}</div>
+          </div>
+          <div className='ml-3 grow w-0 h-px bg-[#243, 244, 246]'></div>
+        </div>
         <ReactSortable
           className="space-y-1"
-          list={questions.map((name, index) => {
+          list={tempSuggestedQuestions.map((name, index) => {
             return {
               id: index,
               name,
             }
           })}
-          setList={list => setQuestions(list.map(item => item.name))}
+          setList={list => setTempSuggestedQuestions(list.map(item => item.name))}
           handle='.handle'
           ghostClass="opacity-50"
           animation={150}
         >
-          {questions.map((question, index) => {
+          {tempSuggestedQuestions.map((question, index) => {
             return (
-              <div className='rounded-lg border border-[#EAECF0] flex items-center pl-2.5' key={index}>
+              <div className='group relative rounded-lg border border-gray-200 flex items-center pl-2.5 hover:border-gray-300 hover:bg-white' key={index}>
                 <div className='handle flex items-center justify-center w-4 h-4 cursor-grab'>
                   <svg width="6" height="10" viewBox="0 0 6 10" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path fillRule="evenodd" clipRule="evenodd" d="M1 2C1.55228 2 2 1.55228 2 1C2 0.447715 1.55228 0 1 0C0.447715 0 0 0.447715 0 1C0 1.55228 0.447715 2 1 2ZM1 6C1.55228 6 2 5.55228 2 5C2 4.44772 1.55228 4 1 4C0.447715 4 0 4.44772 0 5C0 5.55228 0.447715 6 1 6ZM6 1C6 1.55228 5.55228 2 5 2C4.44772 2 4 1.55228 4 1C4 0.447715 4.44772 0 5 0C5.55228 0 6 0.447715 6 1ZM5 6C5.55228 6 6 5.55228 6 5C6 4.44772 5.55228 4 5 4C4.44772 4 4 4.44772 4 5C4 5.55228 4.44772 6 5 6ZM2 9C2 9.55229 1.55228 10 1 10C0.447715 10 0 9.55229 0 9C0 8.44771 0.447715 8 1 8C1.55228 8 2 8.44771 2 9ZM5 10C5.55228 10 6 9.55229 6 9C6 8.44771 5.55228 8 5 8C4.44772 8 4 8.44771 4 9C4 9.55229 4.44772 10 5 10Z" fill="#98A2B3" />
                   </svg>
                 </div>
                 <input
-                  key={index}
                   type="input"
                   value={question || ''}
                   onChange={(e) => {
                     const value = e.target.value
-                    setQuestions(questions.map((item, i) => {
+                    setTempSuggestedQuestions(tempSuggestedQuestions.map((item, i) => {
                       if (index === i)
                         return value
 
                       return item
                     }))
                   }}
-                  className={'w-full px-1.5 text-sm leading-9 text-gray-900 border-0 grow h-9 bg-transparent focus:outline-none hover:border-gray-300 hover:bg-white hover:shadow-xs cursor-pointer'}
+                  className={'w-full px-1.5 text-sm leading-9 text-gray-900 border-0 grow h-9 bg-transparent focus:outline-none cursor-pointer rounded-lg'}
                 />
 
                 <div
-                  className=' absolute top-1/2 translate-y-[-50%] right-1.5 items-center justify-center w-6 h-6 rounded-md cursor-pointer hover:bg-[#FEE4E2]'
+                  className='block absolute top-1/2 translate-y-[-50%] right-1.5 p-1 rounded-md cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
                   onClick={() => {
-                    setQuestions(questions.filter((_, i) => index !== i))
+                    setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
                 >
-                  <Trash03 />
-
+                  <Trash03 className='w-3.5 h-3.5' />
                 </div>
               </div>
             )
           })}</ReactSortable>
+        {tempSuggestedQuestions.length < MAX_QUESTION_NUM && (
+          <div
+            onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
+            className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
+            <Plus className='w-4 h-4'></Plus>
+            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
+          </div>
+        )}
       </div>
     ) : (
-      <div className='flex space-x-1'>
-        {questions.map((question, index) => {
+      <div className='mt-1.5 flex flex-wrap'>
+        {tempSuggestedQuestions.map((question, index) => {
           return (
-            <div key={index} className='flex items-center'>
-              <div className='px-3 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer'>{question}</div>
+            <div key={index} className='mt-1 mr-1 max-w-full truncate last:mr-0 shrink-0 leading-8 items-center px-2.5 rounded-lg border border-gray-200 shadow-xs bg-white text-[13px] font-normal text-gray-900 cursor-pointer'>
+              {question}
             </div>
           )
         })}
@@ -198,7 +221,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
 
   return (
     <Panel
-      className={cn(isShowConfirmAddVar && 'h-[220px]', 'relative mt-4')}
+      className={cn(isShowConfirmAddVar && 'h-[220px]', 'relative mt-4 !bg-gray-25')}
       title={t('appDebug.openingStatement.title')}
       headerIcon={
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -220,11 +243,10 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                     value={tempValue}
                     rows={3}
                     onChange={e => setTempValue(e.target.value)}
-                    className="w-full px-0 text-sm  border-0 bg-transparent  focus:outline-none "
+                    className="w-full px-0 text-sm  border-0 bg-transparent focus:outline-none "
                     placeholder={t('appDebug.openingStatement.placeholder') as string}
                   >
                   </textarea>
-                  {renderQuestions()}
                 </div>
               )
               : (
@@ -232,6 +254,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                   __html: coloredContent,
                 }}></div>
               )}
+            {renderQuestions()}
           </>) : (
           <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.openingStatement.noDataPlaceHolder')}</div>
         )}

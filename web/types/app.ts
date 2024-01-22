@@ -124,6 +124,7 @@ export enum AgentStrategy {
  */
 export type ModelConfig = {
   opening_statement: string
+  suggested_questions?: string[]
   pre_prompt: string
   prompt_type: PromptMode
   chat_prompt_config: ChatPromptConfig | {}

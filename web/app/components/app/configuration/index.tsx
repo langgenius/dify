@@ -81,6 +81,7 @@ const Configuration: FC = () => {
   const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] = useBoolean(false)
 
   const [introduction, setIntroduction] = useState<string>('')
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const [controlClearChatMessage, setControlClearChatMessage] = useState(0)
   const [prevPromptConfig, setPrevPromptConfig] = useState<PromptConfig>({
     prompt_template: '',
@@ -389,6 +390,7 @@ const Configuration: FC = () => {
       }
 
       setIntroduction(modelConfig.opening_statement)
+      setSuggestedQuestions(modelConfig.suggested_questions || [])
       if (modelConfig.more_like_this)
         setMoreLikeThisConfig(modelConfig.more_like_this)
 
@@ -555,6 +557,7 @@ const Configuration: FC = () => {
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
       dataset_query_variable: contextVar || '',
       opening_statement: introduction || '',
+      suggested_questions: suggestedQuestions || [],
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
@@ -668,6 +671,8 @@ const Configuration: FC = () => {
       conversationId,
       introduction,
       setIntroduction,
+      suggestedQuestions,
+      setSuggestedQuestions,
       setConversationId,
       controlClearChatMessage,
       setControlClearChatMessage,

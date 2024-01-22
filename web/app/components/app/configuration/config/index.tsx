@@ -39,6 +39,8 @@ const Config: FC = () => {
     showHistoryModal,
     introduction,
     setIntroduction,
+    suggestedQuestions,
+    setSuggestedQuestions,
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
@@ -248,6 +250,8 @@ const Config: FC = () => {
                 {
                   value: introduction,
                   onChange: setIntroduction,
+                  suggestedQuestions,
+                  onSuggestedQuestionsChange: setSuggestedQuestions,
                 }
               }
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}

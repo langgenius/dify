@@ -7,7 +7,7 @@ import cn from 'classnames'
 import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
-import { EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
+import { EditIconSolid, RatingIcon } from '../icon-component'
 import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
@@ -44,6 +44,7 @@ export type IAnswerProps = {
   item: IChatItem
   feedbackDisabled: boolean
   isHideFeedbackEdit: boolean
+  onQueryChange: (query: string) => void
   onFeedback?: FeedbackFunc
   displayScene: DisplayScene
   isResponsing?: boolean
@@ -64,6 +65,7 @@ export type IAnswerProps = {
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
   item,
+  onQueryChange,
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   onFeedback,
@@ -253,13 +255,6 @@ const Answer: FC<IAnswerProps> = ({
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
-                {item.isOpeningStatement && (
-                  <div className='flex items-center mb-1 gap-1'>
-                    <OpeningStatementIcon />
-                    <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
-                  </div>
-                )}
-
                 {(isResponsing && (!content && (isAgentMode && (agent_thoughts || []).length === 0)))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
@@ -268,6 +263,7 @@ const Answer: FC<IAnswerProps> = ({
                   )
                   : (
                     <div>
+
                       {annotation?.logAnnotation && (
                         <div className='mb-1'>
                           <div className='mb-3'>
@@ -297,6 +293,19 @@ const Answer: FC<IAnswerProps> = ({
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
                           author: annotation.authorName,
                         })} />
+                      )}
+                      {item.isOpeningStatement && item.suggestedQuestions && item.suggestedQuestions.length > 0 && (
+                        <div className='flex flex-wrap'>
+                          {item.suggestedQuestions.map((question, index) => (
+                            <div
+                              key={index}
+                              className='mt-1 mr-1 max-w-full truncate last:mr-0 shrink-0 leading-7 items-center px-4 rounded-lg border border-gray-200 shadow-xs bg-white text-xs font-medium text-primary-600 cursor-pointer'
+                              onClick={() => onQueryChange(question)}
+                            >
+                              {question}
+                            </div>),
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

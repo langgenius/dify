@@ -293,7 +293,8 @@ const translation = {
     title: '对话开场白',
     add: '添加开场白',
     writeOpner: '编写开场白',
-    placeholder: '请在这里输入开场白',
+    placeholder: '在这里写下你的开场白，你可以使用变量，尝试输入 {{variable}}。',
+    openingQuestion: '开场问题',
     noDataPlaceHolder:
       '在对话型应用中，让 AI 主动说第一段话可以拉近与用户间的距离。',
     varTip: '你可以使用变量， 试试输入 {{variable}}',
