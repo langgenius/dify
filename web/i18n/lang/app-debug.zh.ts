@@ -360,7 +360,7 @@ const translation = {
       functionCall: 'Function Call',
     },
     setting: {
-      name: '智能助手设置',
+      name: 'Agent 设置',
       description: '智能助手设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
       maximumIterations: {
         name: '最大迭代次数',

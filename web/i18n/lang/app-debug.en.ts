@@ -366,7 +366,7 @@ const translation = {
       functionCall: 'Function Call',
     },
     setting: {
-      name: 'Agent Assistant Settings',
+      name: 'Agent Settings',
       description: 'Agent Assistant settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
       maximumIterations: {
         name: 'Maximum Iterations',
