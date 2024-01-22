@@ -61,7 +61,7 @@ const Header: FC<Props> = ({
 
       {collection.type === CollectionType.custom && (
         <div
-          className={cn('cursor-pointer', 'flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
+          className={cn('cursor-pointer', 'ml-1 shrink-0 flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
           onClick={() => onShowEditCustomCollection()}
         >
           <Settings01 className='w-4 h-4 text-gray-700' />
