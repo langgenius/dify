@@ -125,8 +125,9 @@ const Chat: FC<IChatProps> = ({
     notify({ type: 'error', message, duration: 3000 })
   }
 
-  const valid = () => {
-    if (!query || query.trim() === '') {
+  const valid = (q?: string) => {
+    const sendQuery = q || query
+    if (!sendQuery || sendQuery.trim() === '') {
       logError('Message cannot be empty')
       return false
     }
@@ -138,10 +139,10 @@ const Chat: FC<IChatProps> = ({
       onQueryChange('')
   }, [controlClearQuery])
 
-  const handleSend = () => {
-    if (!valid() || (checkCanSend && !checkCanSend()))
+  const handleSend = (q?: string) => {
+    if (!valid(q) || (checkCanSend && !checkCanSend()))
       return
-    onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
+    onSend(q || query, files.filter(file => file.progress !== -1).map(fileItem => ({
       type: 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,
@@ -174,7 +175,7 @@ const Chat: FC<IChatProps> = ({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={handleSend}></div>
+  const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={() => handleSend()}></div>
 
   const suggestionListRef = useRef<HTMLDivElement>(null)
   const [hasScrollbar, setHasScrollbar] = useState(false)
@@ -207,7 +208,10 @@ const Chat: FC<IChatProps> = ({
             return <Answer
               key={item.id}
               item={item}
-              onQueryChange={onQueryChange}
+              onQueryChange={(val) => {
+                onQueryChange(val)
+                handleSend(val)
+              }}
               feedbackDisabled={feedbackDisabled}
               isHideFeedbackEdit={isHideFeedbackEdit}
               onFeedback={onFeedback}
