@@ -5,7 +5,7 @@ const translation = {
     encourage: 'Upgrade Now',
     encourageShort: 'Upgrade',
   },
-  viewBilling: 'View billing information',
+  viewBilling: 'Manage billing and subscriptions',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
     title: 'Choose a plan that’s right for you',

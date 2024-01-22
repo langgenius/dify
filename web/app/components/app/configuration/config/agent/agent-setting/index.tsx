@@ -68,7 +68,7 @@ const AgentSetting: FC<Props> = ({
               <CuteRobote className='w-4 h-4 text-indigo-600' />
             }
             name={t('appDebug.agent.agentMode')}
-            description={t('appDebug.assistantType.agentAssistant.description')}
+            description={t('appDebug.agent.agentModeDes')}
           >
             <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
           </ItemPanel>

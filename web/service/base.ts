@@ -125,7 +125,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               onCompleted?.(true)
               return
             }
-            if (bufferObj.event === 'message') {
+            if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
               // can not use format here. Because message is splited.
               onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
                 conversationId: bufferObj.conversation_id,

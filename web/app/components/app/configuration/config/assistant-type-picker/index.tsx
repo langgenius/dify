@@ -147,7 +147,7 @@ const AssistantTypePicker: FC<Props> = ({
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
-      {isShowAgentSetting && disabled && (
+      {isShowAgentSetting && (
         <AgentSetting
           isFunctionCall={isFunctionCall}
           payload={agentConfig as AgentConfig}

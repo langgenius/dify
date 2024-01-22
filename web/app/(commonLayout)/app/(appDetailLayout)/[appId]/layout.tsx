@@ -46,7 +46,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navs
   }, [appId, isCurrentWorkspaceManager, t])
 
-  const appModeName = response?.mode?.toUpperCase() === 'COMPLETION' ? t('common.appModes.completionApp') : t('common.appModes.chatApp')
+  const appModeName = (() => {
+    if (response?.mode?.toUpperCase() === 'COMPLETION')
+      return t('app.newApp.completeApp')
+
+    const isAgent = !!response?.is_agent
+    if (isAgent)
+      return t('appDebug.assistantType.agentAssistant.name')
+
+    return t('appDebug.assistantType.chatAssistant.name')
+  })()
   useEffect(() => {
     if (response?.name)
       document.title = `${(response.name || 'App')} - Dify`

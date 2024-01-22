@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Generator, List, Optional, Union, cast
 
@@ -625,9 +626,10 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
     def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:
         for ai_model_entity in LLM_BASE_MODELS:
             if ai_model_entity.base_model_name == base_model_name:
-                ai_model_entity.entity.model = model
-                ai_model_entity.entity.label.en_US = model
-                ai_model_entity.entity.label.zh_Hans = model
-                return ai_model_entity
+                ai_model_entity_copy = copy.deepcopy(ai_model_entity)
+                ai_model_entity_copy.entity.model = model
+                ai_model_entity_copy.entity.label.en_US = model
+                ai_model_entity_copy.entity.label.zh_Hans = model
+                return ai_model_entity_copy
 
         return None

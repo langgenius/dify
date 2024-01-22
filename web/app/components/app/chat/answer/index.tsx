@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
-import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, ThoughtItem } from '../type'
+import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
 import { EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
@@ -48,10 +48,7 @@ export type IAnswerProps = {
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIcon?: ReactNode
-  files?: VisionFile[]
-  thoughts?: ThoughtItem[]
   citation?: CitationItem[]
-  isThinking?: boolean
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
@@ -73,10 +70,7 @@ const Answer: FC<IAnswerProps> = ({
   displayScene = 'web',
   isResponsing,
   answerIcon,
-  files = [],
-  thoughts,
   citation,
-  isThinking,
   isShowCitation,
   isShowCitationHitInfo = false,
   supportAnnotation,
@@ -87,7 +81,8 @@ const Answer: FC<IAnswerProps> = ({
   onAnnotationRemoved,
   allToolIcons,
 }) => {
-  const { id, content, more, feedback, adminFeedback, annotation } = item
+  const { id, content, more, feedback, adminFeedback, annotation, agent_thoughts } = item
+  const isAgentMode = !!agent_thoughts && agent_thoughts.length > 0
   const hasAnnotation = !!annotation?.id
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -98,7 +93,6 @@ const Answer: FC<IAnswerProps> = ({
   const { t } = useTranslation()
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const imgs = files.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
 
   /**
  * Render feedback results (distinguish between users and administrators)
@@ -209,8 +203,40 @@ const Answer: FC<IAnswerProps> = ({
     )
   }
 
+  const getImgs = (list?: VisionFile[]) => {
+    if (!list)
+      return []
+    return list.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
+  }
+
+  const agentModeAnswer = (
+    <div>
+      {agent_thoughts?.map((item, index) => (
+        <div key={index}>
+          {item.thought && (
+            <Markdown content={item.thought} />
+          )}
+          {/* {item.tool} */}
+          {/* perhaps not use tool */}
+          {!!item.tool && (
+            <Thought
+              thought={item}
+              allToolIcons={allToolIcons || {}}
+              isFinished={!!item.observation}
+            />
+          )}
+
+          {getImgs(item.message_files).length > 0 && (
+            <ImageGallery srcs={getImgs(item.message_files).map(item => item.url)} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+
   return (
-    <div key={id}>
+    // data-id for debug the item message is right
+    <div key={id} data-id={id}>
       <div className='flex items-start'>
         {
           answerIcon || (
@@ -233,16 +259,8 @@ const Answer: FC<IAnswerProps> = ({
                     <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
                   </div>
                 )}
-                {(thoughts && thoughts.length > 0) && (
-                  <Thought
-                    list={thoughts || []}
-                    allToolIcons={allToolIcons || {}}
-                  />
-                )}
-                {imgs.length > 0 && (
-                  <ImageGallery srcs={imgs.map(item => item.url)} />
-                )}
-                {(isResponsing && !content)
+
+                {(isResponsing && (!content && (isAgentMode && (agent_thoughts || []).length === 0)))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
@@ -253,16 +271,27 @@ const Answer: FC<IAnswerProps> = ({
                       {annotation?.logAnnotation && (
                         <div className='mb-1'>
                           <div className='mb-3'>
-                            <Markdown className='line-through !text-gray-400' content={content} />
+                            {isAgentMode
+                              ? (<div className='line-through !text-gray-400'>{agentModeAnswer}</div>)
+                              : (
+                                <Markdown className='line-through !text-gray-400' content={content} />
+                              )}
                           </div>
                           <EditTitle title={t('appAnnotation.editBy', {
                             author: annotation?.logAnnotation.account?.name,
                           })} />
                         </div>
                       )}
-
                       <div>
-                        <Markdown content={annotation?.logAnnotation ? annotation?.logAnnotation.content : content} />
+                        {annotation?.logAnnotation
+                          ? (
+                            <Markdown content={annotation?.logAnnotation.content || ''} />
+                          )
+                          : (isAgentMode
+                            ? agentModeAnswer
+                            : (
+                              <Markdown content={content} />
+                            ))}
                       </div>
                       {(hasAnnotation && !annotation?.logAnnotation) && (
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
@@ -272,7 +301,7 @@ const Answer: FC<IAnswerProps> = ({
                     </div>
                   )}
                 {
-                  !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
+                  !!citation?.length && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
                   )
                 }

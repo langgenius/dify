@@ -201,9 +201,7 @@ const Chat: FC<IChatProps> = ({
         {chatList.map((item, index) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
-            const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
             const citation = item.citation
-            const isThinking = !item.content && item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.some(item => item.thought === '[DONE]')
             return <Answer
               key={item.id}
               item={item}
@@ -213,10 +211,7 @@ const Chat: FC<IChatProps> = ({
               displayScene={displayScene ?? 'web'}
               isResponsing={isResponsing && isLast}
               answerIcon={answerIcon}
-              thoughts={thoughts}
-              files={item.message_files}
               citation={citation}
-              isThinking={isThinking}
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}
@@ -312,7 +307,7 @@ const Chat: FC<IChatProps> = ({
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
             {/* Thinking is sync and can not be stopped */}
-            {(isResponsing && canStopResponsing && !!chatList[chatList.length - 1]?.content) && (
+            {(isResponsing && canStopResponsing && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
               <div className='flex justify-center mb-4'>
                 <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponsing?.()}>
                   {stopIcon}

@@ -120,7 +120,7 @@ const ToolList: FC<Props> = ({
           <div className=''>{t('tools.includeToolNum', {
             num: list.length,
           })}</div>
-          {needAuth && isBuiltIn && !collection.is_team_authorization && isInToolsPage && (
+          {needAuth && isBuiltIn && !collection.is_team_authorization && (
             <>
               <div>·</div>
               <div
@@ -134,9 +134,9 @@ const ToolList: FC<Props> = ({
           )}
         </div>
       </div>
-      <div className={cn(isInToolsPage ? 'px-6 pt-4' : 'px-4 pt-3', 'grow h-0 overflow-y-auto')}>
+      <div className={cn(isInToolsPage ? 'px-6' : 'px-4', 'grow h-0 pt-2 overflow-y-auto')}>
         {/* list */}
-        <div className={cn(isInToolsPage ? 'grid-cols-3 gap-4' : 'grid-cols-1 gap-2', 'mt-2 grid')}>
+        <div className={cn(isInToolsPage ? 'grid-cols-3 gap-4' : 'grid-cols-1 gap-2', 'grid')}>
           {list.map(item => (
             <Item
               key={item.name}

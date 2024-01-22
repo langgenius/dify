@@ -147,7 +147,7 @@ const Configuration: FC = () => {
     agentConfig: DEFAULT_AGENT_SETTING,
   })
   const isChatApp = mode === AppType.chat
-  const isAgent = modelConfig.agentConfig.enabled
+  const isAgent = modelConfig.agentConfig?.enabled
   const setIsAgent = (value: boolean) => {
     const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.agentConfig.enabled = value
@@ -414,7 +414,30 @@ const Configuration: FC = () => {
           mode: model.mode,
           configs: {
             prompt_template: modelConfig.pre_prompt,
-            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form, modelConfig.dataset_query_variable),
+            prompt_variables: userInputsFormToPromptVariables(
+              [
+                ...modelConfig.user_input_form,
+                ...(
+                  modelConfig.external_data_tools?.length
+                    ? modelConfig.external_data_tools.map((item: any) => {
+                      return {
+                        external_data_tool: {
+                          variable: item.variable as string,
+                          label: item.label as string,
+                          enabled: item.enabled,
+                          type: item.type as string,
+                          config: item.config,
+                          required: true,
+                          icon: item.icon,
+                          icon_background: item.icon_background,
+                        },
+                      }
+                    })
+                    : []
+                ),
+              ],
+              modelConfig.dataset_query_variable,
+            ),
           },
           opening_statement: modelConfig.opening_statement,
           more_like_this: modelConfig.more_like_this,
@@ -425,12 +448,18 @@ const Configuration: FC = () => {
           external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
           // eslint-disable-next-line multiline-ternary
-          agentConfig: modelConfig.agent_mode ? {
+          agentConfig: res.is_agent ? {
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             ...modelConfig.agent_mode,
             // remove dataset
+            enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
             tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
               return !tool.dataset
+            }).map((tool: any) => {
+              return {
+                ...tool,
+                isDeleted: res.deleted_tools?.includes(tool.tool_name),
+              }
             }),
           } : DEFAULT_AGENT_SETTING,
         },
@@ -528,7 +557,6 @@ const Configuration: FC = () => {
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,

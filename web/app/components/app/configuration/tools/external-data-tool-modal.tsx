@@ -17,6 +17,7 @@ import type {
   ExternalDataTool,
 } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
+import AppIcon from '@/app/components/base/app-icon'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -216,12 +217,12 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             className='grow block mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
             placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
           />
-          {/* <AppIcon size='large'
+          <AppIcon size='large'
             onClick={() => { setShowEmojiPicker(true) }}
             className='!w-9 !h-9 rounded-lg border-[0.5px] border-black/5 cursor-pointer '
             icon={localeData.icon}
             background={localeData.icon_background}
-          /> */}
+          />
         </div>
       </div>
       <div className='py-2'>
@@ -285,6 +286,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       {
         showEmojiPicker && (
           <EmojiPicker
+            className='!z-[200]'
             onSelect={(icon, icon_background) => {
               handleValueChange({ icon, icon_background })
               setShowEmojiPicker(false)

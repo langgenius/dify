@@ -6,10 +6,11 @@ import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import { checkOrSetAccessToken } from '../utils'
+import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import useConversation from './hooks/use-conversation'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
@@ -199,6 +200,14 @@ const Main: FC<IMainProps> = ({
   const conversationIntroduction = currConversationInfo?.introduction || ''
   const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
 
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
+
   useEffect(() => {
     (async () => {
       if (controlChatUpdateAllConversation && !isNewConversation) {
@@ -258,6 +267,7 @@ const Main: FC<IMainProps> = ({
           newChatList.push({
             id: item.id,
             content: item.answer,
+            agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,
@@ -325,7 +335,6 @@ const Main: FC<IMainProps> = ({
     if (caculatedIntroduction && caculatedPromptVariables)
       caculatedIntroduction = replaceStringWithValues(caculatedIntroduction, promptConfig?.prompt_variables || [], caculatedPromptVariables)
 
-    // console.log(isPublicVersion)
     const openstatement = {
       id: `${Date.now()}`,
       content: caculatedIntroduction,
@@ -475,6 +484,29 @@ const Main: FC<IMainProps> = ({
     transfer_methods: [TransferMethod.local_file],
   })
 
+  const updateCurrentQA = ({
+    responseItem,
+    questionId,
+    placeholderAnswerId,
+    questionItem,
+  }: {
+    responseItem: IChatItem
+    questionId: string
+    placeholderAnswerId: string
+    questionItem: IChatItem
+  }) => {
+    // closesure new list is outdated.
+    const newListWithAnswer = produce(
+      getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+      (draft) => {
+        if (!draft.find(item => item.id === questionId))
+          draft.push({ ...questionItem })
+
+        draft.push({ ...responseItem })
+      })
+    setChatList(newListWithAnswer)
+  }
+
   const handleSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -511,6 +543,7 @@ const Main: FC<IMainProps> = ({
       content: message,
       isAnswer: false,
       message_files: files,
+
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -523,6 +556,8 @@ const Main: FC<IMainProps> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    let isAgentMode = false
+
     // answer
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
@@ -531,6 +566,8 @@ const Main: FC<IMainProps> = ({
       message_files: [],
       isAnswer: true,
     }
+    let hasSetResponseId = false
+
     const prevTempNewConversationId = getCurrConversationId() || '-1'
     let tempNewConversationId = prevTempNewConversationId
 
@@ -543,8 +580,19 @@ const Main: FC<IMainProps> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
-        responseItem.id = messageId
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+        }
+        if (messageId && !hasSetResponseId) {
+          responseItem.id = messageId
+          hasSetResponseId = true
+        }
+
         if (isFirstMessage && newConversationId)
           tempNewConversationId = newConversationId
 
@@ -554,16 +602,12 @@ const Main: FC<IMainProps> = ({
           setIsResponsingConCurrCon(false)
           return
         }
-        // closesure new list is outdated.
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       async onCompleted(hasError?: boolean) {
         if (hasError)
@@ -591,33 +635,54 @@ const Main: FC<IMainProps> = ({
         setResponsingFalse()
       },
       onFile(file) {
-        responseItem.message_files = [...(responseItem as any).message_files, file]
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          lastThought.message_files = [...(lastThought as any).message_files, { ...file }]
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onThought(thought) {
-        responseItem.id = thought.message_id;
-        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
-        // has switched to other conversation
+        // console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
 
-        // if (prevTempNewConversationId !== getCurrConversationId()) {
-        //   setIsResponsingConCurrCon(false)
-        //   return
-        // }
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        isAgentMode = true
+        const response = responseItem as any
+        if (thought.message_id && !hasSetResponseId) {
+          response.id = thought.message_id
+          hasSetResponseId = true
+        }
+        // responseItem.id = thought.message_id;
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+          }
+          else {
+            responseItem.agent_thoughts!.push(thought)
+          }
+        }
+        // has switched to other conversation
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return false
+        }
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {

@@ -354,15 +354,16 @@ const translation = {
     name: 'Assistant Type',
     chatAssistant: {
       name: 'Chat Assistant',
-      description: 'Description text here, chat mode can do that',
+      description: 'Build a chat-based assistant using a Large Language Model',
     },
     agentAssistant: {
       name: 'Agent Assistant',
-      description: 'Description text here, agent mod can use tools',
+      description: 'Build an intelligent Agent which can autonomously choose tools to complete the tasks',
     },
   },
   agent: {
     agentMode: 'Agent Mode',
+    agentModeDes: 'Set the type of inference mode for the agent',
     agentModeType: {
       cot: 'COT',
       functionCall: 'Function Call',
@@ -372,7 +373,7 @@ const translation = {
       description: 'Agent settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
       maximumIterations: {
         name: 'Maximum Iterations',
-        description: 'Maximum Iterations des',
+        description: 'Limit the number of iterations an agent assistant can execute',
       },
     },
     buildInPrompt: 'Build-In Prompt',
@@ -381,7 +382,7 @@ const translation = {
     promptPlaceholder: 'Write your prompt here',
     tools: {
       name: 'Tools',
-      description: 'Tools des',
+      description: 'Using tools can extend the capabilities of LLM, such as searching the internet or performing scientific calculations',
       enabled: 'Enabled',
     },
   },

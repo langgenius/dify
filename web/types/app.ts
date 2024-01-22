@@ -1,5 +1,4 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
-import type { ExternalDataTool } from '@/models/common'
 import type { CollectionType } from '@/app/components/tools/types'
 export enum ProviderType {
   openai = 'openai',
@@ -96,6 +95,7 @@ export type AgentTool = {
   provider_type: CollectionType
   provider_name: string
   tool_name: string
+  tool_label: string
   tool_parameters: Record<string, any>
   enabled: boolean
   isDeleted?: boolean
@@ -145,7 +145,6 @@ export type ModelConfig = {
   sensitive_word_avoidance: {
     enabled: boolean
   }
-  external_data_tools: ExternalDataTool[]
   annotation_reply?: AnnotationReplyConfig
   agent_mode: {
     enabled: boolean

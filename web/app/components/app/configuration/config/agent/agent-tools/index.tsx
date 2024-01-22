@@ -20,6 +20,7 @@ import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -84,15 +85,15 @@ const AgentTools: FC = () => {
         <div className='flex items-center flex-wrap justify-between'>
           {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
             <div key={index}
-              className={cn(item.isDeleted ? 'bg-white/50' : 'bg-white', item.enabled && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full  rounded-lg border-[0.5px] border-gray-200 ')}
+              className={cn(item.isDeleted ? 'bg-white/50' : 'bg-white', (item.enabled && !item.isDeleted) && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full  rounded-lg border-[0.5px] border-gray-200 ')}
               style={{
                 width: 'calc(50% - 2px)',
               }}
             >
               <div className='flex items-center'>
-                {!item.icon
+                {item.isDeleted
                   ? (
-                    <div className='w-6 h-6' />
+                    <DefaultToolIcon className='w-6 h-6' />
                   )
                   : (
                     typeof item.icon === 'string'
@@ -114,18 +115,22 @@ const AgentTools: FC = () => {
                       ))}
                 <div
                   title={item.tool_name}
-                  className={cn(item.isDeleted && 'line-through opacity-50', 'ml-2 max-w-[200px] group-hover:max-w-[70px] leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
+                  className={cn(item.isDeleted ? 'line-through opacity-50' : 'group-hover:max-w-[70px]', 'ml-2 max-w-[200px]  leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
-                  {item.tool_name}
+                  {item.tool_label || item.tool_name}
                 </div>
               </div>
               <div className='flex items-center'>
                 {item.isDeleted
                   ? (
                     <div className='flex items-center'>
-                      <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer'>
-                        <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-                      </div>
+                      <TooltipPlus
+                        popupContent={t('tools.toolRemoved')}
+                      >
+                        <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer'>
+                          <AlertTriangle className='w-4 h-4 text-[#F79009]' />
+                        </div>
+                      </TooltipPlus>
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {

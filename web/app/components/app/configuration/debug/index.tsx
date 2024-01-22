@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import dayjs from 'dayjs'
@@ -89,7 +89,6 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
-    externalDataToolsConfig,
     visionConfig,
     annotationConfig,
     setVisionConfig,
@@ -99,6 +98,13 @@ const Debug: FC<IDebug> = ({
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
   useEffect(() => {
     // scroll to bottom
     if (chatListDomRef.current)
@@ -185,7 +191,9 @@ const Debug: FC<IDebug> = ({
       }
     }
     let hasEmptyInput = ''
-    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required }) => {
+    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
+      if (type === 'api')
+        return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) // compatible with old version
@@ -231,7 +239,28 @@ const Debug: FC<IDebug> = ({
       },
     }))
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+    const updateCurrentQA = ({
+      responseItem,
+      questionId,
+      placeholderAnswerId,
+      questionItem,
+    }: {
+      responseItem: IChatItem
+      questionId: string
+      placeholderAnswerId: string
+      questionItem: IChatItem
+    }) => {
+      // closesure new list is outdated.
+      const newListWithAnswer = produce(
+        getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+        (draft) => {
+          if (!draft.find(item => item.id === questionId))
+            draft.push({ ...questionItem })
 
+          draft.push({ ...responseItem })
+        })
+      setChatList(newListWithAnswer)
+    }
     const postModelConfig: BackendModelConfig = {
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
@@ -247,7 +276,6 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
@@ -313,6 +341,8 @@ const Debug: FC<IDebug> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    let isAgentMode = false
+
     // answer
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
@@ -321,6 +351,7 @@ const Debug: FC<IDebug> = ({
       message_files: [],
       isAnswer: true,
     }
+    let hasSetResponseId = false
 
     let _newConversationId: null | string = null
 
@@ -332,25 +363,32 @@ const Debug: FC<IDebug> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
+        // console.log('onData', message)
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+        }
+        if (messageId && !hasSetResponseId) {
+          responseItem.id = messageId
+          hasSetResponseId = true
+        }
+
         if (isFirstMessage && newConversationId) {
           setConversationId(newConversationId)
           _newConversationId = newConversationId
         }
         setMessageTaskId(taskId)
-        if (messageId)
-          responseItem.id = messageId
 
-        // closesure new list is outdated.
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       async onCompleted(hasError?: boolean) {
         setResponsingFalse()
@@ -389,33 +427,43 @@ const Debug: FC<IDebug> = ({
         }
       },
       onFile(file) {
-        responseItem.message_files = [...(responseItem as any).message_files, file]
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onThought(thought) {
-        responseItem.id = thought.message_id;
-        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
-        // has switched to other conversation
-
-        // if (prevTempNewConversationId !== getCurrConversationId()) {
-        //   setIsResponsingConCurrCon(false)
-        //   return
-        // }
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        isAgentMode = true
+        const response = responseItem as any
+        if (thought.message_id && !hasSetResponseId)
+          response.id = thought.message_id
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+          }
+          else {
+            responseItem.agent_thoughts!.push(thought)
+          }
+        }
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
@@ -506,7 +554,6 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       more_like_this: moreLikeThisConfig,
       model: {
         provider: modelConfig.provider,
