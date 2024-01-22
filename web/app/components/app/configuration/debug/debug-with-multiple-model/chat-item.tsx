@@ -81,7 +81,6 @@ const ChatItem: FC<ChatItemProps> = ({
     speech_to_text: speechToTextConfig,
     retriever_resource: citationConfig,
     sensitive_word_avoidance: moderationConfig,
-    external_data_tools: externalDataToolsConfig,
     agent_mode: {
       ...modelConfig.agentConfig,
       strategy: (modelAndParameter.provider === 'openai' && modelConfig.mode === ModelModeType.chat) ? AgentStrategy.functionCall : AgentStrategy.react,

@@ -1,6 +1,9 @@
 import type { FC, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ChatItem } from '../types'
+import type {
+  ChatItem,
+  VisionFile,
+} from '../types'
 import { useChatContext } from '../context'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import LoadingAnim from '@/app/components/app/chat/loading-anim'
@@ -33,11 +36,39 @@ const Answer: FC<AnswerProps> = ({
     citation,
     agent_thoughts,
     more,
-    message_files,
   } = item
-  const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
-  const isThinking = !content && agent_thoughts && agent_thoughts?.length > 0 && !agent_thoughts.some(agent => agent.thought === '[DONE]')
-  const imgs = message_files?.filter(file => file.type === 'image') || []
+  const isAgentMode = agent_thoughts?.length
+
+  const getImgs = (list?: VisionFile[]) => {
+    if (!list)
+      return []
+    return list.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
+  }
+
+  const agentModeAnswer = (
+    <div>
+      {agent_thoughts?.map((item, index) => (
+        <div key={index}>
+          {item.thought && (
+            <Markdown content={item.thought} />
+          )}
+          {/* {item.tool} */}
+          {/* perhaps not use tool */}
+          {!!item.tool && (
+            <Thought
+              thought={item}
+              allToolIcons={allToolIcons || {}}
+              isFinished={!!item.observation}
+            />
+          )}
+
+          {getImgs(item.message_files).length > 0 && (
+            <ImageGallery srcs={getImgs(item.message_files).map(item => item.url)} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <div className='flex mb-2 last:mb-0'>
@@ -79,31 +110,27 @@ const Answer: FC<AnswerProps> = ({
                 </div>
               )
             }
-            {!!thoughts?.length && (
-              <Thought
-                list={thoughts || []}
-                allToolIcons={allToolIcons || {}}
-              />
-            )}
-            {!!imgs.length && (
-              <ImageGallery srcs={imgs.map(item => item.url)} />
-            )}
             {
-              !content && responsing && (
+              responsing && !content && !agent_thoughts?.length && (
                 <div className='flex items-center justify-center w-6 h-5'>
                   <LoadingAnim type='text' />
                 </div>
               )
             }
             {
-              content && (
+              content && !isAgentMode && (
                 <div>
                   <Markdown content={content} />
                 </div>
               )
             }
             {
-              !!citation?.length && !isThinking && config.retriever_resource?.enabled && !responsing && (
+              isAgentMode && (
+                agentModeAnswer
+              )
+            }
+            {
+              !!citation?.length && config.retriever_resource?.enabled && !responsing && (
                 <Citation data={citation} showHitInfo />
               )
             }

@@ -89,6 +89,29 @@ export const useChat = (
       return false
     }
 
+    const updateCurrentQA = ({
+      responseItem,
+      questionId,
+      placeholderAnswerId,
+      questionItem,
+    }: {
+      responseItem: ChatItem
+      questionId: string
+      placeholderAnswerId: string
+      questionItem: ChatItem
+    }) => {
+      // closesure new list is outdated.
+      const newListWithAnswer = produce(
+        getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+        (draft) => {
+          if (!draft.find(item => item.id === questionId))
+            draft.push({ ...questionItem })
+
+          draft.push({ ...responseItem })
+        })
+      setChatList(newListWithAnswer)
+    }
+
     const questionId = `question-${Date.now()}`
     const questionItem = {
       id: questionId,
@@ -135,6 +158,10 @@ export const useChat = (
         return item
       })
     }
+
+    let isAgentMode = false
+    let hasSetResponseId = false
+
     ssePost(
       url,
       {
@@ -145,7 +172,19 @@ export const useChat = (
           setAbortController(abortController)
         },
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-          responseItem.content = responseItem.content + message
+          if (!isAgentMode) {
+            responseItem.content = responseItem.content + message
+          }
+          else {
+            const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+            if (lastThought)
+              lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+          }
+
+          if (messageId && !hasSetResponseId) {
+            responseItem.id = messageId
+            hasSetResponseId = true
+          }
 
           if (isFirstMessage && newConversationId)
             connversationId.current = newConversationId
@@ -154,15 +193,12 @@ export const useChat = (
           if (messageId)
             responseItem.id = messageId
 
-          const newListWithAnswer = produce(
-            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-            (draft) => {
-              if (!draft.find(item => item.id === questionId))
-                draft.push({ ...questionItem })
-
-              draft.push({ ...responseItem })
-            })
-          setChatList(newListWithAnswer)
+          updateCurrentQA({
+            responseItem,
+            questionId,
+            placeholderAnswerId,
+            questionItem,
+          })
         },
         async onCompleted(hasError?: boolean) {
           setIsResponsing(false)
@@ -207,28 +243,43 @@ export const useChat = (
           }
         },
         onFile(file) {
-          responseItem.message_files = [...(responseItem as any).message_files, file]
-          const newListWithAnswer = produce(
-            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-            (draft) => {
-              if (!draft.find(item => item.id === questionId))
-                draft.push({ ...questionItem })
-              draft.push({ ...responseItem })
-            })
-          setChatList(newListWithAnswer)
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
+
+          updateCurrentQA({
+            responseItem,
+            questionId,
+            placeholderAnswerId,
+            questionItem,
+          })
         },
         onThought(thought) {
-          responseItem.id = thought.message_id;
-          (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought]
-
-          const newListWithAnswer = produce(
-            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-            (draft) => {
-              if (!draft.find(item => item.id === questionId))
-                draft.push({ ...questionItem })
-              draft.push({ ...responseItem })
-            })
-          setChatList(newListWithAnswer)
+          isAgentMode = true
+          const response = responseItem as any
+          if (thought.message_id && !hasSetResponseId)
+            response.id = thought.message_id
+          if (response.agent_thoughts.length === 0) {
+            response.agent_thoughts.push(thought)
+          }
+          else {
+            const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+            // thought changed but still the same thought, so update.
+            if (lastThought.id === thought.id) {
+              thought.thought = lastThought.thought
+              thought.message_files = lastThought.message_files
+              responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+            }
+            else {
+              responseItem.agent_thoughts!.push(thought)
+            }
+          }
+          updateCurrentQA({
+            responseItem,
+            questionId,
+            placeholderAnswerId,
+            questionItem,
+          })
         },
         onMessageEnd: (messageEnd) => {
           if (messageEnd.metadata?.annotation_reply) {
