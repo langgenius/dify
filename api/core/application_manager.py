@@ -485,35 +485,35 @@ class ApplicationManager:
                 max_iteration=agent_dict.get('max_iteration', 5)
             )
 
-            if len(dataset_ids) > 0:
-                # dataset configs
-                dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
-                query_variable = copy_app_model_config_dict.get('dataset_query_variable')
+        if len(dataset_ids) > 0:
+            # dataset configs
+            dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
+            query_variable = copy_app_model_config_dict.get('dataset_query_variable')
 
-                if dataset_configs['retrieval_model'] == 'single':
-                    properties['dataset'] = DatasetEntity(
-                        dataset_ids=dataset_ids,
-                        retrieve_config=DatasetRetrieveConfigEntity(
-                            query_variable=query_variable,
+            if dataset_configs['retrieval_model'] == 'single':
+                properties['dataset'] = DatasetEntity(
+                    dataset_ids=dataset_ids,
+                    retrieve_config=DatasetRetrieveConfigEntity(
+                        query_variable=query_variable,
                             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieval_model']
-                            ),
-                            single_strategy=datasets.get('strategy', 'router')
-                        )
+                            dataset_configs['retrieval_model']
+                        ),
+                        single_strategy=datasets.get('strategy', 'router')
                     )
-                else:
-                    properties['dataset'] = DatasetEntity(
-                        dataset_ids=dataset_ids,
-                        retrieve_config=DatasetRetrieveConfigEntity(
-                            query_variable=query_variable,
-                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieval_model']
-                            ),
-                            top_k=dataset_configs.get('top_k'),
-                            score_threshold=dataset_configs.get('score_threshold'),
-                            reranking_model=dataset_configs.get('reranking_model')
-                        )
+                )
+            else:
+                properties['dataset'] = DatasetEntity(
+                    dataset_ids=dataset_ids,
+                    retrieve_config=DatasetRetrieveConfigEntity(
+                        query_variable=query_variable,
+                        retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                            dataset_configs['retrieval_model']
+                        ),
+                        top_k=dataset_configs.get('top_k'),
+                        score_threshold=dataset_configs.get('score_threshold'),
+                        reranking_model=dataset_configs.get('reranking_model')
                     )
+                )
 
         # file upload
         file_upload_dict = copy_app_model_config_dict.get('file_upload')
