@@ -294,10 +294,11 @@ const translation = {
     },
   },
   openingStatement: {
-    title: 'Opening remarks',
+    title: 'Conversation Opener',
     add: 'Add',
-    writeOpner: 'Write remarks',
+    writeOpner: 'Write opener',
     placeholder: 'Write your opener message here, you can use variables, try type {{variable}}.',
+    openingQuestion: 'Opening Questions',
     noDataPlaceHolder:
       'Starting the conversation with the user can help AI establish a closer connection with them in conversational applications.',
     varTip: 'You can use variables, try type {{variable}}',

@@ -137,7 +137,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
       <div>
         <div className='flex items-center py-2'>
           <div className='shrink-0 flex space-x-0.5 leading-[18px] text-xs font-medium text-gray-500'>
-            <div className='uppercase'>opening questions</div>
+            <div className='uppercase'>{t('appDebug.openingStatement.openingQuestion')}</div>
             <div>·</div>
             <div>{questions.length}/{MAX_QUESTION_NUM}</div>
           </div>
