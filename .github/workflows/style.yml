@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - deploy/dev
 
 concurrency:
   group: dep-${{ github.head_ref || github.run_id }}
@@ -24,7 +21,7 @@ jobs:
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: yarn
           cache-dependency-path: ./web/package.json
 

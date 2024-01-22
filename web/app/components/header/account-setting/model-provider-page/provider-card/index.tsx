@@ -7,6 +7,7 @@ import type {
 import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
+  MODEL_PROVIDER_QUOTA_GET_FREE,
   modelTypeFormat,
 } from '../utils'
 import {
@@ -55,7 +56,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
   }
   const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
-  const canGetFreeQuota = ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && !IS_CE_EDITION
+  const canGetFreeQuota = MODEL_PROVIDER_QUOTA_GET_FREE.includes(provider.provider) && !IS_CE_EDITION && provider.system_configuration.enabled
 
   return (
     <div

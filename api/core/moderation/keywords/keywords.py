@@ -30,7 +30,10 @@ class KeywordsModeration(Moderation):
 
             if query:
                 inputs['query__'] = query
-            keywords_list = self.config['keywords'].split('\n')
+
+            # Filter out empty values
+            keywords_list = [keyword for keyword in self.config['keywords'].split('\n') if keyword]
+
             flagged = self._is_violated(inputs, keywords_list)
 
         return ModerationInputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
@@ -40,7 +43,9 @@ class KeywordsModeration(Moderation):
         preset_response = ""
 
         if self.config['outputs_config']['enabled']:
-            keywords_list = self.config['keywords'].split('\n')
+            # Filter out empty values
+            keywords_list = [keyword for keyword in self.config['keywords'].split('\n') if keyword]
+
             flagged = self._is_violated({'text': text}, keywords_list)
             preset_response = self.config['outputs_config']['preset_response']
 

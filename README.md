@@ -26,22 +26,24 @@
 
 ![](./images/demo.png)
 
-## Use Cloud Services
 
-[Dify.AI Cloud](https://dify.ai) provides all the capabilities of the open-source version, and includes 200 free requests to OpenAI GPT-3.5.
 
-## Why Dify
+## Using our Cloud Services
 
-Dify is model-agnostic and boasts a comprehensive tech stack compared to hardcoded development libraries like LangChain. Unlike OpenAI's Assistants API, Dify allows for full local deployment of services.
+You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free requests to OpenAI GPT-3.5.
+
+## Dify vs. LangChain vs. Assistants API
 
 | Feature | Dify.AI | Assistants API | LangChain |
 |---------|---------|----------------|-----------|
 | **Programming Approach** | API-oriented | API-oriented | Python Code-oriented |
-| **Ecosystem Strategy** | Open Source | Closed and Commercial | Open Source |
+| **Ecosystem Strategy** | Open Source | Close Source | Open Source |
 | **RAG Engine** | Supported | Supported | Not Supported |
 | **Prompt IDE** | Included | Included | None |
-| **Supported LLMs** | Rich Variety | Only GPT | Rich Variety |
+| **Supported LLMs** | Rich Variety | OpenAI-only | Rich Variety |
 | **Local Deployment** | Supported | Not Supported | Not Applicable |
+
+
 
 ## Features
 
@@ -59,7 +61,7 @@ Dify is model-agnostic and boasts a comprehensive tech stack compared to hardcod
 
 ## Before You Start
 
-**Star us, and you'll get instant notifications for all new releases on GitHub!**
+**Star us on GitHub, and be instantly notified for new releases!**
 
 ![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
 
@@ -103,17 +105,39 @@ If you need to customize the configuration, please refer to the comments in our 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
+## Contributing
+
+For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
+
+At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
+
+### Contributors
+
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
+
+### Translations
+
+We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README_EN.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/AhzKf7dNgk).
 
 ## Community & Support
 
-We welcome you to contribute to Dify to help make Dify better in various ways, submitting code, issues, new ideas, or sharing the interesting and useful AI applications you have created based on Dify. At the same time, we also welcome you to share Dify at different events, conferences, and social media.
+* [Canny](https://feedback.dify.ai/). Best for: sharing feedback and checking out our feature roadmap.
+* [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+* [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
+* [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
+* [Twitter](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
+* [Business Contact](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry). Best for: business inquiries of licensing Dify.AI for commercial use.
 
-- [Roadmap and Feedback](https://feedback.dify.ai/). Best for: sharing feedback and checking out our feature roadmap.
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs and errors you encounter using Dify.AI, see the [Contribution Guide](CONTRIBUTING.md).
-- [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
-- [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
-- [Twitter](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
-- [Business License](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry). Best for: business inquiries of licensing Dify.AI for commercial use.
+### Direct Meetings
+
+**Help us make Dify better. Reach out directly to us**.
+
+|                       Point of Contact                       |                           Purpose                            |
+| :----------------------------------------------------------: | :----------------------------------------------------------: |
+| <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="60" width="214"/></a> | Product design feedback, user experience discussions, feature planning and roadmaps. |
+| <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="60" width="225"/></a> |        Technical support, issues, or feature requests        |
 
 ## Security Disclosure
 
