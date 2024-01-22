@@ -297,7 +297,7 @@ const translation = {
     title: 'Opening remarks',
     add: 'Add',
     writeOpner: 'Write remarks',
-    placeholder: 'Write your remarks message here',
+    placeholder: 'Write your opener message here, you can use variables, try type {{variable}}.',
     noDataPlaceHolder:
       'Starting the conversation with the user can help AI establish a closer connection with them in conversational applications.',
     varTip: 'You can use variables, try type {{variable}}',
