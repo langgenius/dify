@@ -18,6 +18,7 @@ from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 
 class MinimaxLargeLanguageModel(LargeLanguageModel):
     model_apis = {
+        'abab5.5s-chat': MinimaxChatCompletionPro,
         'abab5.5-chat': MinimaxChatCompletionPro,
         'abab5-chat': MinimaxChatCompletion
     }
