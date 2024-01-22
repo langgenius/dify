@@ -23,6 +23,7 @@ export type App = {
   install_count: number
   installed: boolean
   editable: boolean
+  is_agent: boolean
 }
 
 export type InstalledApp = {
