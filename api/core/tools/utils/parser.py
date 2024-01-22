@@ -52,13 +52,13 @@ class ApiBasedToolSchemaParser:
                             zh_Hans=parameter['name']
                         ),
                         human_description=I18nObject(
-                            en_US=parameter['description'],
-                            zh_Hans=parameter['description']
+                            en_US=parameter.get('description', ''),
+                            zh_Hans=parameter.get('description', '')
                         ),
                         type=ToolParamter.ToolParameterType.STRING,
                         required=parameter['required'],
                         form=ToolParamter.ToolParameterForm.LLM,
-                        llm_description=parameter['description'],
+                        llm_description=parameter.get('description'),
                         default=parameter['default'] if 'default' in parameter else None,
                     ))
             # create tool bundle
