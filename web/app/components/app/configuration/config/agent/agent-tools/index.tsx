@@ -85,13 +85,13 @@ const AgentTools: FC = () => {
         <div className='flex items-center flex-wrap justify-between'>
           {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
             <div key={index}
-              className={cn(item.isDeleted ? 'bg-white/50' : 'bg-white', (item.enabled && !item.isDeleted) && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full  rounded-lg border-[0.5px] border-gray-200 ')}
+              className={cn((item.isDeleted || item.notAuthor) ? 'bg-white/50' : 'bg-white', (item.enabled && !item.isDeleted && !item.notAuthor) && 'shadow-xs', index > 1 && 'mt-1', 'group relative flex justify-between items-center last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full  rounded-lg border-[0.5px] border-gray-200 ')}
               style={{
                 width: 'calc(50% - 2px)',
               }}
             >
               <div className='flex items-center'>
-                {item.isDeleted
+                {(item.isDeleted || item.notAuthor)
                   ? (
                     <DefaultToolIcon className='w-6 h-6' />
                   )
@@ -115,13 +115,13 @@ const AgentTools: FC = () => {
                       ))}
                 <div
                   title={item.tool_name}
-                  className={cn(item.isDeleted ? 'line-through opacity-50' : 'group-hover:max-w-[70px]', 'ml-2 max-w-[200px]  leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
+                  className={cn((item.isDeleted || item.notAuthor) ? 'line-through opacity-50' : 'group-hover:max-w-[70px]', 'ml-2 max-w-[200px]  leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
                   {item.tool_label || item.tool_name}
                 </div>
               </div>
               <div className='flex items-center'>
-                {item.isDeleted
+                {(item.isDeleted || item.notAuthor)
                   ? (
                     <div className='flex items-center'>
                       <TooltipPlus
@@ -169,10 +169,10 @@ const AgentTools: FC = () => {
                       <div className='ml-2 mr-3 w-px h-3.5 bg-gray-200'></div>
                     </div>
                   )}
-                <div className={cn(item.isDeleted && 'opacity-50')}>
+                <div className={cn((item.isDeleted || item.notAuthor) && 'opacity-50')}>
                   <Switch
-                    defaultValue={item.isDeleted ? false : item.enabled}
-                    disabled={item.isDeleted}
+                    defaultValue={(item.isDeleted || item.notAuthor) ? false : item.enabled}
+                    disabled={(item.isDeleted || item.notAuthor)}
                     size='md'
                     onChange={(enabled) => {
                       const newModelConfig = produce(modelConfig, (draft) => {

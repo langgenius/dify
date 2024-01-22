@@ -88,7 +88,7 @@ const translation = {
     reset: '重置搜索',
   },
   builtInPromptTitle: '提示词',
-  toolRemoved: '工具已被移除',
+  toolRemoved: '工具已被移除或未授权',
 }
 
 export default translation
