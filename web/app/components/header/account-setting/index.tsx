@@ -48,6 +48,7 @@ type IAccountSettingProps = {
 type GroupItem = {
   key: string
   name: string
+  description?: string
   icon: JSX.Element
   activeIcon: JSX.Element
 }
@@ -78,6 +79,7 @@ export default function AccountSetting({
         // Use key false to hide this item
         key: enableBilling ? 'billing' : false,
         name: t('common.settings.billing'),
+        description: t('billing.plansCommon.receiptInfo'),
         icon: <GoldCoinOutLine className={iconClassName} />,
         activeIcon: <GoldCoin className={iconClassName} />,
       },
@@ -160,6 +162,8 @@ export default function AccountSetting({
     }
   }, [])
 
+  const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
+
   return (
     <Modal
       isShow
@@ -199,10 +203,17 @@ export default function AccountSetting({
           </div>
         </div>
         <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center justify-between h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
-            {[...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)?.name}
-            <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
-              <XClose className='w-4 h-4 text-gray-500' />
+          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
+            <div className='shrink-0'>{activeItem?.name}</div>
+            {
+              activeItem?.description && (
+                <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
+              )
+            }
+            <div className='grow flex justify-end'>
+              <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
+                <XClose className='w-4 h-4 text-gray-400' />
+              </div>
             </div>
           </div>
           <div className='px-4 sm:px-8 pt-2'>
