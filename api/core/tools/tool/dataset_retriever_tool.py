@@ -29,6 +29,11 @@ class DatasetRetrieverTool(Tool):
             return []
 
         feature = DatasetRetrievalFeature()
+
+        # save original retrieve strategy, and set retrieve strategy to SINGLE
+        # Agent only support SINGLE mode
+        original_retriever_mode = retrieve_config.retrieve_strategy
+        retrieve_config.retrieve_strategy = DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
         langchain_tools = feature.to_dataset_retriever_tool(
             tenant_id=tenant_id,
             dataset_ids=dataset_ids,
@@ -37,6 +42,8 @@ class DatasetRetrieverTool(Tool):
             invoke_from=invoke_from,
             hit_callback=hit_callback
         )
+        # restore retrieve strategy
+        retrieve_config.retrieve_strategy = original_retriever_mode
         
         # convert langchain tools to Tools
         tools = []
