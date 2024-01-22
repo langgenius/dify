@@ -7,6 +7,10 @@ import type { IChatItem } from '@/app/components/app/chat/type'
 
 export type { VisionFile } from '@/types/app'
 export { TransferMethod } from '@/types/app'
+export type {
+  Inputs,
+  PromptVariable,
+} from '@/models/debug'
 
 export type UserInputForm = {
   default: string

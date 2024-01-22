@@ -105,6 +105,10 @@ const ChatItem: FC<ChatItemProps> = ({
     handleRestart,
   } = useChat(
     config,
+    {
+      inputs,
+      promptVariables: modelConfig.configs.prompt_variables,
+    },
     [],
     taskId => stopChatMessageResponding(appId, taskId),
   )

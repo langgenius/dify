@@ -10,11 +10,14 @@ import dayjs from 'dayjs'
 import type {
   ChatConfig,
   ChatItem,
+  Inputs,
+  PromptVariable,
   VisionFile,
 } from './types'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
+import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -23,6 +26,10 @@ type SendCallback = {
 }
 export const useChat = (
   config: ChatConfig,
+  promptVariablesConfig?: {
+    inputs: Inputs
+    promptVariables: PromptVariable[]
+  },
   prevChatList?: ChatItem[],
   stopChat?: (taskId: string) => void,
 ) => {
@@ -38,17 +45,20 @@ export const useChat = (
   const [conversationMessagesAbortController, setConversationMessagesAbortController] = useState<AbortController | null>(null)
   const [suggestedQuestionsAbortController, setSuggestedQuestionsAbortController] = useState<AbortController | null>(null)
 
+  const getIntroduction = (str: string) => {
+    return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
+  }
   useEffect(() => {
     if (config.opening_statement && !chatList.some(item => !item.isAnswer)) {
       setChatList([{
         id: `${Date.now()}`,
-        content: config.opening_statement,
+        content: getIntroduction(config.opening_statement),
         isAnswer: true,
         isOpeningStatement: true,
         suggestedQuestions: config.suggested_questions,
       }])
     }
-  }, [config.opening_statement, config.suggested_questions])
+  }, [config.opening_statement, config.suggested_questions, promptVariablesConfig?.inputs])
 
   const handleStop = () => {
     if (stopChat && taskId)
