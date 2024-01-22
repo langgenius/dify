@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import time
 from abc import abstractmethod
 from typing import Generator, List, Optional, Union
@@ -211,6 +212,10 @@ class LargeLanguageModel(AIModel):
         :return:
         """
         raise NotImplementedError
+
+    def enforce_stop_tokens(self, text: str, stop: List[str]) -> str:
+        """Cut off the text as soon as any stop words occur."""
+        return re.split("|".join(stop), text, maxsplit=1)[0]
 
     def _llm_result_to_stream(self, result: LLMResult) -> Generator:
         """

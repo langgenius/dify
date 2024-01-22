@@ -15,9 +15,12 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
-                      'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
+
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'doc', 'csv'] + IMAGE_EXTENSIONS
+UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
+                                      'docx', 'doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml'] + IMAGE_EXTENSIONS
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -27,13 +30,7 @@ class FileService:
     def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
         extension = file.filename.split('.')[-1]
         etl_type = current_app.config['ETL_TYPE']
-        if etl_type == 'Unstructured':
-            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-                                  'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml',
-                                  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
-        else:
-            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
-                                  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
         elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
@@ -133,13 +130,7 @@ class FileService:
         # extract text from file
         extension = upload_file.extension
         etl_type = current_app.config['ETL_TYPE']
-        if etl_type == 'Unstructured':
-            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-                                  'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml',
-                                  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
-        else:
-            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
-                                  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
 

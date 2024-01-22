@@ -493,6 +493,10 @@ class GenerateTaskPipeline:
                         'score': resource['score'],
                         'content': resource['content'],
                     })
+        # show annotation reply
+        if 'annotation_reply' in self._task_state.metadata:
+            if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
+                metadata['annotation_reply'] = self._task_state.metadata['annotation_reply']
 
         # show usage
         if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
