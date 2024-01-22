@@ -34,11 +34,13 @@ class BillingService:
     def get_model_provider_payment_link(cls,
                                         provider_name: str,
                                         tenant_id: str,
-                                        account_id: str):
+                                        account_id: str,
+                                        prefilled_email: str):
         params = {
             'provider_name': provider_name,
             'tenant_id': tenant_id,
-            'account_id': account_id
+            'account_id': account_id,
+            'prefilled_email': prefilled_email
         }
         return cls._send_request('GET', '/model-provider/payment-link', params=params)
 
