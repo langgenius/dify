@@ -117,8 +117,8 @@ const AssistantTypePicker: FC<Props> = ({
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
           <div className={cn(open && 'bg-gray-50', 'flex items-center h-8 px-3 border border-black/5 rounded-lg cursor-pointer select-none space-x-1 text-indigo-600')}>
-            {isAgent ? <BubbleText className='w-3 h-3' /> : <CuteRobote className='w-3 h-3' />}
-            <div className='text-xs font-medium'>{t(`appDebug.assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`)}</div>
+            {isAgent ? <BubbleText className='w-3.5 h-3.5' /> : <CuteRobote className='w-3.5 h-3.5' />}
+            <div className='text-[13px] font-medium'>{t(`appDebug.assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`)}</div>
             <ChevronDown className='w-3 h-3' />
           </div>
         </PortalToFollowElemTrigger>

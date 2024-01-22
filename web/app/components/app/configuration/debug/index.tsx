@@ -17,7 +17,6 @@ import type { ModelAndParameter } from './types'
 import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
-  APP_SIDEBAR_SHOULD_COLLAPSE,
 } from './types'
 import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
@@ -35,7 +34,6 @@ import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
@@ -645,18 +643,6 @@ const Debug: FC<IDebug> = ({
   })
 
   const { textGenerationModelList } = useProviderContext()
-  const handleDebugWithMultipleModelChange = () => {
-    onMultipleModelConfigsChange(
-      true,
-      [
-        { id: `${Date.now()}`, model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams },
-        { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
-      ],
-    )
-    eventEmitter?.emit({
-      type: APP_SIDEBAR_SHOULD_COLLAPSE,
-    } as any)
-  }
   const handleChangeToSingleModel = (item: ModelAndParameter) => {
     const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === item.provider)
     const currentModel = currentProvider?.models.find(model => model.model === item.model)
@@ -721,7 +707,7 @@ const Debug: FC<IDebug> = ({
                   <Button
                     className={`
                       h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white
-                      ${multipleModelConfigs.length >= 4 && ''}
+                      ${multipleModelConfigs.length >= 4 && 'opacity-30'}
                     `}
                     onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                     disabled={multipleModelConfigs.length >= 4}
@@ -730,19 +716,7 @@ const Debug: FC<IDebug> = ({
                     {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                   </Button>
                 )
-                : (
-                  <ModelParameterModal
-                    isAdvancedMode={isAdvancedMode}
-                    mode={mode}
-                    provider={modelConfig.provider}
-                    completionParams={completionParams}
-                    modelId={modelConfig.model_id}
-                    setModel={modelParameterParams.setModel}
-                    onCompletionParamsChange={modelParameterParams.onCompletionParamsChange}
-                    debugWithMultipleModel={debugWithMultipleModel}
-                    onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
-                  />
-                )
+                : null
             }
             {mode === 'chat' && (
               <>

@@ -15,6 +15,7 @@ import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import { useDebugWithSingleOrMultipleModel } from './debug/hooks'
 import type { ModelAndParameter } from './debug/types'
+import { APP_SIDEBAR_SHOULD_COLLAPSE } from './debug/types'
 import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
 import AssistantTypePicker from './config/assistant-type-picker'
 import type {
@@ -48,10 +49,12 @@ import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -612,11 +615,25 @@ const Configuration: FC = () => {
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const { locale } = useContext(I18n)
 
+  const { eventEmitter } = useEventEmitterContextContext()
   const {
     debugWithMultipleModel,
     multipleModelConfigs,
     handleMultipleModelConfigsChange,
   } = useDebugWithSingleOrMultipleModel(appId)
+
+  const handleDebugWithMultipleModelChange = () => {
+    handleMultipleModelConfigsChange(
+      true,
+      [
+        { id: `${Date.now()}`, model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams },
+        { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
+      ],
+    )
+    eventEmitter?.emit({
+      type: APP_SIDEBAR_SHOULD_COLLAPSE,
+    } as any)
+  }
 
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
@@ -705,12 +722,6 @@ const Configuration: FC = () => {
                     )}
                   </div>
                 </div>
-              </div>
-              <Config />
-            </div>
-            {!isMobile && <div className="grow relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              {/* Header Right */}
-              <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
                 {isChatApp && (
                   <AssistantTypePicker
                     value={isAgent ? 'agent' : 'assistant'}
@@ -731,7 +742,33 @@ const Configuration: FC = () => {
                     }}
                   />
                 )}
-                <div className='w-[1px] h-[14px] bg-gray-200'></div>
+              </div>
+              <Config />
+            </div>
+            {!isMobile && <div className="grow relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              {/* Header Right */}
+              <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
+                {/* Model and Parameters */}
+                {
+                  !debugWithMultipleModel && (
+                    <>
+                      <ModelParameterModal
+                        isAdvancedMode={isAdvancedMode}
+                        mode={mode}
+                        provider={modelConfig.provider}
+                        completionParams={completionParams}
+                        modelId={modelConfig.model_id}
+                        setModel={setModel as any}
+                        onCompletionParamsChange={(newParams: FormValue) => {
+                          setCompletionParams(newParams)
+                        }}
+                        debugWithMultipleModel={debugWithMultipleModel}
+                        onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
+                      />
+                      <div className='w-[1px] h-[14px] bg-gray-200'></div>
+                    </>
+                  )
+                }
                 <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
                 {isMobile && (
                   <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
