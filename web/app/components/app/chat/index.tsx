@@ -44,6 +44,8 @@ export type IChatProps = {
   isHideSendInput?: boolean
   onFeedback?: FeedbackFunc
   checkCanSend?: () => boolean
+  query?: string
+  onQueryChange?: (query: string) => void
   onSend?: (message: string, files: VisionFile[]) => void
   displayScene?: DisplayScene
   useCurrentUserAvatar?: boolean
@@ -69,7 +71,8 @@ export type IChatProps = {
 const Chat: FC<IChatProps> = ({
   configElem,
   chatList,
-
+  query = '',
+  onQueryChange = () => { },
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   isHideSendInput = false,
@@ -113,10 +116,9 @@ const Chat: FC<IChatProps> = ({
   const { onDragEnter, onDragLeave, onDragOver, onDrop, isDragActive } = useDraggableUploader<HTMLTextAreaElement>({ onUpload, files, visionConfig })
   const isUseInputMethod = useRef(false)
 
-  const [query, setQuery] = React.useState('')
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
-    setQuery(value)
+    onQueryChange(value)
   }
 
   const logError = (message: string) => {
@@ -133,7 +135,7 @@ const Chat: FC<IChatProps> = ({
 
   useEffect(() => {
     if (controlClearQuery)
-      setQuery('')
+      onQueryChange('')
   }, [controlClearQuery])
 
   const handleSend = () => {
@@ -149,7 +151,7 @@ const Chat: FC<IChatProps> = ({
       if (files.length)
         onClear()
       if (!isResponsing)
-        setQuery('')
+        onQueryChange('')
     }
   }
 
@@ -165,7 +167,7 @@ const Chat: FC<IChatProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
     if (e.code === 'Enter' && !e.shiftKey) {
-      setQuery(query.replace(/\n$/, ''))
+      onQueryChange(query.replace(/\n$/, ''))
       e.preventDefault()
     }
   }
@@ -205,6 +207,7 @@ const Chat: FC<IChatProps> = ({
             return <Answer
               key={item.id}
               item={item}
+              onQueryChange={onQueryChange}
               feedbackDisabled={feedbackDisabled}
               isHideFeedbackEdit={isHideFeedbackEdit}
               onFeedback={onFeedback}
@@ -338,7 +341,7 @@ const Chat: FC<IChatProps> = ({
                       <div key={item} className='shrink-0 flex justify-center mr-2'>
                         <Button
                           key={index}
-                          onClick={() => setQuery(item)}
+                          onClick={() => onQueryChange(item)}
                         >
                           <span className='text-primary-600 text-xs font-medium'>{item}</span>
                         </Button>
@@ -392,7 +395,7 @@ const Chat: FC<IChatProps> = ({
                 {
                   query
                     ? (
-                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => setQuery('')}>
+                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => onQueryChange('')}>
                         <XCircle className='w-4 h-4 text-[#98A2B3]' />
                       </div>
                     )
@@ -428,7 +431,7 @@ const Chat: FC<IChatProps> = ({
                 voiceInputShow && (
                   <VoiceInput
                     onCancel={() => setVoiceInputShow(false)}
-                    onConverted={text => setQuery(text)}
+                    onConverted={text => onQueryChange(text)}
                   />
                 )
               }

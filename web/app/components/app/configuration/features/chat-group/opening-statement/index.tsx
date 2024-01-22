@@ -24,6 +24,8 @@ export type IOpeningStatementProps = {
   value: string
   readonly?: boolean
   onChange?: (value: string) => void
+  suggestedQuestions?: string[]
+  onSuggestedQuestionsChange?: (value: string[]) => void
 }
 
 // regex to match the {{}} and replace it with a span
@@ -33,6 +35,8 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   value = '',
   readonly,
   onChange,
+  suggestedQuestions = [],
+  onSuggestedQuestionsChange = () => { },
 }) => {
   const { t } = useTranslation()
   const {
@@ -41,7 +45,6 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   } = useContext(ConfigContext)
   const promptVariables = modelConfig.configs.prompt_variables
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
-  const [questions, setQuestions] = useState(['What\'s the game about?', 'How are you going?'])
 
   const hasValue = !!(value || '').trim()
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -64,6 +67,8 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
     setTempValue(value || '')
   }, [value])
 
+  const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(suggestedQuestions || [])
+
   const coloredContent = (tempValue || '')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -81,6 +86,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   const handleCancel = () => {
     setBlur()
     setTempValue(value)
+    setTempSuggestedQuestions(suggestedQuestions)
   }
 
   const handleConfirm = () => {
@@ -103,6 +109,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
     }
     setBlur()
     onChange?.(tempValue)
+    onSuggestedQuestionsChange(tempSuggestedQuestions)
   }
 
   const cancelAutoAddVar = () => {
@@ -139,24 +146,24 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
           <div className='shrink-0 flex space-x-0.5 leading-[18px] text-xs font-medium text-gray-500'>
             <div className='uppercase'>{t('appDebug.openingStatement.openingQuestion')}</div>
             <div>·</div>
-            <div>{questions.length}/{MAX_QUESTION_NUM}</div>
+            <div>{tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}</div>
           </div>
           <div className='ml-3 grow w-0 h-px bg-[#243, 244, 246]'></div>
         </div>
         <ReactSortable
           className="space-y-1"
-          list={questions.map((name, index) => {
+          list={tempSuggestedQuestions.map((name, index) => {
             return {
               id: index,
               name,
             }
           })}
-          setList={list => setQuestions(list.map(item => item.name))}
+          setList={list => setTempSuggestedQuestions(list.map(item => item.name))}
           handle='.handle'
           ghostClass="opacity-50"
           animation={150}
         >
-          {questions.map((question, index) => {
+          {tempSuggestedQuestions.map((question, index) => {
             return (
               <div className='group relative rounded-lg border border-gray-200 flex items-center pl-2.5 hover:border-gray-300 hover:bg-white' key={index}>
                 <div className='handle flex items-center justify-center w-4 h-4 cursor-grab'>
@@ -169,7 +176,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                   value={question || ''}
                   onChange={(e) => {
                     const value = e.target.value
-                    setQuestions(questions.map((item, i) => {
+                    setTempSuggestedQuestions(tempSuggestedQuestions.map((item, i) => {
                       if (index === i)
                         return value
 
@@ -182,7 +189,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                 <div
                   className='block absolute top-1/2 translate-y-[-50%] right-1.5 p-1 rounded-md cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
                   onClick={() => {
-                    setQuestions(questions.filter((_, i) => index !== i))
+                    setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
                 >
                   <Trash03 className='w-3.5 h-3.5' />
@@ -190,9 +197,9 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
               </div>
             )
           })}</ReactSortable>
-        {questions.length < MAX_QUESTION_NUM && (
+        {tempSuggestedQuestions.length < MAX_QUESTION_NUM && (
           <div
-            onClick={() => { setQuestions([...questions, '']) }}
+            onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
             className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
             <Plus className='w-4 h-4'></Plus>
             <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
@@ -201,7 +208,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
       </div>
     ) : (
       <div className='mt-1.5 flex flex-wrap'>
-        {questions.map((question, index) => {
+        {tempSuggestedQuestions.map((question, index) => {
           return (
             <div key={index} className='mt-1 mr-1 max-w-full truncate last:mr-0 shrink-0 leading-8 items-center px-2.5 rounded-lg border border-gray-200 shadow-xs bg-white text-[13px] font-normal text-gray-900 cursor-pointer'>
               {question}

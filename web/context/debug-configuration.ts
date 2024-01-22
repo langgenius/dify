@@ -52,6 +52,8 @@ type IDebugConfiguration = {
   setConversationId: (conversationId: string | null) => void
   introduction: string
   setIntroduction: (introduction: string) => void
+  suggestedQuestions: string[]
+  setSuggestedQuestions: (questions: string[]) => void
   controlClearChatMessage: number
   setControlClearChatMessage: (controlClearChatMessage: number) => void
   prevPromptConfig: PromptConfig
@@ -128,6 +130,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setConversationId: () => { },
   introduction: '',
   setIntroduction: () => { },
+  suggestedQuestions: [],
+  setSuggestedQuestions: () => {},
   controlClearChatMessage: 0,
   setControlClearChatMessage: () => { },
   prevPromptConfig: {
