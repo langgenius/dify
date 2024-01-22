@@ -45,7 +45,7 @@ const DebugWithMultipleModel = () => {
           mb-3 overflow-auto
           ${(twoLine || threeLine) && 'flex gap-2'}
         `}
-        style={{ height: 'calc(100% - 60px)' }}
+        style={{ height: mode === 'chat' ? 'calc(100% - 60px)' : '100%' }}
       >
         {
           (twoLine || threeLine) && multipleModelConfigs.map(modelConfig => (
