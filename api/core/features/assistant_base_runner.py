@@ -145,7 +145,29 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         runtime_parameters = {}
 
-        parameters = tool_entity.get_runtime_parameters() or []
+        parameters = tool_entity.parameters
+        user_parameters = tool_entity.get_runtime_parameters() or []
+
+        # override parameters
+        for parameter in user_parameters:
+            # check if parameter in tool parameters
+            found = False
+            for tool_parameter in parameters:
+                if tool_parameter.name == parameter.name:
+                    found = True
+                    break
+
+            if found:
+                # override parameter
+                tool_parameter.type = parameter.type
+                tool_parameter.form = parameter.form
+                tool_parameter.required = parameter.required
+                tool_parameter.default = parameter.default
+                tool_parameter.options = parameter.options
+                tool_parameter.llm_description = parameter.llm_description
+            else:
+                # add new parameter
+                parameters.append(parameter)
 
         for parameter in parameters:
             parameter_type = 'string'
