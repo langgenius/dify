@@ -105,7 +105,7 @@ class StableDiffusionTool(BuiltinTool):
 
         # get image id
         image_id = tool_paramters.get('image_id', '')
-        if image_id:
+        if image_id.strip():
             image_variable = self.get_default_image_variable()
             if image_variable:
                 image_binary = self.get_variable_file(image_variable.name)
