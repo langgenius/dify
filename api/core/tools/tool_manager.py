@@ -14,6 +14,7 @@ from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.utils.configration import ToolConfiguration
 from core.tools.utils.encoder import serialize_base_model_dict
+from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
@@ -371,7 +372,7 @@ class ToolManager:
 
             result_providers[provider_name].team_credentials = masked_credentials
 
-        return list(result_providers.values())
+        return BuiltinToolProviderSort.sort(list(result_providers.values()))
     
     @staticmethod
     def get_api_provider_controller(tanent_id: str, provider_id: str) -> Tuple[ApiBasedToolProviderController, Dict[str, Any]]:
