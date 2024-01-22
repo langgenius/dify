@@ -1,4 +1,5 @@
-import io
+import uuid
+import hashlib
 from io import BytesIO
 from typing import Optional
 from functools import reduce
@@ -74,7 +75,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         word_limit = self._get_model_word_limit(model, credentials)
         max_workers = self._get_model_workers_limit(model, credentials)
         try:
-            sentences = list(self.split_text_into_sentences(text=content_text, limit=word_limit))
+            sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             audio_bytes_list = list()
 
             # Create a thread pool and map the function to the list of sentences
@@ -87,16 +88,17 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
                     except Exception as ex:
                         raise InvokeBadRequestError(str(ex))
 
-            audio_segments = [AudioSegment.from_file(io.BytesIO(audio_bytes), format=audio_type) for audio_bytes in
+            audio_segments = [AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type) for audio_bytes in
                               audio_bytes_list if audio_bytes]
             combined_segment = reduce(lambda x, y: x + y, audio_segments)
-            buffer: BytesIO = io.BytesIO()
+            buffer: BytesIO = BytesIO()
             combined_segment.export(buffer, format=audio_type)
             buffer.seek(0)
             return Response(buffer.read(), status=200, mimetype=f"audio/{audio_type}")
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
+    # Todo: To improve the streaming function
     def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> any:
         """
         _tts_invoke_streaming text2speech model
@@ -111,13 +113,15 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         credentials_kwargs = self._to_credential_kwargs(credentials)
         voice_name = self._get_model_voice(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
+        audio_type = self._get_model_audio_type(model, credentials)
+        tts_file_id = self._get_file_name(content_text)
+        file_path = f'storage/generate_files/{audio_type}/{tts_file_id}.{audio_type}'
         try:
             client = OpenAI(**credentials_kwargs)
-            sentences = list(self.split_text_into_sentences(text=content_text, limit=word_limit))
+            sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
                 response = client.audio.speech.create(model=model, voice=voice_name, input=sentence.strip())
-                if isinstance(response.read(), bytes):
-                    yield response.read()
+                response.stream_to_file(file_path)
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
@@ -168,7 +172,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             return model_schema.model_properties[ModelPropertyKey.MAX_WORKERS]
 
     @staticmethod
-    def split_text_into_sentences(text: str, limit: int, delimiters=None):
+    def _split_text_into_sentences(text: str, limit: int, delimiters=None):
         if delimiters is None:
             delimiters = set('。！？；\n')
 
@@ -188,6 +192,15 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
 
         if buf:
             yield ''.join(buf)
+
+    @staticmethod
+    def _get_file_name(file_content: str) -> str:
+        hash_object = hashlib.sha256(file_content.encode())
+        hex_digest = hash_object.hexdigest()
+
+        namespace_uuid = uuid.UUID('a5da6ef9-b303-596f-8e88-bf8fa40f4b31')
+        unique_uuid = uuid.uuid5(namespace_uuid, hex_digest)
+        return str(unique_uuid)
 
     def _process_sentence(self, sentence: str, model: str, credentials: dict):
         """

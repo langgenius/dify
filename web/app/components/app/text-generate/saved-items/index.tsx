@@ -10,8 +10,6 @@ import { Markdown } from '@/app/components/base/markdown'
 import { SimpleBtn, copyIcon } from '@/app/components/app/text-generate/item'
 import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
-import s from '@/app/components/app/chat/style.module.css'
-
 
 export type ISavedItemsProps = {
   className?: string

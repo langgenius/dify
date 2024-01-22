@@ -22,7 +22,6 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import { fetchTextGenerationMessge } from '@/service/debug'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
-import s from '@/app/components/app/chat/style.module.css'
 
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
@@ -178,7 +177,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
     const data = await fetchTextGenerationMessge({
-      // @ts-ignore
       appId: params.appId,
       messageId: messageId!,
     })
@@ -346,6 +344,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       // not support cache. So can not be cached
                       cached={false}
                       onAdded={() => {
+
                       }}
                       onEdit={() => setIsShowReplyModal(true)}
                       onRemoved={() => { }}
