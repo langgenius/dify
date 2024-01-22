@@ -28,7 +28,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
 
     try:
         url = f'{current_app.config.get("CONSOLE_WEB_URL")}/activate?token={token}'
-        if language == 'zh-CN':
+        if language == 'zh-Hans':
             html_content = render_template('invite_member_mail_template_zh-CN.html',
                                            to=to,
                                            inviter_name=inviter_name,
