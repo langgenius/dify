@@ -8,7 +8,7 @@ const translation = {
   },
   modes: {
     completion: '文本生成型',
-    chat: '对话型',
+    chat: '基础助手',
   },
   createFromConfigFile: '通过导入应用配置文件创建',
   deleteAppConfirmTitle: '确认删除应用?',
