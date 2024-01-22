@@ -4,7 +4,7 @@ const otherAllowedRegex = /^[a-zA-Z0-9_]+$/
 export const getNewVar = (key: string, type: string) => {
   return {
     ...VAR_ITEM_TEMPLATE,
-    type,
+    type: type || 'string',
     key,
     name: key.slice(0, getMaxVarNameLength(key)),
   }
