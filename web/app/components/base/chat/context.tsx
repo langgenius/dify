@@ -2,7 +2,10 @@
 
 import type { ReactNode } from 'react'
 import { createContext, useContext } from 'use-context-selector'
-import type { ChatConfig } from './types'
+import type {
+  ChatConfig,
+  OnSend,
+} from './types'
 import { INITIAL_CONFIG } from './constants'
 import type { Emoji } from '@/app/components/tools/types'
 
@@ -12,6 +15,7 @@ export type ChatContextValue = {
   showPromptLog?: boolean
   questionIcon?: ReactNode
   allToolIcons?: Record<string, string | Emoji>
+  onSend?: OnSend
 }
 
 const ChatContext = createContext<ChatContextValue>({
@@ -31,6 +35,7 @@ export const ChatContextProvider = ({
   showPromptLog,
   questionIcon,
   allToolIcons,
+  onSend,
 }: ChatContextProviderProps) => {
   return (
     <ChatContext.Provider value={{
@@ -39,6 +44,7 @@ export const ChatContextProvider = ({
       showPromptLog,
       questionIcon,
       allToolIcons,
+      onSend,
     }}>
       {children}
     </ChatContext.Provider>

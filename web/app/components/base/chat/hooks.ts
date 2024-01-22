@@ -45,9 +45,10 @@ export const useChat = (
         content: config.opening_statement,
         isAnswer: true,
         isOpeningStatement: true,
+        suggestedQuestions: config.suggested_questions,
       }])
     }
-  }, [config.opening_statement])
+  }, [config.opening_statement, config.suggested_questions])
 
   const handleStop = () => {
     if (stopChat && taskId)
@@ -71,6 +72,7 @@ export const useChat = (
         content: config.opening_statement,
         isAnswer: true,
         isOpeningStatement: true,
+        suggestedQuestions: config.suggested_questions,
       }]
       : [])
     setSuggestQuestions([])

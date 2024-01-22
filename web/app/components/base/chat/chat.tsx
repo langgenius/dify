@@ -57,6 +57,7 @@ const Chat: FC<ChatProps> = ({
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
       allToolIcons={allToolIcons}
+      onSend={onSend}
     >
       <div
         ref={ref}

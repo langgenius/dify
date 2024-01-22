@@ -7,10 +7,7 @@ import type {
 import { useChatContext } from '../context'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import LoadingAnim from '@/app/components/app/chat/loading-anim'
-import {
-  MessageFast,
-  MessageHeartCircle,
-} from '@/app/components/base/icons/src/vender/solid/communication'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Markdown } from '@/app/components/base/markdown'
 import { formatNumber } from '@/utils/format'
 import Citation from '@/app/components/app/chat/citation'
@@ -33,6 +30,7 @@ const Answer: FC<AnswerProps> = ({
   const {
     config,
     allToolIcons,
+    onSend,
   } = useChatContext()
   const {
     isOpeningStatement,
@@ -41,6 +39,7 @@ const Answer: FC<AnswerProps> = ({
     agent_thoughts,
     more,
     annotation,
+    suggestedQuestions,
   } = item
   const isAgentMode = agent_thoughts?.length
 
@@ -119,14 +118,6 @@ const Answer: FC<AnswerProps> = ({
               }
             </div>
             {
-              isOpeningStatement && (
-                <div className='flex items-center mb-1 h-[18px]'>
-                  <MessageHeartCircle className='mr-1 w-3 h-3 text-gray-500' />
-                  <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
-                </div>
-              )
-            }
-            {
               responsing && !content && !isAgentMode && (
                 <div className='flex items-center justify-center w-6 h-5'>
                   <LoadingAnim type='text' />
@@ -158,6 +149,19 @@ const Answer: FC<AnswerProps> = ({
                 </>
               )
             }
+            {isOpeningStatement && suggestedQuestions && suggestedQuestions.length > 0 && (
+              <div className='flex flex-wrap'>
+                {suggestedQuestions.map((question, index) => (
+                  <div
+                    key={index}
+                    className='mt-1 mr-1 max-w-full truncate last:mr-0 shrink-0 leading-7 items-center px-4 rounded-lg border border-gray-200 shadow-xs bg-white text-xs font-medium text-primary-600 cursor-pointer'
+                    onClick={() => onSend?.(question)}
+                  >
+                    {question}
+                  </div>),
+                )}
+              </div>
+            )}
             {
               !!citation?.length && config.retriever_resource?.enabled && !responsing && (
                 <Citation data={citation} showHitInfo />

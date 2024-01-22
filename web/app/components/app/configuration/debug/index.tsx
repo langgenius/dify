@@ -72,6 +72,7 @@ const Debug: FC<IDebug> = ({
     chatPromptConfig,
     completionPromptConfig,
     introduction,
+    suggestedQuestions,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
     citationConfig,
@@ -117,6 +118,7 @@ const Debug: FC<IDebug> = ({
         content: getIntroduction(),
         isAnswer: true,
         isOpeningStatement: true,
+        suggestedQuestions,
       }])
     }
   }, [introduction, modelConfig.configs.prompt_variables, inputs])
@@ -219,6 +221,7 @@ const Debug: FC<IDebug> = ({
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [userQuery, setUserQuery] = useState('')
   const onSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -763,6 +766,8 @@ const Debug: FC<IDebug> = ({
                   <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
                     <Chat
                       chatList={chatList}
+                      query={userQuery}
+                      onQueryChange={setUserQuery}
                       onSend={onSend}
                       checkCanSend={checkCanSend}
                       feedbackDisabled
