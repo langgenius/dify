@@ -38,14 +38,14 @@ const Item: FC<Props> = ({
   return (
     <>
       <div
-        className={cn(canShowDetail && 'cursor-pointer', 'flex justify-between items-center p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-xs')}
+        className={cn(canShowDetail && 'cursor-pointer', 'flex justify-between items-start p-4 rounded-xl border border-gray-200 bg-gray-50 shadow-xs')}
         onClick={() => canShowDetail && setShowDetail(true)}
       >
-        <div className='flex w-full'>
+        <div className='flex items-start w-full'>
           {icon}
           <div className='ml-3 w-0 grow'>
             <div className={cn('text-base font-semibold text-gray-900 truncate')}>{payload.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
-            <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500 truncate')}>
+            <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500')}>
               {payload.description[locale === 'en' ? 'en_US' : 'zh_Hans']}
             </div>
           </div>

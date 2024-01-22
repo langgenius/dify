@@ -70,7 +70,7 @@ const AgentSetting: FC<Props> = ({
             name={t('appDebug.agent.agentMode')}
             description={t('appDebug.agent.agentModeDes')}
           >
-            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.cot')}</div>
+            <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</div>
           </ItemPanel>
 
           <ItemPanel

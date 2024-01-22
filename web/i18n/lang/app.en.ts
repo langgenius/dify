@@ -8,7 +8,7 @@ const translation = {
   },
   modes: {
     completion: 'Text Generator',
-    chat: 'Chat Assistant',
+    chat: 'Basic Assistant',
   },
   createFromConfigFile: 'Create app from config file',
   deleteAppConfirmTitle: 'Delete this app?',

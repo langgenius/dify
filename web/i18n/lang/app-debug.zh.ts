@@ -348,24 +348,24 @@ const translation = {
   assistantType: {
     name: '助手类型',
     chatAssistant: {
-      name: '聊天助手',
+      name: '基础助手',
       description: '基于 LLM 构建一个聊天型助手',
     },
     agentAssistant: {
-      name: '代理助手',
-      description: '构建一个智能代理，他可以自主选择工具完成你设置的任务',
+      name: '智能助手',
+      description: '构建一个智能助手，他可以自主选择工具完成你设置的任务',
     },
   },
   agent: {
     agentMode: 'Agent Mode',
     agentModeDes: '设置代理的推理模式类型',
     agentModeType: {
-      cot: 'COT',
+      ReACT: 'ReACT',
       functionCall: 'Function Call',
     },
     setting: {
-      name: '代理设置',
-      description: '代理设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
+      name: 'Agent 设置',
+      description: '智能助手设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
       maximumIterations: {
         name: '最大迭代次数',
         description: '限制代理型助手执行迭代的次数',

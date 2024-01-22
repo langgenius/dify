@@ -354,7 +354,7 @@ const translation = {
   assistantType: {
     name: 'Assistant Type',
     chatAssistant: {
-      name: 'Chat Assistant',
+      name: 'Basic Assistant',
       description: 'Build a chat-based assistant using a Large Language Model',
     },
     agentAssistant: {
@@ -366,12 +366,12 @@ const translation = {
     agentMode: 'Agent Mode',
     agentModeDes: 'Set the type of inference mode for the agent',
     agentModeType: {
-      cot: 'COT',
+      ReACT: 'ReACT',
       functionCall: 'Function Call',
     },
     setting: {
       name: 'Agent Settings',
-      description: 'Agent settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
+      description: 'Agent Assistant settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
       maximumIterations: {
         name: 'Maximum Iterations',
         description: 'Limit the number of iterations an agent assistant can execute',
