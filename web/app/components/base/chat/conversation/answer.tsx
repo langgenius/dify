@@ -7,13 +7,17 @@ import type {
 import { useChatContext } from '../context'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import LoadingAnim from '@/app/components/app/chat/loading-anim'
-import { MessageHeartCircle } from '@/app/components/base/icons/src/vender/solid/communication'
+import {
+  MessageFast,
+  MessageHeartCircle,
+} from '@/app/components/base/icons/src/vender/solid/communication'
 import { Markdown } from '@/app/components/base/markdown'
 import { formatNumber } from '@/utils/format'
 import Citation from '@/app/components/app/chat/citation'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import Thought from '@/app/components/app/chat/thought'
 import ImageGallery from '@/app/components/base/image-gallery'
+import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 
 type AnswerProps = {
   item: ChatItem
@@ -36,6 +40,7 @@ const Answer: FC<AnswerProps> = ({
     citation,
     agent_thoughts,
     more,
+    annotation,
   } = item
   const isAgentMode = agent_thoughts?.length
 
@@ -92,13 +97,24 @@ const Answer: FC<AnswerProps> = ({
         <div className='relative pr-10'>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div className='group relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
-            <div className='hidden absolute top-[-14px] right-[-14px] group-hover:flex flex-row justify-end gap-1'>
+            <div className='absolute top-[-14px] right-[-14px] flex justify-end gap-1'>
               {
                 !item.isOpeningStatement && !responsing && (
                   <CopyBtn
                     value={content}
-                    className='mr-1'
+                    className='hidden mr-1 group-hover:block'
                   />
+                )
+              }
+              {
+                annotation?.id && (
+                  <div
+                    className='relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md'
+                  >
+                    <div className='p-1 rounded-lg bg-[#EEF4FF] '>
+                      <MessageFast className='w-4 h-4' />
+                    </div>
+                  </div>
                 )
               }
             </div>
@@ -111,22 +127,35 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              responsing && !content && !agent_thoughts?.length && (
+              responsing && !content && !isAgentMode && (
                 <div className='flex items-center justify-center w-6 h-5'>
                   <LoadingAnim type='text' />
                 </div>
               )
             }
             {
-              content && !isAgentMode && (
-                <div>
-                  <Markdown content={content} />
-                </div>
-              )
-            }
-            {
-              isAgentMode && (
-                agentModeAnswer
+              (content || isAgentMode) && (
+                <>
+                  <div>
+                    {annotation?.logAnnotation
+                      ? (
+                        <Markdown content={annotation?.logAnnotation.content || ''} />
+                      )
+                      : (isAgentMode
+                        ? agentModeAnswer
+                        : (
+                          <Markdown content={content} />
+                        ))}
+                  </div>
+                  {
+                    (annotation?.id && !annotation?.logAnnotation) && (
+                      <EditTitle
+                        className='mt-1'
+                        title={t('appAnnotation.editBy', { author: annotation.authorName })}
+                      />
+                    )
+                  }
+                </>
               )
             }
             {
