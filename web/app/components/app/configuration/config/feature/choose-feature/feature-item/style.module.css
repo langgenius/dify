@@ -32,6 +32,7 @@
 .textToSpeechPreview {
   @apply shadow-lg rounded-lg;
   background-image: url(./preview-imgs/text-to-audio-preview-assistant@2x.png);
+}
 
 .citationPreview {
   background-image: url(./preview-imgs/citation.svg);
