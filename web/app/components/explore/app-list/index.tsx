@@ -17,9 +17,11 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { type AppMode } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 
 const Apps: FC = () => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
   const { setControlUpdateInstalledApps, hasEditPermission } = useContext(ExploreContext)
   const [currCategory, setCurrCategory] = React.useState<AppCategory | ''>('')
@@ -70,7 +72,7 @@ const Apps: FC = () => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      router.push(`/app/${app.id}/overview`)
+      router.push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
     }
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

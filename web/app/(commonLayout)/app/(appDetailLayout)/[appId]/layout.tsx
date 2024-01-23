@@ -38,15 +38,24 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const navigation = useMemo(() => {
     const navs = [
-      { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: ChartBarSquareIcon, selectedIcon: ChartBarSquareSolidIcon },
       ...(isCurrentWorkspaceManager ? [{ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon }] : []),
+      { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: ChartBarSquareIcon, selectedIcon: ChartBarSquareSolidIcon },
       { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
       { name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
     ]
     return navs
   }, [appId, isCurrentWorkspaceManager, t])
 
-  const appModeName = response?.mode?.toUpperCase() === 'COMPLETION' ? t('common.appModes.completionApp') : t('common.appModes.chatApp')
+  const appModeName = (() => {
+    if (response?.mode?.toUpperCase() === 'COMPLETION')
+      return t('app.newApp.completeApp')
+
+    const isAgent = !!response?.is_agent
+    if (isAgent)
+      return t('appDebug.assistantType.agentAssistant.name')
+
+    return t('appDebug.assistantType.chatAssistant.name')
+  })()
   useEffect(() => {
     if (response?.name)
       document.title = `${(response.name || 'App')} - Dify`

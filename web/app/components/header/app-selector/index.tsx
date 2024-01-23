@@ -65,7 +65,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 appItems.map((app: AppDetailResponse) => (
                   <Menu.Item key={app.id}>
                     <div className={itemClassName} onClick={() =>
-                      router.push(`/app/${app.id}/overview`)
+                      router.push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
                     }>
                       <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
                         <AppIcon size='tiny' />

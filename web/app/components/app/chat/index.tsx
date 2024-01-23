@@ -25,6 +25,7 @@ import ImageList from '@/app/components/base/image-uploader/image-list'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { useClipboardUploader, useDraggableUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
 import type { Annotation } from '@/models/log'
+import type { Emoji } from '@/app/components/tools/types'
 
 export type IChatProps = {
   appId?: string
@@ -43,6 +44,8 @@ export type IChatProps = {
   isHideSendInput?: boolean
   onFeedback?: FeedbackFunc
   checkCanSend?: () => boolean
+  query?: string
+  onQueryChange?: (query: string) => void
   onSend?: (message: string, files: VisionFile[]) => void
   displayScene?: DisplayScene
   useCurrentUserAvatar?: boolean
@@ -62,12 +65,14 @@ export type IChatProps = {
   isShowPromptLog?: boolean
   visionConfig?: VisionSettings
   supportAnnotation?: boolean
+  allToolIcons?: Record<string, string | Emoji>
 }
 
 const Chat: FC<IChatProps> = ({
   configElem,
   chatList,
-
+  query = '',
+  onQueryChange = () => { },
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   isHideSendInput = false,
@@ -94,6 +99,7 @@ const Chat: FC<IChatProps> = ({
   appId,
   supportAnnotation,
   onChatListChange,
+  allToolIcons,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -110,18 +116,18 @@ const Chat: FC<IChatProps> = ({
   const { onDragEnter, onDragLeave, onDragOver, onDrop, isDragActive } = useDraggableUploader<HTMLTextAreaElement>({ onUpload, files, visionConfig })
   const isUseInputMethod = useRef(false)
 
-  const [query, setQuery] = React.useState('')
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
-    setQuery(value)
+    onQueryChange(value)
   }
 
   const logError = (message: string) => {
     notify({ type: 'error', message, duration: 3000 })
   }
 
-  const valid = () => {
-    if (!query || query.trim() === '') {
+  const valid = (q?: string) => {
+    const sendQuery = q || query
+    if (!sendQuery || sendQuery.trim() === '') {
       logError('Message cannot be empty')
       return false
     }
@@ -130,13 +136,13 @@ const Chat: FC<IChatProps> = ({
 
   useEffect(() => {
     if (controlClearQuery)
-      setQuery('')
+      onQueryChange('')
   }, [controlClearQuery])
 
-  const handleSend = () => {
-    if (!valid() || (checkCanSend && !checkCanSend()))
+  const handleSend = (q?: string) => {
+    if (!valid(q) || (checkCanSend && !checkCanSend()))
       return
-    onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
+    onSend(q || query, files.filter(file => file.progress !== -1).map(fileItem => ({
       type: 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,
@@ -146,7 +152,7 @@ const Chat: FC<IChatProps> = ({
       if (files.length)
         onClear()
       if (!isResponsing)
-        setQuery('')
+        onQueryChange('')
     }
   }
 
@@ -162,14 +168,14 @@ const Chat: FC<IChatProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
     if (e.code === 'Enter' && !e.shiftKey) {
-      setQuery(query.replace(/\n$/, ''))
+      onQueryChange(query.replace(/\n$/, ''))
       e.preventDefault()
     }
   }
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={handleSend}></div>
+  const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={() => handleSend()}></div>
 
   const suggestionListRef = useRef<HTMLDivElement>(null)
   const [hasScrollbar, setHasScrollbar] = useState(false)
@@ -198,21 +204,21 @@ const Chat: FC<IChatProps> = ({
         {chatList.map((item, index) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
-            const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
             const citation = item.citation
-            const isThinking = !item.content && item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.some(item => item.thought === '[DONE]')
             return <Answer
               key={item.id}
               item={item}
+              onQueryChange={(val) => {
+                onQueryChange(val)
+                handleSend(val)
+              }}
               feedbackDisabled={feedbackDisabled}
               isHideFeedbackEdit={isHideFeedbackEdit}
               onFeedback={onFeedback}
               displayScene={displayScene ?? 'web'}
               isResponsing={isResponsing && isLast}
               answerIcon={answerIcon}
-              thoughts={thoughts}
               citation={citation}
-              isThinking={isThinking}
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}
@@ -285,7 +291,7 @@ const Chat: FC<IChatProps> = ({
                   return item
                 }))
               }}
-
+              allToolIcons={allToolIcons}
             />
           }
           return (
@@ -308,7 +314,7 @@ const Chat: FC<IChatProps> = ({
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
             {/* Thinking is sync and can not be stopped */}
-            {(isResponsing && canStopResponsing && !!chatList[chatList.length - 1]?.content) && (
+            {(isResponsing && canStopResponsing && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
               <div className='flex justify-center mb-4'>
                 <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponsing?.()}>
                   {stopIcon}
@@ -339,7 +345,7 @@ const Chat: FC<IChatProps> = ({
                       <div key={item} className='shrink-0 flex justify-center mr-2'>
                         <Button
                           key={index}
-                          onClick={() => setQuery(item)}
+                          onClick={() => onQueryChange(item)}
                         >
                           <span className='text-primary-600 text-xs font-medium'>{item}</span>
                         </Button>
@@ -393,7 +399,7 @@ const Chat: FC<IChatProps> = ({
                 {
                   query
                     ? (
-                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => setQuery('')}>
+                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => onQueryChange('')}>
                         <XCircle className='w-4 h-4 text-[#98A2B3]' />
                       </div>
                     )
@@ -429,7 +435,7 @@ const Chat: FC<IChatProps> = ({
                 voiceInputShow && (
                   <VoiceInput
                     onCancel={() => setVoiceInputShow(false)}
-                    onConverted={text => setQuery(text)}
+                    onConverted={text => onQueryChange(text)}
                   />
                 )
               }

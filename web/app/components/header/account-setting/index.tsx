@@ -8,7 +8,6 @@ import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
-import PluginPage from './plugin-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelProviderPage from './model-provider-page'
@@ -18,10 +17,9 @@ import CustomPage from '@/app/components/custom/custom-page'
 import Modal from '@/app/components/base/modal'
 import {
   Database03,
-  PuzzlePiece01,
   Webhooks,
 } from '@/app/components/base/icons/src/vender/line/development'
-import { Database03 as Database03Solid, PuzzlePiece01 as PuzzlePiece01Solid } from '@/app/components/base/icons/src/vender/solid/development'
+import { Database03 as Database03Solid } from '@/app/components/base/icons/src/vender/solid/development'
 import { User01, Users01 } from '@/app/components/base/icons/src/vender/line/users'
 import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components/base/icons/src/vender/solid/users'
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
@@ -88,12 +86,6 @@ export default function AccountSetting({
         name: t('common.settings.dataSource'),
         icon: <Database03 className={iconClassName} />,
         activeIcon: <Database03Solid className={iconClassName} />,
-      },
-      {
-        key: 'plugin',
-        name: t('common.settings.plugin'),
-        icon: <PuzzlePiece01 className={iconClassName} />,
-        activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
       },
       {
         key: 'api-based-extension',
@@ -224,9 +216,8 @@ export default function AccountSetting({
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
-            {activeMenu === 'plugin' && <PluginPage />}
-            {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage /> }
-            {activeMenu === 'custom' && <CustomPage /> }
+            {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
+            {activeMenu === 'custom' && <CustomPage />}
           </div>
         </div>
       </div>

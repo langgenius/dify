@@ -21,8 +21,9 @@ import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
 import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
-import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Collection } from '@/app/components/tools/types'
 
 type IDebugConfiguration = {
   appId: string
@@ -33,6 +34,10 @@ type IDebugConfiguration = {
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
   isAdvancedMode: boolean
+  isAgent: boolean
+  isFunctionCall: boolean
+  isOpenAI: boolean
+  collectionList: Collection[]
   canReturnToSimpleMode: boolean
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
   chatPromptConfig: ChatPromptConfig
@@ -47,6 +52,8 @@ type IDebugConfiguration = {
   setConversationId: (conversationId: string | null) => void
   introduction: string
   setIntroduction: (introduction: string) => void
+  suggestedQuestions: string[]
+  setSuggestedQuestions: (questions: string[]) => void
   controlClearChatMessage: number
   setControlClearChatMessage: (controlClearChatMessage: number) => void
   prevPromptConfig: PromptConfig
@@ -98,6 +105,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   promptMode: PromptMode.simple,
   setPromptMode: () => { },
   isAdvancedMode: false,
+  isAgent: false,
+  isFunctionCall: false,
+  isOpenAI: false,
+  collectionList: [],
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
   chatPromptConfig: DEFAULT_CHAT_PROMPT_CONFIG,
@@ -119,6 +130,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setConversationId: () => { },
   introduction: '',
   setIntroduction: () => { },
+  suggestedQuestions: [],
+  setSuggestedQuestions: () => {},
   controlClearChatMessage: 0,
   setControlClearChatMessage: () => { },
   prevPromptConfig: {
@@ -187,6 +200,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     retriever_resource: null,
     sensitive_word_avoidance: null,
     dataSets: [],
+    agentConfig: DEFAULT_AGENT_SETTING,
   },
   setModelConfig: () => { },
   dataSets: [],
@@ -201,6 +215,9 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     top_k: 2,
     score_threshold_enabled: false,
     score_threshold: 0.7,
+    datasets: {
+      datasets: [],
+    },
   },
   setDatasetConfigs: () => { },
   hasSetContextVar: false,

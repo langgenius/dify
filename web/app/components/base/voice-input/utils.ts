@@ -1,4 +1,11 @@
 import lamejs from 'lamejs'
+import MPEGMode from 'lamejs/src/js/MPEGMode'
+import Lame from 'lamejs/src/js/Lame'
+import BitStream from 'lamejs/src/js/BitStream'
+
+(window as any).MPEGMode = MPEGMode
+;(window as any).Lame = Lame
+;(window as any).BitStream = BitStream
 
 export const convertToMp3 = (recorder: any) => {
   const wav = lamejs.WavHeader.readHeader(recorder.getWAV())

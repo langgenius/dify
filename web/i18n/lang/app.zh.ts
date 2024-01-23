@@ -1,9 +1,14 @@
 const translation = {
   title: '应用',
   createApp: '创建应用',
+  types: {
+    all: '全部',
+    assistant: '助手',
+    completion: '文本生成',
+  },
   modes: {
     completion: '文本生成型',
-    chat: '对话型',
+    chat: '基础助手',
   },
   createFromConfigFile: '通过导入应用配置文件创建',
   deleteAppConfirmTitle: '确认删除应用?',
@@ -17,10 +22,10 @@ const translation = {
   appNamePlaceholder: '请输入应用名称',
   newApp: {
     startToCreate: '开始创建一个新应用',
-    captionName: '给应用起个名字',
+    captionName: '图标 & 名称',
     captionAppType: '想要哪种应用类型？',
     previewDemo: '预览 Demo',
-    chatApp: '对话型应用',
+    chatApp: '助手',
     chatAppIntro:
       '我要构建一个聊天场景的应用。该应用采用一问一答模式与用户持续对话。',
     completeApp: '文本生成应用',

@@ -39,6 +39,8 @@ import billingEn from './lang/billing.en'
 import billingZh from './lang/billing.zh'
 import customEn from './lang/custom.en'
 import customZh from './lang/custom.zh'
+import toolsEn from './lang/tools.en'
+import toolsZh from './lang/tools.zh'
 
 const resources = {
   'en': {
@@ -65,6 +67,8 @@ const resources = {
       // billing
       billing: billingEn,
       custom: customEn,
+      // tools
+      tools: toolsEn,
     },
   },
   'zh-Hans': {
@@ -90,6 +94,8 @@ const resources = {
       explore: exploreZh,
       billing: billingZh,
       custom: customZh,
+      // tools
+      tools: toolsZh,
     },
   },
 }

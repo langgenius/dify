@@ -1,7 +1,7 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
-
+import type { VisionFile } from '@/types/app'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -32,6 +32,7 @@ export type IOnDataMoreInfo = {
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
 export type IOnThought = (though: ThoughtItem) => void
+export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
@@ -45,6 +46,7 @@ type IOtherOptions = {
   deleteContentType?: boolean
   onData?: IOnData // for stream
   onThought?: IOnThought
+  onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
@@ -80,7 +82,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace) => {
+const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace, onFile?: IOnFile) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -123,7 +125,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               onCompleted?.(true)
               return
             }
-            if (bufferObj.event === 'message') {
+            if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
               // can not use format here. Because message is splited.
               onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
                 conversationId: bufferObj.conversation_id,
@@ -134,6 +136,9 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
             }
             else if (bufferObj.event === 'agent_thought') {
               onThought?.(bufferObj as ThoughtItem)
+            }
+            else if (bufferObj.event === 'message_file') {
+              onFile?.(bufferObj as VisionFile)
             }
             else if (bufferObj.event === 'message_end') {
               onMessageEnd?.(bufferObj as MessageEnd)
@@ -346,7 +351,7 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string): Promi
   })
 }
 
-export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onMessageReplace, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onFile, onMessageEnd, onMessageReplace, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -384,7 +389,7 @@ export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAP
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import dayjs from 'dayjs'
@@ -12,7 +12,7 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
-import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -44,6 +44,8 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
+    isFunctionCall,
+    collectionList,
     modelModeType,
     hasSetBlockStatus,
     isAdvancedMode,
@@ -51,6 +53,7 @@ const Debug: FC<IDebug> = ({
     chatPromptConfig,
     completionPromptConfig,
     introduction,
+    suggestedQuestions,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
     citationConfig,
@@ -66,7 +69,6 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
-    externalDataToolsConfig,
     visionConfig,
     annotationConfig,
   } = useContext(ConfigContext)
@@ -74,6 +76,13 @@ const Debug: FC<IDebug> = ({
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
   useEffect(() => {
     // scroll to bottom
     if (chatListDomRef.current)
@@ -88,9 +97,10 @@ const Debug: FC<IDebug> = ({
         content: getIntroduction(),
         isAnswer: true,
         isOpeningStatement: true,
+        suggestedQuestions,
       }])
     }
-  }, [introduction, modelConfig.configs.prompt_variables, inputs])
+  }, [introduction, suggestedQuestions, modelConfig.configs.prompt_variables, inputs])
 
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
@@ -117,6 +127,7 @@ const Debug: FC<IDebug> = ({
         content: getIntroduction(),
         isAnswer: true,
         isOpeningStatement: true,
+        suggestedQuestions,
       }]
       : [])
     setIsShowSuggestion(false)
@@ -150,7 +161,9 @@ const Debug: FC<IDebug> = ({
       }
     }
     let hasEmptyInput = ''
-    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required }) => {
+    const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
+      if (type === 'api')
+        return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) // compatible with old version
@@ -178,6 +191,7 @@ const Debug: FC<IDebug> = ({
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [userQuery, setUserQuery] = useState('')
   const onSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -196,7 +210,28 @@ const Debug: FC<IDebug> = ({
       },
     }))
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+    const updateCurrentQA = ({
+      responseItem,
+      questionId,
+      placeholderAnswerId,
+      questionItem,
+    }: {
+      responseItem: IChatItem
+      questionId: string
+      placeholderAnswerId: string
+      questionItem: IChatItem
+    }) => {
+      // closesure new list is outdated.
+      const newListWithAnswer = produce(
+        getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+        (draft) => {
+          if (!draft.find(item => item.id === questionId))
+            draft.push({ ...questionItem })
 
+          draft.push({ ...responseItem })
+        })
+      setChatList(newListWithAnswer)
+    }
     const postModelConfig: BackendModelConfig = {
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
@@ -212,10 +247,9 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
+        ...modelConfig.agentConfig,
+        strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
         provider: modelConfig.provider,
@@ -223,7 +257,12 @@ const Debug: FC<IDebug> = ({
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },
@@ -273,12 +312,17 @@ const Debug: FC<IDebug> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    let isAgentMode = false
+
     // answer
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
+      message_files: [],
       isAnswer: true,
     }
+    let hasSetResponseId = false
 
     let _newConversationId: null | string = null
 
@@ -290,25 +334,32 @@ const Debug: FC<IDebug> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
+        // console.log('onData', message)
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+        }
+        if (messageId && !hasSetResponseId) {
+          responseItem.id = messageId
+          hasSetResponseId = true
+        }
+
         if (isFirstMessage && newConversationId) {
           setConversationId(newConversationId)
           _newConversationId = newConversationId
         }
         setMessageTaskId(taskId)
-        if (messageId)
-          responseItem.id = messageId
 
-        // closesure new list is outdated.
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       async onCompleted(hasError?: boolean) {
         setResponsingFalse()
@@ -345,6 +396,45 @@ const Debug: FC<IDebug> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+      },
+      onFile(file) {
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
+      },
+      onThought(thought) {
+        isAgentMode = true
+        const response = responseItem as any
+        if (thought.message_id && !hasSetResponseId)
+          response.id = thought.message_id
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+          }
+          else {
+            responseItem.agent_thoughts!.push(thought)
+          }
+        }
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
@@ -435,19 +525,23 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
-      external_data_tools: externalDataToolsConfig,
       more_like_this: moreLikeThisConfig,
-      agent_mode: {
-        enabled: true,
-        tools: [...postDatasets],
-      },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      agent_mode: {
+        enabled: false,
+        tools: [],
+      },
+      dataset_configs: {
+        ...datasetConfigs,
+        datasets: {
+          datasets: [...postDatasets],
+        } as any,
+      },
       file_upload: {
         image: visionConfig,
       },
@@ -506,6 +600,14 @@ const Debug: FC<IDebug> = ({
     }
   })
 
+  const allToolIcons = (() => {
+    const icons: Record<string, any> = {}
+    modelConfig.agentConfig.tools?.forEach((item: any) => {
+      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+    })
+    return icons
+  })()
+
   return (
     <>
       <div className="shrink-0">
@@ -539,6 +641,8 @@ const Debug: FC<IDebug> = ({
               <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
                 <Chat
                   chatList={chatList}
+                  query={userQuery}
+                  onQueryChange={setUserQuery}
                   onSend={onSend}
                   checkCanSend={checkCanSend}
                   feedbackDisabled
@@ -563,6 +667,7 @@ const Debug: FC<IDebug> = ({
                   supportAnnotation
                   appId={appId}
                   onChatListChange={setChatList}
+                  allToolIcons={allToolIcons}
                 />
               </div>
             </div>
