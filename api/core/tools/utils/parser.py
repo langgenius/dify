@@ -20,6 +20,8 @@ class ApiBasedToolSchemaParser:
         # set description to extra_info
         if 'description' in openapi['info']:
             extra_info['description'] = openapi['info']['description']
+        else:
+            extra_info['description'] = ''
 
         if len(openapi['servers']) == 0:
             raise ToolProviderNotFoundError('No server found in the openapi yaml.')
