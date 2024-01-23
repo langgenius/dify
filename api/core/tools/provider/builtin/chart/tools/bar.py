@@ -25,9 +25,11 @@ class BarChartTool(BuiltinTool):
             if len(axis) != len(data):
                 axis = None
 
-        flg, ax = plt.subplots()
+        flg, ax = plt.subplots(figsize=(10, 8))
 
         if axis:
+            axis = [label[:10] + '...' if len(label) > 10 else label for label in axis]
+            ax.set_xticklabels(axis, rotation=45, ha='right')
             ax.bar(axis, data)
         else:
             ax.bar(range(len(data)), data)
