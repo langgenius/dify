@@ -33,7 +33,7 @@ class YahooFinanceAnalyticsTool(BuiltinTool):
 
         stock_data = download(symbol, start=time_range[0], end=time_range[1])
         max_segments = min(15, len(stock_data))
-        rows_per_segment = len(stock_data) // max_segments
+        rows_per_segment = len(stock_data) // (max_segments or 1)
         summary_data = []
         for i in range(max_segments):
             start_idx = i * rows_per_segment
