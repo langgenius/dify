@@ -543,7 +543,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # add assistant message
             if len(agent_scratchpad) > 0:
                 prompt_messages.append(AssistantPromptMessage(
-                    content=agent_scratchpad[-1].thought + "\n" + (agent_scratchpad[-1].observation or '')
+                    content=(agent_scratchpad[-1].thought or '') + "\n" + (agent_scratchpad[-1].observation or '')
                 ))
 
             # add user message
