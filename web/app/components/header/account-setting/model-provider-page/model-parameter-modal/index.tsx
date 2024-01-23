@@ -69,6 +69,8 @@ const stopParameerRule: ModelParameterRule = {
     zh_Hans: '输入序列并按 Tab 键',
   },
 }
+
+const PROVIDER_WITH_PRESET_TONE = ['openai', 'azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isAdvancedMode,
   modelId,
@@ -105,10 +107,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     const remvoedCustomeTone = TONE_LIST.slice(0, -1)
     const CUSTOM_TONE_ID = 4
     const tone = remvoedCustomeTone.find((tone) => {
-      return tone.config?.temperature === completionParams.temperature
-        && tone.config?.top_p === completionParams.top_p
-        && tone.config?.presence_penalty === completionParams.presence_penalty
-        && tone.config?.frequency_penalty === completionParams.frequency_penalty
+      const config: Record<string, any> = tone.config || {}
+
+      return Object.keys(config).every((key) => {
+        return config[key] === completionParams[key]
+      })
     })
     return tone ? tone.id : CUSTOM_TONE_ID
   }
@@ -122,14 +125,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   })[toneId] || ''
   // set completionParams by toneId
   const handleToneChange = (id: number) => {
-    if (id === 4)
-      return // custom tone
     const tone = TONE_LIST.find(tone => tone.id === id)
     if (tone) {
       setToneId(id)
       onCompletionParamsChange({
         ...tone.config,
-        max_tokens: completionParams.max_tokens,
       })
     }
   }
@@ -173,6 +173,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
   const handleInitialParams = () => {
     const newCompletionParams = { ...completionParams }
+    const defaultParams: Record<string, any> = {}
     if (parameterRules.length) {
       parameterRules.forEach((parameterRule) => {
         if (!newCompletionParams[parameterRule.name]) {
@@ -181,7 +182,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           else
             delete newCompletionParams[parameterRule.name]
         }
+        if (!isNullOrUndefined(parameterRule.default))
+          defaultParams[parameterRule.name] = parameterRule.default
       })
+
+      if (PROVIDER_WITH_PRESET_TONE.includes(provider))
+        TONE_LIST[3].config = defaultParams as any
 
       onCompletionParamsChange(newCompletionParams)
     }
@@ -305,7 +311,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   <div className='mt-5'><Loading /></div>
                 )
               }
-              {['openai', 'azure_openai'].includes(provider) && !isLoading && !!parameterRules.length && (
+              {PROVIDER_WITH_PRESET_TONE.includes(provider) && !isLoading && !!parameterRules.length && (
                 <div className='mt-5 mb-4'>
                   <div className="mb-3 text-sm text-gray-900">{t('appDebug.modelConfig.setTone')}</div>
                   <Radio.Group className={cn('!rounded-lg', toneTabBgClassName)} value={toneId} onChange={handleToneChange}>
