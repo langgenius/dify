@@ -56,7 +56,7 @@ class ApiBasedToolSchemaParser:
                             zh_Hans=parameter.get('description', '')
                         ),
                         type=ToolParamter.ToolParameterType.STRING,
-                        required=parameter['required'],
+                        required=parameter.get('required', False),
                         form=ToolParamter.ToolParameterForm.LLM,
                         llm_description=parameter.get('description'),
                         default=parameter['default'] if 'default' in parameter else None,

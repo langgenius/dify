@@ -3,7 +3,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 from typing import Any, Dict, List, Union
 
-import datetime
+from datetime import datetime, timezone
 
 class CurrentTimeTool(BuiltinTool):
     def _invoke(self, 
@@ -13,5 +13,5 @@ class CurrentTimeTool(BuiltinTool):
         """
             invoke tools
         """
-        return self.create_text_message(f'{datetime.datetime.now()}')
+        return self.create_text_message(f'{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")}')
     

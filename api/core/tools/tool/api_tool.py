@@ -99,7 +99,7 @@ class ApiTool(Tool):
         cookies = {}
 
         # check parameters
-        for parameter in self.api_bundle.openapi['parameters']:
+        for parameter in self.api_bundle.openapi.get('parameters', []):
             if parameter['in'] == 'path':
                 value = ''
                 if parameter['name'] in parameters:
@@ -143,7 +143,22 @@ class ApiTool(Tool):
                     properties = body_schema['properties'] if 'properties' in body_schema else {}
                     for name, property in properties.items():
                         if name in parameters:
-                            body[name] = parameters[name]
+                            # convert type
+                            try:
+                                value = parameters[name]
+                                if property['type'] == 'integer':
+                                    value = int(value)
+                                elif property['type'] == 'number':
+                                    # check if it is a float
+                                    if '.' in value:
+                                        value = float(value)
+                                    else:
+                                        value = int(value)
+                                elif property['type'] == 'boolean':
+                                    value = bool(value)
+                                body[name] = value
+                            except ValueError as e:
+                                body[name] = parameters[name]
                         elif name in required:
                             raise ToolProviderCredentialValidationError(
                                 f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
@@ -204,3 +219,4 @@ class ApiTool(Tool):
 
         # assemble invoke message
         return self.create_text_message(response)
+    

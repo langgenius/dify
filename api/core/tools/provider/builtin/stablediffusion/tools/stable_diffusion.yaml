@@ -2,12 +2,12 @@ identity:
   name: stable_diffusion
   author: Dify
   label:
-    en_US: Stable Diffusion
-    zh_Hans: Stable Diffusion
+    en_US: Stable Diffusion WebUI
+    zh_Hans: Stable Diffusion WebUI
 description:
   human:
-    en_US: A tool for generating images which can be deployed locally.
-    zh_Hans: 一个可以在本地部署的图片生成的工具。
+    en_US: A tool for generating images which can be deployed locally, you can use stable-diffusion-webui to deploy it.
+    zh_Hans: 一个可以在本地部署的图片生成的工具，您可以使用 stable-diffusion-webui 来部署它。
   llm: draw the image you want based on your prompt.
 parameters:
   - name: prompt

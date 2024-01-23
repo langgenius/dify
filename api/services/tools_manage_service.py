@@ -208,6 +208,9 @@ class ToolManageService:
         # extra info like description will be set here
         tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
+        if len(tool_bundles) > 10:
+            raise ValueError(f'the number of apis should be less than 10')
+
         # create db provider
         db_provider = ApiToolProvider(
             tenant_id=tenant_id,

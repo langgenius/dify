@@ -3,6 +3,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 from base64 import b64decode
+from os.path import join
 
 from openai import OpenAI
 
@@ -20,6 +21,8 @@ class DallE2Tool(BuiltinTool):
         openai_base_url = self.runtime.credentials.get('openai_base_url', None)
         if not openai_base_url:
             openai_base_url = None
+        else:
+            openai_base_url = join(openai_base_url, 'v1')
 
         client = OpenAI(
             api_key=self.runtime.credentials['openai_api_key'],
