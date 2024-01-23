@@ -121,7 +121,7 @@ const Debug: FC<IDebug> = ({
         suggestedQuestions,
       }])
     }
-  }, [introduction, modelConfig.configs.prompt_variables, inputs])
+  }, [introduction, suggestedQuestions, modelConfig.configs.prompt_variables, inputs])
 
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)

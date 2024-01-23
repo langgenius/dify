@@ -349,7 +349,7 @@ const translation = {
   },
   debugAsSingleModel: 'Debug as Single Model',
   debugAsMultipleModel: 'Debug as Multiple Models',
-  duplicateModel: 'Duplicate',
+  duplicateModel: 'Dusplicate',
   publishAs: 'Publish as',
   assistantType: {
     name: 'Assistant Type',
