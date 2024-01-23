@@ -2,7 +2,7 @@ identity:
   author: Dify
   name: time
   label:
-    en_US: Time
+    en_US: CurrentTime
     zh_Hans: 时间
   description:
     en_US: A tool for getting the current time.
