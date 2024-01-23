@@ -129,23 +129,23 @@ Chat applications support session persistence, allowing previous chat history to
     - `event: ping` Ping event every 10 seconds to keep the connection alive.
 
     ### Errors
-    - `404`, Conversation does not exists
-    - `400`, invalid_param, abnormal parameter input
-    - `400`, app_unavailable, App configuration unavailable
-    - `400`, provider_not_initialize, no available model credential configuration
-    - `400`, provider_quota_exceeded, model invocation quota insufficient
-    - `400`, model_currently_not_support, current model unavailable
-    - `400`, completion_request_error, text generation failed
-    - `500`, internal server error
+    - 404, Conversation does not exists
+    - 400, `invalid_param`, abnormal parameter input
+    - 400, `app_unavailable`, App configuration unavailable
+    - 400, `provider_not_initialize`, no available model credential configuration
+    - 400, `provider_quota_exceeded`, model invocation quota insufficient
+    - 400, `model_currently_not_support`, current model unavailable
+    - 400, `completion_request_error`, text generation failed
+    - 500, internal server error
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "inputs": {},
@@ -328,11 +328,11 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "rating": "like",
@@ -403,11 +403,11 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer {api_key}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    --header 'Authorization: Bearer {api_key}'
     ```
 
     </CodeGroup>
@@ -476,7 +476,7 @@ Chat applications support session persistence, allowing previous chat history to
       - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
     - `has_more` (bool)
     - `limit` (int) Number of entries returned, if input exceeds system limit, system limit number is returned
-    
+
   </Col>
   <Col sticky>
 
@@ -484,7 +484,7 @@ Chat applications support session persistence, allowing previous chat history to
 
     ```bash {{ title: 'cURL' }}
     curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    --header 'Authorization: Bearer {api_key}'
     ```
 
     </CodeGroup>
@@ -519,82 +519,38 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
-  url='/conversations/{conversation_id}/name'
-  method='POST'
-  title='Conversation renaming'
-  name='#rename'
-/>
-<Row>
-  <Col>
-    Rename conversations; the name is displayed in multi-session client interfaces.
-
-    ### Request Body
-
-    <Properties>
-      <Property name='name' type='string' key='name'>
-        New name
-      </Property>
-      <Property name='user' type='string' key='user'>
-        The user identifier, defined by the developer, must ensure uniqueness within the app.
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
-    --header 'Content-Type: application/json' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --data-raw '{
-        "name": "",
-        "user": "abc-123"
-    }'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
-
----
-
-<Heading
   url='/conversations/{conversation_id}'
   method='DELETE'
-  title='Conversation deletion'
+  title='Delete Conversation'
   name='#delete'
 />
 <Row>
   <Col>
-    Delete conversation.
+    Delete a conversation.
+
+    ### Path
+    - `conversation_id` (string) Conversation ID
 
     ### Request Body
 
     <Properties>
       <Property name='user' type='string' key='user'>
-        The user identifier, defined by the developer, must ensure uniqueness within the app.
+        The user identifier, defined by the developer, must ensure uniqueness within the application.
       </Property>
     </Properties>
+
+    ### Response
+    - `result` (string) Always returns "success"
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
         curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
         --header 'Content-Type: application/json' \
         --header 'Accept: application/json' \
-        --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+        --header 'Authorization: Bearer {api_key}' \
         --data '{
             "user": "abc-123"
         }'
@@ -613,36 +569,47 @@ Chat applications support session persistence, allowing previous chat history to
 </Row>
 
 ---
-
 <Heading
-  url='/files/upload'
+  url='/conversations/{conversation_id}/name'
   method='POST'
-  title='Upload files'
-  name='#files-upload'
+  title='Conversation Rename'
+  name='#rename'
 />
 <Row>
   <Col>
-    Upload files to the server for text generation and dialogue. Uploaded files are only available to the current end user.
-
     ### Request Body
-    The request method is `multipart/form-data`
+
     <Properties>
-      <Property name='file' type='file' key='file'>
-        The file to upload. Currently supports png, jpg, jpeg, webp, gif format files.
+      <Property name='name' type='string' key='name'>
+          The name of the conversation. This parameter can be omitted if `auto_generate` is set to `true`.
+      </Property>
+      <Property name='auto_generate' type='bool' key='auto_generate'>
+        Automatically generate the title, default is `false`
       </Property>
       <Property name='user' type='string' key='user'>
-        User ID, rules are defined by the developer, and it is necessary to ensure that the user ID is unique within the application.
+        The user identifier, defined by the developer, must ensure uniqueness within the application.
       </Property>
     </Properties>
+
+    ### Response
+    - `id` (string) Conversation ID
+    - `name` (string) Conversation name
+    - `inputs` array[object] User input parameters.
+    - `introduction` (string) Introduction
+    - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=@"/path/to/file"'
+    curl --location --request POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer {api_key}' \
+    --data-raw '{
+        "name": "",
+        "user": "abc-123"
+    }'
     ```
 
     </CodeGroup>
@@ -650,13 +617,11 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
-      "name": "example.png",
-      "size": 1024,
-      "extension": "png",
-      "mime_type": "image/png",
-      "created_by": 123,  
-      "created_at": 1577836800,
+        "id": "cd78daf6-f9e4-4463-9ff2-54257230a0ce",
+        "name": "Chat vs AI",
+        "inputs": {},
+        "introduction": "",
+        "created_at": 1705569238
     }
     ```
     </CodeGroup>
@@ -668,36 +633,44 @@ Chat applications support session persistence, allowing previous chat history to
 <Heading
   url='/audio-to-text'
   method='POST'
-  title='speech to text'
+  title='Speech to Text'
   name='#audio'
 />
 <Row>
   <Col>
-    Speech to text, only supports openai model.
+    This endpoint requires a multipart/form-data request.
 
     ### Request Body
 
     <Properties>
       <Property name='file' type='file' key='file'>
         Audio file.
-        File uploads are currently limited to 15 MB and the following input file types are supported: mp3, mp4, mpeg, mpga, m4a, wav, and webm.
+          Supported formats: `['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`
+          File size limit: 15MB
+      </Property>
+      <Property name='user' type='string' key='user'>
+      User identifier, defined by the developer's rules, must be unique within the application.
       </Property>
     </Properties>
+
+    ### Response
+    - `text` (string) Output text
+
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
+    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Authorization: Bearer {api_key}' \
     --form 'file=@localfile;type=audio/mp3'
     ```
 
     </CodeGroup>
 
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
+    ```json {{ text: 'hello' }}
     {
       "text": ""
     }
@@ -711,22 +684,58 @@ Chat applications support session persistence, allowing previous chat history to
 <Heading
   url='/parameters'
   method='GET'
-  title='Obtain application parameter information'
-  name='#rename'
+  title='Get Application Information'
+  name='#parameters'
 />
 <Row>
   <Col>
-    Content include:
-    1. Retrieve configured Input parameters, including variable names, field names, types, and default values. Typically used for displaying these fields in a form or filling in default values after the client loads.
-    2. Configuration of uploading images, including whether to enable image uploading, the number of uploaded images and the uploading method. Note: This configuration is only available when using a model that supports multimodality.
+    Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
 
     ### Query
 
     <Properties>
       <Property name='user' type='string' key='user'>
-        The user identifier, defined by the developer, must ensure uniqueness within the app.
+          User identifier, defined by the developer's rules, must be unique within the application.
       </Property>
     </Properties>
+
+    ### Response
+    - `opening_statement` (string) Opening statement
+    - `suggested_questions` (array[string]) List of suggested questions for the opening
+    - `suggested_questions_after_answer` (object) Suggest questions after enabling the answer.
+      - `enabled` (bool) Whether it is enabled
+    - `speech_to_text` (object) Speech to text
+      - `enabled` (bool) Whether it is enabled
+    - `retriever_resource` (object) Citation and Attribution
+      - `enabled` (bool) Whether it is enabled
+    - `annotation_reply` (object) Annotation reply
+      - `enabled` (bool) Whether it is enabled
+    - `user_input_form` (array[object]) User input form configuration
+      - `text`-input (object) Text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `paragraph` (object) Paragraph text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `select` (object) Dropdown control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+        - `options` (array[string]) Option values
+    - `file_upload` (object) File upload configuration
+      - `image` (object) Image settings
+        Currently only supports image types: png, jpg, jpeg, webp, gif
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Image number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+    - `system_parameters` (object) System parameters
+      - `image_file_size_limit` (string) Image file upload size limit (MB)
+
   </Col>
   <Col sticky>
 
@@ -734,7 +743,7 @@ Chat applications support session persistence, allowing previous chat history to
 
     ```bash {{ title: 'cURL' }}
     curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    --header 'Authorization: Bearer {api_key}'
     ```
 
     </CodeGroup>
@@ -742,30 +751,42 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "introduction": "nice to meet you",
+      "opening_statement": "Hello!",
+      "suggested_questions_after_answer": {
+          "enabled": true
+      },
+      "speech_to_text": {
+          "enabled": true
+      },
+      "retriever_resource": {
+          "enabled": true
+      },
+      "annotation_reply": {
+          "enabled": true
+      },
       "user_input_form": [
-        {
-          "text-input": {
-            "label": "a",
-            "variable": "a",
-            "required": true,
-            "max_length": 48,
-            "default": ""
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
           }
-        }
-        {
-          // ...
-        }
       ],
       "file_upload": {
-        "image": {
-          "enabled": true,
-          "number_limits": 3,
-          "transfer_methods": [
-            "remote_url",
-            "local_file"
-          ]
-        }
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "image_file_size_limit": "10"
       }
     }
     ```
