@@ -6,6 +6,7 @@
   height: 360px;
   background: center center no-repeat;
   background-size: contain;
+  border-radius: 8px;
 }
 
 .wrap:hover .preview {
@@ -13,31 +14,25 @@
 }
 
 .openingStatementPreview {
-  @apply shadow-lg rounded-lg;
-  background-image: url(./preview-imgs/opening-suggestion-preview@2x.png);
+  background-image: url(./preview-imgs/opening-statement.png);
 }
 
 .suggestedQuestionsAfterAnswerPreview {
-  @apply shadow-lg rounded-lg;
-  background-image: url(./preview-imgs/next-question-suggestion-preview@2x.png);
+  background-image: url(./preview-imgs/suggested-questions-after-answer.svg);
 }
 
 .moreLikeThisPreview {
-  @apply shadow-lg rounded-lg;
-  background-image: url(./preview-imgs/more-like-this-preview@2x.png);
+  background-image: url(./preview-imgs/more-like-this.svg);
 }
 
 .speechToTextPreview {
-  @apply shadow-lg rounded-lg;
-  background-image: url(./preview-imgs/speech-to-text-preview@2x.png);
+  background-image: url(./preview-imgs/speech-to-text.svg);
 }
 
 .textToSpeechPreview {
   @apply shadow-lg rounded-lg;
   background-image: url(./preview-imgs/text-to-audio-preview-assistant@2x.png);
-}
 
 .citationPreview {
-  @apply shadow-lg rounded-lg;
-  background-image: url(./preview-imgs/citations-and-attributions-preview@2x.png);
+  background-image: url(./preview-imgs/citation.svg);
 }

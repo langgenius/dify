@@ -6,10 +6,11 @@ import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import { checkOrSetAccessToken } from '../utils'
+import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import useConversation from './hooks/use-conversation'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
@@ -18,6 +19,7 @@ import Header from '@/app/components/share/header'
 import {
   delConversation,
   fetchAppInfo,
+  fetchAppMeta,
   fetchAppParams,
   fetchChatList,
   fetchConversations,
@@ -29,7 +31,8 @@ import {
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
-import type { ConversationItem, SiteInfo } from '@/models/share'
+import type { AppMeta, ConversationItem, SiteInfo } from '@/models/share'
+
 import type {
   CitationConfig,
   PromptConfig,
@@ -79,6 +82,7 @@ const Main: FC<IMainProps> = ({
   const [plan, setPlan] = useState<string>('basic') // basic/plus/pro
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [customConfig, setCustomConfig] = useState<any>(null)
+  const [appMeta, setAppMeta] = useState<AppMeta | null>(null)
   // in mobile, show sidebar by click button
   const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
@@ -117,6 +121,7 @@ const Main: FC<IMainProps> = ({
     existConversationInfo,
     setExistConversationInfo,
   } = useConversation()
+  const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const [hasMore, setHasMore] = useState<boolean>(true)
   const [hasPinnedMore, setHasPinnedMore] = useState<boolean>(true)
   const onMoreLoaded = ({ data: conversations, has_more }: any) => {
@@ -204,6 +209,14 @@ const Main: FC<IMainProps> = ({
   const conversationIntroduction = currConversationInfo?.introduction || ''
   const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
 
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
+
   useEffect(() => {
     (async () => {
       if (controlChatUpdateAllConversation && !isNewConversation) {
@@ -258,14 +271,16 @@ const Main: FC<IMainProps> = ({
             id: `question-${item.id}`,
             content: item.query,
             isAnswer: false,
-            message_files: item.message_files,
+            message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
           })
           newChatList.push({
             id: item.id,
             content: item.answer,
+            agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,
+            message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
           })
         })
         setChatList(newChatList)
@@ -335,6 +350,7 @@ const Main: FC<IMainProps> = ({
       isAnswer: true,
       feedbackDisabled: true,
       isOpeningStatement: true,
+      suggestedQuestions: openingSuggestedQuestions,
     }
     if (caculatedIntroduction)
       return [openstatement]
@@ -362,7 +378,7 @@ const Main: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchAppMeta(isInstalledApp, installedAppInfo?.id)])
   }
 
   const { data: fileUploadConfigResponse } = useSWR(isInstalledApp ? { url: '/files/upload' } : null, fetchFileUploadConfig)
@@ -371,7 +387,8 @@ const Main: FC<IMainProps> = ({
   useEffect(() => {
     (async () => {
       try {
-        const [appData, conversationData, appParams]: any = await fetchInitData()
+        const [appData, conversationData, appParams, appMeta]: any = await fetchInitData()
+        setAppMeta(appMeta)
         const { app_id: appId, site: siteInfo, plan, can_replace_logo, custom_config }: any = appData
         setAppId(appId)
         setPlan(plan)
@@ -386,7 +403,7 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, text_to_speech, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions, suggested_questions_after_answer, speech_to_text, text_to_speech, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
         setVisionConfig({
           ...file_upload.image,
           image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
@@ -399,6 +416,8 @@ const Main: FC<IMainProps> = ({
           name: t('share.chat.newChatDefaultName'),
           introduction,
         })
+        setOpeningSuggestedQuestions(suggested_questions || [])
+
         setSiteInfo(siteInfo as SiteInfo)
         setPromptConfig({
           prompt_template,
@@ -467,16 +486,41 @@ const Main: FC<IMainProps> = ({
   const [controlFocus, setControlFocus] = useState(0)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const doShowSuggestion = isShowSuggestion && !isResponsing
-  const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [openingSuggestedQuestions, setOpeningSuggestedQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
+  const [userQuery, setUserQuery] = useState('')
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
+
+  const updateCurrentQA = ({
+    responseItem,
+    questionId,
+    placeholderAnswerId,
+    questionItem,
+  }: {
+    responseItem: IChatItem
+    questionId: string
+    placeholderAnswerId: string
+    questionItem: IChatItem
+  }) => {
+    // closesure new list is outdated.
+    const newListWithAnswer = produce(
+      getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+      (draft) => {
+        if (!draft.find(item => item.id === questionId))
+          draft.push({ ...questionItem })
+
+        draft.push({ ...responseItem })
+      })
+    setChatList(newListWithAnswer)
+  }
+
   const handleSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -513,6 +557,7 @@ const Main: FC<IMainProps> = ({
       content: message,
       isAnswer: false,
       message_files: files,
+
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -525,12 +570,18 @@ const Main: FC<IMainProps> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    let isAgentMode = false
+
     // answer
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
+      message_files: [],
       isAnswer: true,
     }
+    let hasSetResponseId = false
+
     const prevTempNewConversationId = getCurrConversationId() || '-1'
     let tempNewConversationId = prevTempNewConversationId
 
@@ -543,8 +594,19 @@ const Main: FC<IMainProps> = ({
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
-        responseItem.id = messageId
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+        }
+        if (messageId && !hasSetResponseId) {
+          responseItem.id = messageId
+          hasSetResponseId = true
+        }
+
         if (isFirstMessage && newConversationId)
           tempNewConversationId = newConversationId
 
@@ -554,16 +616,12 @@ const Main: FC<IMainProps> = ({
           setIsResponsingConCurrCon(false)
           return
         }
-        // closesure new list is outdated.
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       async onCompleted(hasError?: boolean) {
         if (hasError)
@@ -589,6 +647,56 @@ const Main: FC<IMainProps> = ({
           setIsShowSuggestion(true)
         }
         setResponsingFalse()
+      },
+      onFile(file) {
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          lastThought.message_files = [...(lastThought as any).message_files, { ...file }]
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
+      },
+      onThought(thought) {
+        // console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
+
+        isAgentMode = true
+        const response = responseItem as any
+        if (thought.message_id && !hasSetResponseId) {
+          response.id = thought.message_id
+          hasSetResponseId = true
+        }
+        // responseItem.id = thought.message_id;
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+          }
+          else {
+            responseItem.agent_thoughts!.push(thought)
+          }
+        }
+        // has switched to other conversation
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return false
+        }
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       onMessageEnd: (messageEnd) => {
         if (messageEnd.metadata?.annotation_reply) {
@@ -772,6 +880,8 @@ const Main: FC<IMainProps> = ({
                 <div className='h-full overflow-y-auto' ref={chatListDomRef}>
                   <Chat
                     chatList={chatList}
+                    query={userQuery}
+                    onQueryChange={setUserQuery}
                     onSend={handleSend}
                     isHideFeedbackEdit
                     onFeedback={handleFeedback}
@@ -785,7 +895,7 @@ const Main: FC<IMainProps> = ({
                     checkCanSend={checkCanSend}
                     controlFocus={controlFocus}
                     isShowSuggestion={doShowSuggestion}
-                    suggestionList={suggestQuestions}
+                    suggestionList={suggestedQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     isShowTextToSpeech={textToSpeechConfig?.enabled}
                     isShowCitation={citationConfig?.enabled && isInstalledApp}
@@ -793,6 +903,7 @@ const Main: FC<IMainProps> = ({
                       ...visionConfig,
                       image_file_size_limit: fileUploadConfigResponse ? fileUploadConfigResponse.image_file_size_limit : visionConfig.image_file_size_limit,
                     }}
+                    allToolIcons={appMeta?.tool_icons || {}}
                   />
                 </div>
               </div>)

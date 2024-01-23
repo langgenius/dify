@@ -156,7 +156,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             {t('datasetSettings.form.desc')}
           </div>
-          <div className='grow'>
+          <div className='w-full'>
             <textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
@@ -173,12 +173,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             <div>{t('datasetSettings.form.permissions')}</div>
           </div>
-          <div className='w-full sm:w-[480px]'>
+          <div className='w-full'>
             <PermissionsRadio
               disable={!localeCurrentDataset?.embedding_available}
               value={localeCurrentDataset.permission}
               onChange={v => handleValueChange('permission', v!)}
-              itemClassName='sm:!w-[227px]'
+              itemClassName='sm:!w-[280px]'
             />
           </div>
         </div>
@@ -192,7 +192,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               disable={!localeCurrentDataset?.embedding_available}
               value={indexMethod}
               onChange={v => setIndexMethod(v!)}
-              itemClassName='sm:!w-[227px]'
+              itemClassName='sm:!w-[280px]'
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className={labelClass}>
               {t('datasetSettings.form.embeddingModel')}
             </div>
-            <div className='grow'>
+            <div className='w-full'>
               <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
                 <ModelSelector
                   readonly

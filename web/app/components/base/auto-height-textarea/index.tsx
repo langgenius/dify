@@ -25,12 +25,10 @@ const AutoHeightTextarea = forwardRef(
 
     const doFocus = () => {
       if (ref.current) {
-        // console.log('focus')
         ref.current.setSelectionRange(value.length, value.length)
         ref.current.focus()
         return true
       }
-      // console.log(autoFocus, 'not focus')
       return false
     }
 

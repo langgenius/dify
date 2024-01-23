@@ -91,6 +91,8 @@ To validate your set up, head over to [http://localhost:3000](http://localhost:3
 
 If you are adding a model provider, [this guide](https://github.com/langgenius/dify/blob/main/api/core/model_runtime/README.md) is for you.
 
+If you are adding a tool provider to Agent or Workflow, [this guide](./api/core/tools/README.md) is for you.
+
 To help you quickly navigate where your contribution fits, a brief, annotated outline of Dify's backend & frontend is as follows:
 
 ### Backend

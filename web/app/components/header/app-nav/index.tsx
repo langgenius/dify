@@ -7,11 +7,11 @@ import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
+import { Robot, RobotActive } from '../../base/icons/src/public/header-nav/studio'
 import { fetchAppDetail, fetchAppList } from '@/service/apps'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
-import { Container } from '@/app/components/base/icons/src/vender/line/development'
-import { Container as ContainerSolid } from '@/app/components/base/icons/src/vender/solid/development'
 import type { AppListResponse } from '@/models/app'
+import { useAppContext } from '@/context/app-context'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -21,6 +21,8 @@ const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
 
 const AppNav = () => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
+
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { appId } = useParams()
   const isAppDetailPage = usePathname().split('/').includes('app')
@@ -35,8 +37,8 @@ const AppNav = () => {
   return (
     <>
       <Nav
-        icon={<Container className='w-4 h-4' />}
-        activeIcon={<ContainerSolid className='w-4 h-4' />}
+        icon={<Robot className='w-4 h-4' />}
+        activeIcon={<RobotActive className='w-4 h-4' />}
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link='/apps'
@@ -44,7 +46,7 @@ const AppNav = () => {
         navs={appItems.map(item => ({
           id: item.id,
           name: item.name,
-          link: `/app/${item.id}/overview`,
+          link: `/app/${item.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`,
           icon: item.icon,
           icon_background: item.icon_background,
         }))}

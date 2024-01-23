@@ -4,8 +4,15 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
+import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 
-const AdvancedModeWarning: FC = () => {
+type Props = {
+  onReturnToSimpleMode: () => void
+}
+
+const AdvancedModeWarning: FC<Props> = ({
+  onReturnToSimpleMode,
+}) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const [show, setShow] = React.useState(true)
@@ -26,10 +33,20 @@ const AdvancedModeWarning: FC = () => {
           </a>
         </div>
 
-        <div
-          className='flex items-center h-6 px-2 rounded-md bg-[#fff] border border-gray-200 shadow-xs text-xs font-medium text-primary-600 cursor-pointer'
-          onClick={() => setShow(false)}
-        >{t('appDebug.promptMode.advancedWarning.ok')}</div>
+        <div className='flex items-center space-x-1'>
+          <div
+            onClick={onReturnToSimpleMode}
+            className='shrink-0 flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
+          >
+            <FlipBackward className='w-3 h-3 text-white' />
+            <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
+          </div>
+          <div
+            className='flex items-center h-6 px-2 rounded-md bg-[#fff] border border-gray-200 shadow-xs text-xs font-medium text-primary-600 cursor-pointer'
+            onClick={() => setShow(false)}
+          >{t('appDebug.promptMode.advancedWarning.ok')}</div>
+        </div>
+
       </div>
     </div>
   )
