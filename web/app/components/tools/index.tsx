@@ -23,12 +23,14 @@ type Props = {
   loc: LOC
   addedTools?: AgentTool[]
   onAddTool?: (collection: Collection, payload: Tool) => void
+  selectedProviderId?: string
 }
 
 const Tools: FC<Props> = ({
   loc,
   addedTools,
   onAddTool,
+  selectedProviderId,
 }) => {
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
@@ -42,8 +44,13 @@ const Tools: FC<Props> = ({
   const fetchCollectionList = async () => {
     const list = await doFetchCollectionList() as Collection[]
     setCollectionList(list)
-    if (list.length > 0 && currCollectionIndex === null)
-      setCurrCollectionIndex(0)
+    if (list.length > 0 && currCollectionIndex === null) {
+      let index = 0
+      if (selectedProviderId)
+        index = list.findIndex(item => item.id === selectedProviderId)
+
+      setCurrCollectionIndex(index || 0)
+    }
   }
   useEffect(() => {
     fetchCollectionList()
