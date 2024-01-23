@@ -145,7 +145,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         runtime_parameters = {}
 
-        parameters = tool_entity.parameters
+        parameters = tool_entity.parameters or []
         user_parameters = tool_entity.get_runtime_parameters() or []
 
         # override parameters
