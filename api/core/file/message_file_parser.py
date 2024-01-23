@@ -128,8 +128,9 @@ class MessageFileParser:
 
         # group by file type and convert file args or message files to FileObj
         for file in files:
-            if file.belongs_to == FileBelongsTo.ASSISTANT.value:
-                continue
+            if isinstance(file, MessageFile):
+                if file.belongs_to == FileBelongsTo.ASSISTANT.value:
+                    continue
 
             file_obj = self._to_file_obj(file, file_upload_config)
             if file_obj.type not in type_file_objs:
