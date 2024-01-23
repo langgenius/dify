@@ -419,8 +419,9 @@ class ApplicationManager:
             datasets = {'strategy': 'router', 'datasets': []}
 
         if 'agent_mode' in copy_app_model_config_dict and copy_app_model_config_dict['agent_mode'] \
-                and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
-            'enabled']:
+                and 'enabled' in copy_app_model_config_dict['agent_mode'] \
+                and copy_app_model_config_dict['agent_mode']['enabled']:
+            
             agent_dict = copy_app_model_config_dict.get('agent_mode', {})
             agent_strategy = agent_dict.get('strategy', 'cot')
 
@@ -464,29 +465,31 @@ class ApplicationManager:
 
                     dataset_id = tool_item['id']
                     dataset_ids.append(dataset_id)
+            
+            if 'strategy' in copy_app_model_config_dict['agent_mode'] and \
+                    copy_app_model_config_dict['agent_mode']['strategy'] not in ['react_router', 'router']:
+                agent_prompt = agent_dict.get('prompt', None) or {}
+                # check model mode
+                model_mode = copy_app_model_config_dict.get('model', {}).get('mode', 'completion')
+                if model_mode == 'completion':
+                    agent_prompt_entity = AgentPromptEntity(
+                        first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['completion']['prompt']),
+                        next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['completion']['agent_scratchpad']),
+                    )
+                else:
+                    agent_prompt_entity = AgentPromptEntity(
+                        first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['chat']['prompt']),
+                        next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['chat']['agent_scratchpad']),
+                    )
 
-            agent_prompt = agent_dict.get('prompt', None) or {}
-            # check model mode
-            model_mode = copy_app_model_config_dict.get('model', {}).get('mode', 'completion')
-            if model_mode == 'completion':
-                agent_prompt_entity = AgentPromptEntity(
-                    first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['completion']['prompt']),
-                    next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['completion']['agent_scratchpad']),
+                properties['agent'] = AgentEntity(
+                    provider=properties['model_config'].provider,
+                    model=properties['model_config'].model,
+                    strategy=strategy,
+                    prompt=agent_prompt_entity,
+                    tools=agent_tools,
+                    max_iteration=agent_dict.get('max_iteration', 5)
                 )
-            else:
-                agent_prompt_entity = AgentPromptEntity(
-                    first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['chat']['prompt']),
-                    next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['chat']['agent_scratchpad']),
-                )
-
-            properties['agent'] = AgentEntity(
-                provider=properties['model_config'].provider,
-                model=properties['model_config'].model,
-                strategy=strategy,
-                prompt=agent_prompt_entity,
-                tools=agent_tools,
-                max_iteration=agent_dict.get('max_iteration', 5)
-            )
 
         if len(dataset_ids) > 0:
             # dataset configs
