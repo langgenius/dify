@@ -49,6 +49,7 @@ class AppListApi(Resource):
 
         filters = [
             App.tenant_id == current_user.current_tenant_id,
+            App.is_universal == False
         ]
 
         if args['mode'] == 'completion':
