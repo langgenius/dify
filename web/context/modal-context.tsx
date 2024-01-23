@@ -84,6 +84,13 @@ export const ModalContextProvider = ({
       showModerationSettingModal.onCancelCallback()
   }
 
+  const handleCancelExternalDataToolModal = () => {
+    setShowExternalDataToolModal(null)
+
+    if (showExternalDataToolModal?.onCancelCallback)
+      showExternalDataToolModal.onCancelCallback()
+  }
+
   const handleCancelModelModal = useCallback(() => {
     setShowModelModal(null)
 
@@ -169,7 +176,7 @@ export const ModalContextProvider = ({
           !!showExternalDataToolModal && (
             <ExternalDataToolModal
               data={showExternalDataToolModal.payload}
-              onCancel={() => setShowExternalDataToolModal(null)}
+              onCancel={handleCancelExternalDataToolModal}
               onSave={handleSaveExternalDataTool}
               onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
             />
@@ -180,7 +187,7 @@ export const ModalContextProvider = ({
           !!showPricingModal && (
             <Pricing onCancel={() => {
               if (searchParams.get('show-pricing') === '1')
-                router.push(location.pathname, { forceOptimisticNavigation: true })
+                router.push(location.pathname, { forceOptimisticNavigation: true } as any)
 
               setShowPricingModal(false)
             }} />

@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 import requests
+from constants.languages import languages
 from extensions.ext_database import db
 from flask import current_app, redirect, request
 from flask_restful import Resource
@@ -106,11 +107,11 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
         )
 
         # Set interface language
-        preferred_lang = request.accept_languages.best_match(['zh', 'en'])
-        if preferred_lang == 'zh':
-            interface_language = 'zh-Hans'
+        preferred_lang = request.accept_languages.best_match(languages)
+        if preferred_lang and preferred_lang in languages:
+            interface_language = preferred_lang
         else:
-            interface_language = 'en-US'
+            interface_language = languages[0]
         account.interface_language = interface_language
         db.session.commit()
 

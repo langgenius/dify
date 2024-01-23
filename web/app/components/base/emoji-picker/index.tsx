@@ -65,12 +65,14 @@ type IEmojiPickerProps = {
   isModal?: boolean
   onSelect?: (emoji: string, background: string) => void
   onClose?: () => void
+  className?: string
 }
 
 const EmojiPicker: FC<IEmojiPickerProps> = ({
   isModal = true,
   onSelect,
   onClose,
+  className,
 }) => {
   const { t } = useTranslation()
   const { categories } = data as EmojiMartData
@@ -84,7 +86,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     onClose={() => { }}
     isShow
     closable={false}
-    wrapperClassName='!z-40'
+    wrapperClassName={`!z-40 ${className}`}
     className={cn(s.container, '!w-[362px] !p-0')}
   >
     <div className='flex flex-col items-center w-full p-3'>

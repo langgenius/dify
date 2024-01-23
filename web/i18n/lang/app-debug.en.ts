@@ -3,6 +3,7 @@ const translation = {
     line1: 'PROMPT',
     line2: 'Engineering',
   },
+  orchestrate: 'Orchestrate',
   promptMode: {
     simple: 'Switch to Expert Mode to edit the whole PROMPT',
     advanced: 'Expert Mode',
@@ -226,7 +227,7 @@ const translation = {
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
   },
-  chatSubTitle: 'Pre Prompt',
+  chatSubTitle: 'Instructions',
   completionSubTitle: 'Prefix Prompt',
   promptTip:
     'Prompts guide AI responses with instructions and constraints. Insert variables like {{input}}. This prompt won\'t be visible to users.',
@@ -271,6 +272,7 @@ const translation = {
     maxLength: 'Max length',
     options: 'Options',
     addOption: 'Add option',
+    apiBasedVar: 'API-based Variable',
   },
   vision: {
     name: 'Vision',
@@ -292,10 +294,11 @@ const translation = {
     },
   },
   openingStatement: {
-    title: 'Opening remarks',
+    title: 'Conversation Opener',
     add: 'Add',
-    writeOpner: 'Write remarks',
-    placeholder: 'Write your remarks message here',
+    writeOpner: 'Write opener',
+    placeholder: 'Write your opener message here, you can use variables, try type {{variable}}.',
+    openingQuestion: 'Opening Questions',
     noDataPlaceHolder:
       'Starting the conversation with the user can help AI establish a closer connection with them in conversational applications.',
     varTip: 'You can use variables, try type {{variable}}',
@@ -343,6 +346,42 @@ const translation = {
     score_threshold: 'Score Threshold',
     score_thresholdTip: 'Used to set the similarity threshold for chunks filtering.',
     retrieveChangeTip: 'Modifying the index mode and retrieval mode may affect applications associated with this Knowledge.',
+  },
+  assistantType: {
+    name: 'Assistant Type',
+    chatAssistant: {
+      name: 'Basic Assistant',
+      description: 'Build a chat-based assistant using a Large Language Model',
+    },
+    agentAssistant: {
+      name: 'Agent Assistant',
+      description: 'Build an intelligent Agent which can autonomously choose tools to complete the tasks',
+    },
+  },
+  agent: {
+    agentMode: 'Agent Mode',
+    agentModeDes: 'Set the type of inference mode for the agent',
+    agentModeType: {
+      ReACT: 'ReAct',
+      functionCall: 'Function Calling',
+    },
+    setting: {
+      name: 'Agent Settings',
+      description: 'Agent Assistant settings allow setting agent mode and advanced features like built-in prompts, only available in Agent type.',
+      maximumIterations: {
+        name: 'Maximum Iterations',
+        description: 'Limit the number of iterations an agent assistant can execute',
+      },
+    },
+    buildInPrompt: 'Build-In Prompt',
+    firstPrompt: 'First Prompt',
+    nextIteration: 'Next Iteration',
+    promptPlaceholder: 'Write your prompt here',
+    tools: {
+      name: 'Tools',
+      description: 'Using tools can extend the capabilities of LLM, such as searching the internet or performing scientific calculations',
+      enabled: 'Enabled',
+    },
   },
 }
 

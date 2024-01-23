@@ -1,30 +1,27 @@
 import logging
-from typing import List, Optional, cast
+from typing import cast, Optional, List
+
+from langchain import WikipediaAPIWrapper
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.tools import BaseTool, WikipediaQueryRun, Tool
+from pydantic import BaseModel, Field
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
-from core.agent.agent_executor import AgentConfiguration, AgentExecutor, PlanningStrategy
+from core.agent.agent_executor import PlanningStrategy, AgentConfiguration, AgentExecutor
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.entities.application_entities import (AgentEntity, AgentToolEntity, AppOrchestrationConfigEntity, InvokeFrom,
-                                                ModelConfigEntity)
+from core.entities.application_entities import ModelConfigEntity, InvokeFrom, \
+    AgentEntity, AgentToolEntity, AppOrchestrationConfigEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.tool.current_datetime_tool import DatetimeTool
-from core.tool.dataset_retriever_tool import DatasetRetrieverTool
-from core.tool.provider.serpapi_provider import SerpAPIToolProvider
-from core.tool.serpapi_wrapper import OptimizedSerpAPIInput, OptimizedSerpAPIWrapper
-from core.tool.web_reader_tool import WebReaderTool
+from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
-from langchain import WikipediaAPIWrapper
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 from models.dataset import Dataset
 from models.model import Message
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -132,55 +129,6 @@ class AgentRunnerFeature:
             logger.exception("agent_executor run failed")
             return None
 
-    def to_tools(self, tool_configs: list[AgentToolEntity],
-                 invoke_from: InvokeFrom,
-                 callbacks: list[BaseCallbackHandler]) \
-            -> Optional[List[BaseTool]]:
-        """
-        Convert tool configs to tools
-        :param tool_configs: tool configs
-        :param invoke_from: invoke from
-        :param callbacks: callbacks
-        """
-        tools = []
-        for tool_config in tool_configs:
-            tool = None
-            if tool_config.tool_id == "dataset":
-                tool = self.to_dataset_retriever_tool(
-                    tool_config=tool_config.config,
-                    invoke_from=invoke_from
-                )
-            elif tool_config.tool_id == "web_reader":
-                tool = self.to_web_reader_tool(
-                    tool_config=tool_config.config,
-                    invoke_from=invoke_from
-                )
-            elif tool_config.tool_id == "google_search":
-                tool = self.to_google_search_tool(
-                    tool_config=tool_config.config,
-                    invoke_from=invoke_from
-                )
-            elif tool_config.tool_id == "wikipedia":
-                tool = self.to_wikipedia_tool(
-                    tool_config=tool_config.config,
-                    invoke_from=invoke_from
-                )
-            elif tool_config.tool_id == "current_datetime":
-                tool = self.to_current_datetime_tool(
-                    tool_config=tool_config.config,
-                    invoke_from=invoke_from
-                )
-
-            if tool:
-                if tool.callbacks is not None:
-                    tool.callbacks.extend(callbacks)
-                else:
-                    tool.callbacks = callbacks
-
-                tools.append(tool)
-
-        return tools
-
     def to_dataset_retriever_tool(self, tool_config: dict,
                                   invoke_from: InvokeFrom) \
             -> Optional[BaseTool]:
@@ -248,77 +196,3 @@ class AgentRunnerFeature:
         )
 
         return tool
-
-    def to_web_reader_tool(self, tool_config: dict,
-                           invoke_from: InvokeFrom) -> Optional[BaseTool]:
-        """
-        A tool for reading web pages
-        :param tool_config: tool config
-        :param invoke_from: invoke from
-        :return:
-        """
-        model_parameters = {
-            "temperature": 0,
-            "max_tokens": 500
-        }
-
-        tool = WebReaderTool(
-            model_config=self.model_config,
-            model_parameters=model_parameters,
-            max_chunk_length=4000,
-            continue_reading=True
-        )
-
-        return tool
-
-    def to_google_search_tool(self, tool_config: dict,
-                              invoke_from: InvokeFrom) -> Optional[BaseTool]:
-        """
-        A tool for performing a Google search and extracting snippets and webpages
-        :param tool_config: tool config
-        :param invoke_from: invoke from
-        :return:
-        """
-        tool_provider = SerpAPIToolProvider(tenant_id=self.tenant_id)
-        func_kwargs = tool_provider.credentials_to_func_kwargs()
-        if not func_kwargs:
-            return None
-
-        tool = Tool(
-            name="google_search",
-            description="A tool for performing a Google search and extracting snippets and webpages "
-                        "when you need to search for something you don't know or when your information "
-                        "is not up to date. "
-                        "Input should be a search query.",
-            func=OptimizedSerpAPIWrapper(**func_kwargs).run,
-            args_schema=OptimizedSerpAPIInput
-        )
-
-        return tool
-
-    def to_current_datetime_tool(self, tool_config: dict,
-                                 invoke_from: InvokeFrom) -> Optional[BaseTool]:
-        """
-        A tool for getting the current date and time
-        :param tool_config: tool config
-        :param invoke_from: invoke from
-        :return:
-        """
-        return DatetimeTool()
-
-    def to_wikipedia_tool(self, tool_config: dict,
-                          invoke_from: InvokeFrom) -> Optional[BaseTool]:
-        """
-        A tool for searching Wikipedia
-        :param tool_config: tool config
-        :param invoke_from: invoke from
-        :return:
-        """
-        class WikipediaInput(BaseModel):
-            query: str = Field(..., description="search query.")
-
-        return WikipediaQueryRun(
-            name="wikipedia",
-            api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
-            args_schema=WikipediaInput
-        )

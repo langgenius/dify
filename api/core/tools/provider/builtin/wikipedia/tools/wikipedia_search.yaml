@@ -1,0 +1,28 @@
+identity:
+  name: wikipedia_search
+  author: Dify
+  label:
+    en_US: WikipediaSearch
+    zh_Hans: 维基百科搜索
+    pt_BR: WikipediaSearch
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for performing a Wikipedia search and extracting snippets and webpages.
+    zh_Hans: 一个用于执行维基百科搜索并提取片段和网页的工具。
+    pt_BR: A tool for performing a Wikipedia search and extracting snippets and webpages.
+  llm: A tool for performing a Wikipedia search and extracting snippets and webpages. Input should be a search query.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: key words for searching
+      zh_Hans: 查询关键词
+      pt_BR: key words for searching
+    llm_description: key words for searching
+    form: llm

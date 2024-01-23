@@ -3,7 +3,8 @@ import json
 import logging
 from datetime import datetime
 
-from constants.model_template import demo_model_templates, model_templates
+from constants.model_template import model_templates
+from constants.languages import demo_model_templates, languages
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
@@ -16,13 +17,14 @@ from events.app_event import app_was_created, app_was_deleted
 from extensions.ext_database import db
 from fields.app_fields import (app_detail_fields, app_detail_fields_with_site, app_pagination_fields,
                                template_list_fields)
+from flask import current_app
 from flask_login import current_user
 from flask_restful import Resource, abort, inputs, marshal_with, reqparse
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
+from models.tools import ApiToolProvider
 from services.app_model_config_service import AppModelConfigService
 from werkzeug.exceptions import Forbidden
-
 
 def _get_app(app_id, tenant_id):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()
@@ -42,14 +44,31 @@ class AppListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('page', type=inputs.int_range(1, 99999), required=False, default=1, location='args')
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
+        parser.add_argument('mode', type=str, choices=['chat', 'completion', 'all'], default='all', location='args', required=False)
+        parser.add_argument('name', type=str, location='args', required=False)
         args = parser.parse_args()
 
+        filters = [
+            App.tenant_id == current_user.current_tenant_id,
+            App.is_universal == False
+        ]
+
+        if args['mode'] == 'completion':
+            filters.append(App.mode == 'completion')
+        elif args['mode'] == 'chat':
+            filters.append(App.mode == 'chat')
+        else:
+            pass
+
+        if 'name' in args and args['name']:
+            filters.append(App.name.ilike(f'%{args["name"]}%'))
+
         app_models = db.paginate(
-            db.select(App).where(App.tenant_id == current_user.current_tenant_id,
-                                 App.is_universal == False).order_by(App.created_at.desc()),
+            db.select(App).where(*filters).order_by(App.created_at.desc()),
             page=args['page'],
             per_page=args['limit'],
-            error_out=False)
+            error_out=False
+        )
 
         return app_models
 
@@ -62,7 +81,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
-        parser.add_argument('mode', type=str, choices=['completion', 'chat'], location='json')
+        parser.add_argument('mode', type=str, choices=['completion', 'chat', 'assistant'], location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         parser.add_argument('model_config', type=dict, location='json')
@@ -178,7 +197,7 @@ class AppListApi(Resource):
         app_was_created.send(app)
 
         return app, 201
-
+    
 
 class AppTemplateApi(Resource):
 
@@ -193,7 +212,7 @@ class AppTemplateApi(Resource):
 
         templates = demo_model_templates.get(interface_language)
         if not templates:
-            templates = demo_model_templates.get('en-US')
+            templates = demo_model_templates.get(languages[0])
 
         return {'data': templates}
 

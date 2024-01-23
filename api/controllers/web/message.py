@@ -14,6 +14,7 @@ from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
+from fields.message_fields import agent_thought_fields
 from flask import Response, stream_with_context
 from flask_restful import fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
@@ -59,7 +60,8 @@ class MessageListApi(WebApiResource):
         'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
         'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
-        'created_at': TimestampField
+        'created_at': TimestampField,
+        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
     }
 
     message_infinite_scroll_pagination_fields = {

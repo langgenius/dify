@@ -1,9 +1,10 @@
 import { MAX_VAR_KEY_LENGHT, VAR_ITEM_TEMPLATE, getMaxVarNameLength } from '@/config'
 import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
 const otherAllowedRegex = /^[a-zA-Z0-9_]+$/
-export const getNewVar = (key: string) => {
+export const getNewVar = (key: string, type: string) => {
   return {
     ...VAR_ITEM_TEMPLATE,
+    type: type || 'string',
     key,
     name: key.slice(0, getMaxVarNameLength(key)),
   }

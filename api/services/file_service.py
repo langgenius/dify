@@ -16,6 +16,8 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
+
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'doc', 'csv'] + IMAGE_EXTENSIONS
 UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
                                       'docx', 'doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml'] + IMAGE_EXTENSIONS

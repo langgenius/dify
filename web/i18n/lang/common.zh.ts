@@ -14,6 +14,7 @@ const translation = {
     save: '保存',
     edit: '编辑',
     add: '添加',
+    added: '已添加',
     refresh: '重新开始',
     reset: '重置',
     search: '搜索',
@@ -85,13 +86,14 @@ const translation = {
   menus: {
     status: 'beta',
     explore: '探索',
-    apps: '构建应用',
+    apps: '工作室',
     plugins: '插件',
     pluginsTips: '集成第三方插件或创建与 ChatGPT 兼容的 AI 插件。',
     datasets: '知识库',
     datasetsTips: '即将到来: 上传自己的长文本数据，或通过 Webhook 集成自己的数据源',
     newApp: '创建应用',
     newDataset: '创建知识库',
+    tools: '工具',
   },
   userProfile: {
     settings: '设置',
@@ -370,7 +372,7 @@ const translation = {
   },
   appMenus: {
     overview: '概览',
-    promptEng: '提示词编排',
+    promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',
   },

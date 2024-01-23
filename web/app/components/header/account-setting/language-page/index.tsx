@@ -10,7 +10,7 @@ import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import I18n from '@/context/i18n'
 import { timezones } from '@/utils/timezone'
-import { languageMaps, languages } from '@/utils/language'
+import { languages } from '@/utils/language'
 
 const titleClassName = `
   mb-2 text-sm font-medium text-gray-900
@@ -28,7 +28,7 @@ export default function LanguagePage() {
     if (type === 'language') {
       url = '/account/interface-language'
       bodyKey = 'interface_language'
-      setLocaleOnClient(item.value === 'en-US' ? 'en' : 'zh-Hans')
+      setLocaleOnClient(item.value.toString())
     }
     if (type === 'timezone') {
       url = '/account/timezone'
@@ -52,7 +52,7 @@ export default function LanguagePage() {
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
         <SimpleSelect
-          defaultValue={languageMaps[locale] || userProfile.interface_language}
+          defaultValue={locale || userProfile.interface_language}
           items={languages}
           onSelect={item => handleSelect('language', item)}
           disabled={editing}

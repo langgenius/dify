@@ -68,6 +68,7 @@ const translation = {
       tooltip: '标注回复功能通过人工编辑标注为应用提供了可定制的高质量问答回复能力',
     },
     ragAPIRequestTooltip: '指单独调用 Dify 知识库数据处理能力的 API。',
+    receiptInfo: '只有团队所有者才能订阅和查看账单信息',
   },
   plans: {
     sandbox: {

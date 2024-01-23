@@ -1,4 +1,5 @@
 const translation = {
+  knowledge: '知识库',
   documentCount: ' 文档',
   wordCount: '千字符',
   appCount: ' 关联应用',

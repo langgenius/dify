@@ -1,4 +1,4 @@
-import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd, IOnMessageReplace } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
@@ -22,9 +22,11 @@ function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd, onMessageReplace }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
   onData: IOnData
   onCompleted: IOnCompleted
+  onFile: IOnFile
+  onThought: IOnThought
   onError: IOnError
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
@@ -35,7 +37,7 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace })
+  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {
@@ -96,6 +98,10 @@ export const fetchChatList = async (conversationId: string, isInstalledApp: bool
 // init value. wait for server update
 export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId))
+}
+
+export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {
+  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId))
 }
 
 export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {

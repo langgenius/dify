@@ -55,9 +55,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     catch (e: any) {
       notify({
         type: 'error',
-        message: `${t('app.appDeleteFailed')}${
-          'message' in e ? `: ${e.message}` : ''
-        }`,
+        message: `${t('app.appDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}`,
       })
     }
     setShowConfirmDelete(false)
@@ -141,7 +139,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           if (showSettingsModal)
             return
           e.preventDefault()
-          push(`/app/${app.id}/overview`)
+
+          push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
         }}
         className={style.listItem}
       >
@@ -173,7 +172,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           {app.model_config?.pre_prompt}
         </div>
         <div className={style.listItemFooter}>
-          <AppModeLabel mode={app.mode} />
+          <AppModeLabel mode={app.mode} isAgent={app.is_agent} />
         </div>
 
         {showConfirmDelete && (

@@ -1,9 +1,14 @@
 const translation = {
   title: 'Apps',
   createApp: 'Create new App',
+  types: {
+    all: 'All',
+    assistant: 'Assistant',
+    completion: 'Completion',
+  },
   modes: {
     completion: 'Text Generator',
-    chat: 'Chat App',
+    chat: 'Basic Assistant',
   },
   createFromConfigFile: 'Create app from config file',
   deleteAppConfirmTitle: 'Delete this app?',
@@ -18,10 +23,10 @@ const translation = {
   appNamePlaceholder: 'Please enter the name of the app',
   newApp: {
     startToCreate: 'Let\'s start with your new app',
-    captionName: 'Give your app a name',
-    captionAppType: 'What kind of app do you want?',
+    captionName: 'App icon & name',
+    captionAppType: 'What type of app do you want to create?',
     previewDemo: 'Preview demo',
-    chatApp: 'Chat App',
+    chatApp: 'Assistant',
     chatAppIntro:
       'I want to build a chat-based application. This app uses a question-and-answer format, allowing for multiple rounds of continuous conversation.',
     completeApp: 'Text Generator',

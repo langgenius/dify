@@ -14,6 +14,7 @@ const translation = {
     save: 'Save',
     edit: 'Edit',
     add: 'Add',
+    added: 'Added',
     refresh: 'Restart',
     reset: 'Reset',
     search: 'Search',
@@ -85,13 +86,14 @@ const translation = {
   menus: {
     status: 'beta',
     explore: 'Explore',
-    apps: 'Build Apps',
+    apps: 'Studio',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
     datasets: 'Knowledge',
     datasetsTips: 'COMING SOON: Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
     newApp: 'New App',
     newDataset: 'Create Knowledge',
+    tools: 'Tools',
   },
   userProfile: {
     settings: 'Settings',
@@ -370,7 +372,7 @@ const translation = {
   },
   appMenus: {
     overview: 'Overview',
-    promptEng: 'Prompt Eng.',
+    promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',
   },

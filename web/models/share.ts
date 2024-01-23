@@ -19,3 +19,7 @@ export type SiteInfo = {
   copyright?: string
   privacy_policy?: string
 }
+
+export type AppMeta = {
+  tool_icons: Record<string, string>
+}
