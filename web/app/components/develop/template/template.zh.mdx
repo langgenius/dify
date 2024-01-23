@@ -16,7 +16,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   
   Dify Service API 使用 `API-Key` 进行鉴权。  
-  **强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**  
+  <i>**强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**</i>  
   所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
 
   <CodeGroup title="Code">
@@ -378,7 +378,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `annotation_reply` (object) 标记回复
       - `enabled` (bool) 是否开启
     - `user_input_form` (array[object]) 用户输入表单配置
-      - `text`-input (object) 文本输入控件 
+      - `text-input` (object) 文本输入控件 
         - `label` (string) 控件展示标签名
         - `variable` (string) 控件 ID
         - `required` (bool) 是否必填
@@ -396,7 +396,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `options` (array[string]) 选项值
     - `file_upload` (object) 文件上传配置
       - `image` (object) 图片设置
-        当前仅支持图片类型：png, jpg, jpeg, webp, gif
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
         - `enabled` (bool) 是否开启
         - `number_limits` (int) 图片数量限制，默认 3
         - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个

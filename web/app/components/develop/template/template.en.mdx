@@ -15,9 +15,9 @@ The text generation application offers non-session support and is ideal for tran
   ### Authentication
 
   The Service API uses `API-Key` authentication.  
-  **Strongly recommend storing your API Key on the server-side, not shared or stored on the client-side, to avoid possible API-Key leakage that can lead to serious consequences.**
+  <i>**Strongly recommend storing your API Key on the server-side, not shared or stored on the client-side, to avoid possible API-Key leakage that can lead to serious consequences.**</i>
 
-  For all API requests, include your API Key in the `Authorization`HTTP Header, as shown below: 
+  For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below: 
 
   <CodeGroup title="Code">
     ```javascript
@@ -76,7 +76,7 @@ The text generation application offers non-session support and is ideal for tran
     When response_mode is streaming, return a ChunkCompletionResponse stream.
 
     ### ChatCompletionResponse
-    Returns the complete App result, Content-Type is application/json.
+    Returns the complete App result, `Content-Type` is `application/json`.
     - `message_id` (string) Unique message ID
     - `conversation_id` (string) Conversation ID
     - `mode` (string) App mode, fixed as `chat`
@@ -208,7 +208,7 @@ The text generation application offers non-session support and is ideal for tran
   Uploaded files are for use by the current end-user only.
 
   ### Request Body
-  This interface requires a multipart/form-data request.
+  This interface requires a `multipart/form-data` request.
   - `file` (File) Required
     The file to be uploaded.
   - `user` (string) Required
@@ -333,7 +333,7 @@ The text generation application offers non-session support and is ideal for tran
 
     <Properties>
       <Property name='rating' type='string' key='rating'>
-        Upvote as like, downvote as dislike, revoke upvote as null
+        Upvote as `like`, downvote as `dislike`, revoke upvote as `null`
       </Property>
       <Property name='user' type='string' key='user'>
         User identifier, defined by the developer's rules, must be unique within the application.
@@ -401,7 +401,7 @@ The text generation application offers non-session support and is ideal for tran
     - `annotation_reply` (object) Annotation reply
       - `enabled` (bool) Whether it is enabled
     - `user_input_form` (array[object]) User input form configuration
-      - `text`-input (object) Text input control
+      - `text-input` (object) Text input control
         - `label` (string) Variable display label name
         - `variable` (string) Variable ID
         - `required` (bool) Whether it is required
@@ -419,7 +419,7 @@ The text generation application offers non-session support and is ideal for tran
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
       - `image` (object) Image settings
-        Currently only supports image types: png, jpg, jpeg, webp, gif
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
         - `enabled` (bool) Whether it is enabled
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
