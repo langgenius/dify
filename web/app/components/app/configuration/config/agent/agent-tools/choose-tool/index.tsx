@@ -13,11 +13,13 @@ import I18n from '@/context/i18n'
 type Props = {
   show: boolean
   onHide: () => void
+  selectedProviderId?: string
 }
 
 const ChooseTool: FC<Props> = ({
   show,
   onHide,
+  selectedProviderId,
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -42,6 +44,7 @@ const ChooseTool: FC<Props> = ({
       body={
         <Tools
           loc={LOC.app}
+          selectedProviderId={selectedProviderId}
           onAddTool={(collection, tool) => {
             const parameters: Record<string, string> = {}
             if (tool.parameters) {

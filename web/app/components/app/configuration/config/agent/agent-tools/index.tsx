@@ -29,6 +29,7 @@ const AgentTools: FC = () => {
   const { modelConfig, setModelConfig, collectionList } = useContext(ConfigContext)
 
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
+  const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>(undefined)
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
     const collection = collectionList.find(collection => collection.id === item.provider_id)
@@ -75,6 +76,7 @@ const AgentTools: FC = () => {
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
                 <OperationBtn type="add" onClick={() => {
+                  setSelectedProviderId(undefined)
                   setIsShowChooseTool(true)
                 }} />
               </>
@@ -125,9 +127,14 @@ const AgentTools: FC = () => {
                   ? (
                     <div className='flex items-center'>
                       <TooltipPlus
-                        popupContent={t('tools.toolRemoved')}
+                        popupContent={t(`tools.${item.isDeleted ? 'toolRemoved' : 'notAuthorized'}`)}
                       >
-                        <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer'>
+                        <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                          if (item.notAuthor) {
+                            setSelectedProviderId(item.provider_id)
+                            setIsShowChooseTool(true)
+                          }
+                        }}>
                           <AlertTriangle className='w-4 h-4 text-[#F79009]' />
                         </div>
                       </TooltipPlus>
@@ -184,22 +191,25 @@ const AgentTools: FC = () => {
               </div>
             </div>
           ))}
-        </div>
-      </Panel>
+        </div >
+      </Panel >
       {isShowChooseTool && (
         <ChooseTool
           show
           onHide={() => setIsShowChooseTool(false)}
+          selectedProviderId={selectedProviderId}
         />
       )}
-      {isShowSettingTool && (
-        <SettingBuiltInTool
-          toolName={currentTool?.tool_name as string}
-          setting={currentTool?.tool_parameters as any}
-          collection={currentTool?.collection as Collection}
-          onSave={handleToolSettingChange}
-          onHide={() => setIsShowSettingTool(false)}
-        />)}
+      {
+        isShowSettingTool && (
+          <SettingBuiltInTool
+            toolName={currentTool?.tool_name as string}
+            setting={currentTool?.tool_parameters as any}
+            collection={currentTool?.collection as Collection}
+            onSave={handleToolSettingChange}
+            onHide={() => setIsShowSettingTool(false)}
+          />)
+      }
     </>
   )
 }

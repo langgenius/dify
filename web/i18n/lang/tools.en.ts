@@ -96,7 +96,8 @@ const translation = {
     reset: 'Reset Search',
   },
   builtInPromptTitle: 'Prompt',
-  toolRemoved: 'Tool removed or not authorized',
+  toolRemoved: 'Tool removed',
+  notAuthorized: 'Tool not authorized',
 }
 
 export default translation
