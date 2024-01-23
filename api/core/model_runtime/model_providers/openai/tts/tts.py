@@ -22,7 +22,9 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
     """
     Model class for OpenAI Speech to text model.
     """
-    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None) -> any:
+
+    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool,
+                user: Optional[str] = None) -> any:
         """
         _invoke text2speech model
 
@@ -102,7 +104,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             raise InvokeBadRequestError(str(ex))
 
     # Todo: To improve the streaming function
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str,
+                              user: Optional[str] = None) -> any:
         """
         _tts_invoke_streaming text2speech model
 
@@ -128,7 +131,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _get_model_voice(self, model: str, credentials: dict) -> Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"]:
+    def _get_model_voice(self, model: str, credentials: dict) -> Literal[
+        "alloy", "echo", "fable", "onyx", "nova", "shimmer"]:
         """
         Get voice for given tts model
 
@@ -230,6 +234,10 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             if "ffmpeg version" in output.decode("utf-8"):
                 return True
             else:
-                raise InvokeBadRequestError("ffmpeg is not installed")
+                raise InvokeBadRequestError("ffmpeg is not installed, "
+                                            "details: https://docs.dify.ai/getting-started/install-self-hosted"
+                                            "/install-faq#id-14.-what-to-do-if-this-error-occurs-in-text-to-speech")
         except Exception:
-            raise InvokeBadRequestError("ffmpeg is not installed")
+            raise InvokeBadRequestError("ffmpeg is not installed, "
+                                        "details: https://docs.dify.ai/getting-started/install-self-hosted"
+                                        "/install-faq#id-14.-what-to-do-if-this-error-occurs-in-text-to-speech")
