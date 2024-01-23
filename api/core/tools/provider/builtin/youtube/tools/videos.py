@@ -38,6 +38,8 @@ class YoutubeVideosAnalyticsTool(BuiltinTool):
         search_results = youtube.search().list(q='mrbeast', type='channel', order='relevance', part='id').execute()
         channel_id = search_results['items'][0]['id']['channelId']
 
+        start_date, end_date = time_range
+
         start_date = datetime.strptime(start_date, '%Y-%m-%d').strftime('%Y-%m-%dT%H:%M:%SZ')
         end_date = datetime.strptime(end_date, '%Y-%m-%d').strftime('%Y-%m-%dT%H:%M:%SZ')
 
