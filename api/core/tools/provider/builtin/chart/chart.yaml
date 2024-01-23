@@ -1,0 +1,11 @@
+identity:
+  author: Dify
+  name: chart
+  label:
+    en_US: ChartGenerator
+    zh_Hans: 图表生成
+  description:
+    en_US: Chart Generator is a tool for generating statistical charts like bar chart, line chart, pie chart, etc.
+    zh_Hans: 图表生成是一个用于生成可视化图表的工具，你可以通过它来生成柱状图、折线图、饼图等各类图表
+  icon: icon.png
+credentails_for_provider:

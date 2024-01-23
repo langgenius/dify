@@ -60,5 +60,3 @@ class UniversalChatAudioApi(UniversalChatResource):
             logging.exception("internal server error.")
             raise InternalServerError()
         
-
-api.add_resource(UniversalChatAudioApi, '/universal-chat/audio-to-text')

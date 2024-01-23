@@ -1,23 +1,18 @@
 import logging
-from typing import Optional, Tuple
+from typing import Optional
 
 from core.app_runner.app_runner import AppRunner
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import (ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
-                                                ExternalDataVariableEntity, InvokeFrom, ModelConfigEntity)
-from core.features.annotation_reply import AnnotationReplyFeature
+from core.entities.application_entities import (ApplicationGenerateEntity, DatasetEntity,
+                                                 InvokeFrom, ModelConfigEntity)
 from core.features.dataset_retrieval import DatasetRetrievalFeature
-from core.features.external_data_fetch import ExternalDataFetchFeature
-from core.features.hosting_moderation import HostingModerationFeature
-from core.features.moderation import ModerationFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import PromptMessage
 from core.moderation.base import ModerationException
 from core.prompt.prompt_transform import AppMode
 from extensions.ext_database import db
-from models.model import App, Conversation, Message, MessageAnnotation
+from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)
 
@@ -213,76 +208,6 @@ class BasicApplicationRunner(AppRunner):
             stream=application_generate_entity.stream
         )
 
-    def moderation_for_inputs(self, app_id: str,
-                              tenant_id: str,
-                              app_orchestration_config_entity: AppOrchestrationConfigEntity,
-                              inputs: dict,
-                              query: str) -> Tuple[bool, dict, str]:
-        """
-        Process sensitive_word_avoidance.
-        :param app_id: app id
-        :param tenant_id: tenant id
-        :param app_orchestration_config_entity: app orchestration config entity
-        :param inputs: inputs
-        :param query: query
-        :return:
-        """
-        moderation_feature = ModerationFeature()
-        return moderation_feature.check(
-            app_id=app_id,
-            tenant_id=tenant_id,
-            app_orchestration_config_entity=app_orchestration_config_entity,
-            inputs=inputs,
-            query=query,
-        )
-
-    def query_app_annotations_to_reply(self, app_record: App,
-                                       message: Message,
-                                       query: str,
-                                       user_id: str,
-                                       invoke_from: InvokeFrom) -> Optional[MessageAnnotation]:
-        """
-        Query app annotations to reply
-        :param app_record: app record
-        :param message: message
-        :param query: query
-        :param user_id: user id
-        :param invoke_from: invoke from
-        :return:
-        """
-        annotation_reply_feature = AnnotationReplyFeature()
-        return annotation_reply_feature.query(
-            app_record=app_record,
-            message=message,
-            query=query,
-            user_id=user_id,
-            invoke_from=invoke_from
-        )
-
-    def fill_in_inputs_from_external_data_tools(self, tenant_id: str,
-                                                app_id: str,
-                                                external_data_tools: list[ExternalDataVariableEntity],
-                                                inputs: dict,
-                                                query: str) -> dict:
-        """
-        Fill in variable inputs from external data tools if exists.
-
-        :param tenant_id: workspace id
-        :param app_id: app id
-        :param external_data_tools: external data tools configs
-        :param inputs: the inputs
-        :param query: the query
-        :return: the filled inputs
-        """
-        external_data_fetch_feature = ExternalDataFetchFeature()
-        return external_data_fetch_feature.fetch(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            external_data_tools=external_data_tools,
-            inputs=inputs,
-            query=query
-        )
-
     def retrieve_dataset_context(self, tenant_id: str,
                                  app_record: App,
                                  queue_manager: ApplicationQueueManager,
@@ -334,31 +259,4 @@ class BasicApplicationRunner(AppRunner):
             hit_callback=hit_callback,
             memory=memory
         )
-
-    def check_hosting_moderation(self, application_generate_entity: ApplicationGenerateEntity,
-                                 queue_manager: ApplicationQueueManager,
-                                 prompt_messages: list[PromptMessage]) -> bool:
-        """
-        Check hosting moderation
-        :param application_generate_entity: application generate entity
-        :param queue_manager: queue manager
-        :param prompt_messages: prompt messages
-        :return:
-        """
-        hosting_moderation_feature = HostingModerationFeature()
-        moderation_result = hosting_moderation_feature.check(
-            application_generate_entity=application_generate_entity,
-            prompt_messages=prompt_messages
-        )
-
-        if moderation_result:
-            self.direct_output(
-                queue_manager=queue_manager,
-                app_orchestration_config=application_generate_entity.app_orchestration_config_entity,
-                prompt_messages=prompt_messages,
-                text="I apologize for any confusion, " \
-                     "but I'm an AI assistant to be helpful, harmless, and honest.",
-                stream=application_generate_entity.stream
-            )
-
-        return moderation_result
+    
