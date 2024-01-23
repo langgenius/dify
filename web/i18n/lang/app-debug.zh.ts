@@ -357,7 +357,7 @@ const translation = {
     agentModeDes: '设置代理的推理模式类型',
     agentModeType: {
       ReACT: 'ReAct',
-      functionCall: 'Function Call',
+      functionCall: 'Function Calling',
     },
     setting: {
       name: 'Agent 设置',
