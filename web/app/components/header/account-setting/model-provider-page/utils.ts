@@ -15,14 +15,6 @@ import {
   validateModelProvider,
 } from '@/service/common'
 
-export const languageMaps = {
-  'en': 'en_US',
-  'zh-Hans': 'zh_Hans',
-} as {
-  'en': 'en_US'
-  'zh-Hans': 'zh_Hans'
-}
-
 export const MODEL_PROVIDER_QUOTA_GET_FREE = ['minimax', 'spark', 'zhipuai']
 export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai', 'azure_openai']
 

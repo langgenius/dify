@@ -13,6 +13,8 @@ import type { AppDetailResponse } from '@/models/app'
 import type { Language } from '@/types/app'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 
+import { languages } from '@/utils/language'
+
 export type ISettingsModalProps = {
   appInfo: AppDetailResponse
   isShow: boolean
@@ -125,7 +127,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         />
         <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.language`)}</div>
         <SimpleSelect
-          items={Object.keys(LANGUAGE_MAP).map(lang => ({ name: LANGUAGE_MAP[lang as Language], value: lang }))}
+          items={languages}
           defaultValue={language}
           onSelect={item => setLanguage(item.value as Language)}
         />
