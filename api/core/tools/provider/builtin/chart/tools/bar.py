@@ -11,7 +11,7 @@ class BarChartTool(BuiltinTool):
         data = tool_paramters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')
-        data = data.split(',')
+        data = data.split(';')
 
         # if all data is int, convert to int
         if all([i.isdigit() for i in data]):
@@ -21,7 +21,7 @@ class BarChartTool(BuiltinTool):
 
         axis = tool_paramters.get('x_axis', None) or None
         if axis:
-            axis = axis.split(',')
+            axis = axis.split(';')
             if len(axis) != len(data):
                 axis = None
 

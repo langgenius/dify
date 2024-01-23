@@ -13,7 +13,7 @@ class PieChartTool(BuiltinTool):
         data = tool_paramters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')
-        data = data.split(',')
+        data = data.split(';')
         categories = tool_paramters.get('categories', None) or None
 
         # if all data is int, convert to int
@@ -25,7 +25,7 @@ class PieChartTool(BuiltinTool):
         flg, ax = plt.subplots()
 
         if categories:
-            categories = categories.split(',')
+            categories = categories.split(';')
             if len(categories) != len(data):
                 categories = None
 
