@@ -136,6 +136,10 @@ export const audioToText = (url: string, isPublicAPI: boolean, body: FormData) =
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
 
+export const textToAudio = (url: string, isPublicAPI: boolean, body: FormData) => {
+  return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
+}
+
 export const fetchAccessToken = async (appCode: string) => {
   const headers = new Headers()
   headers.append('X-App-Code', appCode)

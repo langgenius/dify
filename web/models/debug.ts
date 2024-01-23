@@ -75,6 +75,8 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 
+export type TextToSpeechConfig = MoreLikeThisConfig
+
 export type CitationConfig = MoreLikeThisConfig
 
 export type AnnotationReplyConfig = {
@@ -118,6 +120,7 @@ export type ModelConfig = {
   more_like_this: MoreLikeThisConfig | null
   suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
   speech_to_text: SpeechToTextConfig | null
+  text_to_speech: TextToSpeechConfig | null
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
   dataSets: any[]

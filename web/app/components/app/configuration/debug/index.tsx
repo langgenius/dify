@@ -56,6 +56,7 @@ const Debug: FC<IDebug> = ({
     suggestedQuestions,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
+    textToSpeechConfig,
     citationConfig,
     moderationConfig,
     moreLikeThisConfig,
@@ -73,6 +74,7 @@ const Debug: FC<IDebug> = ({
     annotationConfig,
   } = useContext(ConfigContext)
   const { data: speech2textDefaultModel } = useDefaultModel(4)
+  const { data: text2speechDefaultModel } = useDefaultModel(5)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
@@ -233,6 +235,9 @@ const Debug: FC<IDebug> = ({
       setChatList(newListWithAnswer)
     }
     const postModelConfig: BackendModelConfig = {
+      text_to_speech: {
+        enabled: false,
+      },
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
       chat_prompt_config: {},
@@ -514,6 +519,9 @@ const Debug: FC<IDebug> = ({
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
+      text_to_speech: {
+        enabled: false,
+      },
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
       chat_prompt_config: {},
@@ -657,6 +665,7 @@ const Debug: FC<IDebug> = ({
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
                   isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
+                  isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
@@ -682,6 +691,7 @@ const Debug: FC<IDebug> = ({
                 className="mt-2"
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
+                isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                 isResponsing={isResponsing}
                 isInstalledApp={false}
                 messageId={messageId}

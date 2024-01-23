@@ -9,9 +9,11 @@ import type { SavedMessage } from '@/models/debug'
 import { Markdown } from '@/app/components/base/markdown'
 import { SimpleBtn, copyIcon } from '@/app/components/app/text-generate/item'
 import Toast from '@/app/components/base/toast'
+import AudioBtn from '@/app/components/base/audio-btn'
 
 export type ISavedItemsProps = {
   className?: string
+  isShowTextToSpeech?: boolean
   list: SavedMessage[]
   onRemove: (id: string) => void
   onStartCreateContent: () => void
@@ -25,6 +27,7 @@ const removeIcon = (
 
 const SavedItems: FC<ISavedItemsProps> = ({
   className,
+  isShowTextToSpeech,
   list,
   onRemove,
   onStartCreateContent,
@@ -69,6 +72,16 @@ const SavedItems: FC<ISavedItemsProps> = ({
                     {removeIcon}
                     <div>{t('common.operation.remove')}</div>
                   </SimpleBtn>
+
+                  {isShowTextToSpeech && (
+                    <>
+                      <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
+                      <AudioBtn
+                        value={answer}
+                        className={'mr-1'}
+                      />
+                    </>
+                  )}
                 </div>
                 <div className='text-xs text-gray-500'>{answer?.length} {t('common.unit.char')}</div>
               </div>

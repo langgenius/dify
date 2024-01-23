@@ -22,6 +22,7 @@ export type IResultProps = {
   isInstalledApp: boolean
   installedAppInfo?: InstalledApp
   isError: boolean
+  isShowTextToSpeech: boolean
   promptConfig: PromptConfig | null
   moreLikeThisEnabled: boolean
   inputs: Record<string, any>
@@ -45,6 +46,7 @@ const Result: FC<IResultProps> = ({
   isInstalledApp,
   installedAppInfo,
   isError,
+  isShowTextToSpeech,
   promptConfig,
   moreLikeThisEnabled,
   inputs,
@@ -230,6 +232,7 @@ const Result: FC<IResultProps> = ({
       isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
       taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
       controlClearMoreLikeThis={controlClearMoreLikeThis}
+      isShowTextToSpeech={isShowTextToSpeech}
     />
   )
 

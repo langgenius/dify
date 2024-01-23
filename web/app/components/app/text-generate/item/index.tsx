@@ -12,6 +12,7 @@ import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
+import AudioBtn from '@/app/components/base/audio-btn'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/files'
@@ -45,6 +46,7 @@ export type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   supportAnnotation?: boolean
+  isShowTextToSpeech?: boolean
   appId?: string
   varList?: { label: string; value: string | number | object }[]
 }
@@ -90,6 +92,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   supportAnnotation,
+  isShowTextToSpeech,
   appId,
   varList,
 }) => {
@@ -124,6 +127,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isLoading: isQuerying,
     feedback: childFeedback,
     onSave,
+    isShowTextToSpeech,
     isMobile,
     isInstalledApp,
     installedAppId,
@@ -366,8 +370,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   <div className='ml-1'>
                     {ratingContent}
                   </div>
-                )
-                }
+                )}
+
+                {isShowTextToSpeech && (
+                  <>
+                    <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
+                    <AudioBtn
+                      value={content}
+                      className={'mr-1'}
+                    />
+                  </>
+                )}
               </div>
               <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
             </div>

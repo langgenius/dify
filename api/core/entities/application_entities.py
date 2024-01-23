@@ -219,6 +219,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
+    text_to_speech: bool = False
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 
@@ -283,7 +284,6 @@ class ApplicationGenerateEntity(BaseModel):
     query: Optional[str] = None
     files: list[FileObj] = []
     user_id: str
-
     # extras
     stream: bool
     invoke_from: InvokeFrom

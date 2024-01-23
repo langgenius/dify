@@ -95,6 +95,21 @@ class AppModelConfigService:
         if not isinstance(config["speech_to_text"]["enabled"], bool):
             raise ValueError("enabled in speech_to_text must be of boolean type")
 
+        # text_to_speech
+        if 'text_to_speech' not in config or not config["text_to_speech"]:
+            config["text_to_speech"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["text_to_speech"], dict):
+            raise ValueError("text_to_speech must be of dict type")
+
+        if "enabled" not in config["text_to_speech"] or not config["text_to_speech"]["enabled"]:
+            config["text_to_speech"]["enabled"] = False
+
+        if not isinstance(config["text_to_speech"]["enabled"], bool):
+            raise ValueError("enabled in text_to_speech must be of boolean type")
+
         # return retriever resource
         if 'retriever_resource' not in config or not config["retriever_resource"]:
             config["retriever_resource"] = {
@@ -317,6 +332,7 @@ class AppModelConfigService:
             "suggested_questions": config["suggested_questions"],
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
             "speech_to_text": config["speech_to_text"],
+            "text_to_speech": config["text_to_speech"],
             "retriever_resource": config["retriever_resource"],
             "more_like_this": config["more_like_this"],
             "sensitive_word_avoidance": config["sensitive_word_avoidance"],

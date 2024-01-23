@@ -91,6 +91,9 @@ const Configuration: FC = () => {
   const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<MoreLikeThisConfig>({
+    enabled: false,
+  })
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
@@ -140,6 +143,7 @@ const Configuration: FC = () => {
     more_like_this: null,
     suggested_questions_after_answer: null,
     speech_to_text: null,
+    text_to_speech: null,
     retriever_resource: null,
     sensitive_word_avoidance: null,
     dataSets: [],
@@ -230,6 +234,9 @@ const Configuration: FC = () => {
       enabled: false,
     })
     setSpeechToTextConfig(modelConfig.speech_to_text || {
+      enabled: false,
+    })
+    setTextToSpeechConfig(modelConfig.text_to_speech || {
       enabled: false,
     })
     setCitationConfig(modelConfig.retriever_resource || {
@@ -396,6 +403,9 @@ const Configuration: FC = () => {
         if (modelConfig.speech_to_text)
           setSpeechToTextConfig(modelConfig.speech_to_text)
 
+        if (modelConfig.text_to_speech)
+          setTextToSpeechConfig(modelConfig.text_to_speech)
+
         if (modelConfig.retriever_resource)
           setCitationConfig(modelConfig.retriever_resource)
 
@@ -444,6 +454,7 @@ const Configuration: FC = () => {
             more_like_this: modelConfig.more_like_this,
             suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
             speech_to_text: modelConfig.speech_to_text,
+            text_to_speech: modelConfig.text_to_speech,
             retriever_resource: modelConfig.retriever_resource,
             sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
             external_data_tools: modelConfig.external_data_tools,
@@ -559,6 +570,7 @@ const Configuration: FC = () => {
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
+      text_to_speech: textToSpeechConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
       agent_mode: {
@@ -593,6 +605,7 @@ const Configuration: FC = () => {
       draft.more_like_this = moreLikeThisConfig
       draft.suggested_questions_after_answer = suggestedQuestionsAfterAnswerConfig
       draft.speech_to_text = speechToTextConfig
+      draft.text_to_speech = textToSpeechConfig
       draft.retriever_resource = citationConfig
       draft.dataSets = dataSets
     })
@@ -662,6 +675,8 @@ const Configuration: FC = () => {
       setSuggestedQuestionsAfterAnswerConfig,
       speechToTextConfig,
       setSpeechToTextConfig,
+      textToSpeechConfig,
+      setTextToSpeechConfig,
       citationConfig,
       setCitationConfig,
       annotationConfig,

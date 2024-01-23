@@ -1,0 +1,7 @@
+model: tts-1-hd
+model_type: tts
+model_properties:
+  default_voice: 'alloy'
+  word_limit: 120
+  audio_type: 'mp3'
+  max_workers: 5

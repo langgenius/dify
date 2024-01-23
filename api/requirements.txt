@@ -65,3 +65,4 @@ httpx[socks]~=0.24.1
 pydub~=0.25.1
 matplotlib~=3.8.2
 yfinance~=0.2.35
+pydub~=0.25.1

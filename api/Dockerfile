@@ -30,7 +30,7 @@ ENV TZ UTC
 WORKDIR /app/api
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash curl wget vim nodejs \
+    && apt-get install -y --no-install-recommends bash curl wget vim nodejs ffmpeg \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
