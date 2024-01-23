@@ -12,7 +12,7 @@ In terms of licensing, please take a minute to read our short [License and Contr
 
 ### Feature requests:
 
-* If you're opening a new feature request, we'd like you to explain what the proposed feature achieves, and include as much context as possible.
+* If you're opening a new feature request, we'd like you to explain what the proposed feature achieves, and include as much context as possible. [@perzeusss](https://github.com/perzeuss) has made a solid [Feature Request Copilot](https://udify.app/chat/MK2kVSnw1gakVwMX) that helps you draft out your needs. Feel free to give it a try.
 
 * If you want to pick one up from the existing issues, simply drop a comment below it saying so.
 

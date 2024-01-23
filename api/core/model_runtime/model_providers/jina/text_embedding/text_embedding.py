@@ -17,7 +17,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
     Model class for Jina text embedding model.
     """
     api_base: str = 'https://api.jina.ai/v1/embeddings'
-    models: list[str] = ['jina-embeddings-v2-base-en', 'jina-embeddings-v2-small-en', 'jina-embeddings-v2-base-zh']
+    models: list[str] = ['jina-embeddings-v2-base-en', 'jina-embeddings-v2-small-en', 'jina-embeddings-v2-base-zh', 'jina-embeddings-v2-base-de']
 
     def _invoke(self, model: str, credentials: dict,
                 texts: list[str], user: Optional[str] = None) \

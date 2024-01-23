@@ -5,7 +5,7 @@ const translation = {
     encourage: 'Upgrade Now',
     encourageShort: 'Upgrade',
   },
-  viewBilling: 'View billing information',
+  viewBilling: 'Manage billing and subscriptions',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
     title: 'Choose a plan that’s right for you',
@@ -68,6 +68,7 @@ const translation = {
       tooltip: 'Manual editing and annotation of responses provides customizable high-quality question-answering abilities for apps. (Applicable only in chat apps)',
     },
     ragAPIRequestTooltip: 'Refers to the number of API calls invoking only the knowledge base processing capabilities of Dify.',
+    receiptInfo: 'Only team owner can subscribe and view billing information',
   },
   plans: {
     sandbox: {

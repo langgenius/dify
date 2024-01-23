@@ -274,6 +274,8 @@ class IndexingRunner:
         tokens = 0
         preview_texts = []
         total_segments = 0
+        total_price = 0
+        currency = 'USD'
         for file_detail in file_details:
 
             processing_rule = DatasetProcessRule(
@@ -344,11 +346,13 @@ class IndexingRunner:
                 price_type=PriceType.INPUT,
                 tokens=tokens
             )
+            total_price = '{:f}'.format(embedding_price_info.total_amount)
+            currency = embedding_price_info.currency
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_price_info.total_amount) if embedding_model_instance else 0,
-            "currency": embedding_price_info.currency if embedding_model_instance else 'USD',
+            "total_price": total_price,
+            "currency": currency,
             "preview": preview_texts
         }
 
@@ -388,6 +392,8 @@ class IndexingRunner:
         tokens = 0
         preview_texts = []
         total_segments = 0
+        total_price = 0
+        currency = 'USD'
         for notion_info in notion_info_list:
             workspace_id = notion_info['workspace_id']
             data_source_binding = DataSourceBinding.query.filter(
@@ -470,20 +476,22 @@ class IndexingRunner:
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
                 }
-
-        embedding_model_type_instance = embedding_model_instance.model_type_instance
-        embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
-        embedding_price_info = embedding_model_type_instance.get_price(
-            model=embedding_model_instance.model,
-            credentials=embedding_model_instance.credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
-        )
+        if embedding_model_instance:
+            embedding_model_type_instance = embedding_model_instance.model_type_instance
+            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+            embedding_price_info = embedding_model_type_instance.get_price(
+                model=embedding_model_instance.model,
+                credentials=embedding_model_instance.credentials,
+                price_type=PriceType.INPUT,
+                tokens=tokens
+            )
+            total_price = '{:f}'.format(embedding_price_info.total_amount)
+            currency = embedding_price_info.currency
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_price_info.total_amount) if embedding_model_instance else 0,
-            "currency": embedding_price_info.currency if embedding_model_instance else 'USD',
+            "total_price": total_price,
+            "currency": currency,
             "preview": preview_texts
         }
 
