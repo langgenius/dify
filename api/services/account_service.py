@@ -86,13 +86,13 @@ class AccountService:
                 db.session.commit()
 
         return account
-    
+
     @staticmethod
     def get_account_jwt_token(account):
         payload = {
             "user_id": account.id,
             "exp": datetime.utcnow() + timedelta(days=30),
-            "iss":  current_app.config['EDITION'],
+            "iss": current_app.config['EDITION'],
             "sub": 'Console API Passport',
         }
 
@@ -345,7 +345,7 @@ class TenantService:
         }
         if action not in ['add', 'remove', 'update']:
             raise InvalidActionError("Invalid action.")
-        
+
         if member:
             if operator.id == member.id:
                 raise CannotOperateSelfError("Cannot operate self.")
@@ -546,10 +546,10 @@ class RegisterService:
             return None
 
         return {
-                'account': account,
-                'data': invitation_data,
-                'tenant': tenant,
-                }
+            'account': account,
+            'data': invitation_data,
+            'tenant': tenant,
+        }
 
     @classmethod
     def _get_invitation_by_token(cls, token: str, workspace_id: str, email: str) -> Optional[Dict[str, str]]:

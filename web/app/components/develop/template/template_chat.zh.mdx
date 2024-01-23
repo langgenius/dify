@@ -14,8 +14,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   ### 鉴权
 
-  Service API 使用 `API-Key` 进行鉴权。  
-  <i>**强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**</i>    
+  Service API 使用 `API-Key` 进行鉴权。
+  <i>**强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**</i>
   所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
 
   <CodeGroup title="Code">
@@ -44,14 +44,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         用户输入/提问内容。
       </Property>
       <Property name='inputs' type='object' key='inputs'>
-        (选填)允许传入 App 定义的各变量值。  
+        (选填)允许传入 App 定义的各变量值。
         inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。
 
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
-        - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。  
-        <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>  
+        - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。
+        <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
         注：Agent模式下不允许blocking。
       </Property>
       <Property name='user' type='string' key='user'>
@@ -77,9 +77,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     ### Response
     <Properties>
-    当 `response_mode` 为 `blocking` 时，返回 ChatCompletionResponse object。  
+    当 `response_mode` 为 `blocking` 时，返回 ChatCompletionResponse object。
     当 `response_mode` 为 `streaming`时，返回 ChunkChatCompletionResponse object 流式序列。
-    
+
     ### ChatCompletionResponse
 
     返回完整的 App 结果，`Content-Type` 为 `application/json`。
@@ -147,7 +147,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       - `conversation_id` (string) 会话 ID
       - `answer` (string) 替换内容（直接替换 LLM 所有回复文本）
       - `created_at` (int) 创建时间戳，如：1705395332
-    - `event: error` 
+    - `event: error`
       流式输出过程中出现的异常会以 stream event 形式输出，收到异常事件后即结束。
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
       - `message_id` (string) 消息唯一 ID
@@ -278,7 +278,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 <Row>
   <Col>
     上传文件（目前仅支持图片）并在发送消息时使用，可实现图文多模态理解。
-    支持 png, jpg, jpeg, webp, gif 格式。  
+    支持 png, jpg, jpeg, webp, gif 格式。
     <i>上传的文件仅供当前终端用户使用。</i>
 
     ### Request Body
@@ -328,12 +328,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
       "name": "example.png",
       "size": 1024,
       "extension": "png",
       "mime_type": "image/png",
-      "created_by": 123,  
+      "created_by": 123,
       "created_at": 1577836800,
     }
     ```
@@ -352,7 +352,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   仅支持流式模式。
   ### Path
   - `task_id` (string) 任务 ID，可在流式返回 Chunk 中获取
-  
+
   ### Request Body
   - `user` (string) Required
     用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
@@ -772,7 +772,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </Properties>
 
     ### Response
-    - `result` (string) 固定返回 success 
+    - `result` (string) 固定返回 success
   </Col>
   <Col sticky>
 
@@ -874,7 +874,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <Properties>
       <Property name='file' type='file' key='file'>
         语音文件。
-        支持格式：`['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`  
+        支持格式：`['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`
         文件大小限制：15MB
       </Property>
       <Property name='user' type='string' key='user'>
@@ -901,6 +901,54 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```json {{ title: 'Response' }}
     {
       "text": "hello"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='文字转语音'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    文字转语音，仅支持 openai 模型。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='text' type='str' key='text'>
+        语音生成内容。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+      <Property name='streaming' type='bool' key='streaming'>
+        是否启用流式输出true、false。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123;streaming=false`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=你好Dify;user=abc-123;streaming=false'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
     }
     ```
     </CodeGroup>
@@ -939,7 +987,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `annotation_reply` (object) 标记回复
       - `enabled` (bool) 是否开启
     - `user_input_form` (array[object]) 用户输入表单配置
-      - `text-input` (object) 文本输入控件 
+      - `text-input` (object) 文本输入控件
         - `label` (string) 控件展示标签名
         - `variable` (string) 控件 ID
         - `required` (bool) 是否必填
@@ -949,7 +997,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `variable` (string) 控件 ID
         - `required` (bool) 是否必填
         - `default` (string) 默认值
-      - `select` (object) 下拉控件 
+      - `select` (object) 下拉控件
         - `label` (string) 控件展示标签名
         - `variable` (string) 控件 ID
         - `required` (bool) 是否必填
@@ -1029,7 +1077,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       </Properties>
   ### Response
   - `tool_icons`(object[string]) 工具图标
-    - `工具名称` (string) 
+    - `工具名称` (string)
       - `icon` (object|string)
         - (object) 图标
           - `background` (string) hex格式的背景色

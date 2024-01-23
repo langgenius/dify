@@ -146,6 +146,7 @@ class AppModelConfig(db.Model):
     suggested_questions = db.Column(db.Text)
     suggested_questions_after_answer = db.Column(db.Text)
     speech_to_text = db.Column(db.Text)
+    text_to_speech = db.Column(db.Text)
     more_like_this = db.Column(db.Text)
     model = db.Column(db.Text)
     user_input_form = db.Column(db.Text)
@@ -182,6 +183,11 @@ class AppModelConfig(db.Model):
     @property
     def speech_to_text_dict(self) -> dict:
         return json.loads(self.speech_to_text) if self.speech_to_text \
+            else {"enabled": False}
+
+    @property
+    def text_to_speech_dict(self) -> dict:
+        return json.loads(self.text_to_speech) if self.text_to_speech \
             else {"enabled": False}
 
     @property
@@ -263,6 +269,7 @@ class AppModelConfig(db.Model):
             "suggested_questions": self.suggested_questions_list,
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
             "speech_to_text": self.speech_to_text_dict,
+            "text_to_speech": self.text_to_speech_dict,
             "retriever_resource": self.retriever_resource_dict,
             "annotation_reply": self.annotation_reply_dict,
             "more_like_this": self.more_like_this_dict,
@@ -289,6 +296,8 @@ class AppModelConfig(db.Model):
         self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer'])
         self.speech_to_text = json.dumps(model_config['speech_to_text']) \
             if model_config.get('speech_to_text') else None
+        self.text_to_speech = json.dumps(model_config['text_to_speech']) \
+            if model_config.get('text_to_speech') else None
         self.more_like_this = json.dumps(model_config['more_like_this'])
         self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
             if model_config.get('sensitive_word_avoidance') else None
@@ -323,6 +332,7 @@ class AppModelConfig(db.Model):
             suggested_questions=self.suggested_questions,
             suggested_questions_after_answer=self.suggested_questions_after_answer,
             speech_to_text=self.speech_to_text,
+            text_to_speech=self.text_to_speech,
             more_like_this=self.more_like_this,
             sensitive_word_avoidance=self.sensitive_word_avoidance,
             external_data_tools=self.external_data_tools,

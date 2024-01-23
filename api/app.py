@@ -124,6 +124,7 @@ def load_user_from_request(request_from_flask_login):
     else:
         return None
 
+
 @login_manager.unauthorized_handler
 def unauthorized_handler():
     """Handle unauthorized requests."""

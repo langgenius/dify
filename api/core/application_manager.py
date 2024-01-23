@@ -555,6 +555,12 @@ class ApplicationManager:
             if 'enabled' in speech_to_text_dict and speech_to_text_dict['enabled']:
                 properties['speech_to_text'] = True
 
+        # text to speech
+        text_to_speech_dict = copy_app_model_config_dict.get('text_to_speech')
+        if text_to_speech_dict:
+            if 'enabled' in text_to_speech_dict and text_to_speech_dict['enabled']:
+                properties['text_to_speech'] = True
+
         # sensitive word avoidance
         sensitive_word_avoidance_dict = copy_app_model_config_dict.get('sensitive_word_avoidance')
         if sensitive_word_avoidance_dict:

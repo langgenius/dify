@@ -100,12 +100,13 @@ export const useProviderCrenditialsFormSchemasValue = (
   return value
 }
 
-export type ModelTypeIndex = 1 | 2 | 3 | 4
+export type ModelTypeIndex = 1 | 2 | 3 | 4 | 5
 export const MODEL_TYPE_MAPS = {
   1: ModelTypeEnum.textGeneration,
   2: ModelTypeEnum.textEmbedding,
   3: ModelTypeEnum.rerank,
   4: ModelTypeEnum.speech2text,
+  5: ModelTypeEnum.tts,
 }
 
 export const useModelList = (type: ModelTypeIndex) => {

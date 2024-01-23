@@ -7,7 +7,7 @@ import MoreLikeThisIcon from '../../../base/icons/more-like-this-icon'
 import FeatureItem from './feature-item'
 import Modal from '@/app/components/base/modal'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
-import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import { Microphone01, Speaker } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -16,6 +16,7 @@ type IConfig = {
   moreLikeThis: boolean
   suggestedQuestionsAfterAnswer: boolean
   speechToText: boolean
+  textToSpeech: boolean
   citation: boolean
   moderation: boolean
   annotation: boolean
@@ -27,6 +28,7 @@ export type IChooseFeatureProps = {
   config: IConfig
   isChatApp: boolean
   onChange: (key: string, value: boolean) => void
+  showTextToSpeechItem?: boolean
   showSpeechToTextItem?: boolean
 }
 
@@ -42,6 +44,7 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
   isChatApp,
   config,
   onChange,
+  showTextToSpeechItem,
   showSpeechToTextItem,
 }) => {
   const { t } = useTranslation()
@@ -79,6 +82,18 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 onChange={value => onChange('suggestedQuestionsAfterAnswer', value)}
               />
               {
+                showTextToSpeechItem && (
+                  <FeatureItem
+                    icon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
+                    previewImgClassName='textToSpeechPreview'
+                    title={t('appDebug.feature.textToSpeech.title')}
+                    description={t('appDebug.feature.textToSpeech.description')}
+                    value={config.textToSpeech}
+                    onChange={value => onChange('textToSpeech', value)}
+                  />
+                )
+              }
+              {
                 showSpeechToTextItem && (
                   <FeatureItem
                     icon={<Microphone01 className='w-4 h-4 text-[#7839EE]' />}
@@ -114,6 +129,18 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 value={config.moreLikeThis}
                 onChange={value => onChange('moreLikeThis', value)}
               />
+              {
+                showTextToSpeechItem && (
+                  <FeatureItem
+                    icon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
+                    previewImgClassName='textToSpeechPreview'
+                    title={t('appDebug.feature.textToSpeech.title')}
+                    description={t('appDebug.feature.textToSpeech.description')}
+                    value={config.textToSpeech}
+                    onChange={value => onChange('textToSpeech', value)}
+                  />
+                )
+              }
             </>
           </FeatureGroup>
         )}
