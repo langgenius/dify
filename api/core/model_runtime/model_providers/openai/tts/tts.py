@@ -1,5 +1,6 @@
 import uuid
 import hashlib
+import subprocess
 from io import BytesIO
 from typing import Optional
 from functools import reduce
@@ -32,6 +33,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         :param user: unique user id
         :return: text translated to audio file
         """
+        self._is_ffmpeg_installed()
         audio_type = self._get_model_audio_type(model, credentials)
         if streaming:
             return Response(stream_with_context(self._tts_invoke_streaming(model=model,
@@ -74,6 +76,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         audio_type = self._get_model_audio_type(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         max_workers = self._get_model_workers_limit(model, credentials)
+
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             audio_bytes_list = list()
@@ -219,3 +222,14 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         response = client.audio.speech.create(model=model, voice=voice_name, input=sentence.strip())
         if isinstance(response.read(), bytes):
             return response.read()
+
+    @staticmethod
+    def _is_ffmpeg_installed():
+        try:
+            output = subprocess.check_output("ffmpeg -version", shell=True)
+            if "ffmpeg version" in output.decode("utf-8"):
+                return True
+            else:
+                raise InvokeBadRequestError("ffmpeg is not installed")
+        except Exception:
+            raise InvokeBadRequestError("ffmpeg is not installed")
