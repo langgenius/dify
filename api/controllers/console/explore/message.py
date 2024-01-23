@@ -17,9 +17,9 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from flask import Response, stream_with_context
 from flask_login import current_user
-from flask_restful import marshal_with, reqparse
+from flask_restful import marshal_with, reqparse, fields
 from flask_restful.inputs import int_range
-from libs.helper import uuid_value
+from libs.helper import uuid_value, TimestampField
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -29,7 +29,6 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class MessageListApi(InstalledAppResource):
-
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
         app_model = installed_app.app
@@ -50,7 +49,6 @@ class MessageListApi(InstalledAppResource):
             raise NotFound("Conversation Not Exists.")
         except services.errors.message.FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
-
 
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):

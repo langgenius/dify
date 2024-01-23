@@ -29,7 +29,8 @@ recommended_app_fields = {
     'is_listed': fields.Boolean,
     'install_count': fields.Integer,
     'installed': fields.Boolean,
-    'editable': fields.Boolean
+    'editable': fields.Boolean,
+    'is_agent': fields.Boolean
 }
 
 recommended_app_list_fields = {
@@ -82,6 +83,7 @@ class RecommendedAppListApi(Resource):
                 'install_count': recommended_app.install_count,
                 'installed': installed,
                 'editable': current_user.role in ['owner', 'admin'],
+                "is_agent": app.is_agent
             }
             recommended_apps_result.append(recommended_app_result)
 

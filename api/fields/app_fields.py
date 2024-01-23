@@ -40,6 +40,7 @@ app_detail_fields = {
     'id': fields.String,
     'name': fields.String,
     'mode': fields.String,
+    'is_agent': fields.Boolean,
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
@@ -64,6 +65,7 @@ app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
     'mode': fields.String,
+    'is_agent': fields.Boolean,
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
@@ -120,11 +122,13 @@ app_detail_fields_with_site = {
     'enable_api': fields.Boolean,
     'api_rpm': fields.Integer,
     'api_rph': fields.Integer,
+    'is_agent': fields.Boolean,
     'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
     'site': fields.Nested(site_fields),
     'api_base_url': fields.String,
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'deleted_tools': fields.List(fields.String),
 }
 
 app_site_fields = {

@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Union
 
 import requests
-from core.file.file_obj import FileObj, FileTransferMethod, FileType
+from core.file.file_obj import FileObj, FileTransferMethod, FileType, FileBelongsTo
 from services.file_service import IMAGE_EXTENSIONS
 from extensions.ext_database import db
 from models.account import Account
@@ -128,6 +128,9 @@ class MessageFileParser:
 
         # group by file type and convert file args or message files to FileObj
         for file in files:
+            if file.belongs_to == FileBelongsTo.ASSISTANT.value:
+                continue
+
             file_obj = self._to_file_obj(file, file_upload_config)
             if file_obj.type not in type_file_objs:
                 continue

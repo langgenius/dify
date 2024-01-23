@@ -22,7 +22,7 @@ from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models.account import InvitationCode, Tenant, TenantAccountJoin
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetQuery, Document
-from models.model import Account, App, AppModelConfig, Message, MessageAnnotation
+from models.model import Account, App, AppModelConfig, Message, MessageAnnotation, InstalledApp
 from models.provider import Provider, ProviderModel, ProviderQuotaType, ProviderType
 from qdrant_client.http.models import TextIndexParams, TextIndexType, TokenizerType
 from tqdm import tqdm
@@ -775,6 +775,66 @@ def add_annotation_question_field_value():
             click.echo(
                 click.style(f'Congratulations! add annotation question value successful. Deal count {message_annotation_deal_count}', fg='green'))
 
+@click.command('migrate-universal-chat-to-installed-app', help='Migrate universal chat to installed app.')
+@click.option("--batch-size", default=500, help="Number of records to migrate in each batch.")
+def migrate_universal_chat_to_installed_app(batch_size):
+    total_records = db.session.query(App).filter(
+        App.is_universal == True
+    ).count()
+    if total_records == 0:
+        click.secho("No data to migrate.", fg='green')
+        return
+
+    num_batches = (total_records + batch_size - 1) // batch_size
+
+    with tqdm(total=total_records, desc="Migrating Data") as pbar:
+        for i in range(num_batches):
+            offset = i * batch_size
+            limit = min(batch_size, total_records - offset)
+
+            click.secho(f"Fetching batch {i + 1}/{num_batches} from source database...", fg='green')
+
+            data_batch: list[App] = db.session.query(App) \
+                .filter(App.is_universal == True) \
+                .order_by(App.created_at) \
+                .offset(offset).limit(limit).all()
+
+            if not data_batch:
+                click.secho("No more data to migrate.", fg='green')
+                break
+
+            try:
+                click.secho(f"Migrating {len(data_batch)} records...", fg='green')
+                for data in data_batch:
+                    # check if the app is already installed
+                    installed_app = db.session.query(InstalledApp).filter(
+                        InstalledApp.app_id == data.id
+                    ).first()
+
+                    if installed_app:
+                        continue
+
+                    # insert installed app
+                    installed_app = InstalledApp(
+                        app_id=data.id,
+                        tenant_id=data.tenant_id,
+                        position=0,
+                        app_owner_tenant_id=data.tenant_id,
+                        is_pinned=True,
+                        last_used_at=datetime.datetime.utcnow(),
+                    )
+
+                    db.session.add(installed_app)
+
+                db.session.commit()
+
+            except Exception as e:
+                click.secho(f"Error while migrating data: {e}, app_id: {data.id}", fg='red')
+                continue
+
+            click.secho(f"Successfully migrated batch {i + 1}/{num_batches}.", fg='green')
+
+            pbar.update(len(data_batch))
 
 def register_commands(app):
     app.cli.add_command(reset_password)
@@ -791,3 +851,4 @@ def register_commands(app):
     app.cli.add_command(migrate_default_input_to_dataset_query_variable)
     app.cli.add_command(add_qdrant_full_text_index)
     app.cli.add_command(add_annotation_question_field_value)
+    app.cli.add_command(migrate_universal_chat_to_installed_app)
