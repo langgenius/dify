@@ -338,7 +338,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     # delete action from agent response
                     agent_thought = agent_response.replace(quotes[i], '')
                     # remove extra quotes
-                    agent_thought = agent_thought.replace('```\n\n```', '')
+                    agent_thought = re.sub(r'```(json)*\n*```', '', agent_thought, flags=re.DOTALL)
                     # remove Action: xxx from agent thought
                     agent_thought = re.sub(r'Action:.*', '', agent_thought, flags=re.IGNORECASE)
 
