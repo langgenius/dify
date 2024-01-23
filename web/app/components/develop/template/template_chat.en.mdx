@@ -53,7 +53,8 @@ Chat applications support session persistence, allowing previous chat history to
         The mode of response return, supporting:
         - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
         - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)  
-        Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.
+        Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.  
+        Note: blocking mode is not supported in Agent Assistant mode
       </Property>
       <Property name='user' type='string' key='user'>
           User identifier, used to define the identity of the end-user for retrieval and statistics.  
@@ -105,6 +106,33 @@ Chat applications support session persistence, allowing previous chat history to
       - `conversation_id` (string) Conversation ID
       - `answer` (string) LLM returned text chunk content
       - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: agent_message` LLM returns text chunk event, i.e., with Agent Assistant enabled, the complete text is output in a chunked fashion (Only supported in Agent mode)
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `conversation_id` (string) Conversation ID
+      - `answer` (string) LLM returned text chunk content
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: agent_thought` thought of Agent, contains the thought of LLM, input and output of tool calls (Only supported in Agent mode)
+      - `id` (string) Agent thought ID, every iteration has a unique agent thought ID
+      - `task_id` (string) (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `position` (int) Position of current agent thought, each message may have multiple thoughts in order.
+      - `thought` (string) What LLM is thinking about
+      - `observation` (string) Response from tool calls
+      - `tool` (string) A list of tools represents which tools are called，split by ;
+      - `tool_input` (string) Input of tools in JSON format
+        - Tool name(string)
+          - Tool arguments(object)
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+      - `message_files` (array[string])  Refer to message_file event 
+        - `file_id` (string) File ID
+      - `conversation_id` (string) Conversation ID
+    - `event: message_file` Message file event, a new file has created by tool
+      - id (string) File unique ID
+      - type (string) File type，only allow "image" currently
+      - belongs_to (string) Belongs to, it will only be an 'assistant' here
+      - url (string) Remote url of file
+      - conversation_id  (string) Conversation ID
     - `event: message_end` Message end event, receiving this event means streaming has ended.
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `message_id` (string) Unique message ID
@@ -156,22 +184,69 @@ Chat applications support session persistence, allowing previous chat history to
     }'
     ```
     </CodeGroup>
-    ### blocking
+    ### Blocking Mode
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "answer": "Hi, is there anything I can help you?",
-      "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
-      "created_at": 1679587005,
-      "id": "059f87d9-15c0-473a-870c-fde95cdcc1e4"
+        "event": "message",
+        "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
+        "mode": "chat",
+        "answer": "iPhone 13 Pro Max specs are listed heere:...",
+        "metadata": {
+            "usage": {
+                "prompt_tokens": 1033,
+                "prompt_unit_price": "0.001",
+                "prompt_price_unit": "0.001",
+                "prompt_price": "0.0010330",
+                "completion_tokens": 128,
+                "completion_unit_price": "0.002",
+                "completion_price_unit": "0.001",
+                "completion_price": "0.0002560",
+                "total_tokens": 1161,
+                "total_price": "0.0012890",
+                "currency": "USD",
+                "latency": 0.7682376249867957
+            },
+            "retriever_resources": [
+                {
+                    "position": 1,
+                    "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb",
+                    "dataset_name": "iPhone",
+                    "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00",
+                    "document_name": "iPhone List",
+                    "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a",
+                    "score": 0.98457545,
+                    "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""
+                }
+            ]
+        },
+        "created_at": 1705407629
     }
     ```
     </CodeGroup>
-    ### streaming
+    ### Streaming Mode ( Basic Assistant )
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
-      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " I", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": "'m", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " glad", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " to", "created_at": 1679586595}
+      data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " meet", "created_at": 1679586595}
+      data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " you", "created_at": 1679586595}
+      data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548, "retriever_resources": [{"position": 1, "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb", "dataset_name": "iPhone", "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00", "document_name": "iPhone List", "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a", "score": 0.98457545, "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""}]}}}
+    ```
+    </CodeGroup>
+    ### Response Example(Agent Assistant)
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " I", "created_at": 1679586595}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": "'m", "created_at": 1679586595}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " glad", "created_at": 1679586595}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " to", "created_at": 1679586595}
+    data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " meet", "created_at": 1679586595}
+    data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " you", "created_at": 1679586595}
+    data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548, "retriever_resources": [{"position": 1, "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb", "dataset_name": "iPhone", "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00", "document_name": "iPhone List", "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a", "score": 0.98457545, "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""}]}}}
     ```
     </CodeGroup>
   </Col>
@@ -392,6 +467,20 @@ Chat applications support session persistence, allowing previous chat history to
       - `id` (string) ID
       - `type` (string) File type, image for images
       - `url` (string) Preview image URL
+      - `belongs_to` (string) belongs to，user orassistant
+    - `agent_thoughts` (array[object]) Agent thought（Empty if it's a Basic Assistant）
+      - `id` (string) Agent thought ID, every iteration has a unique agent thought ID
+      - `message_id` (string) Unique message ID
+      - `position` (int) Position of current agent thought, each message may have multiple thoughts in order.
+      - `thought` (string) What LLM is thinking about
+      - `observation` (string) Response from tool calls
+      - `tool` (string) A list of tools represents which tools are called，split by ;
+      - `tool_input` (string) Input of tools in JSON format
+        - Tool name(string)
+          - Tool arguments(object)
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+      - `message_files` (array[string])  Refer to message_file event 
+        - `file_id` (string) File ID
     - `answer` (string) Response message content
     - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
     - `feedback` (object) Feedback information
@@ -411,26 +500,97 @@ Chat applications support session persistence, allowing previous chat history to
     ```
 
     </CodeGroup>
-
+    ### Response Example (Basic Assistant)
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
+      "limit": 20,
       "has_more": false,
       "data": [
         {
-          "id": "WAz8eIbvDR60rouK",
-          "username": "FrankMcCallister",
-          "phone_number": "1-800-759-3000",
-          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-          "display_name": null,
-          "conversation_id": "xgQQXg3hrtjh7AvZ",
-          "created_at": 692233200
-        },
-        {
-          "id": "hSIhXBhNe8X1d8Et"
-          // ...
+            "id": "a076a87f-31e5-48dc-b452-0061adbbc922",
+            "conversation_id": "cd78daf6-f9e4-4463-9ff2-54257230a0ce",
+            "inputs": {
+                "name": "dify"
+            },
+            "query": "iphone 13 pro",
+            "answer": "The iPhone 13 Pro, released on September 24, 2021, features a 6.1-inch display with a resolution of 1170 x 2532. It is equipped with a Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard) processor, 6 GB of RAM, and offers storage options of 128 GB, 256 GB, 512 GB, and 1 TB. The camera is 12 MP, the battery capacity is 3095 mAh, and it runs on iOS 15.",
+            "message_files": [],
+            "feedback": null,
+            "retriever_resources": [
+                {
+                    "position": 1,
+                    "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb",
+                    "dataset_name": "iPhone",
+                    "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00",
+                    "document_name": "iPhone List",
+                    "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a",
+                    "score": 0.98457545,
+                    "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""
+                }
+            ],
+            "agent_thoughts": [],
+            "created_at": 1705569239,
         }
       ]
+    }
+    ```
+    </CodeGroup>
+
+    ### Response Example (Agent Assistant)
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "limit": 20,
+        "has_more": false,
+        "data": [
+            {
+                "id": "d35e006c-7c4d-458f-9142-be4930abdf94",
+                "conversation_id": "957c068b-f258-4f89-ba10-6e8a0361c457",
+                "inputs": {},
+                "query": "draw a cat",
+                "answer": "I have generated an image of a cat for you. Please check your messages to view the image.",
+                "message_files": [
+                    {
+                        "id": "976990d2-5294-47e6-8f14-7356ba9d2d76",
+                        "type": "image",
+                        "url": "http://127.0.0.1:5001/files/tools/976990d2-5294-47e6-8f14-7356ba9d2d76.png?timestamp=1705988524&nonce=55df3f9f7311a9acd91bf074cd524092&sign=z43nMSO1L2HBvoqADLkRxr7Biz0fkjeDstnJiCK1zh8=",
+                        "belongs_to": "assistant"
+                    }
+                ],
+                "feedback": null,
+                "retriever_resources": [],
+                "created_at": 1705988187,
+                "agent_thoughts": [
+                    {
+                        "id": "592c84cf-07ee-441c-9dcc-ffc66c033469",
+                        "chain_id": null,
+                        "message_id": "d35e006c-7c4d-458f-9142-be4930abdf94",
+                        "position": 1,
+                        "thought": "",
+                        "tool": "dalle2",
+                        "tool_input": "{\"dalle2\": {\"prompt\": \"cat\"}}",
+                        "created_at": 1705988186,
+                        "observation": "image has been created and sent to user already, you should tell user to check it now.",
+                        "message_files": [
+                            "976990d2-5294-47e6-8f14-7356ba9d2d76"
+                        ]
+                    },
+                    {
+                        "id": "73ead60d-2370-4780-b5ed-532d2762b0e5",
+                        "chain_id": null,
+                        "message_id": "d35e006c-7c4d-458f-9142-be4930abdf94",
+                        "position": 2,
+                        "thought": "I have generated an image of a cat for you. Please check your messages to view the image.",
+                        "tool": "",
+                        "tool_input": "",
+                        "created_at": 1705988199,
+                        "observation": "",
+                        "message_files": []
+                    }
+                ]
+            }
+        ]
     }
     ```
     </CodeGroup>
@@ -793,3 +953,55 @@ Chat applications support session persistence, allowing previous chat history to
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/meta'
+  method='GET'
+  title='Get Application Meta Information'
+  name='#meta'
+/>
+<Row>
+  <Col>
+  Used to get icons of tools in this application
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+        User identifier, defined by the developer's rules, must be unique within the application.
+    </Property>
+      </Properties>
+  ### Response
+  - `tool_icons`(object[string]) tool icons
+    - `tool_name` (string) 
+      - `icon` (object|string)
+        - (object) icon object
+          - `background` (string) background color in hex format
+          - `content`(string) emoji
+        - (string) url of icon
+  </Col>
+  <Col>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET 'https://cloud.dify.ai/v1/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET 'https://cloud.dify.ai/v1/meta?user=abc-123' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+    "tool_icons": {
+        "dalle2": "https://cloud.dify.ai/console/api/workspaces/current/tool-provider/builtin/dalle/icon",
+        "api_tool": {
+            "background": "#252525",
+            "content": "\ud83d\ude01"
+        }
+    }
+  }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
