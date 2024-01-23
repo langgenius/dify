@@ -33,6 +33,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             see `core.model_runtime.model_providers.__base.large_language_model.LargeLanguageModel._invoke`
         """
+        if 'temperature' in model_parameters:
+            if model_parameters['temperature'] < 0.01:
+                model_parameters['temperature'] = 0.01
+            elif model_parameters['temperature'] > 1.0:
+                model_parameters['temperature'] = 0.99
+
         return self._generate(
             model=model, credentials=credentials, prompt_messages=prompt_messages, model_parameters=model_parameters,
             tools=tools, stop=stop, stream=stream, user=user,
@@ -240,7 +246,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 label=I18nObject(
                     zh_Hans='温度',
                     en_US='Temperature'
-                )
+                ),
             ),
             ParameterRule(
                 name='top_p',
