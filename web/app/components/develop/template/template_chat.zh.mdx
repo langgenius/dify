@@ -11,18 +11,16 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```javascript
     ```
   </CodeGroup>
+
   ### 鉴权
 
-  Dify Service API 使用 `API-Key` 进行鉴权。
-
-  强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
-
+  Dify Service API 使用 `API-Key` 进行鉴权。  
+  **强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**  
   所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
 
   <CodeGroup title="Code">
     ```javascript
       Authorization: Bearer {API_KEY}
-
     ```
   </CodeGroup>
 </div>
@@ -131,14 +129,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `event`: ping 每 10s 一次的 ping 事件，保持连接存活。
 
     ### Errors
-    - `404`，对话不存在
-    - `400`，`invalid_param`，传入参数异常
-    - `400`，`app_unavailable`，App 配置不可用
-    - `400`，`provider_not_initialize`，无可用模型凭据配置
-    - `400`，`provider_quota_exceeded`，模型调用额度不足
-    - `400`，`model_currently_not_support`，当前模型不可用
-    - `400`，`completion_request_error`，文本生成失败
-    - `500`，服务内部异常
+    - 404，对话不存在
+    - 400，`invalid_param`，传入参数异常
+    - 400，`app_unavailable`，App 配置不可用
+    - 400，`provider_not_initialize`，无可用模型凭据配置
+    - 400，`provider_quota_exceeded`，模型调用额度不足
+    - 400，`model_currently_not_support`，当前模型不可用
+    - 400，`completion_request_error`，文本生成失败
+    - 500，服务内部异常
 
     </Properties>
   </Col>
@@ -260,15 +258,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `created_at` (timestamp) 上传时间
 
     ### Errors
-    - `400`，`no_file_uploaded`，必须提供文件
-    - `400`，`too_many_files`，目前只接受一个文件
-    - `400`，`unsupported_preview`，该文件不支持预览
-    - `400`，`unsupported_estimate`，该文件不支持估算
-    - `413`，`file_too_large`，文件太大
-    - `415`，`unsupported_file_type`，不支持的扩展名，当前只接受文档类文件
-    - `503`，`s3_connection_failed`，无法连接到 S3 服务
-    - `503`，`s3_permission_denied`，无权限上传文件到 S3
-    - `503`，`s3_file_too_large`，文件超出 S3 大小限制
+    - 400，`no_file_uploaded`，必须提供文件
+    - 400，`too_many_files`，目前只接受一个文件
+    - 400，`unsupported_preview`，该文件不支持预览
+    - 400，`unsupported_estimate`，该文件不支持估算
+    - 413，`file_too_large`，文件太大
+    - 415，`unsupported_file_type`，不支持的扩展名，当前只接受文档类文件
+    - 503，`s3_connection_failed`，无法连接到 S3 服务
+    - 503，`s3_permission_denied`，无权限上传文件到 S3
+    - 503，`s3_file_too_large`，文件超出 S3 大小限制
   </Col>
   <Col sticky>
 
@@ -390,22 +388,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "has_more": false,
-      "data": [
-        {
-          "id": "WAz8eIbvDR60rouK",
-          "username": "FrankMcCallister",
-          "phone_number": "1-800-759-3000",
-          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-          "display_name": null,
-          "conversation_id": "xgQQXg3hrtjh7AvZ",
-          "created_at": 692233200
-        },
-        {
-          "id": "hSIhXBhNe8X1d8Et"
-          // ...
-        }
-      ]
+      "result": "success"
     }
     ```
     </CodeGroup>
