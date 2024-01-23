@@ -382,8 +382,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     action_input = action.get("action_input")
                     # delete json content from agent response
                     agent_thought = agent_response[:started_at] + agent_response[end_at:]
-                    # remove extra quotes
-                    agent_thought = agent_thought.replace('```\n\n```', '')
+                    # remove extra quotes like ```(json)*\n\n```
+                    agent_thought = re.sub(r'```(json)*\n*```', '', agent_thought, flags=re.DOTALL)
                     # remove Action: xxx from agent thought
                     agent_thought = re.sub(r'Action:.*', '', agent_thought, flags=re.IGNORECASE)
 
