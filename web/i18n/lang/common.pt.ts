@@ -54,15 +54,14 @@ const translation = {
   menus: {
     status: 'beta',
     explore: 'Explorar',
-    apps: 'Construir Apps',
+    apps: 'Studio',
     plugins: 'Plugins',
-    pluginsTips:
-      'Integre plugins de terceiros ou crie plugins compatíveis com ChatGPT.',
+    pluginsTips: 'Integre plugins de terceiros ou crie plugins compatíveis com o ChatGPT.',
     datasets: 'Conhecimento',
-    datasetsTips:
-      'EM BREVE: Importe seus próprios dados de texto ou escreva dados em tempo real via Webhook para aprimoramento de contexto LLM.',
+    datasetsTips: 'EM BREVE: Importe seus próprios dados de texto ou escreva dados em tempo real via Webhook para aprimoramento do contexto LLM.',
     newApp: 'Novo App',
     newDataset: 'Criar Conhecimento',
+    tools: 'Ferramentas',
   },
   userProfile: {
     settings: 'Configurações',

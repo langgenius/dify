@@ -4,7 +4,7 @@ const translation = {
   type: {
     all: 'Todas',
     builtIn: 'Integradas',
-    custom: 'Personalizadas',
+    custom: 'Personal...',
   },
   contribute: {
     line1: 'Estou interessado em ',
