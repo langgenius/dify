@@ -372,7 +372,7 @@ const translation = {
   },
   appMenus: {
     overview: '概览',
-    promptEng: '提示词编排',
+    promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',
   },
