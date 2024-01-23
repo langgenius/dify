@@ -67,6 +67,12 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   const handleSlideChange = (num: number) => {
+    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!)
+      return handleInputChange(parameterRule.max)
+
+    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
+      return handleInputChange(parameterRule.min)
+
     handleInputChange(num)
   }
 

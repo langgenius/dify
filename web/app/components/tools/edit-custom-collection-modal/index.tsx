@@ -185,10 +185,10 @@ const EditCustomCollectionModal: FC<Props> = ({
               {/* Available Tools  */}
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.availableTools.title')}</div>
-                <div className='rounded-lg border border-gray-200'>
+                <div className='rounded-lg border border-gray-200 w-full overflow-x-auto'>
                   <table className='w-full leading-[18px] text-xs text-gray-700 font-normal'>
                     <thead className='text-gray-500 uppercase'>
-                      <tr className='border-b border-gray-200'>
+                      <tr className={cn(paramsSchemas.length > 0 && 'border-b', 'border-gray-200')}>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.name')}</th>
                         <th className="p-2 pl-3 font-medium w-[236px]">{t('tools.createTool.availableTools.description')}</th>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.method')}</th>

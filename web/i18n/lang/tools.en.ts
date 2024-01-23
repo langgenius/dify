@@ -87,7 +87,7 @@ const translation = {
   },
   noCustomTool: {
     title: 'No custom tools',
-    content: 'You have no custom tools. ',
+    content: 'Add and manage your custom tools here for building AI apps.',
     createTool: 'Create Tool',
   },
   noSearchRes: {

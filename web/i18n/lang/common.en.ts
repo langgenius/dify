@@ -372,7 +372,7 @@ const translation = {
   },
   appMenus: {
     overview: 'Overview',
-    promptEng: 'Prompt Eng.',
+    promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',
   },

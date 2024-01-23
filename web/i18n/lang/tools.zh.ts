@@ -79,7 +79,7 @@ const translation = {
   },
   noCustomTool: {
     title: '没有自定义工具',
-    content: '您没有自定义工具。',
+    content: '在此统一添加和管理你的自定义工具，方便构建应用时使用。',
     createTool: '创建工具',
   },
   noSearchRes: {

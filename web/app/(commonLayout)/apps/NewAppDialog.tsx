@@ -15,7 +15,7 @@ import type { AppMode } from '@/types/app'
 import { ToastContext } from '@/app/components/base/toast'
 import { createApp, fetchAppTemplates } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
-import AppsContext from '@/context/app-context'
+import AppsContext, { useAppContext } from '@/context/app-context'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -30,6 +30,8 @@ type NewAppDialogProps = {
 const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
   const router = useRouter()
   const { notify } = useContext(ToastContext)
+  const { isCurrentWorkspaceManager } = useAppContext()
+
   const { t } = useTranslation()
 
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -91,7 +93,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         onClose()
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       mutateApps()
-      router.push(`/app/${app.id}/overview`)
+      router.push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

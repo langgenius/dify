@@ -148,6 +148,7 @@ const Debug: FC<IDebug> = ({
         content: getIntroduction(),
         isAnswer: true,
         isOpeningStatement: true,
+        suggestedQuestions,
       }]
       : [])
     setIsShowSuggestion(false)
