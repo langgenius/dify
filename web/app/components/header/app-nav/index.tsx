@@ -11,6 +11,7 @@ import { Robot, RobotActive } from '../../base/icons/src/public/header-nav/studi
 import { fetchAppDetail, fetchAppList } from '@/service/apps'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import type { AppListResponse } from '@/models/app'
+import { useAppContext } from '@/context/app-context'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -20,6 +21,8 @@ const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
 
 const AppNav = () => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
+
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { appId } = useParams()
   const isAppDetailPage = usePathname().split('/').includes('app')
@@ -43,7 +46,7 @@ const AppNav = () => {
         navs={appItems.map(item => ({
           id: item.id,
           name: item.name,
-          link: `/app/${item.id}/overview`,
+          link: `/app/${item.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`,
           icon: item.icon,
           icon_background: item.icon_background,
         }))}
