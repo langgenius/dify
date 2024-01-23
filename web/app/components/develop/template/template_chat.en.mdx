@@ -169,10 +169,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \
+    curl -X POST '${props.appDetail.api_base_url}/chat-messages' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -298,10 +298,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \
+    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'file=@"/path/to/file"'
     ```
@@ -403,10 +403,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
+    curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -492,10 +492,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer {api_key}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
+    curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
     --header 'Authorization: Bearer {api_key}'
     ```
 
@@ -640,10 +640,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
+    curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
     --header 'Authorization: Bearer {api_key}'
     ```
 
@@ -704,10 +704,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-        curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
+        curl -X DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
         --header 'Content-Type: application/json' \
         --header 'Accept: application/json' \
         --header 'Authorization: Bearer {api_key}' \
@@ -760,10 +760,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer {api_key}' \
     --data-raw '{
@@ -819,10 +819,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
+    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/name' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'file=@localfile;type=audio/mp3'
     ```
@@ -899,10 +899,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
     --header 'Authorization: Bearer {api_key}'
     ```
 

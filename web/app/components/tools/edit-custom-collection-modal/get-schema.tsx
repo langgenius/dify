@@ -53,8 +53,8 @@ const GetSchema: FC<Props> = ({
   }, showExamplesRef)
 
   return (
-    <div className='flex space-x-1'>
-      <div className='relative' ref={importURLRef}>
+    <div className='flex space-x-1 justify-end relative w-[224px]'>
+      <div ref={importURLRef}>
         <Button
           className='flex items-center !h-6 !px-2 space-x-1 '
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
