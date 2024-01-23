@@ -473,7 +473,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         result = ''
         for scratchpad in agent_scratchpad:
-            result += scratchpad.thought + next_iteration.replace("{{observation}}", scratchpad.observation) + "\n"
+            result += scratchpad.thought + next_iteration.replace("{{observation}}", scratchpad.observation or '') + "\n"
 
         return result
     
@@ -543,7 +543,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # add assistant message
             if len(agent_scratchpad) > 0:
                 prompt_messages.append(AssistantPromptMessage(
-                    content=agent_scratchpad[-1].thought + "\n" + agent_scratchpad[-1].observation
+                    content=(agent_scratchpad[-1].thought or '') + "\n" + (agent_scratchpad[-1].observation or '')
                 ))
 
             # add user message

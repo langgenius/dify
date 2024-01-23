@@ -172,7 +172,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
                 tool_instance = tool_instances.get(tool_call_name)
                 if not tool_instance:
-                    logger.error(f"failed to find tool instance: {tool_call_name}")
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "tool_call_name": tool_call_name,
@@ -220,7 +219,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
                     if error_response:
                         observation = error_response
-                        logger.error(error_response)
                         tool_response = {
                             "tool_call_id": tool_call_id,
                             "tool_call_name": tool_call_name,
