@@ -3,7 +3,8 @@ import json
 import logging
 from datetime import datetime
 
-from constants.model_template import demo_model_templates, model_templates
+from constants.model_template import model_templates
+from constants.languages import demo_model_templates, languages
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
@@ -211,7 +212,7 @@ class AppTemplateApi(Resource):
 
         templates = demo_model_templates.get(interface_language)
         if not templates:
-            templates = demo_model_templates.get('en-US')
+            templates = demo_model_templates.get(languages[0])
 
         return {'data': templates}
 

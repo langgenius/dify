@@ -16,7 +16,7 @@ import {
   ConfigurateMethodEnum,
   ModelTypeEnum,
 } from './declarations'
-import { languageMaps } from './utils'
+import { getModelRuntimeSupported } from '@/utils/language'
 import I18n from '@/context/i18n'
 import {
   fetchDefaultModal,
@@ -59,8 +59,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 
 export const useLanguage = () => {
   const { locale } = useContext(I18n)
-
-  return languageMaps[locale]
+  return getModelRuntimeSupported(locale)
 }
 
 export const useProviderCrenditialsFormSchemasValue = (

@@ -1,3 +1,5 @@
+import type { I18nText } from '@/utils/language'
+
 export type CommonResponse = {
   result: 'success' | 'fail'
 }
@@ -202,11 +204,6 @@ export type ApiBasedExtension = {
   name?: string
   api_endpoint?: string
   api_key?: string
-}
-
-export type I18nText = {
-  'en-US': string
-  'zh-Hans': string
 }
 
 export type CodeBasedExtensionForm = {

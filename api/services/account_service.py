@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Any, Dict, Optional
 
+from constants.languages import languages, language_timezone_mapping
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
 from flask import current_app, session
@@ -138,7 +139,7 @@ class AccountService:
 
     @staticmethod
     def create_account(email: str, name: str, password: str = None,
-                       interface_language: str = 'en-US', interface_theme: str = 'light',
+                       interface_language: str = languages[0], interface_theme: str = 'light',
                        timezone: str = 'America/New_York', ) -> Account:
         """create account"""
         account = Account()
@@ -159,11 +160,9 @@ class AccountService:
 
         account.interface_language = interface_language
         account.interface_theme = interface_theme
-
-        if interface_language == 'zh-Hans':
-            account.timezone = 'Asia/Shanghai'
-        else:
-            account.timezone = timezone
+        
+        # Set timezone based on language
+        account.timezone = language_timezone_mapping.get(interface_language, 'UTC') 
 
         db.session.add(account)
         db.session.commit()
