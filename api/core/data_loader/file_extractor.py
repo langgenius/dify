@@ -27,7 +27,7 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 class FileExtractor:
     @classmethod
-    def load(cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False) -> Union[List[Document] | str]:
+    def load(cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False) -> Union[List[Document], str]:
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(upload_file.key).suffix
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
@@ -36,7 +36,7 @@ class FileExtractor:
             return cls.load_from_file(file_path, return_text, upload_file, is_automatic)
 
     @classmethod
-    def load_from_url(cls, url: str, return_text: bool = False) -> Union[List[Document] | str]:
+    def load_from_url(cls, url: str, return_text: bool = False) -> Union[List[Document], str]:
         response = requests.get(url, headers={
             "User-Agent": USER_AGENT
         })
@@ -52,7 +52,7 @@ class FileExtractor:
     @classmethod
     def load_from_file(cls, file_path: str, return_text: bool = False,
                        upload_file: Optional[UploadFile] = None,
-                       is_automatic: bool = False) -> Union[List[Document] | str]:
+                       is_automatic: bool = False) -> Union[List[Document], str]:
         input_file = Path(file_path)
         delimiter = '\n'
         file_extension = input_file.suffix.lower()
@@ -68,7 +68,7 @@ class FileExtractor:
                     else MarkdownLoader(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
                 loader = HTMLLoader(file_path)
-            elif file_extension == '.docx':
+            elif file_extension in ['.docx', '.doc']:
                 loader = Docx2txtLoader(file_path)
             elif file_extension == '.csv':
                 loader = CSVLoader(file_path, autodetect_encoding=True)
@@ -95,7 +95,7 @@ class FileExtractor:
                 loader = MarkdownLoader(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
                 loader = HTMLLoader(file_path)
-            elif file_extension == '.docx':
+            elif file_extension in ['.docx', '.doc']:
                 loader = Docx2txtLoader(file_path)
             elif file_extension == '.csv':
                 loader = CSVLoader(file_path, autodetect_encoding=True)

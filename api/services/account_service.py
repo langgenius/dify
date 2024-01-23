@@ -464,16 +464,21 @@ class RegisterService:
             account = AccountService.create_account(email, name)
             account.status = AccountStatus.PENDING.value
             db.session.commit()
+
+            TenantService.create_tenant_member(tenant, account, role)
         else:
             TenantService.check_member_permission(tenant, inviter, account, 'add')
             ta = TenantAccountJoin.query.filter_by(
                 tenant_id=tenant.id,
                 account_id=account.id
             ).first()
-            if ta:
-                raise AccountAlreadyInTenantError("Account already in tenant.")
 
-        TenantService.create_tenant_member(tenant, account, role)
+            if not ta:
+                TenantService.create_tenant_member(tenant, account, role)
+
+            # Support resend invitation email when the account is pending status
+            if account.status != AccountStatus.PENDING.value:
+                raise AccountAlreadyInTenantError("Account already in tenant.")
 
         token = cls.generate_invite_token(tenant, account)
 

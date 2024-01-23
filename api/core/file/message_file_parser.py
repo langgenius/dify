@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Union
 
 import requests
 from core.file.file_obj import FileObj, FileTransferMethod, FileType
-from core.file.upload_file_parser import SUPPORT_EXTENSIONS
+from services.file_service import IMAGE_EXTENSIONS
 from extensions.ext_database import db
 from models.account import Account
 from models.model import AppModelConfig, EndUser, MessageFile, UploadFile
@@ -83,7 +83,7 @@ class MessageFileParser:
                             UploadFile.tenant_id == self.tenant_id,
                             UploadFile.created_by == user.id,
                             UploadFile.created_by_role == ('account' if isinstance(user, Account) else 'end_user'),
-                            UploadFile.extension.in_(SUPPORT_EXTENSIONS)
+                            UploadFile.extension.in_(IMAGE_EXTENSIONS)
                         ).first())
 
                         # check upload file is belong to tenant and user
