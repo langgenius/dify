@@ -28,7 +28,7 @@
 }
 
 .actionName {
-  @apply text-gray-700 text-sm;
+  @apply grow text-gray-700 text-sm text-left;
 }
 
 .popup {
