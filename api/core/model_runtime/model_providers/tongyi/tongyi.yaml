@@ -16,6 +16,7 @@ help:
     en_US: https://dashscope.console.aliyun.com/api-key_management
 supported_model_types:
   - llm
+  - tts
 configurate_methods:
   - predefined-model
 provider_credential_schema:
