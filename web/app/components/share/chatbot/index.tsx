@@ -385,6 +385,7 @@ const Main: FC<IMainProps> = ({
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [shouldReload, setShouldReload] = useState(false)
+  const [userQuery, setUserQuery] = useState('')
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
@@ -622,6 +623,8 @@ const Main: FC<IMainProps> = ({
                 <div className='h-full overflow-y-auto' ref={chatListDomRef}>
                   <Chat
                     chatList={chatList}
+                    query={userQuery}
+                    onQueryChange={setUserQuery}
                     onSend={handleSend}
                     isHideFeedbackEdit
                     onFeedback={handleFeedback}
