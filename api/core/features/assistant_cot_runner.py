@@ -19,8 +19,6 @@ from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 
 from models.model import Conversation, Message
 
-logger = logging.getLogger(__name__)
-
 class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, model_instance: ModelInstance,
         conversation: Conversation,
@@ -187,7 +185,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     tool_call_args = scratchpad.action.action_input
                     tool_instance = tool_instances.get(tool_call_name)
                     if not tool_instance:
-                        logger.error(f"failed to find tool instance: {tool_call_name}")
                         answer = f"there is not a tool named {tool_call_name}"
                         self.save_agent_thought(agent_thought=agent_thought, 
                                                 tool_name='',
@@ -237,7 +234,6 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
                         if error_response:
                             observation = error_response
-                            logger.error(error_response)
                         else:
                             observation = self._convert_tool_response_to_str(tool_response)
 
