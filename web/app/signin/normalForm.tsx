@@ -12,7 +12,7 @@ import { IS_CE_EDITION, apiPrefix } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import I18n from '@/context/i18n'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
@@ -283,13 +283,13 @@ const NormalForm = () => {
             <Link
               className='text-primary-600'
               target={'_blank'}
-              href={language !== LanguagesSupported[1] ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/user-agreement/terms-of-service'}
+              href={language !== LanguagesSupportedUnderscore[1] ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/user-agreement/terms-of-service'}
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
               className='text-primary-600'
               target={'_blank'}
-              href={language !== LanguagesSupported[1] ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/user-agreement/privacy-policy'}
+              href={language !== LanguagesSupportedUnderscore[1] ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/user-agreement/privacy-policy'}
             >{t('login.pp')}</Link>
           </div>
 

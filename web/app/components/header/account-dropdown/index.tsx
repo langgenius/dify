@@ -16,7 +16,7 @@ import { useAppContext } from '@/context/app-context'
 import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 export type IAppSelecotr = {
   isMobile: boolean
 }
@@ -123,7 +123,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href={
-                          language !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
+                          language !== LanguagesSupportedUnderscore[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
                         }
                         target='_blank'>
                         <div>{t('common.userProfile.helpCenter')}</div>

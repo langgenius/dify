@@ -12,7 +12,7 @@ import { upload } from '@/service/base'
 import { fetchFileUploadConfig } from '@/service/common'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
 type IFileUploaderProps = {
   fileList: FileItem[]
@@ -73,7 +73,7 @@ const FileUploader = ({
       return item
     })
 
-    return res.map(item => item.toUpperCase()).join(language !== LanguagesSupported[1] ? ', ' : '、 ')
+    return res.map(item => item.toUpperCase()).join(language !== LanguagesSupportedUnderscore[1] ? ', ' : '、 ')
   })()
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {

@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported, languages } from '@/utils/language'
 import { activateMember, invitationCheck } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
@@ -44,7 +44,7 @@ const ActivateForm = () => {
   const [timezone, setTimezone] = useState('Asia/Shanghai')
   const [language, setLanguage] = useState(getModelRuntimeSupported(locale))
   const [showSuccess, setShowSuccess] = useState(false)
-  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? LanguagesSupported[1] : LanguagesSupported[0]) || LanguagesSupported[0], [])
+  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? LanguagesSupportedUnderscore[1] : LanguagesSupportedUnderscore[0]) || LanguagesSupportedUnderscore[0], [])
 
   const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
@@ -207,7 +207,7 @@ const ActivateForm = () => {
                 <Link
                   className='text-primary-600'
                   target={'_blank'}
-                  href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
+                  href={`https://docs.dify.ai/${language !== LanguagesSupportedUnderscore[1] ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
             </div>

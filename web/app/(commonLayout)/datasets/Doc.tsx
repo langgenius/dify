@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import TemplateEn from './template/template.en.mdx'
 import TemplateZh from './template/template.zh.mdx'
 import I18n from '@/context/i18n'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
 type DocProps = {
   apiBaseUrl: string
@@ -18,7 +18,7 @@ const Doc: FC<DocProps> = ({
   return (
     <article className='mx-1 px-4 sm:mx-12 pt-16 bg-white rounded-t-xl prose prose-xl'>
       {
-        language !== LanguagesSupported[1]
+        language !== LanguagesSupportedUnderscore[1]
           ? <TemplateEn apiBaseUrl={apiBaseUrl} />
           : <TemplateZh apiBaseUrl={apiBaseUrl} />
       }

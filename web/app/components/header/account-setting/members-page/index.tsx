@@ -20,7 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -55,7 +55,7 @@ const MembersPage = () => {
                 {isNotUnlimitedMemberPlan
                   ? (
                     <div className='flex space-x-1'>
-                      <div>{t('billing.plansCommon.member')}{language !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
+                      <div>{t('billing.plansCommon.member')}{language !== LanguagesSupportedUnderscore[1] && accounts.length > 1 && 's'}</div>
                       <div className='text-gray-700'>{accounts.length}</div>
                       <div>/</div>
                       <div>{plan.total.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') : plan.total.teamMembers}</div>
@@ -64,7 +64,7 @@ const MembersPage = () => {
                   : (
                     <div className='flex space-x-1'>
                       <div>{accounts.length}</div>
-                      <div>{t('billing.plansCommon.memberAfter')}{language !== LanguagesSupported[1] && accounts.length > 1 && 's'}</div>
+                      <div>{t('billing.plansCommon.memberAfter')}{language !== LanguagesSupportedUnderscore[1] && accounts.length > 1 && 's'}</div>
                     </div>
                   )}
               </div>

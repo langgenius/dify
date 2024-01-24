@@ -41,7 +41,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -112,7 +112,7 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
-  const [docLanguage, setDocLanguage] = useState<string>(language !== LanguagesSupported[1] ? 'English' : 'Chinese')
+  const [docLanguage, setDocLanguage] = useState<string>(language !== LanguagesSupportedUnderscore[1] ? 'English' : 'Chinese')
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
