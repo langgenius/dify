@@ -297,6 +297,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
           onFeedback={feedback => onFeedback(detail.message.id, feedback)}
           supportAnnotation
+          isShowTextToSpeech
           appId={appDetail?.id}
           varList={varList}
         />
@@ -310,6 +311,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             displayScene='console'
             isShowPromptLog
             supportAnnotation
+            isShowTextToSpeech
             appId={appDetail?.id}
             onChatListChange={setItems}
           />

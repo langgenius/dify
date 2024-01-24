@@ -71,6 +71,11 @@ const translation = {
       description: 'Once enabled, you can use voice input.',
       resDes: 'Voice input is enabled',
     },
+    textToSpeech: {
+      title: 'Text to Speech',
+      description: 'Once enabled, text can be converted to speech.',
+      resDes: 'Text to Audio is enabled',
+    },
     citation: {
       title: 'Citations and Attributions',
       description: 'Once enabled, show source document and attributed section of the generated content.',

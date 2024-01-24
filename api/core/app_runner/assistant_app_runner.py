@@ -217,7 +217,7 @@ class AssistantApplicationRunner(AppRunner):
                 query=query,
             )
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
-            assistant_cot_runner = AssistantFunctionCallApplicationRunner(
+            assistant_fc_runner = AssistantFunctionCallApplicationRunner(
                 tenant_id=application_generate_entity.tenant_id,
                 application_generate_entity=application_generate_entity,
                 app_orchestration_config=app_orchestration_config,
@@ -231,7 +231,7 @@ class AssistantApplicationRunner(AppRunner):
                 variables_pool=tool_variables,
                 db_variables=tool_conversation_variables
             )
-            invoke_result = assistant_cot_runner.run(
+            invoke_result = assistant_fc_runner.run(
                 model_instance=model_instance,
                 conversation=conversation,
                 message=message,

@@ -13,6 +13,7 @@ import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
 import Thought from '../thought'
 import Citation from '../citation'
+import AudioBtn from '@/app/components/base/audio-btn'
 import { randomString } from '@/utils'
 import type { MessageRating } from '@/models/log'
 import Tooltip from '@/app/components/base/tooltip'
@@ -53,6 +54,7 @@ export type IAnswerProps = {
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
+  isShowTextToSpeech?: boolean
   // Annotation props
   supportAnnotation?: boolean
   appId?: string
@@ -75,6 +77,7 @@ const Answer: FC<IAnswerProps> = ({
   citation,
   isShowCitation,
   isShowCitationHitInfo = false,
+  isShowTextToSpeech,
   supportAnnotation,
   appId,
   question,
@@ -322,7 +325,13 @@ const Answer: FC<IAnswerProps> = ({
                     className={cn(s.copyBtn, 'mr-1')}
                   />
                 )}
-                {(supportAnnotation && !item.isOpeningStatement) && (
+                {!item.isOpeningStatement && isShowTextToSpeech && (
+                  <AudioBtn
+                    value={content}
+                    className={cn(s.playBtn, 'mr-1')}
+                  />
+                )}
+                {(!item.isOpeningStatement && supportAnnotation) && (
                   <AnnotationCtrlBtn
                     appId={appId!}
                     messageId={id}

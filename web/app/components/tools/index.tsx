@@ -138,7 +138,7 @@ const Tools: FC<Props> = ({
           {isInToolsPage && (
             <Button className='mt-6 flex items-center !h-8 pl-4' type='primary' onClick={handleCreateToolCollection}>
               <Plus className='w-4 h-4 mr-1' />
-              <div className='leading-[18px] text-[13px] font-medium'>{t('tools.createCustomTool')}</div>
+              <div className='leading-[18px] text-[13px] font-medium truncate'>{t('tools.createCustomTool')}</div>
             </Button>
           )}
 

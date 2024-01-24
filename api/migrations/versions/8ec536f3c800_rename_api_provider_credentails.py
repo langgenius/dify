@@ -1,4 +1,4 @@
-"""rename api provider credentails
+"""rename api provider credentials
 
 Revision ID: 8ec536f3c800
 Revises: ad472b61a054

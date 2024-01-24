@@ -75,6 +75,7 @@ const Debug: FC<IDebug> = ({
     suggestedQuestions,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
+    textToSpeechConfig,
     citationConfig,
     moderationConfig,
     moreLikeThisConfig,
@@ -94,6 +95,7 @@ const Debug: FC<IDebug> = ({
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: speech2textDefaultModel } = useDefaultModel(4)
+  const { data: text2speechDefaultModel } = useDefaultModel(5)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
@@ -264,6 +266,9 @@ const Debug: FC<IDebug> = ({
       setChatList(newListWithAnswer)
     }
     const postModelConfig: BackendModelConfig = {
+      text_to_speech: {
+        enabled: false,
+      },
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
       chat_prompt_config: {},
@@ -545,6 +550,9 @@ const Debug: FC<IDebug> = ({
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
+      text_to_speech: {
+        enabled: false,
+      },
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
       chat_prompt_config: {},

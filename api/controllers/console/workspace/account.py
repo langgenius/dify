@@ -11,7 +11,8 @@ from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
-from libs.helper import TimestampField, supported_language, timezone
+from libs.helper import TimestampField, timezone
+from constants.languages import supported_language
 from libs.login import login_required
 from models.account import AccountIntegrate, InvitationCode
 from services.account_service import AccountService

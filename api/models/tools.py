@@ -87,6 +87,7 @@ class ApiToolProvider(db.Model):
     __tablename__ = 'tool_api_providers'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_api_provider_pkey'),
+        db.UniqueConstraint('name', 'tenant_id', name='unique_api_tool_provider')
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
@@ -210,6 +211,8 @@ class ToolFile(db.Model):
     __tablename__ = "tool_files"
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_file_pkey'),
+        # add index for conversation_id
+        db.Index('tool_file_conversation_id_idx', 'conversation_id'),
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))

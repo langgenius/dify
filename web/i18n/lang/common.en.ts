@@ -248,6 +248,10 @@ const translation = {
       key: 'Speech-to-Text Model',
       tip: 'Set the default model for speech-to-text input in conversation.',
     },
+    ttsModel: {
+      key: 'Speech-to-Text Model',
+      tip: 'Set the default model for speech-to-text input in conversation.',
+    },
     rerankModel: {
       key: 'Rerank Model',
       tip: 'Rerank model will reorder the candidate document list based on the semantic match with  user query, improving the results of semantic ranking',

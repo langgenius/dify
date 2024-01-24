@@ -16,7 +16,12 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
-import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
+import type {
+  MoreLikeThisConfig,
+  PromptConfig,
+  SavedMessage,
+  TextToSpeechConfig,
+} from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
@@ -74,6 +79,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -231,7 +237,7 @@ const TextGeneration: FC<IMainProps> = ({
             return
           }
         }
-        if (varItem.required === false)
+        if (!varItem.required)
           return
 
         if (item[varIndex].trim() === '') {
@@ -347,7 +353,7 @@ const TextGeneration: FC<IMainProps> = ({
       setCanReplaceLogo(can_replace_logo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this, file_upload, sensitive_word_avoidance }: any = appParams
+      const { user_input_form, more_like_this, file_upload, text_to_speech, sensitive_word_avoidance }: any = appParams
       setVisionConfig({
         ...file_upload.image,
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
@@ -358,6 +364,7 @@ const TextGeneration: FC<IMainProps> = ({
         prompt_variables,
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
+      setTextToSpeechConfig(text_to_speech)
     })()
   }, [])
 
@@ -388,7 +395,7 @@ const TextGeneration: FC<IMainProps> = ({
     isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
     isMobile={isMobile}
-    isInstalledApp={!!isInstalledApp}
+    isInstalledApp={isInstalledApp}
     installedAppInfo={installedAppInfo}
     isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
@@ -403,6 +410,7 @@ const TextGeneration: FC<IMainProps> = ({
     onCompleted={handleCompleted}
     visionConfig={visionConfig}
     completionFiles={completionFiles}
+    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
   />)
 
   const renderBatchRes = () => {
@@ -562,6 +570,7 @@ const TextGeneration: FC<IMainProps> = ({
             {currTab === 'saved' && (
               <SavedItems
                 className='mt-4'
+                isShowTextToSpeech={textToSpeechConfig?.enabled}
                 list={savedMessages}
                 onRemove={handleRemoveSavedMessage}
                 onStartCreateContent={() => setCurrTab('create')}

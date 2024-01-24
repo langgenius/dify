@@ -6,7 +6,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 The text generation application offers non-session support and is ideal for translation, article writing, summarization AI, and more.
 
 <div>
-  ### Base URL 
+  ### Base URL
   <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
     ```javascript
     ```
@@ -14,10 +14,10 @@ The text generation application offers non-session support and is ideal for tran
 
   ### Authentication
 
-  The Service API uses `API-Key` authentication.  
+  The Service API uses `API-Key` authentication.
   <i>**Strongly recommend storing your API Key on the server-side, not shared or stored on the client-side, to avoid possible API-Key leakage that can lead to serious consequences.**</i>
 
-  For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below: 
+  For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below:
 
   <CodeGroup title="Code">
     ```javascript
@@ -46,18 +46,18 @@ The text generation application offers non-session support and is ideal for tran
         User Input/Question content
       </Property>
       <Property name='inputs' type='object' key='inputs'>
-          Allows the entry of various variable values defined by the App.  
+          Allows the entry of various variable values defined by the App.
           The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
           The text generation application requires at least one key/value pair to be inputted.
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         The mode of response return, supporting:
         - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
-        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)  
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
         <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
       </Property>
       <Property name='user' type='string' key='user'>
-          User identifier, used to define the identity of the end-user for retrieval and statistics.  
+          User identifier, used to define the identity of the end-user for retrieval and statistics.
           Should be uniquely defined by the developer within the application.
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
@@ -71,9 +71,9 @@ The text generation application offers non-session support and is ideal for tran
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
       </Property>
     </Properties>
-  
+
     ### Response
-    When `response_mode` is `blocking`, return a CompletionResponse object.    
+    When `response_mode` is `blocking`, return a CompletionResponse object.
     When `response_mode` is `streaming`, return a ChunkCompletionResponse stream.
 
     ### ChatCompletionResponse
@@ -205,7 +205,7 @@ The text generation application offers non-session support and is ideal for tran
 <Row>
   <Col>
   Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text.
-  Supports png, jpg, jpeg, webp, gif formats.  
+  Supports png, jpg, jpeg, webp, gif formats.
   <i>Uploaded files are for use by the current end-user only.</i>
 
   ### Request Body
@@ -214,7 +214,7 @@ The text generation application offers non-session support and is ideal for tran
     The file to be uploaded.
   - `user` (string) Required
     User identifier, defined by the developer's rules, must be unique within the application.
-  
+
   ### Response
   After a successful upload, the server will return the file's ID and related information.
   - `id` (uuid) ID
@@ -236,7 +236,7 @@ The text generation application offers non-session support and is ideal for tran
   - 503, `s3_permission_denied`, no permission to upload files to S3
   - 503, `s3_file_too_large`, file exceeds S3 size limit
   - 500, internal server error
-  
+
 
   </Col>
   <Col sticky>
@@ -256,12 +256,12 @@ The text generation application offers non-session support and is ideal for tran
   <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
       "name": "example.png",
       "size": 1024,
       "extension": "png",
       "mime_type": "image/png",
-      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",  
+      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
       "created_at": 1577836800,
     }
   ```
@@ -292,8 +292,8 @@ The text generation application offers non-session support and is ideal for tran
   <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}`}>
     ```bash {{ title: 'cURL' }}
     curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \
-    -H 'Authorization: Bearer {api_key}' \  
-    -H 'Content-Type: application/json' \  
+    -H 'Authorization: Bearer {api_key}' \
+    -H 'Content-Type: application/json' \
     --data-raw '{
         "user": "abc-123"
     }'
@@ -479,6 +479,54 @@ The text generation application offers non-session support and is ideal for tran
       "system_parameters": {
           "image_file_size_limit": "10"
       }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='text to audio'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    Text to speech, only supports openai model.
+
+    ### Request Body
+
+    <Properties>
+      <Property name='text' type='str' key='text'>
+        Speech generated content。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+      <Property name='streaming' type='bool' key='streaming'>
+        Whether to enable streaming output, true、false。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=Hello Dify;user=abc-123;streaming=false`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=Hello Dify;user=abc-123;streaming=false'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
     }
     ```
     </CodeGroup>

@@ -30,14 +30,14 @@ class BuiltinToolProviderController(ToolProviderController):
         except:
             raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}')
 
-        if 'credentails_for_provider' in provider_yaml and provider_yaml['credentails_for_provider'] is not None:
+        if 'credentials_for_provider' in provider_yaml and provider_yaml['credentials_for_provider'] is not None:
             # set credentials name
-            for credential_name in provider_yaml['credentails_for_provider']:
-                provider_yaml['credentails_for_provider'][credential_name]['name'] = credential_name
+            for credential_name in provider_yaml['credentials_for_provider']:
+                provider_yaml['credentials_for_provider'][credential_name]['name'] = credential_name
 
         super().__init__(**{
             'identity': provider_yaml['identity'],
-            'credentials_schema': provider_yaml['credentails_for_provider'] if 'credentails_for_provider' in provider_yaml else None,
+            'credentials_schema': provider_yaml['credentials_for_provider'] if 'credentials_for_provider' in provider_yaml else None,
         })
 
     def _get_bulitin_tools(self) -> List[Tool]:
@@ -75,7 +75,7 @@ class BuiltinToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
     
-    def get_credentails_schema(self) -> Dict[str, ToolProviderCredentials]:
+    def get_credentials_schema(self) -> Dict[str, ToolProviderCredentials]:
         """
             returns the credentials schema of the provider
 
@@ -86,14 +86,14 @@ class BuiltinToolProviderController(ToolProviderController):
         
         return self.credentials_schema.copy()
     
-    def user_get_credentails_schema(self) -> UserToolProviderCredentials:
+    def user_get_credentials_schema(self) -> UserToolProviderCredentials:
         """
             returns the credentials schema of the provider, this method is used for user
 
             :return: the credentials schema
         """
         credentials = self.credentials_schema.copy()
-        return UserToolProviderCredentials(credentails=credentials)
+        return UserToolProviderCredentials(credentials=credentials)
 
     def get_tools(self) -> List[Tool]:
         """

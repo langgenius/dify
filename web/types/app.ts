@@ -1,5 +1,6 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
+import type { LanguagesSupported } from '@/utils/language'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -141,6 +142,9 @@ export type ModelConfig = {
   speech_to_text: {
     enabled: boolean
   }
+  text_to_speech: {
+    enabled: boolean
+  }
   retriever_resource: {
     enabled: boolean
   }
@@ -213,7 +217,6 @@ export type ModelConfig = {
   files?: VisionFile[]
 }
 
-export const LanguagesSupported = ['zh-Hans', 'en-US'] as const
 export type Language = typeof LanguagesSupported[number]
 
 /**

@@ -71,6 +71,11 @@ const translation = {
       description: '启用后，您可以使用语音输入。',
       resDes: '语音输入已启用',
     },
+    textToSpeech: {
+      title: '文字转语音',
+      description: '启用后，文本可以转换成语音。',
+      resDes: '文本转音频已启用',
+    },
     citation: {
       title: '引用和归属',
       description: '启用后，显示源文档和生成内容的归属部分。',

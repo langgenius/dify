@@ -12,12 +12,11 @@ import Button from '@/app/components/base/button'
 
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { languageMaps, languages } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported, languages } from '@/utils/language'
 import { activateMember, invitationCheck } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import I18n from '@/context/i18n'
-
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const ActivateForm = () => {
@@ -43,9 +42,9 @@ const ActivateForm = () => {
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [timezone, setTimezone] = useState('Asia/Shanghai')
-  const [language, setLanguage] = useState('en-US')
+  const [language, setLanguage] = useState(getModelRuntimeSupported(locale))
   const [showSuccess, setShowSuccess] = useState(false)
-  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? languageMaps['zh-Hans'] : languageMaps.en) || languageMaps.en, [])
+  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? LanguagesSupportedUnderscore[1] : LanguagesSupportedUnderscore[0]) || LanguagesSupportedUnderscore[0], [])
 
   const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
@@ -208,7 +207,7 @@ const ActivateForm = () => {
                 <Link
                   className='text-primary-600'
                   target={'_blank'}
-                  href={`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
+                  href={`https://docs.dify.ai/${language !== LanguagesSupportedUnderscore[1] ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
             </div>
