@@ -10,7 +10,7 @@ import ExploreContext from '@/context/explore-context'
 import type { App, AppCategory } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
-import { fetchAppDetail, fetchAppList, installApp } from '@/service/explore'
+import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { createApp } from '@/service/apps'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -23,7 +23,7 @@ const Apps: FC = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
-  const { setControlUpdateInstalledApps, hasEditPermission } = useContext(ExploreContext)
+  const { hasEditPermission } = useContext(ExploreContext)
   const [currCategory, setCurrCategory] = React.useState<AppCategory | ''>('')
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -43,15 +43,6 @@ const Apps: FC = () => {
       setIsLoaded(true)
     })()
   }, [])
-
-  const handleAddToWorkspace = async (appId: string) => {
-    await installApp(appId)
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.success'),
-    })
-    setControlUpdateInstalledApps(Date.now())
-  }
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
@@ -111,7 +102,6 @@ const Apps: FC = () => {
                 setCurrApp(app)
                 setIsShowCreateModal(true)
               }}
-              onAddToWorkspace={handleAddToWorkspace}
             />
           ))}
         </nav>
