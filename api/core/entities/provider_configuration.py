@@ -153,8 +153,16 @@ class ProviderConfiguration(BaseModel):
 
         if provider_record:
             try:
-                original_credentials = json.loads(
-                    provider_record.encrypted_config) if provider_record.encrypted_config else {}
+                # fix origin data
+                if provider_record.encrypted_config:
+                    if not provider_record.encrypted_config.startswith("{"):
+                        original_credentials = {
+                            "openai_api_key": provider_record.encrypted_config
+                        }
+                    else:
+                        original_credentials = json.loads(provider_record.encrypted_config)
+                else:
+                    original_credentials = {}
             except JSONDecodeError:
                 original_credentials = {}
 
