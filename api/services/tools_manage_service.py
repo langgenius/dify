@@ -112,7 +112,7 @@ class ToolManageService:
             except Exception as e:
                 raise ValueError(f'invalid schema: {str(e)}')
             
-            credentails_schema = [
+            credentials_schema = [
                 ToolProviderCredentials(
                     name='auth_type',
                     type=ToolProviderCredentials.CredentialsType.SELECT,
@@ -163,7 +163,7 @@ class ToolManageService:
                 {
                     'schema_type': schema_type,
                     'parameters_schema': tool_bundles,
-                    'credentials_schema': credentails_schema,
+                    'credentials_schema': credentials_schema,
                     'warning': warnings
                 }
             ))

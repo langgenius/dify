@@ -38,7 +38,7 @@ class UserToolProvider(BaseModel):
         }
 
 class UserToolProviderCredentials(BaseModel):
-    credentails: Dict[str, ToolProviderCredentials]
+    credentials: Dict[str, ToolProviderCredentials]
 
 class UserTool(BaseModel):
     author: str

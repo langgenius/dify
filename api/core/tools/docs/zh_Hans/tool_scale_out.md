@@ -45,7 +45,7 @@ identity:
     en_US: Google
     zh_Hans: Google
   icon: icon.svg
-credentails_for_provider: # 凭据字段
+credentials_for_provider: # 凭据字段
   serpapi_api_key: # 凭据字段名称
     type: secret-input # 凭据字段类型
     required: true # 是否必填

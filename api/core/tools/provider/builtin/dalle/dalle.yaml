@@ -10,7 +10,7 @@ identity:
     zh_Hans: DALL-E 绘画
     pt_BR: DALL-E art
   icon: icon.png
-credentails_for_provider:
+credentials_for_provider:
   openai_api_key:
     type: secret-input
     required: true
