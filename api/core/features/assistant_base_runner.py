@@ -474,6 +474,8 @@ class BaseAssistantApplicationRunner(AppRunner):
         labels = agent_thought.tool_labels or {}
         tools = agent_thought.tool.split(';') if agent_thought.tool else []
         for tool in tools:
+            if not tool:
+                continue
             if tool not in labels:
                 tool_label = ToolManager.get_tool_label(tool)
                 if tool_label:
