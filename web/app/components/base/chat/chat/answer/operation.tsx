@@ -1,8 +1,10 @@
 import type { FC } from 'react'
 import type { ChatItem } from '../../types'
 import { useCurrentAnswerIsResponsing } from '../hooks'
+import { useChatContext } from '../context'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import AudioBtn from '@/app/components/base/audio-btn'
 
 type OperationProps = {
   item: ChatItem
@@ -10,6 +12,7 @@ type OperationProps = {
 const Operation: FC<OperationProps> = ({
   item,
 }) => {
+  const { config } = useChatContext()
   const responsing = useCurrentAnswerIsResponsing(item.id)
   const {
     isOpeningStatement,
@@ -27,6 +30,12 @@ const Operation: FC<OperationProps> = ({
           />
         )
       }
+      {!isOpeningStatement && config?.text_to_speech && (
+        <AudioBtn
+          value={content}
+          className='hidden group-hover:block'
+        />
+      )}
       {
         annotation?.id && (
           <div
