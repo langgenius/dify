@@ -14,10 +14,10 @@ import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
 import s from './style.module.css'
 import CustomPopover from '@/app/components/base/popover'
-// import Divider from '@/app/components/base/divider'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
 
@@ -38,6 +38,7 @@ const HeaderOptions: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const fetchList = async () => {
@@ -67,10 +68,10 @@ const HeaderOptions: FC<Props> = ({
 
         <CSVDownloader
           type={Type.Link}
-          filename="annotations"
+          filename={`annotations-${language}`}
           bom={true}
           data={[
-            locale === 'en' ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+            language !== LanguagesSupportedUnderscore[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
             ...list.map(item => [item.question, item.answer]),
           ]}
         >

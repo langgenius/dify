@@ -30,7 +30,7 @@ class ApiTool(Tool):
             runtime=Tool.Runtime(**meta)
         )
 
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
+    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
         """
             validate the credentials for Api tool
         """

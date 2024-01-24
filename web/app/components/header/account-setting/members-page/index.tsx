@@ -20,7 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -31,6 +31,7 @@ const MembersPage = () => {
     normal: t('common.members.normal'),
   }
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const { userProfile, currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
@@ -54,7 +55,7 @@ const MembersPage = () => {
                 {isNotUnlimitedMemberPlan
                   ? (
                     <div className='flex space-x-1'>
-                      <div>{t('billing.plansCommon.member')}{locale === 'en' && accounts.length > 1 && 's'}</div>
+                      <div>{t('billing.plansCommon.member')}{language !== LanguagesSupportedUnderscore[1] && accounts.length > 1 && 's'}</div>
                       <div className='text-gray-700'>{accounts.length}</div>
                       <div>/</div>
                       <div>{plan.total.teamMembers === NUM_INFINITE ? t('billing.plansCommon.unlimited') : plan.total.teamMembers}</div>
@@ -63,7 +64,7 @@ const MembersPage = () => {
                   : (
                     <div className='flex space-x-1'>
                       <div>{accounts.length}</div>
-                      <div>{t('billing.plansCommon.memberAfter')}{locale === 'en' && accounts.length > 1 && 's'}</div>
+                      <div>{t('billing.plansCommon.memberAfter')}{language !== LanguagesSupportedUnderscore[1] && accounts.length > 1 && 's'}</div>
                     </div>
                   )}
               </div>

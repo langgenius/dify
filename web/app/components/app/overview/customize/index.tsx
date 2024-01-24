@@ -9,6 +9,7 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
 type IShareLinkProps = {
   isShow: boolean
@@ -43,6 +44,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const isChatApp = mode === 'chat'
 
   return <Modal
@@ -98,7 +100,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       <p className='mt-2 text-base font-medium text-gray-800'>{t(`${prefixCustomize}.way2.name`)}</p>
       <Button
         className='w-36 mt-2'
-        onClick={() => window.open(`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/application/developing-with-apis`, '_blank')}
+        onClick={() => window.open(`https://docs.dify.ai/${language !== LanguagesSupportedUnderscore[1] ? '' : `v/${locale.toLowerCase()}`}/application/developing-with-apis`, '_blank')}
       >
         <span className='text-sm text-gray-800'>{t(`${prefixCustomize}.way2.operation`)}</span>
         <ArrowTopRightOnSquareIcon className='w-4 h-4 ml-1 text-gray-800 shrink-0' />
