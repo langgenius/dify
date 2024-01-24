@@ -299,9 +299,7 @@ Inherit the `__base.speech2text_model.Speech2TextModel` base class and implement
 - Invoke Invocation
 
   ```python
-  def _invoke(self, model: str, credentials: dict,
-              file: IO[bytes], user: Optional[str] = None) \
-          -> str:
+  def _invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
       """
       Invoke large language model
   
@@ -330,6 +328,46 @@ Inherit the `__base.speech2text_model.Speech2TextModel` base class and implement
   - Returns:
 
     The string after speech-to-text conversion.
+
+### Text2speech
+
+Inherit the `__base.text2speech_model.Text2SpeechModel` base class and implement the following interfaces:
+
+- Invoke Invocation
+
+  ```python
+  def _invoke(elf, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+      """
+      Invoke large language model
+  
+      :param model: model name
+      :param credentials: model credentials
+      :param content_text: text content to be translated
+      :param streaming: output is streaming
+      :param user: unique user id
+      :return: translated audio file
+      """	
+  ```
+
+  - Parameters：
+
+    - `model` (string) Model name
+
+    - `credentials` (object) Credential information
+
+      The parameters of credential information are defined by either the `provider_credential_schema` or `model_credential_schema` in the provider's YAML configuration file. Inputs such as `api_key` are included.
+
+    - `content_text` (string) The text content that needs to be converted
+
+    - `streaming` (bool) Whether to stream output
+
+    - `user` (string) [optional] Unique identifier of the user
+
+      This can help the provider monitor and detect abusive behavior.
+
+  - Returns：
+
+    Text converted speech stream。
 
 ### Moderation
 
