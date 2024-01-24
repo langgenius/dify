@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 import I18n from '@/context/i18n'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
 const CSV_TEMPLATE_QA_EN = [
   ['question', 'answer'],
@@ -29,7 +29,7 @@ const CSVDownload: FC = () => {
   const { CSVDownloader, Type } = useCSVDownloader()
 
   const getTemplate = () => {
-    return language === LanguagesSupported[1] ? CSV_TEMPLATE_QA_CN : CSV_TEMPLATE_QA_EN
+    return language !== LanguagesSupportedUnderscore[1] ? CSV_TEMPLATE_QA_EN : CSV_TEMPLATE_QA_CN
   }
 
   return (
@@ -58,7 +58,7 @@ const CSVDownload: FC = () => {
       <CSVDownloader
         className="block mt-2 cursor-pointer"
         type={Type.Link}
-        filename={'template'}
+        filename={`template-${language}`}
         bom={true}
         data={getTemplate()}
       >

@@ -17,7 +17,7 @@ import CustomPopover from '@/app/components/base/popover'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
 
@@ -68,10 +68,10 @@ const HeaderOptions: FC<Props> = ({
 
         <CSVDownloader
           type={Type.Link}
-          filename="annotations"
+          filename={`annotations-${language}`}
           bom={true}
           data={[
-            language === LanguagesSupported[1] ? CSV_HEADER_QA_CN : CSV_HEADER_QA_EN,
+            language !== LanguagesSupportedUnderscore[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
             ...list.map(item => [item.question, item.answer]),
           ]}
         >
