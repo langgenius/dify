@@ -791,6 +791,7 @@ const Debug: FC<IDebug> = ({
                       isShowSuggestion={doShowSuggestion}
                       suggestionList={suggestQuestions}
                       isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
+                      isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                       isShowCitation={citationConfig.enabled}
                       isShowCitationHitInfo
                       isShowPromptLog
@@ -816,6 +817,7 @@ const Debug: FC<IDebug> = ({
                     className="mt-2"
                     content={completionRes}
                     isLoading={!completionRes && isResponsing}
+                    isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
                     isResponsing={isResponsing}
                     isInstalledApp={false}
                     messageId={messageId}
