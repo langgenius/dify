@@ -13,7 +13,8 @@ import type {
   Inputs,
   PromptVariable,
   VisionFile,
-} from './types'
+} from '../types'
+import { useChatContext } from './context'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
@@ -99,6 +100,35 @@ export const useChat = (
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
+    }
+
+    if (promptVariablesConfig?.inputs && promptVariablesConfig?.promptVariables) {
+      const {
+        promptVariables,
+        inputs,
+      } = promptVariablesConfig
+      let hasEmptyInput = ''
+      const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
+        if (type === 'api')
+          return false
+        const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
+        return res
+      })
+
+      if (requiredVars?.length) {
+        requiredVars.forEach(({ key, name }) => {
+          if (hasEmptyInput)
+            return
+
+          if (!inputs[key])
+            hasEmptyInput = name
+        })
+      }
+
+      if (hasEmptyInput) {
+        notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
+        return false
+      }
     }
 
     const updateCurrentQA = ({
@@ -351,4 +381,15 @@ export const useChat = (
     handleRestart,
     handleStop,
   }
+}
+
+export const useCurrentAnswerIsResponsing = (answerId: string) => {
+  const {
+    isResponsing,
+    chatList,
+  } = useChatContext()
+
+  const isLast = answerId === chatList[chatList.length - 1]?.id
+
+  return isLast && isResponsing
 }

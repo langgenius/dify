@@ -11,7 +11,7 @@ import {
 } from './context'
 import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import ChatInput from '@/app/components/base/chat/chat-input'
+import ChatInput from '@/app/components/base/chat/chat/chat-input'
 import type { VisionFile } from '@/app/components/base/chat/types'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 

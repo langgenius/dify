@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useRef } from 'react'
 import type { ChatItem } from '../types'
-import { useChatContext } from '../context'
+import { useChatContext } from './context'
 import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import Log from '@/app/components/app/chat/log'

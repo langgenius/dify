@@ -12,8 +12,8 @@ import {
   AgentStrategy,
   ModelModeType,
 } from '@/types/app'
-import { Chat } from '@/app/components/base/chat'
-import { useChat } from '@/app/components/base/chat/hooks'
+import Chat from '@/app/components/base/chat/chat'
+import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import type {
   ChatConfig,
@@ -57,6 +57,7 @@ const ChatItem: FC<ChatItemProps> = ({
     visionConfig,
     annotationConfig,
     collectionList,
+    textToSpeechConfig,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const postDatasets = dataSets.map(({ id }) => ({
@@ -79,6 +80,7 @@ const ChatItem: FC<ChatItemProps> = ({
     },
     suggested_questions: openingSuggestedQuestions,
     suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+    text_to_speech: textToSpeechConfig,
     speech_to_text: speechToTextConfig,
     retriever_resource: citationConfig,
     sensitive_word_avoidance: moderationConfig,

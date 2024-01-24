@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { OnSend } from './types'
+import type { OnSend } from '../types'
 import { Star04 } from '@/app/components/base/icons/src/vender/solid/shapes'
 import Button from '@/app/components/base/button'
 
