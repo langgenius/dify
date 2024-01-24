@@ -6,10 +6,10 @@ from core.model_runtime.entities.message_entities import (AssistantPromptMessage
                                                           PromptMessageTool, SystemPromptMessage, UserPromptMessage,
                                                           TextPromptMessageContent, ImagePromptMessageContent, PromptMessageContentType)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.utils import helper
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.zhipuai._client import ZhipuModelAPI
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
-
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
@@ -35,7 +35,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
         # invoke model
-        return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, stop, stream, user)
+        return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -72,6 +72,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 model_parameters={
                     "temperature": 0.5,
                 },
+                tools=[],
                 stream=False
             )
         except Exception as ex:
@@ -79,6 +80,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
     def _generate(self, model: str, credentials_kwargs: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
+                  tools: Optional[list[PromptMessageTool]] = None,
                   stop: Optional[List[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
@@ -178,6 +180,14 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 **model_parameters
             }
 
+        if tools and len(tools) > 0:
+            params['tools'] = [
+                {
+                    'type': 'function',
+                    'function': helper.dump_model(tool)
+                } for tool in tools
+            ]
+
         if stream:
             response = client.sse_invoke(incremental=True, **params).events()
             return self._handle_generate_stream_response(model, credentials_kwargs, response, prompt_messages)
@@ -236,14 +246,43 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         """
         for index, event in enumerate(responses):
             if event.event == "add":
-                yield LLMResultChunk(
-                    prompt_messages=prompt_messages,
-                    model=model,
-                    delta=LLMResultChunkDelta(
-                        index=index,
-                        message=AssistantPromptMessage(content=event.data)
+                try:
+                    delta = json.loads(event.data)['delta']
+                    tool_calls = delta['tool_calls']
+                    for tool_call in tool_calls:
+                        if tool_call['type'] != 'function':
+                            continue
+                        tool_calls = [
+                            AssistantPromptMessage.ToolCall(
+                                id=tool_call['id'],
+                                type='function',
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=tool_call['function']['name'],
+                                    arguments=tool_call['function']['arguments']
+                                )
+                            ) for tool_call in tool_calls
+                        ]
+
+                        yield LLMResultChunk(
+                            model=model,
+                            prompt_messages=prompt_messages,
+                            delta=LLMResultChunkDelta(
+                                index=0,
+                                message=AssistantPromptMessage(
+                                    tool_calls=tool_calls,
+                                    content=''
+                                ),
+                            )
+                        )
+                except Exception as ex:
+                    yield LLMResultChunk(
+                        prompt_messages=prompt_messages,
+                        model=model,
+                        delta=LLMResultChunkDelta(
+                            index=index,
+                            message=AssistantPromptMessage(content=event.data)
+                        )
                     )
-                )
             elif event.event == "error" or event.event == "interrupted":
                 raise ValueError(
                     f"{event.data}"
