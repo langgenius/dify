@@ -94,7 +94,7 @@ The currently supported model types are as follows:
 - `text_embedding` Text Embedding model
 - `rerank` Rerank model
 - `speech2text` Speech to text
-- `text2speech` Text to speech
+- `tts` Text to speech
 - `moderation` Moderation
 
 Continuing with `Anthropic` as an example, since `Anthropic` only supports LLM, we create a `module` named `llm` in `model_providers.anthropic`.
