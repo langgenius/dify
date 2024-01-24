@@ -27,4 +27,4 @@ class MinimaxProvider(ModelProvider):
             raise ex
         except Exception as ex:
             logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
-            raise ex
+            raise CredentialsValidateFailedError(f'{ex}')
