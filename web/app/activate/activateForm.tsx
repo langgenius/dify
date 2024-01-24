@@ -17,7 +17,6 @@ import { activateMember, invitationCheck } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import I18n from '@/context/i18n'
-
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const ActivateForm = () => {
@@ -43,7 +42,7 @@ const ActivateForm = () => {
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [timezone, setTimezone] = useState('Asia/Shanghai')
-  const [language, setLanguage] = useState('en-US')
+  const [language, setLanguage] = useState(getModelRuntimeSupported(locale))
   const [showSuccess, setShowSuccess] = useState(false)
   const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? LanguagesSupported[1] : LanguagesSupported[0]) || LanguagesSupported[0], [])
 
@@ -208,7 +207,7 @@ const ActivateForm = () => {
                 <Link
                   className='text-primary-600'
                   target={'_blank'}
-                  href={`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
+                  href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
             </div>
