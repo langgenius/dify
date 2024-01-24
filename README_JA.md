@@ -21,6 +21,13 @@
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
 </p>
 
+<p align="center">
+   <a href="https://dify.ai/blog/dify-ai-unveils-ai-agent-creating-gpts-and-assistants-with-various-llms" target="_blank">
+   Dify.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
+  </a>
+</p>
+
+
 "Difyは、既にDify.AI上で10万以上のアプリケーションが構築されているLLMアプリケーション開発プラットフォームです。バックエンド・アズ・ア・サービスとLLMOpsの概念を統合し、組み込みのRAGエンジンを含む、生成AIネイティブアプリケーションを構築するためのコアテックスタックをカバーしています。Difyを使用すると、どのLLMに基づいても、Assistants APIやGPTのような機能を自己デプロイすることができます。"
 
 Please note that translating complex technical terms can sometimes result in slight variations in meaning due to differences in language nuances.
@@ -54,7 +61,7 @@ Difyはモデルニュートラルであり、LangChainのようなハードコ�
 
 **3\. RAGエンジン**: フルテキストインデックスまたはベクトルデータベース埋め込みに基づくさまざまなRAG機能を含み、PDF、TXT、その他のテキストフォーマットの直接アップロードを可能にします。
 
-**4\. エージェント**: ユーザーが sees what they get を設定できる関数呼び出しベースのエージェントフレームワーク。 Difyには、Google検索などの基本的なプラグイン機能が含まれています。
+**4. AIエージェント**: 関数呼び出しとReActに基づくAgent推論フレームワークにより、ユーザーはツールをカスタマイズすることができます。Difyは、Google検索、DELL·E、Stable Diffusion、WolframAlphaなど、十数種類の組み込みツール呼び出し機能を提供しています。
 
 **5\. 継続的運用**: アプリケーションログとパフォーマンスを監視および分析し、運用データを使用してプロンプト、データセット、またはモデルを継続的に改善します。
 

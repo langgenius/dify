@@ -21,6 +21,12 @@
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
 </p>
 
+<p align="center">
+   <a href="https://mp.weixin.qq.com/s/TnyfIuH-tPi9o1KNjwVArw" target="_blank">
+   Dify 发布 AI Agent 能力：基于不同的大型语言模型构建 GPTs 和 Assistants
+  </a>
+</p>
+
 Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
 
 ![](./images/demo.png)
@@ -53,7 +59,7 @@ Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一�
 
 **3. RAG引擎**：包括各种基于全文索引或向量数据库嵌入的 RAG 能力，允许直接上传 PDF、TXT 等各种文本格式。
 
-**4. Agent**：基于函数调用的 Agent框架，允许用户自定义配置，所见即所得。Dify 提供了基本的插件能力，如谷歌搜索。
+**4. AI Agent**：基于 Function Calling 和 ReAct 的 Agent 推理框架，允许用户自定义工具，所见即所得。Dify 提供了十多种内置工具调用能力，如谷歌搜索、DELL·E、Stable Diffusion、WolframAlpha 等。
 
 **5. 持续运营**：监控和分析应用日志和性能，使用生产数据持续改进 Prompt、数据集或模型。
 
