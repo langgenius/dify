@@ -45,7 +45,7 @@ identity:
     en_US: Google
     zh_Hans: Google
   icon: icon.svg
-credentails_for_provider: # Credential field
+credentials_for_provider: # Credential field
   serpapi_api_key: # Credential field name
     type: secret-input # Credential field type
     required: true # Required or not

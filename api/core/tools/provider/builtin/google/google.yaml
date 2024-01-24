@@ -10,7 +10,7 @@ identity:
     zh_Hans: GoogleSearch
     pt_BR: Google
   icon: icon.svg
-credentails_for_provider:
+credentials_for_provider:
   serpapi_api_key:
     type: secret-input
     required: true

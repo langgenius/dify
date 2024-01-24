@@ -10,4 +10,4 @@ identity:
     zh_Hans: 一个用于获取当前时间的工具。
     pt_BR: A tool for getting the current time.
   icon: icon.svg
-credentails_for_provider:
+credentials_for_provider:

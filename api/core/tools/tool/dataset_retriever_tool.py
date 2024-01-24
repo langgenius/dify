@@ -88,7 +88,7 @@ class DatasetRetrieverTool(Tool):
 
         return self.create_text_message(text=result)
 
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any]) -> None:
         """
         validate the credentials for dataset retriever tool
         """
