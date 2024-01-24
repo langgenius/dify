@@ -102,7 +102,7 @@ class HostingConfiguration:
         )
 
     def init_openai(self, app_config: Config) -> HostingProvider:
-        quota_unit = QuotaUnit.TIMES
+        quota_unit = QuotaUnit.CREDITS
         quotas = []
 
         if app_config.get("HOSTED_OPENAI_TRIAL_ENABLED"):
@@ -125,7 +125,19 @@ class HostingConfiguration:
                 stripe_price_id=app_config.get("HOSTED_OPENAI_PAID_STRIPE_PRICE_ID"),
                 increase_quota=int(app_config.get("HOSTED_OPENAI_PAID_INCREASE_QUOTA", "1")),
                 min_quantity=int(app_config.get("HOSTED_OPENAI_PAID_MIN_QUANTITY", "1")),
-                max_quantity=int(app_config.get("HOSTED_OPENAI_PAID_MAX_QUANTITY", "1"))
+                max_quantity=int(app_config.get("HOSTED_OPENAI_PAID_MAX_QUANTITY", "1")),
+                restrict_models=[
+                    RestrictModel(model="gpt-4", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-4-32k", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-4-1106-preview", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo-16k-0613", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo-1106", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo-0613", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo-instruct", model_type=ModelType.LLM),
+                    RestrictModel(model="text-davinci-003", model_type=ModelType.LLM),
+                ]
             )
             quotas.append(paid_quota)
 
