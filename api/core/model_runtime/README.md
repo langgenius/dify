@@ -13,6 +13,7 @@ This module provides the interface for invoking and authenticating various model
   - `Text Embedding Model` - Text Embedding, pre-computed tokens capability
   - `Rerank Model` - Segment Rerank capability
   - `Speech-to-text Model` - Speech to text capability
+  - `Text-to-speech Model` - Text to speech capability
   - `Moderation` - Moderation capability
 
 - Model provider display

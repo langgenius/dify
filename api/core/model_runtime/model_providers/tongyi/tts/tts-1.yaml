@@ -5,3 +5,8 @@ model_properties:
   word_limit: 120
   audio_type: 'mp3'
   max_workers: 5
+pricing:
+  input: '1'
+  output: '0'
+  unit: '0.0001'
+  currency: RMB

@@ -32,6 +32,7 @@ class ChatAudioApi(InstalledAppResource):
             response = AudioService.transcript_asr(
                 tenant_id=app_model.tenant_id,
                 file=file,
+                end_user=None
             )
 
             return response

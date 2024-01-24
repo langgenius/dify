@@ -369,6 +369,46 @@ class XinferenceProvider(Provider):
 
     语音转换后的字符串。
 
+### Text2speech
+
+继承 `__base.text2speech_model.Text2SpeechModel` 基类，实现以下接口：
+
+- Invoke 调用
+
+  ```python
+  def _invoke(elf, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+      """
+      Invoke large language model
+  
+      :param model: model name
+      :param credentials: model credentials
+      :param content_text: text content to be translated
+      :param streaming: output is streaming
+      :param user: unique user id
+      :return: translated audio file
+      """	
+  ```
+
+  - 参数：
+
+    - `model` (string) 模型名称
+
+    - `credentials` (object) 凭据信息
+
+      凭据信息的参数由供应商 YAML 配置文件的 `provider_credential_schema` 或 `model_credential_schema` 定义，传入如：`api_key` 等。
+
+    - `content_text` (string) 需要转换的文本内容
+
+    - `streaming` (bool) 是否进行流式输出
+
+    - `user` (string) [optional] 用户的唯一标识符
+
+      可以帮助供应商监控和检测滥用行为。
+
+  - 返回：
+
+    文本转换后的语音流。
+
 ### Moderation
 
 继承 `__base.moderation_model.ModerationModel` 基类，实现以下接口：
