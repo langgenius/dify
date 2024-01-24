@@ -55,7 +55,7 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
                 stream=False,
                 user=''
             )
-        except InvalidAuthenticationError as e:
+        except (InvalidAuthenticationError, InsufficientAccountBalanceError) as e:
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
