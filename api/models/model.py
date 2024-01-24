@@ -1003,6 +1003,7 @@ class MessageAgentThought(db.Model):
     position = db.Column(db.Integer, nullable=False)
     thought = db.Column(db.Text, nullable=True)
     tool = db.Column(db.Text, nullable=True)
+    tool_labels_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
     tool_input = db.Column(db.Text, nullable=True)
     observation = db.Column(db.Text, nullable=True)
     # plugin_id = db.Column(UUID, nullable=True)  ## for future design
@@ -1030,6 +1031,16 @@ class MessageAgentThought(db.Model):
             return json.loads(self.message_files)
         else:
             return []
+        
+    @property
+    def tool_labels(self) -> dict:
+        try:
+            if self.tool_labels_str:
+                return json.loads(self.tool_labels_str)
+            else:
+                return {}
+        except Exception as e:
+            return {}
 
 class DatasetRetrieverResource(db.Model):
     __tablename__ = 'dataset_retriever_resources'
