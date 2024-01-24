@@ -6,16 +6,16 @@ from pydub import AudioSegment
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
 
+import dashscope
 from flask import Response, stream_with_context
-from openai import OpenAI
 import concurrent.futures
 
 
-class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
+class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for Tongyi Speech to text model.
     """
     def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None) -> any:
         """
@@ -78,8 +78,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
 
             # Create a thread pool and map the function to the list of sentences
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(self._process_sentence, sentence, model, credentials) for sentence
-                           in sentences]
+                futures = [executor.submit(self._process_sentence, model=model, sentence=sentence,
+                                           credentials=credentials, audio_type=audio_type) for sentence in sentences]
                 for future in futures:
                     try:
                         audio_bytes_list.append(future.result())
@@ -108,35 +108,35 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         :return: text translated to audio file
         """
         # transform credentials to kwargs for model instance
-        credentials_kwargs = self._to_credential_kwargs(credentials)
+        dashscope.api_key = credentials.get('dashscope_api_key')
         voice_name = self._get_model_voice(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
-        tts_file_id = self._get_file_name(content_text)
-        file_path = f'storage/generate_files/{audio_type}/{tts_file_id}.{audio_type}'
         try:
-            client = OpenAI(**credentials_kwargs)
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
-                response = client.audio.speech.create(model=model, voice=voice_name, input=sentence.strip())
-                response.stream_to_file(file_path)
+                response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(),
+                                                                      format=audio_type, word_timestamp_enabled=True,
+                                                                      phoneme_timestamp_enabled=True)
+                if isinstance(response.get_audio_data(), bytes):
+                    return response.get_audio_data()
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _process_sentence(self, sentence: str, model: str, credentials: dict):
+    def _process_sentence(self, sentence: str, model: str, credentials: dict, audio_type: str):
         """
-        _tts_invoke openai text2speech model api
+        _tts_invoke Tongyi text2speech model api
 
         :param model: model name
         :param credentials: model credentials
         :param sentence: text content to be translated
+        :param audio_type: audio file type
         :return: text translated to audio file
         """
         # transform credentials to kwargs for model instance
-        credentials_kwargs = self._to_credential_kwargs(credentials)
+        dashscope.api_key = credentials.get('dashscope_api_key')
         voice_name = self._get_model_voice(model, credentials)
 
-        client = OpenAI(**credentials_kwargs)
-        response = client.audio.speech.create(model=model, voice=voice_name, input=sentence.strip())
-        if isinstance(response.read(), bytes):
-            return response.read()
+        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(), format=audio_type)
+        if isinstance(response.get_audio_data(), bytes):
+            return response.get_audio_data()
