@@ -7,13 +7,16 @@ import { useContext } from 'use-context-selector'
 import Toast from '../../base/toast'
 import s from './style.module.css'
 import ExploreContext from '@/context/explore-context'
-import type { App, AppBasicInfo, AppCategory } from '@/models/explore'
+import type { App, AppCategory } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { createApp } from '@/service/apps'
+import CreateAppModal from '@/app/components/explore/create-app-modal'
+import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { type AppMode } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 
 const Apps: FC = () => {
@@ -41,17 +44,20 @@ const Apps: FC = () => {
     })()
   }, [])
 
-  const onCreate = async ({ id, name, icon, icon_background, mode }: AppBasicInfo) => {
-    const { app_model_config: model_config } = await fetchAppDetail(id)
+  const [currApp, setCurrApp] = React.useState<App | null>(null)
+  const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const onCreate: CreateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+    const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
 
     try {
       const app = await createApp({
         name,
         icon,
         icon_background,
-        mode,
+        mode: currApp?.app.mode as AppMode,
         config: model_config,
       })
+      setIsShowCreateModal(false)
       Toast.notify({
         type: 'success',
         message: t('app.newApp.appCreated'),
@@ -92,11 +98,23 @@ const Apps: FC = () => {
               key={app.app_id}
               app={app}
               canCreate={hasEditPermission}
-              onAddToWorkspace={onCreate}
+              onCreate={() => {
+                setCurrApp(app)
+                setIsShowCreateModal(true)
+              }}
             />
           ))}
         </nav>
       </div>
+
+      {isShowCreateModal && (
+        <CreateAppModal
+          appName={currApp?.app.name || ''}
+          show={isShowCreateModal}
+          onConfirm={onCreate}
+          onHide={() => setIsShowCreateModal(false)}
+        />
+      )}
     </div>
   )
 }
