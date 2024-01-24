@@ -228,11 +228,11 @@ class Tool(BaseModel, ABC):
     def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         pass
     
-    def validate_credentials(self, credentails: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any]) -> None:
         """
             validate the credentials
 
-            :param credentails: the credentials
+            :param credentials: the credentials
             :param parameters: the parameters
         """
         pass

@@ -15,7 +15,7 @@ class ToolProviderController(BaseModel, ABC):
     tools: Optional[List[Tool]] = None
     credentials_schema: Optional[Dict[str, ToolProviderCredentials]] = None
 
-    def get_credentails_schema(self) -> Dict[str, ToolProviderCredentials]:
+    def get_credentials_schema(self) -> Dict[str, ToolProviderCredentials]:
         """
             returns the credentials schema of the provider
 
@@ -23,14 +23,14 @@ class ToolProviderController(BaseModel, ABC):
         """
         return self.credentials_schema.copy()
     
-    def user_get_credentails_schema(self) -> UserToolProviderCredentials:
+    def user_get_credentials_schema(self) -> UserToolProviderCredentials:
         """
             returns the credentials schema of the provider, this method is used for user
 
             :return: the credentials schema
         """
         credentials = self.credentials_schema.copy()
-        return UserToolProviderCredentials(credentails=credentials)
+        return UserToolProviderCredentials(credentials=credentials)
 
     @abstractmethod
     def get_tools(self) -> List[Tool]:
