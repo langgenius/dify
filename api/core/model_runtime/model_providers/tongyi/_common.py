@@ -1,7 +1,7 @@
 from core.model_runtime.errors.invoke import InvokeError
 
 
-class _CommonTongyiOpenAI:
+class _CommonTongyi:
     @staticmethod
     def _to_credential_kwargs(credentials: dict) -> dict:
         credentials_kwargs = {

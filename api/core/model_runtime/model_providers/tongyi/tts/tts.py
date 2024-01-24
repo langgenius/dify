@@ -6,14 +6,14 @@ from pydub import AudioSegment
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.model_providers.tongyi._common import _CommonTongyiOpenAI
+from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
 
 import dashscope
 from flask import Response, stream_with_context
 import concurrent.futures
 
 
-class TongyiText2SpeechModel(_CommonTongyiOpenAI, TTSModel):
+class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
     """
     Model class for Tongyi Speech to text model.
     """
