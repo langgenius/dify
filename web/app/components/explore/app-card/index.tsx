@@ -4,20 +4,20 @@ import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import s from './style.module.css'
-import type { App, AppBasicInfo } from '@/models/explore'
+import type { App } from '@/models/explore'
 import AppModeLabel from '@/app/(commonLayout)/apps/AppModeLabel'
 import AppIcon from '@/app/components/base/app-icon'
 
 export type AppCardProps = {
   app: App
   canCreate: boolean
-  onAddToWorkspace: (app: AppBasicInfo) => void
+  onCreate: () => void
 }
 
 const AppCard = ({
   app,
   canCreate,
-  onAddToWorkspace,
+  onCreate,
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo, is_agent } = app
@@ -37,7 +37,7 @@ const AppCard = ({
         {
           canCreate && (
             <div className={cn(s.opWrap, 'flex items-center w-full space-x-2')}>
-              <Button type='primary' className='grow flex items-center !h-7' onClick={() => onAddToWorkspace(appBasicInfo)}>
+              <Button type='primary' className='grow flex items-center !h-7' onClick={() => onCreate()}>
                 <PlusIcon className='w-4 h-4 mr-1' />
                 <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
               </Button>
