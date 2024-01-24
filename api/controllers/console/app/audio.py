@@ -35,7 +35,7 @@ class ChatMessageAudioApi(Resource):
             response = AudioService.transcript_asr(
                 tenant_id=app_model.tenant_id,
                 file=file,
-                promot=app_model.app_model_config.pre_prompt
+                end_user=None
             )
 
             return response

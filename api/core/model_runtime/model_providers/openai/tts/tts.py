@@ -131,8 +131,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _get_model_voice(self, model: str, credentials: dict) -> Literal[
-        "alloy", "echo", "fable", "onyx", "nova", "shimmer"]:
+    def _get_model_voice(self, model: str, credentials: dict) -> Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"]:
         """
         Get voice for given tts model
 

@@ -66,6 +66,7 @@ class TextApi(AppApiResource):
         parser = reqparse.RequestParser()
         parser.add_argument('text', type=str, required=True, nullable=False, location='json')
         parser.add_argument('user', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('streaming', type=bool, required=False, nullable=False, location='json')
         args = parser.parse_args()
 
         try:
@@ -73,7 +74,7 @@ class TextApi(AppApiResource):
                 tenant_id=app_model.tenant_id,
                 text=args['text'],
                 end_user=args['user'],
-                streaming=False
+                streaming=args['streaming']
             )
 
             return response
