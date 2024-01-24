@@ -8,6 +8,7 @@ import type { Collection } from '../types'
 import { CollectionType, LOC } from '../types'
 import { Settings01 } from '../../base/icons/src/vender/line/general'
 import I18n from '@/context/i18n'
+import { getModelRuntimeSupported } from '@/utils/language'
 
 type Props = {
   icon: JSX.Element
@@ -25,6 +26,7 @@ const Header: FC<Props> = ({
   onShowEditCustomCollection,
 }) => {
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage
@@ -38,13 +40,13 @@ const Header: FC<Props> = ({
         {icon}
         <div className='ml-3 grow w-0'>
           <div className='flex items-center h-6 space-x-1'>
-            <div className={cn(isInDebugPage && 'truncate', 'text-base font-semibold text-gray-900')}>{collection.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
+            <div className={cn(isInDebugPage && 'truncate', 'text-base font-semibold text-gray-900')}>{collection.label[language]}</div>
             <div className='text-xs font-normal text-gray-500'>·</div>
             <div className='text-xs font-normal text-gray-500'>{t('tools.author')}&nbsp;{collection.author}</div>
           </div>
           {collection.description && (
             <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500')}>
-              {collection.description[locale === 'en' ? 'en_US' : 'zh_Hans']}
+              {collection.description[language]}
             </div>
           )}
         </div>

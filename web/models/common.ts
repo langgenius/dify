@@ -219,7 +219,7 @@ export type CodeBasedExtensionForm = {
 
 export type CodeBasedExtensionItem = {
   name: string
-  label: I18nText
+  label: any
   form_schema: CodeBasedExtensionForm[]
 }
 export type CodeBasedExtension = {

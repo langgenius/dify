@@ -55,10 +55,7 @@ export type ToolParameter = {
 export type Tool = {
   name: string
   label: TypeWithI18N
-  description: {
-    zh_Hans: string
-    en_US: string
-  }
+  description: any
   parameters: ToolParameter[]
 }
 

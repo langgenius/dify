@@ -4,6 +4,8 @@ export type Item = {
 }
 
 export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT']
+export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT']
+
 export const languages = [
   {
     value: 'en-US',

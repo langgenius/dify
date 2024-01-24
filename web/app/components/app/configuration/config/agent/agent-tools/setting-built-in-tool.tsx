@@ -13,7 +13,7 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
-
+import { getModelRuntimeSupported } from '@/utils/language'
 type Props = {
   collection: Collection
   toolName: string
@@ -32,6 +32,7 @@ const SettingBuiltInTool: FC<Props> = ({
   onSave,
 }) => {
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
@@ -83,7 +84,7 @@ const SettingBuiltInTool: FC<Props> = ({
         {t('tools.setBuiltInTools.toolDescription')}
       </div>
       <div className='mt-1 leading-[18px] text-xs font-normal text-gray-600'>
-        {currTool?.description[locale === 'en' ? 'en_US' : 'zh_Hans']}
+        {currTool?.description[language]}
       </div>
 
       {infoSchemas.length > 0 && (
@@ -96,7 +97,7 @@ const SettingBuiltInTool: FC<Props> = ({
             {infoSchemas.map((item: any, index) => (
               <div key={index}>
                 <div className='flex items-center space-x-2 leading-[18px]'>
-                  <div className='text-[13px] font-semibold text-gray-900'>{item.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
+                  <div className='text-[13px] font-semibold text-gray-900'>{item.label[language]}</div>
                   <div className='text-xs font-medium text-gray-500'>{item.type === 'number-input' ? t('tools.setBuiltInTools.number') : t('tools.setBuiltInTools.string')}</div>
                   {item.required && (
                     <div className='text-xs font-medium text-[#EC4A0A]'>{t('tools.setBuiltInTools.required')}</div>
@@ -104,7 +105,7 @@ const SettingBuiltInTool: FC<Props> = ({
                 </div>
                 {item.human_description && (
                   <div className='mt-1 leading-[18px] text-xs font-normal text-gray-600'>
-                    {item.human_description?.[locale === 'en' ? 'en_US' : 'zh_Hans']}
+                    {item.human_description?.[language]}
                   </div>
                 )}
               </div>
@@ -140,7 +141,7 @@ const SettingBuiltInTool: FC<Props> = ({
               backgroundImage: `url(${collection.icon})`,
             }}
           ></div>
-          <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{currTool?.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
+          <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{currTool?.label[language]}</div>
           {(hasSetting && !readonly) && (<>
             <DiagonalDividingLine className='mx-4' />
             <div className='flex space-x-6'>
