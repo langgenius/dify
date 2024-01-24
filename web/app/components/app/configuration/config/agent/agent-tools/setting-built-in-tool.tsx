@@ -141,7 +141,7 @@ const SettingBuiltInTool: FC<Props> = ({
               backgroundImage: `url(${collection.icon})`,
             }}
           ></div>
-          <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{currTool?.label[locale === 'en' ? 'en_US' : 'zh_Hans']}</div>
+          <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{currTool?.label[language]}</div>
           {(hasSetting && !readonly) && (<>
             <DiagonalDividingLine className='mx-4' />
             <div className='flex space-x-6'>
