@@ -9,22 +9,22 @@ class ToolConfiguration(BaseModel):
     tenant_id: str
     provider_controller: ToolProviderController
 
-    def _deep_copy(self, credentails: Dict[str, str]) -> Dict[str, str]:
+    def _deep_copy(self, credentials: Dict[str, str]) -> Dict[str, str]:
         """
         deep copy credentials
         """
-        return {key: value for key, value in credentails.items()}
+        return {key: value for key, value in credentials.items()}
     
-    def encrypt_tool_credentials(self, credentails: Dict[str, str]) -> Dict[str, str]:
+    def encrypt_tool_credentials(self, credentials: Dict[str, str]) -> Dict[str, str]:
         """
         encrypt tool credentials with tanent id
 
         return a deep copy of credentials with encrypted values
         """
-        credentials = self._deep_copy(credentails)
+        credentials = self._deep_copy(credentials)
 
         # get fields need to be decrypted
-        fields = self.provider_controller.get_credentails_schema()
+        fields = self.provider_controller.get_credentials_schema()
         for field_name, field in fields.items():
             if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
                 if field_name in credentials:
@@ -42,7 +42,7 @@ class ToolConfiguration(BaseModel):
         credentials = self._deep_copy(credentials)
 
         # get fields need to be decrypted
-        fields = self.provider_controller.get_credentails_schema()
+        fields = self.provider_controller.get_credentials_schema()
         for field_name, field in fields.items():
             if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
                 if field_name in credentials:
@@ -65,7 +65,7 @@ class ToolConfiguration(BaseModel):
         credentials = self._deep_copy(credentials)
 
         # get fields need to be decrypted
-        fields = self.provider_controller.get_credentails_schema()
+        fields = self.provider_controller.get_credentials_schema()
         for field_name, field in fields.items():
             if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
                 if field_name in credentials:
