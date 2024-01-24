@@ -44,6 +44,7 @@ class MessageListApi(AppApiResource):
         'position': fields.Integer,
         'thought': fields.String,
         'tool': fields.String,
+        'tool_labels': fields.Raw,
         'tool_input': fields.String,
         'created_at': TimestampField,
         'observation': fields.String,

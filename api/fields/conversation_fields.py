@@ -49,10 +49,11 @@ agent_thought_fields = {
     'position': fields.Integer,
     'thought': fields.String,
     'tool': fields.String,
+    'tool_labels': fields.Raw,
     'tool_input': fields.String,
     'created_at': TimestampField,
     'observation': fields.String,
-    'files': fields.List(fields.String)
+    'files': fields.List(fields.String),
 }
 
 message_detail_fields = {
