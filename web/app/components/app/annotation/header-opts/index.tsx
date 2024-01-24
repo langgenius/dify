@@ -46,7 +46,7 @@ const HeaderOptions: FC<Props> = ({
 
   const listTransformer = (list: AnnotationItemBasic[]) => list.map(
     (item: AnnotationItemBasic) => {
-      const dataString = `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": "${item.question}"}, {"role": "assistant", "content": "${item.answer}"}]}`
+      const dataString = `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": "${item.question.replace(/\n/g, '\\n')}"}, {"role": "assistant", "content": "${item.answer.replace(/\n/g, '\\n')}"}]}`
       return dataString
     },
   )
