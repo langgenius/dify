@@ -1,12 +1,13 @@
 # -*- coding:utf-8 -*-
 import hashlib
 
-from Crypto.Cipher import AES, PKCS1_OAEP
+from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 
+import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 
 def generate_key_pair(tenant_id):
     private_key = RSA.generate(2048)
@@ -35,7 +36,7 @@ def encrypt(text, public_key):
     ciphertext, tag = cipher_aes.encrypt_and_digest(text.encode())
 
     rsa_key = RSA.import_key(public_key)
-    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+    cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
 
     enc_aes_key = cipher_rsa.encrypt(aes_key)
 
@@ -58,7 +59,7 @@ def get_decrypt_decoding(tenant_id):
         redis_client.setex(cache_key, 120, private_key)
 
     rsa_key = RSA.import_key(private_key)
-    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+    cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
 
     return rsa_key, cipher_rsa
 
