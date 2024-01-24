@@ -34,12 +34,12 @@ const TryToAsk: FC<TryToAskProps> = ({
           }}
         />
       </div>
-      <div className='space-x-2 space-y-2'>
+      <div className='flex flex-wrap'>
         {
           suggestedQuestions.map((suggestQuestion, index) => (
             <Button
               key={index}
-              className='px-3 py-[5px] bg-white text-primary-600 text-xs font-medium'
+              className='mb-2 mr-2 last:mr-0 px-3 py-[5px] bg-white text-primary-600 text-xs font-medium'
               onClick={() => onSend(suggestQuestion)}
             >
               {suggestQuestion}

@@ -25,7 +25,8 @@ export type ChatProps = {
   chatList: ChatItem[]
   isResponsing: boolean
   noChatInput?: boolean
-  className?: string
+  chatContainerclassName?: string
+  chatFooterClassName?: string
   suggestedQuestions?: string[]
   showPromptLog?: boolean
   questionIcon?: ReactNode
@@ -38,7 +39,8 @@ const Chat: FC<ChatProps> = ({
   chatList,
   isResponsing,
   noChatInput,
-  className,
+  chatContainerclassName,
+  chatFooterClassName,
   suggestedQuestions,
   showPromptLog,
   questionIcon,
@@ -46,11 +48,14 @@ const Chat: FC<ChatProps> = ({
   allToolIcons,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
+  const chatFooterRef = useRef<HTMLDivElement>(null)
 
   useThrottleEffect(() => {
     if (ref.current)
       ref.current.scrollTop = ref.current.scrollHeight
   }, [chatList], { wait: 500 })
+
+  const hasTryToAsk = config.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
   return (
     <ChatContextProvider
@@ -63,11 +68,11 @@ const Chat: FC<ChatProps> = ({
       allToolIcons={allToolIcons}
       onSend={onSend}
     >
-      <div
-        ref={ref}
-        className={`relative h-full overflow-y-auto ${className}`}
-      >
-        <div>
+      <div className='relative h-full'>
+        <div
+          ref={ref}
+          className={`relative h-full overflow-y-auto ${chatContainerclassName}`}
+        >
           {
             chatList.map((item) => {
               if (item.isAnswer) {
@@ -86,23 +91,33 @@ const Chat: FC<ChatProps> = ({
               )
             })
           }
-        </div>
-        <div className='sticky -bottom-4 w-full bg-white'>
           {
-            config.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend && (
-              <TryToAsk
-                suggestedQuestions={suggestedQuestions}
-                onSend={onSend}
-              />
-            )
-          }
-          {
-            !noChatInput && (
-              <ChatInput
-                visionConfig={config?.file_upload?.image}
-                speechToTextConfig={config.speech_to_text}
-                onSend={onSend}
-              />
+            (hasTryToAsk || !noChatInput) && (
+              <div
+                className={`sticky bottom-0 w-full backdrop-blur-[20px] ${chatFooterClassName}`}
+                ref={chatFooterRef}
+                style={{
+                  background: 'linear-gradient(0deg, #FFF 0%, rgba(255, 255, 255, 0.40) 100%)',
+                }}
+              >
+                {
+                  hasTryToAsk && (
+                    <TryToAsk
+                      suggestedQuestions={suggestedQuestions}
+                      onSend={onSend}
+                    />
+                  )
+                }
+                {
+                  !noChatInput && (
+                    <ChatInput
+                      visionConfig={config?.file_upload?.image}
+                      speechToTextConfig={config.speech_to_text}
+                      onSend={onSend}
+                    />
+                  )
+                }
+              </div>
             )
           }
         </div>
