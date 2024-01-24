@@ -246,35 +246,48 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         """
         for index, event in enumerate(responses):
             if event.event == "add":
-                try:
-                    delta = json.loads(event.data)['delta']
-                    tool_calls = delta['tool_calls']
-                    for tool_call in tool_calls:
-                        if tool_call['type'] != 'function':
-                            continue
-                        tool_calls = [
-                            AssistantPromptMessage.ToolCall(
-                                id=tool_call['id'],
-                                type='function',
-                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                    name=tool_call['function']['name'],
-                                    arguments=tool_call['function']['arguments']
-                                )
-                            ) for tool_call in tool_calls
-                        ]
+                if not event.data:
+                    continue
+                event.data = event.data.strip()
+                if event.data.startswith("{") and event.data.endswith("}"):
+                    try:
+                        delta = json.loads(event.data)['delta']
+                        tool_calls = delta['tool_calls']
+                        for tool_call in tool_calls:
+                            if tool_call['type'] != 'function':
+                                continue
+                            tool_calls = [
+                                AssistantPromptMessage.ToolCall(
+                                    id=tool_call['id'],
+                                    type='function',
+                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                        name=tool_call['function']['name'],
+                                        arguments=tool_call['function']['arguments']
+                                    )
+                                ) for tool_call in tool_calls
+                            ]
 
+                            yield LLMResultChunk(
+                                model=model,
+                                prompt_messages=prompt_messages,
+                                delta=LLMResultChunkDelta(
+                                    index=0,
+                                    message=AssistantPromptMessage(
+                                        tool_calls=tool_calls,
+                                        content=''
+                                    ),
+                                )
+                            )
+                    except Exception as ex:
                         yield LLMResultChunk(
-                            model=model,
                             prompt_messages=prompt_messages,
+                            model=model,
                             delta=LLMResultChunkDelta(
-                                index=0,
-                                message=AssistantPromptMessage(
-                                    tool_calls=tool_calls,
-                                    content=''
-                                ),
+                                index=index,
+                                message=AssistantPromptMessage(content=event.data)
                             )
                         )
-                except Exception as ex:
+                else:
                     yield LLMResultChunk(
                         prompt_messages=prompt_messages,
                         model=model,
