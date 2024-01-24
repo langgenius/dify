@@ -14,7 +14,7 @@ from dashscope.audio.tts import SpeechSynthesizer
 import concurrent.futures
 
 
-class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
+class TongyiText2SpeechModel(_CommonOpenAI, TTSModel):
     """
     Model class for OpenAI Speech to text model.
     """
