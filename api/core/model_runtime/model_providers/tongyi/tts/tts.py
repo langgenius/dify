@@ -6,17 +6,16 @@ from pydub import AudioSegment
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from core.model_runtime.model_providers.tongyi._common import _CommonTongyiOpenAI
 
-from flask import Response, stream_with_context
 import dashscope
-from dashscope.audio.tts import SpeechSynthesizer
+from flask import Response, stream_with_context
 import concurrent.futures
 
 
-class TongyiText2SpeechModel(_CommonOpenAI, TTSModel):
+class TongyiText2SpeechModel(_CommonTongyiOpenAI, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for Tongyi Speech to text model.
     """
     def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None) -> any:
         """
@@ -116,9 +115,9 @@ class TongyiText2SpeechModel(_CommonOpenAI, TTSModel):
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
-                response = SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(),
-                                                  format=audio_type, word_timestamp_enabled=True,
-                                                  phoneme_timestamp_enabled=True)
+                response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(),
+                                                                      format=audio_type, word_timestamp_enabled=True,
+                                                                      phoneme_timestamp_enabled=True)
                 if isinstance(response.get_audio_data(), bytes):
                     return response.get_audio_data()
         except Exception as ex:
@@ -126,7 +125,7 @@ class TongyiText2SpeechModel(_CommonOpenAI, TTSModel):
 
     def _process_sentence(self, sentence: str, model: str, credentials: dict, audio_type: str):
         """
-        _tts_invoke openai text2speech model api
+        _tts_invoke Tongyi text2speech model api
 
         :param model: model name
         :param credentials: model credentials
@@ -138,6 +137,6 @@ class TongyiText2SpeechModel(_CommonOpenAI, TTSModel):
         dashscope.api_key = credentials.get('dashscope_api_key')
         voice_name = self._get_model_voice(model, credentials)
 
-        response = SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(), format=audio_type)
+        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(), format=audio_type)
         if isinstance(response.get_audio_data(), bytes):
             return response.get_audio_data()
