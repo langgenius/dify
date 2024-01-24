@@ -11,7 +11,7 @@ help:
     en_US: How to integrate with Ollama
     zh_Hans: 如何集成 Ollama
   url:
-    en_US: https://docs.dify.ai/advanced/model-configuration/ollama
+    en_US: https://docs.dify.ai/tutorials/model-configuration/ollama
 supported_model_types:
   - llm
   - text-embedding
