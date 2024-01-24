@@ -898,7 +898,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestedQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     isShowTextToSpeech={textToSpeechConfig?.enabled}
-                    isShowCitation={citationConfig?.enabled && isInstalledApp}
+                    isShowCitation={citationConfig?.enabled}
                     visionConfig={{
                       ...visionConfig,
                       image_file_size_limit: fileUploadConfigResponse ? fileUploadConfigResponse.image_file_size_limit : visionConfig.image_file_size_limit,
