@@ -33,6 +33,11 @@ def handle(sender, **kwargs):
     if quota_unit:
         if quota_unit == QuotaUnit.TOKENS:
             used_quota = message.message_tokens + message.answer_tokens
+        elif quota_unit == QuotaUnit.CREDITS:
+            used_quota = 1
+
+            if 'gpt-4' in model_config.model:
+                used_quota = 20
         else:
             used_quota = 1
 
