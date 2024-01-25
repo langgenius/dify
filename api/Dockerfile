@@ -1,18 +1,20 @@
-# packages install stage
-FROM python:3.10-slim AS base
+# base image
+FROM python:3.10-slim-bookworm AS base
 
 LABEL maintainer="takatost@gmail.com"
 
+# install packages
+FROM base as packages
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
+    && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
 
 COPY requirements.txt /requirements.txt
 
 RUN pip install --prefix=/pkg -r requirements.txt
 
-# build stage
-FROM python:3.10-slim AS builder
-
+# production stage
+FROM base AS production
 
 ENV FLASK_APP app.py
 ENV EDITION SELF_HOSTED
@@ -30,11 +32,11 @@ ENV TZ UTC
 WORKDIR /app/api
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bash curl wget vim nodejs ffmpeg \
+    && apt-get install -y --no-install-recommends curl wget vim nodejs ffmpeg libgmp-dev libmpfr-dev libmpc-dev \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=base /pkg /usr/local
+COPY --from=packages /pkg /usr/local
 COPY . /app/api/
 
 COPY docker/entrypoint.sh /entrypoint.sh

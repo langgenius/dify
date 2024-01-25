@@ -52,8 +52,6 @@ export const MODEL_LIST = [
   { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
   { id: 'claude-2', name: 'claude-2', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
 ]
-const UNIVERSAL_CHAT_MODEL_ID_LIST = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-4', 'claude-2']
-export const UNIVERSAL_CHAT_MODEL_LIST = MODEL_LIST.filter(({ id, type }) => UNIVERSAL_CHAT_MODEL_ID_LIST.includes(id) && (type === AppType.chat))
 export const TONE_LIST = [
   {
     id: 1,
@@ -161,6 +159,8 @@ export const DEFAULT_AGENT_SETTING = {
   strategy: AgentStrategy.functionCall,
   tools: [],
 }
+
+export const supportFunctionCallModels = ['glm-3-turbo', 'glm-4']
 
 export const DEFAULT_AGENT_PROMPT = {
   chat: `Respond to the human as helpfully and accurately as possible. 

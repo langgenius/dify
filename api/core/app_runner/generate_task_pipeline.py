@@ -18,6 +18,7 @@ from core.model_runtime.entities.message_entities import (AssistantPromptMessage
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
@@ -281,7 +282,7 @@ class GenerateTaskPipeline:
 
                     self._task_state.llm_result.message.content = annotation.content
             elif isinstance(event, QueueAgentThoughtEvent):
-                agent_thought = (
+                agent_thought: MessageAgentThought = (
                     db.session.query(MessageAgentThought)
                     .filter(MessageAgentThought.id == event.agent_thought_id)
                     .first()
@@ -298,6 +299,7 @@ class GenerateTaskPipeline:
                         'thought': agent_thought.thought,
                         'observation': agent_thought.observation,
                         'tool': agent_thought.tool,
+                        'tool_labels': agent_thought.tool_labels,
                         'tool_input': agent_thought.tool_input,
                         'created_at': int(self._message.created_at.timestamp()),
                         'message_files': agent_thought.files

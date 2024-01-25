@@ -75,7 +75,7 @@ def validate_dataset_token(view=None):
             tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role.in_(['owner', 'admin'])) \
+                .filter(TenantAccountJoin.role.in_(['owner'])) \
                 .one_or_none()
             if tenant_account_join:
                 tenant, ta = tenant_account_join

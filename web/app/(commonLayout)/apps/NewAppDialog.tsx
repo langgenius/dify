@@ -153,6 +153,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                     <div className={style.listItemHeading}>
                       <div className={style.listItemHeadingContent}>{t('app.newApp.chatApp')}</div>
                     </div>
+                    <div className='shrink-0 flex items-center h-[18px] border border-indigo-300 px-1 rounded-[5px] text-xs font-medium text-indigo-600 uppercase'>{t('app.newApp.agentAssistant')}</div>
                   </div>
                   <div className={`${style.listItemDescription} ${style.noClip}`}>{t('app.newApp.chatAppIntro')}</div>
                   {/* <div className={classNames(style.listItemFooter, 'justify-end')}>

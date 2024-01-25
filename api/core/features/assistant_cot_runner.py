@@ -298,7 +298,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             message=AssistantPromptMessage(
                 content=final_answer
             ),
-            usage=llm_usage['usage'],
+            usage=llm_usage['usage'] if llm_usage['usage'] else LLMUsage.empty_usage(),
             system_fingerprint=''
         ), PublishFrom.APPLICATION_MANAGER)
 

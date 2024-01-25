@@ -13,6 +13,10 @@ import Button from '../../base/button'
 import Loading from '../../base/loading'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
+import { useDebugWithSingleOrMultipleModel } from './debug/hooks'
+import type { ModelAndParameter } from './debug/types'
+import { APP_SIDEBAR_SHOULD_COLLAPSE } from './debug/types'
+import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
 import AssistantTypePicker from './config/assistant-type-picker'
 import type {
   AnnotationReplyConfig,
@@ -39,7 +43,7 @@ import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG, supportFunctionCallModels } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -50,6 +54,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -158,8 +163,7 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
-  const isFunctionCall = isOpenAI && modelConfig.mode === ModelModeType.chat
-
+  const isFunctionCall = (isOpenAI && modelConfig.mode === ModelModeType.chat) || supportFunctionCallModels.includes(modelConfig.model_id)
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
 
@@ -524,8 +528,8 @@ const Configuration: FC = () => {
     else { return promptEmpty }
   })()
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
-  const handlePublish = async (isSilence?: boolean) => {
-    const modelId = modelConfig.model_id
+  const handlePublish = async (isSilence?: boolean, modelAndParameter?: ModelAndParameter) => {
+    const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
@@ -578,10 +582,10 @@ const Configuration: FC = () => {
         strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
       },
       model: {
-        provider: modelConfig.provider,
+        provider: modelAndParameter?.provider || modelConfig.provider,
         name: modelId,
         mode: modelConfig.mode,
-        completion_params: completionParams as any,
+        completion_params: modelAndParameter?.parameters || completionParams as any,
       },
       dataset_configs: {
         ...datasetConfigs,
@@ -628,6 +632,26 @@ const Configuration: FC = () => {
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const { locale } = useContext(I18n)
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  const {
+    debugWithMultipleModel,
+    multipleModelConfigs,
+    handleMultipleModelConfigsChange,
+  } = useDebugWithSingleOrMultipleModel(appId)
+
+  const handleDebugWithMultipleModelChange = () => {
+    handleMultipleModelConfigsChange(
+      true,
+      [
+        { id: `${Date.now()}`, model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams },
+        { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
+      ],
+    )
+    eventEmitter?.emit({
+      type: APP_SIDEBAR_SHOULD_COLLAPSE,
+    } as any)
+  }
 
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
@@ -709,7 +733,7 @@ const Configuration: FC = () => {
       <>
         <div className="flex flex-col h-full">
           <div className='flex grow h-[200px]'>
-            <div className="w-full sm:w-1/2 shrink-0 flex flex-col h-full">
+            <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
               {/* Header Left */}
               <div className='flex justify-between items-center px-6 h-14'>
                 <div className='flex items-center'>
@@ -743,22 +767,30 @@ const Configuration: FC = () => {
               </div>
               <Config />
             </div>
-            {!isMobile && <div className="relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+            {!isMobile && <div className="grow relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               {/* Header Right */}
               <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
                 {/* Model and Parameters */}
-                <ModelParameterModal
-                  isAdvancedMode={isAdvancedMode}
-                  mode={mode}
-                  provider={modelConfig.provider}
-                  completionParams={completionParams}
-                  modelId={modelConfig.model_id}
-                  setModel={setModel as any}
-                  onCompletionParamsChange={(newParams: FormValue) => {
-                    setCompletionParams(newParams)
-                  }}
-                />
-                <div className='w-[1px] h-[14px] bg-gray-200'></div>
+                {
+                  !debugWithMultipleModel && (
+                    <>
+                      <ModelParameterModal
+                        isAdvancedMode={isAdvancedMode}
+                        mode={mode}
+                        provider={modelConfig.provider}
+                        completionParams={completionParams}
+                        modelId={modelConfig.model_id}
+                        setModel={setModel as any}
+                        onCompletionParamsChange={(newParams: FormValue) => {
+                          setCompletionParams(newParams)
+                        }}
+                        debugWithMultipleModel={debugWithMultipleModel}
+                        onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
+                      />
+                      <div className='w-[1px] h-[14px] bg-gray-200'></div>
+                    </>
+                  )
+                }
                 <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
                 {isMobile && (
                   <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
@@ -766,13 +798,37 @@ const Configuration: FC = () => {
                     <CodeBracketIcon className="h-4 w-4 text-gray-500" />
                   </Button>
                 )}
-                <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
+                {
+                  debugWithMultipleModel
+                    ? (
+                      <PublishWithMultipleModel
+                        multipleModelConfigs={multipleModelConfigs}
+                        onSelect={item => handlePublish(false, item)}
+                      />
+                    )
+                    : (
+                      <Button
+                        type='primary'
+                        onClick={() => handlePublish(false)}
+                        className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}
+                      >
+                        {t('appDebug.operation.applyConfig')}
+                      </Button>
+                    )
+                }
               </div>
               <div className='flex flex-col grow h-0 px-6 py-4 rounded-tl-2xl border-t border-l bg-gray-50 '>
                 <Debug
                   hasSetAPIKEY={hasSettedApiKey}
                   onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
                   inputs={inputs}
+                  modelParameterParams={{
+                    setModel: setModel as any,
+                    onCompletionParamsChange: setCompletionParams,
+                  }}
+                  debugWithMultipleModel={debugWithMultipleModel}
+                  multipleModelConfigs={multipleModelConfigs}
+                  onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
                 />
               </div>
             </div>}
@@ -829,6 +885,13 @@ const Configuration: FC = () => {
               hasSetAPIKEY={hasSettedApiKey}
               onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
               inputs={inputs}
+              modelParameterParams={{
+                setModel: setModel as any,
+                onCompletionParamsChange: setCompletionParams,
+              }}
+              debugWithMultipleModel={debugWithMultipleModel}
+              multipleModelConfigs={multipleModelConfigs}
+              onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
             />
           </Drawer>
         )}

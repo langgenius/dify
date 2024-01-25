@@ -1,18 +1,13 @@
-import uuid
-import hashlib
-import subprocess
 from io import BytesIO
 from typing import Optional
 from functools import reduce
 from pydub import AudioSegment
 
-from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 
-from typing_extensions import Literal
 from flask import Response, stream_with_context
 from openai import OpenAI
 import concurrent.futures
@@ -22,9 +17,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
     """
     Model class for OpenAI Speech to text model.
     """
-
-    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool,
-                user: Optional[str] = None) -> any:
+    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None) -> any:
         """
         _invoke text2speech model
 
@@ -65,7 +58,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> any:
+    def _tts_invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> Response:
         """
         _tts_invoke text2speech model
 
@@ -104,8 +97,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             raise InvokeBadRequestError(str(ex))
 
     # Todo: To improve the streaming function
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str,
-                              user: Optional[str] = None) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> any:
         """
         _tts_invoke_streaming text2speech model
 
@@ -131,84 +123,6 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _get_model_voice(self, model: str, credentials: dict) -> Literal[
-        "alloy", "echo", "fable", "onyx", "nova", "shimmer"]:
-        """
-        Get voice for given tts model
-
-        :param model: model name
-        :param credentials: model credentials
-        :return: voice
-        """
-        model_schema = self.get_model_schema(model, credentials)
-
-        if model_schema and ModelPropertyKey.DEFAULT_VOICE in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.DEFAULT_VOICE]
-
-    def _get_model_audio_type(self, model: str, credentials: dict) -> str:
-        """
-        Get audio type for given tts model
-
-        :param model: model name
-        :param credentials: model credentials
-        :return: voice
-        """
-        model_schema = self.get_model_schema(model, credentials)
-
-        if model_schema and ModelPropertyKey.AUDOI_TYPE in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.AUDOI_TYPE]
-
-    def _get_model_word_limit(self, model: str, credentials: dict) -> int:
-        """
-        Get audio type for given tts model
-        :return: audio type
-        """
-        model_schema = self.get_model_schema(model, credentials)
-
-        if model_schema and ModelPropertyKey.WORD_LIMIT in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.WORD_LIMIT]
-
-    def _get_model_workers_limit(self, model: str, credentials: dict) -> int:
-        """
-        Get audio max workers for given tts model
-        :return: audio type
-        """
-        model_schema = self.get_model_schema(model, credentials)
-
-        if model_schema and ModelPropertyKey.MAX_WORKERS in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.MAX_WORKERS]
-
-    @staticmethod
-    def _split_text_into_sentences(text: str, limit: int, delimiters=None):
-        if delimiters is None:
-            delimiters = set('。！？；\n')
-
-        buf = []
-        word_count = 0
-        for char in text:
-            buf.append(char)
-            if char in delimiters:
-                if word_count >= limit:
-                    yield ''.join(buf)
-                    buf = []
-                    word_count = 0
-                else:
-                    word_count += 1
-            else:
-                word_count += 1
-
-        if buf:
-            yield ''.join(buf)
-
-    @staticmethod
-    def _get_file_name(file_content: str) -> str:
-        hash_object = hashlib.sha256(file_content.encode())
-        hex_digest = hash_object.hexdigest()
-
-        namespace_uuid = uuid.UUID('a5da6ef9-b303-596f-8e88-bf8fa40f4b31')
-        unique_uuid = uuid.uuid5(namespace_uuid, hex_digest)
-        return str(unique_uuid)
-
     def _process_sentence(self, sentence: str, model: str, credentials: dict):
         """
         _tts_invoke openai text2speech model api
@@ -226,18 +140,3 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         response = client.audio.speech.create(model=model, voice=voice_name, input=sentence.strip())
         if isinstance(response.read(), bytes):
             return response.read()
-
-    @staticmethod
-    def _is_ffmpeg_installed():
-        try:
-            output = subprocess.check_output("ffmpeg -version", shell=True)
-            if "ffmpeg version" in output.decode("utf-8"):
-                return True
-            else:
-                raise InvokeBadRequestError("ffmpeg is not installed, "
-                                            "details: https://docs.dify.ai/getting-started/install-self-hosted"
-                                            "/install-faq#id-14.-what-to-do-if-this-error-occurs-in-text-to-speech")
-        except Exception:
-            raise InvokeBadRequestError("ffmpeg is not installed, "
-                                        "details: https://docs.dify.ai/getting-started/install-self-hosted"
-                                        "/install-faq#id-14.-what-to-do-if-this-error-occurs-in-text-to-speech")

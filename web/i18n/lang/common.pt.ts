@@ -138,6 +138,8 @@ const translation = {
     deprecated: 'Descontinuado',
     confirmDelete: 'confirmar exclusão?',
     quotaTip: 'Tokens gratuitos disponíveis restantes',
+    loadPresets: 'Carregar presentes',
+    parameters: 'PARÂMETROS',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',
