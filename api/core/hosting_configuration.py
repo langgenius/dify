@@ -20,10 +20,6 @@ class TrialHostingQuota(HostingQuota):
 
 class PaidHostingQuota(HostingQuota):
     quota_type: ProviderQuotaType = ProviderQuotaType.PAID
-    stripe_price_id: str = None
-    increase_quota: int = 1
-    min_quantity: int = 20
-    max_quantity: int = 100
 
 
 class FreeHostingQuota(HostingQuota):
@@ -122,10 +118,6 @@ class HostingConfiguration:
 
         if app_config.get("HOSTED_OPENAI_PAID_ENABLED"):
             paid_quota = PaidHostingQuota(
-                stripe_price_id=app_config.get("HOSTED_OPENAI_PAID_STRIPE_PRICE_ID"),
-                increase_quota=int(app_config.get("HOSTED_OPENAI_PAID_INCREASE_QUOTA", "1")),
-                min_quantity=int(app_config.get("HOSTED_OPENAI_PAID_MIN_QUANTITY", "1")),
-                max_quantity=int(app_config.get("HOSTED_OPENAI_PAID_MAX_QUANTITY", "1")),
                 restrict_models=[
                     RestrictModel(model="gpt-4", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-32k", model_type=ModelType.LLM),
@@ -176,12 +168,7 @@ class HostingConfiguration:
             quotas.append(trial_quota)
 
         if app_config.get("HOSTED_ANTHROPIC_PAID_ENABLED"):
-            paid_quota = PaidHostingQuota(
-                stripe_price_id=app_config.get("HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID"),
-                increase_quota=int(app_config.get("HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA", "1000000")),
-                min_quantity=int(app_config.get("HOSTED_ANTHROPIC_PAID_MIN_QUANTITY", "20")),
-                max_quantity=int(app_config.get("HOSTED_ANTHROPIC_PAID_MAX_QUANTITY", "100"))
-            )
+            paid_quota = PaidHostingQuota()
             quotas.append(paid_quota)
 
         if len(quotas) > 0:
