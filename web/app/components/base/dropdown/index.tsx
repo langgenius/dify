@@ -8,22 +8,29 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 
 export type Item = {
-  value: string
-  text: string
+  value: string | number
+  text: string | JSX.Element
 }
 type DropdownProps = {
   items: Item[]
   secondItems?: Item[]
   onSelect: (item: Item) => void
   renderTrigger?: (open: boolean) => React.ReactNode
+  popupClassName?: string
 }
 const Dropdown: FC<DropdownProps> = ({
   items,
   onSelect,
   secondItems,
   renderTrigger,
+  popupClassName,
 }) => {
   const [open, setOpen] = useState(false)
+
+  const handleSelect = (item: Item) => {
+    setOpen(false)
+    onSelect(item)
+  }
 
   return (
     <PortalToFollowElem
@@ -47,7 +54,7 @@ const Dropdown: FC<DropdownProps> = ({
             )
         }
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className={popupClassName}>
         <div className='rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg text-sm text-gray-700'>
           {
             !!items.length && (
@@ -57,7 +64,7 @@ const Dropdown: FC<DropdownProps> = ({
                     <div
                       key={item.value}
                       className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
-                      onClick={() => onSelect(item)}
+                      onClick={() => handleSelect(item)}
                     >
                       {item.text}
                     </div>
@@ -79,7 +86,7 @@ const Dropdown: FC<DropdownProps> = ({
                     <div
                       key={item.value}
                       className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
-                      onClick={() => onSelect(item)}
+                      onClick={() => handleSelect(item)}
                     >
                       {item.text}
                     </div>

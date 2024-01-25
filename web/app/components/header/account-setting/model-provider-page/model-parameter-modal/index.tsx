@@ -4,7 +4,6 @@ import type {
 } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
@@ -21,6 +20,7 @@ import ParameterItem from './parameter-item'
 import type { ParameterValue } from './parameter-item'
 import Trigger from './trigger'
 import type { TriggerProps } from './trigger'
+import PresetsParameter from './presets-parameter'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -30,13 +30,7 @@ import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { fetchModelParameterRules } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import { useProviderContext } from '@/context/provider-context'
-import Radio from '@/app/components/base/radio'
 import { TONE_LIST } from '@/config'
-import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
-import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
-import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
-import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ModelParameterModalProps = {
@@ -84,8 +78,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const { hasSettedApiKey } = useProviderContext()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const [open, setOpen] = useState(false)
   const { data: parameterRulesData, isLoading } = useSWR((provider && modelId) ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}` : null, fetchModelParameterRules)
   const {
@@ -100,45 +92,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const modelDisabled = currentModel?.status !== ModelStatusEnum.active
   const disabled = !hasSettedApiKey || hasDeprecated || modelDisabled
 
-  const parameterRules = useMemo(() => {
+  const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
   }, [parameterRulesData])
-
-  // only openai support this
-  function matchToneId(completionParams: FormValue): number {
-    const remvoedCustomeTone = TONE_LIST.slice(0, -1)
-    const CUSTOM_TONE_ID = 4
-    const tone = remvoedCustomeTone.find((tone) => {
-      const config: Record<string, any> = tone.config || {}
-
-      return Object.keys(config).every((key) => {
-        return config[key] === completionParams[key]
-      })
-    })
-    return tone ? tone.id : CUSTOM_TONE_ID
-  }
-
-  // tone is a preset of completionParams.
-  const [toneId, setToneId] = useState(matchToneId(completionParams)) // default is Balanced
-  const toneTabBgClassName = ({
-    1: 'bg-[#F5F8FF]',
-    2: 'bg-[#F4F3FF]',
-    3: 'bg-[#F6FEFC]',
-  })[toneId] || ''
-  // set completionParams by toneId
-  const handleToneChange = (id: number) => {
-    const tone = TONE_LIST.find(tone => tone.id === id)
-    if (tone) {
-      setToneId(id)
-      onCompletionParamsChange({
-        ...tone.config,
-      })
-    }
-  }
-
-  useEffect(() => {
-    setToneId(matchToneId(completionParams))
-  }, [completionParams])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -175,7 +131,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
   const handleInitialParams = () => {
     const newCompletionParams = { ...completionParams }
-    const defaultParams: Record<string, any> = {}
     if (parameterRules.length) {
       parameterRules.forEach((parameterRule) => {
         if (!newCompletionParams[parameterRule.name]) {
@@ -184,12 +139,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           else
             delete newCompletionParams[parameterRule.name]
         }
-        if (!isNullOrUndefined(parameterRule.default))
-          defaultParams[parameterRule.name] = parameterRule.default
       })
-
-      if (PROVIDER_WITH_PRESET_TONE.includes(provider))
-        TONE_LIST[3].config = defaultParams as any
 
       onCompletionParamsChange(newCompletionParams)
     }
@@ -199,15 +149,14 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     handleInitialParams()
   }, [parameterRules])
 
-  const getToneIcon = (toneId: number) => {
-    const className = 'w-[14px] h-[14px]'
-    const res = ({
-      1: <Brush01 className={className} />,
-      2: <Scales02 className={className} />,
-      3: <Target04 className={className} />,
-      4: <Sliders02 className={className} />,
-    })[toneId]
-    return res
+  const handleSelectPresetParameter = (toneId: number) => {
+    const tone = TONE_LIST.find(tone => tone.id === toneId)
+    if (tone) {
+      onCompletionParamsChange({
+        ...completionParams,
+        ...tone.config,
+      })
+    }
   }
 
   return (
@@ -274,47 +223,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   <div className='mt-5'><Loading /></div>
                 )
               }
-              {PROVIDER_WITH_PRESET_TONE.includes(provider) && !isLoading && !!parameterRules.length && (
-                <div className='mt-5 mb-4'>
-                  <div className="mb-3 text-sm text-gray-900">{t('appDebug.modelConfig.setTone')}</div>
-                  <Radio.Group className={cn('!rounded-lg', toneTabBgClassName)} value={toneId} onChange={handleToneChange}>
-                    <>
-                      {TONE_LIST.slice(0, 3).map(tone => (
-                        <div className='grow flex items-center' key={tone.id}>
-                          <Radio
-                            value={tone.id}
-                            className={cn(tone.id === toneId && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-1 sm:!px-2 !justify-center text-[13px] font-medium')}
-                            labelClassName={cn(tone.id === toneId
-                              ? ({
-                                1: 'text-[#6938EF]',
-                                2: 'text-[#444CE7]',
-                                3: 'text-[#107569]',
-                              })[toneId]
-                              : 'text-[#667085]', 'flex items-center space-x-2')}
-                          >
-                            <>
-                              {getToneIcon(tone.id)}
-                              {!isMobile && <div>{t(`common.model.tone.${tone.name}`) as string}</div>}
-                              <div className=""></div>
-                            </>
-                          </Radio>
-                          {tone.id !== toneId && tone.id + 1 !== toneId && (<div className='h-5 border-r border-gray-200'></div>)}
-                        </div>
-                      ))}
-                    </>
-                    <Radio
-                      value={TONE_LIST[3].id}
-                      className={cn(toneId === 4 && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-1 sm:!px-2 !justify-center text-[13px] font-medium')}
-                      labelClassName={cn('flex items-center space-x-2 ', toneId === 4 ? 'text-[#155EEF]' : 'text-[#667085]')}
-                    >
-                      <>
-                        {getToneIcon(TONE_LIST[3].id)}
-                        {!isMobile && <div>{t(`common.model.tone.${TONE_LIST[3].name}`) as string}</div>}
-                      </>
-                    </Radio>
-                  </Radio.Group>
-                </div>
-              )}
+              {
+                !isLoading && !!parameterRules.length && (
+                  <div className='flex items-center justify-between mb-4'>
+                    <div className='text-gray-900 font-semibold'>{t('common.modelProvider.parameters')}</div>
+                    {
+                      PROVIDER_WITH_PRESET_TONE.includes(provider) && (
+                        <PresetsParameter onSelect={handleSelectPresetParameter} />
+                      )
+                    }
+                  </div>
+                )
+              }
               {
                 !isLoading && !!parameterRules.length && (
                   [
