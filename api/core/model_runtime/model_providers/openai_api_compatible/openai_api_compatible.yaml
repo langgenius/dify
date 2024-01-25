@@ -75,3 +75,12 @@ model_credential_schema:
           value: llm
       default: '4096'
       type: text-input
+    - variable: stream_mode_delimiter
+      label:
+        zh_Hans: 流模式返回结果的分隔符
+        en_US: Delimiter for streaming results
+      show_on:
+        - variable: __model_type
+          value: llm
+      default: '\n\n'
+      type: text-input
