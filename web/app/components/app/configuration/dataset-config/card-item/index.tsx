@@ -16,7 +16,6 @@ export type ICardItemProps = {
   onRemove: (id: string) => void
   readonly?: boolean
 }
-// used in universal-chat
 const CardItem: FC<ICardItemProps> = ({
   className,
   config,

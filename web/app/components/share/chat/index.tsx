@@ -58,7 +58,6 @@ export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isSupportPlugin?: boolean
-  isUniversalChat?: boolean
 }
 
 const Main: FC<IMainProps> = ({
