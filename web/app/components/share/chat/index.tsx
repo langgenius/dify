@@ -660,8 +660,6 @@ const Main: FC<IMainProps> = ({
         })
       },
       onThought(thought) {
-        // console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
-
         isAgentMode = true
         const response = responseItem as any
         if (thought.message_id && !hasSetResponseId) {
