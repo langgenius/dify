@@ -4,10 +4,13 @@ from typing import List
 
 from bs4 import BeautifulSoup
 
+from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.models.document import Document
+
 logger = logging.getLogger(__name__)
 
 
-class UnstructuredEmailLoader(BaseLoader):
+class UnstructuredEmailExtractor(BaseExtractor):
     """Load msg files.
     Args:
         file_path: Path to the file to load.
@@ -22,7 +25,7 @@ class UnstructuredEmailLoader(BaseLoader):
         self._file_path = file_path
         self._api_url = api_url
 
-    def load(self) -> List[Document]:
+    def extract(self) -> List[Document]:
         from unstructured.partition.email import partition_email
         elements = partition_email(filename=self._file_path, api_url=self._api_url)
 

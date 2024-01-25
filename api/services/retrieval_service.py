@@ -1,9 +1,10 @@
 from typing import Optional
 
-from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from core.rag.data_post_processor.data_post_processor import DataPostProcessor
+from core.rag.datasource.vdb.vector_index import Vector
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from flask import Flask, current_app
@@ -33,21 +34,19 @@ class RetrievalService:
                 Dataset.id == dataset_id
             ).first()
 
-            vector_index = VectorIndex(
+            vector_processor = Vector(
                 dataset=dataset,
                 config=current_app.config,
                 embeddings=embeddings
             )
 
-            documents = vector_index.search(
+            documents = vector_processor.vector.search_by_vector(
                 query,
                 search_type='similarity_score_threshold',
-                search_kwargs={
-                    'k': top_k,
-                    'score_threshold': score_threshold,
-                    'filter': {
-                        'group_id': [dataset.id]
-                    }
+                k=top_k,
+                score_threshold=score_threshold,
+                filter={
+                    'group_id': [dataset.id]
                 }
             )
 
@@ -63,9 +62,9 @@ class RetrievalService:
                         )
                     except InvokeAuthorizationError:
                         return
-
                     rerank_runner = RerankRunner(rerank_model_instance)
-                    all_documents.extend(rerank_runner.run(
+                    data_post_processor = DataPostProcessor(rerank_runner)
+                    all_documents.extend(data_post_processor.rerank(
                         query=query,
                         documents=documents,
                         score_threshold=score_threshold,
@@ -83,13 +82,13 @@ class RetrievalService:
                 Dataset.id == dataset_id
             ).first()
 
-            vector_index = VectorIndex(
+            vector_processor = Vector(
                 dataset=dataset,
                 config=current_app.config,
                 embeddings=embeddings
             )
 
-            documents = vector_index.search_by_full_text_index(
+            documents = vector_processor.vector.search_by_full_text(
                 query,
                 search_type='similarity_score_threshold',
                 top_k=top_k
@@ -108,7 +107,9 @@ class RetrievalService:
                         return
 
                     rerank_runner = RerankRunner(rerank_model_instance)
-                    all_documents.extend(rerank_runner.run(
+                    data_post_processor = DataPostProcessor(rerank_runner)
+
+                    all_documents.extend(data_post_processor.rerank(
                         query=query,
                         documents=documents,
                         score_threshold=score_threshold,
