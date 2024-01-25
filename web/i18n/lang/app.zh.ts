@@ -28,6 +28,7 @@ const translation = {
     chatApp: '助手',
     chatAppIntro:
       '我要构建一个聊天场景的应用。该应用采用一问一答模式与用户持续对话。',
+    agentAssistant: '新的智能助手',
     completeApp: '文本生成应用',
     completeAppIntro:
       '我要构建一个根据提示生成高质量文本的应用，例如生成文章、摘要、翻译等',
