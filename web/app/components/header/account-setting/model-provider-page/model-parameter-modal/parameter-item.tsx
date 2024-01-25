@@ -75,13 +75,20 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   const handleSlideChange = (num: number) => {
-    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!)
-      return handleInputChange(parameterRule.max)
+    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!) {
+      handleInputChange(parameterRule.max)
+      numberInputRef.current!.value = `${parameterRule.max}`
+      return
+    }
 
-    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
-      return handleInputChange(parameterRule.min)
+    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!) {
+      handleInputChange(parameterRule.min)
+      numberInputRef.current!.value = `${parameterRule.min}`
+      return
+    }
 
     handleInputChange(num)
+    numberInputRef.current!.value = `${num}`
   }
 
   const handleRadioChange = (v: number) => {
