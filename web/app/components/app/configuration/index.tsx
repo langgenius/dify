@@ -43,7 +43,7 @@ import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG, supportFunctionCallModels } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -163,8 +163,7 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
-  const isFunctionCall = isOpenAI && modelConfig.mode === ModelModeType.chat
-
+  const isFunctionCall = (isOpenAI && modelConfig.mode === ModelModeType.chat) || supportFunctionCallModels.includes(modelConfig.model_id)
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
 
