@@ -655,7 +655,9 @@ class IndexingRunner:
                     else:
                         page_content = page_content
                     document_node.page_content = page_content
-                    split_documents.append(document_node)
+
+                    if document_node.page_content:
+                        split_documents.append(document_node)
             all_documents.extend(split_documents)
         # processing qa document
         if document_form == 'qa_model':

@@ -229,7 +229,7 @@ const Answer: FC<IAnswerProps> = ({
             <Thought
               thought={item}
               allToolIcons={allToolIcons || {}}
-              isFinished={!!item.observation}
+              isFinished={!!item.observation || !isResponsing}
             />
           )}
 
