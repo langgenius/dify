@@ -72,10 +72,10 @@ def validate_dataset_token(view=None):
         @wraps(view)
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token('dataset')
-            tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
+            tenant_account_join = db.session.query(Tenant, TenantAccountJoin, Account) \
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role.in_(['owner', 'admin'])) \
+                .filter(TenantAccountJoin.role.in_(['owner'])) \
                 .one_or_none()
             if tenant_account_join:
                 tenant, ta = tenant_account_join
