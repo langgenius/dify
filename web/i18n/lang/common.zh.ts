@@ -303,6 +303,7 @@ const translation = {
     model: '模型',
     featureSupported: '支持 {{feature}} 功能',
     callTimes: '调用次数',
+    credits: '消息额度',
     buyQuota: '购买额度',
     getFreeTokens: '获得免费 Tokens',
     priorityUsing: '优先使用',
