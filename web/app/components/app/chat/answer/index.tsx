@@ -260,7 +260,7 @@ const Answer: FC<IAnswerProps> = ({
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
-                {(isResponsing && (isAgentMode ? (!content && (agent_thoughts || []).length === 0) : !content))
+                {(isResponsing && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
@@ -268,7 +268,6 @@ const Answer: FC<IAnswerProps> = ({
                   )
                   : (
                     <div>
-
                       {annotation?.logAnnotation && (
                         <div className='mb-1'>
                           <div className='mb-3'>
@@ -299,9 +298,9 @@ const Answer: FC<IAnswerProps> = ({
                           author: annotation.authorName,
                         })} />
                       )}
-                      {item.isOpeningStatement && item.suggestedQuestions && item.suggestedQuestions.length > 0 && (
+                      {item.isOpeningStatement && item.suggestedQuestions && item.suggestedQuestions.filter(q => !!q && q.trim()).length > 0 && (
                         <div className='flex flex-wrap'>
-                          {item.suggestedQuestions.map((question, index) => (
+                          {item.suggestedQuestions.filter(q => !!q && q.trim()).map((question, index) => (
                             <div
                               key={index}
                               className='mt-1 mr-1 max-w-full last:mr-0 shrink-0 py-[5px] leading-[18px] items-center px-4 rounded-lg border border-gray-200 shadow-xs bg-white text-xs font-medium text-primary-600 cursor-pointer'
