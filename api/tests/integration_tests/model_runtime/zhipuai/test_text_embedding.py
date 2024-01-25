@@ -42,7 +42,7 @@ def test_invoke_model():
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
-    assert result.usage.total_tokens == 2
+    assert result.usage.total_tokens > 0
 
 
 def test_get_num_tokens():

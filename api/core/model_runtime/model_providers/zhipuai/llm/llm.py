@@ -8,8 +8,10 @@ from core.model_runtime.entities.message_entities import (AssistantPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils import helper
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.zhipuai._client import ZhipuModelAPI
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
+from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
+from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion_chunk import ChatCompletionChunk
+from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion import Completion
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
@@ -48,7 +50,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
-        prompt = self._convert_messages_to_prompt(prompt_messages)
+        prompt = self._convert_messages_to_prompt(prompt_messages, tools)
 
         return self._get_num_tokens_by_gpt2(prompt)
 
@@ -99,7 +101,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         if stop:
             extra_model_kwargs['stop_sequences'] = stop
 
-        client = ZhipuModelAPI(
+        client = ZhipuAI(
             api_key=credentials_kwargs['api_key']
         )
 
@@ -147,7 +149,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         if model == 'glm-4v':
             params = {
                 'model': model,
-                'prompt': [{
+                'messages': [{
                     'role': prompt_message.role.value,
                     'content': 
                         [
@@ -173,7 +175,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         else:
             params = {
                 'model': model,
-                'prompt': [{
+                'messages': [{
                     'role': prompt_message.role.value,
                     'content': prompt_message.content,
                 } for prompt_message in new_prompt_messages],
@@ -189,15 +191,16 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             ]
 
         if stream:
-            response = client.sse_invoke(incremental=True, **params).events()
-            return self._handle_generate_stream_response(model, credentials_kwargs, response, prompt_messages)
+            response = client.chat.completions.create(stream=stream, **params)
+            return self._handle_generate_stream_response(model, credentials_kwargs, tools, response, prompt_messages)
 
-        response = client.invoke(**params)
-        return self._handle_generate_response(model, credentials_kwargs, response, prompt_messages)
+        response = client.chat.completions.create(**params)
+        return self._handle_generate_response(model, credentials_kwargs, tools, response, prompt_messages)
         
     def _handle_generate_response(self, model: str, 
                                   credentials: dict,
-                                  response: Dict[str, Any],
+                                  tools: Optional[list[PromptMessageTool]],
+                                  response: Completion,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
         """
         Handle llm response
@@ -207,26 +210,39 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response
         """
-        data = response["data"]
         text = ''
-        for res in data["choices"]:
-            text += res['content']
+        assistant_tool_calls: List[AssistantPromptMessage.ToolCall] = []
+        for choice in response.choices:
+            if choice.message.tool_calls:
+                for tool_call in choice.message.tool_calls:
+                    if tool_call.type == 'function':
+                        assistant_tool_calls.append(
+                            AssistantPromptMessage.ToolCall(
+                                id=tool_call.id,
+                                type=tool_call.type,
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=tool_call.function.name,
+                                    arguments=tool_call.function.arguments,
+                                )
+                            )
+                        )
+
+            text += choice.message.content or ''
           
-        token_usage = data.get("usage")
-        if token_usage is not None:
-            if 'prompt_tokens' not in token_usage:
-                token_usage['prompt_tokens'] = 0
-            if 'completion_tokens' not in token_usage:
-                token_usage['completion_tokens'] = token_usage['total_tokens']
+        prompt_usage = response.usage.prompt_tokens
+        completion_usage = response.usage.completion_tokens
 
         # transform usage
-        usage = self._calc_response_usage(model, credentials, token_usage['prompt_tokens'], token_usage['completion_tokens'])
+        usage = self._calc_response_usage(model, credentials, prompt_usage, completion_usage)
 
         # transform response
         result = LLMResult(
             model=model,
             prompt_messages=prompt_messages,
-            message=AssistantPromptMessage(content=text),
+            message=AssistantPromptMessage(
+                content=text,
+                tool_calls=assistant_tool_calls
+            ),
             usage=usage,
         )
 
@@ -234,7 +250,8 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
     def _handle_generate_stream_response(self, model: str, 
                                          credentials: dict,
-                                         responses: list[Generator],
+                                         tools: Optional[list[PromptMessageTool]],
+                                         responses: Generator[ChatCompletionChunk, None, None],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -244,81 +261,64 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
-        for index, event in enumerate(responses):
-            if event.event == "add":
-                if not event.data:
-                    continue
-                event.data = event.data.strip()
-                if event.data.startswith("{") and event.data.endswith("}"):
-                    try:
-                        delta = json.loads(event.data)['delta']
-                        tool_calls = delta['tool_calls']
-                        for tool_call in tool_calls:
-                            if tool_call['type'] != 'function':
-                                continue
-                            tool_calls = [
-                                AssistantPromptMessage.ToolCall(
-                                    id=tool_call['id'],
-                                    type='function',
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                        name=tool_call['function']['name'],
-                                        arguments=tool_call['function']['arguments']
-                                    )
-                                ) for tool_call in tool_calls
-                            ]
+        full_assistant_content = ''
+        for chunk in responses:
+            if len(chunk.choices) == 0:
+                continue
 
-                            yield LLMResultChunk(
-                                model=model,
-                                prompt_messages=prompt_messages,
-                                delta=LLMResultChunkDelta(
-                                    index=0,
-                                    message=AssistantPromptMessage(
-                                        tool_calls=tool_calls,
-                                        content=''
-                                    ),
-                                )
+            delta = chunk.choices[0]
+
+            if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ''):
+                continue
+            
+            assistant_tool_calls: List[AssistantPromptMessage.ToolCall] = []
+            for tool_call in delta.delta.tool_calls or []:
+                if tool_call.type == 'function':
+                    assistant_tool_calls.append(
+                        AssistantPromptMessage.ToolCall(
+                            id=tool_call.id,
+                            type=tool_call.type,
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=tool_call.function.name,
+                                arguments=tool_call.function.arguments,
                             )
-                    except Exception as ex:
-                        yield LLMResultChunk(
-                            prompt_messages=prompt_messages,
-                            model=model,
-                            delta=LLMResultChunkDelta(
-                                index=index,
-                                message=AssistantPromptMessage(content=event.data)
-                            )
-                        )
-                else:
-                    yield LLMResultChunk(
-                        prompt_messages=prompt_messages,
-                        model=model,
-                        delta=LLMResultChunkDelta(
-                            index=index,
-                            message=AssistantPromptMessage(content=event.data)
                         )
                     )
-            elif event.event == "error" or event.event == "interrupted":
-                raise ValueError(
-                    f"{event.data}"
-                )
-            elif event.event == "finish":
-                meta = json.loads(event.meta)
-                token_usage = meta['usage']
-                if token_usage is not None:
-                    if 'prompt_tokens' not in token_usage:
-                        token_usage['prompt_tokens'] = 0
-                    if 'completion_tokens' not in token_usage:
-                        token_usage['completion_tokens'] = token_usage['total_tokens']
 
-                usage = self._calc_response_usage(model, credentials, token_usage['prompt_tokens'], token_usage['completion_tokens'])
+            # transform assistant message to prompt message
+            assistant_prompt_message = AssistantPromptMessage(
+                content=delta.delta.content if delta.delta.content else '',
+                tool_calls=assistant_tool_calls
+            )
+
+            full_assistant_content += delta.delta.content if delta.delta.content else ''
+
+            if delta.finish_reason is not None and chunk.usage is not None:
+                completion_tokens = chunk.usage.completion_tokens
+                prompt_tokens = chunk.usage.prompt_tokens
+
+                # transform usage
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
                 yield LLMResultChunk(
-                    model=model,
+                    model=chunk.model,
                     prompt_messages=prompt_messages,
+                    system_fingerprint='',
                     delta=LLMResultChunkDelta(
-                        index=index,
-                        message=AssistantPromptMessage(content=event.data),
-                        finish_reason='finish',
+                        index=delta.index,
+                        message=assistant_prompt_message,
+                        finish_reason=delta.finish_reason,
                         usage=usage
+                    )
+                )
+            else:
+                yield LLMResultChunk(
+                    model=chunk.model,
+                    prompt_messages=prompt_messages,
+                    system_fingerprint='',
+                    delta=LLMResultChunkDelta(
+                        index=delta.index,
+                        message=assistant_prompt_message,
                     )
                 )
 
@@ -343,11 +343,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             raise ValueError(f"Got unknown type {message}")
 
         return message_text
-    
-    def _convert_messages_to_prompt(self, messages: List[PromptMessage]) -> str:
-        """
-        Format a list of messages into a full prompt for the Anthropic model
 
+
+    def _convert_messages_to_prompt(self, messages: List[PromptMessage], tools: Optional[list[PromptMessageTool]] = None) -> str:
+        """
         :param messages: List of PromptMessage to combine.
         :return: Combined string with necessary human_prompt and ai_prompt tags.
         """
@@ -357,6 +356,11 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             self._convert_one_message_to_text(message)
             for message in messages
         )
+
+        if tools and len(tools) > 0:
+            text += "\n\nTools:"
+            for tool in tools:
+                text += f"\n{tool.json()}"
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
