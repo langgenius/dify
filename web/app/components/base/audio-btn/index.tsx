@@ -33,7 +33,7 @@ const AudioBtn = ({
     if (value !== '') {
       formData.append('text', removeCodeBlocks(value))
 
-      let url = '/universal-chat/text-to-audio'
+      let url = ''
       let isPublic = false
 
       if (params.token) {

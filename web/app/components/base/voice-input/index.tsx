@@ -86,7 +86,7 @@ const VoiceInput = ({
     const formData = new FormData()
     formData.append('file', mp3File)
 
-    let url = '/universal-chat/audio-to-text'
+    let url = ''
     let isPublic = false
 
     if (params.token) {
