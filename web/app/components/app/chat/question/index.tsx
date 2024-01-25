@@ -13,14 +13,14 @@ import ImageGallery from '@/app/components/base/image-gallery'
 type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'> & {
   isShowPromptLog?: boolean
   item: IChatItem
-  imgSrcs?: string[]
   isResponsing?: boolean
 }
 
-const Question: FC<IQuestionProps> = ({ id, content, imgSrcs, more, useCurrentUserAvatar, isShowPromptLog, item, isResponsing }) => {
+const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item, isResponsing }) => {
   const { userProfile } = useContext(AppContext)
   const userName = userProfile?.name
   const ref = useRef(null)
+  const imgSrcs = item.message_files?.map(item => item.url)
 
   return (
     <div className={`flex items-start justify-end ${isShowPromptLog && 'first-of-type:pt-[14px]'}`} key={id} ref={ref}>

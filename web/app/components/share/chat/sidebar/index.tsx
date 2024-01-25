@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -85,6 +85,13 @@ const Sidebar: FC<ISidebarProps> = ({
       checkHasPinned()
   }, [controlUpdateList])
 
+  const handleUnpin = useCallback((id: string) => {
+    onUnpin(id)
+  }, [onUnpin])
+  const handlePin = useCallback((id: string) => {
+    onPin(id)
+  }, [onPin])
+
   const maxListHeight = (isInstalledApp || isUniversalChat) ? 'max-h-[30vh]' : 'max-h-[40vh]'
 
   return (
@@ -129,7 +136,7 @@ const Sidebar: FC<ISidebarProps> = ({
               onMoreLoaded={onPinnedMoreLoaded}
               isNoMore={isPinnedNoMore}
               isPinned={true}
-              onPinChanged={id => onUnpin(id)}
+              onPinChanged={handleUnpin}
               controlUpdate={controlUpdateList + 1}
               onDelete={onDelete}
             />
@@ -153,7 +160,7 @@ const Sidebar: FC<ISidebarProps> = ({
             onMoreLoaded={onMoreLoaded}
             isNoMore={isNoMore}
             isPinned={false}
-            onPinChanged={id => onPin(id)}
+            onPinChanged={handlePin}
             controlUpdate={controlUpdateList + 1}
             onDelete={onDelete}
           />
