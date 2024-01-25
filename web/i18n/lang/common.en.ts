@@ -310,6 +310,8 @@ const translation = {
     deprecated: 'Deprecated',
     confirmDelete: 'confirm deletion?',
     quotaTip: 'Remaining available free tokens',
+    loadPresets: 'Load Presents',
+    parameters: 'PARAMETERS',
   },
   dataSource: {
     add: 'Add a data source',
