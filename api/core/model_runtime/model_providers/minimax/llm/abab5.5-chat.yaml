@@ -36,7 +36,7 @@ parameter_rules:
       en_US: Enable Web Search
       zh_Hans: 开启网页搜索
 pricing:
-  input: '0.00'
+  input: '0.015'
   output: '0.015'
   unit: '0.001'
   currency: RMB

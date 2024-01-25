@@ -52,7 +52,7 @@ Dify Daq rIn neutrality 'ej Hoch, LangChain tInHar HubwI'. maH Daqbe'law' Qawqar
 
 **3. RAG Engine**: RAG vaD tIqpu' lo'taH indexing qor neH vector database wa' embeddings wIj, PDFs, TXTs, 'ej ghojmoHmoH HIq qorlIj je upload.
 
-**4. jenSuvpu'**: jenbe' SuDqang naQ moDwu' jenSuvpu' porgh cha'logh choHvam. Dify Google Search Hur vItlhutlh plugin choH.
+**4. AI Agent**: Function Calling 'ej ReAct Daq Hurmey, Agent inference framework Hoch users customize tools, vaj 'oH QaQ. Dify Hoch loS ghaH 'ej wa'vatlh built-in tool calling capabilities, Google Search, DELL·E, Stable Diffusion, WolframAlpha, 'ej.
 
 **5. QaS muDHa'wI': cha'logh wa' pIq mI' logs 'ej quv yIn, vItlhutlh tIq 'e'wIj lo'taHmoHmoH Prompts, vItlhutlh, Hurmey ghaH production data jatlh.
 
