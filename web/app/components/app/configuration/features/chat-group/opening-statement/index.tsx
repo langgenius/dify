@@ -68,7 +68,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   }, [value])
 
   const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(suggestedQuestions || [])
-  const notEmptyQuestions = tempSuggestedQuestions.filter(question => !!question)
+  const notEmptyQuestions = tempSuggestedQuestions.filter(question => !!question && question.trim())
   const coloredContent = (tempValue || '')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
