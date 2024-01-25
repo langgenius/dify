@@ -38,7 +38,23 @@ gtag('config', '${gaIdMaps[gaType]}');
         }}
       >
       </Script>
-
+      {gaType === GaType.admin && (
+        <>
+          <Script strategy="beforeInteractive" async src={'https://www.googletagmanager.com/gtag/js?id=AW-11217955271"}'}></Script>
+          <Script
+            id="ga-monitor-register"
+            dangerouslySetInnerHTML={{
+              __html: `
+window.dataLayer2 = window.dataLayer2 || [];
+function gtag(){dataLayer2.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'AW-11217955271"');
+          `,
+            }}
+          >
+          </Script>
+        </>
+      )}
     </>
 
   )
