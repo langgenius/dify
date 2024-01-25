@@ -113,7 +113,8 @@ export const ProviderContextProvider = ({
         utm_term: '',
       }
     }
-    operationUtm({ url: '/operation/utm', body: utm })
+    if (utm.utm_source || utm.utm_medium || utm.utm_campaign || utm.utm_content || utm.utm_term)
+      operationUtm({ url: '/operation/utm', body: utm })
   }
   useEffect(() => {
     (async () => {

@@ -1,6 +1,6 @@
 import base64
 import time
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import tiktoken
@@ -89,7 +89,7 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
                 embeddings_batch, embedding_used_tokens = self._embedding_invoke(
                     model=model,
                     client=client,
-                    texts=[""],
+                    texts="",
                     extra_model_kwargs=extra_model_kwargs
                 )
 
@@ -160,7 +160,7 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _embedding_invoke(self, model: str, client: OpenAI, texts: list[str],
+    def _embedding_invoke(self, model: str, client: OpenAI, texts: Union[list[str], str],
                           extra_model_kwargs: dict) -> Tuple[list[list[float]], int]:
         """
         Invoke embedding model

@@ -76,7 +76,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
                 embeddings_batch, embedding_used_tokens = self._embedding_invoke(
                     model=model,
                     credentials=credentials,
-                    texts=[""]
+                    texts=[" "]
                 )
 
                 used_tokens += embedding_used_tokens
@@ -131,6 +131,9 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         :param text: text to tokenize
         :return:
         """
+        if not text:
+            return Tokens([], [], {})
+
         # initialize client
         client = cohere.Client(credentials.get('api_key'))
 
