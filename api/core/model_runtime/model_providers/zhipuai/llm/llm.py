@@ -3,7 +3,7 @@ from typing import Any, Dict, Generator, List, Optional, Union
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageRole,
-                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage,
+                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage, ToolPromptMessage,
                                                           TextPromptMessageContent, ImagePromptMessageContent, PromptMessageContentType)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils import helper
@@ -132,11 +132,17 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                     # not support image message
                     continue
 
-                if new_prompt_messages and new_prompt_messages[-1].role == PromptMessageRole.USER:
+                if new_prompt_messages and new_prompt_messages[-1].role == PromptMessageRole.USER and \
+                    copy_prompt_message.role == PromptMessageRole.USER:
                     new_prompt_messages[-1].content += "\n\n" + copy_prompt_message.content
                 else:
                     if copy_prompt_message.role == PromptMessageRole.USER:
                         new_prompt_messages.append(copy_prompt_message)
+                    elif copy_prompt_message.role == PromptMessageRole.TOOL:
+                        new_prompt_messages.append(copy_prompt_message)
+                    elif copy_prompt_message.role == PromptMessageRole.SYSTEM:
+                        new_prompt_message = SystemPromptMessage(content=copy_prompt_message.content)
+                        new_prompt_messages.append(new_prompt_message)
                     else:
                         new_prompt_message = UserPromptMessage(content=copy_prompt_message.content)
                         new_prompt_messages.append(new_prompt_message)
@@ -175,12 +181,43 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         else:
             params = {
                 'model': model,
-                'messages': [{
-                    'role': prompt_message.role.value,
-                    'content': prompt_message.content,
-                } for prompt_message in new_prompt_messages],
+                'messages': [],
                 **model_parameters
             }
+            # glm model
+            if not model.startswith('chatglm'):
+
+                for prompt_message in new_prompt_messages:
+                    if prompt_message.role == PromptMessageRole.TOOL:
+                        params['messages'].append({
+                            'role': 'tool',
+                            'content': prompt_message.content,
+                            'tool_call_id': prompt_message.tool_call_id
+                        })
+                    else:
+                        params['messages'].append({
+                            'role': prompt_message.role.value,
+                            'content': prompt_message.content
+                        })
+            else:
+                # chatglm model
+                for prompt_message in new_prompt_messages:
+                    # merge system message to user message
+                    if prompt_message.role == PromptMessageRole.SYSTEM or \
+                        prompt_message.role == PromptMessageRole.TOOL or \
+                        prompt_message.role == PromptMessageRole.USER:
+                        if len(params['messages']) > 0 and params['messages'][-1]['role'] == 'user':
+                            params['messages'][-1]['content'] += "\n\n" + prompt_message.content
+                        else:
+                            params['messages'].append({
+                                'role': 'user',
+                                'content': prompt_message.content
+                            })
+                    else:
+                        params['messages'].append({
+                            'role': prompt_message.role.value,
+                            'content': prompt_message.content
+                        })
 
         if tools and len(tools) > 0:
             params['tools'] = [
