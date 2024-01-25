@@ -1,6 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Textarea from 'rc-textarea'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
@@ -197,6 +197,76 @@ const Chat: FC<IChatProps> = ({
       logError(t('common.voiceInput.notAllow'))
     })
   }
+  const handleQueryChangeFromAnswer = useCallback((val: string) => {
+    onQueryChange(val)
+    handleSend(val)
+  }, [])
+  const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
+    onChatListChange?.(chatList.map((item, i) => {
+      if (i === index - 1) {
+        return {
+          ...item,
+          content: query,
+        }
+      }
+      if (i === index) {
+        return {
+          ...item,
+          content: answer,
+          annotation: {
+            ...item.annotation,
+            logAnnotation: undefined,
+          } as any,
+        }
+      }
+      return item
+    }))
+  }, [])
+  const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
+    onChatListChange?.(chatList.map((item, i) => {
+      if (i === index - 1) {
+        return {
+          ...item,
+          content: query,
+        }
+      }
+      if (i === index) {
+        const answerItem = {
+          ...item,
+          content: item.content,
+          annotation: {
+            id: annotationId,
+            authorName,
+            logAnnotation: {
+              content: answer,
+              account: {
+                id: '',
+                name: authorName,
+                email: '',
+              },
+            },
+          } as Annotation,
+        }
+        return answerItem
+      }
+      return item
+    }))
+  }, [])
+  const handleAnnotationRemoved = useCallback((index: number) => {
+    onChatListChange?.(chatList.map((item, i) => {
+      if (i === index) {
+        return {
+          ...item,
+          content: item.content,
+          annotation: {
+            ...(item.annotation || {}),
+            id: '',
+          } as Annotation,
+        }
+      }
+      return item
+    }))
+  }, [])
 
   return (
     <div className={cn('px-3.5', 'h-full')}>
@@ -210,10 +280,8 @@ const Chat: FC<IChatProps> = ({
             return <Answer
               key={item.id}
               item={item}
-              onQueryChange={(val) => {
-                onQueryChange(val)
-                handleSend(val)
-              }}
+              index={index}
+              onQueryChange={handleQueryChangeFromAnswer}
               feedbackDisabled={feedbackDisabled}
               isHideFeedbackEdit={isHideFeedbackEdit}
               onFeedback={onFeedback}
@@ -228,72 +296,9 @@ const Chat: FC<IChatProps> = ({
               supportAnnotation={supportAnnotation}
               appId={appId}
               question={chatList[index - 1]?.content}
-              onAnnotationEdited={(query, answer) => {
-                onChatListChange?.(chatList.map((item, i) => {
-                  if (i === index - 1) {
-                    return {
-                      ...item,
-                      content: query,
-                    }
-                  }
-                  if (i === index) {
-                    return {
-                      ...item,
-                      content: answer,
-                      annotation: {
-                        ...item.annotation,
-                        logAnnotation: undefined,
-                      } as any,
-                    }
-                  }
-                  return item
-                }))
-              }}
-              onAnnotationAdded={(annotationId, authorName, query, answer) => {
-                onChatListChange?.(chatList.map((item, i) => {
-                  if (i === index - 1) {
-                    return {
-                      ...item,
-                      content: query,
-                    }
-                  }
-                  if (i === index) {
-                    const answerItem = {
-                      ...item,
-                      content: item.content,
-                      annotation: {
-                        id: annotationId,
-                        authorName,
-                        logAnnotation: {
-                          content: answer,
-                          account: {
-                            id: '',
-                            name: authorName,
-                            email: '',
-                          },
-                        },
-                      } as Annotation,
-                    }
-                    return answerItem
-                  }
-                  return item
-                }))
-              }}
-              onAnnotationRemoved={() => {
-                onChatListChange?.(chatList.map((item, i) => {
-                  if (i === index) {
-                    return {
-                      ...item,
-                      content: item.content,
-                      annotation: {
-                        ...(item.annotation || {}),
-                        id: '',
-                      } as Annotation,
-                    }
-                  }
-                  return item
-                }))
-              }}
+              onAnnotationEdited={handleAnnotationEdited}
+              onAnnotationAdded={handleAnnotationAdded}
+              onAnnotationRemoved={handleAnnotationRemoved}
               allToolIcons={allToolIcons}
             />
           }
@@ -307,8 +312,6 @@ const Chat: FC<IChatProps> = ({
               item={item}
               isShowPromptLog={isShowPromptLog}
               isResponsing={isResponsing}
-              // ['https://placekitten.com/360/360', 'https://placekitten.com/360/640']
-              imgSrcs={(item.message_files && item.message_files?.length > 0) ? item.message_files.map(item => item.url) : []}
             />
           )
         })}
