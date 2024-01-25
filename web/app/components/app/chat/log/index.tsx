@@ -1,6 +1,7 @@
 import type { Dispatch, FC, ReactNode, RefObject, SetStateAction } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { uniqueId } from 'lodash-es'
 import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import Tooltip from '@/app/components/base/tooltip'
@@ -39,7 +40,7 @@ const Log: FC<LogProps> = ({
         children
           ? children(setShowModal)
           : (
-            <Tooltip selector='prompt-log-modal-trigger' content={t('common.operation.log') || ''}>
+            <Tooltip selector={`prompt-log-modal-trigger-${uniqueId()}`} content={t('common.operation.log') || ''}>
               <div className={`
                 hidden absolute -left-[14px] -top-[14px] group-hover:block w-7 h-7
                 p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-md cursor-pointer

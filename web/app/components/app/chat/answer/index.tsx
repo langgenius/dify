@@ -43,6 +43,7 @@ const IconWrapper: FC<{ children: React.ReactNode | string }> = ({ children }) =
 }
 export type IAnswerProps = {
   item: IChatItem
+  index: number
   feedbackDisabled: boolean
   isHideFeedbackEdit: boolean
   onQueryChange: (query: string) => void
@@ -59,14 +60,15 @@ export type IAnswerProps = {
   supportAnnotation?: boolean
   appId?: string
   question: string
-  onAnnotationEdited?: (question: string, answer: string) => void
-  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string) => void
-  onAnnotationRemoved?: () => void
+  onAnnotationEdited?: (question: string, answer: string, index: number) => void
+  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
+  onAnnotationRemoved?: (index: number) => void
   allToolIcons?: Record<string, string | Emoji>
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
   item,
+  index,
   onQueryChange,
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
@@ -340,9 +342,9 @@ const Answer: FC<IAnswerProps> = ({
                     cached={hasAnnotation}
                     query={question}
                     answer={content}
-                    onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content)}
+                    onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
                     onEdit={() => setIsShowReplyModal(true)}
-                    onRemoved={onAnnotationRemoved!}
+                    onRemoved={() => onAnnotationRemoved!(index)}
                   />
                 )}
 
@@ -351,8 +353,8 @@ const Answer: FC<IAnswerProps> = ({
                   onHide={() => setIsShowReplyModal(false)}
                   query={question}
                   answer={content}
-                  onEdited={onAnnotationEdited!}
-                  onAdded={onAnnotationAdded!}
+                  onEdited={(editedQuery, editedAnswer) => onAnnotationEdited!(editedQuery, editedAnswer, index)}
+                  onAdded={(annotationId, authorName, editedQuery, editedAnswer) => onAnnotationAdded!(annotationId, authorName, editedQuery, editedAnswer, index)}
                   appId={appId!}
                   messageId={id}
                   annotationId={annotation?.id || ''}

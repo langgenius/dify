@@ -12,6 +12,12 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
+import DebugWithMultipleModel from './debug-with-multiple-model'
+import type { ModelAndParameter } from './types'
+import {
+  APP_CHAT_WITH_MULTIPLE_MODEL,
+  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
+} from './types'
 import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
@@ -28,17 +34,30 @@ import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useProviderContext } from '@/context/provider-context'
 
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
   inputs: Inputs
+  modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
+  debugWithMultipleModel: boolean
+  multipleModelConfigs: ModelAndParameter[]
+  onMultipleModelConfigsChange: (multiple: boolean, modelConfigs: ModelAndParameter[]) => void
 }
 
 const Debug: FC<IDebug> = ({
   hasSetAPIKEY = true,
   onSetting,
   inputs,
+  modelParameterParams,
+  debugWithMultipleModel,
+  multipleModelConfigs,
+  onMultipleModelConfigsChange,
 }) => {
   const { t } = useTranslation()
   const {
@@ -72,7 +91,9 @@ const Debug: FC<IDebug> = ({
     datasetConfigs,
     visionConfig,
     annotationConfig,
+    setVisionConfig,
   } = useContext(ConfigContext)
+  const { eventEmitter } = useEventEmitterContextContext()
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const { data: text2speechDefaultModel } = useDefaultModel(5)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -119,7 +140,7 @@ const Debug: FC<IDebug> = ({
     setFormattingChanged(false)
   }, [formattingChanged])
 
-  const clearConversation = async () => {
+  const handleClearConversation = () => {
     setConversationId(null)
     abortController?.abort()
     setResponsingFalse()
@@ -133,6 +154,16 @@ const Debug: FC<IDebug> = ({
       }]
       : [])
     setIsShowSuggestion(false)
+  }
+  const clearConversation = async () => {
+    if (debugWithMultipleModel) {
+      eventEmitter?.emit({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
+      } as any)
+      return
+    }
+
+    handleClearConversation()
   }
 
   const handleConfirm = () => {
@@ -601,6 +632,21 @@ const Debug: FC<IDebug> = ({
     })
   }
 
+  const handleSendTextCompletion = () => {
+    if (debugWithMultipleModel) {
+      eventEmitter?.emit({
+        type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        payload: {
+          message: '',
+          files: completionFiles,
+        },
+      } as any)
+      return
+    }
+
+    sendTextCompletion()
+  }
+
   const varList = modelConfig.configs.prompt_variables.map((item: any) => {
     return {
       label: item.key,
@@ -608,6 +654,51 @@ const Debug: FC<IDebug> = ({
     }
   })
 
+  const { textGenerationModelList } = useProviderContext()
+  const handleChangeToSingleModel = (item: ModelAndParameter) => {
+    const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === item.provider)
+    const currentModel = currentProvider?.models.find(model => model.model === item.model)
+
+    modelParameterParams.setModel({
+      modelId: item.model,
+      provider: item.provider,
+      mode: currentModel?.model_properties.mode as string,
+      features: currentModel?.features,
+    })
+    modelParameterParams.onCompletionParamsChange(item.parameters)
+    onMultipleModelConfigsChange(
+      false,
+      [],
+    )
+  }
+
+  const handleVisionConfigInMultipleModel = () => {
+    if (debugWithMultipleModel && !visionConfig.enabled) {
+      const supportedVision = multipleModelConfigs.some((modelConfig) => {
+        const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === modelConfig.provider)
+        const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model)
+
+        return currentModel?.features?.includes(ModelFeatureEnum.vision)
+      })
+
+      if (supportedVision) {
+        setVisionConfig({
+          ...visionConfig,
+          enabled: true,
+        })
+      }
+      else {
+        setVisionConfig({
+          ...visionConfig,
+          enabled: false,
+        })
+      }
+    }
+  }
+
+  useEffect(() => {
+    handleVisionConfigInMultipleModel()
+  }, [multipleModelConfigs])
   const allToolIcons = (() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
@@ -621,18 +712,40 @@ const Debug: FC<IDebug> = ({
       <div className="shrink-0">
         <div className='flex items-center justify-between mb-2'>
           <div className='h2 '>{t('appDebug.inputs.title')}</div>
-          {mode === 'chat' && (
-            <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span className='text-primary-600 text-[13px] font-semibold'>{t('common.operation.refresh')}</span>
-            </Button>
-          )}
+          <div className='flex items-center'>
+            {
+              debugWithMultipleModel
+                ? (
+                  <>
+                    <Button
+                      className={`
+                        h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white
+                        ${multipleModelConfigs.length >= 4 && 'opacity-30'}
+                      `}
+                      onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
+                      disabled={multipleModelConfigs.length >= 4}
+                    >
+                      <Plus className='mr-1 w-3.5 h-3.5' />
+                      {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
+                    </Button>
+                    <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />
+                  </>
+                )
+                : null
+            }
+            {mode === 'chat' && (
+              <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className='text-primary-600 text-[13px] font-semibold'>{t('common.operation.refresh')}</span>
+              </Button>
+            )}
+          </div>
         </div>
         <PromptValuePanel
           appType={mode as AppType}
-          onSend={sendTextCompletion}
+          onSend={handleSendTextCompletion}
           inputs={inputs}
           visionConfig={{
             ...visionConfig,
@@ -641,81 +754,96 @@ const Debug: FC<IDebug> = ({
           onVisionFilesChange={setCompletionFiles}
         />
       </div>
-      <div className="flex flex-col grow">
-        {/* Chat */}
-        {mode === AppType.chat && (
-          <div className="mt-[34px] h-full flex flex-col">
-            <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative mt-1.5 grow h-[200px] overflow-hidden')}>
-              <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
-                <Chat
-                  chatList={chatList}
-                  query={userQuery}
-                  onQueryChange={setUserQuery}
-                  onSend={onSend}
-                  checkCanSend={checkCanSend}
-                  feedbackDisabled
-                  useCurrentUserAvatar
-                  isResponsing={isResponsing}
-                  canStopResponsing={!!messageTaskId}
-                  abortResponsing={async () => {
-                    await stopChatMessageResponding(appId, messageTaskId)
-                    setHasStopResponded(true)
-                    setResponsingFalse()
-                  }}
-                  isShowSuggestion={doShowSuggestion}
-                  suggestionList={suggestQuestions}
-                  isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
-                  isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
-                  isShowCitation={citationConfig.enabled}
-                  isShowCitationHitInfo
-                  isShowPromptLog
-                  visionConfig={{
-                    ...visionConfig,
-                    image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
-                  }}
-                  supportAnnotation
-                  appId={appId}
-                  onChatListChange={setChatList}
-                  allToolIcons={allToolIcons}
-                />
-              </div>
-            </div>
+      {
+        debugWithMultipleModel && (
+          <div className='grow mt-3 overflow-hidden'>
+            <DebugWithMultipleModel
+              multipleModelConfigs={multipleModelConfigs}
+              onMultipleModelConfigsChange={onMultipleModelConfigsChange}
+              onDebugWithMultipleModelChange={handleChangeToSingleModel}
+            />
           </div>
-        )}
-        {/* Text  Generation */}
-        {mode === AppType.completion && (
-          <div className="mt-6">
-            <GroupName name={t('appDebug.result')} />
-            {(completionRes || isResponsing) && (
-              <TextGeneration
-                className="mt-2"
-                content={completionRes}
-                isLoading={!completionRes && isResponsing}
-                isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
-                isResponsing={isResponsing}
-                isInstalledApp={false}
-                messageId={messageId}
-                isError={false}
-                onRetry={() => { }}
-                supportAnnotation
-                appId={appId}
-                varList={varList}
+        )
+      }
+      {
+        !debugWithMultipleModel && (
+          <div className="flex flex-col grow">
+            {/* Chat */}
+            {mode === AppType.chat && (
+              <div className="mt-[34px] h-full flex flex-col">
+                <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative mt-1.5 grow h-[200px] overflow-hidden')}>
+                  <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
+                    <Chat
+                      chatList={chatList}
+                      query={userQuery}
+                      onQueryChange={setUserQuery}
+                      onSend={onSend}
+                      checkCanSend={checkCanSend}
+                      feedbackDisabled
+                      useCurrentUserAvatar
+                      isResponsing={isResponsing}
+                      canStopResponsing={!!messageTaskId}
+                      abortResponsing={async () => {
+                        await stopChatMessageResponding(appId, messageTaskId)
+                        setHasStopResponded(true)
+                        setResponsingFalse()
+                      }}
+                      isShowSuggestion={doShowSuggestion}
+                      suggestionList={suggestQuestions}
+                      isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
+                      isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
+                      isShowCitation={citationConfig.enabled}
+                      isShowCitationHitInfo
+                      isShowPromptLog
+                      visionConfig={{
+                        ...visionConfig,
+                        image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+                      }}
+                      supportAnnotation
+                      appId={appId}
+                      onChatListChange={setChatList}
+                      allToolIcons={allToolIcons}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Text  Generation */}
+            {mode === AppType.completion && (
+              <div className="mt-6">
+                <GroupName name={t('appDebug.result')} />
+                {(completionRes || isResponsing) && (
+                  <TextGeneration
+                    className="mt-2"
+                    content={completionRes}
+                    isLoading={!completionRes && isResponsing}
+                    isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
+                    isResponsing={isResponsing}
+                    isInstalledApp={false}
+                    messageId={messageId}
+                    isError={false}
+                    onRetry={() => { }}
+                    supportAnnotation
+                    appId={appId}
+                    varList={varList}
+                  />
+                )}
+              </div>
+            )}
+            {isShowFormattingChangeConfirm && (
+              <FormattingChanged
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+              />
+            )}
+            {isShowCannotQueryDataset && (
+              <CannotQueryDataset
+                onConfirm={() => setShowCannotQueryDataset(false)}
               />
             )}
           </div>
-        )}
-        {isShowFormattingChangeConfirm && (
-          <FormattingChanged
-            onConfirm={handleConfirm}
-            onCancel={handleCancel}
-          />
-        )}
-        {isShowCannotQueryDataset && (
-          <CannotQueryDataset
-            onConfirm={() => setShowCannotQueryDataset(false)}
-          />
-        )}
-      </div>
+        )
+      }
       {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )

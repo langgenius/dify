@@ -23,6 +23,7 @@
 - `text_embedding` 文本 Embedding 模型
 - `rerank` Rerank 模型
 - `speech2text` 语音转文字
+- `tts` 文字转语音
 - `moderation` 审查
 
 `Xinference`支持`LLM`和`Text Embedding`和Rerank，那么我们开始编写`xinference.yaml`。

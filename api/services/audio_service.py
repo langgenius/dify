@@ -56,7 +56,6 @@ class AudioService:
             raise ProviderNotSupportTextToSpeechServiceError()
 
         try:
-            audio_response = model_instance.invoke_tts(content_text=text.strip(), user=end_user, streaming=streaming)
-            return audio_response
+            return model_instance.invoke_tts(content_text=text.strip(), user=end_user, streaming=streaming)
         except Exception as e:
             raise e

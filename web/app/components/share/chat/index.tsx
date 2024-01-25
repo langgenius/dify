@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
@@ -58,7 +58,6 @@ export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isSupportPlugin?: boolean
-  isUniversalChat?: boolean
 }
 
 const Main: FC<IMainProps> = ({
@@ -66,6 +65,7 @@ const Main: FC<IMainProps> = ({
   installedAppInfo,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
@@ -124,7 +124,8 @@ const Main: FC<IMainProps> = ({
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const [hasMore, setHasMore] = useState<boolean>(true)
   const [hasPinnedMore, setHasPinnedMore] = useState<boolean>(true)
-  const onMoreLoaded = ({ data: conversations, has_more }: any) => {
+  const [isShowSuggestion, setIsShowSuggestion] = useState(false)
+  const onMoreLoaded = useCallback(({ data: conversations, has_more }: any) => {
     setHasMore(has_more)
     if (isClearConversationList) {
       setConversationList(conversations)
@@ -133,8 +134,8 @@ const Main: FC<IMainProps> = ({
     else {
       setConversationList([...conversationList, ...conversations])
     }
-  }
-  const onPinnedMoreLoaded = ({ data: conversations, has_more }: any) => {
+  }, [conversationList, setConversationList, isClearConversationList, clearConversationListFalse])
+  const onPinnedMoreLoaded = useCallback(({ data: conversations, has_more }: any) => {
     setHasPinnedMore(has_more)
     if (isClearPinnedConversationList) {
       setPinnedConversationList(conversations)
@@ -143,9 +144,9 @@ const Main: FC<IMainProps> = ({
     else {
       setPinnedConversationList([...pinnedConversationList, ...conversations])
     }
-  }
+  }, [pinnedConversationList, setPinnedConversationList, isClearPinnedConversationList, clearPinnedConversationListFalse])
   const [controlUpdateConversationList, setControlUpdateConversationList] = useState(0)
-  const noticeUpdateList = () => {
+  const noticeUpdateList = useCallback(() => {
     setHasMore(true)
     clearConversationListTrue()
 
@@ -153,25 +154,25 @@ const Main: FC<IMainProps> = ({
     clearPinnedConversationListTrue()
 
     setControlUpdateConversationList(Date.now())
-  }
-  const handlePin = async (id: string) => {
+  }, [clearConversationListTrue, clearPinnedConversationListTrue])
+  const handlePin = useCallback(async (id: string) => {
     await pinConversation(isInstalledApp, installedAppInfo?.id, id)
     notify({ type: 'success', message: t('common.api.success') })
     noticeUpdateList()
-  }
+  }, [isInstalledApp, installedAppInfo?.id, t, notify, noticeUpdateList])
 
-  const handleUnpin = async (id: string) => {
+  const handleUnpin = useCallback(async (id: string) => {
     await unpinConversation(isInstalledApp, installedAppInfo?.id, id)
     notify({ type: 'success', message: t('common.api.success') })
     noticeUpdateList()
-  }
+  }, [isInstalledApp, installedAppInfo?.id, t, notify, noticeUpdateList])
   const [isShowConfirm, { setTrue: showConfirm, setFalse: hideConfirm }] = useBoolean(false)
   const [toDeleteConversationId, setToDeleteConversationId] = useState('')
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     setToDeleteConversationId(id)
     hideSidebar() // mobile
     showConfirm()
-  }
+  }, [hideSidebar, showConfirm])
 
   const didDelete = async () => {
     await delConversation(isInstalledApp, installedAppInfo?.id, toDeleteConversationId)
@@ -187,17 +188,51 @@ const Main: FC<IMainProps> = ({
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SpeechToTextConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
   const [citationConfig, setCitationConfig] = useState<CitationConfig | null>(null)
-
+  const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
+  const chatListDomRef = useRef<HTMLDivElement>(null)
+  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
   const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
-  const handleStartChat = (inputs: Record<string, any>) => {
+  const conversationIntroduction = currConversationInfo?.introduction || ''
+  const createNewChat = useCallback(async () => {
+    // if new chat is already exist, do not create new chat
+    abortController?.abort()
+    setResponsingFalse()
+    if (conversationList.some(item => item.id === '-1'))
+      return
+
+    setConversationList(produce(conversationList, (draft) => {
+      draft.unshift({
+        id: '-1',
+        name: t('share.chat.newChatDefaultName'),
+        inputs: newConversationInputs,
+        introduction: conversationIntroduction,
+      })
+    }))
+  }, [
+    abortController,
+    setResponsingFalse,
+    setConversationList,
+    conversationList,
+    newConversationInputs,
+    conversationIntroduction,
+    t,
+  ])
+  const handleStartChat = useCallback((inputs: Record<string, any>) => {
     createNewChat()
     setConversationIdChangeBecauseOfNew(true)
     setCurrInputs(inputs)
     setChatStarted()
     // parse variables in introduction
     setChatList(generateNewChatListWithOpenstatement('', inputs))
-  }
+  }, [
+    createNewChat,
+    setConversationIdChangeBecauseOfNew,
+    setCurrInputs,
+    setChatStarted,
+    setChatList,
+  ])
   const hasSetInputs = (() => {
     if (!isNewConversation)
       return true
@@ -206,7 +241,6 @@ const Main: FC<IMainProps> = ({
   })()
 
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
-  const conversationIntroduction = currConversationInfo?.introduction || ''
   const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
 
   // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
@@ -294,7 +328,18 @@ const Main: FC<IMainProps> = ({
   }
   useEffect(handleConversationSwitch, [currConversationId, inited])
 
-  const handleConversationIdChange = (id: string) => {
+  /*
+  * chat info. chat is under conversation.
+  */
+  useEffect(() => {
+    // scroll to bottom
+    if (chatListDomRef.current)
+      chatListDomRef.current.scrollTop = chatListDomRef.current.scrollHeight
+  }, [chatList, currConversationId])
+  // user can not edit inputs if user had send message
+  const canEditInpus = !chatList.some(item => item.isAnswer === false) && isNewConversation
+
+  const handleConversationIdChange = useCallback((id: string) => {
     if (id === '-1') {
       createNewChat()
       setConversationIdChangeBecauseOfNew(true)
@@ -306,36 +351,14 @@ const Main: FC<IMainProps> = ({
     setCurrConversationId(id, appId)
     setIsShowSuggestion(false)
     hideSidebar()
-  }
-
-  /*
-  * chat info. chat is under conversation.
-  */
-  const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
-  const chatListDomRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    // scroll to bottom
-    if (chatListDomRef.current)
-      chatListDomRef.current.scrollTop = chatListDomRef.current.scrollHeight
-  }, [chatList, currConversationId])
-  // user can not edit inputs if user had send message
-  const canEditInpus = !chatList.some(item => item.isAnswer === false) && isNewConversation
-  const createNewChat = async () => {
-    // if new chat is already exist, do not create new chat
-    abortController?.abort()
-    setResponsingFalse()
-    if (conversationList.some(item => item.id === '-1'))
-      return
-
-    setConversationList(produce(conversationList, (draft) => {
-      draft.unshift({
-        id: '-1',
-        name: t('share.chat.newChatDefaultName'),
-        inputs: newConversationInputs,
-        introduction: conversationIntroduction,
-      })
-    }))
-  }
+  }, [
+    appId,
+    createNewChat,
+    hideSidebar,
+    setCurrConversationId,
+    setIsShowSuggestion,
+    setConversationIdChangeBecauseOfNew,
+  ])
 
   // sometime introduction is not applied to state
   const generateNewChatListWithOpenstatement = (introduction?: string, inputs?: Record<string, any> | null) => {
@@ -447,14 +470,11 @@ const Main: FC<IMainProps> = ({
     })()
   }, [])
 
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const { notify } = useContext(ToastContext)
-  const logError = (message: string) => {
+  const logError = useCallback((message: string) => {
     notify({ type: 'error', message })
-  }
+  }, [notify])
 
-  const checkCanSend = () => {
+  const checkCanSend = useCallback(() => {
     if (currConversationId !== '-1')
       return true
 
@@ -481,10 +501,9 @@ const Main: FC<IMainProps> = ({
       return false
     }
     return !hasEmptyInput
-  }
+  }, [currConversationId, currInputs, promptConfig, t, logError])
 
   const [controlFocus, setControlFocus] = useState(0)
-  const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [openingSuggestedQuestions, setOpeningSuggestedQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
@@ -661,8 +680,6 @@ const Main: FC<IMainProps> = ({
         })
       },
       onThought(thought) {
-        // console.log(`${thought.id};${thought.thought};${thought.tool};${thought.tool_input}`)
-
         isAgentMode = true
         const response = responseItem as any
         if (thought.message_id && !hasSetResponseId) {
@@ -758,7 +775,7 @@ const Main: FC<IMainProps> = ({
     }, isInstalledApp, installedAppInfo?.id)
   }
 
-  const handleFeedback = async (messageId: string, feedback: Feedbacktype) => {
+  const handleFeedback = useCallback(async (messageId: string, feedback: Feedbacktype) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
     const newChatList = chatList.map((item) => {
       if (item.id === messageId) {
@@ -771,7 +788,19 @@ const Main: FC<IMainProps> = ({
     })
     setChatList(newChatList)
     notify({ type: 'success', message: t('common.api.success') })
-  }
+  }, [isInstalledApp, installedAppInfo?.id, chatList, t, notify, setChatList])
+
+  const handleListChanged = useCallback((list: ConversationItem[]) => {
+    setConversationList(list)
+    setControlChatUpdateAllConversation(Date.now())
+  }, [setConversationList, setControlChatUpdateAllConversation])
+  const handlePinnedListChanged = useCallback((list: ConversationItem[]) => {
+    setPinnedConversationList(list)
+    setControlChatUpdateAllConversation(Date.now())
+  }, [setPinnedConversationList, setControlChatUpdateAllConversation])
+  const handleStartChatOnSidebar = useCallback(() => {
+    handleConversationIdChange('-1')
+  }, [handleConversationIdChange])
 
   const renderSidebar = () => {
     if (!appId || !siteInfo || !promptConfig)
@@ -779,16 +808,10 @@ const Main: FC<IMainProps> = ({
     return (
       <Sidebar
         list={conversationList}
-        onListChanged={(list) => {
-          setConversationList(list)
-          setControlChatUpdateAllConversation(Date.now())
-        }}
+        onListChanged={handleListChanged}
         isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
-        onPinnedListChanged={(list) => {
-          setPinnedConversationList(list)
-          setControlChatUpdateAllConversation(Date.now())
-        }}
+        onPinnedListChanged={handlePinnedListChanged}
         isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}
@@ -804,10 +827,16 @@ const Main: FC<IMainProps> = ({
         onUnpin={handleUnpin}
         controlUpdateList={controlUpdateConversationList}
         onDelete={handleDelete}
-        onStartChat={() => handleConversationIdChange('-1')}
+        onStartChat={handleStartChatOnSidebar}
       />
     )
   }
+
+  const handleAbortResponsing = useCallback(async () => {
+    await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
+    setHasStopResponded(true)
+    setResponsingFalse()
+  }, [appId, messageTaskId, isInstalledApp, installedAppInfo?.id])
 
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
@@ -827,7 +856,7 @@ const Main: FC<IMainProps> = ({
           icon_background={siteInfo.icon_background}
           isMobile={isMobile}
           onShowSideBar={showSidebar}
-          onCreateNewChat={() => handleConversationIdChange('-1')}
+          onCreateNewChat={handleStartChatOnSidebar}
         />
       )}
 
@@ -887,11 +916,7 @@ const Main: FC<IMainProps> = ({
                     onFeedback={handleFeedback}
                     isResponsing={isResponsing}
                     canStopResponsing={!!messageTaskId && isResponsingConIsCurrCon}
-                    abortResponsing={async () => {
-                      await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
-                      setHasStopResponded(true)
-                      setResponsingFalse()
-                    }}
+                    abortResponsing={handleAbortResponsing}
                     checkCanSend={checkCanSend}
                     controlFocus={controlFocus}
                     isShowSuggestion={doShowSuggestion}
