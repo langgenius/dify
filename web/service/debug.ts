@@ -45,15 +45,23 @@ export const sendCompletionMessage = async (appId: string, body: Record<string, 
   }, { onData, onCompleted, onError, onMessageReplace })
 }
 
-export const fetchSuggestedQuestions = (appId: string, messageId: string) => {
-  return get(`apps/${appId}/chat-messages/${messageId}/suggested-questions`)
+export const fetchSuggestedQuestions = (appId: string, messageId: string, getAbortController?: any) => {
+  return get(
+    `apps/${appId}/chat-messages/${messageId}/suggested-questions`,
+    {},
+    {
+      getAbortController,
+    },
+  )
 }
 
-export const fetchConvesationMessages = (appId: string, conversation_id: string) => {
+export const fetchConvesationMessages = (appId: string, conversation_id: string, getAbortController?: any) => {
   return get(`apps/${appId}/chat-messages`, {
     params: {
       conversation_id,
     },
+  }, {
+    getAbortController,
   })
 }
 

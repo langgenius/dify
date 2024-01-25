@@ -49,6 +49,9 @@ export type IGenerationItemProps = {
   isShowTextToSpeech?: boolean
   appId?: string
   varList?: { label: string; value: string | number | object }[]
+  innerClassName?: string
+  contentClassName?: string
+  footerClassName?: string
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -95,6 +98,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   isShowTextToSpeech,
   appId,
   varList,
+  innerClassName,
+  contentClassName,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -177,7 +182,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
     const data = await fetchTextGenerationMessge({
-      appId: params.appId,
+      appId: params.appId as string,
       messageId: messageId!,
     })
     setPromptLog(data.message as any || [])
@@ -249,7 +254,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         )
         : (
           <div
-            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4')}
+            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4', innerClassName)}
             style={mainStyle}
           >
             {(isTop && taskId) && (
@@ -258,7 +263,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {taskId}
               </div>)
             }
-            <div className='flex'>
+            <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
                 {isError
                   ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>

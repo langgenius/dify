@@ -346,6 +346,10 @@ const translation = {
     score_thresholdTip: '用于设置文本片段筛选的相似度阈值。',
     retrieveChangeTip: '修改索引模式和检索模式可能会影响与该知识库关联的应用程序。',
   },
+  debugAsSingleModel: '单一模型进行调试',
+  debugAsMultipleModel: '多个模型进行调试',
+  duplicateModel: '复制模型',
+  publishAs: '发布为',
   assistantType: {
     name: '助手类型',
     chatAssistant: {
