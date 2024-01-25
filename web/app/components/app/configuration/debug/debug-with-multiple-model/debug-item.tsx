@@ -98,7 +98,7 @@ const DebugItem: FC<DebugItemProps> = ({
               ? [
                 {
                   value: 'remove',
-                  text: t('common.operation.remove'),
+                  text: t('common.operation.remove') as string,
                 },
               ]
               : undefined

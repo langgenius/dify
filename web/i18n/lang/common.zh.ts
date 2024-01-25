@@ -309,6 +309,8 @@ const translation = {
     deprecated: '已弃用',
     confirmDelete: '确认删除?',
     quotaTip: '剩余免费额度',
+    loadPresets: '加载预设',
+    parameters: '参数',
   },
   dataSource: {
     add: '添加数据源',
