@@ -7,7 +7,7 @@ LABEL maintainer="takatost@gmail.com"
 FROM base as packages
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
+    && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev
 
 COPY requirements.txt /requirements.txt
 
