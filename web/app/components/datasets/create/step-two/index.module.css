@@ -18,7 +18,7 @@
 }
 
 .form .label {
-  @apply pt-6 pb-2;
+  @apply pt-6 pb-2 flex items-center;
   font-weight: 500;
   font-size: 16px;
   line-height: 24px;
