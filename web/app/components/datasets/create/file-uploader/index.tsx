@@ -72,6 +72,8 @@ const FileUploader = ({
 
       return item
     })
+    res = res.map(item => item.toLowerCase())
+    res = res.filter((item, index, self) => self.indexOf(item) === index)
 
     return res.map(item => item.toUpperCase()).join(language !== LanguagesSupportedUnderscore[1] ? ', ' : '、 ')
   })()
