@@ -1,10 +1,11 @@
-model: gpt-4-vision-preview
+model: gpt-4-0125-preview
 label:
-  zh_Hans: gpt-4-vision-preview
-  en_US: gpt-4-vision-preview
+  zh_Hans: gpt-4-0125-preview
+  en_US: gpt-4-0125-preview
 model_type: llm
 features:
-  - vision
+  - multi-tool-call
+  - agent-thought
 model_properties:
   mode: chat
   context_size: 128000
