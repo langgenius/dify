@@ -10,6 +10,7 @@ import produce from 'immer'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import ConfirmAddVar from './confirm-add-var'
+import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
@@ -25,7 +26,6 @@ import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-
 type Props = {
   type: PromptRole
   isChatMode: boolean
@@ -130,7 +130,8 @@ const AdvancedPromptInput: FC<Props> = ({
     }
   }
 
-  const editorHeight = isChatMode ? 'h-[200px]' : 'h-[508px]'
+  const minHeight = 102
+  const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
       className='flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl'
@@ -139,7 +140,7 @@ const AdvancedPromptInput: FC<Props> = ({
       }}
     >
       <div className='flex items-center pr-2' >
-        <AlertCircle className='mr-1 w-4 h-4 text-[#F79009]'/>
+        <AlertCircle className='mr-1 w-4 h-4 text-[#F79009]' />
         <div className='leading-[18px] text-[13px] font-medium text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
       </div>
       <div
@@ -190,9 +191,19 @@ const AdvancedPromptInput: FC<Props> = ({
             </div>
           )}
 
-        <div className={cn(editorHeight, 'px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700')}>
+        <PromptEditorHeightResizeWrap
+          className='px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700'
+          height={editorHeight}
+          minHeight={minHeight}
+          onHeightChange={setEditorHeight}
+          footer={(
+            <div className='pl-4 pb-2 flex'>
+              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
+            </div>
+          )}
+        >
           <PromptEditor
-            className={editorHeight}
+            className='min-h-[84px]'
             value={value}
             contextBlock={{
               show: true,
@@ -233,10 +244,8 @@ const AdvancedPromptInput: FC<Props> = ({
             onChange={handlePromptChange}
             onBlur={handleBlur}
           />
-        </div>
-        <div className='pl-4 pb-2 flex'>
-          <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
-        </div>
+        </PromptEditorHeightResizeWrap>
+
       </div>
 
       {isShowConfirmAddVar && (
