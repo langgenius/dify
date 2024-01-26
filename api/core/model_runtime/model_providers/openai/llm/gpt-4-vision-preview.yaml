@@ -21,7 +21,7 @@ parameter_rules:
     use_template: max_tokens
     default: 512
     min: 1
-    max: 128000
+    max: 4096
   - name: seed
     label:
       zh_Hans: 种子

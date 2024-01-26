@@ -1,7 +1,7 @@
-model: gpt-4-1106-preview
+model: gpt-4-turbo-preview
 label:
-  zh_Hans: gpt-4-1106-preview
-  en_US: gpt-4-1106-preview
+  zh_Hans: gpt-4-turbo-preview
+  en_US: gpt-4-turbo-preview
 model_type: llm
 features:
   - multi-tool-call
