@@ -398,7 +398,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 finish_reason = payload.get("completion_reason")
  
             elif model_prefix == "anthropic":
-                content_delta = payload
+                content_delta = payload.get("completion")
                 finish_reason = payload.get("stop_reason")
 
             elif model_prefix == "cohere":
@@ -414,7 +414,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content = content_delta.get("completion") if content_delta else '',
+                content = content_delta if content_delta else '',
             )
             index += 1
            
