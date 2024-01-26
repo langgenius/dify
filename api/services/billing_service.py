@@ -74,4 +74,4 @@ class BillingService:
         ).first()
 
         if join.role not in ['owner', 'admin']:
-            raise ValueError('Only tenant owner or admin can perform this action')
+            raise ValueError('Only team owner or team admin can perform this action')
