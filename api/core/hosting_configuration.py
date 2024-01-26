@@ -120,12 +120,14 @@ class HostingConfiguration:
             paid_quota = PaidHostingQuota(
                 restrict_models=[
                     RestrictModel(model="gpt-4", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-4-turbo-preview", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-32k", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-1106-preview", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-16k-0613", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-1106", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-4-0125-preview", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-0613", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-instruct", model_type=ModelType.LLM),
                     RestrictModel(model="text-davinci-003", model_type=ModelType.LLM),
