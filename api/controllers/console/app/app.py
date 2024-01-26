@@ -88,7 +88,7 @@ class AppListApi(Resource):
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         try:
@@ -237,7 +237,7 @@ class AppApi(Resource):
         """Delete app"""
         app_id = str(app_id)
 
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         app = _get_app(app_id, current_user.current_tenant_id)
