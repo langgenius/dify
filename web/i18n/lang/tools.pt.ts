@@ -86,7 +86,7 @@ const translation = {
     infoAndSetting: 'Informações e Configurações',
   },
   noCustomTool: {
-    title: 'Nenhuma ferramenta personalizada',
+    title: 'Nenhuma ferramenta personalizada!',
     content: 'Você não possui ferramentas personalizadas. ',
     createTool: 'Criar Ferramenta',
   },
