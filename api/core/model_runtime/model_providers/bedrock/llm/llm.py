@@ -250,9 +250,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             invoke = runtime_client.invoke_model
 
         try:
+            body_jsonstr=json.dumps(payload)
             response = invoke(
-                body=json.dumps(payload),
                 modelId=model,
+                contentType="application/json",
+                accept= "*/*",
+                body=body_jsonstr
             )
         except ClientError as ex:
             error_code = ex.response['Error']['Code']
@@ -385,7 +388,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             if not chunk:
                 exception_name = next(iter(event))
                 full_ex_msg = f"{exception_name}: {event[exception_name]['message']}"
-
                 raise self._map_client_to_invoke_error(exception_name, full_ex_msg)
 
             payload = json.loads(chunk.get('bytes').decode())
@@ -396,7 +398,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 finish_reason = payload.get("completion_reason")
  
             elif model_prefix == "anthropic":
-                content_delta = payload
+                content_delta = payload.get("completion")
                 finish_reason = payload.get("stop_reason")
 
             elif model_prefix == "cohere":
@@ -410,12 +412,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             else:
                 raise ValueError(f"Got unknown model prefix {model_prefix} when handling stream response")
 
-            index += 1
-           
+            # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
                 content = content_delta if content_delta else '',
             )
-  
+            index += 1
+           
             if not finish_reason:
                 yield LLMResultChunk(
                     model=model,
