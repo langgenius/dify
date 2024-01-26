@@ -673,7 +673,7 @@ const Debug: FC<IDebug> = ({
   }
 
   const handleVisionConfigInMultipleModel = () => {
-    if (debugWithMultipleModel && !visionConfig.enabled) {
+    if (debugWithMultipleModel && mode) {
       const supportedVision = multipleModelConfigs.some((modelConfig) => {
         const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === modelConfig.provider)
         const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model)
@@ -698,7 +698,7 @@ const Debug: FC<IDebug> = ({
 
   useEffect(() => {
     handleVisionConfigInMultipleModel()
-  }, [multipleModelConfigs])
+  }, [multipleModelConfigs, mode])
   const allToolIcons = (() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
