@@ -101,7 +101,10 @@ class Account(UserMixin, db.Model):
         return db.session.query(ai).filter(
             ai.account_id == self.id
         ).all()
-
+    # check current_user.current_tenant.current_role in ['admin', 'owner']
+    @property
+    def is_admin_or_owner(self):
+        return self._current_tenant.current_role in ['admin', 'owner']
 
 class Tenant(db.Model):
     __tablename__ = 'tenants'
