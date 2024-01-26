@@ -86,7 +86,7 @@ const translation = {
     infoAndSetting: 'Info & Settings',
   },
   noCustomTool: {
-    title: 'No custom tools',
+    title: 'No custom tools!',
     content: 'Add and manage your custom tools here for building AI apps.',
     createTool: 'Create Tool',
   },

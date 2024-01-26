@@ -61,9 +61,7 @@ class BaseApiKeyListResource(Resource):
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id,
                       self.resource_model)
-
-        # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         current_key_count = db.session.query(ApiToken). \
@@ -102,7 +100,7 @@ class BaseApiKeyResource(Resource):
                       self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         key = db.session.query(ApiToken). \

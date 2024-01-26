@@ -123,7 +123,7 @@ class DatasetDocumentSegmentApi(Resource):
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         try:
@@ -219,7 +219,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         if not document:
             raise NotFound('Document not found.')
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == 'high_quality':
@@ -298,7 +298,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -342,7 +342,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)

@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Icon3Dots } from '../../base/icons/src/public/other'
 import { Tools } from '@/app/components/base/icons/src/public/header-nav/tools'
-
 type Props = {
   onCreateTool: () => void
 }
@@ -20,7 +20,7 @@ const NoCustomTool: FC<Props> = ({
       </div>
       <div className='mt-2'>
         <div className='leading-5 text-sm font-medium text-gray-500'>
-          {t('tools.noCustomTool.title')}
+          {t('tools.noCustomTool.title')}<Icon3Dots className='inline relative -top-3 -left-1.5' />
         </div>
         <div className='mt-1 leading-[18px] text-xs font-normal text-gray-500'>
           {t('tools.noCustomTool.content')}

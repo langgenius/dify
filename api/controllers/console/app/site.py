@@ -42,7 +42,7 @@ class AppSite(Resource):
         app_model = _get_app(app_id)
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         site = db.session.query(Site). \
@@ -88,7 +88,7 @@ class AppSiteAccessTokenReset(Resource):
         app_model = _get_app(app_id)
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         site = db.session.query(Site).filter(Site.app_id == app_model.id).first()

@@ -7,7 +7,9 @@ import { NOTICE_I18N } from '@/utils/language'
 const MaintenanceNotice = () => {
   const { locale } = useContext(I18n)
   const [showNotice, setShowNotice] = useState(localStorage.getItem('hide-maintenance-notice') !== '1')
-
+  const handleJumpNotice = () => {
+    window.open(NOTICE_I18N.href, '_blank')
+  }
   const handleCloseNotice = () => {
     localStorage.setItem('hide-maintenance-notice', '1')
     setShowNotice(false)
@@ -22,8 +24,8 @@ const MaintenanceNotice = () => {
   return (
     <div className='shrink-0 flex items-center px-4 h-[38px] bg-[#FFFAEB] border-b border-[0.5px] border-b-[#FEF0C7] z-20'>
       <div className='shrink-0 flex items-center mr-2 px-2 h-[22px] bg-[#F79009] text-white text-[11px] font-medium rounded-xl'>{titleByLocale[locale]}</div>
-      <div className='grow text-xs font-medium text-gray-700'>{descByLocale[locale]}</div>
-      <X className='shrink-0 w-4 h-4 text-gray-500 cursor-pointer' onClick={handleCloseNotice} />
+      <div className='grow text-xs font-medium text-gray-700 cursor-pointer' onClick={handleJumpNotice}>{descByLocale[locale]}</div>
+      <X className='shrink-0 w-4 h-4 text-gray-500 cursor-pointer' onClick={handleCloseNotice}/>
     </div>
   )
 }
