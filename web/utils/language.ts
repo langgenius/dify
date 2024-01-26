@@ -102,4 +102,5 @@ export const NOTICE_I18N = {
     'ja-JP': 'Our system will be unavailable from 19:00 to 24:00 UTC on August 28 for an upgrade. For questions, kindly contact our support team (support@dify.ai). We value your patience.',
     'ko-KR': 'Our system will be unavailable from 19:00 to 24:00 UTC on August 28 for an upgrade. For questions, kindly contact our support team (support@dify.ai). We value your patience.',
   },
+  href: '#',
 }
