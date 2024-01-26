@@ -224,7 +224,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             entity.model_properties[ModelPropertyKey.MODE] = LLMMode.COMPLETION.value
         else:
             raise ValueError(f"Unknown completion type {credentials['completion_type']}")
-    
+
         return entity
 
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
@@ -343,32 +343,44 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 )
             )
 
-        for chunk in response.iter_lines(decode_unicode=True, delimiter='\n\n'):
+        # delimiter for stream response, need unicode_escape
+        import codecs
+        delimiter = credentials.get("stream_mode_delimiter", "\n\n")
+        delimiter = codecs.decode(delimiter, "unicode_escape")
+
+        for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             if chunk:
                 decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
-
                 chunk_json = None
                 try:
                     chunk_json = json.loads(decoded_chunk)
                 # stream ended
                 except json.JSONDecodeError as e:
+                    logger.error(f"decoded_chunk error,delimiter={delimiter},decoded_chunk={decoded_chunk}")
                     yield create_final_llm_result_chunk(
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),
                         finish_reason="Non-JSON encountered."
                     )
                     break
-
                 if not chunk_json or len(chunk_json['choices']) == 0:
                     continue
 
                 choice = chunk_json['choices'][0]
+                finish_reason = chunk_json['choices'][0].get('finish_reason')
                 chunk_index += 1
 
                 if 'delta' in choice:
                     delta = choice['delta']
                     if delta.get('content') is None or delta.get('content') == '':
-                        continue
+                        if finish_reason is not None:
+                            yield create_final_llm_result_chunk(
+                                index=chunk_index,
+                                message=AssistantPromptMessage(content=choice.get('text', '')),
+                                finish_reason=finish_reason
+                            )
+                        else:
+                            continue
 
                     assistant_message_tool_calls = delta.get('tool_calls', None)
                     # assistant_message_function_call = delta.delta.function_call
@@ -387,24 +399,22 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
                     full_assistant_content += delta.get('content', '')
                 elif 'text' in choice:
-                    if choice.get('text') is None or choice.get('text') == '':
+                    choice_text = choice.get('text', '')
+                    if choice_text == '':
                         continue
 
                     # transform assistant message to prompt message
-                    assistant_prompt_message = AssistantPromptMessage(
-                        content=choice.get('text', '')
-                    )
-
-                    full_assistant_content += choice.get('text', '')
+                    assistant_prompt_message = AssistantPromptMessage(content=choice_text)
+                    full_assistant_content += choice_text
                 else:
                     continue
 
                 # check payload indicator for completion
-                if chunk_json['choices'][0].get('finish_reason') is not None:
+                if finish_reason is not None:
                     yield create_final_llm_result_chunk(
                         index=chunk_index,
                         message=assistant_prompt_message,
-                        finish_reason=chunk_json['choices'][0]['finish_reason']
+                        finish_reason=finish_reason
                     )
                 else:
                     yield LLMResultChunk(
