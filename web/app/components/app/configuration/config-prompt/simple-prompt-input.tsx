@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
@@ -8,6 +8,7 @@ import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import s from './style.module.css'
+import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import { PromptMode, type PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
@@ -125,6 +126,8 @@ const Prompt: FC<ISimplePromptInput> = ({
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
   }
+  const minHeight = 228
+  const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
     <div className={cn(!readonly ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
@@ -161,7 +164,12 @@ const Prompt: FC<ISimplePromptInput> = ({
             )}
           </div>
         </div>
-        <div className='px-4 py-2 min-h-[228px] max-h-[156px] overflow-y-auto bg-white rounded-xl text-sm text-gray-700'>
+        <PromptEditorHeightResizeWrap
+          className='px-4 py-2 min-h-[228px] bg-white rounded-xl text-sm text-gray-700'
+          height={editorHeight}
+          minHeight={minHeight}
+          onHeightChange={setEditorHeight}
+        >
           <PromptEditor
             className='min-h-[210px]'
             value={promptTemplate}
@@ -208,7 +216,7 @@ const Prompt: FC<ISimplePromptInput> = ({
               handleChange(promptTemplate, getVars(promptTemplate))
             }}
           />
-        </div>
+        </PromptEditorHeightResizeWrap>
       </div>
 
       {isShowConfirmAddVar && (
