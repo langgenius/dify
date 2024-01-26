@@ -3,7 +3,7 @@ from typing import Generator, Iterator, List, Optional, Union, cast
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, UserPromptMessage)
+                                                          SystemPromptMessage, UserPromptMessage, ToolPromptMessage)
 from core.model_runtime.entities.model_entities import (AIModelEntity, FetchFrom, ModelPropertyKey, ModelType,
                                                         ParameterRule, ParameterType, ModelFeature)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
@@ -229,6 +229,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
+        elif isinstance(message, ToolPromptMessage):
+            message = cast(ToolPromptMessage, message)
+            message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content}
         else:
             raise ValueError(f"Unknown message type {type(message)}")
         
@@ -324,6 +327,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             
             extra_model_kwargs can be got by `XinferenceHelper.get_xinference_extra_parameter`
         """
+        if 'server_url' not in credentials:
+            raise CredentialsValidateFailedError('server_url is required in credentials')
+        
+        if credentials['server_url'].endswith('/'):
+            credentials['server_url'] = credentials['server_url'][:-1]
+
         client = OpenAI(
             base_url=f'{credentials["server_url"]}/v1',
             api_key='abc',

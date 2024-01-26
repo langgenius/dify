@@ -1,6 +1,7 @@
 from threading import Lock
 from time import time
 from typing import List
+from os import path
 
 from requests import get
 from requests.adapters import HTTPAdapter
@@ -54,7 +55,7 @@ class XinferenceHelper:
             get xinference model extra parameter like model_format and model_handle_type
         """
 
-        url = f'{server_url}/v1/models/{model_uid}'
+        url = path.join(server_url, 'v1/models', model_uid)
 
         # this methid is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
         session = Session()

@@ -2,6 +2,10 @@ model: glm-3-turbo
 label:
   en_US: glm-3-turbo
 model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
 parameter_rules:
