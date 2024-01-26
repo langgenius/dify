@@ -205,7 +205,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3">{item.server_url ? new URL(item.server_url).pathname : ''}</td>
                           <td className="p-2 pl-3 w-[62px]">
                             <Button
-                              className='!h-6 !px-2 text-xs font-medium text-gray-700'
+                              className='!h-6 !px-2 text-xs font-medium text-gray-700 whitespace-nowrap'
                               onClick={() => {
                                 setCurrTool(item)
                                 setIsShowTestApi(true)

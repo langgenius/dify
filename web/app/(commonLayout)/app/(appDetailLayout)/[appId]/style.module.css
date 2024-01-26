@@ -1,5 +1,6 @@
 .app {
-    height: calc(100vh - 56px);
+    flex-grow: 1;
+    height: 0;
     border-radius: 16px 16px 0px 0px;
     box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.05), 0px 0px 2px -1px rgba(0, 0, 0, 0.03);
 }

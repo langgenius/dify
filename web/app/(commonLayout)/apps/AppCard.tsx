@@ -20,6 +20,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { asyncRunSafe } from '@/utils'
+import { useProviderContext } from '@/context/provider-context'
 
 export type AppCardProps = {
   app: App
@@ -30,6 +31,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { isCurrentWorkspaceManager } = useAppContext()
+  const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
   const mutateApps = useContextSelector(
@@ -51,6 +53,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       if (onRefresh)
         onRefresh()
       mutateApps()
+      onPlanInfoChanged()
     }
     catch (e: any) {
       notify({

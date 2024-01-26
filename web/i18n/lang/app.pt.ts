@@ -24,6 +24,7 @@ const translation = {
     chatApp: 'Aplicativo de Chat',
     chatAppIntro:
       'Quero construir um aplicativo baseado em chat. Este aplicativo usa um formato de pergunta e resposta, permitindo várias rodadas de conversa contínua.',
+    agentAssistant: 'Assistente de novo agente',
     completeApp: 'Gerador de Texto',
     completeAppIntro:
       'Quero criar um aplicativo que gera texto de alta qualidade com base em prompts, como geração de artigos, resumos, traduções e muito mais.',

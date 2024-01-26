@@ -30,7 +30,7 @@ def get_oauth_providers():
 class OAuthDataSource(Resource):
     def get(self, provider: str):
         # The role of the current user in the table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
         with current_app.app_context():

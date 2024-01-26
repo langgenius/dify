@@ -34,32 +34,34 @@ const ProviderContext = createContext<{
   }
   isFetchedPlan: boolean
   enableBilling: boolean
+  onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
 }>({
-  modelProviders: [],
-  textGenerationModelList: [],
-  agentThoughtModelList: [],
-  supportRetrievalMethods: [],
-  hasSettedApiKey: true,
-  plan: {
-    type: Plan.sandbox,
-    usage: {
-      vectorSpace: 32,
-      buildApps: 12,
-      teamMembers: 1,
-      annotatedResponse: 1,
-    },
-    total: {
-      vectorSpace: 200,
-      buildApps: 50,
-      teamMembers: 1,
-      annotatedResponse: 10,
-    },
-  },
-  isFetchedPlan: false,
-  enableBilling: false,
-  enableReplaceWebAppLogo: false,
-})
+      modelProviders: [],
+      textGenerationModelList: [],
+      agentThoughtModelList: [],
+      supportRetrievalMethods: [],
+      hasSettedApiKey: true,
+      plan: {
+        type: Plan.sandbox,
+        usage: {
+          vectorSpace: 32,
+          buildApps: 12,
+          teamMembers: 1,
+          annotatedResponse: 1,
+        },
+        total: {
+          vectorSpace: 200,
+          buildApps: 50,
+          teamMembers: 1,
+          annotatedResponse: 10,
+        },
+      },
+      isFetchedPlan: false,
+      enableBilling: false,
+      onPlanInfoChanged: () => { },
+      enableReplaceWebAppLogo: false,
+    })
 
 export const useProviderContext = () => useContext(ProviderContext)
 
@@ -98,7 +100,6 @@ export const ProviderContextProvider = ({
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
-
   const handleOperateUtm = () => {
     let utm
     try {
@@ -113,20 +114,22 @@ export const ProviderContextProvider = ({
         utm_term: '',
       }
     }
-    operationUtm({ url: '/operation/utm', body: utm })
+    if (utm.utm_source || utm.utm_medium || utm.utm_campaign || utm.utm_content || utm.utm_term)
+      operationUtm({ url: '/operation/utm', body: utm })
+  }
+  const fetchPlan = async () => {
+    const data = await fetchCurrentPlanInfo()
+    const enabled = data.billing.enabled
+    setEnableBilling(enabled)
+    setEnableReplaceWebAppLogo(data.can_replace_logo)
+    if (enabled) {
+      setPlan(parseCurrentPlan(data))
+      handleOperateUtm()
+      setIsFetchedPlan(true)
+    }
   }
   useEffect(() => {
-    (async () => {
-      const data = await fetchCurrentPlanInfo()
-      const enabled = data.billing.enabled
-      setEnableBilling(enabled)
-      setEnableReplaceWebAppLogo(data.can_replace_logo)
-      if (enabled) {
-        setPlan(parseCurrentPlan(data))
-        handleOperateUtm()
-        setIsFetchedPlan(true)
-      }
-    })()
+    fetchPlan()
   }, [])
 
   return (
@@ -139,6 +142,7 @@ export const ProviderContextProvider = ({
       plan,
       isFetchedPlan,
       enableBilling,
+      onPlanInfoChanged: fetchPlan,
       enableReplaceWebAppLogo,
     }}>
       {children}

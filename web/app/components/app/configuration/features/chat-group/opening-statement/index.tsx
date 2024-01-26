@@ -68,7 +68,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   }, [value])
 
   const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(suggestedQuestions || [])
-
+  const notEmptyQuestions = tempSuggestedQuestions.filter(question => !!question && question.trim())
   const coloredContent = (tempValue || '')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -208,7 +208,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
       </div>
     ) : (
       <div className='mt-1.5 flex flex-wrap'>
-        {tempSuggestedQuestions.map((question, index) => {
+        {notEmptyQuestions.map((question, index) => {
           return (
             <div key={index} className='mt-1 mr-1 max-w-full truncate last:mr-0 shrink-0 leading-8 items-center px-2.5 rounded-lg border border-gray-200 shadow-xs bg-white text-[13px] font-normal text-gray-900 cursor-pointer'>
               {question}

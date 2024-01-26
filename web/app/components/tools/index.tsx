@@ -15,6 +15,7 @@ import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import NoCustomTool from './info/no-custom-tool'
 import NoSearchRes from './info/no-search-res'
+import NoCustomToolPlaceholder from './no-custom-tool-placeholder'
 import TabSlider from '@/app/components/base/tab-slider'
 import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
 import type { AgentTool } from '@/types/app'
@@ -215,6 +216,10 @@ const Tools: FC<Props> = ({
                 }}
                 isLoading={isDetailLoading}
               />
+            )}
+
+            {collectionType === CollectionType.custom && hasNoCustomCollection && (
+              <NoCustomToolPlaceholder />
             )}
           </div>
         </div>
