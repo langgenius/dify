@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
@@ -8,6 +8,7 @@ import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import s from './style.module.css'
+import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import { PromptMode, type PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
@@ -125,6 +126,8 @@ const Prompt: FC<ISimplePromptInput> = ({
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
   }
+  const minHeight = 228
+  const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
     <div className={cn(!readonly ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
@@ -161,53 +164,62 @@ const Prompt: FC<ISimplePromptInput> = ({
             )}
           </div>
         </div>
-        <div className='px-4 py-2 min-h-[228px] max-h-[156px] overflow-y-auto bg-white rounded-xl text-sm text-gray-700'>
-          <PromptEditor
-            className='min-h-[210px]'
-            value={promptTemplate}
-            contextBlock={{
-              show: false,
-              selectable: !hasSetBlockStatus.context,
-              datasets: dataSets.map(item => ({
-                id: item.id,
-                name: item.name,
-                type: item.data_source_type,
-              })),
-              onAddContext: showSelectDataSet,
-            }}
-            variableBlock={{
-              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
-                name: item.name,
-                value: item.key,
-              })),
-              externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
-                name: item.name,
-                variableName: item.key,
-                icon: item.icon,
-                icon_background: item.icon_background,
-              })),
-              onAddExternalTool: handleOpenExternalDataToolModal,
-            }}
-            historyBlock={{
-              show: false,
-              selectable: false,
-              history: {
-                user: '',
-                assistant: '',
-              },
-              onEditRole: () => { },
-            }}
-            queryBlock={{
-              show: false,
-              selectable: !hasSetBlockStatus.query,
-            }}
-            onChange={(value) => {
-              handleChange?.(value, [])
-            }}
-            onBlur={() => {
-              handleChange(promptTemplate, getVars(promptTemplate))
-            }}
-          />
+        <div
+          className=''
+        >
+          <PromptEditorHeightResizeWrap
+            className='px-4 py-2 min-h-[228px] bg-white rounded-xl text-sm text-gray-700'
+            height={editorHeight}
+            minHeight={minHeight}
+            onHeightChange={setEditorHeight}
+          >
+            <PromptEditor
+              className='min-h-[210px]'
+              value={promptTemplate}
+              contextBlock={{
+                show: false,
+                selectable: !hasSetBlockStatus.context,
+                datasets: dataSets.map(item => ({
+                  id: item.id,
+                  name: item.name,
+                  type: item.data_source_type,
+                })),
+                onAddContext: showSelectDataSet,
+              }}
+              variableBlock={{
+                variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
+                  name: item.name,
+                  value: item.key,
+                })),
+                externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
+                  name: item.name,
+                  variableName: item.key,
+                  icon: item.icon,
+                  icon_background: item.icon_background,
+                })),
+                onAddExternalTool: handleOpenExternalDataToolModal,
+              }}
+              historyBlock={{
+                show: false,
+                selectable: false,
+                history: {
+                  user: '',
+                  assistant: '',
+                },
+                onEditRole: () => { },
+              }}
+              queryBlock={{
+                show: false,
+                selectable: !hasSetBlockStatus.query,
+              }}
+              onChange={(value) => {
+                handleChange?.(value, [])
+              }}
+              onBlur={() => {
+                handleChange(promptTemplate, getVars(promptTemplate))
+              }}
+            />
+          </PromptEditorHeightResizeWrap>
         </div>
       </div>
 
