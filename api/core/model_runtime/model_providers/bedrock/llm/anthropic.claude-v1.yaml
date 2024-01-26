@@ -8,9 +8,9 @@ model_properties:
 parameter_rules:
   - name: temperature
     use_template: temperature
-  - name: topP
+  - name: top_p
     use_template: top_p
-  - name: topK
+  - name: top_k
     label:
       zh_Hans: 取样数量
       en_US: Top K
