@@ -110,7 +110,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
-                messageId: bufferObj?.id,
+                messageId: bufferObj?.message_id,
               })
               return
             }
