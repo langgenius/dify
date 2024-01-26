@@ -303,6 +303,7 @@ const translation = {
     model: 'Model',
     featureSupported: '{{feature}} supported',
     callTimes: 'Call times',
+    credits: 'Message Credits',
     buyQuota: 'Buy Quota',
     getFreeTokens: 'Get free Tokens',
     priorityUsing: 'Prioritize using',

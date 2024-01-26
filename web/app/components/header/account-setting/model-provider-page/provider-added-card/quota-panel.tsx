@@ -62,6 +62,9 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             {
               currentQuota?.quota_unit === QuotaUnitEnum.times && t('common.modelProvider.callTimes')
             }
+            {
+              currentQuota?.quota_unit === QuotaUnitEnum.credits && t('common.modelProvider.credits')
+            }
           </div>
         )
       }

@@ -132,6 +132,7 @@ export enum CurrentSystemQuotaTypeEnum {
 export enum QuotaUnitEnum {
   times = 'times',
   tokens = 'tokens',
+  credits = 'credits',
 }
 
 export type QuotaConfiguration = {
