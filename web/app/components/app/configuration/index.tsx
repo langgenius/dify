@@ -309,7 +309,12 @@ const Configuration: FC = () => {
     setCompletionParams,
     setStop: setTempStop,
   })
-
+  const [visionConfig, doSetVisionConfig] = useState({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
   const setModel = async ({
     modelId,
     provider,
@@ -344,20 +349,16 @@ const Configuration: FC = () => {
     const supportVision = features && features.includes(ModelFeatureEnum.vision)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setVisionConfig({
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      ...visionConfig,
+
+      detail: visionConfig.detail || Resolution.low,
+      number_limits: visionConfig.number_limits || 2,
+      transfer_methods: visionConfig.transfer_methods || [TransferMethod.local_file],
       enabled: supportVision,
     }, true)
     setCompletionParams({})
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
-  const [visionConfig, doSetVisionConfig] = useState({
-    enabled: false,
-    number_limits: 2,
-    detail: Resolution.low,
-    transfer_methods: [TransferMethod.local_file],
-  })
 
   const setVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
     doSetVisionConfig(config)
