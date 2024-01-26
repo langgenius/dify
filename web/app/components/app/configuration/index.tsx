@@ -284,6 +284,23 @@ const Configuration: FC = () => {
 
     doSetPromptMode(mode)
   }
+  const [visionConfig, doSetVisionConfig] = useState({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+
+  const handleSetVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
+    doSetVisionConfig({
+      enabled: config.enabled || false,
+      number_limits: config.number_limits || 2,
+      detail: config.detail || Resolution.low,
+      transfer_methods: config.transfer_methods || [TransferMethod.local_file],
+    })
+    if (!notNoticeFormattingChanged)
+      setFormattingChanged(true)
+  }
 
   const {
     chatPromptConfig,
@@ -308,12 +325,6 @@ const Configuration: FC = () => {
     completionParams,
     setCompletionParams,
     setStop: setTempStop,
-  })
-  const [visionConfig, doSetVisionConfig] = useState({
-    enabled: false,
-    number_limits: 2,
-    detail: Resolution.low,
-    transfer_methods: [TransferMethod.local_file],
   })
   const setModel = async ({
     modelId,
@@ -347,24 +358,15 @@ const Configuration: FC = () => {
 
     setModelConfig(newModelConfig)
     const supportVision = features && features.includes(ModelFeatureEnum.vision)
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    setVisionConfig({
 
-      detail: visionConfig.detail || Resolution.low,
-      number_limits: visionConfig.number_limits || 2,
-      transfer_methods: visionConfig.transfer_methods || [TransferMethod.local_file],
+    handleSetVisionConfig({
+      ...visionConfig,
       enabled: supportVision,
     }, true)
     setCompletionParams({})
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
-
-  const setVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
-    doSetVisionConfig(config)
-    if (!notNoticeFormattingChanged)
-      setFormattingChanged(true)
-  }
 
   useEffect(() => {
     (async () => {
@@ -485,7 +487,7 @@ const Configuration: FC = () => {
         }
 
         if (modelConfig.file_upload)
-          setVisionConfig(modelConfig.file_upload.image, true)
+          handleSetVisionConfig(modelConfig.file_upload.image, true)
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
@@ -728,7 +730,7 @@ const Configuration: FC = () => {
       hasSetContextVar,
       isShowVisionConfig,
       visionConfig,
-      setVisionConfig,
+      setVisionConfig: handleSetVisionConfig,
     }}
     >
       <>
