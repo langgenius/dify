@@ -5,12 +5,12 @@ from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResu
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
                                                           SystemPromptMessage, UserPromptMessage)
 from core.model_runtime.entities.model_entities import (AIModelEntity, FetchFrom, ModelPropertyKey, ModelType,
-                                                        ParameterRule, ParameterType)
+                                                        ParameterRule, ParameterType, ModelFeature)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.xinference.llm.xinference_helper import (XinferenceHelper,
+from core.model_runtime.model_providers.xinference.xinference_helper import (XinferenceHelper,
                                                                                  XinferenceModelExtraParameter)
 from core.model_runtime.utils import helper
 from openai import (APIConnectionError, APITimeoutError, AuthenticationError, ConflictError, InternalServerError,
@@ -33,6 +33,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             see `core.model_runtime.model_providers.__base.large_language_model.LargeLanguageModel._invoke`
         """
+        if 'temperature' in model_parameters:
+            if model_parameters['temperature'] < 0.01:
+                model_parameters['temperature'] = 0.01
+            elif model_parameters['temperature'] > 1.0:
+                model_parameters['temperature'] = 0.99
+
         return self._generate(
             model=model, credentials=credentials, prompt_messages=prompt_messages, model_parameters=model_parameters,
             tools=tools, stop=stop, stream=stream, user=user,
@@ -65,6 +71,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     credentials['completion_type'] = 'completion'
                 else:
                     raise ValueError(f'xinference model ability {extra_param.model_ability} is not supported')
+                
+            if extra_param.support_function_call:
+                credentials['support_function_call'] = True
 
         except RuntimeError as e:
             raise CredentialsValidateFailedError(f'Xinference credentials validate failed: {e}')
@@ -237,7 +246,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 label=I18nObject(
                     zh_Hans='温度',
                     en_US='Temperature'
-                )
+                ),
             ),
             ParameterRule(
                 name='top_p',
@@ -282,6 +291,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 completion_type = LLMMode.COMPLETION.value
             else:
                 raise ValueError(f'xinference model ability {extra_args.model_ability} is not supported')
+            
+        support_function_call = credentials.get('support_function_call', False)
 
         entity = AIModelEntity(
             model=model,
@@ -290,6 +301,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
+            features=[
+                ModelFeature.TOOL_CALL
+            ] if support_function_call else [],
             model_properties={ 
                 ModelPropertyKey.MODE: completion_type,
             },
