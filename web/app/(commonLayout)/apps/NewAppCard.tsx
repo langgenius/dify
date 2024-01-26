@@ -5,6 +5,7 @@ import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
 import style from '../list.module.css'
 import NewAppDialog from './NewAppDialog'
+import { useProviderContext } from '@/context/provider-context'
 
 export type CreateAppCardProps = {
   onSuccess?: () => void
@@ -12,6 +13,8 @@ export type CreateAppCardProps = {
 
 const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuccess }, ref) => {
   const { t } = useTranslation()
+  const { onPlanInfoChanged } = useProviderContext()
+
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   return (
     <a ref={ref} className={classNames(style.listItem, style.newItemCard)} onClick={() => setShowNewAppDialog(true)}>
@@ -24,7 +27,12 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
         </div>
       </div>
       {/* <div className='text-xs text-gray-500'>{t('app.createFromConfigFile')}</div> */}
-      <NewAppDialog show={showNewAppDialog} onSuccess={onSuccess} onClose={() => setShowNewAppDialog(false)} />
+      <NewAppDialog show={showNewAppDialog} onSuccess={
+        () => {
+          onPlanInfoChanged()
+          if (onSuccess)
+            onSuccess()
+        }} onClose={() => setShowNewAppDialog(false)} />
     </a>
   )
 })
