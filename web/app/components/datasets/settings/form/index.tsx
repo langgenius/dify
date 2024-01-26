@@ -146,7 +146,7 @@ const Form = () => {
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
-          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/advanced/datasets#how-to-write-a-good-dataset-description" target='_blank'>
+          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank'>
             <BookOpenIcon className='w-3 h-[18px] mr-1' />
             {t('datasetSettings.form.descWrite')}
           </a>
@@ -209,7 +209,7 @@ const Form = () => {
           <div>
             <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
             <div className='leading-[18px] text-xs font-normal text-gray-500'>
-              <a target='_blank' href='https://docs.dify.ai/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              <a target='_blank' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
               {t('datasetSettings.form.retrievalSetting.description')}
             </div>
           </div>
