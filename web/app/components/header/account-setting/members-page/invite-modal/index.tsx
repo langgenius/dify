@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
 import { Listbox, Transition } from '@headlessui/react'
 import { CheckIcon } from '@heroicons/react/20/solid'
+import I18n from '@/context/i18n'
 import cn from 'classnames'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
@@ -28,7 +29,8 @@ const InviteModal = ({
   const { t } = useTranslation()
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
-
+  const { locale } = useContext(I18n)
+  
   const InvitingRoles = useMemo(() => [
     {
       name: 'normal',
@@ -42,11 +44,11 @@ const InviteModal = ({
   const [role, setRole] = useState(InvitingRoles[0])
 
   const handleSend = useCallback(async () => {
-    if (emails.map(email => emailRegex.test(email)).every(Boolean)) {
+    if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
         const { result, invitation_results } = await inviteMember({
           url: '/workspaces/current/members/invite-email',
-          body: { emails, role: role.name },
+          body: { emails, role: role.name, language: locale },
         })
 
         if (result === 'success') {

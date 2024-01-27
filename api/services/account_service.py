@@ -452,15 +452,14 @@ class RegisterService:
         return account
 
     @classmethod
-    def invite_new_member(cls, tenant: Tenant, email: str, role: str = 'normal',
-                          inviter: Account = None) -> str:
+    def invite_new_member(cls, tenant: Tenant, email: str, language: str, role: str = 'normal', inviter: Account = None) -> str:
         """Invite new member"""
         account = Account.query.filter_by(email=email).first()
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, 'add')
             name = email.split('@')[0]
-            account = AccountService.create_account(email, name)
+            account = AccountService.create_account(email, name, interface_language=language)
             account.status = AccountStatus.PENDING.value
             db.session.commit()
 
