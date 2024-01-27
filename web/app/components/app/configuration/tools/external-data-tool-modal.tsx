@@ -6,18 +6,19 @@ import { useTranslation } from 'react-i18next'
 import FormGeneration from '../toolbox/moderation/form-generation'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import { SimpleSelect } from '@/app/components/base/select'
 import I18n from '@/context/i18n'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
 } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
+import AppIcon from '@/app/components/base/app-icon'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -40,6 +41,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { data: codeBasedExtensionList } = useSWR(
@@ -155,7 +157,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     }
 
     if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API Extension' : 'API 扩展' }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
@@ -164,7 +166,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
           notify({
             type: 'error',
-            message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
+            message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })
           return
         }
@@ -184,7 +186,8 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => {}}
+      onClose={() => { }}
+      wrapperClassName='z-[101]'
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
@@ -285,6 +288,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       {
         showEmojiPicker && (
           <EmojiPicker
+            className='!z-[200]'
             onSelect={(icon, icon_background) => {
               handleValueChange({ icon, icon_background })
               setShowEmojiPicker(false)

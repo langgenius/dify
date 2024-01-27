@@ -1,5 +1,5 @@
 /* eslint-disable import/no-mutable-exports */
-import { AppType, ProviderType } from '@/types/app'
+import { AgentStrategy, AppType, ProviderType } from '@/types/app'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -52,8 +52,6 @@ export const MODEL_LIST = [
   { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
   { id: 'claude-2', name: 'claude-2', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
 ]
-const UNIVERSAL_CHAT_MODEL_ID_LIST = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-4', 'claude-2']
-export const UNIVERSAL_CHAT_MODEL_LIST = MODEL_LIST.filter(({ id, type }) => UNIVERSAL_CHAT_MODEL_ID_LIST.includes(id) && (type === AppType.chat))
 export const TONE_LIST = [
   {
     id: 1,
@@ -151,4 +149,102 @@ export const APP_PAGE_LIMIT = 10
 
 export const ANNOTATION_DEFAULT = {
   score_threshold: 0.9,
+}
+
+export const MAX_TOOLS_NUM = 5
+
+export const DEFAULT_AGENT_SETTING = {
+  enabled: false,
+  max_iteration: 5,
+  strategy: AgentStrategy.functionCall,
+  tools: [],
+}
+
+export const supportFunctionCallModels = ['glm-3-turbo', 'glm-4']
+
+export const DEFAULT_AGENT_PROMPT = {
+  chat: `Respond to the human as helpfully and accurately as possible. 
+
+  {{instruction}}
+  
+  You have access to the following tools:
+  
+  {{tools}}
+  
+  Use a json blob to specify a tool by providing an {{TOOL_NAME_KEY}} key (tool name) and an {{ACTION_INPUT_KEY}} key (tool input).
+  Valid "{{TOOL_NAME_KEY}}" values: "Final Answer" or {{tool_names}}
+  
+  Provide only ONE action per $JSON_BLOB, as shown:
+  
+  \`\`\`
+  {
+    "{{TOOL_NAME_KEY}}": $TOOL_NAME,
+    "{{ACTION_INPUT_KEY}}": $ACTION_INPUT
+  }
+  \`\`\`
+  
+  Follow this format:
+  
+  Question: input question to answer
+  Thought: consider previous and subsequent steps
+  Action:
+  \`\`\`
+  $JSON_BLOB
+  \`\`\`
+  Observation: action result
+  ... (repeat Thought/Action/Observation N times)
+  Thought: I know what to respond
+  Action:
+  \`\`\`
+  {
+    "{{TOOL_NAME_KEY}}": "Final Answer",
+    "{{ACTION_INPUT_KEY}}": "Final response to human"
+  }
+  \`\`\`
+  
+  Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:\`\`\`$JSON_BLOB\`\`\`then Observation:.`,
+  completion: `
+  Respond to the human as helpfully and accurately as possible. 
+
+{{instruction}}
+
+You have access to the following tools:
+
+{{tools}}
+
+Use a json blob to specify a tool by providing an {{TOOL_NAME_KEY}} key (tool name) and an {{ACTION_INPUT_KEY}} key (tool input).
+Valid "{{TOOL_NAME_KEY}}" values: "Final Answer" or {{tool_names}}
+
+Provide only ONE action per $JSON_BLOB, as shown:
+
+\`\`\`
+{{{{
+  "{{TOOL_NAME_KEY}}": $TOOL_NAME,
+  "{{ACTION_INPUT_KEY}}": $ACTION_INPUT
+}}}}
+\`\`\`
+
+Follow this format:
+
+Question: input question to answer
+Thought: consider previous and subsequent steps
+Action:
+\`\`\`
+$JSON_BLOB
+\`\`\`
+Observation: action result
+... (repeat Thought/Action/Observation N times)
+Thought: I know what to respond
+Action:
+\`\`\`
+{{{{
+  "{{TOOL_NAME_KEY}}": "Final Answer",
+  "{{ACTION_INPUT_KEY}}": "Final response to human"
+}}}}
+\`\`\`
+
+Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:\`\`\`$JSON_BLOB\`\`\`then Observation:.
+Question: {{query}}
+Thought: {{agent_scratchpad}}
+  `,
 }

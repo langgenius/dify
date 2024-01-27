@@ -10,6 +10,7 @@ import produce from 'immer'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import ConfirmAddVar from './confirm-add-var'
+import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
@@ -22,7 +23,9 @@ import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alerts
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
-
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 type Props = {
   type: PromptRole
   isChatMode: boolean
@@ -49,6 +52,7 @@ const AdvancedPromptInput: FC<Props> = ({
   onHideContextMissingTip,
 }) => {
   const { t } = useTranslation()
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const {
     mode,
@@ -60,7 +64,6 @@ const AdvancedPromptInput: FC<Props> = ({
     dataSets,
     showSelectDataSet,
     externalDataToolsConfig,
-    setExternalDataToolsConfig,
   } = useContext(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
@@ -68,19 +71,19 @@ const AdvancedPromptInput: FC<Props> = ({
     setShowExternalDataToolModal({
       payload: {},
       onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+        eventEmitter?.emit({
+          type: ADD_EXTERNAL_DATA_TOOL,
+          payload: newExternalDataTool,
+        } as any)
+        eventEmitter?.emit({
+          type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+          payload: newExternalDataTool.variable,
+        } as any)
       },
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
             notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
-            return false
-          }
-        }
-
-        for (let i = 0; i < externalDataToolsConfig.length; i++) {
-          if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
             return false
           }
         }
@@ -108,7 +111,7 @@ const AdvancedPromptInput: FC<Props> = ({
   }
   const handleBlur = () => {
     const keys = getVars(value)
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key))
+    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key, ''))
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       showConfirmAddVar()
@@ -127,7 +130,8 @@ const AdvancedPromptInput: FC<Props> = ({
     }
   }
 
-  const editorHeight = isChatMode ? 'h-[200px]' : 'h-[508px]'
+  const minHeight = 102
+  const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
       className='flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl'
@@ -136,7 +140,7 @@ const AdvancedPromptInput: FC<Props> = ({
       }}
     >
       <div className='flex items-center pr-2' >
-        <AlertCircle className='mr-1 w-4 h-4 text-[#F79009]'/>
+        <AlertCircle className='mr-1 w-4 h-4 text-[#F79009]' />
         <div className='leading-[18px] text-[13px] font-medium text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
       </div>
       <div
@@ -187,9 +191,19 @@ const AdvancedPromptInput: FC<Props> = ({
             </div>
           )}
 
-        <div className={cn(editorHeight, 'px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700')}>
+        <PromptEditorHeightResizeWrap
+          className='px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700'
+          height={editorHeight}
+          minHeight={minHeight}
+          onHeightChange={setEditorHeight}
+          footer={(
+            <div className='pl-4 pb-2 flex'>
+              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
+            </div>
+          )}
+        >
           <PromptEditor
-            className={editorHeight}
+            className='min-h-[84px]'
             value={value}
             contextBlock={{
               show: true,
@@ -202,13 +216,13 @@ const AdvancedPromptInput: FC<Props> = ({
               onAddContext: showSelectDataSet,
             }}
             variableBlock={{
-              variables: modelConfig.configs.prompt_variables.map(item => ({
+              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
                 name: item.name,
                 value: item.key,
               })),
-              externalTools: externalDataToolsConfig.map(item => ({
-                name: item.label!,
-                variableName: item.variable!,
+              externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
+                name: item.name,
+                variableName: item.key,
                 icon: item.icon,
                 icon_background: item.icon_background,
               })),
@@ -230,10 +244,8 @@ const AdvancedPromptInput: FC<Props> = ({
             onChange={handlePromptChange}
             onBlur={handleBlur}
           />
-        </div>
-        <div className='pl-4 pb-2 flex'>
-          <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
-        </div>
+        </PromptEditorHeightResizeWrap>
+
       </div>
 
       {isShowConfirmAddVar && (

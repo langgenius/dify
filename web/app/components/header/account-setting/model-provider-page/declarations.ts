@@ -3,10 +3,12 @@ export type FormValue = Record<string, any>
 export type TypeWithI18N<T = string> = {
   'en_US': T
   'zh_Hans': T
+  [key: string]: T
 }
 
 export enum FormTypeEnum {
   textInput = 'text-input',
+  textNumber = 'number-input',
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
@@ -24,6 +26,7 @@ export enum ModelTypeEnum {
   rerank = 'rerank',
   speech2text = 'speech2text',
   moderation = 'moderation',
+  tts = 'tts',
 }
 
 export const MODEL_TYPE_TEXT = {
@@ -32,6 +35,7 @@ export const MODEL_TYPE_TEXT = {
   [ModelTypeEnum.rerank]: 'Rerank',
   [ModelTypeEnum.speech2text]: 'Speech2text',
   [ModelTypeEnum.moderation]: 'Moderation',
+  [ModelTypeEnum.tts]: 'TTS',
 }
 
 export enum ConfigurateMethodEnum {
@@ -92,10 +96,12 @@ export type CredentialFormSchemaBase = {
   type: FormTypeEnum
   required: boolean
   default?: string
+  tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number; max?: number; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
@@ -126,6 +132,7 @@ export enum CurrentSystemQuotaTypeEnum {
 export enum QuotaUnitEnum {
   times = 'times',
   tokens = 'tokens',
+  credits = 'credits',
 }
 
 export type QuotaConfiguration = {

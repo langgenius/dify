@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
+import { Menu, Transition } from '@headlessui/react'
 import Button from '../../../base/button'
 import { Plus } from '../../../base/icons/src/vender/line/general'
 import AddAnnotationModal from '../add-annotation-modal'
@@ -14,10 +15,13 @@ import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
 import s from './style.module.css'
 import CustomPopover from '@/app/components/base/popover'
-// import Divider from '@/app/components/base/divider'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
 
@@ -26,20 +30,36 @@ type Props = {
   onAdd: (payload: AnnotationItemBasic) => void
   onAdded: () => void
   controlUpdateList: number
-  // onClearAll: () => void
 }
 
 const HeaderOptions: FC<Props> = ({
   appId,
   onAdd,
   onAdded,
-  // onClearAll,
   controlUpdateList,
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
+
+  const listTransformer = (list: AnnotationItemBasic[]) => list.map(
+    (item: AnnotationItemBasic) => {
+      const dataString = `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question)}}, {"role": "assistant", "content": ${JSON.stringify(item.answer)}}]}`
+      return dataString
+    },
+  )
+
+  const JSONLOutput = () => {
+    const a = document.createElement('a')
+    const content = listTransformer(list).join('\n')
+    const file = new Blob([content], { type: 'application/jsonl' })
+    a.href = URL.createObjectURL(file)
+    a.download = `annotations-${language}.jsonl`
+    a.click()
+  }
+
   const fetchList = async () => {
     const { data }: any = await fetchExportAnnotationList(appId)
     setList(data as AnnotationItemBasic[])
@@ -64,32 +84,49 @@ const HeaderOptions: FC<Props> = ({
           <FilePlus02 className={s.actionItemIcon} />
           <span className={s.actionName}>{t('appAnnotation.table.header.bulkImport')}</span>
         </button>
-
-        <CSVDownloader
-          type={Type.Link}
-          filename="annotations"
-          bom={true}
-          data={[
-            locale === 'en' ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-            ...list.map(item => [item.question, item.answer]),
-          ]}
-        >
-          <button className={s.actionItem}>
+        <Menu as="div" className="relative w-full h-full">
+          <Menu.Button className={s.actionItem}>
             <FileDownload02 className={s.actionItemIcon} />
             <span className={s.actionName}>{t('appAnnotation.table.header.bulkExport')}</span>
-          </button>
-        </CSVDownloader>
-
-        {/* <Divider className="!my-1" />
-        <div
-          className={cn(s.actionItem, s.deleteActionItem, 'group')}
-          onClick={onClickDelete}
-        >
-          <Trash03 className={cn(s.actionItemIcon, 'group-hover:text-red-500')} />
-          <span className={cn(s.actionName, 'group-hover:text-red-500')}>
-            {t('appAnnotation.table.header.clearAll')}
-          </span>
-        </div> */}
+            <ChevronRight className='shrink-0 w-[14px] h-[14px] text-gray-500' />
+          </Menu.Button>
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <Menu.Items
+              className={cn(
+                `
+                  absolute top-[1px] py-1 min-w-[100px] z-10 bg-white border-[0.5px] border-gray-200
+                  divide-y divide-gray-100 origin-top-right rounded-xl
+                `,
+                s.popup,
+              )}
+            >
+              <CSVDownloader
+                type={Type.Link}
+                filename={`annotations-${language}`}
+                bom={true}
+                data={[
+                  language !== LanguagesSupportedUnderscore[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+                  ...list.map(item => [item.question, item.answer]),
+                ]}
+              >
+                <button className={s.actionItem}>
+                  <span className={s.actionName}>CSV</span>
+                </button>
+              </CSVDownloader>
+              <button className={cn(s.actionItem, '!border-0')} onClick={JSONLOutput}>
+                <span className={s.actionName}>JSONL</span>
+              </button>
+            </Menu.Items>
+          </Transition>
+        </Menu>
       </div>
     )
   }
@@ -113,9 +150,8 @@ const HeaderOptions: FC<Props> = ({
             s.actionIconWrapper,
           )
         }
-        // !w-[208px]
-        className={'!w-[135px] h-fit !z-20'}
-        popupClassName='!w-full'
+        className={'!w-[154px] h-fit !z-20'}
+        popupClassName='!w-full !overflow-visible'
         manualClose
       />
       {showAddModal && (

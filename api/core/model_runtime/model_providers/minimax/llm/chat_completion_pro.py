@@ -22,9 +22,6 @@ class MinimaxChatCompletionPro(object):
         """
             generate chat completion
         """
-        if model not in ['abab5.5-chat', 'abab5.5s-chat']:
-            raise BadRequestError(f'Invalid model: {model}')
-        
         if not api_key or not group_id:
             raise InvalidAPIKeyError('Invalid API key or group ID')
         
@@ -87,7 +84,7 @@ class MinimaxChatCompletionPro(object):
 
         try:
             response = post(
-                url=url, data=dumps(body), headers=headers, stream=stream, timeout=10)
+                url=url, data=dumps(body), headers=headers, stream=stream, timeout=(10, 300))
         except Exception as e:
             raise InternalServerError(e)
         

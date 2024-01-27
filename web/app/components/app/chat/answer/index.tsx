@@ -4,15 +4,16 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
-import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, ThoughtItem } from '../type'
+import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
-import { EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
+import { EditIconSolid, RatingIcon } from '../icon-component'
 import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
 import Thought from '../thought'
 import Citation from '../citation'
+import AudioBtn from '@/app/components/base/audio-btn'
 import { randomString } from '@/utils'
 import type { MessageRating } from '@/models/log'
 import Tooltip from '@/app/components/base/tooltip'
@@ -22,6 +23,9 @@ import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annota
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
+import type { Emoji } from '@/app/components/tools/types'
+import type { VisionFile } from '@/types/app'
+import ImageGallery from '@/app/components/base/image-gallery'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -39,49 +43,53 @@ const IconWrapper: FC<{ children: React.ReactNode | string }> = ({ children }) =
 }
 export type IAnswerProps = {
   item: IChatItem
+  index: number
   feedbackDisabled: boolean
   isHideFeedbackEdit: boolean
+  onQueryChange: (query: string) => void
   onFeedback?: FeedbackFunc
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIcon?: ReactNode
-  thoughts?: ThoughtItem[]
   citation?: CitationItem[]
-  isThinking?: boolean
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
+  isShowTextToSpeech?: boolean
   // Annotation props
   supportAnnotation?: boolean
   appId?: string
   question: string
-  onAnnotationEdited?: (question: string, answer: string) => void
-  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string) => void
-  onAnnotationRemoved?: () => void
+  onAnnotationEdited?: (question: string, answer: string, index: number) => void
+  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
+  onAnnotationRemoved?: (index: number) => void
+  allToolIcons?: Record<string, string | Emoji>
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
   item,
+  index,
+  onQueryChange,
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   onFeedback,
   displayScene = 'web',
   isResponsing,
   answerIcon,
-  thoughts,
   citation,
-  isThinking,
-  dataSets,
   isShowCitation,
   isShowCitationHitInfo = false,
+  isShowTextToSpeech,
   supportAnnotation,
   appId,
   question,
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
+  allToolIcons,
 }) => {
-  const { id, content, more, feedback, adminFeedback, annotation } = item
+  const { id, content, more, feedback, adminFeedback, annotation, agent_thoughts } = item
+  const isAgentMode = !!agent_thoughts && agent_thoughts.length > 0
   const hasAnnotation = !!annotation?.id
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -202,8 +210,40 @@ const Answer: FC<IAnswerProps> = ({
     )
   }
 
+  const getImgs = (list?: VisionFile[]) => {
+    if (!list)
+      return []
+    return list.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
+  }
+
+  const agentModeAnswer = (
+    <div>
+      {agent_thoughts?.map((item, index) => (
+        <div key={index}>
+          {item.thought && (
+            <Markdown content={item.thought} />
+          )}
+          {/* {item.tool} */}
+          {/* perhaps not use tool */}
+          {!!item.tool && (
+            <Thought
+              thought={item}
+              allToolIcons={allToolIcons || {}}
+              isFinished={!!item.observation || !isResponsing}
+            />
+          )}
+
+          {getImgs(item.message_files).length > 0 && (
+            <ImageGallery srcs={getImgs(item.message_files).map(item => item.url)} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+
   return (
-    <div key={id}>
+    // data-id for debug the item message is right
+    <div key={id} data-id={id}>
       <div className='flex items-start'>
         {
           answerIcon || (
@@ -220,20 +260,7 @@ const Answer: FC<IAnswerProps> = ({
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
-                {item.isOpeningStatement && (
-                  <div className='flex items-center mb-1 gap-1'>
-                    <OpeningStatementIcon />
-                    <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
-                  </div>
-                )}
-                {(thoughts && thoughts.length > 0) && (
-                  <Thought
-                    list={thoughts || []}
-                    isThinking={isThinking}
-                    dataSets={dataSets}
-                  />
-                )}
-                {(isResponsing && !content)
+                {(isResponsing && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
@@ -244,26 +271,50 @@ const Answer: FC<IAnswerProps> = ({
                       {annotation?.logAnnotation && (
                         <div className='mb-1'>
                           <div className='mb-3'>
-                            <Markdown className='line-through !text-gray-400' content={content} />
+                            {isAgentMode
+                              ? (<div className='line-through !text-gray-400'>{agentModeAnswer}</div>)
+                              : (
+                                <Markdown className='line-through !text-gray-400' content={content} />
+                              )}
                           </div>
                           <EditTitle title={t('appAnnotation.editBy', {
                             author: annotation?.logAnnotation.account?.name,
                           })} />
                         </div>
                       )}
-
                       <div>
-                        <Markdown content={annotation?.logAnnotation ? annotation?.logAnnotation.content : content} />
+                        {annotation?.logAnnotation
+                          ? (
+                            <Markdown content={annotation?.logAnnotation.content || ''} />
+                          )
+                          : (isAgentMode
+                            ? agentModeAnswer
+                            : (
+                              <Markdown content={content} />
+                            ))}
                       </div>
                       {(hasAnnotation && !annotation?.logAnnotation) && (
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
                           author: annotation.authorName,
                         })} />
                       )}
+                      {item.isOpeningStatement && item.suggestedQuestions && item.suggestedQuestions.filter(q => !!q && q.trim()).length > 0 && (
+                        <div className='flex flex-wrap'>
+                          {item.suggestedQuestions.filter(q => !!q && q.trim()).map((question, index) => (
+                            <div
+                              key={index}
+                              className='mt-1 mr-1 max-w-full last:mr-0 shrink-0 py-[5px] leading-[18px] items-center px-4 rounded-lg border border-gray-200 shadow-xs bg-white text-xs font-medium text-primary-600 cursor-pointer'
+                              onClick={() => onQueryChange(question)}
+                            >
+                              {question}
+                            </div>),
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 {
-                  !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
+                  !!citation?.length && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
                   )
                 }
@@ -275,7 +326,13 @@ const Answer: FC<IAnswerProps> = ({
                     className={cn(s.copyBtn, 'mr-1')}
                   />
                 )}
-                {(supportAnnotation && !item.isOpeningStatement) && (
+                {!item.isOpeningStatement && isShowTextToSpeech && (
+                  <AudioBtn
+                    value={content}
+                    className={cn(s.playBtn, 'mr-1')}
+                  />
+                )}
+                {(!item.isOpeningStatement && supportAnnotation) && (
                   <AnnotationCtrlBtn
                     appId={appId!}
                     messageId={id}
@@ -284,9 +341,9 @@ const Answer: FC<IAnswerProps> = ({
                     cached={hasAnnotation}
                     query={question}
                     answer={content}
-                    onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content)}
+                    onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
                     onEdit={() => setIsShowReplyModal(true)}
-                    onRemoved={onAnnotationRemoved!}
+                    onRemoved={() => onAnnotationRemoved!(index)}
                   />
                 )}
 
@@ -295,8 +352,8 @@ const Answer: FC<IAnswerProps> = ({
                   onHide={() => setIsShowReplyModal(false)}
                   query={question}
                   answer={content}
-                  onEdited={onAnnotationEdited!}
-                  onAdded={onAnnotationAdded!}
+                  onEdited={(editedQuery, editedAnswer) => onAnnotationEdited!(editedQuery, editedAnswer, index)}
+                  onAdded={(annotationId, authorName, editedQuery, editedAnswer) => onAnnotationAdded!(annotationId, authorName, editedQuery, editedAnswer, index)}
                   appId={appId!}
                   messageId={id}
                   annotationId={annotation?.id || ''}

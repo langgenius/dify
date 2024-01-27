@@ -34,6 +34,7 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -80,15 +81,17 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
       log: item.message as any,
-      message_files: item.message_files,
+      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
     })
     newChatList.push({
       id: item.id,
       content: item.answer,
+      agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
       feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
       adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
       feedbackDisabled: false,
       isAnswer: true,
+      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
       more: {
         time: dayjs.unix(item.created_at).format('hh:mm A'),
         tokens: item.answer_tokens + item.message_tokens,
@@ -294,6 +297,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
           onFeedback={feedback => onFeedback(detail.message.id, feedback)}
           supportAnnotation
+          isShowTextToSpeech
           appId={appDetail?.id}
           varList={varList}
         />
@@ -307,6 +311,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             displayScene='console'
             isShowPromptLog
             supportAnnotation
+            isShowTextToSpeech
             appId={appDetail?.id}
             onChatListChange={setItems}
           />

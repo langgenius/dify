@@ -17,6 +17,7 @@ installed_app_fields = {
     'last_used_at': TimestampField,
     'editable': fields.Boolean,
     'uninstallable': fields.Boolean,
+    'is_agent': fields.Boolean,
 }
 
 installed_app_list_fields = {

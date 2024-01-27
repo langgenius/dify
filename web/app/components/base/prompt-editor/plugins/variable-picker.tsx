@@ -15,6 +15,7 @@ import { BracketsX } from '@/app/components/base/icons/src/vender/line/developme
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import AppIcon from '@/app/components/base/app-icon'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 class VariablePickerOption extends MenuOption {
   title: string
@@ -121,12 +122,18 @@ const VariablePicker: FC<VariablePickerProps> = ({
   onAddExternalTool,
 }) => {
   const { t } = useTranslation()
+  const { eventEmitter } = useEventEmitterContextContext()
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0,
     maxLength: 6,
   })
   const [queryString, setQueryString] = useState<string | null>(null)
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND)
+      editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${v.payload}}}`)
+  })
 
   const options = useMemo(() => {
     const baseOptions = items.map((item) => {
@@ -215,6 +222,7 @@ const VariablePicker: FC<VariablePickerProps> = ({
       options={mergedOptions}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
+      anchorClassName='z-[999999]'
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },

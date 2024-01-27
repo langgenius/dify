@@ -1,11 +1,12 @@
 from enum import Enum
-from typing import Any, Optional, cast
+from typing import Optional, Any, cast, Literal, Union
+
+from pydantic import BaseModel
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileObj
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import AIModelEntity
-from pydantic import BaseModel
 
 
 class ModelConfigEntity(BaseModel):
@@ -153,9 +154,35 @@ class AgentToolEntity(BaseModel):
     """
     Agent Tool Entity.
     """
-    tool_id: str
-    config: dict[str, Any] = {}
+    provider_type: Literal["builtin", "api"]
+    provider_id: str
+    tool_name: str
+    tool_parameters: dict[str, Any] = {}
 
+class AgentPromptEntity(BaseModel):
+    """
+    Agent Prompt Entity.
+    """
+    first_prompt: str
+    next_iteration: str
+
+class AgentScratchpadUnit(BaseModel):
+    """
+    Agent First Prompt Entity.
+    """
+
+    class Action(BaseModel):
+        """
+        Action Entity.
+        """
+        action_name: str
+        action_input: Union[dict, str]
+
+    agent_response: Optional[str] = None
+    thought: Optional[str] = None
+    action_str: Optional[str] = None
+    observation: Optional[str] = None
+    action: Optional[Action] = None    
 
 class AgentEntity(BaseModel):
     """
@@ -171,8 +198,9 @@ class AgentEntity(BaseModel):
     provider: str
     model: str
     strategy: Strategy
-    tools: list[AgentToolEntity] = []
-
+    prompt: Optional[AgentPromptEntity] = None
+    tools: list[AgentToolEntity] = None
+    max_iteration: int = 5
 
 class AppOrchestrationConfigEntity(BaseModel):
     """
@@ -191,6 +219,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
+    text_to_speech: bool = False
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 
@@ -255,7 +284,6 @@ class ApplicationGenerateEntity(BaseModel):
     query: Optional[str] = None
     files: list[FileObj] = []
     user_id: str
-
     # extras
     stream: bool
     invoke_from: InvokeFrom

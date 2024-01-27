@@ -7,3 +7,4 @@ api = ExternalApi(bp)
 
 
 from . import image_preview
+from . import tool_files

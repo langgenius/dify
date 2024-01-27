@@ -29,7 +29,7 @@ const CreateAppModal = ({
 }: CreateAppModalProps) => {
   const { t } = useTranslation()
 
-  const [name, setName] = React.useState('')
+  const [name, setName] = React.useState(appName)
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emoji, setEmoji] = useState({ icon: '🤖', icon_background: '#FFEAD5' })
@@ -53,10 +53,10 @@ const CreateAppModal = ({
     <>
       <Modal
         isShow={show}
-        onClose={() => {}}
+        onClose={() => { }}
         className={cn(s.modal, '!max-w-[480px]', 'px-8')}
       >
-        <span className={s.close} onClick={onHide}/>
+        <span className={s.close} onClick={onHide} />
         <div className={s.title}>{t('explore.appCustomize.title', { name: appName })}</div>
         <div className={s.content}>
           <div className={s.subTitle}>{t('explore.appCustomize.subTitle')}</div>
@@ -68,7 +68,7 @@ const CreateAppModal = ({
               className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
             />
           </div>
-          {isAppsFull && <AppsFull loc='app-explore-create'/>}
+          {isAppsFull && <AppsFull loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
           <Button disabled={isAppsFull} className='w-24 ml-2' type='primary' onClick={submit}>{t('common.operation.create')}</Button>

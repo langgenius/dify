@@ -14,6 +14,7 @@ const translation = {
     save: 'Save',
     edit: 'Edit',
     add: 'Add',
+    added: 'Added',
     refresh: 'Restart',
     reset: 'Reset',
     search: 'Search',
@@ -85,13 +86,14 @@ const translation = {
   menus: {
     status: 'beta',
     explore: 'Explore',
-    apps: 'Build Apps',
+    apps: 'Studio',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
     datasets: 'Knowledge',
     datasetsTips: 'COMING SOON: Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
     newApp: 'New App',
     newDataset: 'Create Knowledge',
+    tools: 'Tools',
   },
   userProfile: {
     settings: 'Settings',
@@ -246,6 +248,10 @@ const translation = {
       key: 'Speech-to-Text Model',
       tip: 'Set the default model for speech-to-text input in conversation.',
     },
+    ttsModel: {
+      key: 'Text-to-Speech Model',
+      tip: 'Set the default model for text-to-speech input in conversation.',
+    },
     rerankModel: {
       key: 'Rerank Model',
       tip: 'Rerank model will reorder the candidate document list based on the semantic match with  user query, improving the results of semantic ranking',
@@ -297,12 +303,15 @@ const translation = {
     model: 'Model',
     featureSupported: '{{feature}} supported',
     callTimes: 'Call times',
+    credits: 'Message Credits',
     buyQuota: 'Buy Quota',
     getFreeTokens: 'Get free Tokens',
     priorityUsing: 'Prioritize using',
     deprecated: 'Deprecated',
     confirmDelete: 'confirm deletion?',
     quotaTip: 'Remaining available free tokens',
+    loadPresets: 'Load Presents',
+    parameters: 'PARAMETERS',
   },
   dataSource: {
     add: 'Add a data source',
@@ -337,7 +346,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
     link: 'Learn how to develop your own API Extension.',
-    linkUrl: 'https://docs.dify.ai/advanced/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'Add API Extension',
     selector: {
       title: 'API Extension',
@@ -370,7 +379,7 @@ const translation = {
   },
   appMenus: {
     overview: 'Overview',
-    promptEng: 'Prompt Eng.',
+    promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',
   },

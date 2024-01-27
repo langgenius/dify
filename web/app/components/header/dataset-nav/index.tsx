@@ -7,9 +7,8 @@ import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
+import { Knowledge, KnowledgeActive } from '../../base/icons/src/public/header-nav/knowledge'
 import { fetchDatasetDetail, fetchDatasets } from '@/service/datasets'
-import { Database01 } from '@/app/components/base/icons/src/vender/line/development'
-import { Database02 } from '@/app/components/base/icons/src/vender/solid/development'
 import type { DataSetListResponse } from '@/models/datasets'
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
@@ -39,8 +38,8 @@ const DatasetNav = () => {
 
   return (
     <Nav
-      icon={<Database01 className='w-4 h-4' />}
-      activeIcon={<Database02 className='w-4 h-4' />}
+      icon={<Knowledge className='w-4 h-4' />}
+      activeIcon={<KnowledgeActive className='w-4 h-4' />}
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'

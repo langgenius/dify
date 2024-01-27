@@ -12,6 +12,7 @@ import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
+import AudioBtn from '@/app/components/base/audio-btn'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/files'
@@ -45,8 +46,12 @@ export type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   supportAnnotation?: boolean
+  isShowTextToSpeech?: boolean
   appId?: string
   varList?: { label: string; value: string | number | object }[]
+  innerClassName?: string
+  contentClassName?: string
+  footerClassName?: string
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -90,8 +95,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   supportAnnotation,
+  isShowTextToSpeech,
   appId,
   varList,
+  innerClassName,
+  contentClassName,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -124,6 +132,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isLoading: isQuerying,
     feedback: childFeedback,
     onSave,
+    isShowTextToSpeech,
     isMobile,
     isInstalledApp,
     installedAppId,
@@ -173,7 +182,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
     const data = await fetchTextGenerationMessge({
-      appId: params.appId,
+      appId: params.appId as string,
       messageId: messageId!,
     })
     setPromptLog(data.message as any || [])
@@ -245,7 +254,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         )
         : (
           <div
-            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4')}
+            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4', innerClassName)}
             style={mainStyle}
           >
             {(isTop && taskId) && (
@@ -254,7 +263,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {taskId}
               </div>)
             }
-            <div className='flex'>
+            <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
                 {isError
                   ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
@@ -366,8 +375,17 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   <div className='ml-1'>
                     {ratingContent}
                   </div>
-                )
-                }
+                )}
+
+                {isShowTextToSpeech && (
+                  <>
+                    <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
+                    <AudioBtn
+                      value={content}
+                      className={'mr-1'}
+                    />
+                  </>
+                )}
               </div>
               <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
             </div>

@@ -156,14 +156,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             {t('datasetSettings.form.desc')}
           </div>
-          <div className='grow'>
+          <div className='w-full'>
             <textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
               className='block px-3 py-2 w-full h-[88px] rounded-lg bg-gray-100 text-sm outline-none appearance-none resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
-            <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/advanced/datasets#how-to-write-a-good-dataset-description" target='_blank'>
+            <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank'>
               <BookOpenIcon className='w-3 h-[18px] mr-1' />
               {t('datasetSettings.form.descWrite')}
             </a>
@@ -173,12 +173,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             <div>{t('datasetSettings.form.permissions')}</div>
           </div>
-          <div className='w-full sm:w-[480px]'>
+          <div className='w-full'>
             <PermissionsRadio
               disable={!localeCurrentDataset?.embedding_available}
               value={localeCurrentDataset.permission}
               onChange={v => handleValueChange('permission', v!)}
-              itemClassName='sm:!w-[227px]'
+              itemClassName='sm:!w-[280px]'
             />
           </div>
         </div>
@@ -192,7 +192,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               disable={!localeCurrentDataset?.embedding_available}
               value={indexMethod}
               onChange={v => setIndexMethod(v!)}
-              itemClassName='sm:!w-[227px]'
+              itemClassName='sm:!w-[280px]'
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div className={labelClass}>
               {t('datasetSettings.form.embeddingModel')}
             </div>
-            <div className='grow'>
+            <div className='w-full'>
               <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
                 <ModelSelector
                   readonly
@@ -226,7 +226,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div>
               <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                <a target='_blank' href='https://docs.dify.ai/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                <a target='_blank' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                 {t('datasetSettings.form.retrievalSetting.description')}
               </div>
             </div>

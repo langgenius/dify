@@ -1,5 +1,4 @@
 import { fetchAccessToken } from '@/service/share'
-
 export const checkOrSetAccessToken = async () => {
   const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
   const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })

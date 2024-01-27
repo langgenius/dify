@@ -4,7 +4,7 @@ import threading
 import uuid
 from typing import Any, Generator, Optional, Tuple, Union, cast
 
-from core.app_runner.agent_app_runner import AgentApplicationRunner
+from core.app_runner.assistant_app_runner import AssistantApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
@@ -13,7 +13,7 @@ from core.entities.application_entities import (AdvancedChatPromptTemplateEntity
                                                 ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
                                                 DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
                                                 FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
-                                                SensitiveWordAvoidanceEntity)
+                                                SensitiveWordAvoidanceEntity, AgentPromptEntity)
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj
@@ -23,6 +23,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeErr
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_template import PromptTemplateParser
 from core.provider_manager import ProviderManager
+from core.tools.prompt.template import REACT_PROMPT_TEMPLATES
 from extensions.ext_database import db
 from flask import Flask, current_app
 from models.account import Account
@@ -93,6 +94,9 @@ class ApplicationManager:
             extras=extras
         )
 
+        if not stream and application_generate_entity.app_orchestration_config_entity.agent:
+            raise ValueError("Agent app is not supported in blocking mode.")
+
         # init generate records
         (
             conversation,
@@ -151,7 +155,7 @@ class ApplicationManager:
 
                 if application_generate_entity.app_orchestration_config_entity.agent:
                     # agent app
-                    runner = AgentApplicationRunner()
+                    runner = AssistantApplicationRunner()
                     runner.run(
                         application_generate_entity=application_generate_entity,
                         queue_manager=queue_manager,
@@ -354,6 +358,8 @@ class ApplicationManager:
 
         # external data variables
         properties['external_data_variables'] = []
+
+        # old external_data_tools
         external_data_tools = copy_app_model_config_dict.get('external_data_tools', [])
         for external_data_tool in external_data_tools:
             if 'enabled' not in external_data_tool or not external_data_tool['enabled']:
@@ -366,6 +372,19 @@ class ApplicationManager:
                     config=external_data_tool['config']
                 )
             )
+        
+        # current external_data_tools
+        for variable in copy_app_model_config_dict.get('user_input_form', []):
+            typ = list(variable.keys())[0]
+            if typ == 'external_data_tool':
+                val = variable[typ]
+                properties['external_data_variables'].append(
+                    ExternalDataVariableEntity(
+                        variable=val['variable'],
+                        type=val['type'],
+                        config=val['config']
+                    )
+                )
 
         # show retrieve source
         show_retrieve_source = False
@@ -375,15 +394,65 @@ class ApplicationManager:
                 show_retrieve_source = True
 
         properties['show_retrieve_source'] = show_retrieve_source
+        
+        dataset_ids = []
+        if 'datasets' in copy_app_model_config_dict.get('dataset_configs', {}):
+            datasets = copy_app_model_config_dict.get('dataset_configs', {}).get('datasets', {
+                'strategy': 'router',
+                'datasets': []
+            })
+
+
+            for dataset in datasets.get('datasets', []):
+                keys = list(dataset.keys())
+                if len(keys) == 0 or keys[0] != 'dataset':
+                    continue
+                dataset = dataset['dataset']
+                
+                if 'enabled' not in dataset or not dataset['enabled']:
+                    continue
+                
+                dataset_id = dataset.get('id', None)
+                if dataset_id:
+                    dataset_ids.append(dataset_id)
+        else:
+            datasets = {'strategy': 'router', 'datasets': []}
 
         if 'agent_mode' in copy_app_model_config_dict and copy_app_model_config_dict['agent_mode'] \
-                and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
-            'enabled']:
-            agent_dict = copy_app_model_config_dict.get('agent_mode')
-            agent_strategy = agent_dict.get('strategy', 'router')
-            if agent_strategy in ['router', 'react_router']:
-                dataset_ids = []
-                for tool in agent_dict.get('tools', []):
+                and 'enabled' in copy_app_model_config_dict['agent_mode'] \
+                and copy_app_model_config_dict['agent_mode']['enabled']:
+            
+            agent_dict = copy_app_model_config_dict.get('agent_mode', {})
+            agent_strategy = agent_dict.get('strategy', 'cot')
+
+            if agent_strategy == 'function_call':
+                strategy = AgentEntity.Strategy.FUNCTION_CALLING
+            elif agent_strategy == 'cot' or agent_strategy == 'react':
+                strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
+            else:
+                # old configs, try to detect default strategy
+                if copy_app_model_config_dict['model']['provider'] == 'openai':
+                    strategy = AgentEntity.Strategy.FUNCTION_CALLING
+                else:
+                    strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
+
+            agent_tools = []
+            for tool in agent_dict.get('tools', []):
+                keys = tool.keys()
+                if len(keys) >= 4:
+                    if "enabled" not in tool or not tool["enabled"]:
+                        continue
+
+                    agent_tool_properties = {
+                        'provider_type': tool['provider_type'],
+                        'provider_id': tool['provider_id'],
+                        'tool_name': tool['tool_name'],
+                        'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
+                    }
+
+                    agent_tools.append(AgentToolEntity(**agent_tool_properties))
+                elif len(keys) == 1:
+                    # old standard
                     key = list(tool.keys())[0]
 
                     if key != 'dataset':
@@ -396,59 +465,60 @@ class ApplicationManager:
 
                     dataset_id = tool_item['id']
                     dataset_ids.append(dataset_id)
-
-                dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
-                query_variable = copy_app_model_config_dict.get('dataset_query_variable')
-                if dataset_configs['retrieval_model'] == 'single':
-                    properties['dataset'] = DatasetEntity(
-                        dataset_ids=dataset_ids,
-                        retrieve_config=DatasetRetrieveConfigEntity(
-                            query_variable=query_variable,
-                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieval_model']
-                            ),
-                            single_strategy=agent_strategy
-                        )
+            
+            if 'strategy' in copy_app_model_config_dict['agent_mode'] and \
+                    copy_app_model_config_dict['agent_mode']['strategy'] not in ['react_router', 'router']:
+                agent_prompt = agent_dict.get('prompt', None) or {}
+                # check model mode
+                model_mode = copy_app_model_config_dict.get('model', {}).get('mode', 'completion')
+                if model_mode == 'completion':
+                    agent_prompt_entity = AgentPromptEntity(
+                        first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['completion']['prompt']),
+                        next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['completion']['agent_scratchpad']),
                     )
                 else:
-                    properties['dataset'] = DatasetEntity(
-                        dataset_ids=dataset_ids,
-                        retrieve_config=DatasetRetrieveConfigEntity(
-                            query_variable=query_variable,
-                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieval_model']
-                            ),
-                            top_k=dataset_configs.get('top_k'),
-                            score_threshold=dataset_configs.get('score_threshold'),
-                            reranking_model=dataset_configs.get('reranking_model')
-                        )
+                    agent_prompt_entity = AgentPromptEntity(
+                        first_prompt=agent_prompt.get('first_prompt', REACT_PROMPT_TEMPLATES['english']['chat']['prompt']),
+                        next_iteration=agent_prompt.get('next_iteration', REACT_PROMPT_TEMPLATES['english']['chat']['agent_scratchpad']),
                     )
-            else:
-                if agent_strategy == 'react':
-                    strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
-                else:
-                    strategy = AgentEntity.Strategy.FUNCTION_CALLING
-
-                agent_tools = []
-                for tool in agent_dict.get('tools', []):
-                    key = list(tool.keys())[0]
-                    tool_item = tool[key]
-
-                    agent_tool_properties = {
-                        "tool_id": key
-                    }
-
-                    if "enabled" not in tool_item or not tool_item["enabled"]:
-                        continue
-
-                    agent_tool_properties["config"] = tool_item
-                    agent_tools.append(AgentToolEntity(**agent_tool_properties))
 
                 properties['agent'] = AgentEntity(
                     provider=properties['model_config'].provider,
                     model=properties['model_config'].model,
                     strategy=strategy,
-                    tools=agent_tools
+                    prompt=agent_prompt_entity,
+                    tools=agent_tools,
+                    max_iteration=agent_dict.get('max_iteration', 5)
+                )
+
+        if len(dataset_ids) > 0:
+            # dataset configs
+            dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
+            query_variable = copy_app_model_config_dict.get('dataset_query_variable')
+
+            if dataset_configs['retrieval_model'] == 'single':
+                properties['dataset'] = DatasetEntity(
+                    dataset_ids=dataset_ids,
+                    retrieve_config=DatasetRetrieveConfigEntity(
+                        query_variable=query_variable,
+                            retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                            dataset_configs['retrieval_model']
+                        ),
+                        single_strategy=datasets.get('strategy', 'router')
+                    )
+                )
+            else:
+                properties['dataset'] = DatasetEntity(
+                    dataset_ids=dataset_ids,
+                    retrieve_config=DatasetRetrieveConfigEntity(
+                        query_variable=query_variable,
+                        retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
+                            dataset_configs['retrieval_model']
+                        ),
+                        top_k=dataset_configs.get('top_k'),
+                        score_threshold=dataset_configs.get('score_threshold'),
+                        reranking_model=dataset_configs.get('reranking_model')
+                    )
                 )
 
         # file upload
@@ -484,6 +554,12 @@ class ApplicationManager:
         if speech_to_text_dict:
             if 'enabled' in speech_to_text_dict and speech_to_text_dict['enabled']:
                 properties['speech_to_text'] = True
+
+        # text to speech
+        text_to_speech_dict = copy_app_model_config_dict.get('text_to_speech')
+        if text_to_speech_dict:
+            if 'enabled' in text_to_speech_dict and text_to_speech_dict['enabled']:
+                properties['text_to_speech'] = True
 
         # sensitive word avoidance
         sensitive_word_avoidance_dict = copy_app_model_config_dict.get('sensitive_word_avoidance')
@@ -601,6 +677,7 @@ class ApplicationManager:
                 message_id=message.id,
                 type=file.type.value,
                 transfer_method=file.transfer_method.value,
+                belongs_to='user',
                 url=file.url,
                 upload_file_id=file.upload_file_id,
                 created_by_role=('account' if account_id else 'end_user'),

@@ -13,6 +13,7 @@
   - `Text Embedidng Model` - 文本 Embedding ，预计算 tokens 能力
   - `Rerank Model` - 分段 Rerank 能力
   - `Speech-to-text Model` - 语音转文本能力
+  - `Text-to-speech Model` - 文本转语音能力
   - `Moderation` - Moderation 能力
 
 - 模型供应商展示

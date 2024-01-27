@@ -1,0 +1,14 @@
+identity:
+  name: current_time
+  author: Dify
+  label:
+    en_US: Current Time
+    zh_Hans: 获取当前时间
+    pt_BR: Current Time
+description:
+  human:
+    en_US: A tool for getting the current time.
+    zh_Hans: 一个用于获取当前时间的工具。
+    pt_BR: A tool for getting the current time.
+  llm: A tool for getting the current time.
+parameters:

@@ -22,7 +22,6 @@ DEFAULTS = {
     'CONSOLE_API_URL': 'https://cloud.dify.ai',
     'SERVICE_API_URL': 'https://api.dify.ai',
     'APP_WEB_URL': 'https://udify.app',
-    'APP_API_URL': 'https://udify.app',
     'FILES_URL': '',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -41,17 +40,11 @@ DEFAULTS = {
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_PAID_ENABLED': 'False',
-    'HOSTED_OPENAI_PAID_INCREASE_QUOTA': 1,
-    'HOSTED_OPENAI_PAID_MIN_QUANTITY': 1,
-    'HOSTED_OPENAI_PAID_MAX_QUANTITY': 1,
     'HOSTED_AZURE_OPENAI_ENABLED': 'False',
     'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
     'HOSTED_ANTHROPIC_TRIAL_ENABLED': 'False',
     'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
-    'HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA': 1,
-    'HOSTED_ANTHROPIC_PAID_MIN_QUANTITY': 1,
-    'HOSTED_ANTHROPIC_PAID_MAX_QUANTITY': 1,
     'HOSTED_MODERATION_ENABLED': 'False',
     'HOSTED_MODERATION_PROVIDERS': '',
     'CLEAN_DAY_SETTING': 30,
@@ -94,7 +87,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.4.8"
+        self.CURRENT_VERSION = "0.5.2"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -103,34 +96,24 @@ class Config:
 
         # The backend URL prefix of the console API.
         # used to concatenate the login authorization callback or notion integration callback.
-        self.CONSOLE_API_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_API_URL')
+        self.CONSOLE_API_URL = get_env('CONSOLE_API_URL')
 
         # The front-end URL prefix of the console web.
         # used to concatenate some front-end addresses and for CORS configuration use.
-        self.CONSOLE_WEB_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_WEB_URL')
-
-        # WebApp API backend Url prefix.
-        # used to declare the back-end URL for the front-end API.
-        self.APP_API_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_API_URL')
+        self.CONSOLE_WEB_URL = get_env('CONSOLE_WEB_URL')
 
         # WebApp Url prefix.
         # used to display WebAPP API Base Url to the front-end.
-        self.APP_WEB_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_WEB_URL')
+        self.APP_WEB_URL = get_env('APP_WEB_URL')
 
         # Service API Url prefix.
         # used to display Service API Base Url to the front-end.
-        self.SERVICE_API_URL = get_env('API_URL') if get_env('API_URL') else get_env('SERVICE_API_URL')
+        self.SERVICE_API_URL = get_env('SERVICE_API_URL')
 
         # File preview or download Url prefix.
         # used to display File preview or download Url to the front-end or as Multi-model inputs;
         # Url is signed and has expiration time.
         self.FILES_URL = get_env('FILES_URL') if get_env('FILES_URL') else self.CONSOLE_API_URL
-
-        # Fallback Url prefix.
-        # Will be deprecated in the future.
-        self.CONSOLE_URL = get_env('CONSOLE_URL')
-        self.API_URL = get_env('API_URL')
-        self.APP_URL = get_env('APP_URL')
 
         # Your App secret key will be used for securely signing the session cookie
         # Make sure you are changing this key for your deployment with a strong key.
@@ -273,10 +256,6 @@ class Config:
         self.HOSTED_OPENAI_TRIAL_ENABLED = get_bool_env('HOSTED_OPENAI_TRIAL_ENABLED')
         self.HOSTED_OPENAI_QUOTA_LIMIT = int(get_env('HOSTED_OPENAI_QUOTA_LIMIT'))
         self.HOSTED_OPENAI_PAID_ENABLED = get_bool_env('HOSTED_OPENAI_PAID_ENABLED')
-        self.HOSTED_OPENAI_PAID_STRIPE_PRICE_ID = get_env('HOSTED_OPENAI_PAID_STRIPE_PRICE_ID')
-        self.HOSTED_OPENAI_PAID_INCREASE_QUOTA = int(get_env('HOSTED_OPENAI_PAID_INCREASE_QUOTA'))
-        self.HOSTED_OPENAI_PAID_MIN_QUANTITY = int(get_env('HOSTED_OPENAI_PAID_MIN_QUANTITY'))
-        self.HOSTED_OPENAI_PAID_MAX_QUANTITY = int(get_env('HOSTED_OPENAI_PAID_MAX_QUANTITY'))
 
         self.HOSTED_AZURE_OPENAI_ENABLED = get_bool_env('HOSTED_AZURE_OPENAI_ENABLED')
         self.HOSTED_AZURE_OPENAI_API_KEY = get_env('HOSTED_AZURE_OPENAI_API_KEY')
@@ -288,10 +267,6 @@ class Config:
         self.HOSTED_ANTHROPIC_TRIAL_ENABLED = get_bool_env('HOSTED_ANTHROPIC_TRIAL_ENABLED')
         self.HOSTED_ANTHROPIC_QUOTA_LIMIT = int(get_env('HOSTED_ANTHROPIC_QUOTA_LIMIT'))
         self.HOSTED_ANTHROPIC_PAID_ENABLED = get_bool_env('HOSTED_ANTHROPIC_PAID_ENABLED')
-        self.HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID = get_env('HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID')
-        self.HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA = int(get_env('HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA'))
-        self.HOSTED_ANTHROPIC_PAID_MIN_QUANTITY = int(get_env('HOSTED_ANTHROPIC_PAID_MIN_QUANTITY'))
-        self.HOSTED_ANTHROPIC_PAID_MAX_QUANTITY = int(get_env('HOSTED_ANTHROPIC_PAID_MAX_QUANTITY'))
 
         self.HOSTED_MINIMAX_ENABLED = get_bool_env('HOSTED_MINIMAX_ENABLED')
         self.HOSTED_SPARK_ENABLED = get_bool_env('HOSTED_SPARK_ENABLED')

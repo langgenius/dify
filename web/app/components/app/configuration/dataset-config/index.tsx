@@ -30,6 +30,7 @@ const DatasetConfig: FC = () => {
     modelConfig,
     setModelConfig,
     showSelectDataSet,
+    isAgent,
   } = useContext(ConfigContext)
 
   const hasData = dataSet.length > 0
@@ -72,7 +73,7 @@ const DatasetConfig: FC = () => {
       title={t('appDebug.feature.dataSet.title')}
       headerRight={
         <div className='flex items-center gap-1'>
-          <ParamsConfig />
+          {!isAgent && <ParamsConfig />}
           <OperationBtn type="add" onClick={showSelectDataSet} />
         </div>
       }

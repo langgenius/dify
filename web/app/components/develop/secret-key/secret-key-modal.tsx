@@ -27,6 +27,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import I18n from '@/context/i18n'
+import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
 import { useAppContext } from '@/context/app-context'
 
 type ISecretKeyModalProps = {
@@ -55,6 +56,7 @@ const SecretKeyModal = ({
   const [delKeyID, setDelKeyId] = useState('')
 
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
 
   // const [isCopied, setIsCopied] = useState(false)
   const [copyValue, setCopyValue] = useState('')
@@ -100,7 +102,7 @@ const SecretKeyModal = ({
   }
 
   const formatDate = (timestamp: string) => {
-    if (locale === 'en')
+    if (language === LanguagesSupported[0])
       return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format((+timestamp) * 1000)
     else
       return new Intl.DateTimeFormat('fr-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format((+timestamp) * 1000)
