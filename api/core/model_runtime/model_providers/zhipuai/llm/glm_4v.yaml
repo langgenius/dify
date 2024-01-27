@@ -30,15 +30,3 @@ parameter_rules:
       zh_Hans: SSE接口调用时，用于控制每次返回内容方式是增量还是全量，不提供此参数时默认为增量返回，true 为增量返回，false 为全量返回。
       en_US: When the SSE interface is called, it is used to control whether the content is returned incrementally or in full. If this parameter is not provided, the default is incremental return. true means incremental return, false means full return.
     required: false
-  - name: return_type
-    label:
-      zh_Hans: 回复类型
-      en_US: Return Type
-    type: string
-    help:
-      zh_Hans: 用于控制每次返回内容的类型，空或者没有此字段时默认按照 json_string 返回，json_string 返回标准的 JSON 字符串，text 返回原始的文本内容。
-      en_US: Used to control the type of content returned each time. When it is empty or does not have this field, it will be returned as json_string by default. json_string returns a standard JSON string, and text returns the original text content.
-    required: false
-    options:
-      - text
-      - json_string
