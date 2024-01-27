@@ -31,6 +31,7 @@ const InviteModal = ({
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   
   const InvitingRoles = useMemo(() => [
     {
