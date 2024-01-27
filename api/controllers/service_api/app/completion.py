@@ -13,7 +13,7 @@ from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import Response, stream_with_context, request
+from flask import Response, stream_with_context
 from flask_restful import reqparse
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
@@ -75,18 +75,22 @@ class CompletionApi(AppApiResource):
 
 
 class CompletionStopApi(AppApiResource):
-    def post(self, app_model, _, task_id):
+    def post(self, app_model, end_user, task_id):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+        if end_user is None:
+            parser = reqparse.RequestParser()
+            parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+            args = parser.parse_args()
 
-        args = parser.parse_args()
+            user = args.get('user')
+            if user is not None:
+                end_user = create_or_update_end_user_for_user_id(app_model, user)
+            else:
+                raise ValueError("arg user muse be input.")
 
-        end_user_id = args.get('user')
-
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
@@ -146,13 +150,22 @@ class ChatApi(AppApiResource):
 
 
 class ChatStopApi(AppApiResource):
-    def post(self, app_model, _, task_id):
+    def post(self, app_model, end_user, task_id):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        end_user_id = request.get_json().get('user')
+        if end_user is None:
+            parser = reqparse.RequestParser()
+            parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+            args = parser.parse_args()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user_id)
+            user = args.get('user')
+            if user is not None:
+                end_user = create_or_update_end_user_for_user_id(app_model, user)
+            else:
+                raise ValueError("arg user muse be input.")
+
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
