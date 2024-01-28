@@ -11,7 +11,7 @@ const SignIn = () => {
     <>
       {!IS_CE_EDITION && (
         <>
-          <Script strategy="beforeInteractive" async src={'https://www.googletagmanager.com/gtag/js?id=AW-11217955271"}'}></Script>
+          <Script strategy="beforeInteractive" async src={'https://www.googletagmanager.com/gtag/js?id=AW-11217955271'}></Script>
           <Script
             id="ga-monitor-register"
             dangerouslySetInnerHTML={{

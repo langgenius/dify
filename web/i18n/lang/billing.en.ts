@@ -20,7 +20,7 @@ const translation = {
     save: 'Save ',
     free: 'Free',
     currentPlan: 'Current Plan',
-    contractOwner: 'Contact your workspace owner',
+    contractOwner: 'Contact team manager',
     startForFree: 'Start for free',
     getStartedWith: 'Get started with ',
     contactSales: 'Contact Sales',
@@ -68,7 +68,7 @@ const translation = {
       tooltip: 'Manual editing and annotation of responses provides customizable high-quality question-answering abilities for apps. (Applicable only in chat apps)',
     },
     ragAPIRequestTooltip: 'Refers to the number of API calls invoking only the knowledge base processing capabilities of Dify.',
-    receiptInfo: 'Only team owner can subscribe and view billing information',
+    receiptInfo: 'Only team owner and team admin can subscribe and view billing information',
   },
   plans: {
     sandbox: {

@@ -20,8 +20,8 @@ const Pricing: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-  const { isCurrentWorkspaceOwner } = useAppContext()
-  const canPay = isCurrentWorkspaceOwner
+  const { isCurrentWorkspaceManager } = useAppContext()
+  const canPay = isCurrentWorkspaceManager
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
 
   return createPortal(

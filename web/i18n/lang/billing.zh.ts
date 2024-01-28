@@ -19,7 +19,7 @@ const translation = {
     year: '年',
     save: '节省',
     currentPlan: '当前计划',
-    contractOwner: '联系您的工作区所有者',
+    contractOwner: '联系团队管理员',
     free: '免费',
     startForFree: '免费开始',
     getStartedWith: '开始使用',
@@ -68,7 +68,7 @@ const translation = {
       tooltip: '标注回复功能通过人工编辑标注为应用提供了可定制的高质量问答回复能力',
     },
     ragAPIRequestTooltip: '指单独调用 Dify 知识库数据处理能力的 API。',
-    receiptInfo: '只有团队所有者才能订阅和查看账单信息',
+    receiptInfo: '只有团队所有者和团队管理员才能订阅和查看账单信息',
   },
   plans: {
     sandbox: {

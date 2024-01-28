@@ -26,7 +26,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { fetchModelParameterRules } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import { useProviderContext } from '@/context/provider-context'
@@ -198,14 +197,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[60]'>
           <div className='w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl'>
-            <div className='flex items-center px-4 h-12 rounded-t-xl border-b border-gray-100 bg-gray-50 text-md font-medium text-gray-900'>
-              <CubeOutline className='mr-2 w-4 h-4 text-primary-600' />
-              {t('common.modelProvider.modelAndParameters')}
-            </div>
-            <div className='max-h-[480px] px-10 pt-4 pb-8 overflow-y-auto'>
+            <div className='max-h-[480px] px-10 pt-6 pb-8 overflow-y-auto'>
               <div className='flex items-center justify-between h-8'>
-                <div className='text-sm font-medium text-gray-900'>
-                  {t('common.modelProvider.model')}
+                <div className='font-semibold text-gray-900'>
+                  {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
