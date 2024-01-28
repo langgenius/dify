@@ -34,17 +34,22 @@ class BillingService:
     def get_model_provider_payment_link(cls,
                                         provider_name: str,
                                         tenant_id: str,
-                                        account_id: str):
+                                        account_id: str,
+                                        prefilled_email: str):
         params = {
             'provider_name': provider_name,
             'tenant_id': tenant_id,
-            'account_id': account_id
+            'account_id': account_id,
+            'prefilled_email': prefilled_email
         }
         return cls._send_request('GET', '/model-provider/payment-link', params=params)
 
     @classmethod
-    def get_invoices(cls, prefilled_email: str = ''):
-        params = {'prefilled_email': prefilled_email}
+    def get_invoices(cls, prefilled_email: str = '', tenant_id: str = ''):
+        params = {
+            'prefilled_email': prefilled_email,
+            'tenant_id': tenant_id
+        }
         return cls._send_request('GET', '/invoices', params=params)
 
     @classmethod
@@ -60,7 +65,7 @@ class BillingService:
         return response.json()
 
     @staticmethod
-    def is_tenant_owner(current_user):
+    def is_tenant_owner_or_admin(current_user):
         tenant_id = current_user.current_tenant_id
 
         join = db.session.query(TenantAccountJoin).filter(
@@ -68,5 +73,5 @@ class BillingService:
             TenantAccountJoin.account_id == current_user.id
         ).first()
 
-        if join.role != 'owner':
-            raise ValueError('Only tenant owner can perform this action')
+        if join.role not in ['owner', 'admin']:
+            raise ValueError('Only team owner or team admin can perform this action')

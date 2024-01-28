@@ -185,8 +185,9 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
   return (
     <LexicalTypeaheadMenuPlugin
       options={options}
-      onQueryChange={() => {}}
+      onQueryChange={() => { }}
       onSelectOption={onSelectOption}
+      anchorClassName='z-[999999]'
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },

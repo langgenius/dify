@@ -1,0 +1,54 @@
+identity:
+  name: youtube_video_statistics
+  author: Dify
+  label:
+    en_US: Video statistics
+    zh_Hans: 视频统计
+    pt_BR: Estatísticas de vídeo
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for get statistics about a channel's videos.
+    zh_Hans: 一个用于获取油管频道视频统计数据的工具。
+    pt_BR: Uma ferramenta para obter estatísticas sobre os vídeos de um canal.
+  llm: A tool for get statistics about a channel's videos. Input should be the name of the channel like PewDiePie.
+parameters:
+  - name: channel
+    type: string
+    required: true
+    label:
+      en_US: Channel name
+      zh_Hans: 频道名
+      pt_BR: Nome do canal
+    human_description:
+      en_US: The name of the channel you want to search.
+      zh_Hans: 你想要搜索的油管频道名。
+      pt_BR: O nome do canal que você deseja pesquisar.
+    llm_description: The name of the channel you want to search.
+    form: llm
+  - name: start_date
+    type: string
+    required: false
+    label:
+      en_US: Start date
+      zh_Hans: 开始日期
+      pt_BR: Data de início
+    human_description:
+      en_US: The start date of the analytics.
+      zh_Hans: 分析的开始日期。
+      pt_BR: A data de início da análise.
+    llm_description: The start date of the analytics, the format of the date must be YYYY-MM-DD like 2020-01-01.
+    form: llm
+  - name: end_date
+    type: string
+    required: false
+    label:
+      en_US: End date
+      zh_Hans: 结束日期
+      pt_BR: Data de término
+    human_description:
+      en_US: The end date of the analytics.
+      zh_Hans: 分析的结束日期。
+      pt_BR: A data de término da análise.
+    llm_description: The end date of the analytics, the format of the date must be YYYY-MM-DD like 2024-01-01.
+    form: llm

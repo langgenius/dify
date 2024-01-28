@@ -37,6 +37,20 @@ class MessageListApi(AppApiResource):
         'created_at': TimestampField
     }
 
+    agent_thought_fields = {
+        'id': fields.String,
+        'chain_id': fields.String,
+        'message_id': fields.String,
+        'position': fields.Integer,
+        'thought': fields.String,
+        'tool': fields.String,
+        'tool_labels': fields.Raw,
+        'tool_input': fields.String,
+        'created_at': TimestampField,
+        'observation': fields.String,
+        'message_files': fields.List(fields.String, attribute='files')
+    }
+
     message_fields = {
         'id': fields.String,
         'conversation_id': fields.String,
@@ -46,7 +60,8 @@ class MessageListApi(AppApiResource):
         'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
         'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
-        'created_at': TimestampField
+        'created_at': TimestampField,
+        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
     }
 
     message_infinite_scroll_pagination_fields = {

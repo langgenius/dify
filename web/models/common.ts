@@ -1,3 +1,5 @@
+import type { I18nText } from '@/utils/language'
+
 export type CommonResponse = {
   result: 'success' | 'fail'
 }
@@ -204,11 +206,6 @@ export type ApiBasedExtension = {
   api_key?: string
 }
 
-export type I18nText = {
-  'en-US': string
-  'zh-Hans': string
-}
-
 export type CodeBasedExtensionForm = {
   type: string
   label: I18nText
@@ -222,7 +219,7 @@ export type CodeBasedExtensionForm = {
 
 export type CodeBasedExtensionItem = {
   name: string
-  label: I18nText
+  label: any
   form_schema: CodeBasedExtensionForm[]
 }
 export type CodeBasedExtension = {
@@ -254,3 +251,11 @@ export type ModerationService = (
     text: string
   }
 ) => Promise<ModerateResponse>
+
+export type Utm = {
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_term?: string
+  utm_content?: string
+}

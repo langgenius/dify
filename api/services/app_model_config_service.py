@@ -95,6 +95,21 @@ class AppModelConfigService:
         if not isinstance(config["speech_to_text"]["enabled"], bool):
             raise ValueError("enabled in speech_to_text must be of boolean type")
 
+        # text_to_speech
+        if 'text_to_speech' not in config or not config["text_to_speech"]:
+            config["text_to_speech"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["text_to_speech"], dict):
+            raise ValueError("text_to_speech must be of dict type")
+
+        if "enabled" not in config["text_to_speech"] or not config["text_to_speech"]["enabled"]:
+            config["text_to_speech"]["enabled"] = False
+
+        if not isinstance(config["text_to_speech"]["enabled"], bool):
+            raise ValueError("enabled in text_to_speech must be of boolean type")
+
         # return retriever resource
         if 'retriever_resource' not in config or not config["retriever_resource"]:
             config["retriever_resource"] = {
@@ -185,7 +200,7 @@ class AppModelConfigService:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in ["text-input", "select", "paragraph"]:
+            if key not in ["text-input", "select", "paragraph", "external_data_tool"]:
                 raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
 
             form_item = item[key]
@@ -262,28 +277,39 @@ class AppModelConfigService:
 
         for tool in config["agent_mode"]["tools"]:
             key = list(tool.keys())[0]
-            if key not in SUPPORT_TOOLS:
-                raise ValueError("Keys in agent_mode.tools must be in the specified tool list")
+            if key in SUPPORT_TOOLS:
+                # old style, use tool name as key
+                tool_item = tool[key]
 
-            tool_item = tool[key]
+                if "enabled" not in tool_item or not tool_item["enabled"]:
+                    tool_item["enabled"] = False
 
-            if "enabled" not in tool_item or not tool_item["enabled"]:
-                tool_item["enabled"] = False
+                if not isinstance(tool_item["enabled"], bool):
+                    raise ValueError("enabled in agent_mode.tools must be of boolean type")
 
-            if not isinstance(tool_item["enabled"], bool):
-                raise ValueError("enabled in agent_mode.tools must be of boolean type")
+                if key == "dataset":
+                    if 'id' not in tool_item:
+                        raise ValueError("id is required in dataset")
 
-            if key == "dataset":
-                if 'id' not in tool_item:
-                    raise ValueError("id is required in dataset")
+                    try:
+                        uuid.UUID(tool_item["id"])
+                    except ValueError:
+                        raise ValueError("id in dataset must be of UUID type")
 
-                try:
-                    uuid.UUID(tool_item["id"])
-                except ValueError:
-                    raise ValueError("id in dataset must be of UUID type")
-
-                if not cls.is_dataset_exists(account, tool_item["id"]):
-                    raise ValueError("Dataset ID does not exist, please check your permission.")
+                    if not cls.is_dataset_exists(account, tool_item["id"]):
+                        raise ValueError("Dataset ID does not exist, please check your permission.")
+            else:
+                # latest style, use key-value pair
+                if "enabled" not in tool or not tool["enabled"]:
+                    tool["enabled"] = False
+                if "provider_type" not in tool:
+                    raise ValueError("provider_type is required in agent_mode.tools")
+                if "provider_id" not in tool:
+                    raise ValueError("provider_id is required in agent_mode.tools")
+                if "tool_name" not in tool:
+                    raise ValueError("tool_name is required in agent_mode.tools")
+                if "tool_parameters" not in tool:
+                    raise ValueError("tool_parameters is required in agent_mode.tools")
 
         # dataset_query_variable
         cls.is_dataset_query_variable_valid(config, app_mode)
@@ -306,6 +332,7 @@ class AppModelConfigService:
             "suggested_questions": config["suggested_questions"],
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
             "speech_to_text": config["speech_to_text"],
+            "text_to_speech": config["text_to_speech"],
             "retriever_resource": config["retriever_resource"],
             "more_like_this": config["more_like_this"],
             "sensitive_word_avoidance": config["sensitive_word_avoidance"],
@@ -453,6 +480,12 @@ class AppModelConfigService:
         # dataset_configs
         if 'dataset_configs' not in config or not config["dataset_configs"]:
             config["dataset_configs"] = {'retrieval_model': 'single'}
+
+        if 'datasets' not in config["dataset_configs"] or not config["dataset_configs"]["datasets"]:
+            config["dataset_configs"]["datasets"] = {
+                "strategy": "router",
+                "datasets": []
+            }
 
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")

@@ -9,7 +9,6 @@ import RenameModal from '../rename-modal'
 import Item from './item'
 import type { ConversationItem } from '@/models/share'
 import { fetchConversations, renameConversation } from '@/service/share'
-import { fetchConversations as fetchUniversalConversations, renameConversation as renameUniversalConversation } from '@/service/universal-chat'
 import Toast from '@/app/components/base/toast'
 
 export type IListProps = {
@@ -20,7 +19,6 @@ export type IListProps = {
   onListChanged?: (newList: ConversationItem[]) => void
   isClearConversationList: boolean
   isInstalledApp: boolean
-  isUniversalChat?: boolean
   installedAppId?: string
   onMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
   isNoMore: boolean
@@ -38,7 +36,6 @@ const List: FC<IListProps> = ({
   onListChanged,
   isClearConversationList,
   isInstalledApp,
-  isUniversalChat,
   installedAppId,
   onMoreLoaded,
   isNoMore,
@@ -56,11 +53,7 @@ const List: FC<IListProps> = ({
         let lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
         if (lastId === '-1')
           lastId = undefined
-        let res: any
-        if (isUniversalChat)
-          res = await fetchUniversalConversations(lastId, isPinned)
-        else
-          res = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned)
+        const res = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned) as any
         const { data: conversations, has_more }: any = res
         onMoreLoaded({ data: conversations, has_more })
       }
@@ -93,11 +86,7 @@ const List: FC<IListProps> = ({
     setIsSaving()
     const currId = currentConversation.id
     try {
-      if (isUniversalChat)
-        await renameUniversalConversation(currId, newName)
-
-      else
-        await renameConversation(isInstalledApp, installedAppId, currId, newName)
+      await renameConversation(isInstalledApp, installedAppId, currId, newName)
 
       Toast.notify({
         type: 'success',

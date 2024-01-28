@@ -29,12 +29,14 @@ type SystemModelSelectorProps = {
   embeddingsDefaultModel: DefaultModelResponse | undefined
   rerankDefaultModel: DefaultModelResponse | undefined
   speech2textDefaultModel: DefaultModelResponse | undefined
+  ttsDefaultModel: DefaultModelResponse | undefined
 }
 const SystemModel: FC<SystemModelSelectorProps> = ({
   textGenerationDefaultModel,
   embeddingsDefaultModel,
   rerankDefaultModel,
   speech2textDefaultModel,
+  ttsDefaultModel,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -43,11 +45,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   const { data: embeddingModelList } = useModelList(2)
   const { data: rerankModelList } = useModelList(3)
   const { data: speech2textModelList } = useModelList(4)
+  const { data: ttsModelList } = useModelList(5)
   const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
   const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
   const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
   const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
   const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
+  const [currentTTSDefaultModel, changeCurrentTTSDefaultModel] = useSystemDefaultModelAndModelList(ttsDefaultModel, ttsModelList)
   const [open, setOpen] = useState(false)
 
   const getCurrentDefaultModelByModelType = (modelType: ModelTypeEnum) => {
@@ -59,6 +63,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       return currentRerankDefaultModel
     else if (modelType === ModelTypeEnum.speech2text)
       return currentSpeech2textDefaultModel
+    else if (modelType === ModelTypeEnum.tts)
+      return currentTTSDefaultModel
 
     return undefined
   }
@@ -71,6 +77,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       changeCurrentRerankDefaultModel(model)
     else if (modelType === ModelTypeEnum.speech2text)
       changeCurrentSpeech2textDefaultModel(model)
+    else if (modelType === ModelTypeEnum.tts)
+      changeCurrentTTSDefaultModel(model)
 
     if (!changedModelTypes.includes(modelType))
       setChangedModelTypes([...changedModelTypes, modelType])
@@ -79,7 +87,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     const res = await updateDefaultModel({
       url: '/workspaces/current/default-model',
       body: {
-        model_settings: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text].map((modelType) => {
+        model_settings: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts].map((modelType) => {
           return {
             model_type: modelType,
             provider: getCurrentDefaultModelByModelType(modelType)?.provider,
@@ -100,6 +108,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         else if (modelType === ModelTypeEnum.rerank)
           updateModelList(modelType)
         else if (modelType === ModelTypeEnum.speech2text)
+          updateModelList(modelType)
+        else if (modelType === ModelTypeEnum.tts)
           updateModelList(modelType)
       })
     }
@@ -136,7 +146,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
               </Tooltip>
             </div>
             <div>
@@ -156,7 +166,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
               </Tooltip>
             </div>
             <div>
@@ -176,7 +186,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
               </Tooltip>
             </div>
             <div>
@@ -196,7 +206,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
               </Tooltip>
             </div>
             <div>
@@ -204,6 +214,26 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 defaultModel={currentSpeech2textDefaultModel}
                 modelList={speech2textModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
+              />
+            </div>
+          </div>
+          <div className='px-6 py-1'>
+            <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
+              {t('common.modelProvider.ttsModel.key')}
+              <Tooltip
+                selector='model-page-system-tts-model-tip'
+                htmlContent={
+                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.ttsModel.tip')}</div>
+                }
+              >
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+              </Tooltip>
+            </div>
+            <div>
+              <ModelSelector
+                defaultModel={currentTTSDefaultModel}
+                modelList={ttsModelList}
+                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
               />
             </div>
           </div>

@@ -6,7 +6,7 @@ from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
 from flask import request
 from flask_restful import Resource, reqparse
-from libs.helper import supported_language
+from constants.languages import supported_language
 from models.model import App, InstalledApp, RecommendedApp
 from werkzeug.exceptions import NotFound, Unauthorized
 

@@ -1,25 +1,53 @@
 'use client'
 
-import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
-import style from '../list.module.css'
 import { type AppMode } from '@/types/app'
+import {
+  AiText,
+  CuteRobote,
+} from '@/app/components/base/icons/src/vender/solid/communication'
+import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 
 export type AppModeLabelProps = {
   mode: AppMode
+  isAgent?: boolean
   className?: string
 }
 
 const AppModeLabel = ({
   mode,
+  isAgent,
   className,
 }: AppModeLabelProps) => {
   const { t } = useTranslation()
+
   return (
-    <span className={classNames('flex items-center w-fit h-6 gap-1 px-2 text-gray-500 text-xs border border-gray-100 rounded', className)}>
-      <span className={classNames(style.listItemFooterIcon, mode === 'chat' && style.solidChatIcon, mode === 'completion' && style.solidCompletionIcon)} />
-      {t(`app.modes.${mode}`)}
-    </span>
+    <div className={`inline-flex items-center px-2 h-6 rounded-md border border-gray-100 text-xs text-gray-500 ${className}`}>
+      {
+        mode === 'completion' && (
+          <>
+            <AiText className='mr-1 w-3 h-3 text-gray-400' />
+            {t('app.newApp.completeApp')}
+          </>
+        )
+      }
+      {
+        mode === 'chat' && !isAgent && (
+          <>
+            <BubbleText className='mr-1 w-3 h-3 text-gray-400' />
+            {t('appDebug.assistantType.chatAssistant.name')}
+          </>
+        )
+      }
+      {
+        mode === 'chat' && isAgent && (
+          <>
+            <CuteRobote className='mr-1 w-3 h-3 text-gray-400' />
+            {t('appDebug.assistantType.agentAssistant.name')}
+          </>
+        )
+      }
+    </div>
   )
 }
 

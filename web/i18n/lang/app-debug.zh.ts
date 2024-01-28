@@ -3,6 +3,7 @@ const translation = {
     line1: '提示词',
     line2: '编排',
   },
+  orchestrate: '编排',
   promptMode: {
     simple: '切换到专家模式以编辑完整的提示词',
     advanced: '专家模式',
@@ -69,6 +70,11 @@ const translation = {
       title: '语音转文字',
       description: '启用后，您可以使用语音输入。',
       resDes: '语音输入已启用',
+    },
+    textToSpeech: {
+      title: '文字转语音',
+      description: '启用后，文本可以转换成语音。',
+      resDes: '文本转音频已启用',
     },
     citation: {
       title: '引用和归属',
@@ -223,7 +229,7 @@ const translation = {
     notSelectModel: '请选择模型',
     waitForImgUpload: '请等待图片上传完成',
   },
-  chatSubTitle: '对话前提示词',
+  chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
   promptTip:
     '提示词用于对 AI 的回复做出一系列指令和约束。可插入表单变量，例如 {{input}}。这段提示词不会被最终用户所看到。',
@@ -267,6 +273,7 @@ const translation = {
     maxLength: '最大长度',
     options: '选项',
     addOption: '添加选项',
+    apiBasedVar: '基于API的变量',
   },
   vision: {
     name: '视觉',
@@ -291,7 +298,8 @@ const translation = {
     title: '对话开场白',
     add: '添加开场白',
     writeOpner: '编写开场白',
-    placeholder: '请在这里输入开场白',
+    placeholder: '在这里写下你的开场白，你可以使用变量，尝试输入 {{variable}}。',
+    openingQuestion: '开场问题',
     noDataPlaceHolder:
       '在对话型应用中，让 AI 主动说第一段话可以拉近与用户间的距离。',
     varTip: '你可以使用变量， 试试输入 {{variable}}',
@@ -337,6 +345,46 @@ const translation = {
     score_threshold: 'Score 阈值',
     score_thresholdTip: '用于设置文本片段筛选的相似度阈值。',
     retrieveChangeTip: '修改索引模式和检索模式可能会影响与该知识库关联的应用程序。',
+  },
+  debugAsSingleModel: '单一模型进行调试',
+  debugAsMultipleModel: '多个模型进行调试',
+  duplicateModel: '复制模型',
+  publishAs: '发布为',
+  assistantType: {
+    name: '助手类型',
+    chatAssistant: {
+      name: '基础助手',
+      description: '基于 LLM 构建一个聊天型助手',
+    },
+    agentAssistant: {
+      name: '智能助手',
+      description: '构建一个智能助手，他可以自主选择工具完成你设置的任务',
+    },
+  },
+  agent: {
+    agentMode: 'Agent Mode',
+    agentModeDes: '设置代理的推理模式类型',
+    agentModeType: {
+      ReACT: 'ReAct',
+      functionCall: 'Function Calling',
+    },
+    setting: {
+      name: 'Agent 设置',
+      description: '智能助手设置允许设置代理模式和内置提示等高级功能，仅在代理类型中可用。',
+      maximumIterations: {
+        name: '最大迭代次数',
+        description: '限制代理型助手执行迭代的次数',
+      },
+    },
+    buildInPrompt: '内置提示词',
+    firstPrompt: '第一次提示词',
+    nextIteration: '下一次迭代',
+    promptPlaceholder: '在这里写下您的提示词',
+    tools: {
+      name: '工具',
+      description: '使用工具可以扩展代理的能力，比如搜索互联网或科学计算',
+      enabled: '启用',
+    },
   },
 }
 

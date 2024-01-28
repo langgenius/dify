@@ -6,8 +6,8 @@ from core.entities.application_entities import DatasetEntity, DatasetRetrieveCon
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.tool.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
-from core.tool.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
+from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from langchain.tools import BaseTool
 from models.dataset import Dataset

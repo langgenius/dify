@@ -8,7 +8,8 @@ from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
 from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
                                           QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
-                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent)
+                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent,
+                                          QueueMessageFileEvent, QueueAgentMessageEvent)
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
@@ -16,11 +17,13 @@ from core.model_runtime.entities.message_entities import (AssistantPromptMessage
                                                           TextPromptMessageContent)
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageAgentThought
+from models.model import Conversation, Message, MessageAgentThought, MessageFile
 from pydantic import BaseModel
 from services.annotation_service import AppAnnotationService
 
@@ -279,11 +282,12 @@ class GenerateTaskPipeline:
 
                     self._task_state.llm_result.message.content = annotation.content
             elif isinstance(event, QueueAgentThoughtEvent):
-                agent_thought = (
+                agent_thought: MessageAgentThought = (
                     db.session.query(MessageAgentThought)
                     .filter(MessageAgentThought.id == event.agent_thought_id)
                     .first()
                 )
+                db.session.refresh(agent_thought)
 
                 if agent_thought:
                     response = {
@@ -293,16 +297,49 @@ class GenerateTaskPipeline:
                         'message_id': self._message.id,
                         'position': agent_thought.position,
                         'thought': agent_thought.thought,
+                        'observation': agent_thought.observation,
                         'tool': agent_thought.tool,
+                        'tool_labels': agent_thought.tool_labels,
                         'tool_input': agent_thought.tool_input,
-                        'created_at': int(self._message.created_at.timestamp())
+                        'created_at': int(self._message.created_at.timestamp()),
+                        'message_files': agent_thought.files
                     }
 
                     if self._conversation.mode == 'chat':
                         response['conversation_id'] = self._conversation.id
 
                     yield self._yield_response(response)
-            elif isinstance(event, QueueMessageEvent):
+            elif isinstance(event, QueueMessageFileEvent):
+                message_file: MessageFile = (
+                    db.session.query(MessageFile)
+                    .filter(MessageFile.id == event.message_file_id)
+                    .first()
+                )
+                # get extension
+                if '.' in message_file.url:
+                    extension = f'.{message_file.url.split(".")[-1]}'
+                    if len(extension) > 10:
+                        extension = '.bin'
+                else:
+                    extension = '.bin'
+                # add sign url
+                url = ToolFileManager.sign_file(file_id=message_file.id, extension=extension)
+
+                if message_file:
+                    response = {
+                        'event': 'message_file',
+                        'id': message_file.id,
+                        'type': message_file.type,
+                        'belongs_to': message_file.belongs_to or 'user',
+                        'url': url
+                    }
+
+                    if self._conversation.mode == 'chat':
+                        response['conversation_id'] = self._conversation.id
+
+                    yield self._yield_response(response)
+
+            elif isinstance(event, (QueueMessageEvent, QueueAgentMessageEvent)):
                 chunk = event.chunk
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
@@ -332,7 +369,7 @@ class GenerateTaskPipeline:
                         self._output_moderation_handler.append_new_token(delta_text)
 
                 self._task_state.llm_result.message.content += delta_text
-                response = self._handle_chunk(delta_text)
+                response = self._handle_chunk(delta_text, agent=isinstance(event, QueueAgentMessageEvent))
                 yield self._yield_response(response)
             elif isinstance(event, QueueMessageReplaceEvent):
                 response = {
@@ -384,14 +421,14 @@ class GenerateTaskPipeline:
             extras=self._application_generate_entity.extras
         )
 
-    def _handle_chunk(self, text: str) -> dict:
+    def _handle_chunk(self, text: str, agent: bool = False) -> dict:
         """
         Handle completed event.
         :param text: text
         :return:
         """
         response = {
-            'event': 'message',
+            'event': 'message' if not agent else 'agent_message',
             'id': self._message.id,
             'task_id': self._application_generate_entity.task_id,
             'message_id': self._message.id,
@@ -493,6 +530,10 @@ class GenerateTaskPipeline:
                         'score': resource['score'],
                         'content': resource['content'],
                     })
+        # show annotation reply
+        if 'annotation_reply' in self._task_state.metadata:
+            if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
+                metadata['annotation_reply'] = self._task_state.metadata['annotation_reply']
 
         # show usage
         if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:

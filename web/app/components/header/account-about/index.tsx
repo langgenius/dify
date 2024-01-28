@@ -9,6 +9,7 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 import LogoSite from '@/app/components/base/logo/logo-site'
 
 type IAccountSettingProps = {
@@ -25,6 +26,7 @@ export default function AccountAbout({
 }: IAccountSettingProps) {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
   const isLatest = langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version
 
   return (
@@ -47,8 +49,8 @@ export default function AccountAbout({
                 IS_CE_EDITION
                   ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank'>Open Source License</Link>
                   : <>
-                    <Link href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/user-agreement/privacy-policy'} target='_blank'>Privacy Policy</Link>,
-                    <Link href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/user-agreement/terms-of-service'} target='_blank'>Terms of Service</Link>
+                    <Link href={language !== LanguagesSupportedUnderscore[1] ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/user-agreement/privacy-policy'} target='_blank'>Privacy Policy</Link>,
+                    <Link href={language !== LanguagesSupportedUnderscore[1] ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/user-agreement/terms-of-service'} target='_blank'>Terms of Service</Link>
                   </>
               }
             </div>

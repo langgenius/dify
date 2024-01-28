@@ -9,6 +9,7 @@ from libs.login import login_required
 from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 from sqlalchemy import and_
+from constants.languages import languages
 
 app_fields = {
     'id': fields.String,
@@ -29,7 +30,8 @@ recommended_app_fields = {
     'is_listed': fields.Boolean,
     'install_count': fields.Integer,
     'installed': fields.Boolean,
-    'editable': fields.Boolean
+    'editable': fields.Boolean,
+    'is_agent': fields.Boolean
 }
 
 recommended_app_list_fields = {
@@ -43,7 +45,7 @@ class RecommendedAppListApi(Resource):
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
-        language_prefix = current_user.interface_language if current_user.interface_language else 'en-US'
+        language_prefix = current_user.interface_language if current_user.interface_language else languages[0]
 
         recommended_apps = db.session.query(RecommendedApp).filter(
             RecommendedApp.is_listed == True,
@@ -82,6 +84,7 @@ class RecommendedAppListApi(Resource):
                 'install_count': recommended_app.install_count,
                 'installed': installed,
                 'editable': current_user.role in ['owner', 'admin'],
+                "is_agent": app.is_agent
             }
             recommended_apps_result.append(recommended_app_result)
 

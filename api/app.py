@@ -30,7 +30,7 @@ from flask import Flask, Response, request
 from flask_cors import CORS
 from libs.passport import PassportService
 # DO NOT REMOVE BELOW
-from models import account, dataset, model, source, task, tool, web
+from models import account, dataset, model, source, task, tool, web, tools
 from services.account_service import AccountService
 
 # DO NOT REMOVE ABOVE
@@ -123,6 +123,7 @@ def load_user_from_request(request_from_flask_login):
         return AccountService.load_user(user_id)
     else:
         return None
+
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():

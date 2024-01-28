@@ -39,6 +39,21 @@ message_file_fields = {
     'id': fields.String,
     'type': fields.String,
     'url': fields.String,
+    'belongs_to': fields.String(default='user'),
+}
+
+agent_thought_fields = {
+    'id': fields.String,
+    'chain_id': fields.String,
+    'message_id': fields.String,
+    'position': fields.Integer,
+    'thought': fields.String,
+    'tool': fields.String,
+    'tool_labels': fields.Raw,
+    'tool_input': fields.String,
+    'created_at': TimestampField,
+    'observation': fields.String,
+    'files': fields.List(fields.String),
 }
 
 message_detail_fields = {
@@ -58,6 +73,7 @@ message_detail_fields = {
     'annotation': fields.Nested(annotation_fields, allow_null=True),
     'annotation_hit_history': fields.Nested(annotation_hit_history_fields, allow_null=True),
     'created_at': TimestampField,
+    'agent_thoughts': fields.List(fields.Nested(agent_thought_fields)),
     'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
 }
 

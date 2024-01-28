@@ -10,11 +10,13 @@ class QueueEvent(Enum):
     QueueEvent enum
     """
     MESSAGE = "message"
+    AGENT_MESSAGE = "agent_message"
     MESSAGE_REPLACE = "message-replace"
     MESSAGE_END = "message-end"
     RETRIEVER_RESOURCES = "retriever-resources"
     ANNOTATION_REPLY = "annotation-reply"
     AGENT_THOUGHT = "agent-thought"
+    MESSAGE_FILE = "message-file"
     ERROR = "error"
     PING = "ping"
     STOP = "stop"
@@ -33,7 +35,14 @@ class QueueMessageEvent(AppQueueEvent):
     """
     event = QueueEvent.MESSAGE
     chunk: LLMResultChunk
-    
+
+class QueueAgentMessageEvent(AppQueueEvent):
+    """
+    QueueMessageEvent entity
+    """
+    event = QueueEvent.AGENT_MESSAGE
+    chunk: LLMResultChunk
+
     
 class QueueMessageReplaceEvent(AppQueueEvent):
     """
@@ -73,7 +82,13 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     """
     event = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
-    
+
+class QueueMessageFileEvent(AppQueueEvent):
+    """
+    QueueAgentThoughtEvent entity
+    """
+    event = QueueEvent.MESSAGE_FILE
+    message_file_id: str
     
 class QueueErrorEvent(AppQueueEvent):
     """

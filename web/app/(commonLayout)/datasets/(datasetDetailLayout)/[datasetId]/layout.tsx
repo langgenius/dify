@@ -35,6 +35,7 @@ import FloatPopoverContainer from '@/app/components/base/float-popover-container
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -104,6 +105,7 @@ type IExtraInfoProps = {
 
 const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
   const locale = getLocaleOnClient()
+  const language = getModelRuntimeSupported(locale)
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
 
@@ -147,7 +149,11 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
           <div className='text-xs text-gray-500 mt-2'>{t('common.datasetMenus.emptyTip')}</div>
           <a
             className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
-            href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans' : ''}/application/prompt-engineering`}
+            href={
+              language === LanguagesSupported[1]
+                ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
+                : 'https://docs.dify.ai/user-guide/creating-dify-apps/prompt-engineering'
+            }
             target='_blank'
           >
             <BookOpenIcon className='mr-1' />

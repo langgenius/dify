@@ -19,6 +19,7 @@ model_config_fields = {
     'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
     'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
     'speech_to_text': fields.Raw(attribute='speech_to_text_dict'),
+    'text_to_speech': fields.Raw(attribute='text_to_speech_dict'),
     'retriever_resource': fields.Raw(attribute='retriever_resource_dict'),
     'annotation_reply': fields.Raw(attribute='annotation_reply_dict'),
     'more_like_this': fields.Raw(attribute='more_like_this_dict'),
@@ -40,6 +41,7 @@ app_detail_fields = {
     'id': fields.String,
     'name': fields.String,
     'mode': fields.String,
+    'is_agent': fields.Boolean,
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
@@ -64,6 +66,7 @@ app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
     'mode': fields.String,
+    'is_agent': fields.Boolean,
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
@@ -120,11 +123,13 @@ app_detail_fields_with_site = {
     'enable_api': fields.Boolean,
     'api_rpm': fields.Integer,
     'api_rph': fields.Integer,
+    'is_agent': fields.Boolean,
     'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
     'site': fields.Nested(site_fields),
     'api_base_url': fields.String,
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'deleted_tools': fields.List(fields.String),
 }
 
 app_site_fields = {

@@ -3,11 +3,12 @@ import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
+// import { useContext } from 'use-context-selector'
 import Toast from '../components/base/toast'
 import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
-import I18n from '@/context/i18n'
+// import I18n from '@/context/i18n'
+
 import { fetchSetupStatus, setup } from '@/service/common'
 import type { SetupStatusResponse } from '@/models/common'
 
@@ -16,7 +17,8 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const InstallForm = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  // const { locale } = useContext(I18n)
+  // const language = getModelRuntimeSupported(locale)
   const router = useRouter()
 
   const [email, setEmail] = React.useState('')
@@ -168,7 +170,7 @@ const InstallForm = () => {
               <Link
                 className='text-primary-600'
                 target={'_blank'}
-                href={`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}/`}community/open-source`}
+                href={'https://docs.dify.ai/user-agreement/open-source'}
               >{t('login.license.link')}</Link>
             </div>
           </div>

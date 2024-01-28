@@ -30,9 +30,10 @@ const ModelProviderPage = () => {
   const { data: embeddingsDefaultModel } = useDefaultModel(2)
   const { data: rerankDefaultModel } = useDefaultModel(3)
   const { data: speech2textDefaultModel } = useDefaultModel(4)
+  const { data: ttsDefaultModel } = useDefaultModel(5)
   const { modelProviders: providers } = useProviderContext()
   const { setShowModelModal } = useModalContext()
-  const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel
+  const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configedProviders, notConfigedProviders] = useMemo(() => {
     const configedProviders: ModelProvider[] = []
     const notConfigedProviders: ModelProvider[] = []
@@ -104,6 +105,7 @@ const ModelProviderPage = () => {
           embeddingsDefaultModel={embeddingsDefaultModel}
           rerankDefaultModel={rerankDefaultModel}
           speech2textDefaultModel={speech2textDefaultModel}
+          ttsDefaultModel={ttsDefaultModel}
         />
       </div>
       {

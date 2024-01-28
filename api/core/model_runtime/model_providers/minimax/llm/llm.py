@@ -1,9 +1,8 @@
-from typing import Generator, List, Optional, Union
+from typing import Generator, List
 
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
                                                           SystemPromptMessage, UserPromptMessage)
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, ParameterRule, ParameterType
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -18,6 +17,7 @@ from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 
 class MinimaxLargeLanguageModel(LargeLanguageModel):
     model_apis = {
+        'abab6-chat': MinimaxChatCompletionPro,
         'abab5.5s-chat': MinimaxChatCompletionPro,
         'abab5.5-chat': MinimaxChatCompletionPro,
         'abab5-chat': MinimaxChatCompletion
@@ -55,7 +55,7 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
                 stream=False,
                 user=''
             )
-        except InvalidAuthenticationError as e:
+        except (InvalidAuthenticationError, InsufficientAccountBalanceError) as e:
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],

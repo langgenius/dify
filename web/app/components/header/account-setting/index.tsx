@@ -8,7 +8,6 @@ import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
-import PluginPage from './plugin-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelProviderPage from './model-provider-page'
@@ -18,10 +17,9 @@ import CustomPage from '@/app/components/custom/custom-page'
 import Modal from '@/app/components/base/modal'
 import {
   Database03,
-  PuzzlePiece01,
   Webhooks,
 } from '@/app/components/base/icons/src/vender/line/development'
-import { Database03 as Database03Solid, PuzzlePiece01 as PuzzlePiece01Solid } from '@/app/components/base/icons/src/vender/solid/development'
+import { Database03 as Database03Solid } from '@/app/components/base/icons/src/vender/solid/development'
 import { User01, Users01 } from '@/app/components/base/icons/src/vender/line/users'
 import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components/base/icons/src/vender/solid/users'
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
@@ -48,6 +46,7 @@ type IAccountSettingProps = {
 type GroupItem = {
   key: string
   name: string
+  description?: string
   icon: JSX.Element
   activeIcon: JSX.Element
 }
@@ -78,6 +77,7 @@ export default function AccountSetting({
         // Use key false to hide this item
         key: enableBilling ? 'billing' : false,
         name: t('common.settings.billing'),
+        description: t('billing.plansCommon.receiptInfo'),
         icon: <GoldCoinOutLine className={iconClassName} />,
         activeIcon: <GoldCoin className={iconClassName} />,
       },
@@ -86,12 +86,6 @@ export default function AccountSetting({
         name: t('common.settings.dataSource'),
         icon: <Database03 className={iconClassName} />,
         activeIcon: <Database03Solid className={iconClassName} />,
-      },
-      {
-        key: 'plugin',
-        name: t('common.settings.plugin'),
-        icon: <PuzzlePiece01 className={iconClassName} />,
-        activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
       },
       {
         key: 'api-based-extension',
@@ -160,6 +154,8 @@ export default function AccountSetting({
     }
   }, [])
 
+  const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
+
   return (
     <Modal
       isShow
@@ -199,10 +195,17 @@ export default function AccountSetting({
           </div>
         </div>
         <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center justify-between h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
-            {[...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)?.name}
-            <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
-              <XClose className='w-4 h-4 text-gray-500' />
+          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
+            <div className='shrink-0'>{activeItem?.name}</div>
+            {
+              activeItem?.description && (
+                <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
+              )
+            }
+            <div className='grow flex justify-end'>
+              <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
+                <XClose className='w-4 h-4 text-gray-400' />
+              </div>
             </div>
           </div>
           <div className='px-4 sm:px-8 pt-2'>
@@ -213,9 +216,8 @@ export default function AccountSetting({
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
-            {activeMenu === 'plugin' && <PluginPage />}
-            {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage /> }
-            {activeMenu === 'custom' && <CustomPage /> }
+            {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
+            {activeMenu === 'custom' && <CustomPage />}
           </div>
         </div>
       </div>

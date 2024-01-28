@@ -227,6 +227,8 @@ class CompletionService:
             input_type = list(config.keys())[0]
 
             if variable not in user_inputs or not user_inputs[variable]:
+                if input_type == "external_data_tool":
+                    continue
                 if "required" in input_config and input_config["required"]:
                     raise ValueError(f"{variable} is required in input form")
                 else:

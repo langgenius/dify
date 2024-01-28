@@ -1,0 +1,71 @@
+provider: bedrock
+label:
+  en_US: AWS
+description:
+  en_US: AWS Bedrock's models.
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#FCFDFF"
+help:
+  title:
+    en_US: Get your Access Key and Secret Access Key from AWS Console
+  url:
+    en_US: https://console.aws.amazon.com/
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: aws_access_key_id
+      required: true
+      label:
+        en_US: Access Key
+        zh_Hans: Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Access Key
+        zh_Hans: 在此输入您的 Access Key
+    - variable: aws_secret_access_key
+      required: true
+      label:
+        en_US: Secret Access Key
+        zh_Hans: Secret Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Secret Access Key
+        zh_Hans: 在此输入您的 Secret Access Key
+    - variable: aws_region
+      required: true
+      label:
+        en_US: AWS Region
+        zh_Hans: AWS 地区
+      type: select
+      default: us-east-1
+      options:
+        - value: us-east-1
+          label:
+            en_US: US East (N. Virginia)
+            zh_Hans: US East (N. Virginia)
+        - value: us-west-2
+          label:
+            en_US: US West (Oregon)
+            zh_Hans: US West (Oregon)
+        - value: ap-southeast-1
+          label:
+            en_US: Asia Pacific (Singapore)
+            zh_Hans: Asia Pacific (Singapore)
+        - value: ap-northeast-1
+          label:
+            en_US: Asia Pacific (Tokyo)
+            zh_Hans: Asia Pacific (Tokyo)
+        - value: eu-central-1
+          label:
+            en_US: Europe (Frankfurt)
+            zh_Hans: Europe (Frankfurt)
+        - value: us-gov-west-1
+          label:
+            en_US: AWS GovCloud (US-West)
+            zh_Hans: AWS GovCloud (US-West)
