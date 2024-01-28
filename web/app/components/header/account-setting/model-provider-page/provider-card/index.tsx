@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { useSWRConfig } from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
   ModelProvider,
@@ -8,12 +7,14 @@ import type {
 import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
+  MODEL_PROVIDER_QUOTA_GET_FREE,
   modelTypeFormat,
 } from '../utils'
 import {
   useAnthropicBuyQuota,
   useFreeQuota,
   useLanguage,
+  useUpdateModelProviders,
 } from '../hooks'
 import ModelBadge from '../model-badge'
 import ProviderIcon from '../provider-icon'
@@ -48,14 +49,14 @@ const ProviderCard: FC<ProviderCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-  const { mutate } = useSWRConfig()
+  const updateModelProviders = useUpdateModelProviders()
   const handlePay = useAnthropicBuyQuota()
   const handleFreeQuotaSuccess = () => {
-    mutate('/workspaces/current/model-providers')
+    updateModelProviders()
   }
   const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
-  const canGetFreeQuota = ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && !IS_CE_EDITION
+  const canGetFreeQuota = MODEL_PROVIDER_QUOTA_GET_FREE.includes(provider.provider) && !IS_CE_EDITION && provider.system_configuration.enabled
 
   return (
     <div

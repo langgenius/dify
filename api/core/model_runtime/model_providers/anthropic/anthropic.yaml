@@ -16,24 +16,24 @@ help:
   url:
     en_US: https://console.anthropic.com/account/keys
 supported_model_types:
-- llm
+  - llm
 configurate_methods:
-- predefined-model
+  - predefined-model
 provider_credential_schema:
   credential_form_schemas:
-  - variable: anthropic_api_key
-    label:
-      en_US: API Key
-    type: secret-input
-    required: true
-    placeholder:
-      zh_Hans: 在此输入您的 API Key
-      en_US: Enter your API Key
-  - variable: anthropic_api_url
-    label:
-      en_US: API URL
-    type: text-input
-    required: false
-    placeholder:
-      zh_Hans: 在此输入您的 API URL
-      en_US: Enter your API URL
+    - variable: anthropic_api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: anthropic_api_url
+      label:
+        en_US: API URL
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的 API URL
+        en_US: Enter your API URL

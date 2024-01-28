@@ -1,11 +1,11 @@
 import logging
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 from core.app_runner.app_runner import AppRunner
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
-    AppOrchestrationConfigEntity, InvokeFrom, ExternalDataVariableEntity, DatasetEntity
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.entities.application_entities import (ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
+                                                ExternalDataVariableEntity, InvokeFrom, ModelConfigEntity)
 from core.features.annotation_reply import AnnotationReplyFeature
 from core.features.dataset_retrieval import DatasetRetrievalFeature
 from core.features.external_data_fetch import ExternalDataFetchFeature
@@ -17,7 +17,7 @@ from core.model_runtime.entities.message_entities import PromptMessage
 from core.moderation.base import ModerationException
 from core.prompt.prompt_transform import AppMode
 from extensions.ext_database import db
-from models.model import Conversation, Message, App, MessageAnnotation
+from models.model import App, Conversation, Message, MessageAnnotation
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ class BasicApplicationRunner(AppRunner):
 
         # get context from datasets
         context = None
-        if app_orchestration_config.dataset:
+        if app_orchestration_config.dataset and app_orchestration_config.dataset.dataset_ids:
             context = self.retrieve_dataset_context(
                 tenant_id=app_record.tenant_id,
                 app_record=app_record,

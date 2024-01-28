@@ -2,7 +2,7 @@ from core.entities.application_entities import ApplicationGenerateEntity
 from core.entities.provider_entities import QuotaUnit
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.provider import ProviderType, Provider
+from models.provider import Provider, ProviderType
 
 
 @message_was_created.connect
@@ -23,12 +23,16 @@ def handle(sender, **kwargs):
     for quota_configuration in system_configuration.quota_configurations:
         if quota_configuration.quota_type == system_configuration.current_quota_type:
             quota_unit = quota_configuration.quota_unit
+
+            if quota_configuration.quota_limit == -1:
+                return
+
             break
 
     used_quota = None
     if quota_unit:
-        if quota_unit == QuotaUnit.TOKENS.value:
-            used_quota = message.message_tokens + message.prompt_tokens
+        if quota_unit == QuotaUnit.TOKENS:
+            used_quota = message.message_tokens + message.answer_tokens
         else:
             used_quota = 1
 

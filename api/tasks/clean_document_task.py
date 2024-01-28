@@ -3,10 +3,9 @@ import time
 
 import click
 from celery import shared_task
-
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
-from models.dataset import DocumentSegment, Dataset
+from models.dataset import Dataset, DocumentSegment
 
 
 @shared_task(queue='dataset')

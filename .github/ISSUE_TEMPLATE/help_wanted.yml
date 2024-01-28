@@ -1,20 +1,20 @@
 name: "🤝 Help Wanted"
-description: "Request help from the community" [please use English :）]
+description: "Request help from the community [please use English :）]"
 labels:
-- help-wanted
+  - help-wanted
 body:
-- type: checkboxes
-  attributes:
-    label: Self Checks
-    description: "To make sure we get to you in time, please check the following :)"
-    options:
-      - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
-        required: true
-      - label: I confirm that I am using English to file this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
-        required: true
-- type: textarea
-  attributes:
-    label: Provide a description of the help you need
-    placeholder: Briefly describe what you need help with.
-  validations:
-    required: true
+  - type: checkboxes
+    attributes:
+      label: Self Checks
+      description: "To make sure we get to you in time, please check the following :)"
+      options:
+        - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
+          required: true
+        - label: I confirm that I am using English to file this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
+          required: true
+  - type: textarea
+    attributes:
+      label: Provide a description of the help you need
+      placeholder: Briefly describe what you need help with.
+    validations:
+      required: true

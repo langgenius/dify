@@ -1,17 +1,16 @@
 import json
 
-from flask_login import current_user
-from libs.login import login_required
-from flask_restful import Resource, abort, reqparse
-from werkzeug.exceptions import Forbidden
-
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.tool.provider.errors import ToolValidateFailedError
 from core.tool.provider.tool_provider_service import ToolProviderService
 from extensions.ext_database import db
+from flask_login import current_user
+from flask_restful import Resource, abort, reqparse
+from libs.login import login_required
 from models.tool import ToolProvider, ToolProviderName
+from werkzeug.exceptions import Forbidden
 
 
 class ToolProviderListApi(Resource):

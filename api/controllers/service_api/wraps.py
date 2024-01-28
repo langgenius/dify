@@ -2,16 +2,16 @@
 from datetime import datetime
 from functools import wraps
 
-from flask import request, current_app
+from extensions.ext_database import db
+from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from libs.login import _get_user
-from extensions.ext_database import db
-from models.account import Tenant, TenantAccountJoin, Account
+from models.account import Account, Tenant, TenantAccountJoin
 from models.model import ApiToken, App
 from services.feature_service import FeatureService
+from werkzeug.exceptions import NotFound, Unauthorized
+
 
 def validate_app_token(view=None):
     def decorator(view):
@@ -75,7 +75,7 @@ def validate_dataset_token(view=None):
             tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role == 'owner') \
+                .filter(TenantAccountJoin.role.in_(['owner', 'admin'])) \
                 .one_or_none()
             if tenant_account_join:
                 tenant, ta = tenant_account_join

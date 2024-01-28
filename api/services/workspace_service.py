@@ -1,11 +1,10 @@
+from extensions.ext_database import db
 from flask import current_app
 from flask_login import current_user
-from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountJoinRole
 from models.provider import Provider
-
-from services.feature_service import FeatureService
 from services.account_service import TenantService
+from services.feature_service import FeatureService
 
 
 class WorkspaceService:

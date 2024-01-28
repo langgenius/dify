@@ -1,10 +1,9 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
-
 from core.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderQuotaType
+from pydantic import BaseModel
 
 
 class QuotaUnit(Enum):
@@ -21,6 +20,12 @@ class SystemConfigurationStatus(Enum):
     UNSUPPORTED = 'unsupported'
 
 
+class RestrictModel(BaseModel):
+    model: str
+    base_model_name: Optional[str] = None
+    model_type: ModelType
+
+
 class QuotaConfiguration(BaseModel):
     """
     Model class for provider quota configuration.
@@ -30,7 +35,7 @@ class QuotaConfiguration(BaseModel):
     quota_limit: int
     quota_used: int
     is_valid: bool
-    restrict_llms: list[str] = []
+    restrict_models: list[RestrictModel] = []
 
 
 class SystemConfiguration(BaseModel):

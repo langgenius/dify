@@ -1,17 +1,16 @@
-from openai import BadRequestError, OpenAI, AzureOpenAI
-from openai.types import Completion as CompletionMessage
-from openai._types import NotGiven, NOT_GIVEN
-from openai.types.completion import CompletionChoice
-from openai.types.completion_usage import CompletionUsage
-from openai.resources.completions import Completions
-
+import re
+from time import sleep, time
 # import monkeypatch
-from typing import List, Any, Generator, Union, Optional, Literal
-from time import time, sleep
+from typing import Any, Generator, List, Literal, Optional, Union
 
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from openai import AzureOpenAI, BadRequestError, OpenAI
+from openai._types import NOT_GIVEN, NotGiven
+from openai.resources.completions import Completions
+from openai.types import Completion as CompletionMessage
+from openai.types.completion import CompletionChoice
+from openai.types.completion_usage import CompletionUsage
 
-import re
 
 class MockCompletionsClass(object):
     @staticmethod

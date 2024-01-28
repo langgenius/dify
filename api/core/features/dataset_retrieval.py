@@ -1,16 +1,15 @@
-from typing import cast, Optional, List
+from typing import List, Optional, cast
 
-from langchain.tools import BaseTool
-
-from core.agent.agent_executor import PlanningStrategy, AgentConfiguration, AgentExecutor
+from core.agent.agent_executor import AgentConfiguration, AgentExecutor, PlanningStrategy
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import DatasetEntity, ModelConfigEntity, InvokeFrom, DatasetRetrieveConfigEntity
+from core.entities.application_entities import DatasetEntity, DatasetRetrieveConfigEntity, InvokeFrom, ModelConfigEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tool.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
+from langchain.tools import BaseTool
 from models.dataset import Dataset
 
 
@@ -167,8 +166,7 @@ class DatasetRetrievalFeature:
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,
                 top_k=retrieve_config.top_k or 2,
-                score_threshold=(retrieve_config.score_threshold or 0.5)
-                if retrieve_config.reranking_model.get('score_threshold_enabled', False) else None,
+                score_threshold=retrieve_config.score_threshold,
                 hit_callbacks=[hit_callback],
                 return_resource=return_resource,
                 retriever_from=invoke_from.to_source(),

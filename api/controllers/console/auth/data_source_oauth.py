@@ -1,15 +1,14 @@
 import logging
 
 import requests
-from flask import request, redirect, current_app
+from controllers.console import api
+from flask import current_app, redirect, request
 from flask_login import current_user
-
 from flask_restful import Resource
-from werkzeug.exceptions import Forbidden
-
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
-from controllers.console import api
+from werkzeug.exceptions import Forbidden
+
 from ..setup import setup_required
 from ..wraps import account_initialization_required
 

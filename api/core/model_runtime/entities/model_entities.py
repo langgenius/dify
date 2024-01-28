@@ -2,9 +2,8 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
-
 from core.model_runtime.entities.common_entities import I18nObject
+from pydantic import BaseModel
 
 
 class ModelType(Enum):
@@ -32,7 +31,7 @@ class ModelType(Enum):
             return cls.TEXT_EMBEDDING
         elif origin_model_type == 'reranking' or origin_model_type == cls.RERANK.value:
             return cls.RERANK
-        elif origin_model_type == cls.SPEECH2TEXT.value:
+        elif origin_model_type == 'speech2text' or origin_model_type == cls.SPEECH2TEXT.value:
             return cls.SPEECH2TEXT
         elif origin_model_type == cls.MODERATION.value:
             return cls.MODERATION
@@ -150,8 +149,8 @@ class ParameterRule(BaseModel):
     help: Optional[I18nObject] = None
     required: bool = False
     default: Optional[Any] = None
-    min: Optional[float | int] = None
-    max: Optional[float | int] = None
+    min: Optional[float] = None
+    max: Optional[float] = None
     precision: Optional[int] = None
     options: list[str] = []
 

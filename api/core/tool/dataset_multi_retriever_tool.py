@@ -1,20 +1,19 @@
 import json
 import threading
-from typing import Type, Optional, List
-
-from flask import current_app, Flask
-from langchain.tools import BaseTool
-from pydantic import Field, BaseModel
+from typing import List, Optional, Type
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.embedding.cached_embedding import CacheEmbedding
-from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.index.keyword_table_index.keyword_table_index import KeywordTableConfig, KeywordTableIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
-from models.dataset import Dataset, DocumentSegment, Document
+from flask import Flask, current_app
+from langchain.tools import BaseTool
+from models.dataset import Dataset, Document, DocumentSegment
+from pydantic import BaseModel, Field
 from services.retrieval_service import RetrievalService
 
 default_retrieval_model = {
@@ -95,6 +94,7 @@ class DatasetMultiRetrieverTool(BaseTool):
         document_context_list = []
         index_node_ids = [document.metadata['doc_id'] for document in all_documents]
         segments = DocumentSegment.query.filter(
+            DocumentSegment.dataset_id.in_(self.dataset_ids),
             DocumentSegment.completed_at.isnot(None),
             DocumentSegment.status == 'completed',
             DocumentSegment.enabled == True,

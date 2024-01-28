@@ -1,5 +1,4 @@
 from flask_restful import fields
-
 from libs.helper import TimestampField
 
 integrate_icon_fields = {

@@ -27,17 +27,3 @@ export const getLocaleOnServer = (): Locale => {
   const matchedLocale = match(languages, locales, i18n.defaultLocale) as Locale
   return matchedLocale
 }
-
-// We enumerate all dictionaries here for better linting and typescript support
-// We also get the default import for cleaner types
-const dictionaries = {
-  'en': () => import('@/dictionaries/en.json').then(module => module.default),
-  'zh-Hans': () => import('@/dictionaries/zh-Hans.json').then(module => module.default),
-} as { [locale: string]: () => Promise<any> }
-
-export const getDictionary = async (locale: Locale = 'en') => {
-  try {
-    return await dictionaries[locale]()
-  }
-  catch (e) { console.error('locale not found', locale) }
-}

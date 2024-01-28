@@ -4,31 +4,48 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - deploy/dev
+
+concurrency:
+  group: dep-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    name: ESLint and SuperLinter
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup NodeJS
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
-        cache: yarn
-        cache-dependency-path: ./web/package.json
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: ./web/package.json
 
-    - name: Web dependencies
-      run: |
-        cd ./web
-        yarn install --frozen-lockfile
+      - name: Web dependencies
+        run: |
+          cd ./web
+          yarn install --frozen-lockfile
 
-    - name: Web style check
-      run: |
-        cd ./web
-        yarn run lint
+      - name: Web style check
+        run: |
+          cd ./web
+          yarn run lint
+
+      - name: Super-linter
+        uses: super-linter/super-linter/slim@v5
+        env:
+          BASH_SEVERITY: warning
+          DEFAULT_BRANCH: main
+          ERROR_ON_MISSING_EXEC_BIT: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORE_GENERATED_FILES: true
+          IGNORE_GITIGNORED_FILES: true
+          VALIDATE_BASH: true
+          VALIDATE_BASH_EXEC: true
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_YAML: true

@@ -4,24 +4,24 @@ import logging
 from datetime import datetime
 from typing import Generator, Union
 
-from flask import Response, stream_with_context
-from flask_login import current_user
-from flask_restful import reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
-
 import services
 from controllers.console import api
-from controllers.console.app.error import ConversationCompletedError, AppUnavailableError, ProviderNotInitializeError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
-from controllers.console.explore.error import NotCompletionAppError, NotChatAppError
+from controllers.console.app.error import (AppUnavailableError, CompletionRequestError, ConversationCompletedError,
+                                           ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
+                                           ProviderQuotaExceededError)
+from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
-from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from flask import Response, stream_with_context
+from flask_login import current_user
+from flask_restful import reqparse
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
+from werkzeug.exceptions import InternalServerError, NotFound
 
 
 # define completion api for user
@@ -158,29 +158,8 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            try:
-                for chunk in response:
-                    yield chunk
-            except services.errors.conversation.ConversationNotExistsError:
-                yield "data: " + json.dumps(api.handle_error(NotFound("Conversation Not Exists.")).get_json()) + "\n\n"
-            except services.errors.conversation.ConversationCompletedError:
-                yield "data: " + json.dumps(api.handle_error(ConversationCompletedError()).get_json()) + "\n\n"
-            except services.errors.app_model_config.AppModelConfigBrokenError:
-                logging.exception("App model config broken.")
-                yield "data: " + json.dumps(api.handle_error(AppUnavailableError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError as ex:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
-            except QuotaExceededError:
-                yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
-            except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except InvokeError as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(e.description)).get_json()) + "\n\n"
-            except ValueError as e:
-                yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
-            except Exception:
-                logging.exception("internal server error.")
-                yield "data: " + json.dumps(api.handle_error(InternalServerError()).get_json()) + "\n\n"
+            for chunk in response:
+                yield chunk
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

@@ -1,24 +1,23 @@
 import logging
-from typing import Optional, Generator, Union, List, cast
+from typing import Generator, List, Optional, Union, cast
 
 import tiktoken
-from openai import OpenAI, Stream
-from openai.types import Completion
-from openai.types.chat import ChatCompletionChunk, ChatCompletion, ChatCompletionMessageToolCall
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall, ChoiceDeltaFunctionCall
-from openai.types.chat.chat_completion_message import FunctionCall
-
-from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, AssistantPromptMessage, \
-    PromptMessageFunction, UserPromptMessage, PromptMessageContentType, ImagePromptMessageContent, \
-    TextPromptMessageContent, SystemPromptMessage, ToolPromptMessage
-from core.model_runtime.entities.model_entities import AIModelEntity, I18nObject, ModelType, FetchFrom, \
-    PriceConfig, AIModelEntity, FetchFrom
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, \
-    LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
+                                                          PromptMessage, PromptMessageContentType,
+                                                          PromptMessageFunction, PromptMessageTool, SystemPromptMessage,
+                                                          TextPromptMessageContent, ToolPromptMessage,
+                                                          UserPromptMessage)
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType, PriceConfig
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 from core.model_runtime.utils import helper
+from openai import OpenAI, Stream
+from openai.types import Completion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageToolCall
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
+from openai.types.chat.chat_completion_message import FunctionCall
 
 logger = logging.getLogger(__name__)
 
@@ -766,7 +765,6 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         num_tokens = 0
         for tool in tools:
             num_tokens += len(encoding.encode('type'))
-            num_tokens += len(encoding.encode(tool.get("type")))
             num_tokens += len(encoding.encode('function'))
 
             # calculate num tokens for function object

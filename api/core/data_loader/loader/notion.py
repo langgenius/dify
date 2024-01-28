@@ -1,13 +1,12 @@
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
+from extensions.ext_database import db
 from flask import current_app
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
-
-from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceBinding
 

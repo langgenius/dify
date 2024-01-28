@@ -1,17 +1,17 @@
-from xinference_client.client.restful.restful_client import Client, \
-    RESTfulChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatglmCppChatModelHandle, \
-    RESTfulEmbeddingModelHandle, RESTfulRerankModelHandle
-from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
-
-from requests.sessions import Session
-from requests import Response
-from requests.exceptions import ConnectionError
-from typing import Union, List
-
-from _pytest.monkeypatch import MonkeyPatch
-import pytest
 import os
 import re
+from typing import List, Union
+
+import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from requests import Response
+from requests.exceptions import ConnectionError
+from requests.sessions import Session
+from xinference_client.client.restful.restful_client import (Client, RESTfulChatglmCppChatModelHandle,
+                                                             RESTfulChatModelHandle, RESTfulEmbeddingModelHandle,
+                                                             RESTfulGenerateModelHandle, RESTfulRerankModelHandle)
+from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
+
 
 class MockXinferenceClass(object):
     def get_chat_model(self: Client, model_uid: str) -> Union[RESTfulChatglmCppChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatModelHandle]:

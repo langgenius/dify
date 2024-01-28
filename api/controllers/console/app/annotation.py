@@ -1,18 +1,17 @@
-from flask_login import current_user
-from flask_restful import Resource, reqparse, marshal_with, marshal
-from werkzeug.exceptions import Forbidden
-
 from controllers.console import api
 from controllers.console.app.error import NoFileUploadedError
 from controllers.console.datasets.error import TooManyFilesError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_redis import redis_client
-from fields.annotation_fields import annotation_list_fields, annotation_hit_history_list_fields, annotation_fields, \
-    annotation_hit_history_fields
+from fields.annotation_fields import (annotation_fields, annotation_hit_history_fields,
+                                      annotation_hit_history_list_fields, annotation_list_fields)
+from flask import request
+from flask_login import current_user
+from flask_restful import Resource, marshal, marshal_with, reqparse
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
-from flask import request
+from werkzeug.exceptions import Forbidden
 
 
 class AnnotationReplyActionApi(Resource):

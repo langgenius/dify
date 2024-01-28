@@ -1,12 +1,14 @@
-from core.model_runtime.model_providers.minimax.llm.errors import BadRequestError, InvalidAPIKeyError, \
-    InternalServerError, RateLimitReachedError, InvalidAuthenticationError, InsufficientAccountBalanceError
-from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
-from typing import List, Dict, Any, Generator, Union
-
-from json import dumps, loads
-from requests import post, Response
-from time import time
 from hashlib import md5
+from json import dumps, loads
+from time import time
+from typing import Any, Dict, Generator, List, Union
+
+from core.model_runtime.model_providers.minimax.llm.errors import (BadRequestError, InsufficientAccountBalanceError,
+                                                                   InternalServerError, InvalidAPIKeyError,
+                                                                   InvalidAuthenticationError, RateLimitReachedError)
+from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
+from requests import Response, post
+
 
 class MinimaxChatCompletionPro(object):
     """
@@ -20,7 +22,7 @@ class MinimaxChatCompletionPro(object):
         """
             generate chat completion
         """
-        if model != 'abab5.5-chat':
+        if model not in ['abab5.5-chat', 'abab5.5s-chat']:
             raise BadRequestError(f'Invalid model: {model}')
         
         if not api_key or not group_id:

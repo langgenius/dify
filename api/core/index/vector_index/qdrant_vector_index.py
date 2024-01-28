@@ -1,18 +1,17 @@
 import os
-from typing import Optional, Any, List, cast
+from typing import Any, List, Optional, cast
 
 import qdrant_client
-from langchain.embeddings.base import Embeddings
-from langchain.schema import Document, BaseRetriever
-from langchain.vectorstores import VectorStore
-from pydantic import BaseModel
-from qdrant_client.http.models import HnswConfigDiff
-
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
 from core.vector_store.qdrant_vector_store import QdrantVectorStore
 from extensions.ext_database import db
+from langchain.embeddings.base import Embeddings
+from langchain.schema import BaseRetriever, Document
+from langchain.vectorstores import VectorStore
 from models.dataset import Dataset, DatasetCollectionBinding
+from pydantic import BaseModel
+from qdrant_client.http.models import HnswConfigDiff
 
 
 class QdrantConfig(BaseModel):

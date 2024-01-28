@@ -1,14 +1,19 @@
+import base64
+import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import numpy as np
-from langchain.embeddings.base import Embeddings
-from sqlalchemy.exc import IntegrityError
-
 from core.model_manager import ModelInstance
+from core.model_runtime.entities.model_entities import ModelPropertyKey
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
+from langchain.embeddings.base import Embeddings
+
+from extensions.ext_redis import redis_client
 from libs import helper
 from models.dataset import Embedding
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -19,47 +24,33 @@ class CacheEmbedding(Embeddings):
         self._user = user
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed search docs."""
-        # use doc embedding cache or store if not exists
-        text_embeddings = [None for _ in range(len(texts))]
-        embedding_queue_indices = []
-        for i, text in enumerate(texts):
-            hash = helper.generate_text_hash(text)
-            embedding = db.session.query(Embedding).filter_by(model_name=self._model_instance.model, hash=hash).first()
-            if embedding:
-                text_embeddings[i] = embedding.get_embedding()
-            else:
-                embedding_queue_indices.append(i)
+        """Embed search docs in batches of 10."""
+        text_embeddings = []
+        try:
+            model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
+            model_schema = model_type_instance.get_model_schema(self._model_instance.model, self._model_instance.credentials)
+            max_chunks = model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS] \
+                if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties else 1
+            for i in range(0, len(texts), max_chunks):
+                batch_texts = texts[i:i + max_chunks]
 
-        if embedding_queue_indices:
-            try:
                 embedding_result = self._model_instance.invoke_text_embedding(
-                    texts=[texts[i] for i in embedding_queue_indices],
+                    texts=batch_texts,
                     user=self._user
                 )
 
-                embedding_results = embedding_result.embeddings
-            except Exception as ex:
-                logger.error('Failed to embed documents: ', ex)
-                raise ex
+                for vector in embedding_result.embeddings:
+                    try:
+                        normalized_embedding = (vector / np.linalg.norm(vector)).tolist()
+                        text_embeddings.append(normalized_embedding)
+                    except IntegrityError:
+                        db.session.rollback()
+                    except Exception as e:
+                        logging.exception('Failed to add embedding to redis')
 
-            for i, indice in enumerate(embedding_queue_indices):
-                hash = helper.generate_text_hash(texts[indice])
-
-                try:
-                    embedding = Embedding(model_name=self._model_instance.model, hash=hash)
-                    vector = embedding_results[i]
-                    normalized_embedding = (vector / np.linalg.norm(vector)).tolist()
-                    text_embeddings[indice] = normalized_embedding
-                    embedding.set_embedding(normalized_embedding)
-                    db.session.add(embedding)
-                    db.session.commit()
-                except IntegrityError:
-                    db.session.rollback()
-                    continue
-                except:
-                    logging.exception('Failed to add embedding to db')
-                    continue
+        except Exception as ex:
+            logger.error('Failed to embed documents: ', ex)
+            raise ex
 
         return text_embeddings
 
@@ -67,9 +58,12 @@ class CacheEmbedding(Embeddings):
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding = db.session.query(Embedding).filter_by(model_name=self._model_instance.model, hash=hash).first()
+        embedding_cache_key = f'{self._model_instance.provider}_{self._model_instance.model}_{hash}'
+        embedding = redis_client.get(embedding_cache_key)
         if embedding:
-            return embedding.get_embedding()
+            redis_client.expire(embedding_cache_key, 600)
+            return list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
+
 
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
@@ -83,13 +77,18 @@ class CacheEmbedding(Embeddings):
             raise ex
 
         try:
-            embedding = Embedding(model_name=self._model_instance.model, hash=hash)
-            embedding.set_embedding(embedding_results)
-            db.session.add(embedding)
-            db.session.commit()
+            # encode embedding to base64
+            embedding_vector = np.array(embedding_results)
+            vector_bytes = embedding_vector.tobytes()
+            # Transform to Base64
+            encoded_vector = base64.b64encode(vector_bytes)
+            # Transform to string
+            encoded_str = encoded_vector.decode("utf-8")
+            redis_client.setex(embedding_cache_key, 600, encoded_str)
+
         except IntegrityError:
             db.session.rollback()
         except:
-            logging.exception('Failed to add embedding to db')
+            logging.exception('Failed to add embedding to redis')
 
         return embedding_results

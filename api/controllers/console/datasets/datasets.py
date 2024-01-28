@@ -1,29 +1,28 @@
 # -*- coding:utf-8 -*-
 import flask_restful
-from flask import request, current_app
-from flask_login import current_user
-
-from controllers.console.apikey import api_key_list, api_key_fields
-from core.model_runtime.entities.model_entities import ModelType
-from core.provider_manager import ProviderManager
-from libs.login import login_required
-from flask_restful import Resource, reqparse, marshal, marshal_with
-from werkzeug.exceptions import NotFound, Forbidden
 import services
 from controllers.console import api
+from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.indexing_runner import IndexingRunner
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.indexing_runner import IndexingRunner
+from core.model_runtime.entities.model_entities import ModelType
+from core.provider_manager import ProviderManager
+from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
-from extensions.ext_database import db
-from models.dataset import DocumentSegment, Document
-from models.model import UploadFile, ApiToken
+from flask import current_app, request
+from flask_login import current_user
+from flask_restful import Resource, marshal, marshal_with, reqparse
+from libs.login import login_required
+from models.dataset import Dataset, Document, DocumentSegment
+from models.model import ApiToken, UploadFile
 from services.dataset_service import DatasetService, DocumentService
+from werkzeug.exceptions import Forbidden, NotFound
 
 
 def _validate_name(name):
@@ -98,7 +97,8 @@ class DatasetListApi(Resource):
                             help='type is required. Name must be between 1 to 40 characters.',
                             type=_validate_name)
         parser.add_argument('indexing_technique', type=str, location='json',
-                            choices=('high_quality', 'economy'),
+                            choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                            nullable=True,
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 
@@ -178,8 +178,9 @@ class DatasetApi(Resource):
                             location='json', store_missing=False,
                             type=_validate_description_length)
         parser.add_argument('indexing_technique', type=str, location='json',
-                            choices=('high_quality', 'economy'),
-                            help='Invalid indexing technique.')
+                    choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                    nullable=True,
+                    help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
             'only_me', 'all_team_members'), help='Invalid permission.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
@@ -257,7 +258,9 @@ class DatasetIndexingEstimateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('info_list', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
-        parser.add_argument('indexing_technique', type=str, required=True, nullable=True, location='json')
+        parser.add_argument('indexing_technique', type=str, required=True, 
+                            choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                            nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('dataset_id', type=str, required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,

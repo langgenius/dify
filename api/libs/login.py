@@ -1,17 +1,13 @@
 import os
 from functools import wraps
 
-from flask import current_app
-from flask import g
-from flask import has_request_context
-from flask import request, session
+from extensions.ext_database import db
+from flask import current_app, g, has_request_context, request, session
 from flask_login import user_logged_in
 from flask_login.config import EXEMPT_METHODS
+from models.account import Account, Tenant, TenantAccountJoin
 from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
-
-from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user

@@ -1,14 +1,13 @@
 import json
 from collections import defaultdict
-from typing import Any, List, Optional, Dict
-
-from langchain.schema import Document, BaseRetriever
-from pydantic import BaseModel, Field, Extra
+from typing import Any, Dict, List, Optional
 
 from core.index.base import BaseIndex
 from core.index.keyword_table_index.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from extensions.ext_database import db
-from models.dataset import Dataset, DocumentSegment, DatasetKeywordTable
+from langchain.schema import BaseRetriever, Document
+from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
+from pydantic import BaseModel, Extra, Field
 
 
 class KeywordTableConfig(BaseModel):
@@ -136,6 +135,7 @@ class KeywordTableIndex(BaseIndex):
                     page_content=segment.content,
                     metadata={
                         "doc_id": chunk_index,
+                        "doc_hash": segment.index_node_hash,
                         "document_id": segment.document_id,
                         "dataset_id": segment.dataset_id,
                     }

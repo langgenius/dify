@@ -1,10 +1,10 @@
-from typing import Optional, Union, Generator, cast, List, IO
+from typing import IO, Generator, List, Optional, Union, cast
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
@@ -144,7 +144,7 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) \
+    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None, **params) \
             -> str:
         """
         Invoke large language model
@@ -161,7 +161,8 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             file=file,
-            user=user
+            user=user,
+            **params
         )
 
 
@@ -178,6 +179,8 @@ class ModelManager:
         :param model: model name
         :return:
         """
+        if not provider:
+            return self.get_default_model_instance(tenant_id, model_type)
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id,
             provider=provider,

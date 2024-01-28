@@ -1,4 +1,4 @@
-from core.extension.extensible import ModuleExtension, ExtensionModule
+from core.extension.extensible import ExtensionModule, ModuleExtension
 from core.external_data_tool.base import ExternalDataTool
 from core.moderation.base import Moderation
 

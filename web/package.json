@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.4.4",
+  "version": "0.4.9",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -23,7 +23,7 @@
     "@lexical/react": "^0.12.2",
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",
-    "@next/mdx": "^13.2.4",
+    "@next/mdx": "^14.0.4",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
     "@tailwindcss/line-clamp": "^0.4.4",
@@ -47,7 +47,7 @@
     "lodash-es": "^4.17.21",
     "mermaid": "10.4.0",
     "negotiator": "^0.6.3",
-    "next": "13.3.1",
+    "next": "^14.0.4",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
     "rc-textarea": "^1.5.2",
@@ -74,6 +74,7 @@
     "remark-math": "^5.1.1",
     "scheduler": "^0.23.0",
     "server-only": "^0.0.1",
+    "sharp": "^0.33.2",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
     "use-context-selector": "^1.4.1"
@@ -99,7 +100,7 @@
     "autoprefixer": "^10.4.14",
     "cross-env": "^7.0.3",
     "eslint": "^8.36.0",
-    "eslint-config-next": "^13.4.7",
+    "eslint-config-next": "^14.0.4",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "miragejs": "^0.1.47",
@@ -116,5 +117,8 @@
     "**/*.ts?(x)": [
       "eslint --fix"
     ]
+  },
+  "engines": {
+    "node": ">=18.17.0"
   }
 }
