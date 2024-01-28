@@ -8,14 +8,14 @@ export const getNewVar = (key: string, type: string) => {
   if (type !== 'string') {
     return {
       ...rest,
-      type,
+      type: type || 'string',
       key,
       name: key.slice(0, getMaxVarNameLength(key)),
     }
   }
   return {
     ...VAR_ITEM_TEMPLATE,
-    type,
+    type: type || 'string',
     key,
     name: key.slice(0, getMaxVarNameLength(key)),
   }
