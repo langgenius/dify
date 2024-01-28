@@ -51,7 +51,7 @@ const InviteModal = ({
       try {
         const { result, invitation_results } = await inviteMember({
           url: '/workspaces/current/members/invite-email',
-          body: { emails, role: role.name, language: language},
+          body: { emails, role: role.name, language },
         })
 
         if (result === 'success') {
