@@ -138,8 +138,9 @@ class AccountService:
         return account
 
     @staticmethod
-    def create_account(email: str, name: str, password: str = None,
-                       interface_language: str = languages[0], interface_theme: str = 'light',
+    def create_account(email: str, name: str, interface_language: str,
+                       password: str = None,
+                       interface_theme: str = 'light',
                        timezone: str = 'America/New_York', ) -> Account:
         """create account"""
         account = Account()
@@ -429,7 +430,7 @@ class RegisterService:
         db.session.begin_nested()
         """Register account"""
         try:
-            account = AccountService.create_account(email, name, password)
+            account = AccountService.create_account(email, name, interface_language=languages[0], password=password)
             account.status = AccountStatus.ACTIVE.value
             account.initialized_at = datetime.utcnow()
 
