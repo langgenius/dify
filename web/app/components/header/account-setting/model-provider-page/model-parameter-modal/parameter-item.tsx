@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ModelParameterRule } from '../declarations'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
@@ -29,6 +29,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
 }) => {
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
+  const numberInputRef = useRef<HTMLInputElement>(null)
 
   const getDefaultValue = () => {
     let defaultValue: ParameterValue
@@ -57,8 +58,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let num = +e.target.value
 
-    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!)
+    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!) {
       num = parameterRule.max as number
+      numberInputRef.current!.value = `${num}`
+    }
 
     if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
       num = parameterRule.min as number
@@ -66,14 +69,26 @@ const ParameterItem: FC<ParameterItemProps> = ({
     handleInputChange(num)
   }
 
-  const handleSlideChange = (num: number) => {
-    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!)
-      return handleInputChange(parameterRule.max)
+  const handleNumberInputBlur = () => {
+    if (numberInputRef.current)
+      numberInputRef.current.value = renderValue as string
+  }
 
-    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
-      return handleInputChange(parameterRule.min)
+  const handleSlideChange = (num: number) => {
+    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!) {
+      handleInputChange(parameterRule.max)
+      numberInputRef.current!.value = `${parameterRule.max}`
+      return
+    }
+
+    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!) {
+      handleInputChange(parameterRule.min)
+      numberInputRef.current!.value = `${parameterRule.min}`
+      return
+    }
 
     handleInputChange(num)
+    numberInputRef.current!.value = `${num}`
   }
 
   const handleRadioChange = (v: number) => {
@@ -129,13 +144,14 @@ const ParameterItem: FC<ParameterItemProps> = ({
             onChange={handleSlideChange}
           />}
           <input
+            ref={numberInputRef}
             className='shrink-0 block ml-4 pl-3 w-16 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
             type='number'
             max={parameterRule.max}
             min={parameterRule.min}
             step={numberInputWithSlide ? step : +`0.${parameterRule.precision || 0}`}
-            value={renderValue as string}
             onChange={handleNumberInputChange}
+            onBlur={handleNumberInputBlur}
           />
         </>
       )
@@ -190,6 +206,11 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
     return null
   }
+
+  useEffect(() => {
+    if (numberInputRef.current)
+      numberInputRef.current.value = `${renderValue}`
+  }, [])
 
   return (
     <div className={`flex items-center justify-between ${className}`}>

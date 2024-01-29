@@ -33,13 +33,14 @@ import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
@@ -99,7 +100,8 @@ const StepTwo = ({
   const [previewScrolled, setPreviewScrolled] = useState(false)
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
   const [segmentIdentifier, setSegmentIdentifier] = useState('\\n')
-  const [max, setMax] = useState(1000)
+  const [max, setMax] = useState(500)
+  const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
@@ -171,6 +173,7 @@ const StepTwo = ({
     if (defaultConfig) {
       setSegmentIdentifier((defaultConfig.segmentation.separator === '\n' ? '\\n' : defaultConfig.segmentation.separator) || '\\n')
       setMax(defaultConfig.segmentation.max_tokens)
+      setOverlap(defaultConfig.segmentation.chunk_overlap)
       setRules(defaultConfig.pre_processing_rules)
     }
   }
@@ -207,6 +210,7 @@ const StepTwo = ({
         segmentation: {
           separator: segmentIdentifier === '\\n' ? '\n' : segmentIdentifier,
           max_tokens: max,
+          chunk_overlap: overlap,
         },
       }
       processRule.rules = ruleObj
@@ -275,6 +279,10 @@ const StepTwo = ({
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
   const getCreationParams = () => {
     let params
+    if (segmentationType === SegmentType.CUSTOM && overlap > max) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
+      return
+    }
     if (isSetting) {
       params = {
         original_document_id: documentDetail?.id,
@@ -337,6 +345,7 @@ const StepTwo = ({
       const separator = res.rules.segmentation.separator
       setSegmentIdentifier((separator === '\n' ? '\\n' : separator) || '\\n')
       setMax(res.rules.segmentation.max_tokens)
+      setOverlap(res.rules.segmentation.chunk_overlap)
       setRules(res.rules.pre_processing_rules)
       setDefaultConfig(res.rules)
     }
@@ -350,8 +359,10 @@ const StepTwo = ({
       const rules = documentDetail.dataset_process_rule.rules
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
+      const overlap = rules.segmentation.chunk_overlap
       setSegmentIdentifier((separator === '\n' ? '\\n' : separator) || '\\n')
       setMax(max)
+      setOverlap(overlap)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
     }
@@ -569,10 +580,32 @@ const StepTwo = ({
                       <input
                         type="number"
                         className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
+                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
                         value={max}
                         min={1}
                         onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
+                    </div>
+                  </div>
+                  <div className={s.formRow}>
+                    <div className='w-full'>
+                      <div className={s.label}>
+                        {t('datasetCreation.stepTwo.overlap')}
+                        <TooltipPlus popupContent={
+                          <div className='max-w-[200px]'>
+                            {t('datasetCreation.stepTwo.overlapTip')}
+                          </div>
+                        }>
+                          <HelpCircle className='ml-1 w-3.5 h-3.5 text-gray-400' />
+                        </TooltipPlus>
+                      </div>
+                      <input
+                        type="number"
+                        className={s.input}
+                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
+                        value={overlap}
+                        min={1}
+                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />
                     </div>
                   </div>
@@ -705,7 +738,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     {t('datasetSettings.form.retrievalSetting.title')}
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' href='https://docs.dify.ai/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>

@@ -110,7 +110,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
-                messageId: bufferObj?.id,
+                messageId: bufferObj?.message_id,
               })
               return
             }
@@ -175,9 +175,15 @@ const baseFetch = <T>(
     bodyStringify = true,
     needAllResponseContent,
     deleteContentType,
+    getAbortController,
   }: IOtherOptions,
 ): Promise<T> => {
   const options: typeof baseOptions & FetchOptionType = Object.assign({}, baseOptions, fetchOptions)
+  if (getAbortController) {
+    const abortController = new AbortController()
+    getAbortController(abortController)
+    options.signal = abortController.signal
+  }
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
     const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })

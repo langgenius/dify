@@ -9,6 +9,7 @@ from pydantic import BaseModel
 class QuotaUnit(Enum):
     TIMES = 'times'
     TOKENS = 'tokens'
+    CREDITS = 'credits'
 
 
 class SystemConfigurationStatus(Enum):

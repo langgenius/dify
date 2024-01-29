@@ -204,7 +204,7 @@ class DatasetDocumentListApi(Resource):
             raise NotFound('Dataset not found.')
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         try:
@@ -256,7 +256,7 @@ class DatasetInitApi(Resource):
     @cloud_edition_billing_resource_check('vector_space')
     def post(self):
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -599,7 +599,7 @@ class DocumentProcessingApi(DocumentResource):
         document = self.get_document(dataset_id, document_id)
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         if action == "pause":
@@ -663,7 +663,7 @@ class DocumentMetadataApi(DocumentResource):
         doc_metadata = req_data.get('doc_metadata')
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         if doc_type is None or doc_metadata is None:
@@ -710,7 +710,7 @@ class DocumentStatusApi(DocumentResource):
         document = self.get_document(dataset_id, document_id)
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         indexing_cache_key = 'document_{}_indexing'.format(document.id)

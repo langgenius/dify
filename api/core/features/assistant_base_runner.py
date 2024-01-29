@@ -396,6 +396,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             message_chain_id=None,
             thought='',
             tool=tool_name,
+            tool_labels_str='{}',
             tool_input=tool_input,
             message=message,
             message_token=0,
@@ -468,6 +469,21 @@ class BaseAssistantApplicationRunner(AppRunner):
             agent_thought.answer_unit_price = llm_usage.completion_unit_price
             agent_thought.tokens = llm_usage.total_tokens
             agent_thought.total_price = llm_usage.total_price
+
+        # check if tool labels is not empty
+        labels = agent_thought.tool_labels or {}
+        tools = agent_thought.tool.split(';') if agent_thought.tool else []
+        for tool in tools:
+            if not tool:
+                continue
+            if tool not in labels:
+                tool_label = ToolManager.get_tool_label(tool)
+                if tool_label:
+                    labels[tool] = tool_label.to_dict()
+                else:
+                    labels[tool] = {'en_US': tool, 'zh_Hans': tool}
+
+        agent_thought.tool_labels_str = json.dumps(labels)
 
         db.session.commit()
 

@@ -108,6 +108,7 @@ export type PreProcessingRule = {
 export type Segmentation = {
   separator: string
   max_tokens: number
+  chunk_overlap: number
 }
 
 export const DocumentIndexingStatusList = [

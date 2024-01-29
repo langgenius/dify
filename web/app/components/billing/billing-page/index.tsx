@@ -11,23 +11,23 @@ import { useProviderContext } from '@/context/provider-context'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceOwner } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const [billingUrl, setBillingUrl] = React.useState('')
   const { enableBilling } = useProviderContext()
 
   useEffect(() => {
-    if (!enableBilling || !isCurrentWorkspaceOwner)
+    if (!enableBilling || !isCurrentWorkspaceManager)
       return
     (async () => {
       const { url } = await fetchBillingUrl()
       setBillingUrl(url)
     })()
-  }, [isCurrentWorkspaceOwner])
+  }, [isCurrentWorkspaceManager])
 
   return (
     <div>
       <PlanComp loc={'billing-page'} />
-      {enableBilling && isCurrentWorkspaceOwner && billingUrl && (
+      {enableBilling && isCurrentWorkspaceManager && billingUrl && (
         <a className='mt-5 flex px-6 justify-between h-12 items-center bg-gray-50 rounded-xl cursor-pointer' href={billingUrl} target='_blank'>
           <div className='flex items-center'>
             <ReceiptList className='w-4 h-4 text-gray-700' />

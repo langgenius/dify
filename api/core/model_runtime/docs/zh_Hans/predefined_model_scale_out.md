@@ -10,6 +10,7 @@
 - `text_embedding` 文本 Embedding 模型
 - `rerank` Rerank 模型
 - `speech2text` 语音转文字
+- `tts` 文字转语音
 - `moderation` 审查
 
 依旧以 `Anthropic` 为例，`Anthropic` 仅支持 LLM，因此在 `model_providers.anthropic` 创建一个 `llm` 为名称的 `module`。

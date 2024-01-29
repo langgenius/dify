@@ -183,6 +183,8 @@ const Config: FC = () => {
   })
 
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || (featureConfig.textToSpeech && !!text2speechDefaultModel) || featureConfig.citation)
+  const hasCompletionConfig = !isChatApp && (moreLikeThisConfig.enabled || (featureConfig.textToSpeech && !!text2speechDefaultModel))
+
   const hasToolbox = moderationConfig.enabled || featureConfig.annotation
 
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -272,8 +274,8 @@ const Config: FC = () => {
           )
         }
 
-        {/* TextnGeneration config */}{
-          !hasChatConfig && (
+        {/* Text Generation config */}{
+          hasCompletionConfig && (
             <ExperienceEnchanceGroup
               isShowMoreLike={moreLikeThisConfig.enabled}
               isShowTextToSpeech={featureConfig.textToSpeech && !!text2speechDefaultModel}

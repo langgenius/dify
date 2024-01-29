@@ -47,6 +47,10 @@
   - `max_chunks` (int) Maximum number of chunks (available for model types `text-embedding`, `moderation`)
   - `file_upload_limit` (int) Maximum file upload limit, in MB (available for model type `speech2text`)
   - `supported_file_extensions` (string) Supported file extension formats, e.g., mp3, mp4 (available for model type `speech2text`)
+  - `default_voice` (string)  default voice, e.g.：alloy,echo,fable,onyx,nova,shimmer（available for model type `tts`）
+  - `word_limit` (int)  Single conversion word limit, paragraphwise by default（available for model type `tts`）
+  - `audio_type` (string)  Support audio file extension format, e.g.：mp3,wav（available for model type `tts`）
+  - `max_workers` (int)  Number of concurrent workers supporting text and audio conversion（available for model type`tts`）
   - `max_characters_per_chunk` (int) Maximum characters per chunk (available for model type `moderation`)
 - `parameter_rules` (array[[ParameterRule](#ParameterRule)]) [optional] Model invocation parameter rules
 - `pricing` ([PriceConfig](#PriceConfig)) [optional] Pricing information
@@ -58,6 +62,7 @@
 - `text-embedding` Text Embedding model
 - `rerank` Rerank model
 - `speech2text` Speech to text
+- `tts` Text to speech
 - `moderation` Moderation
 
 ### ConfigurateMethod

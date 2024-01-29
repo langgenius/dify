@@ -38,7 +38,6 @@ gtag('config', '${gaIdMaps[gaType]}');
         }}
       >
       </Script>
-
     </>
 
   )
