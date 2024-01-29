@@ -1,5 +1,5 @@
 identity:
-  name: weather
+  name: gaode_weather
   author: CharlieWei
   label:
     en_US: Weather Forecast

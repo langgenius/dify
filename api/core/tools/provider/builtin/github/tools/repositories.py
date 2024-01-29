@@ -52,7 +52,7 @@ class GihubRepositoriesTool(BuiltinTool):
                         content['updated'] = updated_at_object.strftime("%Y-%m-%d")
                         contents.append(content)
                     s.close()
-                    return self.create_text_message(self.summary(user_id=user_id, content=json.dumps(contents)))
+                    return self.create_text_message(self.summary(user_id=user_id, content=json.dumps(contents, ensure_ascii=False)))
                 else:
                     return self.create_text_message(f'No items related to {query} were found.')
             else:
