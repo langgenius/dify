@@ -1,10 +1,8 @@
-"""Paragraph index processor."""
+"""Keyword index processor."""
 import uuid
 from typing import List
 import pandas as pd
 from werkzeug.datastructures import FileStorage
-
-from core.rag.datasource.keyword.keyword_init import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_init import Vector
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -14,7 +12,7 @@ from libs import helper
 from models.dataset import Dataset
 
 
-class ParagraphIndexProcessor(BaseIndexProcessor):
+class KeywordIndexProcessor(BaseIndexProcessor):
 
     def format_by_file_path(self, file_path: str, **kwargs) -> List[Document]:
 
@@ -100,13 +98,10 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
     def load(self, dataset: Dataset, documents: List[Document]):
         if dataset.indexing_technique == 'high_quality':
-
             vector = Vector(dataset).vector_processor
-            vector.create(documents)
-
-        keyword = Keyword(dataset).keyword_processor
-        keyword.create(documents)
-
+        else:
+            keyword = IndexBuilder.get_index(dataset, 'economy')
+        vector.create(documents)
 
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> List[Document]:

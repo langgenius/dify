@@ -514,6 +514,7 @@ class IndexingRunner:
                 text_docs = FileExtractor.load(file_detail, is_automatic=automatic)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
+
             text_docs = loader.load()
 
         # update document status to splitting

@@ -5,6 +5,8 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from flask import current_app
 from langchain.embeddings import OpenAIEmbeddings
+
+from core.rag.datasource.vdb.vector_init import Vector
 from models.dataset import Dataset
 
 
@@ -15,20 +17,8 @@ class IndexBuilder:
             if not ignore_high_quality_check and dataset.indexing_technique != 'high_quality':
                 return None
 
-            model_manager = ModelManager()
-            embedding_model = model_manager.get_model_instance(
-                tenant_id=dataset.tenant_id,
-                model_type=ModelType.TEXT_EMBEDDING,
-                provider=dataset.embedding_model_provider,
-                model=dataset.embedding_model
-            )
-
-            embeddings = CacheEmbedding(embedding_model)
-
-            return VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings
+            return Vector(
+                dataset=dataset
             )
         elif indexing_technique == "economy":
             return KeywordTableIndex(

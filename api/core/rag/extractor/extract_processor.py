@@ -27,7 +27,7 @@ SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
 
-class FileExtractor:
+class ExtractProcessor:
     @classmethod
     def load(cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False) -> Union[List[Document], str]:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -52,9 +52,7 @@ class FileExtractor:
             return cls.load_from_file(file_path, return_text)
 
     @classmethod
-    def load_from_file(cls, file_path: str, return_text: bool = False,
-                       upload_file: Optional[UploadFile] = None,
-                       is_automatic: bool = False) -> Union[List[Document], str]:
+    def load_from_file(cls, file_path: str, is_automatic: bool = False) -> List[Document]:
         input_file = Path(file_path)
         delimiter = '\n'
         file_extension = input_file.suffix.lower()
@@ -62,47 +60,47 @@ class FileExtractor:
         unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
         if etl_type == 'Unstructured':
             if file_extension == '.xlsx':
-                loader = ExcelExtractor(file_path)
+                extractor = ExcelExtractor(file_path)
             elif file_extension == '.pdf':
-                loader = PdfExtractor(file_path)
+                extractor = PdfExtractor(file_path)
             elif file_extension in ['.md', '.markdown']:
-                loader = UnstructuredMarkdownExtractor(file_path, unstructured_api_url) if is_automatic \
+                extractor = UnstructuredMarkdownExtractor(file_path, unstructured_api_url) if is_automatic \
                     else MarkdownExtractor(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
-                loader = HtmlExtractor(file_path)
+                extractor = HtmlExtractor(file_path)
             elif file_extension in ['.docx', '.doc']:
-                loader = UnstructuredWordExtractor(file_path)
+                extractor = UnstructuredWordExtractor(file_path)
             elif file_extension == '.csv':
-                loader = CSVExtractor(file_path, autodetect_encoding=True)
+                extractor = CSVExtractor(file_path, autodetect_encoding=True)
             elif file_extension == '.msg':
-                loader = UnstructuredMsgExtractor(file_path, unstructured_api_url)
+                extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url)
             elif file_extension == '.eml':
-                loader = UnstructuredEmailExtractor(file_path, unstructured_api_url)
+                extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url)
             elif file_extension == '.ppt':
-                loader = UnstructuredPPTExtractor(file_path, unstructured_api_url)
+                extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url)
             elif file_extension == '.pptx':
-                loader = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
+                extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
             elif file_extension == '.xml':
-                loader = UnstructuredXmlExtractor(file_path, unstructured_api_url)
+                extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url)
             else:
                 # txt
-                loader = UnstructuredTextExtractor(file_path, unstructured_api_url) if is_automatic \
+                extractor = UnstructuredTextExtractor(file_path, unstructured_api_url) if is_automatic \
                     else TextExtractor(file_path, autodetect_encoding=True)
         else:
             if file_extension == '.xlsx':
-                loader = ExcelExtractor(file_path)
+                extractor = ExcelExtractor(file_path)
             elif file_extension == '.pdf':
-                loader = PdfExtractor(file_path)
+                extractor = PdfExtractor(file_path)
             elif file_extension in ['.md', '.markdown']:
-                loader = MarkdownExtractor(file_path, autodetect_encoding=True)
+                extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
             elif file_extension in ['.htm', '.html']:
-                loader = HtmlExtractor(file_path)
+                extractor = HtmlExtractor(file_path)
             elif file_extension in ['.docx', '.doc']:
-                loader = DocExtractor(file_path)
+                extractor = DocExtractor(file_path)
             elif file_extension == '.csv':
-                loader = CSVExtractor(file_path, autodetect_encoding=True)
+                extractor = CSVExtractor(file_path, autodetect_encoding=True)
             else:
                 # txt
-                loader = TextExtractor(file_path, autodetect_encoding=True)
+                extractor = TextExtractor(file_path, autodetect_encoding=True)
 
-        return delimiter.join([document.page_content for document in loader.load()]) if return_text else loader.load()
+        return extractor.extract()

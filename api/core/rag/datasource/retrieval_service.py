@@ -1,5 +1,6 @@
+import threading
 from typing import Optional
-
+from flask_login import current_user
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -8,7 +9,6 @@ from core.rag.datasource.vdb.vector_init import Vector
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from flask import Flask, current_app
-from langchain.embeddings.base import Embeddings
 from models.dataset import Dataset
 
 default_retrieval_model = {
@@ -26,9 +26,65 @@ default_retrieval_model = {
 class RetrievalService:
 
     @classmethod
+    def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
+                 top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict]):
+        all_documents = []
+        threads = []
+        # retrieval_model source with semantic
+        if retrival_method == 'semantic_search' or retrival_method == 'hybrid_search':
+            embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'dataset_id': dataset_id,
+                'query': query,
+                'top_k': top_k,
+                'score_threshold': score_threshold,
+                'reranking_model': reranking_model,
+                'all_documents': all_documents,
+                'retrival_method': retrival_method
+            })
+            threads.append(embedding_thread)
+            embedding_thread.start()
+
+        # retrieval source with full text
+        if retrival_method == 'full_text_search' or retrival_method == 'hybrid_search':
+            full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'dataset_id': dataset_id,
+                'query': query,
+                'search_method': retrival_method,
+                'score_threshold': score_threshold,
+                'top_k': top_k,
+                'reranking_model': reranking_model,
+                'all_documents': all_documents
+            })
+            threads.append(full_text_index_thread)
+            full_text_index_thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        if retrival_method == 'hybrid_search':
+            model_manager = ModelManager()
+            rerank_model_instance = model_manager.get_model_instance(
+                tenant_id=current_user.current_tenant_id,
+                model_type=ModelType.RERANK,
+                provider=reranking_model['reranking_provider_name'],
+                model=reranking_model['reranking_model_name']
+            )
+
+            rerank_runner = RerankRunner(rerank_model_instance)
+            all_documents = rerank_runner.run(
+                query=query,
+                documents=all_documents,
+                score_threshold=score_threshold,
+                top_n=top_k
+            )
+        return all_documents
+
+    @classmethod
     def embedding_search(cls, flask_app: Flask, dataset_id: str, query: str,
                          top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict],
-                         all_documents: list, search_method: str):
+                         all_documents: list, retrival_method: str):
         with flask_app.app_context():
             dataset = db.session.query(Dataset).filter(
                 Dataset.id == dataset_id
@@ -49,7 +105,7 @@ class RetrievalService:
             )
 
             if documents:
-                if reranking_model and search_method == 'semantic_search':
+                if reranking_model and retrival_method == 'semantic_search':
                     try:
                         model_manager = ModelManager()
                         rerank_model_instance = model_manager.get_model_instance(
@@ -74,7 +130,7 @@ class RetrievalService:
     @classmethod
     def full_text_index_search(cls, flask_app: Flask, dataset_id: str, query: str,
                                top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict],
-                               all_documents: list, search_method: str):
+                               all_documents: list, retrival_method: str):
         with flask_app.app_context():
             dataset = db.session.query(Dataset).filter(
                 Dataset.id == dataset_id
@@ -90,7 +146,7 @@ class RetrievalService:
                 top_k=top_k
             )
             if documents:
-                if reranking_model and search_method == 'full_text_search':
+                if reranking_model and retrival_method == 'full_text_search':
                     try:
                         model_manager = ModelManager()
                         rerank_model_instance = model_manager.get_model_instance(
