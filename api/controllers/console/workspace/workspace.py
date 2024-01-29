@@ -8,7 +8,8 @@ from controllers.console.datasets.error import (FileTooLargeError, NoFileUploade
                                                 UnsupportedFileTypeError)
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check, \
+    cloud_utm_record
 from extensions.ext_database import db
 from flask import request
 from flask_login import current_user
@@ -60,6 +61,7 @@ class TenantListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_utm_record
     def get(self):
         tenants = TenantService.get_join_tenants(current_user)
 
