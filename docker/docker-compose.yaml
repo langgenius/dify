@@ -7,33 +7,30 @@ services:
     environment:
       # Startup mode, 'api' starts the API server.
       MODE: api
-      HTTP_PROXY: http://192.168.0.100:7890/
-      HTTPS_PROXY: http://192.168.0.100:7890/
-      NO_PROXY: weaviate,db,redis,web,worker
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-      LOG_LEVEL: DEBUG
+      LOG_LEVEL: INFO
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
       SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
       # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_WEB_URL: 'https://ai.njueai.com:8443'
+      CONSOLE_WEB_URL: ''
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_API_URL: 'https://ai.njueai.com:8443'
+      CONSOLE_API_URL: ''
       # The URL prefix for Service API endpoints, refers to the base URL of the current API service if api domain is
       # different from console domain.
       # example: http://api.dify.ai
-      SERVICE_API_URL: 'https://ai.njueai.com:8443'
+      SERVICE_API_URL: ''
       # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_WEB_URL: 'https://ai.njueai.com:8443'
+      APP_WEB_URL: ''
       # File preview or download Url prefix.
       # used to display File preview or download Url to the front-end or as Multi-model inputs;
       # Url is signed and has expiration time.
-      FILES_URL: 'https://ai.njueai.com:8443'
+      FILES_URL: ''
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
