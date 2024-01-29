@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import { Plan } from '../type'
-import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales } from '../config'
+import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } from '../config'
 import Toast from '../../base/toast'
 import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
@@ -112,7 +112,16 @@ const PlanItem: FC<Props> = ({
   const supportContent = (() => {
     switch (plan) {
       case Plan.sandbox:
-        return t('billing.plansCommon.supportItems.communityForums')
+        return (<div className='space-y-3.5'>
+          <div>{t('billing.plansCommon.supportItems.communityForums')}</div>
+          <div>{t('billing.plansCommon.supportItems.agentMode')}</div>
+          <div className='flex items-center space-x-1'>
+            <div className='flex items-center'>
+              <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.workflow')}</div>
+            </div>
+            <div>{comingSoon}</div>
+          </div>
+        </div>)
       case Plan.professional:
         return (
           <div>
@@ -134,19 +143,12 @@ const PlanItem: FC<Props> = ({
               </div>
               <div>{comingSoon}</div>
             </div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.agentModel')}</div>
-              <div>{comingSoon}</div>
-            </div>
           </div>
         )
       case Plan.team:
         return (
           <div>
             <div>{t('billing.plansCommon.supportItems.priorityEmail')}</div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
-            </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.SSOAuthentication')}</div>
               <div>{comingSoon}</div>
@@ -157,6 +159,9 @@ const PlanItem: FC<Props> = ({
         return (
           <div>
             <div>{t('billing.plansCommon.supportItems.personalizedSupport')}</div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <div>+ {t('billing.plansCommon.supportItems.dedicatedAPISupport')}</div>
+            </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.customIntegration')}</div>
             </div>
@@ -206,7 +211,7 @@ const PlanItem: FC<Props> = ({
       )}
       <div className={cn(style[plan].bg, 'grow px-6 py-6 rounded-[10px]')}>
         <div className={cn(style[plan].title, 'mb-1 leading-[125%] text-lg font-semibold')}>{t(`${i18nPrefix}.name`)}</div>
-        <div className={cn(isFreePlan ? 'text-[#FB6514]' : 'text-gray-500', 'mb-4 h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
+        <div className={cn(isFreePlan ? 'mb-5 text-[#FB6514]' : 'mb-4 text-gray-500', 'h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
 
         {/* Price */}
         {isFreePlan && (
@@ -272,6 +277,10 @@ const PlanItem: FC<Props> = ({
         <KeyValue
           label={t('billing.plansCommon.logsHistory')}
           value={planInfo.logHistory === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.logHistory} ${t('billing.plansCommon.days')}`}
+        />
+        <KeyValue
+          label={t('billing.plansCommon.customTools')}
+          value={planInfo.customTools === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.customTools === unAvailable ? t('billing.plansCommon.unavailable') as string : `${planInfo.customTools}`)}
         />
         <KeyValue
           label={t('billing.plansCommon.support')}

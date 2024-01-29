@@ -4,6 +4,7 @@ const supportModelProviders = 'OpenAI/Anthropic/Azure OpenAI/  Llama2/Hugging Fa
 
 export const NUM_INFINITE = 99999999
 export const contractSales = 'contractSales'
+export const unAvailable = 'unAvailable'
 
 export const contactSalesUrl = 'mailto:business@dify.ai'
 
@@ -17,6 +18,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: 5,
     documentProcessingPriority: Priority.standard,
     logHistory: 30,
+    customTools: unAvailable,
     messageRequest: {
       en: '200 messages',
       zh: '200 条信息',
@@ -32,6 +34,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: 200,
     documentProcessingPriority: Priority.priority,
     logHistory: NUM_INFINITE,
+    customTools: 10,
     messageRequest: {
       en: '5,000  messages/month',
       zh: '5,000 条信息/月',
@@ -47,6 +50,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: 1000,
     documentProcessingPriority: Priority.topPriority,
     logHistory: NUM_INFINITE,
+    customTools: NUM_INFINITE,
     messageRequest: {
       en: '10,000  messages/month',
       zh: '10,000 条信息/月',
@@ -62,6 +66,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: NUM_INFINITE,
     documentProcessingPriority: Priority.topPriority,
     logHistory: NUM_INFINITE,
+    customTools: NUM_INFINITE,
     messageRequest: {
       en: contractSales,
       zh: contractSales,
