@@ -19,7 +19,10 @@ export type PlanInfo = {
   vectorSpace: number
   documentProcessingPriority: Priority
   logHistory: number
-  messageRequest: number
+  messageRequest: {
+    en: string | number
+    zh: string | number
+  }
   annotatedResponse: number
 }
 

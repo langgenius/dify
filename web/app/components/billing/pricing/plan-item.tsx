@@ -3,14 +3,17 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useContext } from 'use-context-selector'
 import { Plan } from '../type'
-import { ALL_PLANS, NUM_INFINITE, contactSalesUrl } from '../config'
+import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales } from '../config'
 import Toast from '../../base/toast'
 import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import I18n from '@/context/i18n'
 
 type Props = {
   currentPlan: Plan
@@ -69,6 +72,9 @@ const PlanItem: FC<Props> = ({
   canPay,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
+  const isZh = language === LanguagesSupportedUnderscore[1]
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
@@ -79,7 +85,13 @@ const PlanItem: FC<Props> = ({
   const isCurrent = plan === currentPlan
   const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level || (!canPay && plan !== Plan.enterprise)
   const { isCurrentWorkspaceManager } = useAppContext()
+  const messagesRequest = (() => {
+    const value = planInfo.messageRequest[isZh ? 'zh' : 'en']
+    if (value === contractSales)
+      return t('billing.plansCommon.contractSales')
 
+    return value
+  })()
   const btnText = (() => {
     if (!canPay && plan !== Plan.enterprise)
       return t('billing.plansCommon.contractOwner')
@@ -226,6 +238,11 @@ const PlanItem: FC<Props> = ({
           {t(`${i18nPrefix}.includesTitle`)}
         </div>
         <KeyValue
+          label={t('billing.plansCommon.messageRequest.title')}
+          value={messagesRequest}
+          tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
+        />
+        <KeyValue
           label={t('billing.plansCommon.modelProviders')}
           value={planInfo.modelProviders}
         />
@@ -246,11 +263,7 @@ const PlanItem: FC<Props> = ({
           label={t('billing.plansCommon.documentProcessingPriority')}
           value={t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`) as string}
         />
-        <KeyValue
-          label={t('billing.plansCommon.messageRequest.title')}
-          value={planInfo.messageRequest === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.messageRequest} ${t('billing.plansCommon.messageRequest.unit')}`}
-          tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
-        />
+
         <KeyValue
           label={t('billing.plansCommon.annotatedResponse.title')}
           value={planInfo.annotatedResponse === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.annotatedResponse}`}
