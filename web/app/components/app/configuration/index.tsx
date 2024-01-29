@@ -820,7 +820,7 @@ const Configuration: FC = () => {
                     )
                 }
               </div>
-              <div className='flex flex-col grow h-0 px-6 py-4 rounded-tl-2xl border-t border-l bg-gray-50 '>
+              <div className='flex flex-col grow h-0 rounded-tl-2xl border-t border-l bg-gray-50 '>
                 <Debug
                   hasSetAPIKEY={hasSettedApiKey}
                   onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
