@@ -47,8 +47,9 @@ class GaodeRepositoriesTool(BuiltinTool):
                                 content['nightweather'] = item.get('nightweather')
                                 content['nighttemp_float'] = item.get('nighttemp_float')
                                 contents.append(content)
-                        s.close()
-                        return self.create_text_message(self.summary(user_id=user_id, content=json.dumps(contents, ensure_ascii=False)))
+                            s.close()
+                            return self.create_text_message(self.summary(user_id=user_id, content=json.dumps(contents, ensure_ascii=False)))
+            s.close()
             return self.create_text_message(f'No weather information for {city} was found.')
         except Exception as e:
             return self.create_text_message("Github API Key and Api Version is invalid. {}".format(e))
