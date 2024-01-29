@@ -24,5 +24,5 @@ parameters:
       en_US: Target city for weather forecast query.
       zh_Hans: 天气预报查询的目标城市。
       pt_BR: Cidade de destino para consulta de previsão do tempo.
-    llm_description: If you don't know you can extract the city name from the question or you can reply：Please tell me your city. You must then extract the city name for the query.
+    llm_description: If you don't know you can extract the city name from the question or you can reply：Please tell me your city. You have to extract the Chinese city name from the question.
     form: llm
