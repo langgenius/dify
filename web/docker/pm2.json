@@ -2,10 +2,10 @@
   "apps": [
     {
       "name": "dify-web",
-      "exec_mode": "cluster",
-      "instances": 1,
       "script": "/app/web/server.js",
-      "cwd": "/app/web"
+      "cwd": "/app/web",
+      "exec_mode": "cluster",
+      "instances": 2
     }
   ]
 }
