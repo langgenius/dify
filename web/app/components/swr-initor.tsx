@@ -15,14 +15,6 @@ const SwrInitor = ({
   const searchParams = useSearchParams()
   const consoleToken = searchParams.get('console_token')
   const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
-  const utm = {
-    utm_source: searchParams.get('utm_source') || '',
-    utm_medium: searchParams.get('utm_medium') || '',
-    utm_campaign: searchParams.get('utm_campaign') || '',
-    utm_content: searchParams.get('utm_content') || '',
-    utm_term: searchParams.get('utm_term') || '',
-  }
-  localStorage?.setItem('utm', JSON.stringify(utm))
   const [init, setInit] = useState(false)
 
   useEffect(() => {
