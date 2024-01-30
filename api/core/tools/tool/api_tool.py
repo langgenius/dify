@@ -81,7 +81,7 @@ class ApiTool(Tool):
             if response.status_code >= 400:
                 raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
             if not response.content:
-                return 'Empty response, please check your parameters and try again. if '
+                return 'Empty response from the tool, please check your parameters and try again.'
             try:
                 response = response.json()
                 try:
@@ -94,7 +94,7 @@ class ApiTool(Tool):
             if not response.ok:
                 raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
             if not response.content:
-                return 'Empty response, please check your parameters and try again.'
+                return 'Empty response from the tool, please check your parameters and try again.'
             try:
                 response = response.json()
                 try:
