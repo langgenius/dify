@@ -16,7 +16,7 @@ class MinimaxChatCompletion(object):
     """
     def generate(self, model: str, api_key: str, group_id: str, 
                  prompt_messages: List[MinimaxMessage], model_parameters: dict,
-                 tools: Dict[str, Any], stop: List[str] | None, stream: bool, user: str) \
+                 tools: List[Dict[str, Any]], stop: List[str] | None, stream: bool, user: str) \
         -> Union[MinimaxMessage, Generator[MinimaxMessage, None, None]]:
         """
             generate chat completion
@@ -162,7 +162,6 @@ class MinimaxChatCompletion(object):
                 continue
 
             for choice in choices:
-                print(choice)
                 message = choice['delta']
                 yield MinimaxMessage(
                     content=message,

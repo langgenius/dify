@@ -1,11 +1,11 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce } from 'immer'
-import { useGetState } from 'ahooks'
 import dayjs from 'dayjs'
 import type {
   ChatConfig,
@@ -19,12 +19,53 @@ import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
+import type { Annotation } from '@/models/log'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetConvesationMessages: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
 }
+
+export const useCheckPromptVariables = () => {
+  const { t } = useTranslation()
+  const { notify } = useToastContext()
+
+  const checkPromptVariables = useCallback((promptVariablesConfig: {
+    inputs: Inputs
+    promptVariables: PromptVariable[]
+  }) => {
+    const {
+      promptVariables,
+      inputs,
+    } = promptVariablesConfig
+    let hasEmptyInput = ''
+    const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
+      if (type === 'api')
+        return false
+      const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
+      return res
+    })
+
+    if (requiredVars?.length) {
+      requiredVars.forEach(({ key, name }) => {
+        if (hasEmptyInput)
+          return
+
+        if (!inputs[key])
+          hasEmptyInput = name
+      })
+    }
+
+    if (hasEmptyInput) {
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
+      return false
+    }
+  }, [notify, t])
+
+  return checkPromptVariables
+}
+
 export const useChat = (
   config: ChatConfig,
   promptVariablesConfig?: {
@@ -39,19 +80,31 @@ export const useChat = (
   const connversationId = useRef('')
   const hasStopResponded = useRef(false)
   const [isResponsing, setIsResponsing] = useState(false)
-  const [chatList, setChatList, getChatList] = useGetState<ChatItem[]>(prevChatList || [])
-  const [taskId, setTaskId] = useState('')
+  const isResponsingRef = useRef(false)
+  const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
+  const chatListRef = useRef<ChatItem[]>(prevChatList || [])
+  const taskIdRef = useRef('')
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const [conversationMessagesAbortController, setConversationMessagesAbortController] = useState<AbortController | null>(null)
-  const [suggestedQuestionsAbortController, setSuggestedQuestionsAbortController] = useState<AbortController | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
+  const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
+  const checkPromptVariables = useCheckPromptVariables()
 
-  const getIntroduction = (str: string) => {
+  const handleUpdateChatList = useCallback((newChatList: ChatItem[]) => {
+    setChatList(newChatList)
+    chatListRef.current = newChatList
+  }, [])
+  const handleResponsing = useCallback((isResponsing: boolean) => {
+    setIsResponsing(isResponsing)
+    isResponsingRef.current = isResponsing
+  }, [])
+
+  const getIntroduction = useCallback((str: string) => {
     return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
-  }
+  }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
   useEffect(() => {
-    if (config.opening_statement && !chatList.some(item => !item.isAnswer)) {
-      setChatList([{
+    if (config.opening_statement && !chatList.length) {
+      handleUpdateChatList([{
         id: `${Date.now()}`,
         content: getIntroduction(config.opening_statement),
         isAnswer: true,
@@ -59,25 +112,31 @@ export const useChat = (
         suggestedQuestions: config.suggested_questions,
       }])
     }
-  }, [config.opening_statement, config.suggested_questions, promptVariablesConfig?.inputs])
+  }, [
+    config.opening_statement,
+    config.suggested_questions,
+    getIntroduction,
+    chatList,
+    handleUpdateChatList,
+  ])
 
-  const handleStop = () => {
-    if (stopChat && taskId)
-      stopChat(taskId)
-    if (abortController)
-      abortController.abort()
-    if (conversationMessagesAbortController)
-      conversationMessagesAbortController.abort()
-    if (suggestedQuestionsAbortController)
-      suggestedQuestionsAbortController.abort()
-  }
-
-  const handleRestart = () => {
-    handleStop()
+  const handleStop = useCallback(() => {
     hasStopResponded.current = true
+    handleResponsing(false)
+    if (stopChat && taskIdRef.current)
+      stopChat(taskIdRef.current)
+    if (abortControllerRef.current)
+      abortControllerRef.current.abort()
+    if (conversationMessagesAbortControllerRef.current)
+      conversationMessagesAbortControllerRef.current.abort()
+    if (suggestedQuestionsAbortControllerRef.current)
+      suggestedQuestionsAbortControllerRef.current.abort()
+  }, [stopChat, handleResponsing])
+
+  const handleRestart = useCallback(() => {
+    handleStop()
     connversationId.current = ''
-    setIsResponsing(false)
-    setChatList(config.opening_statement
+    const newChatList = config.opening_statement
       ? [{
         id: `${Date.now()}`,
         content: config.opening_statement,
@@ -85,10 +144,38 @@ export const useChat = (
         isOpeningStatement: true,
         suggestedQuestions: config.suggested_questions,
       }]
-      : [])
+      : []
+    handleUpdateChatList(newChatList)
     setSuggestQuestions([])
-  }
-  const handleSend = async (
+  }, [
+    config,
+    handleStop,
+    handleUpdateChatList,
+  ])
+
+  const updateCurrentQA = useCallback(({
+    responseItem,
+    questionId,
+    placeholderAnswerId,
+    questionItem,
+  }: {
+    responseItem: ChatItem
+    questionId: string
+    placeholderAnswerId: string
+    questionItem: ChatItem
+  }) => {
+    const newListWithAnswer = produce(
+      chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+      (draft) => {
+        if (!draft.find(item => item.id === questionId))
+          draft.push({ ...questionItem })
+
+        draft.push({ ...responseItem })
+      })
+    handleUpdateChatList(newListWithAnswer)
+  }, [handleUpdateChatList])
+
+  const handleSend = useCallback(async (
     url: string,
     data: any,
     {
@@ -97,62 +184,13 @@ export const useChat = (
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
-    if (isResponsing) {
+    if (isResponsingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
 
-    if (promptVariablesConfig?.inputs && promptVariablesConfig?.promptVariables) {
-      const {
-        promptVariables,
-        inputs,
-      } = promptVariablesConfig
-      let hasEmptyInput = ''
-      const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
-        if (type === 'api')
-          return false
-        const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
-        return res
-      })
-
-      if (requiredVars?.length) {
-        requiredVars.forEach(({ key, name }) => {
-          if (hasEmptyInput)
-            return
-
-          if (!inputs[key])
-            hasEmptyInput = name
-        })
-      }
-
-      if (hasEmptyInput) {
-        notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
-        return false
-      }
-    }
-
-    const updateCurrentQA = ({
-      responseItem,
-      questionId,
-      placeholderAnswerId,
-      questionItem,
-    }: {
-      responseItem: ChatItem
-      questionId: string
-      placeholderAnswerId: string
-      questionItem: ChatItem
-    }) => {
-      // closesure new list is outdated.
-      const newListWithAnswer = produce(
-        getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-        (draft) => {
-          if (!draft.find(item => item.id === questionId))
-            draft.push({ ...questionItem })
-
-          draft.push({ ...responseItem })
-        })
-      setChatList(newListWithAnswer)
-    }
+    if (promptVariablesConfig?.inputs && promptVariablesConfig?.promptVariables)
+      checkPromptVariables(promptVariablesConfig)
 
     const questionId = `question-${Date.now()}`
     const questionItem = {
@@ -169,8 +207,8 @@ export const useChat = (
       isAnswer: true,
     }
 
-    const newList = [...getChatList(), questionItem, placeholderAnswerItem]
-    setChatList(newList)
+    const newList = [...chatListRef.current, questionItem, placeholderAnswerItem]
+    handleUpdateChatList(newList)
 
     // answer
     const responseItem: ChatItem = {
@@ -181,7 +219,7 @@ export const useChat = (
       isAnswer: true,
     }
 
-    setIsResponsing(true)
+    handleResponsing(true)
     hasStopResponded.current = false
 
     const bodyParams = {
@@ -211,7 +249,7 @@ export const useChat = (
       },
       {
         getAbortController: (abortController) => {
-          setAbortController(abortController)
+          abortControllerRef.current = abortController
         },
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           if (!isAgentMode) {
@@ -231,7 +269,7 @@ export const useChat = (
           if (isFirstMessage && newConversationId)
             connversationId.current = newConversationId
 
-          setTaskId(taskId)
+          taskIdRef.current = taskId
           if (messageId)
             responseItem.id = messageId
 
@@ -243,21 +281,21 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          setIsResponsing(false)
+          handleResponsing(false)
 
           if (hasError)
             return
 
-          if (connversationId.current) {
+          if (connversationId.current && !hasStopResponded.current) {
             const { data }: any = await onGetConvesationMessages(
               connversationId.current,
-              newAbortController => setConversationMessagesAbortController(newAbortController),
+              newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )
             const newResponseItem = data.find((item: any) => item.id === responseItem.id)
             if (!newResponseItem)
               return
 
-            setChatList(produce(getChatList(), (draft) => {
+            const newChatList = produce(chatListRef.current, (draft) => {
               const index = draft.findIndex(item => item.id === responseItem.id)
               if (index !== -1) {
                 const requestion = draft[index - 1]
@@ -274,12 +312,13 @@ export const useChat = (
                   },
                 }
               }
-            }))
+            })
+            handleUpdateChatList(newChatList)
           }
           if (config.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
             const { data }: any = await onGetSuggestedQuestions(
               responseItem.id,
-              newAbortController => setSuggestedQuestionsAbortController(newAbortController),
+              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
             )
             setSuggestQuestions(data)
           }
@@ -330,8 +369,9 @@ export const useChat = (
               id: messageEnd.metadata.annotation_reply.id,
               authorName: messageEnd.metadata.annotation_reply.account.name,
             })
+            const baseState = chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId)
             const newListWithAnswer = produce(
-              getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+              baseState,
               (draft) => {
                 if (!draft.find(item => item.id === questionId))
                   draft.push({ ...questionItem })
@@ -340,38 +380,113 @@ export const useChat = (
                   ...responseItem,
                 })
               })
-            setChatList(newListWithAnswer)
+            handleUpdateChatList(newListWithAnswer)
             return
           }
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
 
           const newListWithAnswer = produce(
-            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+            chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
             (draft) => {
               if (!draft.find(item => item.id === questionId))
                 draft.push({ ...questionItem })
 
               draft.push({ ...responseItem })
             })
-          setChatList(newListWithAnswer)
+          handleUpdateChatList(newListWithAnswer)
         },
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
         onError() {
-          setIsResponsing(false)
-          // role back placeholder answer
-          setChatList(produce(getChatList(), (draft) => {
+          handleResponsing(false)
+          const newChatList = produce(chatListRef.current, (draft) => {
             draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
-          }))
+          })
+          handleUpdateChatList(newChatList)
         },
       })
     return true
-  }
+  }, [
+    checkPromptVariables,
+    config.suggested_questions_after_answer,
+    updateCurrentQA,
+    t,
+    notify,
+    promptVariablesConfig,
+    handleUpdateChatList,
+    handleResponsing,
+  ])
+
+  const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
+    setChatList(chatListRef.current.map((item, i) => {
+      if (i === index - 1) {
+        return {
+          ...item,
+          content: query,
+        }
+      }
+      if (i === index) {
+        return {
+          ...item,
+          content: answer,
+          annotation: {
+            ...item.annotation,
+            logAnnotation: undefined,
+          } as any,
+        }
+      }
+      return item
+    }))
+  }, [])
+  const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
+    setChatList(chatListRef.current.map((item, i) => {
+      if (i === index - 1) {
+        return {
+          ...item,
+          content: query,
+        }
+      }
+      if (i === index) {
+        const answerItem = {
+          ...item,
+          content: item.content,
+          annotation: {
+            id: annotationId,
+            authorName,
+            logAnnotation: {
+              content: answer,
+              account: {
+                id: '',
+                name: authorName,
+                email: '',
+              },
+            },
+          } as Annotation,
+        }
+        return answerItem
+      }
+      return item
+    }))
+  }, [])
+  const handleAnnotationRemoved = useCallback((index: number) => {
+    setChatList(chatListRef.current.map((item, i) => {
+      if (i === index) {
+        return {
+          ...item,
+          content: item.content,
+          annotation: {
+            ...(item.annotation || {}),
+            id: '',
+          } as Annotation,
+        }
+      }
+      return item
+    }))
+  }, [])
 
   return {
     chatList,
-    getChatList,
     setChatList,
     conversationId: connversationId.current,
     isResponsing,
@@ -380,6 +495,9 @@ export const useChat = (
     suggestedQuestions,
     handleRestart,
     handleStop,
+    handleAnnotationEdited,
+    handleAnnotationAdded,
+    handleAnnotationRemoved,
   }
 }
 

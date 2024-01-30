@@ -291,6 +291,10 @@
   background-image: url(../assets/csv.svg);
 }
 
+.fileIcon.doc {
+  background-image: url(../assets/doc.svg);
+}
+
 .fileIcon.docx {
   background-image: url(../assets/docx.svg);
 }

@@ -36,6 +36,7 @@ LLM_BASE_MODELS = [
             features=[
                 ModelFeature.AGENT_THOUGHT,
                 ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
@@ -80,6 +81,7 @@ LLM_BASE_MODELS = [
             features=[
                 ModelFeature.AGENT_THOUGHT,
                 ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
@@ -124,6 +126,7 @@ LLM_BASE_MODELS = [
             features=[
                 ModelFeature.AGENT_THOUGHT,
                 ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
@@ -198,6 +201,7 @@ LLM_BASE_MODELS = [
             features=[
                 ModelFeature.AGENT_THOUGHT,
                 ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
@@ -272,6 +276,7 @@ LLM_BASE_MODELS = [
             features=[
                 ModelFeature.AGENT_THOUGHT,
                 ModelFeature.MULTI_TOOL_CALL,
+                ModelFeature.STREAM_TOOL_CALL,
             ],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={

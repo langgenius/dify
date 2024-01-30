@@ -1,14 +1,10 @@
-import type { FC } from 'react'
 import {
+  forwardRef,
   memo,
   useCallback,
+  useImperativeHandle,
   useMemo,
 } from 'react'
-import type { ModelAndParameter } from '../types'
-import {
-  APP_CHAT_WITH_MULTIPLE_MODEL,
-  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
-} from '../types'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
@@ -17,7 +13,6 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import type { OnSend } from '@/app/components/base/chat/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConvesationMessages,
@@ -28,12 +23,15 @@ import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-type ChatItemProps = {
-  modelAndParameter: ModelAndParameter
+type DebugWithSingleModelProps = {
+  checkCanSend?: () => boolean
 }
-const ChatItem: FC<ChatItemProps> = ({
-  modelAndParameter,
-}) => {
+export type DebugWithSingleModelRefType = {
+  handleRestart: () => void
+}
+const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
+  checkCanSend,
+}, ref) => {
   const { userProfile } = useAppContext()
   const {
     modelConfig,
@@ -41,6 +39,7 @@ const ChatItem: FC<ChatItemProps> = ({
     inputs,
     visionConfig,
     collectionList,
+    completionParams,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const config = useConfigFromDebugContext()
@@ -49,9 +48,17 @@ const ChatItem: FC<ChatItemProps> = ({
     isResponsing,
     handleSend,
     suggestedQuestions,
+    handleStop,
     handleRestart,
+    handleAnnotationAdded,
+    handleAnnotationEdited,
+    handleAnnotationRemoved,
   } = useChat(
-    config,
+    {
+      ...config,
+      supportAnnotation: true,
+      appId,
+    },
     {
       inputs,
       promptVariables: modelConfig.configs.prompt_variables,
@@ -62,17 +69,19 @@ const ChatItem: FC<ChatItemProps> = ({
   useFormattingChangedSubscription(chatList)
 
   const doSend: OnSend = useCallback((message, files) => {
-    const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
+    if (checkCanSend && !checkCanSend())
+      return
+    const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
+    const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model_id)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
     const configData = {
       ...config,
       model: {
-        provider: modelAndParameter.provider,
-        name: modelAndParameter.model,
-        mode: currentModel?.model_properties.mode,
-        completion_params: modelAndParameter.parameters,
+        provider: modelConfig.provider,
+        name: modelConfig.model_id,
+        mode: modelConfig.mode,
+        completion_params: completionParams,
       },
     }
 
@@ -93,15 +102,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled])
-
-  const { eventEmitter } = useEventEmitterContextContext()
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL)
-      doSend(v.payload.message, v.payload.files)
-    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL_RESTART)
-      handleRestart()
-  })
+  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
@@ -111,25 +112,32 @@ const ChatItem: FC<ChatItemProps> = ({
     return icons
   }, [collectionList, modelConfig.agentConfig.tools])
 
-  if (!chatList.length)
-    return null
+  useImperativeHandle(ref, () => {
+    return {
+      handleRestart,
+    }
+  }, [handleRestart])
 
   return (
     <Chat
       config={config}
       chatList={chatList}
       isResponsing={isResponsing}
-      noChatInput
-      noStopResponding
-      chatContainerclassName='p-4'
-      chatFooterClassName='p-4 pb-0'
+      chatContainerclassName='p-6'
+      chatFooterClassName='px-6 pt-10 pb-4'
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
+      onStopResponding={handleStop}
       showPromptLog
       questionIcon={<Avatar name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
+      onAnnotationEdited={handleAnnotationEdited}
+      onAnnotationAdded={handleAnnotationAdded}
+      onAnnotationRemoved={handleAnnotationRemoved}
     />
   )
-}
+})
 
-export default memo(ChatItem)
+DebugWithSingleModel.displayName = 'DebugWithSingleModel'
+
+export default memo(DebugWithSingleModel)
