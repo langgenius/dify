@@ -7,7 +7,6 @@ import {
   fetchModelList,
   fetchModelProviders,
   fetchSupportRetrievalMethods,
-  operationUtm,
 } from '@/service/common'
 import {
   ModelFeatureEnum,
@@ -100,23 +99,7 @@ export const ProviderContextProvider = ({
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
-  const handleOperateUtm = () => {
-    let utm
-    try {
-      utm = JSON.parse(localStorage?.getItem('utm') || '{}')
-    }
-    catch (e) {
-      utm = {
-        utm_source: '',
-        utm_medium: '',
-        utm_campaign: '',
-        utm_content: '',
-        utm_term: '',
-      }
-    }
-    if (utm.utm_source || utm.utm_medium || utm.utm_campaign || utm.utm_content || utm.utm_term)
-      operationUtm({ url: '/operation/utm', body: utm })
-  }
+
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo()
     const enabled = data.billing.enabled
@@ -124,7 +107,6 @@ export const ProviderContextProvider = ({
     setEnableReplaceWebAppLogo(data.can_replace_logo)
     if (enabled) {
       setPlan(parseCurrentPlan(data))
-      handleOperateUtm()
       setIsFetchedPlan(true)
     }
   }

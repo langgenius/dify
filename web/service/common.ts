@@ -20,7 +20,6 @@ import type {
   ProviderAzureToken,
   SetupStatusResponse,
   UserProfileOriginResponse,
-  Utm,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -262,8 +261,4 @@ type RetrievalMethodsRes = {
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
-}
-
-export const operationUtm: Fetcher<CommonResponse, { url: string; body: Utm }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<CommonResponse>
 }

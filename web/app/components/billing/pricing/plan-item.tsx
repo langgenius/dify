@@ -3,14 +3,17 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useContext } from 'use-context-selector'
 import { Plan } from '../type'
-import { ALL_PLANS, NUM_INFINITE, contactSalesUrl } from '../config'
+import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } from '../config'
 import Toast from '../../base/toast'
 import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
+import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import I18n from '@/context/i18n'
 
 type Props = {
   currentPlan: Plan
@@ -69,6 +72,9 @@ const PlanItem: FC<Props> = ({
   canPay,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
+  const isZh = language === LanguagesSupportedUnderscore[1]
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
@@ -79,7 +85,13 @@ const PlanItem: FC<Props> = ({
   const isCurrent = plan === currentPlan
   const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level || (!canPay && plan !== Plan.enterprise)
   const { isCurrentWorkspaceManager } = useAppContext()
+  const messagesRequest = (() => {
+    const value = planInfo.messageRequest[isZh ? 'zh' : 'en']
+    if (value === contractSales)
+      return t('billing.plansCommon.contractSales')
 
+    return value
+  })()
   const btnText = (() => {
     if (!canPay && plan !== Plan.enterprise)
       return t('billing.plansCommon.contractOwner')
@@ -100,7 +112,16 @@ const PlanItem: FC<Props> = ({
   const supportContent = (() => {
     switch (plan) {
       case Plan.sandbox:
-        return t('billing.plansCommon.supportItems.communityForums')
+        return (<div className='space-y-3.5'>
+          <div>{t('billing.plansCommon.supportItems.communityForums')}</div>
+          <div>{t('billing.plansCommon.supportItems.agentMode')}</div>
+          <div className='flex items-center space-x-1'>
+            <div className='flex items-center'>
+              <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.workflow')}</div>
+            </div>
+            <div>{comingSoon}</div>
+          </div>
+        </div>)
       case Plan.professional:
         return (
           <div>
@@ -122,19 +143,12 @@ const PlanItem: FC<Props> = ({
               </div>
               <div>{comingSoon}</div>
             </div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.agentModel')}</div>
-              <div>{comingSoon}</div>
-            </div>
           </div>
         )
       case Plan.team:
         return (
           <div>
             <div>{t('billing.plansCommon.supportItems.priorityEmail')}</div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
-            </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.SSOAuthentication')}</div>
               <div>{comingSoon}</div>
@@ -145,6 +159,9 @@ const PlanItem: FC<Props> = ({
         return (
           <div>
             <div>{t('billing.plansCommon.supportItems.personalizedSupport')}</div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <div>+ {t('billing.plansCommon.supportItems.dedicatedAPISupport')}</div>
+            </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.customIntegration')}</div>
             </div>
@@ -194,7 +211,7 @@ const PlanItem: FC<Props> = ({
       )}
       <div className={cn(style[plan].bg, 'grow px-6 py-6 rounded-[10px]')}>
         <div className={cn(style[plan].title, 'mb-1 leading-[125%] text-lg font-semibold')}>{t(`${i18nPrefix}.name`)}</div>
-        <div className={cn(isFreePlan ? 'text-[#FB6514]' : 'text-gray-500', 'mb-4 h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
+        <div className={cn(isFreePlan ? 'mb-5 text-[#FB6514]' : 'mb-4 text-gray-500', 'h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
 
         {/* Price */}
         {isFreePlan && (
@@ -226,6 +243,11 @@ const PlanItem: FC<Props> = ({
           {t(`${i18nPrefix}.includesTitle`)}
         </div>
         <KeyValue
+          label={t('billing.plansCommon.messageRequest.title')}
+          value={messagesRequest}
+          tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
+        />
+        <KeyValue
           label={t('billing.plansCommon.modelProviders')}
           value={planInfo.modelProviders}
         />
@@ -246,11 +268,7 @@ const PlanItem: FC<Props> = ({
           label={t('billing.plansCommon.documentProcessingPriority')}
           value={t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`) as string}
         />
-        <KeyValue
-          label={t('billing.plansCommon.messageRequest.title')}
-          value={planInfo.messageRequest === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.messageRequest} ${t('billing.plansCommon.messageRequest.unit')}`}
-          tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
-        />
+
         <KeyValue
           label={t('billing.plansCommon.annotatedResponse.title')}
           value={planInfo.annotatedResponse === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.annotatedResponse}`}
@@ -259,6 +277,10 @@ const PlanItem: FC<Props> = ({
         <KeyValue
           label={t('billing.plansCommon.logsHistory')}
           value={planInfo.logHistory === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.logHistory} ${t('billing.plansCommon.days')}`}
+        />
+        <KeyValue
+          label={t('billing.plansCommon.customTools')}
+          value={planInfo.customTools === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.customTools === unAvailable ? t('billing.plansCommon.unavailable') as string : `${planInfo.customTools}`)}
         />
         <KeyValue
           label={t('billing.plansCommon.support')}
