@@ -324,6 +324,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                                               tools: Optional[list[PromptMessageTool]] = None) -> Generator:
         index = 0
         full_assistant_content = ''
+        delta_assistant_message_function_call_storage: ChoiceDeltaFunctionCall = None
         real_model = model
         system_fingerprint = None
         completion = ''
@@ -333,11 +334,31 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
             delta = chunk.choices[0]
 
-            if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ''):
+            if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == '') and \
+                delta.delta.function_call is None:
                 continue
-
+            
             # assistant_message_tool_calls = delta.delta.tool_calls
             assistant_message_function_call = delta.delta.function_call
+
+            # extract tool calls from response
+            if delta_assistant_message_function_call_storage is not None:
+                # handle process of stream function call
+                if assistant_message_function_call:
+                    # message has not ended ever
+                    delta_assistant_message_function_call_storage.arguments += assistant_message_function_call.arguments
+                    continue
+                else:
+                    # message has ended
+                    assistant_message_function_call = delta_assistant_message_function_call_storage
+                    delta_assistant_message_function_call_storage = None
+            else:
+                if assistant_message_function_call:
+                    # start of stream function call
+                    delta_assistant_message_function_call_storage = assistant_message_function_call
+                    if delta_assistant_message_function_call_storage.arguments is None:
+                        delta_assistant_message_function_call_storage.arguments = ''
+                    continue
 
             # extract tool calls from response
             # tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
@@ -489,7 +510,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         else:
             raise ValueError(f"Got unknown type {message}")
 
-        if message.name is not None:
+        if message.name:
             message_dict["name"] = message.name
 
         return message_dict
@@ -586,7 +607,6 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         num_tokens = 0
         for tool in tools:
             num_tokens += len(encoding.encode('type'))
-            num_tokens += len(encoding.encode(tool.get("type")))
             num_tokens += len(encoding.encode('function'))
 
             # calculate num tokens for function object

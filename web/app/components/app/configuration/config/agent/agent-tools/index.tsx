@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
+import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import ChooseTool from './choose-tool'
 import SettingBuiltInTool from './setting-built-in-tool'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
@@ -27,6 +28,7 @@ const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { modelConfig, setModelConfig, collectionList } = useContext(ConfigContext)
+  const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>(undefined)
@@ -49,6 +51,7 @@ const AgentTools: FC = () => {
     })
     setModelConfig(newModelConfig)
     setIsShowSettingTool(false)
+    formattingChangedDispatcher()
   }
 
   return (
@@ -141,6 +144,7 @@ const AgentTools: FC = () => {
                           draft.agentConfig.tools.splice(index, 1)
                         })
                         setModelConfig(newModelConfig)
+                        formattingChangedDispatcher()
                       }}>
                         <Trash03 className='w-4 h-4 text-gray-500' />
                       </div>
@@ -167,6 +171,7 @@ const AgentTools: FC = () => {
                           draft.agentConfig.tools.splice(index, 1)
                         })
                         setModelConfig(newModelConfig)
+                        formattingChangedDispatcher()
                       }}>
                         <Trash03 className='w-4 h-4 text-gray-500' />
                       </div>
@@ -183,6 +188,7 @@ const AgentTools: FC = () => {
                         (draft.agentConfig.tools[index] as any).enabled = enabled
                       })
                       setModelConfig(newModelConfig)
+                      formattingChangedDispatcher()
                     }} />
                 </div>
               </div>

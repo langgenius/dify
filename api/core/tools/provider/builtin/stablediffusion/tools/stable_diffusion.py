@@ -188,6 +188,8 @@ class StableDiffusionTool(BuiltinTool):
 
         if lora:
             draw_options['prompt'] = f'{lora},{prompt}'
+        else:
+            draw_options['prompt'] = prompt
 
         draw_options['width'] = width
         draw_options['height'] = height

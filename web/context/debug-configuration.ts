@@ -96,7 +96,7 @@ type IDebugConfiguration = {
   hasSetContextVar: boolean
   isShowVisionConfig: boolean
   visionConfig: VisionSettings
-  setVisionConfig: (visionConfig: VisionSettings) => void
+  setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({

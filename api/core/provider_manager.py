@@ -218,15 +218,30 @@ class ProviderManager:
             )
 
             if available_models:
-                available_model = available_models[0]
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type.to_origin_model_type(),
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model
-                )
-                db.session.add(default_model)
-                db.session.commit()
+                found = False
+                for available_model in available_models:
+                    if available_model.model == "gpt-3.5-turbo-1106":
+                        default_model = TenantDefaultModel(
+                            tenant_id=tenant_id,
+                            model_type=model_type.to_origin_model_type(),
+                            provider_name=available_model.provider.provider,
+                            model_name=available_model.model
+                        )
+                        db.session.add(default_model)
+                        db.session.commit()
+                        found = True
+                        break
+
+                if not found:
+                    available_model = available_models[0]
+                    default_model = TenantDefaultModel(
+                        tenant_id=tenant_id,
+                        model_type=model_type.to_origin_model_type(),
+                        provider_name=available_model.provider.provider,
+                        model_name=available_model.model
+                    )
+                    db.session.add(default_model)
+                    db.session.commit()
 
         if not default_model:
             return None
