@@ -24,7 +24,7 @@ parameters:
       en_US: You want to find the project development language, keywords, For example. Find 10 Python developed PDF document parsing projects.
       zh_Hans: 你想要找的项目开发语言、关键字，如：找10个Python开发的PDF文档解析项目。
       pt_BR: Você deseja encontrar a linguagem de desenvolvimento do projeto, palavras-chave, Por exemplo. Encontre 10 projetos de análise de documentos PDF desenvolvidos em Python.
-    llm_description: The query of you want to search, format query condition like "keywords+language:js", language can be other dev languages, por exemplo. Procuro um projeto de análise de documentos PDF desenvolvido em Python.
+    llm_description: The query of you want to search, format query condition like "keywords+language:js", language can be other dev languages.
     form: llm
   - name: top_n
     type: number
