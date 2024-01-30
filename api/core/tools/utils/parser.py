@@ -114,6 +114,10 @@ class ApiBasedToolSchemaParser:
                 if count > 1:
                     warning['duplicated_parameter'] = f'Parameter {name} is duplicated.'
 
+            # check if there is a operation id, use $path_$method as operation id if not
+            if 'operationId' not in interface['operation']:
+                interface['operation']['operationId'] = f'{interface["path"]}_{interface["method"]}'
+
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
