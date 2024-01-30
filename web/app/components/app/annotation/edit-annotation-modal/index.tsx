@@ -132,6 +132,7 @@ const EditAnnotationModal: FC<Props> = ({
         onRemove={() => {
           onRemove()
           setShowModal(false)
+          onHide()
         }}
         text={t('appDebug.feature.annotation.removeConfirm') as string}
       />

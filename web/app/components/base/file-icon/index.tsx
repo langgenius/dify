@@ -1,6 +1,8 @@
 import type { FC } from 'react'
 import {
   Csv,
+  Doc,
+  Docx,
   Html,
   Json,
   Md,
@@ -23,6 +25,10 @@ const FileIcon: FC<FileIconProps> = ({
   switch (type) {
     case 'csv':
       return <Csv className={className} />
+    case 'doc':
+      return <Doc className={className} />
+    case 'docx':
+      return <Docx className={className} />
     case 'htm':
     case 'html':
       return <Html className={className} />
