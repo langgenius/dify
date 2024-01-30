@@ -2,9 +2,9 @@ identity:
   author: CharlirWei
   name: gaode
   label:
-    en_US: GaoDe
+    en_US: Autonavi
     zh_Hans: 高德
-    pt_BR: GaoDe
+    pt_BR: Autonavi
   description:
     en_US: Autonavi Open Platform service toolkit.
     zh_Hans: 高德开放平台服务工具包。
@@ -19,11 +19,11 @@ credentials_for_provider:
       zh_Hans: API Key
       pt_BR: Fogo a chave
     placeholder:
-      en_US: Please enter your GaoDe API Key
+      en_US: Please enter your Autonavi API Key
       zh_Hans: 请输入你的高德开放平台 API Key
-      pt_BR: Insira sua chave de API GaoDe
+      pt_BR: Insira sua chave de API Autonavi
     help:
-      en_US: Get your API Key from GaoDe
+      en_US: Get your API Key from Autonavi
       zh_Hans: 从高德获取您的 API Key
-      pt_BR: Obtenha sua chave de API do GaoDe
+      pt_BR: Obtenha sua chave de API do Autonavi
     url: https://console.amap.com/dev/key/app
