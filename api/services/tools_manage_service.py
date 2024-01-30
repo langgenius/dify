@@ -313,24 +313,32 @@ class ToolManageService:
         """
             update builtin tool provider
         """
-        try: 
-            # get provider
-            provider_controller = ToolManager.get_builtin_provider(provider_name)
-            if not provider_controller.need_credentials:
-                raise ValueError(f'provider {provider_name} does not need credentials')
-            # validate credentials
-            provider_controller.validate_credentials(credentials)
-            # encrypt credentials
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
-            credentials = tool_configuration.encrypt_tool_credentials(credentials)
-        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
-            raise ValueError(str(e))
-
         # get if the provider exists
         provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
             BuiltinToolProvider.tenant_id == tenant_id,
             BuiltinToolProvider.provider == provider_name,
         ).first()
+
+        try: 
+            # get provider
+            provider_controller = ToolManager.get_builtin_provider(provider_name)
+            if not provider_controller.need_credentials:
+                raise ValueError(f'provider {provider_name} does not need credentials')
+            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+            # get original credentials if exists
+            if provider is not None:
+                original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
+                masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
+                # check if the credential has changed, save the original credential
+                for name, value in credentials.items():
+                    if name in masked_credentials and value == masked_credentials[name]:
+                        credentials[name] = original_credentials[name]
+            # validate credentials
+            provider_controller.validate_credentials(credentials)
+            # encrypt credentials
+            credentials = tool_configuration.encrypt_tool_credentials(credentials)
+        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
+            raise ValueError(str(e))
 
         if provider is None:
             # create provider
