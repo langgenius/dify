@@ -94,6 +94,10 @@ export const useChat = (
     setChatList(newChatList)
     chatListRef.current = newChatList
   }, [])
+  const handleResponsing = useCallback((isResponsing: boolean) => {
+    setIsResponsing(isResponsing)
+    isResponsingRef.current = isResponsing
+  }, [])
 
   const getIntroduction = useCallback((str: string) => {
     return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
@@ -118,7 +122,7 @@ export const useChat = (
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
-    setIsResponsing(false)
+    handleResponsing(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
     if (abortControllerRef.current)
@@ -127,7 +131,7 @@ export const useChat = (
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [stopChat])
+  }, [stopChat, handleResponsing])
 
   const handleRestart = useCallback(() => {
     handleStop()
@@ -215,7 +219,7 @@ export const useChat = (
       isAnswer: true,
     }
 
-    setIsResponsing(true)
+    handleResponsing(true)
     hasStopResponded.current = false
 
     const bodyParams = {
@@ -277,7 +281,7 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          setIsResponsing(false)
+          handleResponsing(false)
 
           if (hasError)
             return
@@ -395,7 +399,7 @@ export const useChat = (
           responseItem.content = messageReplace.answer
         },
         onError() {
-          setIsResponsing(false)
+          handleResponsing(false)
           const newChatList = produce(chatListRef.current, (draft) => {
             draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
           })
@@ -411,6 +415,7 @@ export const useChat = (
     notify,
     promptVariablesConfig,
     handleUpdateChatList,
+    handleResponsing,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
