@@ -2,13 +2,13 @@ identity:
   author: Leslie
   name: azuredalle
   label:
-    en_US: AZURE DALL-E
-    zh_Hans: AZURE DALL-E 绘画
-    pt_BR: AZURE DALL-E
+    en_US: Azure DALL-E
+    zh_Hans: Azure DALL-E 绘画
+    pt_BR: Azure DALL-E
   description:
-    en_US: AZURE DALL-E art
-    zh_Hans: AZURE DALL-E 绘画
-    pt_BR: AZURE DALL-E art
+    en_US: Azure DALL-E art
+    zh_Hans: Azure DALL-E 绘画
+    pt_BR: Azure DALL-E art
   icon: icon.png
 credentials_for_provider:
   azure_openai_api_key:
@@ -49,13 +49,13 @@ credentials_for_provider:
       zh_Hans: API 域名
       pt_BR: API Endpoint URL
     help:
-      en_US: Please input your Azure OpenAI Endpoint URL,eg:https://xxx.openai.azure.com/
+      en_US: Please input your Azure OpenAI Endpoint URL, e.g. https://xxx.openai.azure.com/
       zh_Hans: 请输入你的 Azure OpenAI API域名，例如：https://xxx.openai.azure.com/
-      pt_BR: Please input your Azure OpenAI Endpoint URL,eg:https://xxx.openai.azure.com/
+      pt_BR: Please input your Azure OpenAI Endpoint URL, e.g. https://xxx.openai.azure.com/
     placeholder:
-      en_US: Please input your Azure OpenAI Endpoint URL,eg:https://xxx.openai.azure.com/
+      en_US: Please input your Azure OpenAI Endpoint URL, e.g. https://xxx.openai.azure.com/
       zh_Hans: 请输入你的 Azure OpenAI API域名，例如：https://xxx.openai.azure.com/
-      pt_BR: Please input your Azure OpenAI Endpoint URL,eg:https://xxx.openai.azure.com/
+      pt_BR: Please input your Azure OpenAI Endpoint URL, e.g. https://xxx.openai.azure.com/
   azure_openai_api_version:
     type: text-input
     required: true
@@ -64,10 +64,10 @@ credentials_for_provider:
       zh_Hans: API 版本
       pt_BR: API Version
     help:
-      en_US: Please input your Azure OpenAI API Version,eg:2023-12-01-preview
+      en_US: Please input your Azure OpenAI API Version,e.g. 2023-12-01-preview
       zh_Hans: 请输入你的 Azure OpenAI API 版本，例如：2023-12-01-preview
-      pt_BR: Please input your Azure OpenAI API Version,eg:2023-12-01-preview
+      pt_BR: Please input your Azure OpenAI API Version,e.g. 2023-12-01-preview
     placeholder:
-      en_US: Please input your Azure OpenAI API Version,eg:2023-12-01-preview
+      en_US: Please input your Azure OpenAI API Version,e.g. 2023-12-01-preview
       zh_Hans: 请输入你的 Azure OpenAI API 版本，例如：2023-12-01-preview
-      pt_BR: Please input your Azure OpenAI API Version,eg:2023-12-01-preview
+      pt_BR: Please input your Azure OpenAI API Version,e.g. 2023-12-01-preview
