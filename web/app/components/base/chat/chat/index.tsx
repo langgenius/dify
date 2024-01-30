@@ -138,45 +138,41 @@ const Chat: FC<ChatProps> = ({
             })
           }
         </div>
-        {
-          (hasTryToAsk || !noChatInput || !noStopResponding) && (
-            <div
-              className={`absolute bottom-0 ${chatFooterClassName}`}
-              ref={chatFooterRef}
-              style={{
-                background: 'linear-gradient(0deg, #F9FAFB 40%, rgba(255, 255, 255, 0.00) 100%)',
-              }}
-            >
-              {
-                !noStopResponding && isResponsing && (
-                  <div className='flex justify-center mb-2'>
-                    <Button className='py-0 px-3 h-7 bg-white shadow-xs' onClick={onStopResponding}>
-                      <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
-                      <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
-                    </Button>
-                  </div>
-                )
-              }
-              {
-                hasTryToAsk && (
-                  <TryToAsk
-                    suggestedQuestions={suggestedQuestions}
-                    onSend={onSend}
-                  />
-                )
-              }
-              {
-                !noChatInput && (
-                  <ChatInput
-                    visionConfig={config?.file_upload?.image}
-                    speechToTextConfig={config?.speech_to_text}
-                    onSend={onSend}
-                  />
-                )
-              }
-            </div>
-          )
-        }
+        <div
+          className={`absolute bottom-0 ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          ref={chatFooterRef}
+          style={{
+            background: 'linear-gradient(0deg, #F9FAFB 40%, rgba(255, 255, 255, 0.00) 100%)',
+          }}
+        >
+          {
+            !noStopResponding && isResponsing && (
+              <div className='flex justify-center mb-2'>
+                <Button className='py-0 px-3 h-7 bg-white shadow-xs' onClick={onStopResponding}>
+                  <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
+                  <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                </Button>
+              </div>
+            )
+          }
+          {
+            hasTryToAsk && (
+              <TryToAsk
+                suggestedQuestions={suggestedQuestions}
+                onSend={onSend}
+              />
+            )
+          }
+          {
+            !noChatInput && (
+              <ChatInput
+                visionConfig={config?.file_upload?.image}
+                speechToTextConfig={config?.speech_to_text}
+                onSend={onSend}
+              />
+            )
+          }
+        </div>
       </div>
     </ChatContextProvider>
   )

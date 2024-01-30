@@ -21,10 +21,16 @@ const DebugWithMultipleModel = () => {
     speechToTextConfig,
     visionConfig,
   } = useDebugConfigurationContext()
-  const { multipleModelConfigs } = useDebugWithMultipleModelContext()
+  const {
+    multipleModelConfigs,
+    checkCanSend,
+  } = useDebugWithMultipleModelContext()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleSend = useCallback((message: string, files?: VisionFile[]) => {
+    if (checkCanSend && !checkCanSend())
+      return
+
     eventEmitter?.emit({
       type: APP_CHAT_WITH_MULTIPLE_MODEL,
       payload: {
@@ -42,7 +48,7 @@ const DebugWithMultipleModel = () => {
     <div className='flex flex-col h-full'>
       <div
         className={`
-          mb-3 overflow-auto
+          mb-3 px-6 overflow-auto
           ${(twoLine || threeLine) && 'flex gap-2'}
         `}
         style={{ height: mode === 'chat' ? 'calc(100% - 60px)' : '100%' }}
@@ -97,7 +103,7 @@ const DebugWithMultipleModel = () => {
       </div>
       {
         mode === 'chat' && (
-          <div className='shrink-0'>
+          <div className='shrink-0 pb-4 px-6'>
             <ChatInput
               onSend={handleSend}
               speechToTextConfig={speechToTextConfig}
@@ -116,12 +122,14 @@ const DebugWithMultipleModelWrapper: FC<DebugWithMultipleModelContextType> = ({
   onMultipleModelConfigsChange,
   multipleModelConfigs,
   onDebugWithMultipleModelChange,
+  checkCanSend,
 }) => {
   return (
     <DebugWithMultipleModelContextProvider
       onMultipleModelConfigsChange={onMultipleModelConfigsChange}
       multipleModelConfigs={multipleModelConfigs}
       onDebugWithMultipleModelChange={onDebugWithMultipleModelChange}
+      checkCanSend={checkCanSend}
     >
       <DebugWithMultipleModelMemoed />
     </DebugWithMultipleModelContextProvider>

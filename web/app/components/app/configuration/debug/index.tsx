@@ -12,6 +12,7 @@ import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
 import DebugWithMultipleModel from './debug-with-multiple-model'
 import DebugWithSingleModel from './debug-with-single-model'
+import type { DebugWithSingleModelRefType } from './debug-with-single-model'
 import type { ModelAndParameter } from './types'
 import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
@@ -99,11 +100,9 @@ const Debug: FC<IDebug> = ({
   useEffect(() => {
     if (formattingChanged)
       setIsShowFormattingChangeConfirm(true)
-
-    setFormattingChanged(false)
   }, [formattingChanged, setFormattingChanged])
 
-  const debugWithSingleModelRef = React.useRef<{ handleRestart: () => void } | null>(null)
+  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType | null>(null)
   const handleClearConversation = () => {
     debugWithSingleModelRef.current?.handleRestart()
   }
@@ -121,10 +120,12 @@ const Debug: FC<IDebug> = ({
   const handleConfirm = () => {
     clearConversation()
     setIsShowFormattingChangeConfirm(false)
+    setFormattingChanged(false)
   }
 
   const handleCancel = () => {
     setIsShowFormattingChangeConfirm(false)
+    setFormattingChanged(false)
   }
 
   const { notify } = useContext(ToastContext)
@@ -405,6 +406,7 @@ const Debug: FC<IDebug> = ({
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
               onDebugWithMultipleModelChange={handleChangeToSingleModel}
+              checkCanSend={checkCanSend}
             />
           </div>
         )
@@ -417,6 +419,7 @@ const Debug: FC<IDebug> = ({
               <div className='grow h-0 overflow-hidden'>
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}
+                  checkCanSend={checkCanSend}
                 />
               </div>
             )}
