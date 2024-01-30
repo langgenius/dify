@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import type { ModelAndParameter } from '../types'
@@ -8,7 +9,10 @@ import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from '../types'
-import { useConfigFromDebugContext } from '../hooks'
+import {
+  useConfigFromDebugContext,
+  useFormattingChangedSubscription,
+} from '../hooks'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
@@ -55,8 +59,9 @@ const ChatItem: FC<ChatItemProps> = ({
     [],
     taskId => stopChatMessageResponding(appId, taskId),
   )
+  useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = (message, files) => {
+  const doSend: OnSend = useCallback((message, files) => {
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
@@ -88,7 +93,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }
+  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

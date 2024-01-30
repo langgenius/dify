@@ -1,10 +1,14 @@
 import {
   forwardRef,
   memo,
+  useCallback,
   useImperativeHandle,
   useMemo,
 } from 'react'
-import { useConfigFromDebugContext } from '../hooks'
+import {
+  useConfigFromDebugContext,
+  useFormattingChangedSubscription,
+} from '../hooks'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
@@ -62,8 +66,9 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     [],
     taskId => stopChatMessageResponding(appId, taskId),
   )
+  useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = (message, files) => {
+  const doSend: OnSend = useCallback((message, files) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -97,7 +102,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }
+  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}

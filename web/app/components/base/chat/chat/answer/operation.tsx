@@ -51,7 +51,7 @@ const Operation: FC<OperationProps> = ({
           className='hidden group-hover:block'
         />
       )}
-      {(!isOpeningStatement && config?.supportAnnotation) && (
+      {(!isOpeningStatement && config?.supportAnnotation && config.annotation_reply?.enabled) && (
         <AnnotationCtrlBtn
           appId={config?.appId || ''}
           messageId={id}

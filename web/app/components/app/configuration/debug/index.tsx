@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
@@ -100,7 +100,7 @@ const Debug: FC<IDebug> = ({
   useEffect(() => {
     if (formattingChanged)
       setIsShowFormattingChangeConfirm(true)
-  }, [formattingChanged, setFormattingChanged])
+  }, [formattingChanged])
 
   const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType | null>(null)
   const handleClearConversation = () => {
@@ -129,11 +129,12 @@ const Debug: FC<IDebug> = ({
   }
 
   const { notify } = useContext(ToastContext)
-  const logError = (message: string) => {
+  const logError = useCallback((message: string) => {
     notify({ type: 'error', message })
-  }
+  }, [notify])
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
-  const checkCanSend = () => {
+  const checkCanSend = useCallback(() => {
     if (isAdvancedMode && mode === AppType.chat) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
@@ -167,18 +168,28 @@ const Debug: FC<IDebug> = ({
       return false
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
       return false
     }
     return !hasEmptyInput
-  }
+  }, [
+    completionFiles,
+    hasSetBlockStatus.history,
+    hasSetBlockStatus.query,
+    inputs,
+    isAdvancedMode,
+    mode,
+    modelConfig.configs.prompt_variables,
+    t,
+    logError,
+    notify,
+    modelModeType,
+  ])
 
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
 
-  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
   const sendTextCompletion = async () => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -337,13 +348,13 @@ const Debug: FC<IDebug> = ({
         setVisionConfig({
           ...visionConfig,
           enabled: true,
-        })
+        }, true)
       }
       else {
         setVisionConfig({
           ...visionConfig,
           enabled: false,
-        })
+        }, true)
       }
     }
   }
@@ -425,7 +436,7 @@ const Debug: FC<IDebug> = ({
             )}
             {/* Text  Generation */}
             {mode === AppType.completion && (
-              <div className="mt-6">
+              <div className="mt-6 px-6 pb-4">
                 <GroupName name={t('appDebug.result')} />
                 {(completionRes || isResponsing) && (
                   <TextGeneration
@@ -445,12 +456,6 @@ const Debug: FC<IDebug> = ({
                 )}
               </div>
             )}
-            {isShowFormattingChangeConfirm && (
-              <FormattingChanged
-                onConfirm={handleConfirm}
-                onCancel={handleCancel}
-              />
-            )}
             {isShowCannotQueryDataset && (
               <CannotQueryDataset
                 onConfirm={() => setShowCannotQueryDataset(false)}
@@ -459,6 +464,12 @@ const Debug: FC<IDebug> = ({
           </div>
         )
       }
+      {isShowFormattingChangeConfirm && (
+        <FormattingChanged
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      )}
       {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )

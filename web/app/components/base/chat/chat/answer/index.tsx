@@ -87,7 +87,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              annotation?.id && !annotation?.logAnnotation && (
+              annotation?.id && annotation.authorName && (
                 <EditTitle
                   className='mt-1'
                   title={t('appAnnotation.editBy', { author: annotation.authorName })}

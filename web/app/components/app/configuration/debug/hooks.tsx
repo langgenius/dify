@@ -7,12 +7,17 @@ import type {
   DebugWithSingleOrMultipleModelConfigs,
   ModelAndParameter,
 } from './types'
-import type { ChatConfig } from '@/app/components/base/chat/types'
+import { ORCHESTRATE_CHANGED } from './types'
+import type {
+  ChatConfig,
+  ChatItem,
+} from '@/app/components/base/chat/types'
 import {
   AgentStrategy,
 } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const useDebugWithSingleOrMultipleModel = (appId: string) => {
   const localeDebugWithSingleOrMultipleModelConfigs = localStorage.getItem('app-debug-with-single-or-multiple-models')
@@ -124,4 +129,29 @@ export const useConfigFromDebugContext = () => {
   }
 
   return config
+}
+
+export const useFormattingChangedDispatcher = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  const dispatcher = useCallback(() => {
+    eventEmitter?.emit({
+      type: ORCHESTRATE_CHANGED,
+    } as any)
+  }, [eventEmitter])
+
+  return dispatcher
+}
+export const useFormattingChangedSubscription = (chatList: ChatItem[]) => {
+  const {
+    formattingChanged,
+    setFormattingChanged,
+  } = useDebugConfigurationContext()
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === ORCHESTRATE_CHANGED) {
+      if (chatList.some(item => item.isAnswer) && !formattingChanged)
+        setFormattingChanged(true)
+    }
+  })
 }
