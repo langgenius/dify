@@ -13,7 +13,10 @@ position = {
     'stablediffusion': 9,
     'vectorizer': 10,
     'youtube': 11,
+    'github': 12,
+    'gaode': 13
 }
+
 
 class BuiltinToolProviderSort:
     @staticmethod

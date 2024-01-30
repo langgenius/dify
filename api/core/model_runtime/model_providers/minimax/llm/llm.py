@@ -2,7 +2,7 @@ from typing import Generator, List
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, UserPromptMessage)
+                                                          SystemPromptMessage, UserPromptMessage, ToolPromptMessage)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -84,6 +84,13 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
         """
         client: MinimaxChatCompletionPro = self.model_apis[model]()
 
+        if tools:
+            tools = [{
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters
+            } for tool in tools]
+
         response = client.generate(
             model=model,
             api_key=credentials['minimax_api_key'],
@@ -109,7 +116,19 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
         elif isinstance(prompt_message, UserPromptMessage):
             return MinimaxMessage(role=MinimaxMessage.Role.USER.value, content=prompt_message.content)
         elif isinstance(prompt_message, AssistantPromptMessage):
+            if prompt_message.tool_calls:
+                message = MinimaxMessage(
+                    role=MinimaxMessage.Role.ASSISTANT.value,
+                    content=''
+                )
+                message.function_call={
+                    'name': prompt_message.tool_calls[0].function.name,
+                    'arguments': prompt_message.tool_calls[0].function.arguments
+                }
+                return message
             return MinimaxMessage(role=MinimaxMessage.Role.ASSISTANT.value, content=prompt_message.content)
+        elif isinstance(prompt_message, ToolPromptMessage):
+            return MinimaxMessage(role=MinimaxMessage.Role.FUNCTION.value, content=prompt_message.content)
         else:
             raise NotImplementedError(f'Prompt message type {type(prompt_message)} is not supported')
 
@@ -149,6 +168,28 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
                         ),
                         usage=usage,
                         finish_reason=message.stop_reason if message.stop_reason else None,
+                    ),
+                )
+            elif message.function_call:
+                if 'name' not in message.function_call or 'arguments' not in message.function_call:
+                    continue
+
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content='',
+                            tool_calls=[AssistantPromptMessage.ToolCall(
+                                id='',
+                                type='function',
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=message.function_call['name'],
+                                    arguments=message.function_call['arguments']
+                                )
+                            )]
+                        ),
                     ),
                 )
             else:

@@ -5,7 +5,7 @@ from typing import Generator, List, Optional, cast
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageFunction,
-                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage)
+                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage, ToolPromptMessage)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -194,6 +194,10 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
+        elif isinstance(message, ToolPromptMessage):
+            # check if last message is user message
+            message = cast(ToolPromptMessage, message)
+            message_dict = {"role": "function", "content": message.content}
         else:
             raise ValueError(f"Unknown message type {type(message)}")
         

@@ -40,7 +40,7 @@ class BuiltinToolProviderController(ToolProviderController):
             'credentials_schema': provider_yaml['credentials_for_provider'] if 'credentials_for_provider' in provider_yaml else None,
         })
 
-    def _get_bulitin_tools(self) -> List[Tool]:
+    def _get_builtin_tools(self) -> List[Tool]:
         """
             returns a list of tools that the provider can provide
 
@@ -101,7 +101,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: list of tools
         """
-        return self._get_bulitin_tools()
+        return self._get_builtin_tools()
     
     def get_tool(self, tool_name: str) -> Tool:
         """

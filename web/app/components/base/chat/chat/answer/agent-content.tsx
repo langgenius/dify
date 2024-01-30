@@ -14,7 +14,10 @@ type AgentContentProps = {
 const AgentContent: FC<AgentContentProps> = ({
   item,
 }) => {
-  const { allToolIcons } = useChatContext()
+  const {
+    allToolIcons,
+    isResponsing,
+  } = useChatContext()
   const {
     annotation,
     agent_thoughts,
@@ -42,7 +45,7 @@ const AgentContent: FC<AgentContentProps> = ({
             <Thought
               thought={thought}
               allToolIcons={allToolIcons || {}}
-              isFinished={!!thought.observation}
+              isFinished={!!thought.observation || !isResponsing}
             />
           )}
 

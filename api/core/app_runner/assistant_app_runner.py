@@ -11,6 +11,7 @@ from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
@@ -194,6 +195,13 @@ class AssistantApplicationRunner(AppRunner):
             memory=memory,
         )
 
+        # change function call strategy based on LLM model
+        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+
+        if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features):
+            agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
+
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             assistant_cot_runner = AssistantCotApplicationRunner(
@@ -209,9 +217,9 @@ class AssistantApplicationRunner(AppRunner):
                 prompt_messages=prompt_message,
                 variables_pool=tool_variables,
                 db_variables=tool_conversation_variables,
+                model_instance=model_instance
             )
             invoke_result = assistant_cot_runner.run(
-                model_instance=model_instance,
                 conversation=conversation,
                 message=message,
                 query=query,
@@ -229,10 +237,10 @@ class AssistantApplicationRunner(AppRunner):
                 memory=memory,
                 prompt_messages=prompt_message,
                 variables_pool=tool_variables,
-                db_variables=tool_conversation_variables
+                db_variables=tool_conversation_variables,
+                model_instance=model_instance
             )
             invoke_result = assistant_fc_runner.run(
-                model_instance=model_instance,
                 conversation=conversation,
                 message=message,
                 query=query,

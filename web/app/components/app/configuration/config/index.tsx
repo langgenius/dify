@@ -4,6 +4,7 @@ import React, { useRef } from 'react'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean, useScroll } from 'ahooks'
+import { useFormattingChangedDispatcher } from '../debug/hooks'
 import DatasetConfig from '../dataset-config'
 import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
@@ -44,7 +45,6 @@ const Config: FC = () => {
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
-    setFormattingChanged,
     moreLikeThisConfig,
     setMoreLikeThisConfig,
     suggestedQuestionsAfterAnswerConfig,
@@ -64,6 +64,7 @@ const Config: FC = () => {
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const { data: text2speechDefaultModel } = useDefaultModel(5)
   const { setShowModerationSettingModal } = useModalContext()
+  const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
@@ -73,9 +74,8 @@ const Config: FC = () => {
       draft.configs.prompt_template = newTemplate
       draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...newVariables]
     })
-
     if (modelConfig.configs.prompt_template !== newTemplate)
-      setFormattingChanged(true)
+      formattingChangedDispatcher()
 
     setPrevPromptConfig(modelConfig.configs)
     setModelConfig(newModelConfig)
@@ -107,6 +107,7 @@ const Config: FC = () => {
       setSuggestedQuestionsAfterAnswerConfig(produce(suggestedQuestionsAfterAnswerConfig, (draft: SuggestedQuestionsAfterAnswerConfig) => {
         draft.enabled = value
       }))
+      formattingChangedDispatcher()
     },
     speechToText: speechToTextConfig.enabled,
     setSpeechToText: (value) => {
@@ -125,6 +126,7 @@ const Config: FC = () => {
       setCitationConfig(produce(citationConfig, (draft: CitationConfig) => {
         draft.enabled = value
       }))
+      formattingChangedDispatcher()
     },
     annotation: annotationConfig.enabled,
     setAnnotation: async (value) => {
