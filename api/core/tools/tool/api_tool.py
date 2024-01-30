@@ -8,6 +8,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 import httpx
 import requests
+import json
 
 class ApiTool(Tool):
     api_bundle: ApiBasedToolBundle
@@ -79,11 +80,29 @@ class ApiTool(Tool):
         if isinstance(response, httpx.Response):
             if response.status_code >= 400:
                 raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
-            return response.text
+            if not response.content:
+                return 'Empty response from the tool, please check your parameters and try again.'
+            try:
+                response = response.json()
+                try:
+                    return json.dumps(response, ensure_ascii=False)
+                except Exception as e:
+                    return json.dumps(response)
+            except Exception as e:
+                return response.text
         elif isinstance(response, requests.Response):
             if not response.ok:
                 raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
-            return response.text
+            if not response.content:
+                return 'Empty response from the tool, please check your parameters and try again.'
+            try:
+                response = response.json()
+                try:
+                    return json.dumps(response, ensure_ascii=False)
+                except Exception as e:
+                    return json.dumps(response)
+            except Exception as e:
+                return response.text
         else:
             raise ValueError(f'Invalid response type {type(response)}')
     
