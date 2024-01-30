@@ -124,7 +124,7 @@ const Chat: FC<ChatProps> = ({
                   <Answer
                     key={item.id}
                     item={item}
-                    question={chatList[index - 1].content}
+                    question={chatList[index - 1]?.content}
                     index={index}
                   />
                 )
