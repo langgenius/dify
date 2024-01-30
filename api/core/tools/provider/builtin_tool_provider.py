@@ -38,6 +38,7 @@ class BuiltinToolProviderController(ToolProviderController):
         super().__init__(**{
             'identity': provider_yaml['identity'],
             'credentials_schema': provider_yaml['credentials_for_provider'] if 'credentials_for_provider' in provider_yaml else None,
+            'enabled': provider_yaml.get('enabled', True),
         })
 
     def _get_builtin_tools(self) -> List[Tool]:

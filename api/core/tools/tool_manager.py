@@ -262,6 +262,9 @@ class ToolManager:
                 provider_class = classes[0]
                 builtin_providers.append(provider_class())
 
+        # skip disabled builtin tool providers
+        builtin_providers = [provider for provider in builtin_providers if provider.enabled is True]
+
         # cache the builtin providers
         for provider in builtin_providers:
             _builtin_providers[provider.identity.name] = provider

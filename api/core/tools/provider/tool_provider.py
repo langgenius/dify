@@ -14,6 +14,7 @@ class ToolProviderController(BaseModel, ABC):
     identity: Optional[ToolProviderIdentity] = None
     tools: Optional[List[Tool]] = None
     credentials_schema: Optional[Dict[str, ToolProviderCredentials]] = None
+    enabled: bool = True
 
     def get_credentials_schema(self) -> Dict[str, ToolProviderCredentials]:
         """
