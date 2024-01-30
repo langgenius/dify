@@ -36,7 +36,10 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         """
         server_url = credentials['server_url']
         model_uid = credentials['model_uid']
-        
+
+        if server_url.endswith('/'):
+            server_url = server_url[:-1]
+
         client = Client(base_url=server_url)
         
         try:
