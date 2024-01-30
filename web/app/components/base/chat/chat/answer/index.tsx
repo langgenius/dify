@@ -15,9 +15,13 @@ import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal
 
 type AnswerProps = {
   item: ChatItem
+  question: string
+  index: number
 }
 const Answer: FC<AnswerProps> = ({
   item,
+  question,
+  index,
 }) => {
   const { t } = useTranslation()
   const {
@@ -56,7 +60,15 @@ const Answer: FC<AnswerProps> = ({
         <div className='relative pr-10'>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div className='group relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
-            <Operation item={item} />
+            {
+              !responsing && (
+                <Operation
+                  item={item}
+                  question={question}
+                  index={index}
+                />
+              )
+            }
             {
               responsing && !content && !hasAgentThoughts && (
                 <div className='flex items-center justify-center w-6 h-5'>
@@ -75,7 +87,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              annotation?.id && !annotation?.logAnnotation && (
+              annotation?.id && annotation.authorName && (
                 <EditTitle
                   className='mt-1'
                   title={t('appAnnotation.editBy', { author: annotation.authorName })}
