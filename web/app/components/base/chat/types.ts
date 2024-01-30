@@ -41,7 +41,10 @@ export type EnableType = {
   enabled: boolean
 }
 
-export type ChatConfig = Omit<ModelConfig, 'model'>
+export type ChatConfig = Omit<ModelConfig, 'model'> & {
+  supportAnnotation?: boolean
+  appId?: string
+}
 
 export type ChatItem = IChatItem
 

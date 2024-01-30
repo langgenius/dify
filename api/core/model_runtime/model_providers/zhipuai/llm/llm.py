@@ -194,6 +194,27 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                             'content': prompt_message.content,
                             'tool_call_id': prompt_message.tool_call_id
                         })
+                    elif isinstance(prompt_message, AssistantPromptMessage):
+                        if prompt_message.tool_calls:
+                            params['messages'].append({
+                                'role': 'assistant',
+                                'content': prompt_message.content,
+                                'tool_calls': [
+                                    {
+                                        'id': tool_call.id,
+                                        'type': tool_call.type,
+                                        'function': {
+                                            'name': tool_call.function.name,
+                                            'arguments': tool_call.function.arguments
+                                        }
+                                    } for tool_call in prompt_message.tool_calls
+                                ]
+                            })
+                        else:
+                            params['messages'].append({
+                                'role': 'assistant',
+                                'content': prompt_message.content
+                            })
                     else:
                         params['messages'].append({
                             'role': prompt_message.role.value,

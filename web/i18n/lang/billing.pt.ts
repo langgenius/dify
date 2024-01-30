@@ -59,9 +59,8 @@ const translation = {
     member: 'Member',
     memberAfter: 'Member',
     messageRequest: {
-      title: 'Message Requests',
-      unit: 'per day',
-      tooltip: 'Includes all messages from your apps, whether via APIs or web sessions. (Not LLM resource usage)',
+      title: 'Message Credits',
+      tooltip: 'Message invocation quotas for various plans using OpenAI models (except gpt4).Messages over the limit will use your OpenAI API Key.',
     },
     annotatedResponse: {
       title: 'Annotation Quota Limits',

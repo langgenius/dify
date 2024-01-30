@@ -372,15 +372,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
                 if 'delta' in choice:
                     delta = choice['delta']
-                    if delta.get('content') is None or delta.get('content') == '':
-                        if finish_reason is not None:
-                            yield create_final_llm_result_chunk(
-                                index=chunk_index,
-                                message=AssistantPromptMessage(content=choice.get('text', '')),
-                                finish_reason=finish_reason
-                            )
-                        else:
-                            continue
+                    delta_content = delta.get('content')
+                    if delta_content is None or delta_content == '':
+                        continue
 
                     assistant_message_tool_calls = delta.get('tool_calls', None)
                     # assistant_message_function_call = delta.delta.function_call
@@ -393,11 +387,11 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
                     # transform assistant message to prompt message
                     assistant_prompt_message = AssistantPromptMessage(
-                        content=delta.get('content', ''),
+                        content=delta_content,
                         tool_calls=tool_calls if assistant_message_tool_calls else []
                     )
 
-                    full_assistant_content += delta.get('content', '')
+                    full_assistant_content += delta_content
                 elif 'text' in choice:
                     choice_text = choice.get('text', '')
                     if choice_text == '':

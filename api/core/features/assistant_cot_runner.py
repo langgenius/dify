@@ -20,8 +20,7 @@ from core.features.assistant_base_runner import BaseAssistantApplicationRunner
 from models.model import Conversation, Message
 
 class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
-    def run(self, model_instance: ModelInstance,
-        conversation: Conversation,
+    def run(self, conversation: Conversation,
         message: Message,
         query: str,
     ) -> Union[Generator, LLMResult]:
@@ -81,6 +80,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 llm_usage.completion_tokens += usage.completion_tokens
                 llm_usage.prompt_price += usage.prompt_price
                 llm_usage.completion_price += usage.completion_price
+
+        model_instance = self.model_instance
 
         while function_call_state and iteration_step <= max_iteration_steps:
             # continue to run until there is not any tool call
@@ -390,7 +391,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     # remove Action: xxx from agent thought
                     agent_thought = re.sub(r'Action:.*', '', agent_thought, flags=re.IGNORECASE)
 
-                    if action_name and action_input:
+                    if action_name and action_input is not None:
                         return AgentScratchpadUnit(
                             agent_response=content,
                             thought=agent_thought,
