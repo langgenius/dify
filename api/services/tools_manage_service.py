@@ -485,10 +485,10 @@ class ToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f'invalid schema type {schema_type}')
         
-        if schema_type == ApiProviderSchemaType.OPENAPI.value:
-            tool_bundles = ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(schema)
-        else:
-            raise ValueError(f'invalid schema type {schema_type}')
+        try:
+            tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
+        except Exception as e:
+            raise ValueError(f'invalid schema')
         
         # get tool bundle
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)
