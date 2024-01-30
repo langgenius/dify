@@ -1,5 +1,5 @@
 identity:
-  name: repositories
+  name: github_repositories
   author: CharlieWei
   label:
     en_US: Search Repositories
