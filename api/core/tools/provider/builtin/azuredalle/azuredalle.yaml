@@ -30,17 +30,17 @@ credentials_for_provider:
     type: text-input
     required: true
     label:
-      en_US: Deployment Name 
+      en_US: Deployment Name
       zh_Hans: 部署名称
-      pt_BR: Deployment Name 
+      pt_BR: Deployment Name
     help:
-      en_US: Please input the name of your Azure Openai DALL-E API deployment 
+      en_US: Please input the name of your Azure Openai DALL-E API deployment
       zh_Hans: 请输入你的 Azure Openai DALL-E API 部署名称
-      pt_BR: Please input the name of your Azure Openai DALL-E API deployment 
+      pt_BR: Please input the name of your Azure Openai DALL-E API deployment
     placeholder:
-      en_US: Please input the name of your Azure Openai DALL-E API deployment 
+      en_US: Please input the name of your Azure Openai DALL-E API deployment
       zh_Hans: 请输入你的 Azure Openai DALL-E API 部署名称
-      pt_BR: Please input the name of your Azure Openai DALL-E API deployment 
+      pt_BR: Please input the name of your Azure Openai DALL-E API deployment
   azure_openai_base_url:
     type: text-input
     required: true
