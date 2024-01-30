@@ -4,7 +4,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 from typing import Any, Dict
 
-class DALLEProvider(BuiltinToolProviderController):
+class AzureDALLEProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:
             DallE3Tool().fork_tool_runtime(
