@@ -2,6 +2,10 @@ model: glm-4
 label:
   en_US: glm-4
 model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
 parameter_rules:
