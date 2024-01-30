@@ -45,7 +45,7 @@ class DallE3Tool(BuiltinTool):
             return self.create_text_message('Invalid style')
 
         # call openapi dalle3
-        model=self.runtime.credentials['azure_openai_api_model_name'],
+        model=self.runtime.credentials['azure_openai_api_model_name']
         response = client.images.generate(
             prompt=prompt,
             model=model,
