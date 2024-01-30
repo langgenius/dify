@@ -125,7 +125,7 @@ const Select: FC<ISelectProps> = ({
               >
                 {({ /* active, */ selected }) => (
                   <>
-                    <span className={classNames('block truncate', selected && 'font-normal')}>{item.name}</span>
+                    <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
                     {selected && (
                       <span
                         className={classNames(
@@ -209,7 +209,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                 >
                   {({ /* active, */ selected }) => (
                     <>
-                      <span className={classNames('block truncate', selected && 'font-normal')}>{item.name}</span>
+                      <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
                       {selected && (
                         <span
                           className={classNames(
