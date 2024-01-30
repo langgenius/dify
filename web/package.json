@@ -48,6 +48,7 @@
     "mermaid": "10.4.0",
     "negotiator": "^0.6.3",
     "next": "^14.0.4",
+    "next-nprogress-bar": "^2.1.2",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
     "rc-textarea": "^1.5.2",
