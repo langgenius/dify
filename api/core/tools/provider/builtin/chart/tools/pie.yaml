@@ -1,3 +1,4 @@
+enabled: true
 identity:
   name: pie_chart
   author: Dify

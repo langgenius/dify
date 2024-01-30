@@ -1,3 +1,4 @@
+enabled: true
 identity:
   name: youtube_video_statistics
   author: Dify

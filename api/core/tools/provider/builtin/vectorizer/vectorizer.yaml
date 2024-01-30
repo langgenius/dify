@@ -1,3 +1,4 @@
+enabled: true
 identity:
   author: Dify
   name: vectorizer

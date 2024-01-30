@@ -1,3 +1,4 @@
+enabled: true
 identity:
   name: dalle2
   author: Dify
