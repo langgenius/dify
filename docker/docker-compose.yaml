@@ -15,6 +15,9 @@ services:
       # different from api or web app domain.
       # example: http://cloud.dify.ai
       CONSOLE_WEB_URL: ''
+      # Password for admin user initialization.
+      # If left unset, admin user will not be prompted for a password when creating the initial admin account.
+      INIT_PASSWORD: ''
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai

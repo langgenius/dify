@@ -9,6 +9,7 @@ import type {
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
+  InitValidateStatusResponse,
   InvitationResponse,
   LangGeniusVersionResponse,
   Member,
@@ -40,6 +41,14 @@ export const login: Fetcher<CommonResponse & { data: string }, { url: string; bo
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
+}
+
+export const initValidate: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
+  return post<CommonResponse>('/init', { body })
+}
+
+export const fetchInitValidateStatus = () => {
+  return get<InitValidateStatusResponse>('/init')
 }
 
 export const fetchSetupStatus = () => {
