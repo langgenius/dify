@@ -14,6 +14,8 @@ import { inviteMember } from '@/service/common'
 import { emailRegex } from '@/config'
 import { ToastContext } from '@/app/components/base/toast'
 import type { InvitationResult } from '@/models/common'
+import I18n from '@/context/i18n'
+import { getModelRuntimeSupported } from '@/utils/language'
 
 import 'react-multi-email/dist/style.css'
 type IInviteModalProps = {
@@ -29,6 +31,9 @@ const InviteModal = ({
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
 
+  const { locale } = useContext(I18n)
+  const language = getModelRuntimeSupported(locale)
+
   const InvitingRoles = useMemo(() => [
     {
       name: 'normal',
@@ -42,11 +47,11 @@ const InviteModal = ({
   const [role, setRole] = useState(InvitingRoles[0])
 
   const handleSend = useCallback(async () => {
-    if (emails.map(email => emailRegex.test(email)).every(Boolean)) {
+    if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
         const { result, invitation_results } = await inviteMember({
           url: '/workspaces/current/members/invite-email',
-          body: { emails, role: role.name },
+          body: { emails, role: role.name, language },
         })
 
         if (result === 'success') {
