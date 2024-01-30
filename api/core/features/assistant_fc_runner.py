@@ -194,6 +194,20 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     )
                 )
 
+            if tool_calls:
+                prompt_messages.append(AssistantPromptMessage(
+                    content='',
+                    name='',
+                    tool_calls=[AssistantPromptMessage.ToolCall(
+                        id=tool_call[0],
+                        type='function',
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name=tool_call[1],
+                            arguments=json.dumps(tool_call[2], ensure_ascii=False)
+                        )
+                    ) for tool_call in tool_calls]
+                ))
+
             # save thought
             self.save_agent_thought(
                 agent_thought=agent_thought, 
@@ -210,6 +224,12 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             
             final_answer += response + '\n'
 
+            # update prompt messages
+            if response.strip():
+                prompt_messages.append(AssistantPromptMessage(
+                    content=response,
+                ))
+            
             # call tools
             tool_responses = []
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
@@ -298,12 +318,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     messages_ids=message_file_ids
                 )
                 self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
-
-            # update prompt messages
-            if response.strip():
-                prompt_messages.append(AssistantPromptMessage(
-                    content=response,
-                ))
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
