@@ -853,7 +853,7 @@ const Main: FC<IMainProps> = ({
         <Header
           title={siteInfo.title}
           icon={siteInfo.icon || ''}
-          icon_background={siteInfo.icon_background}
+          icon_background={siteInfo.icon_background || ''}
           isMobile={isMobile}
           onShowSideBar={showSidebar}
           onCreateNewChat={handleStartChatOnSidebar}

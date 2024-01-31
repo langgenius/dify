@@ -4,6 +4,12 @@ import {
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type {
+  AppConversationData,
+  AppData,
+  AppMeta,
+} from '@/models/share'
+import type { ChatConfig } from '@/app/components/base/chat/types'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -59,11 +65,11 @@ export const sendCompletionMessage = async (body: Record<string, any>, { onData,
 }
 
 export const fetchAppInfo = async () => {
-  return get('/site')
+  return get('/site') as Promise<AppData>
 }
 
 export const fetchConversations = async (isInstalledApp: boolean, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
-  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } })
+  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
 }
 
 export const pinConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
@@ -97,11 +103,11 @@ export const fetchChatList = async (conversationId: string, isInstalledApp: bool
 
 // init value. wait for server update
 export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '') => {
-  return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId))
+  return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
 }
 
 export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {
-  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId))
+  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId)) as Promise<AppMeta>
 }
 
 export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {
