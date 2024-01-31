@@ -153,20 +153,6 @@ export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultMode
   }
 }
 
-export const useAgentThoughtCurrentProviderAndModelAndModelList = (defaultModel?: DefaultModel) => {
-  const { agentThoughtModelList } = useProviderContext()
-  const {
-    currentProvider,
-    currentModel,
-  } = useCurrentProviderAndModel(agentThoughtModelList, defaultModel)
-
-  return {
-    currentProvider,
-    currentModel,
-    agentThoughtModelList,
-  }
-}
-
 export const useModelListAndDefaultModel = (type: ModelTypeIndex) => {
   const { data: modelList } = useModelList(type)
   const { data: defaultModel } = useDefaultModel(type)
