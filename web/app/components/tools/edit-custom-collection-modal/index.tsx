@@ -126,6 +126,19 @@ const EditCustomCollectionModal: FC<Props> = ({
     })
   }
 
+  const getPath = (url: string) => {
+    if (!url)
+      return ''
+
+    try {
+      const path = new URL(url).pathname
+      return path || ''
+    }
+    catch (e) {
+      return url
+    }
+  }
+
   return (
     <>
       <Drawer
@@ -202,7 +215,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3">{item.operation_id}</td>
                           <td className="p-2 pl-3 text-gray-500 w-[236px]">{item.summary}</td>
                           <td className="p-2 pl-3">{item.method}</td>
-                          <td className="p-2 pl-3">{item.server_url ? new URL(item.server_url).pathname : ''}</td>
+                          <td className="p-2 pl-3">{getPath(item.server_url)}</td>
                           <td className="p-2 pl-3 w-[62px]">
                             <Button
                               className='!h-6 !px-2 text-xs font-medium text-gray-700 whitespace-nowrap'

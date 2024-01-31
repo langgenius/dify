@@ -14,7 +14,7 @@ class VectorizerProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "mode": "test",
                     "image_id": "__test_123"
                 },
