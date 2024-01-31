@@ -16,7 +16,7 @@ class ChartProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "data": "1,3,5,7,9,2,4,6,8,10",
                 },
             )

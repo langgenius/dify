@@ -14,7 +14,7 @@ class StableDiffusionProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "prompt": "cat",
                     "lora": "",
                     "steps": 1,

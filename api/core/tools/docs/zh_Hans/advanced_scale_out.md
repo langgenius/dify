@@ -125,7 +125,7 @@ from openai import OpenAI
 class DallE3Tool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
@@ -135,7 +135,7 @@ class DallE3Tool(BuiltinTool):
         )
 
         # prompt
-        prompt = tool_paramters.get('prompt', '')
+        prompt = tool_parameters.get('prompt', '')
         if not prompt:
             return self.create_text_message('Please input prompt')
 
@@ -163,7 +163,7 @@ class DallE3Tool(BuiltinTool):
 
 ```python
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParamter
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolProviderCredentialValidationError
 
 from typing import Any, Dict, List, Union
@@ -171,20 +171,20 @@ from httpx import post
 from base64 import b64decode
 
 class VectorizerTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
         -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
         工具调用，图片变量名需要从这里传递进来，从而我们就可以从变量池中获取到图片
         """
         
     
-    def get_runtime_parameters(self) -> List[ToolParamter]:
+    def get_runtime_parameters(self) -> List[ToolParameter]:
         """
         重写工具参数列表，我们可以根据当前变量池里的实际情况来动态生成参数列表，从而LLM可以根据参数列表来生成表单
         """
         
     
-    def is_tool_avaliable(self) -> bool:
+    def is_tool_available(self) -> bool:
         """
         当前工具是否可用，如果当前变量池中没有图片，那么我们就不需要展示这个工具，这里返回False即可
         """     
@@ -194,7 +194,7 @@ class VectorizerTool(BuiltinTool):
 
 ```python
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParamter
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolProviderCredentialValidationError
 
 from typing import Any, Dict, List, Union
@@ -202,7 +202,7 @@ from httpx import post
 from base64 import b64decode
 
 class VectorizerTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
         -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
@@ -214,7 +214,7 @@ class VectorizerTool(BuiltinTool):
             raise ToolProviderCredentialValidationError('Please input api key name and value')
 
         # 获取image_id，image_id的定义可以在get_runtime_parameters中找到
-        image_id = tool_paramters.get('image_id', '')
+        image_id = tool_parameters.get('image_id', '')
         if not image_id:
             return self.create_text_message('Please input image id')
 
@@ -241,24 +241,24 @@ class VectorizerTool(BuiltinTool):
                                     meta={'mime_type': 'image/svg+xml'})
         ]
     
-    def get_runtime_parameters(self) -> List[ToolParamter]:
+    def get_runtime_parameters(self) -> List[ToolParameter]:
         """
         override the runtime parameters
         """
         # 这里，我们重写了工具参数列表，定义了image_id，并设置了它的选项列表为当前变量池中的所有图片，这里的配置与yaml中的配置是一致的
         return [
-            ToolParamter.get_simple_instance(
+            ToolParameter.get_simple_instance(
                 name='image_id',
                 llm_description=f'the image id that you want to vectorize, \
                     and the image id should be specified in \
                         {[i.name for i in self.list_default_image_variables()]}',
-                type=ToolParamter.ToolParameterType.SELECT,
+                type=ToolParameter.ToolParameterType.SELECT,
                 required=True,
                 options=[i.name for i in self.list_default_image_variables()]
             )
         ]
     
-    def is_tool_avaliable(self) -> bool:
+    def is_tool_available(self) -> bool:
         # 只有当变量池中有图片时，LLM才需要使用这个工具
         return len(self.list_default_image_variables()) > 0
 ```
