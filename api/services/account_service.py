@@ -66,7 +66,6 @@ class AccountService:
                         account.current_tenant_id = tenant_account_join.tenant_id
                     else:
                         _create_tenant_for_account(account)
-                    session['workspace_id'] = account.current_tenant_id
                 else:
                     account.current_tenant_id = workspace_id
             else:
@@ -76,7 +75,6 @@ class AccountService:
                     account.current_tenant_id = tenant_account_join.tenant_id
                 else:
                     _create_tenant_for_account(account)
-                session['workspace_id'] = account.current_tenant_id
 
             current_time = datetime.utcnow()
 
@@ -288,7 +286,6 @@ class TenantService:
 
         # Set the current tenant for the account
         account.current_tenant_id = tenant_account_join.tenant_id
-        session['workspace_id'] = account.current_tenant.id
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> List[Account]:
