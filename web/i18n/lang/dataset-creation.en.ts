@@ -9,7 +9,7 @@ const translation = {
     three: 'Execute and finish',
   },
   error: {
-    unavailable: 'This Knowledge is not avaliable',
+    unavailable: 'This Knowledge is not available',
   },
   stepOne: {
     filePreview: 'File Preview',

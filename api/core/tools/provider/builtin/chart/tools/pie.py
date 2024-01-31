@@ -8,13 +8,13 @@ from typing import Any, Dict, List, Union
 class PieChartTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
-        data = tool_paramters.get('data', '')
+        data = tool_parameters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')
         data = data.split(';')
-        categories = tool_paramters.get('categories', None) or None
+        categories = tool_parameters.get('categories', None) or None
 
         # if all data is int, convert to int
         if all([i.isdigit() for i in data]):

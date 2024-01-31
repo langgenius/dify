@@ -10,7 +10,7 @@ class WikiPediaProvider(BuiltinToolProviderController):
         try:
             CurrentTimeTool().invoke(
                 user_id='',
-                tool_paramters={},
+                tool_parameters={},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

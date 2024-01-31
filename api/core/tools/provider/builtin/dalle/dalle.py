@@ -13,7 +13,7 @@ class DALLEProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "prompt": "cute girl, blue eyes, white hair, anime style",
                     "size": "small",
                     "n": 1

@@ -41,7 +41,7 @@ class OpenLLMGenerate(object):
         if not server_url:
             raise InvalidAuthenticationError('Invalid server URL')
 
-        defautl_llm_config = {
+        default_llm_config = {
             "max_new_tokens": 128,
             "min_length": 0,
             "early_stopping": False,
@@ -75,19 +75,19 @@ class OpenLLMGenerate(object):
         }
 
         if 'max_tokens' in model_parameters and type(model_parameters['max_tokens']) == int:
-            defautl_llm_config['max_new_tokens'] = model_parameters['max_tokens']
+            default_llm_config['max_new_tokens'] = model_parameters['max_tokens']
 
         if 'temperature' in model_parameters and type(model_parameters['temperature']) == float:
-            defautl_llm_config['temperature'] = model_parameters['temperature']
+            default_llm_config['temperature'] = model_parameters['temperature']
 
         if 'top_p' in model_parameters and type(model_parameters['top_p']) == float:
-            defautl_llm_config['top_p'] = model_parameters['top_p']
+            default_llm_config['top_p'] = model_parameters['top_p']
 
         if 'top_k' in model_parameters and type(model_parameters['top_k']) == int:
-            defautl_llm_config['top_k'] = model_parameters['top_k']
+            default_llm_config['top_k'] = model_parameters['top_k']
 
         if 'use_cache' in model_parameters and type(model_parameters['use_cache']) == bool:
-            defautl_llm_config['use_cache'] = model_parameters['use_cache']
+            default_llm_config['use_cache'] = model_parameters['use_cache']
 
         headers = {
             'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ class OpenLLMGenerate(object):
         data = {
             'stop': stop if stop else [],
             'prompt': '\n'.join([message.content for message in prompt_messages]),
-            'llm_config': defautl_llm_config,
+            'llm_config': default_llm_config,
         }
 
         try:
