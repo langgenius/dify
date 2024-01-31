@@ -7,14 +7,14 @@ from typing import Any, Dict, List, Union
 class WebscraperTool(BuiltinTool):
     def _invoke(self,
                user_id: str,
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
         try:
-            url = tool_paramters.get('url', '')
-            user_agent = tool_paramters.get('user_agent', '')
+            url = tool_parameters.get('url', '')
+            user_agent = tool_parameters.get('user_agent', '')
             if not url:
                 return self.create_text_message('Please input url')
             

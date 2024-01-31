@@ -46,7 +46,7 @@ import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG, supportFunctionCallModels } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -157,6 +157,7 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
+
   const isChatApp = mode === AppType.chat
   const isAgent = modelConfig.agentConfig?.enabled
   const setIsAgent = (value: boolean) => {
@@ -166,7 +167,7 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
-  const isFunctionCall = (isOpenAI && modelConfig.mode === ModelModeType.chat) || supportFunctionCallModels.includes(modelConfig.model_id)
+
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
 
@@ -261,6 +262,13 @@ const Configuration: FC = () => {
       model: modelConfig.model_id,
     },
   )
+
+  const isFunctionCall = (() => {
+    const features = currModel?.features
+    if (!features)
+      return false
+    return features.includes(ModelFeatureEnum.toolCall) || features.includes(ModelFeatureEnum.multiToolCall)
+  })()
 
   // Fill old app data missing model mode.
   useEffect(() => {

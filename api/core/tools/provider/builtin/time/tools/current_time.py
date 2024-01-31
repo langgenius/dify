@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 class CurrentTimeTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools

@@ -12,7 +12,7 @@ class WikiPediaProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "query": "misaka mikoto",
                 },
             )

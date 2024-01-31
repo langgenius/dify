@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-from core.tools.entities.tool_entities import ToolProviderType, ToolParamter, ToolParamterOption
+from core.tools.entities.tool_entities import ToolProviderType, ToolParameter, ToolParameterOption
 from core.tools.tool.tool import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.provider.tool_provider import ToolProviderController
@@ -71,7 +71,7 @@ class AppBasedToolProviderEntity(ToolProviderController):
                 variable_name = input_form[form_type]['variable_name']
                 options = input_form[form_type].get('options', [])
                 if form_type == 'paragraph' or form_type == 'text-input':
-                    tool['parameters'].append(ToolParamter(
+                    tool['parameters'].append(ToolParameter(
                         name=variable_name,
                         label=I18nObject(
                             en_US=label,
@@ -82,13 +82,13 @@ class AppBasedToolProviderEntity(ToolProviderController):
                             zh_Hans=label
                         ),
                         llm_description=label,
-                        form=ToolParamter.ToolParameterForm.FORM,
-                        type=ToolParamter.ToolParameterType.STRING,
+                        form=ToolParameter.ToolParameterForm.FORM,
+                        type=ToolParameter.ToolParameterType.STRING,
                         required=required,
                         default=default
                     ))
                 elif form_type == 'select':
-                    tool['parameters'].append(ToolParamter(
+                    tool['parameters'].append(ToolParameter(
                         name=variable_name,
                         label=I18nObject(
                             en_US=label,
@@ -99,11 +99,11 @@ class AppBasedToolProviderEntity(ToolProviderController):
                             zh_Hans=label
                         ),
                         llm_description=label,
-                        form=ToolParamter.ToolParameterForm.FORM,
-                        type=ToolParamter.ToolParameterType.SELECT,
+                        form=ToolParameter.ToolParameterForm.FORM,
+                        type=ToolParameter.ToolParameterType.SELECT,
                         required=required,
                         default=default,
-                        options=[ToolParamterOption(
+                        options=[ToolParameterOption(
                             value=option,
                             label=I18nObject(
                                 en_US=option,

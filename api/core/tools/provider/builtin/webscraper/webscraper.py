@@ -14,7 +14,7 @@ class WebscraperProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     'url': 'https://www.google.com',
                     'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                 },
