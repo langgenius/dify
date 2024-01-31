@@ -35,6 +35,10 @@ class SparkLLMClient:
             'spark-v3': {
                 'version': 'v3.1',
                 'chat_domain': 'generalv3'
+            },
+            'spark-v3.5': {
+                'version': 'v3.5',
+                'chat_domain': 'generalv3.5'
             }
         }
 
