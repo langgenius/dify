@@ -269,7 +269,6 @@ const Configuration: FC = () => {
       return false
     return features.includes(ModelFeatureEnum.toolCall) || features.includes(ModelFeatureEnum.multiToolCall)
   })()
-  console.log(isFunctionCall)
 
   // Fill old app data missing model mode.
   useEffect(() => {
