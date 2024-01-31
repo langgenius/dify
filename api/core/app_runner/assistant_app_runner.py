@@ -170,7 +170,7 @@ class AssistantApplicationRunner(AppRunner):
         # load tool variables
         tool_conversation_variables = self._load_tool_variables(conversation_id=conversation.id,
                                                    user_id=application_generate_entity.user_id,
-                                                   tanent_id=application_generate_entity.tenant_id)
+                                                   tenant_id=application_generate_entity.tenant_id)
 
         # convert db variables to tool variables
         tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
@@ -254,13 +254,13 @@ class AssistantApplicationRunner(AppRunner):
             agent=True
         )
 
-    def _load_tool_variables(self, conversation_id: str, user_id: str, tanent_id: str) -> ToolConversationVariables:
+    def _load_tool_variables(self, conversation_id: str, user_id: str, tenant_id: str) -> ToolConversationVariables:
         """
         load tool variables from database
         """
         tool_variables: ToolConversationVariables = db.session.query(ToolConversationVariables).filter(
             ToolConversationVariables.conversation_id == conversation_id,
-            ToolConversationVariables.tenant_id == tanent_id
+            ToolConversationVariables.tenant_id == tenant_id
         ).first()
 
         if tool_variables:
@@ -271,7 +271,7 @@ class AssistantApplicationRunner(AppRunner):
             tool_variables = ToolConversationVariables(
                 conversation_id=conversation_id,
                 user_id=user_id,
-                tenant_id=tanent_id,
+                tenant_id=tenant_id,
                 variables_str='[]',
             )
             db.session.add(tool_variables)

@@ -7,13 +7,13 @@ from requests.exceptions import HTTPError, ReadTimeout
 import yfinance
 
 class YahooFinanceSearchTickerTool(BuiltinTool):
-    def _invoke(self,user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self,user_id: str, tool_parameters: Dict[str, Any]) \
           -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         '''
             invoke tools
         '''
         
-        query = tool_paramters.get('symbol', '')
+        query = tool_parameters.get('symbol', '')
         if not query:
             return self.create_text_message('Please input symbol')
         

@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Union
 
 
 class GaodeRepositoriesTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        city = tool_paramters.get('city', '')
+        city = tool_parameters.get('city', '')
         if not city:
             return self.create_text_message('Please tell me your city')
 

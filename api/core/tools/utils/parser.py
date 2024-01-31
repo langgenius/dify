@@ -1,6 +1,6 @@
 
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ToolParamter, ToolParamterOption, ApiProviderSchemaType
+from core.tools.entities.tool_entities import ToolParameter, ToolParameterOption, ApiProviderSchemaType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderNotFoundError, ToolNotSupportedError, \
       ToolApiSchemaError
@@ -47,7 +47,7 @@ class ApiBasedToolSchemaParser:
             parameters = []
             if 'parameters' in interface['operation']:
                 for parameter in interface['operation']['parameters']:
-                    parameters.append(ToolParamter(
+                    parameters.append(ToolParameter(
                         name=parameter['name'],
                         label=I18nObject(
                             en_US=parameter['name'],
@@ -57,9 +57,9 @@ class ApiBasedToolSchemaParser:
                             en_US=parameter.get('description', ''),
                             zh_Hans=parameter.get('description', '')
                         ),
-                        type=ToolParamter.ToolParameterType.STRING,
+                        type=ToolParameter.ToolParameterType.STRING,
                         required=parameter.get('required', False),
-                        form=ToolParamter.ToolParameterForm.LLM,
+                        form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get('description'),
                         default=parameter['default'] if 'default' in parameter else None,
                     ))
@@ -87,7 +87,7 @@ class ApiBasedToolSchemaParser:
                         required = body_schema['required'] if 'required' in body_schema else []
                         properties = body_schema['properties'] if 'properties' in body_schema else {}
                         for name, property in properties.items():
-                            parameters.append(ToolParamter(
+                            parameters.append(ToolParameter(
                                 name=name,
                                 label=I18nObject(
                                     en_US=name,
@@ -97,9 +97,9 @@ class ApiBasedToolSchemaParser:
                                     en_US=property['description'] if 'description' in property else '',
                                     zh_Hans=property['description'] if 'description' in property else ''
                                 ),
-                                type=ToolParamter.ToolParameterType.STRING,
+                                type=ToolParameter.ToolParameterType.STRING,
                                 required=name in required,
-                                form=ToolParamter.ToolParameterForm.LLM,
+                                form=ToolParameter.ToolParameterForm.LLM,
                                 llm_description=property['description'] if 'description' in property else '',
                                 default=property['default'] if 'default' in property else None,
                             ))

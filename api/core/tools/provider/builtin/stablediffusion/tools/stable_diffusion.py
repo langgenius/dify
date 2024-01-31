@@ -1,5 +1,5 @@
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParamter, ToolParamterOption
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
 from core.tools.entities.common_entities import I18nObject
 from core.tools.errors import ToolProviderCredentialValidationError
 
@@ -60,7 +60,7 @@ DRAW_TEXT_OPTIONS = {
 }
 
 class StableDiffusionTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
         -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
@@ -86,25 +86,25 @@ class StableDiffusionTool(BuiltinTool):
 
         
         # prompt
-        prompt = tool_paramters.get('prompt', '')
+        prompt = tool_parameters.get('prompt', '')
         if not prompt:
             return self.create_text_message('Please input prompt')
         
         # get negative prompt
-        negative_prompt = tool_paramters.get('negative_prompt', '')
+        negative_prompt = tool_parameters.get('negative_prompt', '')
         
         # get size
-        width = tool_paramters.get('width', 1024)
-        height = tool_paramters.get('height', 1024)
+        width = tool_parameters.get('width', 1024)
+        height = tool_parameters.get('height', 1024)
 
         # get steps
-        steps = tool_paramters.get('steps', 1)
+        steps = tool_parameters.get('steps', 1)
 
         # get lora
-        lora = tool_paramters.get('lora', '')
+        lora = tool_parameters.get('lora', '')
 
         # get image id
-        image_id = tool_paramters.get('image_id', '')
+        image_id = tool_parameters.get('image_id', '')
         if image_id.strip():
             image_variable = self.get_default_image_variable()
             if image_variable:
@@ -212,32 +212,32 @@ class StableDiffusionTool(BuiltinTool):
             return self.create_text_message('Failed to generate image')
 
 
-    def get_runtime_parameters(self) -> List[ToolParamter]:
+    def get_runtime_parameters(self) -> List[ToolParameter]:
         parameters = [
-            ToolParamter(name='prompt', 
+            ToolParameter(name='prompt', 
                          label=I18nObject(en_US='Prompt', zh_Hans='Prompt'),
                          human_description=I18nObject(
                              en_US='Image prompt, you can check the official documentation of Stable Diffusion',
                              zh_Hans='图像提示词，您可以查看 Stable Diffusion 的官方文档',
                          ),
-                         type=ToolParamter.ToolParameterType.STRING,
-                         form=ToolParamter.ToolParameterForm.LLM,
+                         type=ToolParameter.ToolParameterType.STRING,
+                         form=ToolParameter.ToolParameterForm.LLM,
                          llm_description='Image prompt of Stable Diffusion, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.',
                          required=True),
         ]
         if len(self.list_default_image_variables()) != 0:
             parameters.append(
-                ToolParamter(name='image_id', 
+                ToolParameter(name='image_id', 
                              label=I18nObject(en_US='image_id', zh_Hans='image_id'),
                              human_description=I18nObject(
                                 en_US='Image id of the image you want to generate based on, if you want to generate image based on the default image, you can leave this field empty.',
                                 zh_Hans='您想要生成的图像的图像 ID，如果您想要基于默认图像生成图像，则可以将此字段留空。',
                              ),
-                             type=ToolParamter.ToolParameterType.STRING,
-                             form=ToolParamter.ToolParameterForm.LLM,
+                             type=ToolParameter.ToolParameterType.STRING,
+                             form=ToolParameter.ToolParameterForm.LLM,
                              llm_description='Image id of the original image, you can leave this field empty if you want to generate a new image.',
                              required=True,
-                             options=[ToolParamterOption(
+                             options=[ToolParameterOption(
                                  value=i.name,
                                  label=I18nObject(en_US=i.name, zh_Hans=i.name)
                              ) for i in self.list_default_image_variables()])

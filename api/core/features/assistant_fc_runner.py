@@ -10,7 +10,7 @@ from core.model_manager import ModelInstance
 from core.application_queue_manager import PublishFrom
 
 from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
-    ToolNotSupportedError, ToolProviderNotFoundError, ToolParamterValidationError, \
+    ToolNotSupportedError, ToolProviderNotFoundError, ToolParameterValidationError, \
           ToolProviderCredentialValidationError
 
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
@@ -247,7 +247,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     try:
                         tool_invoke_message = tool_instance.invoke(
                             user_id=self.user_id, 
-                            tool_paramters=tool_call_args, 
+                            tool_parameters=tool_call_args, 
                         )
                         # transform tool invoke message to get LLM friendly message
                         tool_invoke_message = self.transform_tool_invoke_messages(tool_invoke_message)
@@ -272,9 +272,9 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     ) as e:
                         error_response = f"there is not a tool named {tool_call_name}"
                     except (
-                        ToolParamterValidationError
+                        ToolParameterValidationError
                     ) as e:
-                        error_response = f"tool paramters validation error: {e}, please check your tool paramters"
+                        error_response = f"tool parameters validation error: {e}, please check your tool parameters"
                     except ToolInvokeError as e:
                         error_response = f"tool invoke error: {e}"
                     except Exception as e:
