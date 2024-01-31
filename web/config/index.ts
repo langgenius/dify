@@ -1,7 +1,5 @@
 /* eslint-disable import/no-mutable-exports */
-import { AgentStrategy, AppType, ProviderType } from '@/types/app'
-
-const isDevelopment = process.env.NODE_ENV === 'development'
+import { AgentStrategy } from '@/types/app'
 
 export let apiPrefix = ''
 export let publicApiPrefix = ''
@@ -20,38 +18,19 @@ else if (
   publicApiPrefix = globalThis.document.body.getAttribute('data-pubic-api-prefix') as string
 }
 else {
-  if (isDevelopment) {
-    apiPrefix = 'https://cloud.dify.dev/console/api'
-    publicApiPrefix = 'https://dev.udify.app/api'
-  }
-  else {
-    // const domainParts = globalThis.location?.host?.split('.');
-    // in production env, the host is dify.app . In other env, the host is [dev].dify.app
-    // const env = domainParts.length === 2 ? 'ai' : domainParts?.[0];
-    apiPrefix = '/console/api'
-    publicApiPrefix = '/api' // avoid browser private mode api cross origin
-  }
+  // const domainParts = globalThis.location?.host?.split('.');
+  // in production env, the host is dify.app . In other env, the host is [dev].dify.app
+  // const env = domainParts.length === 2 ? 'ai' : domainParts?.[0];
+  apiPrefix = 'http://localhost:5001/console/api'
+  publicApiPrefix = 'http://localhost:5001/api' // avoid browser private mode api cross origin
 }
 
 export const API_PREFIX: string = apiPrefix
 export const PUBLIC_API_PREFIX: string = publicApiPrefix
 
-const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition')
+const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition') || 'SELF_HOSTED'
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 
-export const MODEL_LIST = [
-  { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.chat },
-  { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.chat },
-  { id: 'gpt-4', name: 'gpt-4', type: AppType.chat }, // 8k version
-  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.chat, provider: ProviderType.anthropic }, // set 30k
-  { id: 'claude-2', name: 'claude-2', type: AppType.chat, provider: ProviderType.anthropic }, // set 30k
-  { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.completion },
-  { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.completion },
-  { id: 'text-davinci-003', name: 'text-davinci-003', type: AppType.completion },
-  { id: 'gpt-4', name: 'gpt-4', type: AppType.completion }, // 8k version
-  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
-  { id: 'claude-2', name: 'claude-2', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
-]
 export const TONE_LIST = [
   {
     id: 1,
