@@ -139,8 +139,6 @@ export const DEFAULT_AGENT_SETTING = {
   tools: [],
 }
 
-export const supportFunctionCallModels = ['glm-3-turbo', 'glm-4']
-
 export const DEFAULT_AGENT_PROMPT = {
   chat: `Respond to the human as helpfully and accurately as possible. 
 
