@@ -362,7 +362,7 @@ class ToolManageService:
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: str, credentials: dict, 
+        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -387,7 +387,7 @@ class ToolManageService:
         
         # update db provider
         provider.name = provider_name
-        provider.icon = icon
+        provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get('description', '')
         provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
