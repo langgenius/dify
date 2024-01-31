@@ -12,7 +12,7 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.entities.user_entities import UserToolProvider
-from api.core.tools.utils.configuration import ToolConfiguration
+from core.tools.utils.configuration import ToolConfiguration
 from core.tools.utils.encoder import serialize_base_model_dict
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 

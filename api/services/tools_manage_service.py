@@ -12,7 +12,7 @@ from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
-from api.core.tools.utils.configuration import ToolConfiguration
+from core.tools.utils.configuration import ToolConfiguration
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError, ToolNotFoundError
 
 from extensions.ext_database import db
