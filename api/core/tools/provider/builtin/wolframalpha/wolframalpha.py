@@ -16,7 +16,7 @@ class GoogleProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "query": "1+2+....+111",
                 },
             )

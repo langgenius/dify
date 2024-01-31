@@ -14,7 +14,7 @@ class GoogleProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "query": "test",
                     "result_type": "link"
                 },

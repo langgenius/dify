@@ -223,15 +223,15 @@ class ApiTool(Tool):
         
         return response
 
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
         """
         invoke http request
         """
         # assemble request
-        headers = self.assembling_request(tool_paramters)
+        headers = self.assembling_request(tool_parameters)
 
         # do http request
-        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_paramters)
+        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
 
         # validate response
         response = self.validate_and_parse_response(response)

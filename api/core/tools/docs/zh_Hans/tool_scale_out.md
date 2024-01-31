@@ -146,13 +146,13 @@ from typing import Any, Dict, List, Union
 class GoogleSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        query = tool_paramters['query']
-        result_type = tool_paramters['result_type']
+        query = tool_parameters['query']
+        result_type = tool_parameters['result_type']
         api_key = self.runtime.credentials['serpapi_api_key']
         # TODO: search with serpapi
         result = SerpAPI(api_key).run(query, result_type=result_type)
@@ -163,7 +163,7 @@ class GoogleSearchTool(BuiltinTool):
 ```
 
 ### 参数
-工具的整体逻辑都在`_invoke`方法中，这个方法接收两个参数：`user_id`和`tool_paramters`，分别表示用户ID和工具参数
+工具的整体逻辑都在`_invoke`方法中，这个方法接收两个参数：`user_id`和`tool_parameters`，分别表示用户ID和工具参数
 
 ### 返回数据
 在工具返回时，你可以选择返回一个消息或者多个消息，这里我们返回一个消息，使用`create_text_message`和`create_link_message`可以创建一个文本消息或者一个链接消息。
@@ -195,7 +195,7 @@ class GoogleProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "query": "test",
                     "result_type": "link"
                 },

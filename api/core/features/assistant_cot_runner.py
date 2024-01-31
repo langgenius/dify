@@ -12,7 +12,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMRes
 from core.model_manager import ModelInstance
 
 from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
-    ToolNotSupportedError, ToolProviderNotFoundError, ToolParamterValidationError, \
+    ToolNotSupportedError, ToolProviderNotFoundError, ToolParameterValidationError, \
           ToolProviderCredentialValidationError
 
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
@@ -28,7 +28,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         Run Cot agent application
         """
         app_orchestration_config = self.app_orchestration_config
-        self._repacket_app_orchestration_config(app_orchestration_config)
+        self._repack_app_orchestration_config(app_orchestration_config)
 
         agent_scratchpad: List[AgentScratchpadUnit] = []
 
@@ -71,7 +71,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         }
         final_answer = ''
 
-        def increse_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
             else:
@@ -105,7 +105,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
             # update prompt messages
-            prompt_messages = self._originze_cot_prompt_messages(
+            prompt_messages = self._organize_cot_prompt_messages(
                 mode=app_orchestration_config.model_config.mode,
                 prompt_messages=prompt_messages,
                 tools=prompt_messages_tools,
@@ -138,7 +138,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         
             # get llm usage
             if llm_result.usage:
-                increse_usage(llm_usage, llm_result.usage)
+                increase_usage(llm_usage, llm_result.usage)
             
             # publish agent thought if it's first iteration
             if iteration_step == 1:
@@ -208,7 +208,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         try:
                             tool_response = tool_instance.invoke(
                                 user_id=self.user_id, 
-                                tool_paramters=tool_call_args if isinstance(tool_call_args, dict) else json.loads(tool_call_args)
+                                tool_parameters=tool_call_args if isinstance(tool_call_args, dict) else json.loads(tool_call_args)
                             )
                             # transform tool response to llm friendly response
                             tool_response = self.transform_tool_invoke_messages(tool_response)
@@ -226,15 +226,15 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
                             message_file_ids = [message_file.id for message_file, _ in message_files]
                         except ToolProviderCredentialValidationError as e:
-                            error_response = f"Plese check your tool provider credentials"
+                            error_response = f"Please check your tool provider credentials"
                         except (
                             ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
                         ) as e:
                             error_response = f"there is not a tool named {tool_call_name}"
                         except (
-                            ToolParamterValidationError
+                            ToolParameterValidationError
                         ) as e:
-                            error_response = f"tool paramters validation error: {e}, please check your tool paramters"
+                            error_response = f"tool parameters validation error: {e}, please check your tool parameters"
                         except ToolInvokeError as e:
                             error_response = f"tool invoke error: {e}"
                         except Exception as e:
@@ -469,7 +469,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             if not next_iteration.find("{{observation}}") >= 0:
                 raise ValueError("{{observation}} is required in next_iteration")
             
-    def _convert_strachpad_list_to_str(self, agent_scratchpad: List[AgentScratchpadUnit]) -> str:
+    def _convert_scratchpad_list_to_str(self, agent_scratchpad: List[AgentScratchpadUnit]) -> str:
         """
             convert agent scratchpad list to str
         """
@@ -481,7 +481,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         return result
     
-    def _originze_cot_prompt_messages(self, mode: Literal["completion", "chat"],
+    def _organize_cot_prompt_messages(self, mode: Literal["completion", "chat"],
                                       prompt_messages: List[PromptMessage],
                                       tools: List[PromptMessageTool], 
                                       agent_scratchpad: List[AgentScratchpadUnit],
@@ -490,7 +490,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                                       input: str,
         ) -> List[PromptMessage]:
         """
-            originze chain of thought prompt messages, a standard prompt message is like:
+            organize chain of thought prompt messages, a standard prompt message is like:
                 Respond to the human as helpfully and accurately as possible. 
 
                 {{instruction}}
@@ -528,7 +528,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                                      .replace("{{tools}}", tools_str) \
                                      .replace("{{tool_names}}", tool_names)
 
-        # originze prompt messages
+        # organize prompt messages
         if mode == "chat":
             # override system message
             overrided = False
@@ -559,7 +559,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             return prompt_messages
         elif mode == "completion":
             # parse agent scratchpad
-            agent_scratchpad_str = self._convert_strachpad_list_to_str(agent_scratchpad)
+            agent_scratchpad_str = self._convert_scratchpad_list_to_str(agent_scratchpad)
             # parse prompt messages
             return [UserPromptMessage(
                 content=first_prompt.replace("{{instruction}}", instruction)
