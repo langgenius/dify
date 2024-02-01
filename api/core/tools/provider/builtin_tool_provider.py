@@ -231,25 +231,26 @@ class BuiltinToolProviderController(ToolProviderController):
             if credential_schema == ToolProviderCredentials.CredentialsType.SECRET_INPUT or \
                 credential_schema == ToolProviderCredentials.CredentialsType.TEXT_INPUT:
                 if not isinstance(credentials[credential_name], str):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be string')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be string')
             
             elif credential_schema.type == ToolProviderCredentials.CredentialsType.SELECT:
                 if not isinstance(credentials[credential_name], str):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be string')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be string')
                 
                 options = credential_schema.options
                 if not isinstance(options, list):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} options should be list')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} options should be list')
                 
                 if credentials[credential_name] not in [x.value for x in options]:
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be one of {options}')
-                
-            credentials_need_to_validate.pop(credential_name)
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be one of {options}')
+            
+            if credentials[credential_name]:
+                credentials_need_to_validate.pop(credential_name)
 
         for credential_name in credentials_need_to_validate:
             credential_schema = credentials_need_to_validate[credential_name]
             if credential_schema.required:
-                raise ToolProviderCredentialValidationError(f'credential {credential_name} is required')
+                raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} is required')
             
             # the credential is not set currently, set the default value if needed
             if credential_schema.default is not None:
