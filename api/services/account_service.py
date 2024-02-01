@@ -49,8 +49,6 @@ class AccountService:
         tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id).first()
         if not tenant_account_join:
             _create_tenant_for_account(account)
-        else:
-            account.current_tenant_id = tenant_account_join.tenant_id
         # Update last_active_at if more than 10 minutes have passed
         if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = datetime.utcnow()
