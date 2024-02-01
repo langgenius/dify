@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import Union, Any, cast
+from typing import Any, Union, cast
 
 import pydantic.generics
 from httpx import Timeout
 from pydantic import ConfigDict
-from typing_extensions import (
-    Unpack, ClassVar, TypedDict
-)
+from typing_extensions import ClassVar, TypedDict, Unpack
 
-from ._base_type import Body, NotGiven, Headers, HttpxRequestFiles, Query
+from ._base_type import Body, Headers, HttpxRequestFiles, NotGiven, Query
 from ._utils import remove_notgiven_indict
 
 

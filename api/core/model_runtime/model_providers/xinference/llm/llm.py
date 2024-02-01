@@ -3,15 +3,15 @@ from typing import Generator, Iterator, List, Optional, Union, cast
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, UserPromptMessage, ToolPromptMessage)
-from core.model_runtime.entities.model_entities import (AIModelEntity, FetchFrom, ModelPropertyKey, ModelType,
-                                                        ParameterRule, ParameterType, ModelFeature)
+                                                          SystemPromptMessage, ToolPromptMessage, UserPromptMessage)
+from core.model_runtime.entities.model_entities import (AIModelEntity, FetchFrom, ModelFeature, ModelPropertyKey,
+                                                        ModelType, ParameterRule, ParameterType)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.xinference.xinference_helper import (XinferenceHelper,
-                                                                                 XinferenceModelExtraParameter)
+                                                                             XinferenceModelExtraParameter)
 from core.model_runtime.utils import helper
 from openai import (APIConnectionError, APITimeoutError, AuthenticationError, ConflictError, InternalServerError,
                     NotFoundError, OpenAI, PermissionDeniedError, RateLimitError, Stream, UnprocessableEntityError)

@@ -1,13 +1,13 @@
 # -*- coding:utf-8 -*-
 import hashlib
 
+import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 
-import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 
 def generate_key_pair(tenant_id):
     private_key = RSA.generate(2048)

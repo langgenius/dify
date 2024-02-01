@@ -2,20 +2,14 @@
 from __future__ import annotations
 
 import inspect
-from typing import (
-    Any,
-    Type,
-    Union,
-    cast,
-    Mapping,
-)
+from typing import Any, Mapping, Type, Union, cast
 
 import httpx
 import pydantic
 from httpx import URL, Timeout
 
 from . import _errors
-from ._base_type import NotGiven, ResponseT, Body, Headers, NOT_GIVEN, RequestFiles, Query, Data
+from ._base_type import NOT_GIVEN, Body, Data, Headers, NotGiven, Query, RequestFiles, ResponseT
 from ._errors import APIResponseValidationError, APIStatusError, APITimeoutError
 from ._files import make_httpx_files
 from ._request_opt import ClientRequestParam, UserRequestInput

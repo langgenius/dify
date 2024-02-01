@@ -1,19 +1,18 @@
+import json
 import logging
 import time
 from decimal import Decimal
 from typing import Optional
 from urllib.parse import urljoin
-import requests
-import json
 
 import numpy as np
-
+import requests
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import PriceType, ModelPropertyKey, ModelType, AIModelEntity, FetchFrom, \
-    PriceConfig
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
-from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError, InvokeBadRequestError, \
-    InvokeRateLimitError, InvokeServerUnavailableError, InvokeConnectionError
+from core.model_runtime.entities.model_entities import (AIModelEntity, FetchFrom, ModelPropertyKey, ModelType,
+                                                        PriceConfig, PriceType)
+from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 

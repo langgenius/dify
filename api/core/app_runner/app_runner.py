@@ -2,8 +2,13 @@ import time
 from typing import Generator, List, Optional, Tuple, Union, cast
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.application_entities import AppOrchestrationConfigEntity, ModelConfigEntity, \
-    PromptTemplateEntity, ExternalDataVariableEntity, ApplicationGenerateEntity, InvokeFrom
+from core.entities.application_entities import (ApplicationGenerateEntity, AppOrchestrationConfigEntity,
+                                                ExternalDataVariableEntity, InvokeFrom, ModelConfigEntity,
+                                                PromptTemplateEntity)
+from core.features.annotation_reply import AnnotationReplyFeature
+from core.features.external_data_fetch import ExternalDataFetchFeature
+from core.features.hosting_moderation import HostingModerationFeature
+from core.features.moderation import ModerationFeature
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -11,12 +16,9 @@ from core.model_runtime.entities.message_entities import AssistantPromptMessage,
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.features.hosting_moderation import HostingModerationFeature
-from core.features.moderation import ModerationFeature
-from core.features.external_data_fetch import ExternalDataFetchFeature
-from core.features.annotation_reply import AnnotationReplyFeature
 from core.prompt.prompt_transform import PromptTransform
-from models.model import App, MessageAnnotation, Message
+from models.model import App, Message, MessageAnnotation
+
 
 class AppRunner:
     def get_pre_calculate_rest_tokens(self, app_record: App,

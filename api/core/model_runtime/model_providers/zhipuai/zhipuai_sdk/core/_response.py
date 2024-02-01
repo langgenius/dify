@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import datetime
-from typing import TypeVar, Generic, cast, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 import httpx
 import pydantic
-from typing_extensions import ParamSpec, get_origin, get_args
+from typing_extensions import ParamSpec, get_args, get_origin
 
 from ._base_type import NoneType
 from ._sse_client import StreamResponse

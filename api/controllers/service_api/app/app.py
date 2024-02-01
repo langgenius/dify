@@ -1,14 +1,13 @@
 # -*- coding:utf-8 -*-
+import json
+
 from controllers.service_api import api
 from controllers.service_api.wraps import AppApiResource
+from extensions.ext_database import db
 from flask import current_app
 from flask_restful import fields, marshal_with
 from models.model import App, AppModelConfig
 from models.tools import ApiToolProvider
-
-import json
-
-from extensions.ext_database import db
 
 
 class AppParameterApi(AppApiResource):

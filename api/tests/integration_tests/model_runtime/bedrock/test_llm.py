@@ -7,6 +7,7 @@ from core.model_runtime.entities.message_entities import AssistantPromptMessage,
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.bedrock.llm.llm import BedrockLargeLanguageModel
 
+
 def test_validate_credentials():
     model = BedrockLargeLanguageModel()
 

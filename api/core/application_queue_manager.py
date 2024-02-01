@@ -4,10 +4,10 @@ from enum import Enum
 from typing import Any, Generator
 
 from core.entities.application_entities import InvokeFrom
-from core.entities.queue_entities import (AnnotationReplyEvent, AppQueueEvent, QueueAgentThoughtEvent, QueueErrorEvent,
-                                          QueueMessage, QueueMessageEndEvent, QueueMessageEvent,
-                                          QueueMessageReplaceEvent, QueuePingEvent, QueueRetrieverResourcesEvent,
-                                          QueueStopEvent, QueueMessageFileEvent, QueueAgentMessageEvent)
+from core.entities.queue_entities import (AnnotationReplyEvent, AppQueueEvent, QueueAgentMessageEvent,
+                                          QueueAgentThoughtEvent, QueueErrorEvent, QueueMessage, QueueMessageEndEvent,
+                                          QueueMessageEvent, QueueMessageFileEvent, QueueMessageReplaceEvent,
+                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent)
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from extensions.ext_redis import redis_client
 from models.model import MessageAgentThought, MessageFile
