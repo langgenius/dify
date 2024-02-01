@@ -25,6 +25,18 @@ parameters:
       pt_BR: Image prompt, you can check the official documentation of Stable Diffusion
     llm_description: Image prompt of Stable Diffusion, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.
     form: llm
+  - name: model
+    type: string
+    required: false
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+      pt_BR: Model Name
+    human_description:
+      en_US: Model Name
+      zh_Hans: 模型名称
+      pt_BR: Model Name
+    form: form
   - name: lora
     type: string
     required: false
