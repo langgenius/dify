@@ -257,8 +257,8 @@ class TenantService:
     def switch_tenant(account: Account, tenant_id: int = None) -> None:
         """Switch the current workspace for the account"""
 
-        TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
         tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
+        TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
 
         # Check if the tenant exists and the account is a member of the tenant
         if not tenant_account_join:
