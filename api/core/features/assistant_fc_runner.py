@@ -97,7 +97,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 tool_input='',
                 messages_ids=message_file_ids
             )
-            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
@@ -124,7 +123,11 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             current_llm_usage = None
 
             if self.stream_tool_call:
+                is_first_chunk = True
                 for chunk in chunks:
+                    if is_first_chunk:
+                        self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                        is_first_chunk = False
                     # check if there is any tool call
                     if self.check_tool_calls(chunk):
                         function_call_state = True
@@ -183,6 +186,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 if not result.message.content:
                     result.message.content = ''
 
+                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                
                 yield LLMResultChunk(
                     model=model_instance.model,
                     prompt_messages=result.prompt_messages,
