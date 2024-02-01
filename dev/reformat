@@ -5,7 +5,8 @@ set -x
 # python style checks rely on `isort` in path
 if ! command -v isort &> /dev/null
 then
-    echo "Skip Python imports linting, since 'isort' is not available. Please install it with 'pip install isort'."
+    echo "'isort' is not available for linting Python codes. Please run 'pip install isort'."
+    exit 1
 else
     isort  --settings ./.github/linters/.isort.cfg ./
 fi
