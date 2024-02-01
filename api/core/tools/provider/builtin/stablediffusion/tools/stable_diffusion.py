@@ -9,7 +9,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
-from httpx import post, get
+from httpx import get, post
 from PIL import Image
 
 DRAW_TEXT_OPTIONS = {

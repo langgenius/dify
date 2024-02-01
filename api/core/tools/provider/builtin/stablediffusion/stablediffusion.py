@@ -5,7 +5,6 @@ from core.tools.provider.builtin.stablediffusion.tools.stable_diffusion import S
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
-
 class StableDiffusionProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
         try:

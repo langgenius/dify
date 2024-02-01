@@ -10,7 +10,7 @@ from models.model import DifySetup
 from services.account_service import AccountService, RegisterService, TenantService
 
 from . import api
-from .error import AlreadySetupError, NotSetupError, NotInitValidateError
+from .error import AlreadySetupError, NotInitValidateError, NotSetupError
 from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
 
