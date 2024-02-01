@@ -25,6 +25,16 @@ jobs:
           cache: yarn
           cache-dependency-path: ./web/package.json
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.10
+
+      - name: Python style check
+        run: |
+          pip install isort
+          isort --check-only --settings ./.github/linters/.isort.cfg --gitignore ./
+
       - name: Web dependencies
         run: |
           cd ./web
@@ -48,5 +58,4 @@ jobs:
           VALIDATE_BASH_EXEC: true
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
-          VALIDATE_PYTHON_ISORT: true
           VALIDATE_YAML: true

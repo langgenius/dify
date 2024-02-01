@@ -8,5 +8,5 @@ then
     echo "'isort' is not available for linting Python codes. Please run 'pip install isort'."
     exit 1
 else
-    isort  --settings ./.github/linters/.isort.cfg ./
+    isort  --settings ./.github/linters/.isort.cfg --gitignore ./
 fi
