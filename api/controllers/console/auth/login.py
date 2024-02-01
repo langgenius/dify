@@ -30,10 +30,10 @@ class LoginApi(Resource):
         except services.errors.account.AccountLoginError:
             return {'code': 'unauthorized', 'message': 'Invalid email or password'}, 401
 
-        try:
-            TenantService.switch_tenant(account)
-        except Exception:
-            pass
+        # try:
+        #     TenantService.switch_tenant(account)
+        # except Exception:
+        #     pass
 
         AccountService.update_last_login(account, request)
 

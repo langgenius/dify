@@ -45,11 +45,20 @@ class AccountService:
 
         if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
             raise Forbidden('Account is banned or closed.')
-
-        tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id).first()
-        if not tenant_account_join:
+        
+        # init owner's tenant
+        tenant_owner = TenantAccountJoin.query.filter_by(account_id=account.id, role='owner').first()
+        if not tenant_owner:
             _create_tenant_for_account(account)
-        # Update last_active_at if more than 10 minutes have passed
+        
+        current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
+        if current_tenant:
+            account.current_tenant_id = current_tenant.tenant_id
+        else:
+            account.current_tenant_id = tenant_owner.tenant_id
+            tenant_owner.current = True
+            db.session.commit()
+       
         if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = datetime.utcnow()
             db.session.commit()
@@ -247,14 +256,16 @@ class TenantService:
     @staticmethod
     def switch_tenant(account: Account, tenant_id: int = None) -> None:
         """Switch the current workspace for the account"""
-        if not tenant_id:
-            tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id).first()
-        else:
-            tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
+
+        TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
+        tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
 
         # Check if the tenant exists and the account is a member of the tenant
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
+        else:
+            tenant_account_join.current = True
+            db.session.commit()
 
         # Set the current tenant for the account
         account.current_tenant_id = tenant_account_join.tenant_id
