@@ -70,6 +70,10 @@ class StableDiffusionTool(BuiltinTool):
         base_url = self.runtime.credentials.get('base_url', None)
         if not base_url:
             return self.create_text_message('Please input base_url')
+        
+        if 'model' in tool_parameters:
+            self.runtime.credentials['model'] = tool_parameters['model']
+        
         model = self.runtime.credentials.get('model', None)
         if not model:
             return self.create_text_message('Please input model')
