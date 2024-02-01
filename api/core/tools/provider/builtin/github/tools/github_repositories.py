@@ -1,20 +1,20 @@
 import json
-import requests
 from datetime import datetime
-from urllib.parse import quote
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
 from typing import Any, Dict, List, Union
+from urllib.parse import quote
+
+import requests
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class GihubRepositoriesTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        top_n = tool_paramters.get('top_n', 5)
-        query = tool_paramters.get('query', '')
+        top_n = tool_parameters.get('top_n', 5)
+        query = tool_parameters.get('query', '')
         if not query:
             return self.create_text_message('Please input symbol')
 

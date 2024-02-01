@@ -9,7 +9,7 @@ from flask import current_app, request
 from flask_login import current_user
 from flask_restful import Resource, marshal_with
 from libs.login import login_required
-from services.file_service import FileService, ALLOWED_EXTENSIONS, UNSTRUSTURED_ALLOWED_EXTENSIONS
+from services.file_service import ALLOWED_EXTENSIONS, UNSTRUSTURED_ALLOWED_EXTENSIONS, FileService
 
 PREVIEW_WORDS_LIMIT = 3000
 

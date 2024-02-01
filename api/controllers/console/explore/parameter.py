@@ -3,12 +3,12 @@ import json
 
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
+from extensions.ext_database import db
 from flask import current_app
 from flask_restful import fields, marshal_with
-from models.model import InstalledApp, AppModelConfig
+from models.model import AppModelConfig, InstalledApp
 from models.tools import ApiToolProvider
 
-from extensions.ext_database import db
 
 class AppParameterApi(InstalledAppResource):
     """Resource for app variables."""

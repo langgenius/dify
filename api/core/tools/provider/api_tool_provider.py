@@ -1,14 +1,15 @@
 from typing import Any, Dict, List
-from core.tools.entities.tool_entities import ToolProviderType, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.tool.tool import Tool
-from core.tools.tool.api_tool import ApiTool
+from core.tools.entities.tool_entities import (ApiProviderAuthType, ToolCredentialsOption, ToolProviderCredentials,
+                                               ToolProviderType)
 from core.tools.provider.tool_provider import ToolProviderController
-
+from core.tools.tool.api_tool import ApiTool
+from core.tools.tool.tool import Tool
 from extensions.ext_database import db
-
 from models.tools import ApiToolProvider
+
 
 class ApiBasedToolProviderController(ToolProviderController):
     @staticmethod
@@ -123,12 +124,12 @@ class ApiBasedToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tools(self, user_id: str, tanent_id: str) -> List[ApiTool]:
+    def get_tools(self, user_id: str, tenant_id: str) -> List[ApiTool]:
         """
             fetch tools from database
 
             :param user_id: the user id
-            :param tanent_id: the tanent id
+            :param tenant_id: the tenant id
             :return: the tools
         """
         if self.tools is not None:
@@ -136,9 +137,9 @@ class ApiBasedToolProviderController(ToolProviderController):
         
         tools: List[Tool] = []
 
-        # get tanent api providers
+        # get tenant api providers
         db_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
-            ApiToolProvider.tenant_id == tanent_id,
+            ApiToolProvider.tenant_id == tenant_id,
             ApiToolProvider.name == self.identity.name
         ).all()
 

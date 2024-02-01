@@ -1,7 +1,8 @@
-from pydantic import BaseModel
-from typing import Dict, Optional, Any, List
+from typing import Any, Dict, List, Optional
 
-from core.tools.entities.tool_entities import ToolProviderType, ToolParamter
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
+from pydantic import BaseModel
+
 
 class ApiBasedToolBundle(BaseModel):
     """
@@ -16,7 +17,7 @@ class ApiBasedToolBundle(BaseModel):
     # operation_id
     operation_id: str = None
     # parameters
-    parameters: Optional[List[ToolParamter]] = None
+    parameters: Optional[List[ToolParameter]] = None
     # author
     author: str
     # icon

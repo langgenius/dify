@@ -1,29 +1,29 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
-from typing import Any, Dict, List, Union
 from datetime import datetime
+from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 from googleapiclient.discovery import build
 
+
 class YoutubeVideosAnalyticsTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
           -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        channel = tool_paramters.get('channel', '')
+        channel = tool_parameters.get('channel', '')
         if not channel:
             return self.create_text_message('Please input symbol')
         
         time_range = [None, None]
-        start_date = tool_paramters.get('start_date', '')
+        start_date = tool_parameters.get('start_date', '')
         if start_date:
             time_range[0] = start_date
         else:
             time_range[0] = '1800-01-01'
 
-        end_date = tool_paramters.get('end_date', '')
+        end_date = tool_parameters.get('end_date', '')
         if end_date:
             time_range[1] = end_date
         else:

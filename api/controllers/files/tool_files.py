@@ -1,10 +1,10 @@
 from controllers.files import api
+from core.tools.tool_file_manager import ToolFileManager
 from flask import Response
 from flask_restful import Resource, reqparse
 from libs.exception import BaseHTTPException
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
-from core.tools.tool_file_manager import ToolFileManager
 
 class ToolFilePreviewApi(Resource):
     def get(self, file_id, extension):

@@ -1,16 +1,16 @@
-from typing import Any, Dict, List, Union
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
-
 from base64 import b64decode
 from os.path import join
+from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 from openai import OpenAI
+
 
 class DallE3Tool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
@@ -37,19 +37,19 @@ class DallE3Tool(BuiltinTool):
         }
 
         # prompt
-        prompt = tool_paramters.get('prompt', '')
+        prompt = tool_parameters.get('prompt', '')
         if not prompt:
             return self.create_text_message('Please input prompt')
         # get size
-        size = SIZE_MAPPING[tool_paramters.get('size', 'square')]
+        size = SIZE_MAPPING[tool_parameters.get('size', 'square')]
         # get n
-        n = tool_paramters.get('n', 1)
+        n = tool_parameters.get('n', 1)
         # get quality
-        quality = tool_paramters.get('quality', 'standard')
+        quality = tool_parameters.get('quality', 'standard')
         if quality not in ['standard', 'hd']:
             return self.create_text_message('Invalid quality')
         # get style
-        style = tool_paramters.get('style', 'vivid')
+        style = tool_parameters.get('style', 'vivid')
         if style not in ['natural', 'vivid']:
             return self.create_text_message('Invalid style')
 

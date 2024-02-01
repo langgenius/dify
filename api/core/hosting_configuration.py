@@ -2,7 +2,7 @@ from typing import Optional
 
 from core.entities.provider_entities import QuotaUnit, RestrictModel
 from core.model_runtime.entities.model_entities import ModelType
-from flask import Flask, Config
+from flask import Config, Flask
 from models.provider import ProviderQuotaType
 from pydantic import BaseModel
 

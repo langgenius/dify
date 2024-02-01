@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping, Iterable, TypeVar
+from typing import Iterable, Mapping, TypeVar
 
 from ._base_type import NotGiven
 

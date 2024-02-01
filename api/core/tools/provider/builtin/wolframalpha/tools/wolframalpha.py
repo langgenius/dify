@@ -1,22 +1,22 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.errors import ToolProviderCredentialValidationError, ToolInvokeError
-
 from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.errors import ToolInvokeError, ToolProviderCredentialValidationError
+from core.tools.tool.builtin_tool import BuiltinTool
 from httpx import get
+
 
 class WolframAlphaTool(BuiltinTool):
     _base_url = 'https://api.wolframalpha.com/v2/query'
 
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        query = tool_paramters.get('query', '')
+        query = tool_parameters.get('query', '')
         if not query:
             return self.create_text_message('Please input query')
         appid = self.runtime.credentials.get('appid', '')

@@ -1,12 +1,13 @@
 from typing import Any, Dict, List, Union
-from core.features.dataset_retrieval import DatasetRetrievalFeature
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParamter, ToolIdentity, ToolDescription
-from core.tools.tool.tool import Tool
-from core.tools.entities.common_entities import I18nObject
+
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
-
+from core.features.dataset_retrieval import DatasetRetrievalFeature
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
+from core.tools.tool.tool import Tool
 from langchain.tools import BaseTool
+
 
 class DatasetRetrieverTool(Tool):
     langchain_tool: BaseTool
@@ -63,23 +64,23 @@ class DatasetRetrieverTool(Tool):
 
         return tools
 
-    def get_runtime_parameters(self) -> List[ToolParamter]:
+    def get_runtime_parameters(self) -> List[ToolParameter]:
         return [
-            ToolParamter(name='query',
+            ToolParameter(name='query',
                          label=I18nObject(en_US='', zh_Hans=''),
                          human_description=I18nObject(en_US='', zh_Hans=''),
-                         type=ToolParamter.ToolParameterType.STRING,
-                         form=ToolParamter.ToolParameterForm.LLM,
+                         type=ToolParameter.ToolParameterType.STRING,
+                         form=ToolParameter.ToolParameterForm.LLM,
                          llm_description='Query for the dataset to be used to retrieve the dataset.',
                          required=True,
                          default=''),
         ]
 
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
         """
         invoke dataset retriever tool
         """
-        query = tool_paramters.get('query', None)
+        query = tool_parameters.get('query', None)
         if not query:
             return self.create_text_message(text='please input query')
         

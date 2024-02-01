@@ -1,9 +1,10 @@
-from typing import Dict, Any
-from pydantic import BaseModel
+from typing import Any, Dict
 
+from core.helper import encrypter
 from core.tools.entities.tool_entities import ToolProviderCredentials
 from core.tools.provider.tool_provider import ToolProviderController
-from core.helper import encrypter
+from pydantic import BaseModel
+
 
 class ToolConfiguration(BaseModel):
     tenant_id: str
@@ -17,7 +18,7 @@ class ToolConfiguration(BaseModel):
     
     def encrypt_tool_credentials(self, credentials: Dict[str, str]) -> Dict[str, str]:
         """
-        encrypt tool credentials with tanent id
+        encrypt tool credentials with tenant id
 
         return a deep copy of credentials with encrypted values
         """
@@ -58,7 +59,7 @@ class ToolConfiguration(BaseModel):
 
     def decrypt_tool_credentials(self, credentials: Dict[str, str]) -> Dict[str, str]:
         """
-        decrypt tool credentials with tanent id
+        decrypt tool credentials with tenant id
 
         return a deep copy of credentials with decrypted values
         """

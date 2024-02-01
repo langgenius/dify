@@ -1,14 +1,13 @@
 from typing import Generator, List, Optional, Union
 
-from dashscope import get_tokenizer
-
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMMode
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
                                                           SystemPromptMessage, UserPromptMessage)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from dashscope import get_tokenizer
 from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
 from dashscope.common.error import (AuthenticationError, InvalidParameter, RequestFailure, ServiceUnavailableError,
                                     UnsupportedHTTPMethod, UnsupportedModel)
@@ -168,7 +167,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: list[Generator],
+    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: Generator,
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -182,7 +181,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         for index, response in enumerate(responses):
             resp_finish_reason = response.output.finish_reason
             resp_content = response.output.text
-            useage = response.usage
+            usage = response.usage
 
             if resp_finish_reason is None and (resp_content is None or resp_content == ''):
                 continue
@@ -194,7 +193,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
             if resp_finish_reason is not None:
                 # transform usage
-                usage = self._calc_response_usage(model, credentials, useage.input_tokens, useage.output_tokens)
+                usage = self._calc_response_usage(model, credentials, usage.input_tokens, usage.output_tokens)
 
                 yield LLMResultChunk(
                     model=model,

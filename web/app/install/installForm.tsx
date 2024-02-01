@@ -9,8 +9,8 @@ import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
 // import I18n from '@/context/i18n'
 
-import { fetchSetupStatus, setup } from '@/service/common'
-import type { SetupStatusResponse } from '@/models/common'
+import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
+import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
@@ -70,10 +70,16 @@ const InstallForm = () => {
 
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished')
+      if (res.step === 'finished') {
         window.location.href = '/signin'
-      else
-        setLoading(false)
+      }
+      else {
+        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+          if (res.status === 'not_started')
+            window.location.href = '/init'
+        })
+      }
+      setLoading(false)
     })
   }, [])
 

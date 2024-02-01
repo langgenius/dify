@@ -1,18 +1,16 @@
+import io
 import json
-
-from libs.login import login_required
-from flask_login import current_user
-from flask_restful import Resource, reqparse
-from flask import send_file
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-
+from flask import send_file
+from flask_login import current_user
+from flask_restful import Resource, reqparse
+from libs.login import login_required
 from services.tools_manage_service import ToolManageService
+from werkzeug.exceptions import Forbidden
 
-import io
 
 class ToolProviderListApi(Resource):
     @setup_required
@@ -171,8 +169,8 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('original_provider', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('privacy_policy', type=str, required=True, nullable=True, location='json')
 
         args = parser.parse_args()
 

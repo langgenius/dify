@@ -1,16 +1,16 @@
-from typing import Any, Dict, List, Union
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
-
 from base64 import b64decode
 from os.path import join
+from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 from openai import OpenAI
+
 
 class DallE2Tool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
@@ -37,15 +37,15 @@ class DallE2Tool(BuiltinTool):
         }
 
         # prompt
-        prompt = tool_paramters.get('prompt', '')
+        prompt = tool_parameters.get('prompt', '')
         if not prompt:
             return self.create_text_message('Please input prompt')
         
         # get size
-        size = SIZE_MAPPING[tool_paramters.get('size', 'large')]
+        size = SIZE_MAPPING[tool_parameters.get('size', 'large')]
 
         # get n
-        n = tool_paramters.get('n', 1)
+        n = tool_parameters.get('n', 1)
 
         # call openapi dalle2
         response = client.images.generate(

@@ -4,7 +4,7 @@ class ToolProviderNotFoundError(ValueError):
 class ToolNotFoundError(ValueError):
     pass
 
-class ToolParamterValidationError(ValueError):
+class ToolParameterValidationError(ValueError):
     pass
 
 class ToolProviderCredentialValidationError(ValueError):

@@ -2,16 +2,14 @@ import json
 from enum import Enum
 from typing import List
 
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy import ForeignKey
-
-from extensions.ext_database import db
-
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolRuntimeVariablePool
+from extensions.ext_database import db
+from models.model import Account, App, Tenant
+from sqlalchemy import ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 
-from models.model import Tenant, Account, App
 
 class BuiltinToolProvider(db.Model):
     """
@@ -100,7 +98,7 @@ class ApiToolProvider(db.Model):
     schema_type_str = db.Column(db.String(40), nullable=False)
     # who created this tool
     user_id = db.Column(UUID, nullable=False)
-    # tanent id
+    # tenant id
     tenant_id = db.Column(UUID, nullable=False)
     # description of the provider
     description = db.Column(db.Text, nullable=False)
@@ -135,7 +133,7 @@ class ApiToolProvider(db.Model):
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property
-    def tanent(self) -> Tenant:
+    def tenant(self) -> Tenant:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
     
 class ToolModelInvoke(db.Model):
@@ -150,7 +148,7 @@ class ToolModelInvoke(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     # who invoke this tool
     user_id = db.Column(UUID, nullable=False)
-    # tanent id
+    # tenant id
     tenant_id = db.Column(UUID, nullable=False)
     # provider
     provider = db.Column(db.String(40), nullable=False)
@@ -190,7 +188,7 @@ class ToolConversationVariables(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     # conversation user id
     user_id = db.Column(UUID, nullable=False)
-    # tanent id
+    # tenant id
     tenant_id = db.Column(UUID, nullable=False)
     # conversation id
     conversation_id = db.Column(UUID, nullable=False)
@@ -218,7 +216,7 @@ class ToolFile(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     # conversation user id
     user_id = db.Column(UUID, nullable=False)
-    # tanent id
+    # tenant id
     tenant_id = db.Column(UUID, nullable=False)
     # conversation id
     conversation_id = db.Column(UUID, nullable=False)

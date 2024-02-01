@@ -2,6 +2,7 @@
 from datetime import datetime
 
 import pytz
+from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.workspace.error import (AccountAlreadyInitedError, CurrentPasswordIncorrectError,
@@ -12,7 +13,6 @@ from flask import current_app, request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
 from libs.helper import TimestampField, timezone
-from constants.languages import supported_language
 from libs.login import login_required
 from models.account import AccountIntegrate, InvitationCode
 from services.account_service import AccountService

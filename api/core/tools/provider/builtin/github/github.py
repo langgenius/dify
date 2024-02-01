@@ -1,6 +1,6 @@
 import requests
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
 class GihubProvider(BuiltinToolProviderController):

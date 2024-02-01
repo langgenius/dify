@@ -7,10 +7,14 @@ import subprocess
 import tempfile
 import unicodedata
 from contextlib import contextmanager
-from typing import Type, Any
+from typing import Any, Type
 
 import requests
-from bs4 import BeautifulSoup, NavigableString, Comment, CData
+from bs4 import BeautifulSoup, CData, Comment, NavigableString
+from core.chain.llm_chain import LLMChain
+from core.data_loader import file_extractor
+from core.data_loader.file_extractor import FileExtractor
+from core.entities.application_entities import ModelConfigEntity
 from langchain.chains import RefineDocumentsChain
 from langchain.chains.summarize import refine_prompts
 from langchain.schema import Document
@@ -19,11 +23,6 @@ from langchain.tools.base import BaseTool
 from newspaper import Article
 from pydantic import BaseModel, Field
 from regex import regex
-
-from core.chain.llm_chain import LLMChain
-from core.data_loader import file_extractor
-from core.data_loader.file_extractor import FileExtractor
-from core.entities.application_entities import ModelConfigEntity
 
 FULL_TEMPLATE = """
 TITLE: {title}

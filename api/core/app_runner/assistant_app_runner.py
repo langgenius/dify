@@ -3,11 +3,10 @@ import logging
 from typing import cast
 
 from core.app_runner.app_runner import AppRunner
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
+from core.entities.application_entities import AgentEntity, ApplicationGenerateEntity, ModelConfigEntity
 from core.features.assistant_cot_runner import AssistantCotApplicationRunner
 from core.features.assistant_fc_runner import AssistantFunctionCallApplicationRunner
-from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
-    AgentEntity
-from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -16,7 +15,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
-from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
+from models.model import App, Conversation, Message, MessageAgentThought, MessageChain
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
@@ -170,7 +169,7 @@ class AssistantApplicationRunner(AppRunner):
         # load tool variables
         tool_conversation_variables = self._load_tool_variables(conversation_id=conversation.id,
                                                    user_id=application_generate_entity.user_id,
-                                                   tanent_id=application_generate_entity.tenant_id)
+                                                   tenant_id=application_generate_entity.tenant_id)
 
         # convert db variables to tool variables
         tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
@@ -199,7 +198,7 @@ class AssistantApplicationRunner(AppRunner):
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
-        if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features):
+        if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
         # start agent runner
@@ -254,13 +253,13 @@ class AssistantApplicationRunner(AppRunner):
             agent=True
         )
 
-    def _load_tool_variables(self, conversation_id: str, user_id: str, tanent_id: str) -> ToolConversationVariables:
+    def _load_tool_variables(self, conversation_id: str, user_id: str, tenant_id: str) -> ToolConversationVariables:
         """
         load tool variables from database
         """
         tool_variables: ToolConversationVariables = db.session.query(ToolConversationVariables).filter(
             ToolConversationVariables.conversation_id == conversation_id,
-            ToolConversationVariables.tenant_id == tanent_id
+            ToolConversationVariables.tenant_id == tenant_id
         ).first()
 
         if tool_variables:
@@ -271,7 +270,7 @@ class AssistantApplicationRunner(AppRunner):
             tool_variables = ToolConversationVariables(
                 conversation_id=conversation_id,
                 user_id=user_id,
-                tenant_id=tanent_id,
+                tenant_id=tenant_id,
                 variables_str='[]',
             )
             db.session.add(tool_variables)

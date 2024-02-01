@@ -1,12 +1,11 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
-from pydantic import BaseModel, Field
-
 from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 from langchain import WikipediaAPIWrapper
 from langchain.tools import WikipediaQueryRun
+from pydantic import BaseModel, Field
+
 
 class WikipediaInput(BaseModel):
     query: str = Field(..., description="search query.")
@@ -14,12 +13,12 @@ class WikipediaInput(BaseModel):
 class WikiPediaSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        query = tool_paramters.get('query', '')
+        query = tool_parameters.get('query', '')
         if not query:
             return self.create_text_message('Please input query')
         

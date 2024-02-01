@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union, cast
+from typing import Any, Dict, List, Optional, Union, cast
 
 from core.tools.entities.common_entities import I18nObject
+from pydantic import BaseModel, Field
+
 
 class ToolProviderType(Enum):
     """
@@ -88,11 +89,11 @@ class ToolInvokeMessageBinary(BaseModel):
     url: str = Field(..., description="The url of the binary")
     save_as: str = ''
 
-class ToolParamterOption(BaseModel):
+class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
-class ToolParamter(BaseModel):
+class ToolParameter(BaseModel):
     class ToolParameterType(Enum):
         STRING = "string"
         NUMBER = "number"
@@ -114,12 +115,12 @@ class ToolParamter(BaseModel):
     default: Optional[str] = None
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
-    options: Optional[List[ToolParamterOption]] = None
+    options: Optional[List[ToolParameterOption]] = None
 
     @classmethod
     def get_simple_instance(cls, 
                        name: str, llm_description: str, type: ToolParameterType, 
-                       required: bool, options: Optional[List[str]] = None) -> 'ToolParamter':
+                       required: bool, options: Optional[List[str]] = None) -> 'ToolParameter':
         """
             get a simple tool parameter
 
@@ -129,9 +130,9 @@ class ToolParamter(BaseModel):
             :param required: if the parameter is required
             :param options: the options of the parameter
         """
-        # convert options to ToolParamterOption
+        # convert options to ToolParameterOption
         if options:
-            options = [ToolParamterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
+            options = [ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
         return cls(
             name=name,
             label=I18nObject(en_US='', zh_Hans=''),
@@ -183,7 +184,7 @@ class ToolProviderCredentials(BaseModel):
             raise ValueError(f'invalid mode value {value}')
         
         @staticmethod
-        def defaut(value: str) -> str:
+        def default(value: str) -> str:
             return ""
 
     name: str = Field(..., description="The name of the credentials")

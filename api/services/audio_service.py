@@ -3,11 +3,9 @@ from typing import Optional
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from services.errors.audio import (AudioTooLargeServiceError,
-                                   NoAudioUploadedServiceError,
-                                   ProviderNotSupportTextToSpeechServiceError,
+from services.errors.audio import (AudioTooLargeServiceError, NoAudioUploadedServiceError,
                                    ProviderNotSupportSpeechToTextServiceError,
-                                   UnsupportedAudioTypeServiceError)
+                                   ProviderNotSupportTextToSpeechServiceError, UnsupportedAudioTypeServiceError)
 from werkzeug.datastructures import FileStorage
 
 FILE_SIZE = 15

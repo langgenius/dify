@@ -1,7 +1,7 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
-
 from core.tools.provider.builtin.youtube.tools.videos import YoutubeVideosAnalyticsTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+
 
 class YahooFinanceProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
@@ -12,7 +12,7 @@ class YahooFinanceProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "channel": "TOKYO GIRLS COLLECTION",
                     "start_date": "2020-01-01",
                     "end_date": "2024-12-31",

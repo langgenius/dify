@@ -1,14 +1,15 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-import matplotlib.pyplot as plt
 import io
-
 from typing import Any, Dict, List, Union
 
+import matplotlib.pyplot as plt
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
+
 class BarChartTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
           -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
-        data = tool_paramters.get('data', '')
+        data = tool_parameters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')
         data = data.split(';')
@@ -19,7 +20,7 @@ class BarChartTool(BuiltinTool):
         else:
             data = [float(i) for i in data]
 
-        axis = tool_paramters.get('x_axis', None) or None
+        axis = tool_parameters.get('x_axis', None) or None
         if axis:
             axis = axis.split(';')
             if len(axis) != len(data):

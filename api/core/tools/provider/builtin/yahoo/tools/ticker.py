@@ -1,18 +1,18 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
 from typing import Any, Dict, List, Union
-from requests.exceptions import HTTPError, ReadTimeout
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+from requests.exceptions import HTTPError, ReadTimeout
 from yfinance import Ticker
 
+
 class YahooFinanceSearchTickerTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
           -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        query = tool_paramters.get('symbol', '')
+        query = tool_parameters.get('symbol', '')
         if not query:
             return self.create_text_message('Please input symbol')
         

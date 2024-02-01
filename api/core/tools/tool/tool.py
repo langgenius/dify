@@ -1,17 +1,17 @@
+from abc import ABC, abstractmethod
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.tools.entities.tool_entities import (ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter,
+                                               ToolRuntimeImageVariable, ToolRuntimeVariable, ToolRuntimeVariablePool)
+from core.tools.tool_file_manager import ToolFileManager
 from pydantic import BaseModel
 
-from typing import List, Dict, Any, Union, Optional
-from abc import abstractmethod, ABC
-from enum import Enum
-
-from core.tools.entities.tool_entities import ToolIdentity, ToolInvokeMessage,\
-    ToolParamter, ToolDescription, ToolRuntimeVariablePool, ToolRuntimeVariable, ToolRuntimeImageVariable
-from core.tools.tool_file_manager import ToolFileManager
-from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 
 class Tool(BaseModel, ABC):
     identity: ToolIdentity = None
-    parameters: Optional[List[ToolParamter]] = None
+    parameters: Optional[List[ToolParameter]] = None
     description: ToolDescription = None
     is_team_authorization: bool = False
     agent_callback: Optional[DifyAgentCallbackHandler] = None
@@ -166,22 +166,22 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> List[ToolInvokeMessage]:
-        # update tool_paramters
+    def invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> List[ToolInvokeMessage]:
+        # update tool_parameters
         if self.runtime.runtime_parameters:
-            tool_paramters.update(self.runtime.runtime_parameters)
+            tool_parameters.update(self.runtime.runtime_parameters)
 
         # hit callback
         if self.use_callback:
             self.agent_callback.on_tool_start(
                 tool_name=self.identity.name,
-                tool_inputs=tool_paramters
+                tool_inputs=tool_parameters
             )
 
         try:
             result = self._invoke(
                 user_id=user_id,
-                tool_paramters=tool_paramters,
+                tool_parameters=tool_parameters,
             )
         except Exception as e:
             if self.use_callback:
@@ -195,7 +195,7 @@ class Tool(BaseModel, ABC):
         if self.use_callback:
             self.agent_callback.on_tool_end(
                 tool_name=self.identity.name,
-                tool_inputs=tool_paramters,
+                tool_inputs=tool_parameters,
                 tool_outputs=self._convert_tool_response_to_str(result)
             )
         
@@ -210,7 +210,7 @@ class Tool(BaseModel, ABC):
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please dirct user to check it."
+                result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
                 result += f"image has been created and sent to user already, you should tell user to check it now."
@@ -225,7 +225,7 @@ class Tool(BaseModel, ABC):
         return result
 
     @abstractmethod
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         pass
     
     def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any]) -> None:
@@ -237,7 +237,7 @@ class Tool(BaseModel, ABC):
         """
         pass
 
-    def get_runtime_parameters(self) -> List[ToolParamter]:
+    def get_runtime_parameters(self) -> List[ToolParameter]:
         """
             get the runtime parameters
 
@@ -247,11 +247,11 @@ class Tool(BaseModel, ABC):
         """
         return self.parameters
     
-    def is_tool_avaliable(self) -> bool:
+    def is_tool_available(self) -> bool:
         """
-            check if the tool is avaliable
+            check if the tool is available
 
-            :return: if the tool is avaliable
+            :return: if the tool is available
         """
         return True
 

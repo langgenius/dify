@@ -1,13 +1,14 @@
-from typing import Any, Dict, List, Union
+import json
 from json import dumps
-
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.tool import Tool
-from core.tools.errors import ToolProviderCredentialValidationError
+from typing import Any, Dict, List, Union
 
 import httpx
 import requests
+from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.tool.tool import Tool
+
 
 class ApiTool(Tool):
     api_bundle: ApiBasedToolBundle
@@ -79,11 +80,29 @@ class ApiTool(Tool):
         if isinstance(response, httpx.Response):
             if response.status_code >= 400:
                 raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
-            return response.text
+            if not response.content:
+                return 'Empty response from the tool, please check your parameters and try again.'
+            try:
+                response = response.json()
+                try:
+                    return json.dumps(response, ensure_ascii=False)
+                except Exception as e:
+                    return json.dumps(response)
+            except Exception as e:
+                return response.text
         elif isinstance(response, requests.Response):
             if not response.ok:
                 raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
-            return response.text
+            if not response.content:
+                return 'Empty response from the tool, please check your parameters and try again.'
+            try:
+                response = response.json()
+                try:
+                    return json.dumps(response, ensure_ascii=False)
+                except Exception as e:
+                    return json.dumps(response)
+            except Exception as e:
+                return response.text
         else:
             raise ValueError(f'Invalid response type {type(response)}')
     
@@ -204,15 +223,15 @@ class ApiTool(Tool):
         
         return response
 
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
         """
         invoke http request
         """
         # assemble request
-        headers = self.assembling_request(tool_paramters)
+        headers = self.assembling_request(tool_parameters)
 
         # do http request
-        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_paramters)
+        response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, tool_parameters)
 
         # validate response
         response = self.validate_and_parse_response(response)

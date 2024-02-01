@@ -52,6 +52,8 @@ const translation = {
   activatedTipStart: '您已加入',
   activatedTipEnd: '团队',
   activated: '现在登录',
+  adminInitPassword: '管理员初始化密码',
+  validate: '验证',
 }
 
 export default translation

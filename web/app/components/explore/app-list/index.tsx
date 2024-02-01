@@ -38,8 +38,10 @@ const Apps: FC = () => {
   useEffect(() => {
     (async () => {
       const { categories, recommended_apps }: any = await fetchAppList()
+      const sortedRecommendedApps = [...recommended_apps]
+      sortedRecommendedApps.sort((a, b) => a.position - b.position) // position from small to big
       setCategories(categories)
-      setAllList(recommended_apps)
+      setAllList(sortedRecommendedApps)
       setIsLoaded(true)
     })()
   }, [])

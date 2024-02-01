@@ -1,37 +1,32 @@
-import logging
 import json
-
-from typing import Optional, List, Tuple, Union, cast
+import logging
 from datetime import datetime
 from mimetypes import guess_extension
+from typing import List, Optional, Tuple, Union, cast
 
 from core.app_runner.app_runner import AppRunner
-from extensions.ext_database import db
-
-from models.model import MessageAgentThought, Message, MessageFile
-from models.tools import ToolConversationVariables
-
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, \
-    ToolRuntimeVariablePool, ToolParamter
-from core.tools.tool.tool import Tool
-from core.tools.tool_manager import ToolManager
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
-from core.app_runner.app_runner import AppRunner
+from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import ModelConfigEntity, AgentEntity, AgentToolEntity
-from core.application_queue_manager import ApplicationQueueManager
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.entities.application_entities import ModelConfigEntity, \
-    AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelFeature
-from core.model_runtime.utils.encoders import jsonable_encoder
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_manager import ModelInstance
+from core.entities.application_entities import (AgentEntity, AgentToolEntity, ApplicationGenerateEntity,
+                                                AppOrchestrationConfigEntity, InvokeFrom, ModelConfigEntity)
 from core.file.message_file_parser import FileTransferMethod
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.model_entities import ModelFeature
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.entities.tool_entities import (ToolInvokeMessage, ToolInvokeMessageBinary, ToolParameter,
+                                               ToolRuntimeVariablePool)
+from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.tool.tool import Tool
+from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
+from extensions.ext_database import db
+from models.model import Message, MessageAgentThought, MessageFile
+from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
@@ -108,9 +103,9 @@ class BaseAssistantApplicationRunner(AppRunner):
         else:
             self.stream_tool_call = False
 
-    def _repacket_app_orchestration_config(self, app_orchestration_config: AppOrchestrationConfigEntity) -> AppOrchestrationConfigEntity:
+    def _repack_app_orchestration_config(self, app_orchestration_config: AppOrchestrationConfigEntity) -> AppOrchestrationConfigEntity:
         """
-        Repacket app orchestration config
+        Repack app orchestration config
         """
         if app_orchestration_config.prompt_template.simple_prompt_template is None:
             app_orchestration_config.prompt_template.simple_prompt_template = ''
@@ -126,7 +121,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please dirct user to check it."
+                result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
                 result += f"image has been created and sent to user already, you should tell user to check it now."
@@ -141,7 +136,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         """
         tool_entity = ToolManager.get_tool_runtime(
             provider_type=tool.provider_type, provider_name=tool.provider_id, tool_name=tool.tool_name, 
-            tanent_id=self.application_generate_entity.tenant_id,
+            tenant_id=self.application_generate_entity.tenant_id,
             agent_callback=self.agent_callback
         )
         tool_entity.load_variables(self.variables_pool)
@@ -185,20 +180,20 @@ class BaseAssistantApplicationRunner(AppRunner):
         for parameter in parameters:
             parameter_type = 'string'
             enum = []
-            if parameter.type == ToolParamter.ToolParameterType.STRING:
+            if parameter.type == ToolParameter.ToolParameterType.STRING:
                 parameter_type = 'string'
-            elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+            elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
                 parameter_type = 'boolean'
-            elif parameter.type == ToolParamter.ToolParameterType.NUMBER:
+            elif parameter.type == ToolParameter.ToolParameterType.NUMBER:
                 parameter_type = 'number'
-            elif parameter.type == ToolParamter.ToolParameterType.SELECT:
+            elif parameter.type == ToolParameter.ToolParameterType.SELECT:
                 for option in parameter.options:
                     enum.append(option.value)
                 parameter_type = 'string'
             else:
                 raise ValueError(f"parameter type {parameter.type} is not supported")
             
-            if parameter.form == ToolParamter.ToolParameterForm.FORM:
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 # get tool parameter from form
                 tool_parameter_config = tool.tool_parameters.get(parameter.name)
                 if not tool_parameter_config:
@@ -207,7 +202,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                     if not tool_parameter_config and parameter.required:
                         raise ValueError(f"tool parameter {parameter.name} not found in tool config")
                     
-                if parameter.type == ToolParamter.ToolParameterType.SELECT:
+                if parameter.type == ToolParameter.ToolParameterType.SELECT:
                     # check if tool_parameter_config in options
                     options = list(map(lambda x: x.value, parameter.options))
                     if tool_parameter_config not in options:
@@ -215,7 +210,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                     
                 # convert tool parameter config to correct type
                 try:
-                    if parameter.type == ToolParamter.ToolParameterType.NUMBER:
+                    if parameter.type == ToolParameter.ToolParameterType.NUMBER:
                         # check if tool parameter is integer
                         if isinstance(tool_parameter_config, int):
                             tool_parameter_config = tool_parameter_config
@@ -226,11 +221,11 @@ class BaseAssistantApplicationRunner(AppRunner):
                                 tool_parameter_config = float(tool_parameter_config)
                             else:
                                 tool_parameter_config = int(tool_parameter_config)
-                    elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+                    elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
                         tool_parameter_config = bool(tool_parameter_config)
-                    elif parameter.type not in [ToolParamter.ToolParameterType.SELECT, ToolParamter.ToolParameterType.STRING]:
+                    elif parameter.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
                         tool_parameter_config = str(tool_parameter_config)
-                    elif parameter.type == ToolParamter.ToolParameterType:
+                    elif parameter.type == ToolParameter.ToolParameterType:
                         tool_parameter_config = str(tool_parameter_config)
                 except Exception as e:
                     raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} is not correct type")
@@ -238,7 +233,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                 # save tool parameter to tool entity memory
                 runtime_parameters[parameter.name] = tool_parameter_config
             
-            elif parameter.form == ToolParamter.ToolParameterForm.LLM:
+            elif parameter.form == ToolParameter.ToolParameterForm.LLM:
                 message_tool.parameters['properties'][parameter.name] = {
                     "type": parameter_type,
                     "description": parameter.llm_description or '',
@@ -292,20 +287,20 @@ class BaseAssistantApplicationRunner(AppRunner):
         for parameter in tool_runtime_parameters:
             parameter_type = 'string'
             enum = []
-            if parameter.type == ToolParamter.ToolParameterType.STRING:
+            if parameter.type == ToolParameter.ToolParameterType.STRING:
                 parameter_type = 'string'
-            elif parameter.type == ToolParamter.ToolParameterType.BOOLEAN:
+            elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
                 parameter_type = 'boolean'
-            elif parameter.type == ToolParamter.ToolParameterType.NUMBER:
+            elif parameter.type == ToolParameter.ToolParameterType.NUMBER:
                 parameter_type = 'number'
-            elif parameter.type == ToolParamter.ToolParameterType.SELECT:
+            elif parameter.type == ToolParameter.ToolParameterType.SELECT:
                 for option in parameter.options:
                     enum.append(option.value)
                 parameter_type = 'string'
             else:
                 raise ValueError(f"parameter type {parameter.type} is not supported")
         
-            if parameter.form == ToolParamter.ToolParameterForm.LLM:
+            if parameter.form == ToolParameter.ToolParameterForm.LLM:
                 prompt_tool.parameters['properties'][parameter.name] = {
                     "type": parameter_type,
                     "description": parameter.llm_description or '',

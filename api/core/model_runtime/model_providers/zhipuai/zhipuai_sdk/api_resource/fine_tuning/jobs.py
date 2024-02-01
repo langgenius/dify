@@ -1,20 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
 from ...core._base_api import BaseAPI
 from ...core._base_type import NOT_GIVEN, Headers, NotGiven
-from ...core._http_client import (
-    make_user_request_input,
-)
-from ...types.fine_tuning import (
-    FineTuningJob,
-    job_create_params,
-    ListOfFineTuningJob,
-    FineTuningJobEvent,
-)
+from ...core._http_client import make_user_request_input
+from ...types.fine_tuning import FineTuningJob, FineTuningJobEvent, ListOfFineTuningJob, job_create_params
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI

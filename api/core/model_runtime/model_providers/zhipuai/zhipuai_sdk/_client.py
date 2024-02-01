@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from typing import Union, Mapping
-
-from typing_extensions import override
-
-from .core import _jwt_token
-from .core._errors import ZhipuAIError
-from .core._http_client import HttpClient, ZHIPUAI_DEFAULT_MAX_RETRIES
-from .core._base_type import NotGiven, NOT_GIVEN
-from . import api_resource
 import os
+from typing import Mapping, Union
+
 import httpx
 from httpx import Timeout
+from typing_extensions import override
+
+from . import api_resource
+from .core import _jwt_token
+from .core._base_type import NOT_GIVEN, NotGiven
+from .core._errors import ZhipuAIError
+from .core._http_client import ZHIPUAI_DEFAULT_MAX_RETRIES, HttpClient
 
 
 class ZhipuAI(HttpClient):

@@ -4,6 +4,7 @@ import pytest
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.bedrock.bedrock import BedrockProvider
 
+
 def test_validate_provider_credentials():
     provider = BedrockProvider()
 

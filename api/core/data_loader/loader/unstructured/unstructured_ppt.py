@@ -1,5 +1,6 @@
 import logging
 from typing import List
+
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
 
