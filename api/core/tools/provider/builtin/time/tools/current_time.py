@@ -19,8 +19,6 @@ class CurrentTimeTool(BuiltinTool):
         if tz == 'UTC':
             return self.create_text_message(f'{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")}')
 
-        # get timezone
-        # convert to timezone
         try:
             tz = pytz_timezone(tz)
         except:

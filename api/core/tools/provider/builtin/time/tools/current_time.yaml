@@ -14,7 +14,7 @@ description:
 parameters:
   - name: timezone
     type: select
-    required: true
+    required: false
     label:
       en_US: Timezone
       zh_Hans: 时区
