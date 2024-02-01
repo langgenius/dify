@@ -381,7 +381,7 @@ const Configuration: FC = () => {
 
   useEffect(() => {
     (async () => {
-      const collectionList = await fetchCollectionList() as Collection[]
+      const collectionList = await fetchCollectionList()
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
