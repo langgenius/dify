@@ -1,0 +1,46 @@
+identity:
+  author: CharlieWei
+  name: github
+  label:
+    en_US: Github
+    zh_Hans: Github
+    pt_BR: Github
+  description:
+    en_US: GitHub is an online software source code hosting service.
+    zh_Hans: GitHub是一个在线软件源代码托管服务平台。
+    pt_BR: GitHub é uma plataforma online para serviços de hospedagem de código fonte de software.
+  icon: icon.png
+credentials_for_provider:
+  access_tokens:
+    type: secret-input
+    required: true
+    label:
+      en_US: Access Tokens
+      zh_Hans: Access Tokens
+      pt_BR: Tokens de acesso
+    placeholder:
+      en_US: Please input your Github Access Tokens
+      zh_Hans: 请输入你的 Github Access Tokens
+      pt_BR: Insira seus Tokens de Acesso do Github
+    help:
+      en_US: Get your Access Tokens from Github
+      zh_Hans: 从 Github 获取您的 Access Tokens
+      pt_BR: Obtenha sua chave da API do Google no Google
+    url: https://github.com/settings/tokens?type=beta
+  api_version:
+    type: text-input
+    required: false
+    default: '2022-11-28'
+    label:
+      en_US: API Version
+      zh_Hans: API Version
+      pt_BR: Versão da API
+    placeholder:
+      en_US: Please input your Github API Version
+      zh_Hans: 请输入你的 Github API Version
+      pt_BR: Insira sua versão da API do Github
+    help:
+      en_US: Get your API Version from Github
+      zh_Hans: 从 Github 获取您的 API Version
+      pt_BR: Obtenha sua versão da API do Github
+    url: https://docs.github.com/en/rest/about-the-rest-api/api-versions?apiVersion=2022-11-28

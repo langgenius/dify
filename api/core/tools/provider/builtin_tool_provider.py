@@ -5,13 +5,13 @@ from os import path, listdir
 from yaml import load, FullLoader
 
 from core.tools.entities.tool_entities import ToolProviderType, \
-      ToolParamter, ToolProviderCredentials
+      ToolParameter, ToolProviderCredentials
 from core.tools.tool.tool import Tool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError, \
-    ToolParamterValidationError, ToolProviderCredentialValidationError
+    ToolParameterValidationError, ToolProviderCredentialValidationError
 
 import importlib
 
@@ -40,7 +40,7 @@ class BuiltinToolProviderController(ToolProviderController):
             'credentials_schema': provider_yaml['credentials_for_provider'] if 'credentials_for_provider' in provider_yaml else None,
         })
 
-    def _get_bulitin_tools(self) -> List[Tool]:
+    def _get_builtin_tools(self) -> List[Tool]:
         """
             returns a list of tools that the provider can provide
 
@@ -101,7 +101,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: list of tools
         """
-        return self._get_bulitin_tools()
+        return self._get_builtin_tools()
     
     def get_tool(self, tool_name: str) -> Tool:
         """
@@ -109,7 +109,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return next(filter(lambda x: x.identity.name == tool_name, self.get_tools()), None)
 
-    def get_parameters(self, tool_name: str) -> List[ToolParamter]:
+    def get_parameters(self, tool_name: str) -> List[ToolParameter]:
         """
             returns the parameters of the tool
 
@@ -148,62 +148,62 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         tool_parameters_schema = self.get_parameters(tool_name)
         
-        tool_parameters_need_to_validate: Dict[str, ToolParamter] = {}
+        tool_parameters_need_to_validate: Dict[str, ToolParameter] = {}
         for parameter in tool_parameters_schema:
             tool_parameters_need_to_validate[parameter.name] = parameter
 
         for parameter in tool_parameters:
             if parameter not in tool_parameters_need_to_validate:
-                raise ToolParamterValidationError(f'parameter {parameter} not found in tool {tool_name}')
+                raise ToolParameterValidationError(f'parameter {parameter} not found in tool {tool_name}')
             
             # check type
             parameter_schema = tool_parameters_need_to_validate[parameter]
-            if parameter_schema.type == ToolParamter.ToolParameterType.STRING:
+            if parameter_schema.type == ToolParameter.ToolParameterType.STRING:
                 if not isinstance(tool_parameters[parameter], str):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be string')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be string')
             
-            elif parameter_schema.type == ToolParamter.ToolParameterType.NUMBER:
+            elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
                 if not isinstance(tool_parameters[parameter], (int, float)):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be number')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be number')
                 
                 if parameter_schema.min is not None and tool_parameters[parameter] < parameter_schema.min:
-                    raise ToolParamterValidationError(f'parameter {parameter} should be greater than {parameter_schema.min}')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be greater than {parameter_schema.min}')
                 
                 if parameter_schema.max is not None and tool_parameters[parameter] > parameter_schema.max:
-                    raise ToolParamterValidationError(f'parameter {parameter} should be less than {parameter_schema.max}')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be less than {parameter_schema.max}')
                 
-            elif parameter_schema.type == ToolParamter.ToolParameterType.BOOLEAN:
+            elif parameter_schema.type == ToolParameter.ToolParameterType.BOOLEAN:
                 if not isinstance(tool_parameters[parameter], bool):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be boolean')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be boolean')
                 
-            elif parameter_schema.type == ToolParamter.ToolParameterType.SELECT:
+            elif parameter_schema.type == ToolParameter.ToolParameterType.SELECT:
                 if not isinstance(tool_parameters[parameter], str):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be string')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be string')
                 
                 options = parameter_schema.options
                 if not isinstance(options, list):
-                    raise ToolParamterValidationError(f'parameter {parameter} options should be list')
+                    raise ToolParameterValidationError(f'parameter {parameter} options should be list')
                 
                 if tool_parameters[parameter] not in [x.value for x in options]:
-                    raise ToolParamterValidationError(f'parameter {parameter} should be one of {options}')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be one of {options}')
                 
             tool_parameters_need_to_validate.pop(parameter)
 
         for parameter in tool_parameters_need_to_validate:
             parameter_schema = tool_parameters_need_to_validate[parameter]
             if parameter_schema.required:
-                raise ToolParamterValidationError(f'parameter {parameter} is required')
+                raise ToolParameterValidationError(f'parameter {parameter} is required')
             
             # the parameter is not set currently, set the default value if needed
             if parameter_schema.default is not None:
                 default_value = parameter_schema.default
                 # parse default value into the correct type
-                if parameter_schema.type == ToolParamter.ToolParameterType.STRING or \
-                    parameter_schema.type == ToolParamter.ToolParameterType.SELECT:
+                if parameter_schema.type == ToolParameter.ToolParameterType.STRING or \
+                    parameter_schema.type == ToolParameter.ToolParameterType.SELECT:
                     default_value = str(default_value)
-                elif parameter_schema.type == ToolParamter.ToolParameterType.NUMBER:
+                elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
                     default_value = float(default_value)
-                elif parameter_schema.type == ToolParamter.ToolParameterType.BOOLEAN:
+                elif parameter_schema.type == ToolParameter.ToolParameterType.BOOLEAN:
                     default_value = bool(default_value)
 
                 tool_parameters[parameter] = default_value
@@ -231,25 +231,26 @@ class BuiltinToolProviderController(ToolProviderController):
             if credential_schema == ToolProviderCredentials.CredentialsType.SECRET_INPUT or \
                 credential_schema == ToolProviderCredentials.CredentialsType.TEXT_INPUT:
                 if not isinstance(credentials[credential_name], str):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be string')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be string')
             
             elif credential_schema.type == ToolProviderCredentials.CredentialsType.SELECT:
                 if not isinstance(credentials[credential_name], str):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be string')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be string')
                 
                 options = credential_schema.options
                 if not isinstance(options, list):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} options should be list')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} options should be list')
                 
                 if credentials[credential_name] not in [x.value for x in options]:
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be one of {options}')
-                
-            credentials_need_to_validate.pop(credential_name)
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be one of {options}')
+            
+            if credentials[credential_name]:
+                credentials_need_to_validate.pop(credential_name)
 
         for credential_name in credentials_need_to_validate:
             credential_schema = credentials_need_to_validate[credential_name]
             if credential_schema.required:
-                raise ToolProviderCredentialValidationError(f'credential {credential_name} is required')
+                raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} is required')
             
             # the credential is not set currently, set the default value if needed
             if credential_schema.default is not None:

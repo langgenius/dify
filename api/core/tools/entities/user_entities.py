@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderCredentials
-from core.tools.tool.tool import ToolParamter
+from core.tools.tool.tool import ToolParameter
 
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):
@@ -45,4 +45,4 @@ class UserTool(BaseModel):
     name: str # identifier
     label: I18nObject # label
     description: I18nObject
-    parameters: Optional[List[ToolParamter]]
+    parameters: Optional[List[ToolParameter]]

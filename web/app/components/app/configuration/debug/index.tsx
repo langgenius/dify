@@ -2,29 +2,27 @@
 import type { FC } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
-import produce, { setAutoFreeze } from 'immer'
-import { useBoolean, useGetState } from 'ahooks'
+import React, { useCallback, useEffect, useState } from 'react'
+import { setAutoFreeze } from 'immer'
+import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import dayjs from 'dayjs'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
 import DebugWithMultipleModel from './debug-with-multiple-model'
+import DebugWithSingleModel from './debug-with-single-model'
+import type { DebugWithSingleModelRefType } from './debug-with-single-model'
 import type { ModelAndParameter } from './types'
 import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from './types'
-import { AgentStrategy, AppType, ModelModeType, TransferMethod } from '@/types/app'
-import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
-import type { IChatItem } from '@/app/components/app/chat/type'
-import Chat from '@/app/components/app/chat'
+import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
-import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage, stopChatMessageResponding } from '@/service/debug'
+import { sendCompletionMessage } from '@/service/debug'
 import Button from '@/app/components/base/button'
 import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
@@ -32,7 +30,6 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
-import type { Annotation as AnnotationType } from '@/models/log'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -63,8 +60,6 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
-    isFunctionCall,
-    collectionList,
     modelModeType,
     hasSetBlockStatus,
     isAdvancedMode,
@@ -72,7 +67,6 @@ const Debug: FC<IDebug> = ({
     chatPromptConfig,
     completionPromptConfig,
     introduction,
-    suggestedQuestions,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
     textToSpeechConfig,
@@ -81,79 +75,36 @@ const Debug: FC<IDebug> = ({
     moreLikeThisConfig,
     formattingChanged,
     setFormattingChanged,
-    conversationId,
-    setConversationId,
-    controlClearChatMessage,
     dataSets,
     modelConfig,
     completionParams,
     hasSetContextVar,
     datasetConfigs,
     visionConfig,
-    annotationConfig,
     setVisionConfig,
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
-  const { data: speech2textDefaultModel } = useDefaultModel(4)
   const { data: text2speechDefaultModel } = useDefaultModel(5)
-  const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
-  const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
-  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
       setAutoFreeze(true)
     }
   }, [])
-  useEffect(() => {
-    // scroll to bottom
-    if (chatListDomRef.current)
-      chatListDomRef.current.scrollTop = chatListDomRef.current.scrollHeight
-  }, [chatList])
-
-  const getIntroduction = () => replaceStringWithValues(introduction, modelConfig.configs.prompt_variables, inputs)
-  useEffect(() => {
-    if (introduction && !chatList.some(item => !item.isAnswer)) {
-      setChatList([{
-        id: `${Date.now()}`,
-        content: getIntroduction(),
-        isAnswer: true,
-        isOpeningStatement: true,
-        suggestedQuestions,
-      }])
-    }
-  }, [introduction, suggestedQuestions, modelConfig.configs.prompt_variables, inputs])
 
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
   const [isShowCannotQueryDataset, setShowCannotQueryDataset] = useState(false)
-  const [isShowSuggestion, setIsShowSuggestion] = useState(false)
-  const [messageTaskId, setMessageTaskId] = useState('')
-  const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
 
   useEffect(() => {
-    if (formattingChanged && chatList.some(item => !item.isAnswer))
+    if (formattingChanged)
       setIsShowFormattingChangeConfirm(true)
-
-    setFormattingChanged(false)
   }, [formattingChanged])
 
+  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType | null>(null)
   const handleClearConversation = () => {
-    setConversationId(null)
-    abortController?.abort()
-    setResponsingFalse()
-    setChatList(introduction
-      ? [{
-        id: `${Date.now()}`,
-        content: getIntroduction(),
-        isAnswer: true,
-        isOpeningStatement: true,
-        suggestedQuestions,
-      }]
-      : [])
-    setIsShowSuggestion(false)
+    debugWithSingleModelRef.current?.handleRestart()
   }
   const clearConversation = async () => {
     if (debugWithMultipleModel) {
@@ -169,18 +120,21 @@ const Debug: FC<IDebug> = ({
   const handleConfirm = () => {
     clearConversation()
     setIsShowFormattingChangeConfirm(false)
+    setFormattingChanged(false)
   }
 
   const handleCancel = () => {
     setIsShowFormattingChangeConfirm(false)
+    setFormattingChanged(false)
   }
 
   const { notify } = useContext(ToastContext)
-  const logError = (message: string) => {
+  const logError = useCallback((message: string) => {
     notify({ type: 'error', message })
-  }
+  }, [notify])
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
-  const checkCanSend = () => {
+  const checkCanSend = useCallback(() => {
     if (isAdvancedMode && mode === AppType.chat) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
@@ -214,319 +168,28 @@ const Debug: FC<IDebug> = ({
       return false
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
       return false
     }
     return !hasEmptyInput
-  }
-
-  const doShowSuggestion = isShowSuggestion && !isResponsing
-  const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
-  const [userQuery, setUserQuery] = useState('')
-  const onSend = async (message: string, files?: VisionFile[]) => {
-    if (isResponsing) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
-      return false
-    }
-
-    if (files?.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
-      return false
-    }
-
-    const postDatasets = dataSets.map(({ id }) => ({
-      dataset: {
-        enabled: true,
-        id,
-      },
-    }))
-    const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
-    const updateCurrentQA = ({
-      responseItem,
-      questionId,
-      placeholderAnswerId,
-      questionItem,
-    }: {
-      responseItem: IChatItem
-      questionId: string
-      placeholderAnswerId: string
-      questionItem: IChatItem
-    }) => {
-      // closesure new list is outdated.
-      const newListWithAnswer = produce(
-        getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-        (draft) => {
-          if (!draft.find(item => item.id === questionId))
-            draft.push({ ...questionItem })
-
-          draft.push({ ...responseItem })
-        })
-      setChatList(newListWithAnswer)
-    }
-    const postModelConfig: BackendModelConfig = {
-      text_to_speech: {
-        enabled: false,
-      },
-      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
-      prompt_type: promptMode,
-      chat_prompt_config: {},
-      completion_prompt_config: {},
-      user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
-      dataset_query_variable: contextVar || '',
-      opening_statement: introduction,
-      more_like_this: {
-        enabled: false,
-      },
-      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      speech_to_text: speechToTextConfig,
-      retriever_resource: citationConfig,
-      sensitive_word_avoidance: moderationConfig,
-      agent_mode: {
-        ...modelConfig.agentConfig,
-        strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
-      },
-      model: {
-        provider: modelConfig.provider,
-        name: modelConfig.model_id,
-        mode: modelConfig.mode,
-        completion_params: completionParams as any,
-      },
-      dataset_configs: {
-        ...datasetConfigs,
-        datasets: {
-          datasets: [...postDatasets],
-        } as any,
-      },
-      file_upload: {
-        image: visionConfig,
-      },
-      annotation_reply: annotationConfig,
-    }
-
-    if (isAdvancedMode) {
-      postModelConfig.chat_prompt_config = chatPromptConfig
-      postModelConfig.completion_prompt_config = completionPromptConfig
-    }
-
-    const data: Record<string, any> = {
-      conversation_id: conversationId,
-      inputs,
-      query: message,
-      model_config: postModelConfig,
-    }
-
-    if (visionConfig.enabled && files && files?.length > 0) {
-      data.files = files.map((item) => {
-        if (item.transfer_method === TransferMethod.local_file) {
-          return {
-            ...item,
-            url: '',
-          }
-        }
-        return item
-      })
-    }
-
-    // qustion
-    const questionId = `question-${Date.now()}`
-    const questionItem = {
-      id: questionId,
-      content: message,
-      isAnswer: false,
-      message_files: files,
-    }
-
-    const placeholderAnswerId = `answer-placeholder-${Date.now()}`
-    const placeholderAnswerItem = {
-      id: placeholderAnswerId,
-      content: '',
-      isAnswer: true,
-    }
-
-    const newList = [...getChatList(), questionItem, placeholderAnswerItem]
-    setChatList(newList)
-
-    let isAgentMode = false
-
-    // answer
-    const responseItem: IChatItem = {
-      id: `${Date.now()}`,
-      content: '',
-      agent_thoughts: [],
-      message_files: [],
-      isAnswer: true,
-    }
-    let hasSetResponseId = false
-
-    let _newConversationId: null | string = null
-
-    setHasStopResponded(false)
-    setResponsingTrue()
-    setIsShowSuggestion(false)
-    sendChatMessage(appId, data, {
-      getAbortController: (abortController) => {
-        setAbortController(abortController)
-      },
-      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        // console.log('onData', message)
-        if (!isAgentMode) {
-          responseItem.content = responseItem.content + message
-        }
-        else {
-          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-          if (lastThought)
-            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
-        }
-        if (messageId && !hasSetResponseId) {
-          responseItem.id = messageId
-          hasSetResponseId = true
-        }
-
-        if (isFirstMessage && newConversationId) {
-          setConversationId(newConversationId)
-          _newConversationId = newConversationId
-        }
-        setMessageTaskId(taskId)
-
-        updateCurrentQA({
-          responseItem,
-          questionId,
-          placeholderAnswerId,
-          questionItem,
-        })
-      },
-      async onCompleted(hasError?: boolean) {
-        setResponsingFalse()
-        if (hasError)
-          return
-
-        if (_newConversationId) {
-          const { data }: any = await fetchConvesationMessages(appId, _newConversationId as string)
-          const newResponseItem = data.find((item: any) => item.id === responseItem.id)
-          if (!newResponseItem)
-            return
-
-          setChatList(produce(getChatList(), (draft) => {
-            const index = draft.findIndex(item => item.id === responseItem.id)
-            if (index !== -1) {
-              const requestion = draft[index - 1]
-              draft[index - 1] = {
-                ...requestion,
-                log: newResponseItem.message,
-              }
-              draft[index] = {
-                ...draft[index],
-                more: {
-                  time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
-                  tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
-                  latency: newResponseItem.provider_response_latency.toFixed(2),
-                },
-              }
-            }
-          }))
-        }
-        if (suggestedQuestionsAfterAnswerConfig.enabled && !getHasStopResponded()) {
-          const { data }: any = await fetchSuggestedQuestions(appId, responseItem.id)
-          setSuggestQuestions(data)
-          setIsShowSuggestion(true)
-        }
-      },
-      onFile(file) {
-        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
-        if (lastThought)
-          responseItem.agent_thoughts![responseItem.agent_thoughts!.length - 1].message_files = [...(lastThought as any).message_files, file]
-
-        updateCurrentQA({
-          responseItem,
-          questionId,
-          placeholderAnswerId,
-          questionItem,
-        })
-      },
-      onThought(thought) {
-        isAgentMode = true
-        const response = responseItem as any
-        if (thought.message_id && !hasSetResponseId)
-          response.id = thought.message_id
-        if (response.agent_thoughts.length === 0) {
-          response.agent_thoughts.push(thought)
-        }
-        else {
-          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
-          // thought changed but still the same thought, so update.
-          if (lastThought.id === thought.id) {
-            thought.thought = lastThought.thought
-            thought.message_files = lastThought.message_files
-            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
-          }
-          else {
-            responseItem.agent_thoughts!.push(thought)
-          }
-        }
-        updateCurrentQA({
-          responseItem,
-          questionId,
-          placeholderAnswerId,
-          questionItem,
-        })
-      },
-      onMessageEnd: (messageEnd) => {
-        if (messageEnd.metadata?.annotation_reply) {
-          responseItem.id = messageEnd.id
-          responseItem.annotation = ({
-            id: messageEnd.metadata.annotation_reply.id,
-            authorName: messageEnd.metadata.annotation_reply.account.name,
-          } as AnnotationType)
-          const newListWithAnswer = produce(
-            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-            (draft) => {
-              if (!draft.find(item => item.id === questionId))
-                draft.push({ ...questionItem })
-
-              draft.push({
-                ...responseItem,
-              })
-            })
-          setChatList(newListWithAnswer)
-          return
-        }
-        responseItem.citation = messageEnd.metadata?.retriever_resources || []
-
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
-      },
-      onMessageReplace: (messageReplace) => {
-        responseItem.content = messageReplace.answer
-      },
-      onError() {
-        setResponsingFalse()
-        // role back placeholder answer
-        setChatList(produce(getChatList(), (draft) => {
-          draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
-        }))
-      },
-    })
-    return true
-  }
-
-  useEffect(() => {
-    if (controlClearChatMessage)
-      setChatList([])
-  }, [controlClearChatMessage])
+  }, [
+    completionFiles,
+    hasSetBlockStatus.history,
+    hasSetBlockStatus.query,
+    inputs,
+    isAdvancedMode,
+    mode,
+    modelConfig.configs.prompt_variables,
+    t,
+    logError,
+    notify,
+    modelModeType,
+  ])
 
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
 
-  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
   const sendTextCompletion = async () => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -685,13 +348,13 @@ const Debug: FC<IDebug> = ({
         setVisionConfig({
           ...visionConfig,
           enabled: true,
-        })
+        }, true)
       }
       else {
         setVisionConfig({
           ...visionConfig,
           enabled: false,
-        })
+        }, true)
       }
     }
   }
@@ -699,17 +362,10 @@ const Debug: FC<IDebug> = ({
   useEffect(() => {
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode])
-  const allToolIcons = (() => {
-    const icons: Record<string, any> = {}
-    modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
-    })
-    return icons
-  })()
 
   return (
     <>
-      <div className="shrink-0">
+      <div className="shrink-0 pt-4 px-6">
         <div className='flex items-center justify-between mb-2'>
           <div className='h2 '>{t('appDebug.inputs.title')}</div>
           <div className='flex items-center'>
@@ -761,6 +417,7 @@ const Debug: FC<IDebug> = ({
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
               onDebugWithMultipleModelChange={handleChangeToSingleModel}
+              checkCanSend={checkCanSend}
             />
           </div>
         )
@@ -770,47 +427,16 @@ const Debug: FC<IDebug> = ({
           <div className="flex flex-col grow">
             {/* Chat */}
             {mode === AppType.chat && (
-              <div className="mt-[34px] h-full flex flex-col">
-                <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative mt-1.5 grow h-[200px] overflow-hidden')}>
-                  <div className="h-full overflow-y-auto overflow-x-hidden" ref={chatListDomRef}>
-                    <Chat
-                      chatList={chatList}
-                      query={userQuery}
-                      onQueryChange={setUserQuery}
-                      onSend={onSend}
-                      checkCanSend={checkCanSend}
-                      feedbackDisabled
-                      useCurrentUserAvatar
-                      isResponsing={isResponsing}
-                      canStopResponsing={!!messageTaskId}
-                      abortResponsing={async () => {
-                        await stopChatMessageResponding(appId, messageTaskId)
-                        setHasStopResponded(true)
-                        setResponsingFalse()
-                      }}
-                      isShowSuggestion={doShowSuggestion}
-                      suggestionList={suggestQuestions}
-                      isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
-                      isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
-                      isShowCitation={citationConfig.enabled}
-                      isShowCitationHitInfo
-                      isShowPromptLog
-                      visionConfig={{
-                        ...visionConfig,
-                        image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
-                      }}
-                      supportAnnotation
-                      appId={appId}
-                      onChatListChange={setChatList}
-                      allToolIcons={allToolIcons}
-                    />
-                  </div>
-                </div>
+              <div className='grow h-0 overflow-hidden'>
+                <DebugWithSingleModel
+                  ref={debugWithSingleModelRef}
+                  checkCanSend={checkCanSend}
+                />
               </div>
             )}
             {/* Text  Generation */}
             {mode === AppType.completion && (
-              <div className="mt-6">
+              <div className="mt-6 px-6 pb-4">
                 <GroupName name={t('appDebug.result')} />
                 {(completionRes || isResponsing) && (
                   <TextGeneration
@@ -830,12 +456,6 @@ const Debug: FC<IDebug> = ({
                 )}
               </div>
             )}
-            {isShowFormattingChangeConfirm && (
-              <FormattingChanged
-                onConfirm={handleConfirm}
-                onCancel={handleCancel}
-              />
-            )}
             {isShowCannotQueryDataset && (
               <CannotQueryDataset
                 onConfirm={() => setShowCannotQueryDataset(false)}
@@ -844,6 +464,12 @@ const Debug: FC<IDebug> = ({
           </div>
         )
       }
+      {isShowFormattingChangeConfirm && (
+        <FormattingChanged
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      )}
       {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )

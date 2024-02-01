@@ -11,12 +11,12 @@ class WolframAlphaTool(BuiltinTool):
 
     def _invoke(self, 
                 user_id: str, 
-               tool_paramters: Dict[str, Any], 
+               tool_parameters: Dict[str, Any], 
         ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        query = tool_paramters.get('query', '')
+        query = tool_parameters.get('query', '')
         if not query:
             return self.create_text_message('Please input query')
         appid = self.runtime.credentials.get('appid', '')

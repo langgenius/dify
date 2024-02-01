@@ -107,20 +107,33 @@ class AppListApi(Resource):
             # validate config
             model_config_dict = args['model_config']
 
-            # get model provider
-            model_manager = ModelManager()
-            model_instance = model_manager.get_default_model_instance(
-                tenant_id=current_user.current_tenant_id,
-                model_type=ModelType.LLM
+            # Get provider configurations
+            provider_manager = ProviderManager()
+            provider_configurations = provider_manager.get_configurations(current_user.current_tenant_id)
+
+            # get available models from provider_configurations
+            available_models = provider_configurations.get_models(
+                model_type=ModelType.LLM,
+                only_active=True
             )
 
-            if not model_instance:
-                raise ProviderNotInitializeError(
-                    f"No Default System Reasoning Model available. Please configure "
-                    f"in the Settings -> Model Provider.")
-            else:
-                model_config_dict["model"]["provider"] = model_instance.provider
-                model_config_dict["model"]["name"] = model_instance.model
+            # check if model is available
+            available_models_names = [f'{model.provider.provider}.{model.model}' for model in available_models]
+            provider_model = f"{model_config_dict['model']['provider']}.{model_config_dict['model']['name']}"
+            if provider_model not in available_models_names:
+                model_manager = ModelManager()
+                model_instance = model_manager.get_default_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    model_type=ModelType.LLM
+                )
+
+                if not model_instance:
+                    raise ProviderNotInitializeError(
+                        f"No Default System Reasoning Model available. Please configure "
+                        f"in the Settings -> Model Provider.")
+                else:
+                    model_config_dict["model"]["provider"] = model_instance.provider
+                    model_config_dict["model"]["name"] = model_instance.model
 
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,

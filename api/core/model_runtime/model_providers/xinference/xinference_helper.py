@@ -1,6 +1,7 @@
 from threading import Lock
 from time import time
 from typing import List
+from os import path
 
 from requests import get
 from requests.adapters import HTTPAdapter
@@ -12,11 +13,16 @@ class XinferenceModelExtraParameter(object):
     model_format: str
     model_handle_type: str
     model_ability: List[str]
+    max_tokens: int = 512
+    support_function_call: bool = False
 
-    def __init__(self, model_format: str, model_handle_type: str, model_ability: List[str]) -> None:
+    def __init__(self, model_format: str, model_handle_type: str, model_ability: List[str], 
+                 support_function_call: bool, max_tokens: int) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type
         self.model_ability = model_ability
+        self.support_function_call = support_function_call
+        self.max_tokens = max_tokens
 
 cache = {}
 cache_lock = Lock()
@@ -49,7 +55,7 @@ class XinferenceHelper:
             get xinference model extra parameter like model_format and model_handle_type
         """
 
-        url = f'{server_url}/v1/models/{model_uid}'
+        url = path.join(server_url, 'v1/models', model_uid)
 
         # this methid is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
         session = Session()
@@ -66,10 +72,12 @@ class XinferenceHelper:
         
         response_json = response.json()
 
-        model_format = response_json['model_format']
-        model_ability = response_json['model_ability']
+        model_format = response_json.get('model_format', 'ggmlv3')
+        model_ability = response_json.get('model_ability', [])
 
-        if model_format == 'ggmlv3' and 'chatglm' in response_json['model_name']:
+        if response_json.get('model_type') == 'embedding':
+            model_handle_type = 'embedding'
+        elif model_format == 'ggmlv3' and 'chatglm' in response_json['model_name']:
             model_handle_type = 'chatglm'
         elif 'generate' in model_ability:
             model_handle_type = 'generate'
@@ -78,8 +86,13 @@ class XinferenceHelper:
         else:
             raise NotImplementedError(f'xinference model handle type {model_handle_type} is not supported')
         
+        support_function_call = 'tools' in model_ability
+        max_tokens = response_json.get('max_tokens', 512)
+        
         return XinferenceModelExtraParameter(
             model_format=model_format,
             model_handle_type=model_handle_type,
-            model_ability=model_ability
+            model_ability=model_ability,
+            support_function_call=support_function_call,
+            max_tokens=max_tokens
         )

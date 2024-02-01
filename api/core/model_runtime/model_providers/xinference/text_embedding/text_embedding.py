@@ -2,7 +2,7 @@ import time
 from typing import Optional
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType, ModelPropertyKey
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
@@ -10,6 +10,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from xinference_client.client.restful.restful_client import Client, RESTfulEmbeddingModelHandle, RESTfulModelHandle
 
+from core.model_runtime.model_providers.xinference.xinference_helper import XinferenceHelper
 
 class XinferenceTextEmbeddingModel(TextEmbeddingModel):
     """
@@ -35,7 +36,10 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         """
         server_url = credentials['server_url']
         model_uid = credentials['model_uid']
-        
+
+        if server_url.endswith('/'):
+            server_url = server_url[:-1]
+
         client = Client(base_url=server_url)
         
         try:
@@ -102,8 +106,15 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
+            server_url = credentials['server_url']
+            model_uid = credentials['model_uid']
+            extra_args = XinferenceHelper.get_xinference_extra_parameter(server_url=server_url, model_uid=model_uid)
+
+            if extra_args.max_tokens:
+                credentials['max_tokens'] = extra_args.max_tokens
+
             self._invoke(model=model, credentials=credentials, texts=['ping'])
-        except InvokeAuthorizationError:
+        except (InvokeAuthorizationError, RuntimeError):
             raise CredentialsValidateFailedError('Invalid api key')
 
     @property
@@ -160,6 +171,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         """
             used to define customizable model schema
         """
+        
         entity = AIModelEntity(
             model=model,
             label=I18nObject(
@@ -167,7 +179,10 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.TEXT_EMBEDDING,
-            model_properties={},
+            model_properties={
+                ModelPropertyKey.MAX_CHUNKS: 1,
+                ModelPropertyKey.CONTEXT_SIZE: 'max_tokens' in credentials and credentials['max_tokens'] or 512,
+            },
             parameter_rules=[]
         )
 

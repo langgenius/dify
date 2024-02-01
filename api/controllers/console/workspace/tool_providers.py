@@ -171,8 +171,8 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('original_provider', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('icon', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('privacy_policy', type=str, required=True, nullable=True, location='json')
 
         args = parser.parse_args()
 

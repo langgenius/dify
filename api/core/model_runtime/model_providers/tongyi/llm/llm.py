@@ -168,7 +168,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: list[Generator],
+    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: Generator,
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -182,7 +182,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         for index, response in enumerate(responses):
             resp_finish_reason = response.output.finish_reason
             resp_content = response.output.text
-            useage = response.usage
+            usage = response.usage
 
             if resp_finish_reason is None and (resp_content is None or resp_content == ''):
                 continue
@@ -194,7 +194,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
             if resp_finish_reason is not None:
                 # transform usage
-                usage = self._calc_response_usage(model, credentials, useage.input_tokens, useage.output_tokens)
+                usage = self._calc_response_usage(model, credentials, usage.input_tokens, usage.output_tokens)
 
                 yield LLMResultChunk(
                     model=model,

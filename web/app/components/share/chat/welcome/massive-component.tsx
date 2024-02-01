@@ -45,7 +45,7 @@ export const ChatBtn: FC<{ onClick: () => void; className?: string }> = ({
   return (
     <Button
       type='primary'
-      className={cn(className, `!px-0 flex items-center ${s.customBtn} gap-2`)}
+      className={cn(className, `px-4 inline-flex items-center ${s.customBtn} gap-2`)}
       onClick={onClick}>
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path fillRule="evenodd" clipRule="evenodd" d="M18 10.5C18 14.366 14.418 17.5 10 17.5C8.58005 17.506 7.17955 17.1698 5.917 16.52L2 17.5L3.338 14.377C2.493 13.267 2 11.934 2 10.5C2 6.634 5.582 3.5 10 3.5C14.418 3.5 18 6.634 18 10.5ZM7 9.5H5V11.5H7V9.5ZM15 9.5H13V11.5H15V9.5ZM9 9.5H11V11.5H9V9.5Z" fill="white" />
