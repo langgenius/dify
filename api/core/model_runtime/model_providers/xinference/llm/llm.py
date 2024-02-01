@@ -75,6 +75,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             if extra_param.support_function_call:
                 credentials['support_function_call'] = True
 
+            if extra_param.context_length:
+                credentials['context_length'] = extra_param.context_length
+
         except RuntimeError as e:
             raise CredentialsValidateFailedError(f'Xinference credentials validate failed: {e}')
         except KeyError as e:
@@ -296,6 +299,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 raise ValueError(f'xinference model ability {extra_args.model_ability} is not supported')
             
         support_function_call = credentials.get('support_function_call', False)
+        context_length = credentials.get('context_length', 2048)
 
         entity = AIModelEntity(
             model=model,
@@ -309,6 +313,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             ] if support_function_call else [],
             model_properties={ 
                 ModelPropertyKey.MODE: completion_type,
+                ModelPropertyKey.CONTEXT_SIZE: context_length
             },
             parameter_rules=rules
         )
