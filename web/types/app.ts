@@ -70,6 +70,7 @@ export type PromptVariable = {
 }
 
 export type TextTypeFormItem = {
+  default: string
   label: string
   variable: string
   required: boolean
@@ -77,10 +78,18 @@ export type TextTypeFormItem = {
 }
 
 export type SelectTypeFormItem = {
+  default: string
   label: string
   variable: string
   required: boolean
   options: string[]
+}
+
+export type ParagraphTypeFormItem = {
+  default: string
+  label: string
+  variable: string
+  required: boolean
 }
 /**
  * User Input Form Item
@@ -89,6 +98,8 @@ export type UserInputFormItem = {
   'text-input': TextTypeFormItem
 } | {
   'select': SelectTypeFormItem
+} | {
+  'paragraph': TextTypeFormItem
 }
 
 export type AgentTool = {

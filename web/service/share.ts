@@ -24,7 +24,7 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boo
   }
 }
 
-function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
+export function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
@@ -93,7 +93,7 @@ export const generationConversationName = async (isInstalledApp: boolean, instal
 }
 
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
-  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
+  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }) as any
 }
 
 // Abandoned API interface

@@ -23,7 +23,7 @@ import type { Annotation } from '@/models/log'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
-  onGetConvesationMessages: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
+  onGetConvesationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
 }
 
@@ -67,7 +67,7 @@ export const useCheckPromptVariables = () => {
 }
 
 export const useChat = (
-  config: ChatConfig,
+  config?: ChatConfig,
   promptVariablesConfig?: {
     inputs: Inputs
     promptVariables: PromptVariable[]
@@ -93,7 +93,7 @@ export const useChat = (
   const handleUpdateChatList = useCallback((newChatList: ChatItem[]) => {
     setChatList(newChatList)
     chatListRef.current = newChatList
-  }, [])
+  }, [setChatList])
   const handleResponsing = useCallback((isResponsing: boolean) => {
     setIsResponsing(isResponsing)
     isResponsingRef.current = isResponsing
@@ -103,7 +103,7 @@ export const useChat = (
     return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
   }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
   useEffect(() => {
-    if (config.opening_statement && !chatList.length) {
+    if (config?.opening_statement && !chatList.length && !prevChatList?.length) {
       handleUpdateChatList([{
         id: `${Date.now()}`,
         content: getIntroduction(config.opening_statement),
@@ -113,11 +113,12 @@ export const useChat = (
       }])
     }
   }, [
-    config.opening_statement,
-    config.suggested_questions,
+    config?.opening_statement,
+    config?.suggested_questions,
     getIntroduction,
     chatList,
     handleUpdateChatList,
+    prevChatList,
   ])
 
   const handleStop = useCallback(() => {
@@ -136,7 +137,7 @@ export const useChat = (
   const handleRestart = useCallback(() => {
     handleStop()
     connversationId.current = ''
-    const newChatList = config.opening_statement
+    const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
         content: config.opening_statement,
@@ -286,7 +287,7 @@ export const useChat = (
           if (hasError)
             return
 
-          if (connversationId.current && !hasStopResponded.current) {
+          if (connversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
             const { data }: any = await onGetConvesationMessages(
               connversationId.current,
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
@@ -315,7 +316,7 @@ export const useChat = (
             })
             handleUpdateChatList(newChatList)
           }
-          if (config.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+          if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
             const { data }: any = await onGetSuggestedQuestions(
               responseItem.id,
               newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
@@ -409,7 +410,7 @@ export const useChat = (
     return true
   }, [
     checkPromptVariables,
-    config.suggested_questions_after_answer,
+    config?.suggested_questions_after_answer,
     updateCurrentQA,
     t,
     notify,
@@ -419,7 +420,7 @@ export const useChat = (
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    setChatList(chatListRef.current.map((item, i) => {
+    handleUpdateChatList(chatListRef.current.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -438,9 +439,9 @@ export const useChat = (
       }
       return item
     }))
-  }, [])
+  }, [handleUpdateChatList])
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    setChatList(chatListRef.current.map((item, i) => {
+    handleUpdateChatList(chatListRef.current.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -468,9 +469,9 @@ export const useChat = (
       }
       return item
     }))
-  }, [])
+  }, [handleUpdateChatList])
   const handleAnnotationRemoved = useCallback((index: number) => {
-    setChatList(chatListRef.current.map((item, i) => {
+    handleUpdateChatList(chatListRef.current.map((item, i) => {
       if (i === index) {
         return {
           ...item,
@@ -483,7 +484,7 @@ export const useChat = (
       }
       return item
     }))
-  }, [])
+  }, [handleUpdateChatList])
 
   return {
     chatList,

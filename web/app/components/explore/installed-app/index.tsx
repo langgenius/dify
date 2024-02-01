@@ -29,7 +29,7 @@ const InstalledApp: FC<IInstalledAppProps> = ({
     <div className='h-full py-2 pl-0 pr-2 sm:p-2'>
       {installedApp?.app.mode === 'chat'
         ? (
-          <ChatWithHistory installedAppInfo={installedApp} />
+          <ChatWithHistory installedAppInfo={installedApp} className='rounded-2xl shadow-md overflow-hidden' />
         )
         : (
           <TextGenerationApp isInstalledApp installedAppInfo={installedApp}/>
