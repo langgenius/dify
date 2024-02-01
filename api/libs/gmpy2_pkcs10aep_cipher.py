@@ -20,16 +20,17 @@
 # SOFTWARE.
 # ===================================================================
 
-from Crypto.Signature.pss import MGF1
-import Crypto.Hash.SHA1
-
-from Crypto.Util.py3compat import bord, _copy_bytes
-import Crypto.Util.number
-from   Crypto.Util.number import ceil_div, bytes_to_long, long_to_bytes
-from   Crypto.Util.strxor import strxor
-from Crypto import Random
 from hashlib import sha1
+
+import Crypto.Hash.SHA1
+import Crypto.Util.number
 import gmpy2
+from Crypto import Random
+from Crypto.Signature.pss import MGF1
+from Crypto.Util.number import bytes_to_long, ceil_div, long_to_bytes
+from Crypto.Util.py3compat import _copy_bytes, bord
+from Crypto.Util.strxor import strxor
+
 
 class PKCS1OAEP_Cipher:
     """Cipher object for PKCS#1 v1.5 OAEP.

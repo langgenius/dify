@@ -3,11 +3,10 @@ import logging
 from typing import cast
 
 from core.app_runner.app_runner import AppRunner
+from core.application_queue_manager import ApplicationQueueManager, PublishFrom
+from core.entities.application_entities import AgentEntity, ApplicationGenerateEntity, ModelConfigEntity
 from core.features.assistant_cot_runner import AssistantCotApplicationRunner
 from core.features.assistant_fc_runner import AssistantFunctionCallApplicationRunner
-from core.entities.application_entities import ApplicationGenerateEntity, ModelConfigEntity, \
-    AgentEntity
-from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -16,7 +15,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
-from models.model import Conversation, Message, App, MessageChain, MessageAgentThought
+from models.model import App, Conversation, Message, MessageAgentThought, MessageChain
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)

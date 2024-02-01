@@ -1,13 +1,12 @@
-import uuid
 import hashlib
 import subprocess
+import uuid
 from abc import abstractmethod
 from typing import Optional
 
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 class TTSModel(AIModel):

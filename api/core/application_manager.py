@@ -9,11 +9,12 @@ from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
 from core.entities.application_entities import (AdvancedChatPromptTemplateEntity,
-                                                AdvancedCompletionPromptTemplateEntity, AgentEntity, AgentToolEntity,
-                                                ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
+                                                AdvancedCompletionPromptTemplateEntity, AgentEntity, AgentPromptEntity,
+                                                AgentToolEntity, ApplicationGenerateEntity,
+                                                AppOrchestrationConfigEntity, DatasetEntity,
                                                 DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
                                                 FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
-                                                SensitiveWordAvoidanceEntity, AgentPromptEntity)
+                                                SensitiveWordAvoidanceEntity)
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj

@@ -1,18 +1,16 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
-from core.tools.entities.common_entities import I18nObject
-from core.tools.errors import ToolProviderCredentialValidationError
-
-from typing import Any, Dict, List, Union
-from httpx import post, get
-from os.path import join
-from base64 import b64decode, b64encode
-from PIL import Image
-
-import json
 import io
-
+import json
+from base64 import b64decode, b64encode
 from copy import deepcopy
+from os.path import join
+from typing import Any, Dict, List, Union
+
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.tool.builtin_tool import BuiltinTool
+from httpx import get, post
+from PIL import Image
 
 DRAW_TEXT_OPTIONS = {
     "prompt": "",
@@ -70,10 +68,10 @@ class StableDiffusionTool(BuiltinTool):
         base_url = self.runtime.credentials.get('base_url', None)
         if not base_url:
             return self.create_text_message('Please input base_url')
-        
+
         if 'model' in tool_parameters:
             self.runtime.credentials['model'] = tool_parameters['model']
-        
+
         model = self.runtime.credentials.get('model', None)
         if not model:
             return self.create_text_message('Please input model')

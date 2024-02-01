@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Any, Dict, Optional
 
-from constants.languages import languages, language_timezone_mapping
+from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
 from flask import current_app, session

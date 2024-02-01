@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
-from .jobs import Jobs
+
 from ...core._base_api import BaseAPI
+from .jobs import Jobs
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI

@@ -1,37 +1,32 @@
-import logging
 import json
-
-from typing import Optional, List, Tuple, Union, cast
+import logging
 from datetime import datetime
 from mimetypes import guess_extension
+from typing import List, Optional, Tuple, Union, cast
 
 from core.app_runner.app_runner import AppRunner
-from extensions.ext_database import db
-
-from models.model import MessageAgentThought, Message, MessageFile
-from models.tools import ToolConversationVariables
-
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, \
-    ToolRuntimeVariablePool, ToolParameter
-from core.tools.tool.tool import Tool
-from core.tools.tool_manager import ToolManager
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
-from core.app_runner.app_runner import AppRunner
+from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import ModelConfigEntity, AgentEntity, AgentToolEntity
-from core.application_queue_manager import ApplicationQueueManager
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.entities.application_entities import ModelConfigEntity, \
-    AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelFeature
-from core.model_runtime.utils.encoders import jsonable_encoder
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_manager import ModelInstance
+from core.entities.application_entities import (AgentEntity, AgentToolEntity, ApplicationGenerateEntity,
+                                                AppOrchestrationConfigEntity, InvokeFrom, ModelConfigEntity)
 from core.file.message_file_parser import FileTransferMethod
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.model_entities import ModelFeature
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.entities.tool_entities import (ToolInvokeMessage, ToolInvokeMessageBinary, ToolParameter,
+                                               ToolRuntimeVariablePool)
+from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.tool.tool import Tool
+from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
+from extensions.ext_database import db
+from models.model import Message, MessageAgentThought, MessageFile
+from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 

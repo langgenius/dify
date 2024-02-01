@@ -1,12 +1,11 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
-from pydantic import BaseModel, Field
-
 from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 from langchain import WikipediaAPIWrapper
 from langchain.tools import WikipediaQueryRun
+from pydantic import BaseModel, Field
+
 
 class WikipediaInput(BaseModel):
     query: str = Field(..., description="search query.")

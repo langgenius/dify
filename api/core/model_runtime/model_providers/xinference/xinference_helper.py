@@ -1,7 +1,7 @@
+from os import path
 from threading import Lock
 from time import time
 from typing import List
-from os import path
 
 from requests import get
 from requests.adapters import HTTPAdapter

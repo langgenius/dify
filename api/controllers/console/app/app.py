@@ -3,8 +3,8 @@ import json
 import logging
 from datetime import datetime
 
-from constants.model_template import model_templates
 from constants.languages import demo_model_templates, languages
+from constants.model_template import model_templates
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
@@ -25,6 +25,7 @@ from models.model import App, AppModelConfig, Site
 from models.tools import ApiToolProvider
 from services.app_model_config_service import AppModelConfigService
 from werkzeug.exceptions import Forbidden
+
 
 def _get_app(app_id, tenant_id):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()

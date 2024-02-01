@@ -1,14 +1,13 @@
 from typing import Generator, List, Optional, Union
 
-from dashscope import get_tokenizer
-
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMMode
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
                                                           SystemPromptMessage, UserPromptMessage)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from dashscope import get_tokenizer
 from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
 from dashscope.common.error import (AuthenticationError, InvalidParameter, RequestFailure, ServiceUnavailableError,
                                     UnsupportedHTTPMethod, UnsupportedModel)

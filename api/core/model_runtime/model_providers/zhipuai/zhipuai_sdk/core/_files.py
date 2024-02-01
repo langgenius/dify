@@ -5,12 +5,7 @@ import os
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from ._base_type import (
-    FileTypes,
-    HttpxFileTypes,
-    HttpxRequestFiles,
-    RequestFiles,
-)
+from ._base_type import FileTypes, HttpxFileTypes, HttpxRequestFiles, RequestFiles
 
 
 def is_file_content(obj: object) -> bool:

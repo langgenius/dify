@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+from constants.languages import languages
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.wraps import account_initialization_required
@@ -9,7 +10,6 @@ from libs.login import login_required
 from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 from sqlalchemy import and_
-from constants.languages import languages
 
 app_fields = {
     'id': fields.String,
