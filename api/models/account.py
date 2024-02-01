@@ -1,6 +1,5 @@
 import enum
 import json
-from math import e
 from typing import List
 
 from extensions.ext_database import db

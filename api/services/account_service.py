@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from constants.languages import languages, language_timezone_mapping
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
-from flask import current_app, session
+from flask import current_app
 from libs.helper import get_remote_ip
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password
@@ -23,7 +23,7 @@ from services.errors.account import (AccountAlreadyInTenantError, AccountLoginEr
                                      NoPermissionError, RoleAlreadyAssignedError, TenantNotFound)
 from sqlalchemy import func
 from tasks.mail_invite_member_task import send_invite_member_mail_task
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden
 
 
 def _create_tenant_for_account(account) -> Tenant:
