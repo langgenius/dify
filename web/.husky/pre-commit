@@ -2,3 +2,7 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 cd ./web && npx lint-staged
+cd ../
+
+# lint python code
+dev/reformat
