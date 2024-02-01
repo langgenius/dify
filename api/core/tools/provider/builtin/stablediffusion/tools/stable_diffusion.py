@@ -145,10 +145,10 @@ class StableDiffusionTool(BuiltinTool):
         try:
             base_url = self.runtime.credentials.get('base_url', None)
             if not base_url:
-                return self.create_text_message('Please input base_url')
+                raise ToolProviderCredentialValidationError('Please input base_url')
             model = self.runtime.credentials.get('model', None)
             if not model:
-                return self.create_text_message('Please input model')
+                raise ToolProviderCredentialValidationError('Please input model')
 
             response = get(url=f'{base_url}/sdapi/v1/sd-models', timeout=120)
             if response.status_code != 200:
@@ -160,7 +160,7 @@ class StableDiffusionTool(BuiltinTool):
                 else:
                     raise ToolProviderCredentialValidationError(f'model {model} does not exist')
         except Exception as e:
-            raise ToolProviderCredentialValidationError(f'Failed to get models, because {e}')
+            raise ToolProviderCredentialValidationError(f'Failed to get models, {e}')
 
     def img2img(self, base_url: str, lora: str, image_binary: bytes, 
                 prompt: str, negative_prompt: str,
