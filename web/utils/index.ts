@@ -35,5 +35,5 @@ export const getPurifyHref = (href: string) => {
   if (!href)
     return ''
 
-  return href.replace(/javascript:/ig, '')
+  return href.replace(/javascript:/ig, '').replace(/vbscript:/ig, '').replace(/data:/ig, '')
 }
