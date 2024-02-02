@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -x
+
+# python style checks rely on `ruff` in path
+if ! command -v ruff &> /dev/null
+then
+    echo "Skip Python imports linting, since 'ruff' is not available. Please install it with 'pip install ruff'."
+    exit 1
+else
+    ruff check --fix ./api
+fi
