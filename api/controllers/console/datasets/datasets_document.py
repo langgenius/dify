@@ -16,6 +16,7 @@ from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.document_fields import (dataset_and_document_fields, document_fields, document_status_fields,
@@ -80,7 +81,7 @@ class GetProcessRuleApi(Resource):
         req_data = request.args
 
         document_id = req_data.get('document_id')
-        
+
         # get default rules
         mode = DocumentService.DEFAULT_RULES['mode']
         rules = DocumentService.DEFAULT_RULES['rules']
@@ -347,12 +348,18 @@ class DocumentIndexingEstimateApi(DocumentResource):
                 if not file:
                     raise NotFound('File not found.')
 
+                extract_setting = ExtractSetting(
+                    datasource_type="upload_file",
+                    upload_file=file,
+                    document_model=document.doc_form
+                )
+
                 indexing_runner = IndexingRunner()
 
                 try:
-                    response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, [file],
-                                                                      data_process_rule_dict, None,
-                                                                      'English', dataset_id)
+                    response = indexing_runner.indexing_estimate(current_user.current_tenant_id, [extract_setting],
+                                                                 data_process_rule_dict, document.doc_form,
+                                                                 'English', dataset_id)
                 except LLMBadRequestError:
                     raise ProviderNotInitializeError(
                         f"No Embedding Model available. Please configure a valid provider "
@@ -387,6 +394,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         data_process_rule = documents[0].dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
         info_list = []
+        extract_settings = []
         for document in documents:
             if document.indexing_status in ['completed', 'error']:
                 raise DocumentAlreadyFinishedError()
@@ -409,42 +417,49 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 }
                 info_list.append(notion_info)
 
-        if dataset.data_source_type == 'upload_file':
-            file_details = db.session.query(UploadFile).filter(
-                UploadFile.tenant_id == current_user.current_tenant_id,
-                UploadFile.id.in_(info_list)
-            ).all()
+            if document.data_source_type == 'upload_file':
+                file_id = data_source_info['upload_file_id']
+                file_detail = db.session.query(UploadFile).filter(
+                    UploadFile.tenant_id == current_user.current_tenant_id,
+                    UploadFile.id == file_id
+                ).first()
 
-            if file_details is None:
-                raise NotFound("File not found.")
+                if file_detail is None:
+                    raise NotFound("File not found.")
 
+                extract_setting = ExtractSetting(
+                    datasource_type="upload_file",
+                    upload_file=file_detail,
+                    document_model=document.doc_form
+                )
+                extract_settings.append(extract_setting)
+
+            elif document.data_source_type == 'notion_import':
+                extract_setting = ExtractSetting(
+                    datasource_type="notion_import",
+                    notion_info={
+                        "notion_workspace_id": data_source_info['notion_workspace_id'],
+                        "notion_obj_id": data_source_info['notion_page_id'],
+                        "notion_page_type": data_source_info['type']
+                    },
+                    document_model=document.doc_form
+                )
+                extract_settings.append(extract_setting)
+
+            else:
+                raise ValueError('Data source type not support')
             indexing_runner = IndexingRunner()
             try:
-                response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details,
-                                                                  data_process_rule_dict, None,
-                                                                  'English', dataset_id)
+                response = indexing_runner.indexing_estimate(current_user.current_tenant_id, extract_settings,
+                                                             data_process_rule_dict, document.doc_form,
+                                                             'English', dataset_id)
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-        elif dataset.data_source_type == 'notion_import':
 
-            indexing_runner = IndexingRunner()
-            try:
-                response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
-                                                                    info_list,
-                                                                    data_process_rule_dict,
-                                                                    None, 'English', dataset_id)
-            except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
-            except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
-        else:
-            raise ValueError('Data source type not support')
         return response
 
 

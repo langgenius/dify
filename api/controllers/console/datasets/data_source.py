@@ -6,6 +6,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.data_loader.loader.notion import NotionLoader
 from core.indexing_runner import IndexingRunner
+from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from flask import request
@@ -191,11 +192,30 @@ class DataSourceNotionApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('notion_info_list', type=list, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
+        notion_info_list = args['notion_info_list']
+        extract_settings = []
+        for notion_info in notion_info_list:
+            workspace_id = notion_info['workspace_id']
+            for page in notion_info['pages']:
+                extract_setting = ExtractSetting(
+                    datasource_type="notion_import",
+                    notion_info={
+                        "notion_workspace_id": workspace_id,
+                        "notion_obj_id": page['page_id'],
+                        "notion_page_type": page['type']
+                    },
+                    document_model=args['doc_form']
+                )
+                extract_settings.append(extract_setting)
         indexing_runner = IndexingRunner()
-        response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id, args['notion_info_list'], args['process_rule'])
+        response = indexing_runner.indexing_estimate(current_user.current_tenant_id, extract_settings,
+                                                     args['process_rule'], args['doc_form'],
+                                                     args['doc_language'])
         return response, 200
 
 

@@ -211,123 +211,6 @@ class IndexingRunner:
             dataset_document.stopped_at = datetime.datetime.utcnow()
             db.session.commit()
 
-    def file_indexing_estimate(self, tenant_id: str, file_details: List[UploadFile], tmp_processing_rule: dict,
-                               doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
-                               indexing_technique: str = 'economy') -> dict:
-        """
-        Estimate the indexing for the document.
-        """
-        embedding_model_instance = None
-        if dataset_id:
-            dataset = Dataset.query.filter_by(
-                id=dataset_id
-            ).first()
-            if not dataset:
-                raise ValueError('Dataset not found.')
-            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                if dataset.embedding_model_provider:
-                    embedding_model_instance = self.model_manager.get_model_instance(
-                        tenant_id=tenant_id,
-                        provider=dataset.embedding_model_provider,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                        model=dataset.embedding_model
-                    )
-                else:
-                    embedding_model_instance = self.model_manager.get_default_model_instance(
-                        tenant_id=tenant_id,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                    )
-        else:
-            if indexing_technique == 'high_quality':
-                embedding_model_instance = self.model_manager.get_default_model_instance(
-                    tenant_id=tenant_id,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                )
-        tokens = 0
-        preview_texts = []
-        total_segments = 0
-        total_price = 0
-        currency = 'USD'
-        for file_detail in file_details:
-
-            processing_rule = DatasetProcessRule(
-                mode=tmp_processing_rule["mode"],
-                rules=json.dumps(tmp_processing_rule["rules"])
-            )
-
-            # load data from file
-            text_docs = FileExtractor.load(file_detail, is_automatic=processing_rule.mode == 'automatic')
-
-            # get splitter
-            splitter = self._get_splitter(processing_rule, embedding_model_instance)
-
-            # split to documents
-            documents = self._split_to_documents_for_estimate(
-                text_docs=text_docs,
-                splitter=splitter,
-                processing_rule=processing_rule
-            )
-
-            total_segments += len(documents)
-
-            for document in documents:
-                if len(preview_texts) < 5:
-                    preview_texts.append(document.page_content)
-                if indexing_technique == 'high_quality' or embedding_model_instance:
-                    embedding_model_type_instance = embedding_model_instance.model_type_instance
-                    embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
-                    tokens += embedding_model_type_instance.get_num_tokens(
-                        model=embedding_model_instance.model,
-                        credentials=embedding_model_instance.credentials,
-                        texts=[self.filter_string(document.page_content)]
-                    )
-
-        if doc_form and doc_form == 'qa_model':
-            model_instance = self.model_manager.get_default_model_instance(
-                tenant_id=tenant_id,
-                model_type=ModelType.LLM
-            )
-
-            model_type_instance = model_instance.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-            if len(preview_texts) > 0:
-                # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
-                                                             doc_language)
-                document_qa_list = self.format_split_text(response)
-                price_info = model_type_instance.get_price(
-                    model=model_instance.model,
-                    credentials=model_instance.credentials,
-                    price_type=PriceType.INPUT,
-                    tokens=total_segments * 2000,
-                )
-                return {
-                    "total_segments": total_segments * 20,
-                    "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(price_info.total_amount),
-                    "currency": price_info.currency,
-                    "qa_preview": document_qa_list,
-                    "preview": preview_texts
-                }
-        if embedding_model_instance:
-            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_instance.model_type_instance)
-            embedding_price_info = embedding_model_type_instance.get_price(
-                model=embedding_model_instance.model,
-                credentials=embedding_model_instance.credentials,
-                price_type=PriceType.INPUT,
-                tokens=tokens
-            )
-            total_price = '{:f}'.format(embedding_price_info.total_amount)
-            currency = embedding_price_info.currency
-        return {
-            "total_segments": total_segments,
-            "tokens": tokens,
-            "total_price": total_price,
-            "currency": currency,
-            "preview": preview_texts
-        }
-
     def indexing_estimate(self, tenant_id: str, extract_settings: List[ExtractSetting], tmp_processing_rule: dict,
                           doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
                           indexing_technique: str = 'economy') -> dict:
@@ -372,17 +255,21 @@ class IndexingRunner:
             # extract
             text_docs = index_processor.extract(extract_setting)
             all_text_docs.extend(text_docs)
+            processing_rule = DatasetProcessRule(
+                mode=tmp_processing_rule["mode"],
+                rules=json.dumps(tmp_processing_rule["rules"])
+            )
+
             # get splitter
-            splitter = self._get_splitter(tmp_processing_rule, embedding_model_instance)
+            splitter = self._get_splitter(processing_rule, embedding_model_instance)
 
             # split to documents
             documents = self._split_to_documents_for_estimate(
                 text_docs=text_docs,
                 splitter=splitter,
-                processing_rule=tmp_processing_rule
+                processing_rule=processing_rule
             )
 
-            total_segments += len(documents)
             total_segments += len(documents)
             for document in documents:
                 if len(preview_texts) < 5:
@@ -395,8 +282,6 @@ class IndexingRunner:
                         credentials=embedding_model_instance.credentials,
                         texts=[self.filter_string(document.page_content)]
                     )
-
-
 
         if doc_form and doc_form == 'qa_model':
             model_instance = self.model_manager.get_default_model_instance(
@@ -428,145 +313,6 @@ class IndexingRunner:
                 }
         if embedding_model_instance:
             embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_instance.model_type_instance)
-            embedding_price_info = embedding_model_type_instance.get_price(
-                model=embedding_model_instance.model,
-                credentials=embedding_model_instance.credentials,
-                price_type=PriceType.INPUT,
-                tokens=tokens
-            )
-            total_price = '{:f}'.format(embedding_price_info.total_amount)
-            currency = embedding_price_info.currency
-        return {
-            "total_segments": total_segments,
-            "tokens": tokens,
-            "total_price": total_price,
-            "currency": currency,
-            "preview": preview_texts
-        }
-
-    def notion_indexing_estimate(self, tenant_id: str, notion_info_list: list, tmp_processing_rule: dict,
-                                 doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
-                                 indexing_technique: str = 'economy') -> dict:
-        """
-        Estimate the indexing for the document.
-        """
-        embedding_model_instance = None
-        if dataset_id:
-            dataset = Dataset.query.filter_by(
-                id=dataset_id
-            ).first()
-            if not dataset:
-                raise ValueError('Dataset not found.')
-            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                if dataset.embedding_model_provider:
-                    embedding_model_instance = self.model_manager.get_model_instance(
-                        tenant_id=tenant_id,
-                        provider=dataset.embedding_model_provider,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                        model=dataset.embedding_model
-                    )
-                else:
-                    embedding_model_instance = self.model_manager.get_default_model_instance(
-                        tenant_id=tenant_id,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                    )
-        else:
-            if indexing_technique == 'high_quality':
-                embedding_model_instance = self.model_manager.get_default_model_instance(
-                    tenant_id=tenant_id,
-                    model_type=ModelType.TEXT_EMBEDDING
-                )
-        # load data from notion
-        tokens = 0
-        preview_texts = []
-        total_segments = 0
-        total_price = 0
-        currency = 'USD'
-        for notion_info in notion_info_list:
-            workspace_id = notion_info['workspace_id']
-            data_source_binding = DataSourceBinding.query.filter(
-                db.and_(
-                    DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                    DataSourceBinding.provider == 'notion',
-                    DataSourceBinding.disabled == False,
-                    DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
-                )
-            ).first()
-            if not data_source_binding:
-                raise ValueError('Data source binding not found.')
-
-            for page in notion_info['pages']:
-                loader = NotionLoader(
-                    notion_access_token=data_source_binding.access_token,
-                    notion_workspace_id=workspace_id,
-                    notion_obj_id=page['page_id'],
-                    notion_page_type=page['type']
-                )
-                documents = loader.load()
-
-                processing_rule = DatasetProcessRule(
-                    mode=tmp_processing_rule["mode"],
-                    rules=json.dumps(tmp_processing_rule["rules"])
-                )
-
-                # get splitter
-                splitter = self._get_splitter(processing_rule, embedding_model_instance)
-
-                # split to documents
-                documents = self._split_to_documents_for_estimate(
-                    text_docs=documents,
-                    splitter=splitter,
-                    processing_rule=processing_rule
-                )
-                total_segments += len(documents)
-
-                embedding_model_type_instance = None
-                if embedding_model_instance:
-                    embedding_model_type_instance = embedding_model_instance.model_type_instance
-                    embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
-
-                for document in documents:
-                    if len(preview_texts) < 5:
-                        preview_texts.append(document.page_content)
-                    if indexing_technique == 'high_quality' and embedding_model_type_instance:
-                        tokens += embedding_model_type_instance.get_num_tokens(
-                            model=embedding_model_instance.model,
-                            credentials=embedding_model_instance.credentials,
-                            texts=[document.page_content]
-                        )
-
-        if doc_form and doc_form == 'qa_model':
-            model_instance = self.model_manager.get_default_model_instance(
-                tenant_id=tenant_id,
-                model_type=ModelType.LLM
-            )
-
-            model_type_instance = model_instance.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
-            if len(preview_texts) > 0:
-                # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
-                                                             doc_language)
-                document_qa_list = self.format_split_text(response)
-
-                price_info = model_type_instance.get_price(
-                    model=model_instance.model,
-                    credentials=model_instance.credentials,
-                    price_type=PriceType.INPUT,
-                    tokens=total_segments * 2000,
-                )
-
-                return {
-                    "total_segments": total_segments * 20,
-                    "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(price_info.total_amount),
-                    "currency": price_info.currency,
-                    "qa_preview": document_qa_list,
-                    "preview": preview_texts
-                }
-        if embedding_model_instance:
-            embedding_model_type_instance = embedding_model_instance.model_type_instance
-            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
             embedding_price_info = embedding_model_type_instance.get_price(
                 model=embedding_model_instance.model,
                 credentials=embedding_model_instance.credentials,
