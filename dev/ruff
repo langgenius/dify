@@ -8,5 +8,6 @@ then
     echo "Skip Python imports linting, since 'ruff' is not available. Please install it with 'pip install ruff'."
     exit 1
 else
+    # run ruff linter
     ruff check --fix ./api
 fi
