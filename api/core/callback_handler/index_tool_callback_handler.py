@@ -1,9 +1,10 @@
-from typing import List, Union
+from typing import List
+
+from langchain.schema import Document
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import InvokeFrom
 from extensions.ext_database import db
-from langchain.schema import Document
 from models.dataset import DatasetQuery, DocumentSegment
 from models.model import DatasetRetrieverResource
 

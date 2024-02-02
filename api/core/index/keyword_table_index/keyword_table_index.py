@@ -2,12 +2,13 @@ import json
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
+from langchain.schema import BaseRetriever, Document
+from pydantic import BaseModel, Extra, Field
+
 from core.index.base import BaseIndex
 from core.index.keyword_table_index.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from extensions.ext_database import db
-from langchain.schema import BaseRetriever, Document
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
-from pydantic import BaseModel, Extra, Field
 
 
 class KeywordTableConfig(BaseModel):

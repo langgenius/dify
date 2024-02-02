@@ -1,11 +1,12 @@
 import re
 from typing import Any, List, Literal, Union
 
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.moderations import Moderations
 from openai.types import ModerationCreateResponse
 from openai.types.moderation import Categories, CategoryScores, Moderation
+
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class MockModerationClass(object):

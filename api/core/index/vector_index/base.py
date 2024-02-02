@@ -3,14 +3,14 @@ import logging
 from abc import abstractmethod
 from typing import Any, List, cast
 
-from core.index.base import BaseIndex
-from extensions.ext_database import db
 from langchain.embeddings.base import Embeddings
 from langchain.schema import BaseRetriever, Document
 from langchain.vectorstores import VectorStore
-from models.dataset import Dataset, DatasetCollectionBinding
+
+from core.index.base import BaseIndex
+from extensions.ext_database import db
+from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.dataset import DocumentSegment
 
 
 class BaseVectorIndex(BaseIndex):

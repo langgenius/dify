@@ -1,10 +1,11 @@
 from typing import Any, Dict, List, Union
 
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
 from langchain import WikipediaAPIWrapper
 from langchain.tools import WikipediaQueryRun
 from pydantic import BaseModel, Field
+
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class WikipediaInput(BaseModel):

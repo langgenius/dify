@@ -1,25 +1,35 @@
 import re
-from json import dumps, loads
+from json import dumps
 from time import sleep, time
+
 # import monkeypatch
 from typing import Any, Generator, List, Literal, Optional, Union
 
 import openai.types.chat.completion_create_params as completion_create_params
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from openai import AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.chat.completions import Completions
 from openai.types import Completion as CompletionMessage
-from openai.types.chat import (ChatCompletion, ChatCompletionChunk, ChatCompletionMessageParam,
-                               ChatCompletionMessageToolCall, ChatCompletionToolChoiceOptionParam,
-                               ChatCompletionToolParam)
+from openai.types.chat import (
+    ChatCompletionChunk,
+    ChatCompletionMessageParam,
+    ChatCompletionMessageToolCall,
+    ChatCompletionToolParam,
+)
 from openai.types.chat.chat_completion import ChatCompletion as _ChatCompletion
 from openai.types.chat.chat_completion import Choice as _ChatCompletionChoice
-from openai.types.chat.chat_completion_chunk import (Choice, ChoiceDelta, ChoiceDeltaFunctionCall, ChoiceDeltaToolCall,
-                                                     ChoiceDeltaToolCallFunction)
+from openai.types.chat.chat_completion_chunk import (
+    Choice,
+    ChoiceDelta,
+    ChoiceDeltaFunctionCall,
+    ChoiceDeltaToolCall,
+    ChoiceDeltaToolCallFunction,
+)
 from openai.types.chat.chat_completion_message import ChatCompletionMessage, FunctionCall
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.completion_usage import CompletionUsage
+
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 
 
 class MockChatClass(object):

@@ -4,24 +4,30 @@ import logging
 from typing import Generator, Union
 
 import flask_login
+from flask import Response, stream_with_context
+from flask_restful import Resource, reqparse
+from werkzeug.exceptions import InternalServerError, NotFound
+
 import services
 from controllers.console import api
 from controllers.console.app import _get_app
-from controllers.console.app.error import (AppUnavailableError, CompletionRequestError, ConversationCompletedError,
-                                           ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
-                                           ProviderQuotaExceededError)
+from controllers.console.app.error import (
+    AppUnavailableError,
+    CompletionRequestError,
+    ConversationCompletedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import Response, stream_with_context
-from flask_restful import Resource, reqparse
 from libs.helper import uuid_value
 from libs.login import login_required
 from services.completion_service import CompletionService
-from werkzeug.exceptions import InternalServerError, NotFound
 
 
 # define completion message api for user

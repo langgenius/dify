@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.google.tools.google_search import GoogleSearchTool

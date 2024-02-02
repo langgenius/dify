@@ -1,7 +1,14 @@
 import openai
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from httpx import Timeout
+
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 
 class _CommonOpenAI:

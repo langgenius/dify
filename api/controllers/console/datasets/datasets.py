@@ -1,5 +1,10 @@
 # -*- coding:utf-8 -*-
 import flask_restful
+from flask import current_app, request
+from flask_login import current_user
+from flask_restful import Resource, marshal, marshal_with, reqparse
+from werkzeug.exceptions import Forbidden, NotFound
+
 import services
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
@@ -15,14 +20,10 @@ from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
-from flask import current_app, request
-from flask_login import current_user
-from flask_restful import Resource, marshal, marshal_with, reqparse
 from libs.login import login_required
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import ApiToken, UploadFile
 from services.dataset_service import DatasetService, DocumentService
-from werkzeug.exceptions import Forbidden, NotFound
 
 
 def _validate_name(name):

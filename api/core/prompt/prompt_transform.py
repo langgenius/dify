@@ -4,13 +4,21 @@ import os
 import re
 from typing import List, Optional, Tuple, cast
 
-from core.entities.application_entities import (AdvancedCompletionPromptTemplateEntity, ModelConfigEntity,
-                                                PromptTemplateEntity)
+from core.entities.application_entities import (
+    AdvancedCompletionPromptTemplateEntity,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageRole,
-                                                          SystemPromptMessage, TextPromptMessageContent,
-                                                          UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageRole,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_builder import PromptBuilder

@@ -1,14 +1,12 @@
 import os
 from time import sleep
-from typing import Any, Generator, List, Literal, Union
+from typing import Any, Generator, Literal, Union
 
 import anthropic
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from anthropic import Anthropic
-from anthropic._types import NOT_GIVEN, Body, Headers, NotGiven, Query
 from anthropic.resources.completions import Completions
-from anthropic.types import Completion, completion_create_params
+from anthropic.types import Completion
 
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
 

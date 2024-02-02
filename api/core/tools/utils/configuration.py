@@ -1,9 +1,10 @@
 from typing import Any, Dict
 
+from pydantic import BaseModel
+
 from core.helper import encrypter
 from core.tools.entities.tool_entities import ToolProviderCredentials
 from core.tools.provider.tool_provider import ToolProviderController
-from pydantic import BaseModel
 
 
 class ToolConfiguration(BaseModel):

@@ -1,10 +1,14 @@
 import re
-from typing import Any, Generator, List, Literal, Optional, Union
+from typing import Any, Generator, Literal, Optional, Union
 
-from _pytest.monkeypatch import MonkeyPatch
 from huggingface_hub import InferenceClient
-from huggingface_hub.inference._text_generation import (Details, StreamDetails, TextGenerationResponse,
-                                                        TextGenerationStreamResponse, Token)
+from huggingface_hub.inference._text_generation import (
+    Details,
+    StreamDetails,
+    TextGenerationResponse,
+    TextGenerationStreamResponse,
+    Token,
+)
 from huggingface_hub.utils import BadRequestError
 
 

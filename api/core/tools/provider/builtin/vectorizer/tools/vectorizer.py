@@ -1,11 +1,12 @@
 from base64 import b64decode
 from typing import Any, Dict, List, Union
 
+from httpx import post
+
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.vectorizer.tools.test_data import VECTORIZER_ICON_PNG
 from core.tools.tool.builtin_tool import BuiltinTool
-from httpx import post
 
 
 class VectorizerTool(BuiltinTool):

@@ -1,10 +1,10 @@
 from base64 import b64decode
-from os.path import join
 from typing import Any, Dict, List, Union
+
+from openai import AzureOpenAI
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from openai import AzureOpenAI
 
 
 class DallE3Tool(BuiltinTool):

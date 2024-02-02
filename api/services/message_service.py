@@ -12,8 +12,12 @@ from models.model import App, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
-from services.errors.message import (FirstMessageNotExistsError, LastMessageNotExistsError, MessageNotExistsError,
-                                     SuggestedQuestionsAfterAnswerDisabledError)
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    LastMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 
 
 class MessageService:

@@ -3,11 +3,13 @@ import json
 import secrets
 
 import click
+from flask import current_app
+from werkzeug.exceptions import NotFound
+
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
-from flask import current_app
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -15,7 +17,6 @@ from models.account import Tenant
 from models.dataset import Dataset
 from models.model import Account
 from models.provider import Provider, ProviderModel
-from werkzeug.exceptions import NotFound
 
 
 @click.command('reset-password', help='Reset the account password.')

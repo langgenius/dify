@@ -1,11 +1,7 @@
-import json
 import urllib.parse
 from dataclasses import dataclass
 
 import requests
-from extensions.ext_database import db
-from flask_login import current_user
-from models.source import DataSourceBinding
 
 
 @dataclass

@@ -1,17 +1,18 @@
 from enum import Enum
 from hashlib import md5
 from json import dumps, loads
-from os.path import join
-from time import time
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Union
 
-from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (BadRequestError,
-                                                                                   InsufficientAccountBalance,
-                                                                                   InternalServerError,
-                                                                                   InvalidAPIKeyError,
-                                                                                   InvalidAuthenticationError,
-                                                                                   RateLimitReachedError)
 from requests import post
+
+from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
+    BadRequestError,
+    InsufficientAccountBalance,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
 
 
 class BaichuanMessage:

@@ -8,8 +8,14 @@ from core.app_runner.app_runner import AppRunner
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import (AgentEntity, AgentToolEntity, ApplicationGenerateEntity,
-                                                AppOrchestrationConfigEntity, InvokeFrom, ModelConfigEntity)
+from core.entities.application_entities import (
+    AgentEntity,
+    AgentToolEntity,
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+)
 from core.file.message_file_parser import FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
@@ -18,8 +24,12 @@ from core.model_runtime.entities.message_entities import PromptMessage, PromptMe
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.tool_entities import (ToolInvokeMessage, ToolInvokeMessageBinary, ToolParameter,
-                                               ToolRuntimeVariablePool)
+from core.tools.entities.tool_entities import (
+    ToolInvokeMessage,
+    ToolInvokeMessageBinary,
+    ToolParameter,
+    ToolRuntimeVariablePool,
+)
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_file_manager import ToolFileManager

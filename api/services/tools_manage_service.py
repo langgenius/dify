@@ -1,10 +1,17 @@
 import json
-from typing import List, Tuple
+from typing import List
+
+from flask import current_app
+from httpx import get
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import (ApiProviderAuthType, ApiProviderSchemaType, ToolCredentialsOption,
-                                               ToolProviderCredentials)
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ApiProviderSchemaType,
+    ToolCredentialsOption,
+    ToolProviderCredentials,
+)
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
@@ -14,8 +21,6 @@ from core.tools.utils.configuration import ToolConfiguration
 from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
-from flask import current_app
-from httpx import get
 from models.tools import ApiToolProvider, BuiltinToolProvider
 
 

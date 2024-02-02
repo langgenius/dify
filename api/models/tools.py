@@ -1,14 +1,14 @@
 import json
-from enum import Enum
 from typing import List
+
+from sqlalchemy import ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolRuntimeVariablePool
+from core.tools.entities.tool_entities import ApiProviderSchemaType
 from extensions.ext_database import db
 from models.model import Account, App, Tenant
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 
 
 class BuiltinToolProvider(db.Model):

@@ -1,14 +1,15 @@
 import os
 from functools import wraps
 
+from flask import request
+from flask_restful import Resource, reqparse
+from werkzeug.exceptions import NotFound, Unauthorized
+
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
-from flask import request
-from flask_restful import Resource, reqparse
 from models.model import App, InstalledApp, RecommendedApp
-from werkzeug.exceptions import NotFound, Unauthorized
 
 
 def admin_required(view):

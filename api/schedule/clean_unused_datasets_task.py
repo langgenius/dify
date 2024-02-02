@@ -1,14 +1,14 @@
 import datetime
-import logging
 import time
 
-import app
 import click
+from flask import current_app
+from werkzeug.exceptions import NotFound
+
+import app
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
-from flask import current_app
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetQuery, Document
-from werkzeug.exceptions import NotFound
+from models.dataset import Dataset, DatasetQuery, Document
 
 
 @app.celery.task(queue='dataset')

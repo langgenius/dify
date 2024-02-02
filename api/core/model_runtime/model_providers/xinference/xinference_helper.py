@@ -3,7 +3,6 @@ from threading import Lock
 from time import time
 from typing import List
 
-from requests import get
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, MissingSchema, Timeout
 from requests.sessions import Session

@@ -1,10 +1,10 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.rerank.rerank import XinferenceRerankModel
-from tests.integration_tests.model_runtime.__mock.xinference import MOCK, setup_xinference_mock
 
 
 @pytest.mark.parametrize('setup_xinference_mock', [['none']], indirect=True)
