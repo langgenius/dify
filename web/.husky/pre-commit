@@ -29,7 +29,7 @@ if $api_modified; then
     fi
 
     echo "Running Ruff linter on api module"
-    ruff check --fix ./api
+    dev/reformat
 fi
 
 if $web_modified; then
