@@ -100,7 +100,7 @@ const ActivateForm = () => {
         'md:px-[108px]',
       )
     }>
-      {!checkRes && <Loading/>}
+      {!checkRes && <Loading />}
       {checkRes && !checkRes.is_valid && (
         <div className="flex flex-col md:w-[400px]">
           <div className="w-full mx-auto">
@@ -206,7 +206,7 @@ const ActivateForm = () => {
                 &nbsp;
                 <Link
                   className='text-primary-600'
-                  target={'_blank'}
+                  target='_blank' rel='noopener noreferrer'
                   href={`https://docs.dify.ai/${language !== LanguagesSupportedUnderscore[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
