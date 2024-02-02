@@ -1,4 +1,35 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 . "$(dirname -- "$0")/_/husky.sh"
 
-cd ./web && npx lint-staged
+# get the list of modified files
+files=$(git diff --cached --name-only)
+
+# check if api or web directory is modified
+
+api_modified=false
+web_modified=false
+
+for file in $files
+do
+    if [[ $file == "api/"* && $file == *.py ]]; then
+        # set api_modified flag to true
+        api_modified=true
+    elif [[ $file == "web/"* ]]; then
+        # set web_modified flag to true
+        web_modified=true
+    fi
+done
+
+# run linters based on the modified modules
+
+if $api_modified; then
+    echo "Running Ruff linter on api module"
+    ./dev/reformat
+fi
+
+if $web_modified; then
+    echo "Running ESLint on web module"
+    cd ./web || exit 1
+    npx lint-staged
+    cd ../
+fi
