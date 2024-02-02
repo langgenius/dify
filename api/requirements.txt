@@ -55,7 +55,7 @@ pymilvus==2.3.0
 qdrant-client==1.6.4
 cohere~=4.44
 pyyaml~=6.0.1
-numpy~=1.25.2
+numpy~=1.26.3
 unstructured[docx,pptx,msg,md,ppt]~=0.10.27
 bs4~=0.0.1
 markdown~=3.5.1
