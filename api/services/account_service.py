@@ -266,7 +266,7 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else: 
-            TenantAccountJoin.query.filter_by(account_id=account.id).filter(TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
+            TenantAccountJoin.query.filter(TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
             tenant_account_join.current = True
             db.session.commit()
             # Set the current tenant for the account
