@@ -24,6 +24,7 @@ from services.errors.account import (AccountAlreadyInTenantError, AccountLoginEr
 from sqlalchemy import func
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from werkzeug.exceptions import Forbidden
+from sqlalchemy import exc
 
 
 def _create_tenant_for_account(account) -> Tenant:
@@ -257,18 +258,23 @@ class TenantService:
     def switch_tenant(account: Account, tenant_id: int = None) -> None:
         """Switch the current workspace for the account"""
 
-        tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
-        TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
+        with db.session.begin():
+            try:
+                tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
+                TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
 
-        # Check if the tenant exists and the account is a member of the tenant
-        if not tenant_account_join:
-            raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
-        else:
-            tenant_account_join.current = True
-            db.session.commit()
+                # Check if the tenant exists and the account is a member of the tenant
+                if not tenant_account_join:
+                    raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
+                else:
+                    tenant_account_join.current = True
+                    db.session.commit()
 
-        # Set the current tenant for the account
-        account.current_tenant_id = tenant_account_join.tenant_id
+                # Set the current tenant for the account
+                account.current_tenant_id = tenant_account_join.tenant_id
+            except exc.SQLAlchemyError:
+                db.session.rollback()
+                raise
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> List[Account]:
