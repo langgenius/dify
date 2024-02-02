@@ -266,20 +266,11 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else: 
-            with db.session.begin_nested():
-                try:
-                    # Update only the records that are not currently the selected tenant to False
-                    TenantAccountJoin.query.filter_by(account_id=account.id).filter(TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
-                    tenant_account_join.current = True
-
-                    # Set the current tenant for the account
-                    account.current_tenant_id = tenant_account_join.tenant_id
-
-                    # Commit the outer transaction
-                    db.session.commit()
-                except exc.SQLAlchemyError as e:
-                    db.session.rollback()  # Ensures that any partial changes are rolled back
-                    raise e  # It's often useful to re-raise the original exception after handling it
+            TenantAccountJoin.query.filter_by(account_id=account.id).filter(TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
+            tenant_account_join.current = True
+            db.session.commit()
+            # Set the current tenant for the account
+            account.current_tenant_id = tenant_account_join.tenant_id
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> List[Account]:
