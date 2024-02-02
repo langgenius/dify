@@ -10,16 +10,15 @@ from models.dataset import Dataset
 
 class BaseVector(ABC):
 
-    def __init__(self, dataset: Dataset, embeddings: Embeddings):
-        self.dataset = dataset
-        self._embeddings = embeddings
+    def __init__(self, collection_name: str):
+        self._collection_name = collection_name
 
     @abstractmethod
-    def create(self, texts: list[Document], **kwargs) -> BaseVector:
+    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, texts: list[Document], collection_name: str, **kwargs):
+    def add_texts(self, texts: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -36,7 +35,8 @@ class BaseVector(ABC):
 
     @abstractmethod
     def search_by_vector(
-            self, query: str,
+            self,
+            query_vector: List[float],
             **kwargs: Any
     ) -> List[Document]:
         raise NotImplementedError

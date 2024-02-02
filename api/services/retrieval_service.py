@@ -4,7 +4,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
-from core.rag.datasource.vdb.vector_init import Vector
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from flask import Flask, current_app
@@ -34,11 +34,11 @@ class RetrievalService:
                 Dataset.id == dataset_id
             ).first()
 
-            vector_processor = Vector(
+            vector = Vector(
                 dataset=dataset
             )
 
-            documents = vector_processor.vector_processor.search_by_vector(
+            documents = vector.search_by_vector(
                 query,
                 search_type='similarity_score_threshold',
                 k=top_k,

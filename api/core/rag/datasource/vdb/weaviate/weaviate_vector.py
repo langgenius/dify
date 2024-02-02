@@ -26,8 +26,8 @@ class WeaviateConfig(BaseModel):
 
 class WeaviateVector(BaseVector):
 
-    def __init__(self, dataset: Dataset, config: WeaviateConfig, embeddings: Embeddings, attributes: list):
-        super().__init__(dataset, embeddings)
+    def __init__(self, collection_name: str, config: WeaviateConfig, attributes: list):
+        super().__init__(collection_name)
         self._client = self._init_client(config)
         self._attributes = attributes
 
@@ -76,31 +76,26 @@ class WeaviateVector(BaseVector):
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"class_prefix": self.get_collection_name(self.dataset)}
+            "vector_store": {"class_prefix": self._collection_name}
         }
 
-    def create(self, texts: list[Document], **kwargs) -> BaseVector:
+    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
 
-        collection_name = self.get_collection_name(self.dataset)
+        collection_name = self._collection_name
 
         schema = self._default_schema(collection_name)
 
         # create collection
         self._client.schema.create_class(schema)
         # create vector
-        self.add_texts(texts, collection_name)
+        self.add_texts(texts, embeddings, collection_name)
 
-    def add_texts(self, documents: list[Document], collection_name: str, **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
         ids = []
-        embeddings: Optional[List[List[float]]] = None
-        if self._embeddings:
-            if not isinstance(texts, list):
-                texts = list(texts)
-            embeddings = self._embeddings.embed_documents(texts)
 
         with self._client.batch as batch:
             for i, text in enumerate(texts):
@@ -127,17 +122,17 @@ class WeaviateVector(BaseVector):
         }
 
         self._client.batch.delete_objects(
-            class_name=self.get_collection_name(self.dataset),
+            class_name=self._collection_name,
             where=where_filter,
             output='minimal'
         )
 
 
     def delete(self):
-        self._client.schema.delete_class(self.get_collection_name(self.dataset))
+        self._client.schema.delete_class(self._collection_name)
 
     def text_exists(self, id: str) -> bool:
-        collection_name = self.get_collection_name(self.dataset)
+        collection_name = self._collection_name
         result = self._client.query.get(collection_name).with_additional(["id"]).with_where({
             "path": ["doc_id"],
             "operator": "Equal",
@@ -156,16 +151,15 @@ class WeaviateVector(BaseVector):
     def delete_by_ids(self, ids: list[str]) -> None:
         self._client.data_object.delete(
             ids,
-            class_name=self.get_collection_name(self.dataset)
+            class_name=self._collection_name
         )
 
-    def search_by_vector(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
-        collection_name = self.get_collection_name(self.dataset)
+        collection_name = self._collection_name
         query_obj = self._client.query.get(collection_name)
 
-        embedded_query = self._embeddings.embed_query(query)
-        vector = {"vector": embedded_query}
+        vector = {"vector": query_vector}
         result = (
             query_obj.with_near_vector(vector)
             .with_where(kwargs.get("where_filter"))
@@ -202,7 +196,7 @@ class WeaviateVector(BaseVector):
         Returns:
             List of Documents most similar to the query.
         """
-        collection_name = self.get_collection_name(self.dataset)
+        collection_name = self._collection_name
         content: Dict[str, Any] = {"concepts": [query]}
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")

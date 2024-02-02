@@ -1,10 +1,7 @@
-from typing import Any, List, cast, Optional
-
-from core.rag.datasource.entity.embedding import Embeddings
+from typing import Any, List, Optional
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
-from models.dataset import Dataset
 from pydantic import BaseModel, root_validator
 from pymilvus import MilvusClient
 
@@ -41,8 +38,8 @@ class MilvusConfig(BaseModel):
 
 class MilvusVector(BaseVector):
 
-    def __init__(self, dataset: Dataset, config: MilvusConfig, embeddings: Embeddings):
-        super().__init__(dataset, embeddings)
+    def __init__(self, collection_name: str, config: MilvusConfig):
+        super().__init__(collection_name)
         self._client_config = config
         self._client = self._init_client(config)
         self._consistency_level = 'Session'
@@ -50,48 +47,21 @@ class MilvusVector(BaseVector):
     def get_type(self) -> str:
         return 'milvus'
 
-    def get_collection_name(self, dataset: Dataset) -> str:
-        if self.dataset.index_struct_dict:
-            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
-            if not class_prefix.endswith('_Node'):
-                # original class_prefix
-                class_prefix += '_Node'
-
-            return class_prefix
-
-        dataset_id = dataset.id
-        return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
-
-    def to_index_struct(self) -> dict:
-        return {
-            "type": self.get_type(),
-            "vector_store": {"class_prefix": self.get_collection_name(self.dataset)}
-        }
-
-    def create(self, texts: list[Document], **kwargs) -> BaseVector:
+    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
         index_params = {
             'metric_type': 'IP',
             'index_type': "HNSW",
             'params': {"M": 8, "efConstruction": 64}
         }
-        embeddings = self._embeddings.embed_documents([texts[0].page_content])
         metadatas = [d.metadata for d in texts]
 
         collection_name = self.create_collection(embeddings, metadatas, index_params)
 
-        self.add_texts(texts, collection_name)
+        self.add_texts(texts, embeddings, collection_name)
 
-        return self
-
-    def add_texts(self, documents: list[Document], collection_name: str, **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
-
-        embeddings: Optional[List[List[float]]] = None
-        if self._embeddings:
-            if not isinstance(texts, list):
-                texts = list(texts)
-            embeddings = self._embeddings.embed_documents(texts)
 
         # Dict to hold all insert columns
         insert_dict: dict[str, list] = {
@@ -108,10 +78,10 @@ class MilvusVector(BaseVector):
 
         ids = self.get_ids_by_metadata_field('document_id', document_id)
         if ids:
-            self._client.delete(collection_name=self.get_collection_name(self.dataset), pks=ids)
+            self._client.delete(collection_name=self._collection_name, pks=ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        result = self._client.query(collection_name=self.get_collection_name(self.dataset),
+        result = self._client.query(collection_name=self._collection_name,
                                     filter=f'metadata["{key}"] == "{value}"',
                                     output_fields=["id"])
         if result:
@@ -123,32 +93,30 @@ class MilvusVector(BaseVector):
 
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
-            self._client.delete(collection_name=self.get_collection_name(self.dataset), pks=ids)
+            self._client.delete(collection_name=self._collection_name, pks=ids)
 
     def delete_by_ids(self, doc_ids: list[str]) -> None:
 
-        self._client.delete(collection_name=self.get_collection_name(self.dataset), pks=doc_ids)
+        self._client.delete(collection_name=self._collection_name, pks=doc_ids)
 
     def delete(self) -> None:
 
         from pymilvus import utility
-        utility.drop_collection(self.get_collection_name(self.dataset), None)
+        utility.drop_collection(self._collection_name, None)
 
     def text_exists(self, id: str) -> bool:
 
-        result = self._client.query(collection_name=self.get_collection_name(self.dataset),
+        result = self._client.query(collection_name=self._collection_name,
                                     filter=f'metadata["doc_id"] == "{id}"',
                                     output_fields=["id"])
 
         return len(result) > 0
 
-    def search_by_vector(self, query: str, **kwargs: Any) -> List[Document]:
-        # Embed the query text.
-        embedding = self._embeddings.embed_query(query)
+    def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
 
         # Set search parameters.
-        results = self._client.search(collection_name=self.get_collection_name(self.dataset),
-                                      query_records=[embedding],
+        results = self._client.search(collection_name=self._collection_name,
+                                      query_records=[query_vector],
                                       anns_field=Field.VECTOR.value,
                                       limit=kwargs.get('top_k', 4),
                                       **kwargs,
@@ -171,7 +139,7 @@ class MilvusVector(BaseVector):
     def create_collection(
             self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
     ) -> str:
-        from pymilvus import Collection, CollectionSchema, DataType, FieldSchema
+        from pymilvus import CollectionSchema, DataType, FieldSchema
         from pymilvus.orm.types import infer_dtype_bydata
 
         # Determine embedding dim
@@ -199,7 +167,7 @@ class MilvusVector(BaseVector):
         schema = CollectionSchema(fields)
 
         # Create the collection
-        collection_name = self.get_collection_name(self.dataset)
+        collection_name = self._collection_name
         self._client.create_collection_with_schema(collection_name=collection_name,
                                                    schema=schema, index_param=index_params,
                                                    consistency_level=self._consistency_level)

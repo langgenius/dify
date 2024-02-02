@@ -4,7 +4,7 @@ from typing import List
 import pandas as pd
 from werkzeug.datastructures import FileStorage
 from core.rag.datasource.retrieval_service import RetrievalService
-from core.rag.datasource.vdb.vector_init import Vector
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
@@ -98,10 +98,11 @@ class KeywordIndexProcessor(BaseIndexProcessor):
 
     def load(self, dataset: Dataset, documents: List[Document]):
         if dataset.indexing_technique == 'high_quality':
-            vector = Vector(dataset).vector_processor
+            vector = Vector(dataset)
+            vector.create(documents)
         else:
             keyword = IndexBuilder.get_index(dataset, 'economy')
-        vector.create(documents)
+
 
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> List[Document]:

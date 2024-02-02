@@ -42,45 +42,28 @@ class QdrantConfig(BaseModel):
 
 class QdrantVector(BaseVector):
 
-    def __init__(self, dataset: Dataset, config: QdrantConfig, embeddings: Embeddings, distance_func: str = 'Cosine'):
-        super().__init__(dataset, embeddings)
+    def __init__(self, collection_name: str, group_id: str, config: QdrantConfig, distance_func: str = 'Cosine'):
+        super().__init__(collection_name)
         self._client_config = config
         self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
         self._distance_func = distance_func.upper()
+        self._group_id = group_id
 
     def get_type(self) -> str:
         return 'qdrant'
 
-    def get_collection_name(self, dataset: Dataset) -> str:
-        if dataset.collection_binding_id:
-            dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-                filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
-                one_or_none()
-            if dataset_collection_binding:
-                return dataset_collection_binding.collection_name
-            else:
-                raise ValueError('Dataset Collection Bindings is not exist!')
-        else:
-            if self.dataset.index_struct_dict:
-                class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
-                return class_prefix
-
-            dataset_id = dataset.id
-            return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
-
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"class_prefix": self.get_collection_name(self.dataset)}
+            "vector_store": {"class_prefix": self._collection_name}
         }
 
-    def create(self, texts: list[Document], **kwargs) -> BaseVector:
+    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
         if texts:
             # get embedding vector size
-            partial_embeddings = self._embeddings.embed_documents([texts[0].page_content])
-            vector_size = len(partial_embeddings[0])
+            vector_size = len(embeddings[0])
             # get collection name
-            collection_name = self.get_collection_name(self.dataset)
+            collection_name = self._collection_name
             collection_name = collection_name or uuid.uuid4().hex
             all_collection_name = []
             collections_response = self._client.get_collections()
@@ -91,9 +74,7 @@ class QdrantVector(BaseVector):
                 # create collection
                 self.create_collection(collection_name, vector_size)
 
-            self.add_texts(texts, collection_name, **kwargs)
-
-            return self
+            self.add_texts(texts, embeddings, collection_name, **kwargs)
 
     def create_collection(self, collection_name: str, vector_size: int):
 
@@ -125,14 +106,14 @@ class QdrantVector(BaseVector):
         self._client.create_payload_index(collection_name, Field.CONTENT_KEY.value,
                                           field_schema=text_index_params)
 
-    def add_texts(self, documents: list[Document], collection_name: str, **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
         added_ids = []
         for batch_ids, points in self._generate_rest_batches(
-                texts, metadatas, uuids
+                texts, embeddings, metadatas, uuids
         ):
             self._client.upsert(
                 collection_name=collection_name, points=points
@@ -144,6 +125,7 @@ class QdrantVector(BaseVector):
     def _generate_rest_batches(
             self,
             texts: Iterable[str],
+            embeddings: List[List[float]],
             metadatas: Optional[List[dict]] = None,
             ids: Optional[Sequence[str]] = None,
             batch_size: int = 64,
@@ -152,6 +134,7 @@ class QdrantVector(BaseVector):
         from qdrant_client.http import models as rest
 
         texts_iterator = iter(texts)
+        embeddings_iterator = iter(embeddings)
         metadatas_iterator = iter(metadatas or [])
         ids_iterator = iter(ids or [uuid.uuid4().hex for _ in iter(texts)])
         while batch_texts := list(islice(texts_iterator, batch_size)):
@@ -160,7 +143,7 @@ class QdrantVector(BaseVector):
             batch_ids = list(islice(ids_iterator, batch_size))
 
             # Generate the embeddings for all the texts in a batch
-            batch_embeddings = self._embed_texts(batch_texts)
+            batch_embeddings = list(islice(embeddings_iterator, 5))
 
             points = [
                 rest.PointStruct(
@@ -228,7 +211,7 @@ class QdrantVector(BaseVector):
         self._reload_if_needed()
 
         self._client.delete(
-            collection_name=self.get_collection_name(self.dataset),
+            collection_name=self._collection_name,
             points_selector=FilterSelector(
                 filter=filter
             ),
@@ -240,12 +223,12 @@ class QdrantVector(BaseVector):
             must=[
                 models.FieldCondition(
                     key="group_id",
-                    match=models.MatchValue(value=self.dataset.id),
+                    match=models.MatchValue(value=self._group_id),
                 ),
             ],
         )
         self._client.delete(
-            collection_name=self.get_collection_name(self.dataset),
+            collection_name=self._collection_name,
             points_selector=FilterSelector(
                 filter=filter
             ),
@@ -264,7 +247,7 @@ class QdrantVector(BaseVector):
                 ],
             )
             self._client.delete(
-                collection_name=self.get_collection_name(self.dataset),
+                collection_name=self._collection_name,
                 points_selector=FilterSelector(
                     filter=filter
                 ),
@@ -272,16 +255,16 @@ class QdrantVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         response = self._client.retrieve(
-            collection_name=self.get_collection_name(self.dataset),
+            collection_name=self._collection_name,
             ids=[id]
         )
 
         return len(response) > 0
 
-    def search_by_vector(self, query: str, **kwargs: Any) -> List[Document]:
-        query_vector = (Field.VECTOR.value, self._embeddings.embed_query(query))
+    def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
+        query_vector = (Field.VECTOR.value, query_vector)
         results = self._client.search(
-            collection_name=self.get_collection_name(self.dataset),
+            collection_name=self._collection_name,
             query_vector=query_vector,
             query_filter=kwargs.get("filter", None),
             limit=kwargs.get("top_k", 4),
@@ -314,7 +297,7 @@ class QdrantVector(BaseVector):
             must=[
                 models.FieldCondition(
                     key="group_id",
-                    match=models.MatchValue(value=self.dataset.id),
+                    match=models.MatchValue(value=self._group_id),
                 ),
                 models.FieldCondition(
                     key="page_content",
@@ -323,7 +306,7 @@ class QdrantVector(BaseVector):
             ]
         )
         response = self._client.scroll(
-            collection_name=self.get_collection_name(self.dataset),
+            collection_name=self._collection_name,
             scroll_filter=scroll_filter,
             limit=kwargs.get('top_k', 2),
             with_payload=True,

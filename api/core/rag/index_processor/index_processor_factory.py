@@ -7,15 +7,15 @@ from core.rag.index_processor.processor.qa_index_processor import QAIndexProcess
 from models.dataset import DatasetProcessRule
 
 
-class IndexProcessorInit:
+class IndexProcessorFactory:
     """IndexProcessorInit.
     """
 
-    def __init__(self, index_type: str, process_rule: DatasetProcessRule):
+    def __init__(self, index_type: str, process_rule: dict):
         self._process_rule = process_rule
         self._index_type = index_type
 
-    def _init_index_processor(self) -> BaseIndexProcessor:
+    def init_index_processor(self) -> BaseIndexProcessor:
         """Init index processor."""
 
         if not self._index_type:

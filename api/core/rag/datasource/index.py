@@ -6,7 +6,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from flask import current_app
 from langchain.embeddings import OpenAIEmbeddings
 
-from core.rag.datasource.vdb.vector_init import Vector
+from core.rag.datasource.vdb.vector_factory import Vector
 from models.dataset import Dataset
 
 

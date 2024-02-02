@@ -8,6 +8,7 @@ from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelInstance
 from core.rag.cleaner.cleaner_base import BaseCleaner
+from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from core.spiltter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
@@ -18,15 +19,15 @@ class BaseIndexProcessor(ABC):
     """Interface for extract files.
     """
 
-    def __init__(self, process_rule: DatasetProcessRule):
+    def __init__(self, process_rule: dict):
         self._process_rule = process_rule
 
     @abstractmethod
-    def format_by_file_path(self, file_path: str, **kwargs) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting) -> List[Document]:
         pass
 
     @abstractmethod
-    def format_by_template(self,  file: FileStorage, **kwargs) -> List[Document]:
+    def transform(self, documents: List[Document], **kwargs) -> List[Document]:
         pass
 
     @abstractmethod
@@ -38,14 +39,14 @@ class BaseIndexProcessor(ABC):
                  score_threshold: float, reranking_model: dict) -> List[Document]:
         pass
 
-    def _get_splitter(self, processing_rule: DatasetProcessRule,
+    def _get_splitter(self, processing_rule: dict,
                       embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
-        if processing_rule.mode == "custom":
+        if processing_rule['mode'] == "custom":
             # The user-defined segmentation rule
-            rules = json.loads(processing_rule.rules)
+            rules = processing_rule['rules']
             segmentation = rules["segmentation"]
             if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > 1000:
                 raise ValueError("Custom segment length should be between 50 and 1000.")

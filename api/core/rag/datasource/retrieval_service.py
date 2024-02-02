@@ -5,7 +5,8 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
-from core.rag.datasource.vdb.vector_init import Vector
+from core.rag.datasource.keyword.keyword_init import Keyword
+from core.rag.datasource.vdb.vector_factory import Vector
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from flask import Flask, current_app
@@ -30,6 +31,16 @@ class RetrievalService:
                  top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict]):
         all_documents = []
         threads = []
+        # retrieval_model source with keyword
+        if retrival_method == 'keyword_search':
+            keyword_thread = threading.Thread(target=RetrievalService.keyword_search, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'dataset_id': dataset_id,
+                'query': query,
+                'top_k': top_k
+            })
+            threads.append(keyword_thread)
+            keyword_thread.start()
         # retrieval_model source with semantic
         if retrival_method == 'semantic_search' or retrival_method == 'hybrid_search':
             embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
@@ -64,22 +75,32 @@ class RetrievalService:
             thread.join()
 
         if retrival_method == 'hybrid_search':
-            model_manager = ModelManager()
-            rerank_model_instance = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
-                model_type=ModelType.RERANK,
-                provider=reranking_model['reranking_provider_name'],
-                model=reranking_model['reranking_model_name']
-            )
-
-            rerank_runner = RerankRunner(rerank_model_instance)
-            all_documents = rerank_runner.run(
+            data_post_processor = DataPostProcessor(str(current_user.current_tenant_id), reranking_model, False)
+            all_documents = data_post_processor.invoke(
                 query=query,
                 documents=all_documents,
                 score_threshold=score_threshold,
                 top_n=top_k
             )
         return all_documents
+
+    @classmethod
+    def keyword_search(cls, flask_app: Flask, dataset_id: str, query: str,
+                       top_k: int, all_documents: list):
+        with flask_app.app_context():
+            dataset = db.session.query(Dataset).filter(
+                Dataset.id == dataset_id
+            ).first()
+
+            keyword = Keyword(
+                dataset=dataset
+            )
+
+            documents = keyword.search(
+                query,
+                k=top_k
+            )
+            all_documents.extend(documents)
 
     @classmethod
     def embedding_search(cls, flask_app: Flask, dataset_id: str, query: str,
@@ -90,11 +111,11 @@ class RetrievalService:
                 Dataset.id == dataset_id
             ).first()
 
-            vector_processor = Vector(
+            vector = Vector(
                 dataset=dataset
             )
 
-            documents = vector_processor.vector_processor.search_by_vector(
+            documents = vector.search_by_vector(
                 query,
                 search_type='similarity_score_threshold',
                 k=top_k,
@@ -106,19 +127,8 @@ class RetrievalService:
 
             if documents:
                 if reranking_model and retrival_method == 'semantic_search':
-                    try:
-                        model_manager = ModelManager()
-                        rerank_model_instance = model_manager.get_model_instance(
-                            tenant_id=dataset.tenant_id,
-                            provider=reranking_model['reranking_provider_name'],
-                            model_type=ModelType.RERANK,
-                            model=reranking_model['reranking_model_name']
-                        )
-                    except InvokeAuthorizationError:
-                        return
-                    rerank_runner = RerankRunner(rerank_model_instance)
-                    data_post_processor = DataPostProcessor(rerank_runner)
-                    all_documents.extend(data_post_processor.rerank(
+                    data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
+                    all_documents.extend(data_post_processor.invoke(
                         query=query,
                         documents=documents,
                         score_threshold=score_threshold,
@@ -147,21 +157,8 @@ class RetrievalService:
             )
             if documents:
                 if reranking_model and retrival_method == 'full_text_search':
-                    try:
-                        model_manager = ModelManager()
-                        rerank_model_instance = model_manager.get_model_instance(
-                            tenant_id=dataset.tenant_id,
-                            provider=reranking_model['reranking_provider_name'],
-                            model_type=ModelType.RERANK,
-                            model=reranking_model['reranking_model_name']
-                        )
-                    except InvokeAuthorizationError:
-                        return
-
-                    rerank_runner = RerankRunner(rerank_model_instance)
-                    data_post_processor = DataPostProcessor(rerank_runner)
-
-                    all_documents.extend(data_post_processor.rerank(
+                    data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
+                    all_documents.extend(data_post_processor.invoke(
                         query=query,
                         documents=documents,
                         score_threshold=score_threshold,

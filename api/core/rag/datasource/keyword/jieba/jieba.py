@@ -81,17 +81,13 @@ class Jieba(BaseKeyword):
 
         self._save_dataset_keyword_table(keyword_table)
 
-    def get_retriever(self, **kwargs: Any) -> BaseRetriever:
-        return KeywordTableRetriever(index=self, **kwargs)
-
     def search(
             self, query: str,
             **kwargs: Any
     ) -> List[Document]:
         keyword_table = self._get_dataset_keyword_table()
 
-        search_kwargs = kwargs.get('search_kwargs') if kwargs.get('search_kwargs') else {}
-        k = search_kwargs.get('k') if search_kwargs.get('k') else 4
+        k = kwargs.get('top_k', 4)
 
         sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table, query, k)
 
@@ -235,31 +231,6 @@ class Jieba(BaseKeyword):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
-
-
-class KeywordTableRetriever(BaseRetriever, BaseModel):
-    index: KeywordTableIndex
-    search_kwargs: dict = Field(default_factory=dict)
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        extra = Extra.forbid
-        arbitrary_types_allowed = True
-
-    def get_relevant_documents(self, query: str) -> List[Document]:
-        """Get documents relevant for a query.
-
-        Args:
-            query: string to find relevant documents for
-
-        Returns:
-            List of relevant documents
-        """
-        return self.index.search(query, **self.search_kwargs)
-
-    async def aget_relevant_documents(self, query: str) -> List[Document]:
-        raise NotImplementedError("KeywordTableRetriever does not support async")
 
 
 class SetEncoder(json.JSONEncoder):

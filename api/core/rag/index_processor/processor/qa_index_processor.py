@@ -11,7 +11,11 @@ from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 
 from core.generator.llm_generator import LLMGenerator
-from core.rag.datasource.vdb.vector_init import Vector
+from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.datasource.keyword.keyword_init import Keyword
+from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
@@ -20,27 +24,28 @@ from models.dataset import Dataset
 
 
 class QAIndexProcessor(BaseIndexProcessor):
-    def format_by_file_path(self, file_path: str, **kwargs) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting) -> List[Document]:
 
-        process_rule = self._process_rule
+        text_docs = ExtractProcessor.extract(extract_setting=extract_setting,
+                                             is_automatic=self._process_rule["mode"] == "automatic")
+        return text_docs
 
-        text_docs = ExtractProcessor.load_from_file(file_path=file_path,
-                                                    is_automatic=process_rule["mode"] == "automatic")
-        splitter = self._get_splitter(processing_rule=process_rule,
+    def transform(self, documents: List[Document], **kwargs) -> List[Document]:
+        splitter = self._get_splitter(processing_rule=self._process_rule,
                                       embedding_model_instance=None)
 
         # Split the text documents into nodes.
         all_documents = []
         all_qa_documents = []
-        for text_doc in text_docs:
+        for document in documents:
             # document clean
-            document_text = self._document_clean(text_doc.page_content, self._process_rule)
-            text_doc.page_content = document_text
+            document_text = CleanProcessor.clean(document.page_content, self._process_rule)
+            document.page_content = document_text
 
             # parse document to nodes
-            documents = splitter.split_documents([text_doc])
+            document_nodes = splitter.split_documents([document])
             split_documents = []
-            for document_node in documents:
+            for document_node in document_nodes:
 
                 if document_node.page_content.strip():
                     doc_id = str(uuid.uuid4())
@@ -93,11 +98,25 @@ class QAIndexProcessor(BaseIndexProcessor):
         return text_docs
 
     def load(self, dataset: Dataset, documents: List[Document]):
-        vector = Vector(dataset).vector_processor
-        vector.create(documents)
+        if dataset.indexing_technique == 'high_quality':
+            vector = Vector(dataset)
+            vector.create(documents)
 
-    def retrieve(self):
-        pass
+    def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
+                 score_threshold: float, reranking_model: dict):
+        # Set search parameters.
+        results = RetrievalService.retrieve(retrival_method=retrival_method, dataset_id=dataset.id, query=query,
+                                            top_k=top_k, score_threshold=score_threshold,
+                                            reranking_model=reranking_model)
+        # Organize results.
+        docs = []
+        for result in results:
+            metadata = result.metadata
+            metadata['score'] = result.score
+            if result.score > score_threshold:
+                doc = Document(page_content=result.page_content, metadata=metadata)
+                docs.append(doc)
+        return docs
 
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []
