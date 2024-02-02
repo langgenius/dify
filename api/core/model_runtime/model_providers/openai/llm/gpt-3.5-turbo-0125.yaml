@@ -1,7 +1,7 @@
-model: gpt-3.5-turbo-1106
+model: gpt-3.5-turbo-0125
 label:
-  zh_Hans: gpt-3.5-turbo-1106
-  en_US: gpt-3.5-turbo-1106
+  zh_Hans: gpt-3.5-turbo-0125
+  en_US: gpt-3.5-turbo-0125
 model_type: llm
 features:
   - multi-tool-call
@@ -25,7 +25,7 @@ parameter_rules:
     min: 1
     max: 4096
 pricing:
-  input: '0.001'
-  output: '0.002'
+  input: '0.0005'
+  output: '0.0015'
   unit: '0.001'
   currency: USD
