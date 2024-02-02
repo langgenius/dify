@@ -23,13 +23,8 @@ done
 # run linters based on the modified modules
 
 if $api_modified; then
-    if ! command -v ruff &> /dev/null; then
-      echo "Installing Ruff linter"
-      pip install ruff
-    fi
-
     echo "Running Ruff linter on api module"
-    dev/reformat
+    ./dev/reformat
 fi
 
 if $web_modified; then
