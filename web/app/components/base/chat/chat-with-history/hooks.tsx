@@ -334,6 +334,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   return {
+    isInstalledApp,
+    appId,
     currentConversationId,
     currentConversationItem,
     handleConversationIdInfoChange,

@@ -5,10 +5,12 @@ import {
 } from './context'
 import { useChatWithHistory } from './hooks'
 import Sidebar from './sidebar'
+import HeaderInMobile from './header-in-mobile'
 import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -20,15 +22,27 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     showConfigPanelBeforeChat,
     appChatListDataLoading,
     chatShouldReloadKey,
+    isMobile,
   } = useChatWithHistoryContext()
 
   return (
-    <div className={`h-full flex bg-white ${className}`}>
-      <Sidebar />
+    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
+      {
+        !isMobile && (
+          <Sidebar />
+        )
+      }
+      {
+        isMobile && (
+          <HeaderInMobile />
+        )
+      }
       <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && 'flex items-center justify-center'}`}>
         {
           showConfigPanelBeforeChat && (
-            <ConfigPanel />
+            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
+              <ConfigPanel />
+            </div>
           )
         }
         {
@@ -54,23 +68,19 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
 }) => {
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const {
     appData,
-    appMeta,
     appParams,
-    appPinnedConversationData,
-    appConversationData,
-    appChatListData,
     appChatListDataLoading,
     currentConversationId,
     currentConversationItem,
-    handleConversationIdInfoChange,
     appPrevChatList,
     pinnedConversationList,
     conversationList,
     showConfigPanelBeforeChat,
-    setShowConfigPanelBeforeChat,
-    setShowNewConversationItemInList,
     newConversationInputs,
     handleNewConversationInputsChange,
     inputsForms,
@@ -79,34 +89,26 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     handleChangeConversation,
     handlePinConversation,
     handleUnpinConversation,
-    conversationDeleting,
     handleDeleteConversation,
     conversationRenaming,
     handleRenameConversation,
     handleNewConversationCompleted,
-    newConversationId,
     chatShouldReloadKey,
+    isInstalledApp,
+    appId,
   } = useChatWithHistory(installedAppInfo)
 
   return (
     <ChatWithHistoryContext.Provider value={{
-      installedAppInfo,
       appData,
-      appMeta,
       appParams,
-      appPinnedConversationData,
-      appConversationData,
-      appChatListData,
       appChatListDataLoading,
       currentConversationId,
       currentConversationItem,
-      handleConversationIdInfoChange,
       appPrevChatList,
       pinnedConversationList,
       conversationList,
       showConfigPanelBeforeChat,
-      setShowConfigPanelBeforeChat,
-      setShowNewConversationItemInList,
       newConversationInputs,
       handleNewConversationInputsChange,
       inputsForms,
@@ -115,13 +117,14 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       handleChangeConversation,
       handlePinConversation,
       handleUnpinConversation,
-      conversationDeleting,
       handleDeleteConversation,
       conversationRenaming,
       handleRenameConversation,
       handleNewConversationCompleted,
-      newConversationId,
       chatShouldReloadKey,
+      isMobile,
+      isInstalledApp,
+      appId,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

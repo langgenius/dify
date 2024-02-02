@@ -12,7 +12,6 @@ import {
 
 const ChatWrapper = () => {
   const {
-    installedAppInfo,
     appParams,
     appPrevChatList,
     currentConversationId,
@@ -20,6 +19,9 @@ const ChatWrapper = () => {
     inputsForms,
     newConversationInputs,
     handleNewConversationCompleted,
+    isMobile,
+    isInstalledApp,
+    appId,
   } = useChatWithHistoryContext()
   const {
     chatList,
@@ -43,10 +45,10 @@ const ChatWrapper = () => {
       data.files = files
 
     handleSend(
-      getUrl('chat-messages', !!installedAppInfo, installedAppInfo?.id || ''),
+      getUrl('chat-messages', isInstalledApp, appId || ''),
       data,
       {
-        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, !!installedAppInfo, installedAppInfo?.id || ''),
+        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
       },
     )
@@ -55,18 +57,22 @@ const ChatWrapper = () => {
     currentConversationId,
     currentConversationItem,
     handleSend,
-    installedAppInfo,
     newConversationInputs,
     handleNewConversationCompleted,
+    isInstalledApp,
+    appId,
   ])
   const chatNode = useMemo(() => {
     if (inputsForms.length) {
       return (
         <>
-          <Header title={currentConversationItem?.name || ''} />
+          <Header
+            isMobile={isMobile}
+            title={currentConversationItem?.name || ''}
+          />
           {
             !currentConversationId && (
-              <div className='mx-auto w-full max-w-[720px]'>
+              <div className={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}>
                 <div className='mb-6' />
                 <ConfigPanel />
                 <div
@@ -80,20 +86,26 @@ const ChatWrapper = () => {
       )
     }
 
-    return <Header title={currentConversationItem?.name || ''} />
+    return (
+      <Header
+        isMobile={isMobile}
+        title={currentConversationItem?.name || ''}
+      />
+    )
   }, [
     currentConversationId,
     inputsForms,
     currentConversationItem,
+    isMobile,
   ])
 
   return (
     <Chat
       chatList={chatList}
       isResponsing={isResponsing}
-      chatContainerInnerClassName='mx-auto pt-6 w-full max-w-[720px]'
+      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
       chatFooterClassName='pb-4'
-      chatFooterInnerClassName='mx-auto w-full max-w-[720px]'
+      chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
       onSend={doSend}
       onStopResponding={handleStop}
       chatNode={chatNode}

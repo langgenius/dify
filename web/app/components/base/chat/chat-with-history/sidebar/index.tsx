@@ -26,6 +26,7 @@ const Sidebar = () => {
     conversationRenaming,
     handleRenameConversation,
     handleDeleteConversation,
+    isMobile,
   } = useChatWithHistoryContext()
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
@@ -59,18 +60,22 @@ const Sidebar = () => {
   }, [showRename, handleRenameConversation, handleCancelRename])
 
   return (
-    <div className='shrink-0 flex flex-col w-[240px] border-r border-r-gray-100'>
-      <div className='shrink-0 flex p-4'>
-        <AppIcon
-          className='mr-3'
-          size='small'
-          icon={appData?.site.icon}
-          background={appData?.site.icon_background}
-        />
-        <div className='py-1 text-base font-semibold text-gray-800'>
-          {appData?.site.title}
-        </div>
-      </div>
+    <div className='shrink-0 h-full flex flex-col w-[240px] border-r border-r-gray-100'>
+      {
+        !isMobile && (
+          <div className='shrink-0 flex p-4'>
+            <AppIcon
+              className='mr-3'
+              size='small'
+              icon={appData?.site.icon}
+              background={appData?.site.icon_background}
+            />
+            <div className='py-1 text-base font-semibold text-gray-800'>
+              {appData?.site.title}
+            </div>
+          </div>
+        )
+      }
       <div className='shrink-0 p-4'>
         <Button
           className='justify-start px-3 py-0 w-full h-9 text-sm font-medium text-primary-600'
