@@ -258,20 +258,28 @@ class TenantService:
     def switch_tenant(account: Account, tenant_id: int = None) -> None:
         """Switch the current workspace for the account"""
 
+        # Ensure tenant_id is provided
+        if tenant_id is None:
+            raise ValueError("Tenant ID must be provided.")
+
         tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else: 
-            with db.session.begin():
+            with db.session.begin_nested():
                 try:
-                    TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
+                    # Update only the records that are not currently the selected tenant to False
+                    TenantAccountJoin.query.filter_by(account_id=account.id).filter(TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
                     tenant_account_join.current = True
-                    db.session.commit()
+
                     # Set the current tenant for the account
                     account.current_tenant_id = tenant_account_join.tenant_id
-                except exc.SQLAlchemyError:
-                    db.session.rollback()
-                    raise
+
+                    # Commit the outer transaction
+                    db.session.commit()
+                except exc.SQLAlchemyError as e:
+                    db.session.rollback()  # Ensures that any partial changes are rolled back
+                    raise e  # It's often useful to re-raise the original exception after handling it
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> List[Account]:
