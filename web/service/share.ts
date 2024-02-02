@@ -8,6 +8,7 @@ import type {
   AppConversationData,
   AppData,
   AppMeta,
+  ConversationItem,
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 
@@ -89,7 +90,7 @@ export const renameConversation = async (isInstalledApp: boolean, installedAppId
 }
 
 export const generationConversationName = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
-  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } })
+  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } }) as Promise<ConversationItem>
 }
 
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {

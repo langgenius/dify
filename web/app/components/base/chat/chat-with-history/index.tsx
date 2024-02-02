@@ -8,6 +8,7 @@ import Sidebar from './sidebar'
 import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
+import Loading from '@/app/components/base/loading'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -16,23 +17,28 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
-    currentConversationId,
-    showConfigPanel,
+    showConfigPanelBeforeChat,
     appChatListDataLoading,
+    chatShouldReloadKey,
   } = useChatWithHistoryContext()
 
   return (
     <div className={`h-full flex bg-white ${className}`}>
       <Sidebar />
-      <div className={`grow overflow-hidden ${showConfigPanel && 'flex items-center justify-center'}`}>
+      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && 'flex items-center justify-center'}`}>
         {
-          showConfigPanel && (
+          showConfigPanelBeforeChat && (
             <ConfigPanel />
           )
         }
         {
-          !showConfigPanel && !appChatListDataLoading && (
-            <ChatWrapper key={currentConversationId} />
+          appChatListDataLoading && (
+            <Loading type='app' />
+          )
+        }
+        {
+          !showConfigPanelBeforeChat && !appChatListDataLoading && (
+            <ChatWrapper key={chatShouldReloadKey} />
           )
         }
       </div>
@@ -58,18 +64,28 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appChatListDataLoading,
     currentConversationId,
     currentConversationItem,
-    handleCurrentConversationIdChange,
+    handleConversationIdInfoChange,
     appPrevChatList,
     pinnedConversationList,
     conversationList,
-    showConfigPanel,
-    setShowConfigPanel,
+    showConfigPanelBeforeChat,
+    setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
-    setNewConversationInputs,
+    handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,
     handleStartChat,
+    handleChangeConversation,
+    handlePinConversation,
+    handleUnpinConversation,
+    conversationDeleting,
+    handleDeleteConversation,
+    conversationRenaming,
+    handleRenameConversation,
+    handleNewConversationCompleted,
+    newConversationId,
+    chatShouldReloadKey,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -84,18 +100,28 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appChatListDataLoading,
       currentConversationId,
       currentConversationItem,
-      handleCurrentConversationIdChange,
+      handleConversationIdInfoChange,
       appPrevChatList,
       pinnedConversationList,
       conversationList,
-      showConfigPanel,
-      setShowConfigPanel,
+      showConfigPanelBeforeChat,
+      setShowConfigPanelBeforeChat,
       setShowNewConversationItemInList,
       newConversationInputs,
-      setNewConversationInputs,
+      handleNewConversationInputsChange,
       inputsForms,
       handleNewConversation,
       handleStartChat,
+      handleChangeConversation,
+      handlePinConversation,
+      handleUnpinConversation,
+      conversationDeleting,
+      handleDeleteConversation,
+      conversationRenaming,
+      handleRenameConversation,
+      handleNewConversationCompleted,
+      newConversationId,
+      chatShouldReloadKey,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

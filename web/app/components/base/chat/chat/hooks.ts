@@ -25,6 +25,7 @@ type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetConvesationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
+  onConversationComplete?: (conversationId: string) => void
 }
 
 export const useCheckPromptVariables = () => {
@@ -182,6 +183,7 @@ export const useChat = (
     {
       onGetConvesationMessages,
       onGetSuggestedQuestions,
+      onConversationComplete,
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
@@ -286,6 +288,9 @@ export const useChat = (
 
           if (hasError)
             return
+
+          if (onConversationComplete)
+            onConversationComplete(connversationId.current)
 
           if (connversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
             const { data }: any = await onGetConvesationMessages(

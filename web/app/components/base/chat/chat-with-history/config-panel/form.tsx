@@ -7,11 +7,11 @@ const Form = () => {
   const {
     inputsForms,
     newConversationInputs,
-    setNewConversationInputs,
+    handleNewConversationInputsChange,
   } = useChatWithHistoryContext()
 
   const handleFormChange = (variable: string, value: string) => {
-    setNewConversationInputs({
+    handleNewConversationInputsChange({
       ...newConversationInputs,
       [variable]: value,
     })

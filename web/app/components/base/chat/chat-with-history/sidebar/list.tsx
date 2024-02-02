@@ -1,22 +1,23 @@
 import type { FC } from 'react'
-import { useChatWithHistoryContext } from '../context'
+import Item from './item'
 import type { ConversationItem } from '@/models/share'
-import { MessageDotsCircle } from '@/app/components/base/icons/src/vender/solid/communication'
 
 type ListProps = {
+  isPin?: boolean
   title?: string
   list: ConversationItem[]
+  onOperate: (type: string, item: ConversationItem) => void
+  onChangeConversation: (conversationId: string) => void
+  currentConversationId: string
 }
 const List: FC<ListProps> = ({
+  isPin,
   title,
   list,
+  onOperate,
+  onChangeConversation,
+  currentConversationId,
 }) => {
-  const {
-    currentConversationId,
-    handleCurrentConversationIdChange,
-    setShowConfigPanel,
-  } = useChatWithHistoryContext()
-
   return (
     <div>
       {
@@ -28,21 +29,14 @@ const List: FC<ListProps> = ({
       }
       {
         list.map(item => (
-          <div
+          <Item
             key={item.id}
-            className={`
-              flex mb-0.5 last-of-type:mb-0 py-2 pl-3 pr-1.5 text-sm font-medium text-gray-700 
-              rounded-lg cursor-pointer hover:bg-gray-50
-              ${currentConversationId === item.id && 'text-primary-600 bg-primary-50'}
-            `}
-            onClick={() => {
-              handleCurrentConversationIdChange(item.id)
-              setShowConfigPanel(false)
-            }}
-          >
-            <MessageDotsCircle className={`shrink-0 mt-0.5 mr-2 w-4 h-4 text-gray-400 ${currentConversationId === item.id && 'text-primary-600'}`} />
-            <div>{item.name}</div>
-          </div>
+            isPin={isPin}
+            item={item}
+            onOperate={onOperate}
+            onChangeConversation={onChangeConversation}
+            currentConversationId={currentConversationId}
+          />
         ))
       }
     </div>

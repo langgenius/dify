@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import type {
+  Callback,
   ChatConfig,
   ChatItem,
 } from '../types'
@@ -24,33 +25,53 @@ export type ChatWithHistoryContextValue = {
   appChatListDataLoading?: boolean
   currentConversationId: string
   currentConversationItem?: ConversationItem
-  handleCurrentConversationIdChange: (conversationId: string) => void
+  handleConversationIdInfoChange: (conversationId: string) => void
   appPrevChatList: ChatItem[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
-  showConfigPanel: boolean
-  setShowConfigPanel: (show: boolean) => void
+  showConfigPanelBeforeChat: boolean
+  setShowConfigPanelBeforeChat: (show: boolean) => void
   setShowNewConversationItemInList: (v: boolean) => void
   newConversationInputs: Record<string, any>
-  setNewConversationInputs: (v: Record<string, any>) => void
+  handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
   handleStartChat: () => void
+  handleChangeConversation: (conversationId: string) => void
+  handlePinConversation: (conversationId: string) => void
+  handleUnpinConversation: (conversationId: string) => void
+  conversationDeleting: boolean
+  handleDeleteConversation: (conversationId: string, callback: Callback) => void
+  conversationRenaming: boolean
+  handleRenameConversation: (conversationId: string, newName: string, callback: Callback) => void
+  handleNewConversationCompleted: (newConversationId: string) => void
+  newConversationId: string
+  chatShouldReloadKey: string
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
   currentConversationId: '',
-  handleCurrentConversationIdChange: () => {},
+  handleConversationIdInfoChange: () => {},
   appPrevChatList: [],
   pinnedConversationList: [],
   conversationList: [],
-  showConfigPanel: false,
-  setShowConfigPanel: () => {},
+  showConfigPanelBeforeChat: false,
+  setShowConfigPanelBeforeChat: () => {},
   setShowNewConversationItemInList: () => {},
   newConversationInputs: {},
-  setNewConversationInputs: () => {},
+  handleNewConversationInputsChange: () => {},
   inputsForms: [],
   handleNewConversation: () => {},
   handleStartChat: () => {},
+  handleChangeConversation: () => {},
+  handlePinConversation: () => {},
+  handleUnpinConversation: () => {},
+  conversationDeleting: false,
+  handleDeleteConversation: () => {},
+  conversationRenaming: false,
+  handleRenameConversation: () => {},
+  handleNewConversationCompleted: () => {},
+  newConversationId: '',
+  chatShouldReloadKey: '',
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

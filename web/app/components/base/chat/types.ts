@@ -49,3 +49,7 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
 export type ChatItem = IChatItem
 
 export type OnSend = (message: string, files?: VisionFile[]) => void
+
+export type Callback = {
+  onSuccess: () => void
+}

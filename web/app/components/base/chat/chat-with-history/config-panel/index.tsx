@@ -13,7 +13,7 @@ const ConfigPanel = () => {
     appData,
     inputsForms,
     handleStartChat,
-    showConfigPanel,
+    showConfigPanelBeforeChat,
   } = useChatWithHistoryContext()
   const [collapsed, setCollapsed] = useState(true)
 
@@ -21,9 +21,9 @@ const ConfigPanel = () => {
     <div
       className={`
         max-h-[80%] w-full max-w-[720px] rounded-xl overflow-y-auto
-        ${showConfigPanel && 'border-[0.5px] border-gray-100 shadow-lg'}
-        ${!showConfigPanel && collapsed && 'border border-indigo-100'}
-        ${!showConfigPanel && !collapsed && 'border-[0.5px] border-gray-100 shadow-lg'}
+        ${showConfigPanelBeforeChat && 'border-[0.5px] border-gray-100 shadow-lg'}
+        ${!showConfigPanelBeforeChat && collapsed && 'border border-indigo-100'}
+        ${!showConfigPanelBeforeChat && !collapsed && 'border-[0.5px] border-gray-100 shadow-lg'}
       `}
     >
       <div
@@ -32,12 +32,12 @@ const ConfigPanel = () => {
         `}
       >
         {
-          showConfigPanel && (
+          showConfigPanelBeforeChat && (
             <div className='text-2xl font-semibold text-gray-800'>{appData?.site.title}</div>
           )
         }
         {
-          !showConfigPanel && collapsed && (
+          !showConfigPanelBeforeChat && collapsed && (
             <>
               <Star06 className='mr-1 mt-1 w-4 h-4 text-indigo-600' />
               <div className='grow py-[3px] text-[13px] text-indigo-600 leading-[18px] font-medium'>
@@ -54,7 +54,7 @@ const ConfigPanel = () => {
           )
         }
         {
-          !showConfigPanel && !collapsed && (
+          !showConfigPanelBeforeChat && !collapsed && (
             <>
               <Star06 className='mr-1 mt-1 w-4 h-4 text-indigo-600' />
               <div className='grow py-[3px] text-[13px] text-indigo-600 leading-[18px] font-medium'>
@@ -65,7 +65,7 @@ const ConfigPanel = () => {
         }
       </div>
       {
-        !collapsed && !showConfigPanel && (
+        !collapsed && !showConfigPanelBeforeChat && (
           <div className='p-6 rounded-b-xl'>
             <Form />
             <div className='pl-[136px] flex items-center'>
@@ -87,7 +87,7 @@ const ConfigPanel = () => {
         )
       }
       {
-        showConfigPanel && (
+        showConfigPanelBeforeChat && (
           <div className='p-6 rounded-b-xl'>
             <Form />
             <Button

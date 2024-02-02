@@ -19,6 +19,7 @@ const ChatWrapper = () => {
     currentConversationItem,
     inputsForms,
     newConversationInputs,
+    handleNewConversationCompleted,
   } = useChatWithHistoryContext()
   const {
     chatList,
@@ -46,6 +47,7 @@ const ChatWrapper = () => {
       data,
       {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, !!installedAppInfo, installedAppInfo?.id || ''),
+        onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
       },
     )
   }, [
@@ -55,12 +57,13 @@ const ChatWrapper = () => {
     handleSend,
     installedAppInfo,
     newConversationInputs,
+    handleNewConversationCompleted,
   ])
   const chatNode = useMemo(() => {
     if (inputsForms.length) {
       return (
         <>
-          <Header />
+          <Header title={currentConversationItem?.name || ''} />
           {
             !currentConversationId && (
               <div className='mx-auto w-full max-w-[720px]'>
@@ -77,10 +80,11 @@ const ChatWrapper = () => {
       )
     }
 
-    return <Header />
+    return <Header title={currentConversationItem?.name || ''} />
   }, [
     currentConversationId,
     inputsForms,
+    currentConversationItem,
   ])
 
   return (
