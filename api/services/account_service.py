@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
-from flask import current_app, session
+from flask import current_app
 from libs.helper import get_remote_ip
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password
@@ -23,7 +23,8 @@ from services.errors.account import (AccountAlreadyInTenantError, AccountLoginEr
                                      NoPermissionError, RoleAlreadyAssignedError, TenantNotFound)
 from sqlalchemy import func
 from tasks.mail_invite_member_task import send_invite_member_mail_task
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import Forbidden
+from sqlalchemy import exc
 
 
 def _create_tenant_for_account(account) -> Tenant:
@@ -39,53 +40,32 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> Account:
-        # todo: used by flask_login
-        if '.' in user_id:
-            tenant_id, account_id = user_id.split('.')
+        account = Account.query.filter_by(id=user_id).first()
+        if not account:
+            return None
+
+        if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
+            raise Forbidden('Account is banned or closed.')
+        
+        # init owner's tenant
+        tenant_owner = TenantAccountJoin.query.filter_by(account_id=account.id, role='owner').first()
+        if not tenant_owner:
+            _create_tenant_for_account(account)
+        
+        current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
+        if current_tenant:
+            account.current_tenant_id = current_tenant.tenant_id
         else:
-            account_id = user_id
-
-        account = db.session.query(Account).filter(Account.id == account_id).first()
-
-        if account:
-            if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
-                raise Forbidden('Account is banned or closed.')
-
-            workspace_id = session.get('workspace_id')
-            if workspace_id:
-                tenant_account_join = db.session.query(TenantAccountJoin).filter(
-                    TenantAccountJoin.account_id == account.id,
-                    TenantAccountJoin.tenant_id == workspace_id
-                ).first()
-
-                if not tenant_account_join:
-                    tenant_account_join = db.session.query(TenantAccountJoin).filter(
-                        TenantAccountJoin.account_id == account.id).first()
-
-                    if tenant_account_join:
-                        account.current_tenant_id = tenant_account_join.tenant_id
-                    else:
-                        _create_tenant_for_account(account)
-                    session['workspace_id'] = account.current_tenant_id
-                else:
-                    account.current_tenant_id = workspace_id
-            else:
-                tenant_account_join = db.session.query(TenantAccountJoin).filter(
-                    TenantAccountJoin.account_id == account.id).first()
-                if tenant_account_join:
-                    account.current_tenant_id = tenant_account_join.tenant_id
-                else:
-                    _create_tenant_for_account(account)
-                session['workspace_id'] = account.current_tenant_id
-
-            current_time = datetime.utcnow()
-
-            # update last_active_at when last_active_at is more than 10 minutes ago
-            if current_time - account.last_active_at > timedelta(minutes=10):
-                account.last_active_at = current_time
-                db.session.commit()
+            account.current_tenant_id = tenant_owner.tenant_id
+            tenant_owner.current = True
+            db.session.commit()
+       
+        if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
+            account.last_active_at = datetime.utcnow()
+            db.session.commit()
 
         return account
+
 
     @staticmethod
     def get_account_jwt_token(account):
@@ -277,18 +257,21 @@ class TenantService:
     @staticmethod
     def switch_tenant(account: Account, tenant_id: int = None) -> None:
         """Switch the current workspace for the account"""
-        if not tenant_id:
-            tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id).first()
-        else:
-            tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
 
-        # Check if the tenant exists and the account is a member of the tenant
+        tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
-
-        # Set the current tenant for the account
-        account.current_tenant_id = tenant_account_join.tenant_id
-        session['workspace_id'] = account.current_tenant.id
+        else: 
+            with db.session.begin():
+                try:
+                    TenantAccountJoin.query.filter_by(account_id=account.id).update({'current': False})
+                    tenant_account_join.current = True
+                    db.session.commit()
+                    # Set the current tenant for the account
+                    account.current_tenant_id = tenant_account_join.tenant_id
+                except exc.SQLAlchemyError:
+                    db.session.rollback()
+                    raise
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> List[Account]:
