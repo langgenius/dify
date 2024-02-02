@@ -1,6 +1,5 @@
 import enum
 import json
-from math import e
 from typing import List
 
 from extensions.ext_database import db
@@ -155,6 +154,7 @@ class TenantAccountJoin(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(UUID, nullable=False)
     account_id = db.Column(UUID, nullable=False)
+    current = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     role = db.Column(db.String(16), nullable=False, server_default='normal')
     invited_by = db.Column(UUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

@@ -43,7 +43,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
       <div className='mt-2 text-gray-500 text-sm font-normal'>
         <Trans
           i18nKey="appLog.table.empty.element.content"
-          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-primary-600' />, testLink: <Link href={appUrl} className='text-primary-600' target='_blank' /> }}
+          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-primary-600' />, testLink: <Link href={appUrl} className='text-primary-600' target='_blank' rel='noopener noreferrer' /> }}
         />
       </div>
     </div>

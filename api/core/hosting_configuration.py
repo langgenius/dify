@@ -112,8 +112,8 @@ class HostingConfiguration:
                     RestrictModel(model="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-16k-0613", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo-0613", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-3.5-turbo-0125", model_type=ModelType.LLM),
                     RestrictModel(model="text-davinci-003", model_type=ModelType.LLM),
-                    RestrictModel(model="whisper-1", model_type=ModelType.SPEECH2TEXT),
                 ]
             )
             quotas.append(trial_quota)
