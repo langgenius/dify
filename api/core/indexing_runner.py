@@ -372,8 +372,17 @@ class IndexingRunner:
             # extract
             text_docs = index_processor.extract(extract_setting)
             all_text_docs.extend(text_docs)
-            # transform
-            documents = index_processor.transform(all_text_docs, embedding_model_instance=embedding_model_instance)
+            # get splitter
+            splitter = self._get_splitter(tmp_processing_rule, embedding_model_instance)
+
+            # split to documents
+            documents = self._split_to_documents_for_estimate(
+                text_docs=text_docs,
+                splitter=splitter,
+                processing_rule=tmp_processing_rule
+            )
+
+            total_segments += len(documents)
             total_segments += len(documents)
             for document in documents:
                 if len(preview_texts) < 5:
