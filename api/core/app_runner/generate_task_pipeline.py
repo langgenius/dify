@@ -463,44 +463,30 @@ class GenerateTaskPipeline:
         :param e: exception
         :return:
         """
-        if isinstance(e, ValueError):
-            data = {
-                'code': 'invalid_param',
-                'message': str(e),
-                'status': 400
-            }
-        elif isinstance(e, ProviderTokenNotInitError):
-            data = {
-                'code': 'provider_not_initialize',
-                'message': e.description,
-                'status': 400
-            }
-        elif isinstance(e, QuotaExceededError):
-            data = {
+        error_responses = {
+            ValueError: {'code': 'invalid_param', 'status': 400},
+            ProviderTokenNotInitError: {'code': 'provider_not_initialize', 'status': 400},
+            QuotaExceededError: {
                 'code': 'provider_quota_exceeded',
                 'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
-                           "Please go to Settings -> Model Provider to complete your own provider credentials.",
+                       "Please go to Settings -> Model Provider to complete your own provider credentials.",
                 'status': 400
-            }
-        elif isinstance(e, ModelCurrentlyNotSupportError):
-            data = {
-                'code': 'model_currently_not_support',
-                'message': e.description,
-                'status': 400
-            }
-        elif isinstance(e, InvokeError):
-            data = {
-                'code': 'completion_request_error',
-                'message': e.description,
-                'status': 400
-            }
+            },
+            ModelCurrentlyNotSupportError: {'code': 'model_currently_not_support', 'status': 400},
+            InvokeError: {'code': 'completion_request_error', 'status': 400}
+        }
+
+        # Determine the response based on the type of exception
+        data = error_responses.get(type(e))
+        if data:
+            data.setdefault('message', getattr(e, 'description', str(e)))
         else:
             logging.error(e)
             data = {
-                'code': 'internal_server_error',
+                'code': 'internal_server_error', 
                 'message': 'Internal Server Error, please contact support.',
                 'status': 500
-            }
+                }
 
         return {
             'event': 'error',
