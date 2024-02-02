@@ -245,7 +245,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
               {t('common.apiBasedExtension.selector.title')}
               <a
                 href={t('common.apiBasedExtension.linkUrl') || '/'}
-                target='_blank'
+                target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs font-normal text-gray-500 hover:text-primary-600'
               >
                 <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />

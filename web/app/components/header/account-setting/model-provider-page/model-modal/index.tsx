@@ -247,7 +247,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     ? (
                       <a
                         href={provider.help?.url[language]}
-                        target='_blank'
+                        target='_blank' rel='noopener noreferrer'
                         className='inline-flex items-center text-xs text-primary-600'
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
