@@ -28,7 +28,7 @@ const AdvancedModeWarning: FC<Props> = ({
           <a
             className='font-medium text-[#155EEF]'
             href={`https://docs.dify.ai/${language === LanguagesSupported[1] ? 'v/zh-hans/guides/application-design/prompt-engineering' : 'features/prompt-engineering'}`}
-            target='_blank'
+            target='_blank' rel='noopener noreferrer'
           >
             {t('appDebug.promptMode.advancedWarning.learnMore')}
           </a>

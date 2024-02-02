@@ -14,7 +14,7 @@ const Empty = () => {
       <a
         className='flex items-center mb-2 h-[18px] text-xs text-primary-600'
         href={t('common.apiBasedExtension.linkUrl') || '/'}
-        target='_blank'
+        target='_blank' rel='noopener noreferrer'
       >
         <BookOpen01 className='mr-1 w-3 h-3' />
         {t('common.apiBasedExtension.link')}

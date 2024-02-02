@@ -177,7 +177,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                     <div className='mx-2 w-px h-3 bg-black/5'></div>
                     <a
                       href="https://swagger.io/specification/"
-                      target='_blank'
+                      target='_blank' rel='noopener noreferrer'
                       className='flex items-center h-[18px] space-x-1  text-[#155EEF]'
                     >
                       <div className='text-xs font-normal'>{t('tools.createTool.viewSchemaSpec')}</div>

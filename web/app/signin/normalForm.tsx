@@ -13,7 +13,7 @@ import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import I18n from '@/context/i18n'
 import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
-
+import { getPurifyHref } from '@/utils'
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
 type IState = {
@@ -150,7 +150,7 @@ const NormalForm = () => {
           {!IS_CE_EDITION && (
             <div className="flex flex-col gap-3 mt-6">
               <div className='w-full'>
-                <a href={`${apiPrefix}/oauth/login/github`}>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
                     type='default'
                     disabled={isLoading}
@@ -169,7 +169,7 @@ const NormalForm = () => {
                 </a>
               </div>
               <div className='w-full'>
-                <a href={`${apiPrefix}/oauth/login/google`}>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
                     type='default'
                     disabled={isLoading}
