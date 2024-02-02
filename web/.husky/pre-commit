@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 . "$(dirname -- "$0")/_/husky.sh"
 
 # get the list of modified files
@@ -29,7 +29,7 @@ fi
 
 if $web_modified; then
     echo "Running ESLint on web module"
-    cd ./web
+    cd ./web || exit 1
     npx lint-staged
     cd ../
 fi
