@@ -9,10 +9,12 @@ import type {
 import type {
   AppConversationData,
   AppData,
+  AppMeta,
   ConversationItem,
 } from '@/models/share'
 
 export type ChatWithHistoryContextValue = {
+  appMeta?: AppMeta
   appData?: AppData
   appParams?: ChatConfig
   appChatListDataLoading?: boolean

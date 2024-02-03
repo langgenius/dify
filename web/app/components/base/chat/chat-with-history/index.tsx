@@ -1,4 +1,6 @@
 import type { FC } from 'react'
+import { useState } from 'react'
+import { useAsyncEffect } from 'ahooks'
 import {
   ChatWithHistoryContext,
   useChatWithHistoryContext,
@@ -11,6 +13,7 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { checkOrSetAccessToken } from '@/app/components/share/utils'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -74,6 +77,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const {
     appData,
     appParams,
+    appMeta,
     appChatListDataLoading,
     currentConversationId,
     currentConversationItem,
@@ -102,6 +106,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     <ChatWithHistoryContext.Provider value={{
       appData,
       appParams,
+      appMeta,
       appChatListDataLoading,
       currentConversationId,
       currentConversationItem,
@@ -131,4 +136,29 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   )
 }
 
-export default ChatWithHistoryWrap
+const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
+  installedAppInfo,
+  className,
+}) => {
+  const [inited, setInited] = useState(false)
+
+  useAsyncEffect(async () => {
+    if (!inited) {
+      if (!installedAppInfo)
+        await checkOrSetAccessToken()
+      setInited(true)
+    }
+  }, [])
+
+  if (!inited)
+    return null
+
+  return (
+    <ChatWithHistoryWrap
+      installedAppInfo={installedAppInfo}
+      className={className}
+    />
+  )
+}
+
+export default ChatWithHistoryWrapWithCheckToken

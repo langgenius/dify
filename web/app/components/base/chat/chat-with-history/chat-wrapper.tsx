@@ -22,6 +22,7 @@ const ChatWrapper = () => {
     isMobile,
     isInstalledApp,
     appId,
+    appMeta,
   } = useChatWithHistoryContext()
   const {
     chatList,
@@ -109,6 +110,7 @@ const ChatWrapper = () => {
       onSend={doSend}
       onStopResponding={handleStop}
       chatNode={chatNode}
+      allToolIcons={appMeta?.tool_icons || {}}
     />
   )
 }
