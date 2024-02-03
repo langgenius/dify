@@ -195,9 +195,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   ]
 
   useEffect(() => {
-    if (datasetRes)
-      document.title = `${datasetRes.name || 'Dataset'} - Dify`
-  }, [datasetRes])
+      document.title = `${t('dataset.knowledge')} - Dify`
+  }, [])
 
   if (!datasetRes && !error)
     return <Loading />
