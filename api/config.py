@@ -2,10 +2,12 @@
 import os
 
 import dotenv
+import logging
 
 dotenv.load_dotenv()
 
 DEFAULTS = {
+    'DB_TYPE': 'postgres',
     'DB_USERNAME': 'postgres',
     'DB_PASSWORD': '',
     'DB_HOST': 'localhost',
@@ -140,7 +142,17 @@ class Config:
 
         db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
 
-        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
+        # db_type = postgresql or mysql
+        # https://docs.sqlalchemy.org/en/20/core/pooling.html
+        db_type = get_env('DB_TYPE')
+        self.SQLALCHEMY_DATABASE_TYPE = db_type
+        if "mysql" == db_type:
+            db_type = "mysql+pymysql"
+
+        self.SQLALCHEMY_DATABASE_URI = f"{db_type}://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
+
+        logging.info(self.SQLALCHEMY_DATABASE_URI)
+
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))

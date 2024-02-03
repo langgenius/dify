@@ -5,7 +5,7 @@ from typing import List
 from extensions.ext_database import db
 from flask_login import UserMixin
 from sqlalchemy.dialects.postgresql import UUID
-
+import uuid
 
 class AccountStatus(str, enum.Enum):
     PENDING = 'pending'
@@ -22,7 +22,7 @@ class Account(UserMixin, db.Model):
         db.Index('account_email_idx', 'email')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=True)
@@ -111,7 +111,7 @@ class Tenant(db.Model):
         db.PrimaryKeyConstraint('id', name='tenant_pkey'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     name = db.Column(db.String(255), nullable=False)
     encrypt_public_key = db.Column(db.Text)
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
@@ -151,7 +151,7 @@ class TenantAccountJoin(db.Model):
         db.UniqueConstraint('tenant_id', 'account_id', name='unique_tenant_account_join')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     account_id = db.Column(UUID, nullable=False)
     current = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
@@ -169,7 +169,7 @@ class AccountIntegrate(db.Model):
         db.UniqueConstraint('provider', 'open_id', name='unique_provider_open_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     account_id = db.Column(UUID, nullable=False)
     provider = db.Column(db.String(16), nullable=False)
     open_id = db.Column(db.String(255), nullable=False)

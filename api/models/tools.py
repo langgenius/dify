@@ -9,7 +9,7 @@ from extensions.ext_database import db
 from models.model import Account, App, Tenant
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-
+import uuid
 
 class BuiltinToolProvider(db.Model):
     """
@@ -23,7 +23,7 @@ class BuiltinToolProvider(db.Model):
     )
 
     # id of the tool provider
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     # id of the tenant
     tenant_id = db.Column(UUID, nullable=True)
     # who created this tool provider
@@ -50,7 +50,7 @@ class PublishedAppTool(db.Model):
     )
 
     # id of the tool provider
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     # id of the app
     app_id = db.Column(UUID, ForeignKey('apps.id'), nullable=False)
     # who published this tool
@@ -88,7 +88,7 @@ class ApiToolProvider(db.Model):
         db.UniqueConstraint('name', 'tenant_id', name='unique_api_tool_provider')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     # name of the api provider
     name = db.Column(db.String(40), nullable=False)
     # icon
@@ -145,7 +145,7 @@ class ToolModelInvoke(db.Model):
         db.PrimaryKeyConstraint('id', name='tool_model_invoke_pkey'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     # who invoke this tool
     user_id = db.Column(UUID, nullable=False)
     # tenant id
@@ -185,7 +185,7 @@ class ToolConversationVariables(db.Model):
         db.Index('conversation_id_idx', 'conversation_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     # conversation user id
     user_id = db.Column(UUID, nullable=False)
     # tenant id
@@ -213,7 +213,7 @@ class ToolFile(db.Model):
         db.Index('tool_file_conversation_id_idx', 'conversation_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     # conversation user id
     user_id = db.Column(UUID, nullable=False)
     # tenant id

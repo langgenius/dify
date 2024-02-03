@@ -30,7 +30,7 @@ class App(db.Model):
         db.Index('app_tenant_id_idx', 'tenant_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     mode = db.Column(db.String(255), nullable=False)
@@ -135,7 +135,7 @@ class AppModelConfig(db.Model):
         db.Index('app_app_id_idx', 'app_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     provider = db.Column(db.String(255), nullable=False)
     model_id = db.Column(db.String(255), nullable=False)
@@ -360,7 +360,7 @@ class RecommendedApp(db.Model):
         db.Index('recommended_app_is_listed_idx', 'is_listed', 'language')
     )
 
-    id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, primary_key=True, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     description = db.Column(db.JSON, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
@@ -388,7 +388,7 @@ class InstalledApp(db.Model):
         db.UniqueConstraint('tenant_id', 'app_id', name='unique_tenant_app')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     app_id = db.Column(UUID, nullable=False)
     app_owner_tenant_id = db.Column(UUID, nullable=False)
@@ -421,7 +421,7 @@ class Conversation(db.Model):
         db.Index('conversation_app_from_user_idx', 'app_id', 'from_source', 'from_end_user_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     app_model_config_id = db.Column(UUID, nullable=False)
     model_provider = db.Column(db.String(255), nullable=False)
@@ -555,7 +555,7 @@ class Message(db.Model):
         db.Index('message_account_idx', 'app_id', 'from_source', 'from_account_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     model_provider = db.Column(db.String(255), nullable=False)
     model_id = db.Column(db.String(255), nullable=False)
@@ -688,7 +688,7 @@ class MessageFeedback(db.Model):
         db.Index('message_feedback_conversation_idx', 'conversation_id', 'from_source', 'rating')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     conversation_id = db.Column(UUID, nullable=False)
     message_id = db.Column(UUID, nullable=False)
@@ -714,7 +714,7 @@ class MessageFile(db.Model):
         db.Index('message_file_created_by_idx', 'created_by')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     message_id = db.Column(UUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     transfer_method = db.Column(db.String(255), nullable=False)
@@ -734,7 +734,7 @@ class MessageAnnotation(db.Model):
         db.Index('message_annotation_message_idx', 'message_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=True)
     message_id = db.Column(UUID, nullable=True)
@@ -766,7 +766,7 @@ class AppAnnotationHitHistory(db.Model):
         db.Index('app_annotation_hit_histories_message_idx', 'message_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     annotation_id = db.Column(UUID, nullable=False)
     source = db.Column(db.Text, nullable=False)
@@ -798,7 +798,7 @@ class AppAnnotationSetting(db.Model):
         db.Index('app_annotation_settings_app_idx', 'app_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     score_threshold = db.Column(Float, nullable=False, server_default=db.text('0'))
     collection_binding_id = db.Column(UUID, nullable=False)
@@ -836,7 +836,7 @@ class OperationLog(db.Model):
         db.Index('operation_log_account_action_idx', 'tenant_id', 'account_id', 'action')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     account_id = db.Column(UUID, nullable=False)
     action = db.Column(db.String(255), nullable=False)
@@ -854,7 +854,7 @@ class EndUser(UserMixin, db.Model):
         db.Index('end_user_tenant_session_id_idx', 'tenant_id', 'session_id', 'type'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     app_id = db.Column(UUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
@@ -874,7 +874,7 @@ class Site(db.Model):
         db.Index('site_code_idx', 'code', 'status')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=False)
     title = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.String(255))
@@ -915,7 +915,7 @@ class ApiToken(db.Model):
         db.Index('api_token_tenant_idx', 'tenant_id', 'type')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     app_id = db.Column(UUID, nullable=True)
     tenant_id = db.Column(UUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
@@ -940,7 +940,7 @@ class UploadFile(db.Model):
         db.Index('upload_file_tenant_idx', 'tenant_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     storage_type = db.Column(db.String(255), nullable=False)
     key = db.Column(db.String(255), nullable=False)
@@ -964,7 +964,7 @@ class ApiRequest(db.Model):
         db.Index('api_request_token_idx', 'tenant_id', 'api_token_id')
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, nullable=False, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     api_token_id = db.Column(UUID, nullable=False)
     path = db.Column(db.String(255), nullable=False)
@@ -981,7 +981,7 @@ class MessageChain(db.Model):
         db.Index('message_chain_message_id_idx', 'message_id')
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, nullable=False, default=lambda: uuid.uuid4())
     message_id = db.Column(UUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     input = db.Column(db.Text, nullable=True)
@@ -997,7 +997,7 @@ class MessageAgentThought(db.Model):
         db.Index('message_agent_thought_message_chain_id_idx', 'message_chain_id'),
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, nullable=False, default=lambda: uuid.uuid4())
     message_id = db.Column(UUID, nullable=False)
     message_chain_id = db.Column(UUID, nullable=True)
     position = db.Column(db.Integer, nullable=False)
@@ -1049,7 +1049,7 @@ class DatasetRetrieverResource(db.Model):
         db.Index('dataset_retriever_resource_message_id_idx', 'message_id'),
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, nullable=False, default=lambda: uuid.uuid4())
     message_id = db.Column(UUID, nullable=False)
     position = db.Column(db.Integer, nullable=False)
     dataset_id = db.Column(UUID, nullable=False)

@@ -3,7 +3,7 @@ from enum import Enum
 
 from extensions.ext_database import db
 from sqlalchemy.dialects.postgresql import UUID
-
+import uuid
 
 class ToolProviderName(Enum):
     SERPAPI = 'serpapi'
@@ -23,7 +23,7 @@ class ToolProvider(db.Model):
         db.UniqueConstraint('tenant_id', 'tool_name', name='unique_tool_provider_tool_name')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     tool_name = db.Column(db.String(40), nullable=False)
     encrypted_credentials = db.Column(db.Text, nullable=True)

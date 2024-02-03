@@ -2,7 +2,7 @@ import enum
 
 from extensions.ext_database import db
 from sqlalchemy.dialects.postgresql import UUID
-
+import uuid
 
 class APIBasedExtensionPoint(enum.Enum):
     APP_EXTERNAL_DATA_TOOL_QUERY = 'app.external_data_tool.query'
@@ -18,7 +18,7 @@ class APIBasedExtension(db.Model):
         db.Index('api_based_extension_tenant_idx', 'tenant_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(UUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(UUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     api_endpoint = db.Column(db.String(255), nullable=False)
