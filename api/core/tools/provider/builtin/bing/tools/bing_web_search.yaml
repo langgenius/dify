@@ -25,7 +25,6 @@ parameters:
       zh_Hans: 用于搜索网页内容
       pt_BR: used for searching
     llm_description: key words for searching
-    form: llm
   - name: limit
     type: number
     required: false
