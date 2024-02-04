@@ -136,7 +136,7 @@ const ConfigPanel = () => {
               customConfig?.remove_webapp_brand
                 ? null
                 : (
-                  <div className='flex items-center justify-end w-full'>
+                  <div className={`flex items-center justify-end ${isMobile && 'w-full'}`}>
                     <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
                       <span className='uppercase'>{t('share.chat.powerBy')}</span>
                       {
