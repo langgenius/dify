@@ -109,7 +109,7 @@ const Operation: FC<OperationProps> = ({
         )
       }
       {
-        config?.supportFeedback && !localFeedback?.rating && onFeedback && (
+        config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
           <div className='hidden group-hover:flex ml-1 shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
             <TooltipPlus popupContent={t('appDebug.operation.agree')}>
               <div
@@ -131,7 +131,7 @@ const Operation: FC<OperationProps> = ({
         )
       }
       {
-        config?.supportFeedback && localFeedback?.rating && onFeedback && (
+        config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement && (
           <TooltipPlus popupContent={localFeedback.rating === 'like' ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree')}>
             <div
               className={`

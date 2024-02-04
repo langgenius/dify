@@ -33,13 +33,24 @@ const ConfigPanel = () => {
       >
         <div
           className={`
-            flex px-6 py-4 rounded-t-xl bg-indigo-25
+            flex flex-wrap px-6 py-4 rounded-t-xl bg-indigo-25
             ${isMobile && '!px-4 !py-3'}
           `}
         >
           {
             showConfigPanelBeforeChat && (
-              <div className='text-2xl font-semibold text-gray-800'>{appData?.site.title}</div>
+              <>
+                <div className='flex items-center text-2xl font-semibold text-gray-800'>
+                  {appData?.site.icon} {appData?.site.title}
+                </div>
+                {
+                  appData?.site.description && (
+                    <div className='mt-2 w-full text-sm text-gray-500'>
+                      {appData?.site.description}
+                    </div>
+                  )
+                }
+              </>
             )
           }
           {
@@ -110,9 +121,9 @@ const ConfigPanel = () => {
       </div>
       {
         showConfigPanelBeforeChat && (site || customConfig) && (
-          <div className='mt-4 flex justify-between items-center py-2 text-xs text-gray-400'>
+          <div className='mt-4 flex flex-wrap justify-between items-center py-2 text-xs text-gray-400'>
             {site?.privacy_policy
-              ? <div>{t('share.chat.privacyPolicyLeft')}
+              ? <div className={`flex items-center ${isMobile && 'w-full justify-end'}`}>{t('share.chat.privacyPolicyLeft')}
                 <a
                   className='text-gray-500'
                   href={site?.privacy_policy}
@@ -125,14 +136,16 @@ const ConfigPanel = () => {
               customConfig?.remove_webapp_brand
                 ? null
                 : (
-                  <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
-                    <span className='uppercase'>{t('share.chat.powerBy')}</span>
-                    {
-                      customConfig?.replace_webapp_logo
-                        ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
-                        : <FootLogo />
-                    }
-                  </a>
+                  <div className='flex items-center justify-end w-full'>
+                    <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
+                      <span className='uppercase'>{t('share.chat.powerBy')}</span>
+                      {
+                        customConfig?.replace_webapp_logo
+                          ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
+                          : <FootLogo />
+                      }
+                    </a>
+                  </div>
                 )
             }
           </div>

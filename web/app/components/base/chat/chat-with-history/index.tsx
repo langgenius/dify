@@ -1,5 +1,8 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import {
+  useEffect,
+  useState,
+} from 'react'
 import { useAsyncEffect } from 'ahooks'
 import {
   ChatWithHistoryContext,
@@ -22,6 +25,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
+    appData,
     appInfoLoading,
     appPrevChatList,
     showConfigPanelBeforeChat,
@@ -31,6 +35,17 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   } = useChatWithHistoryContext()
 
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
+  const customConfig = appData?.custom_config
+  const site = appData?.site
+
+  useEffect(() => {
+    if (site) {
+      if (customConfig)
+        document.title = `${site.title}`
+      else
+        document.title = `${site.title} - Powered by Dify`
+    }
+  }, [site, customConfig])
 
   if (appInfoLoading) {
     return (
