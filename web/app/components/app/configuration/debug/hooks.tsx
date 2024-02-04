@@ -126,6 +126,7 @@ export const useConfigFromDebugContext = () => {
 
     supportAnnotation: true,
     appId,
+    supportCitationHitInfo: true,
   }
 
   return config

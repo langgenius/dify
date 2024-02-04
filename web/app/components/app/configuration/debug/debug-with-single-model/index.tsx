@@ -54,11 +54,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     handleAnnotationEdited,
     handleAnnotationRemoved,
   } = useChat(
-    {
-      ...config,
-      supportAnnotation: true,
-      appId,
-    },
+    config,
     {
       inputs,
       promptVariables: modelConfig.configs.prompt_variables,

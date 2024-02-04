@@ -45,6 +45,7 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
   supportAnnotation?: boolean
   appId?: string
   supportFeedback?: boolean
+  supportCitationHitInfo?: boolean
 }
 
 export type ChatItem = IChatItem

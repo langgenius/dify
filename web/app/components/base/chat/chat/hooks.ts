@@ -87,7 +87,6 @@ export const useChat = (
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const taskIdRef = useRef('')
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
-  const abortControllerRef = useRef<AbortController | null>(null)
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const checkPromptVariables = useCheckPromptVariables()
@@ -131,8 +130,6 @@ export const useChat = (
     handleResponsing(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
-    if (abortControllerRef.current)
-      abortControllerRef.current.abort()
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
@@ -192,6 +189,8 @@ export const useChat = (
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
+    if (!data.query || !data.query.trim())
+      return
     if (isResponsingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
@@ -257,9 +256,6 @@ export const useChat = (
       },
       {
         isPublicAPI,
-        getAbortController: (abortController) => {
-          abortControllerRef.current = abortController
-        },
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           if (!isAgentMode) {
             responseItem.content = responseItem.content + message
