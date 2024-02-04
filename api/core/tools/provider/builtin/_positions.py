@@ -3,6 +3,7 @@ from typing import List
 
 position = {
     'google': 1,
+    'bing': 2,
     'wikipedia': 2,
     'dalle': 3,
     'webscraper': 4,
