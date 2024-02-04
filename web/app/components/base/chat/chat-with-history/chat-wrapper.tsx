@@ -11,6 +11,7 @@ import ConfigPanel from './config-panel'
 import {
   fetchSuggestedQuestions,
   getUrl,
+  stopChatMessageResponding,
 } from '@/service/share'
 
 const ChatWrapper = () => {
@@ -47,6 +48,7 @@ const ChatWrapper = () => {
     appConfig,
     undefined,
     appPrevChatList,
+    taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
   )
 
   useEffect(() => {
