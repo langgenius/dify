@@ -20,6 +20,7 @@ export type ConfirmCommonProps = {
   confirmBtnClassName?: string
   confirmText?: string
   confirmWrapperClassName?: string
+  confirmDisabled?: boolean
 }
 
 const ConfirmCommon: FC<ConfirmCommonProps> = ({
@@ -34,6 +35,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
   confirmBtnClassName,
   confirmText,
   confirmWrapperClassName,
+  confirmDisabled,
 }) => {
   const { t } = useTranslation()
 
@@ -78,6 +80,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
                 type='primary'
                 className={confirmBtnClassName || ''}
                 onClick={onConfirm}
+                disabled={confirmDisabled}
               >
                 {confirmText || CONFIRM_MAP[type].confirmText}
               </Button>
