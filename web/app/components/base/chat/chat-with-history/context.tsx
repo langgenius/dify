@@ -1,5 +1,6 @@
 'use client'
 
+import type { RefObject } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import type {
   Callback,
@@ -42,6 +43,7 @@ export type ChatWithHistoryContextValue = {
   isInstalledApp: boolean
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
+  currentChatInstanceRef: RefObject<{ handleStop: () => void }>
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -66,5 +68,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   isMobile: false,
   isInstalledApp: false,
   handleFeedback: () => {},
+  currentChatInstanceRef: { current: { handleStop: () => {} } },
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

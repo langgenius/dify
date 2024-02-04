@@ -101,6 +101,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     isInstalledApp,
     appId,
     handleFeedback,
+    currentChatInstanceRef,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -132,6 +133,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       isInstalledApp,
       appId,
       handleFeedback,
+      currentChatInstanceRef,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

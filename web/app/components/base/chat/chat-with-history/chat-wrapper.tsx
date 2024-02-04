@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
@@ -27,6 +27,7 @@ const ChatWrapper = () => {
     appId,
     appMeta,
     handleFeedback,
+    currentChatInstanceRef,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -46,6 +47,11 @@ const ChatWrapper = () => {
     undefined,
     appPrevChatList,
   )
+
+  useEffect(() => {
+    if (currentChatInstanceRef.current)
+      currentChatInstanceRef.current.handleStop = handleStop
+  }, [])
 
   const doSend: OnSend = useCallback((message, files) => {
     const data: any = {

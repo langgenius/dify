@@ -220,7 +220,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       setShowNewConversationItemInList(true)
     }
   }, [setShowConfigPanelBeforeChat, setShowNewConversationItemInList, checkInputsRequired])
+  const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: () => {} })
   const handleChangeConversation = useCallback((conversationId: string) => {
+    currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
     handleConversationIdInfoChange(conversationId)
 
@@ -230,6 +232,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       setShowConfigPanelBeforeChat(false)
   }, [handleConversationIdInfoChange, setShowConfigPanelBeforeChat, checkInputsRequired])
   const handleNewConversation = useCallback(() => {
+    currentChatInstanceRef.current.handleStop()
     setNewConversationId('')
 
     if (showNewConversationItemInList) {
@@ -376,5 +379,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     newConversationId,
     chatShouldReloadKey,
     handleFeedback,
+    currentChatInstanceRef,
   }
 }
