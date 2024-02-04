@@ -13,6 +13,7 @@ import type {
   Callback,
   ChatConfig,
   ChatItem,
+  Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
 import {
@@ -26,6 +27,7 @@ import {
   pinConversation,
   renameConversation,
   unpinConversation,
+  updateFeedback,
 } from '@/service/share'
 import type { InstalledApp } from '@/models/explore'
 import type {
@@ -333,6 +335,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     mutateAppConversationData()
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
+  const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, appId)
+    notify({ type: 'success', message: t('common.api.success') })
+  }, [isInstalledApp, appId, t, notify])
+
   return {
     isInstalledApp,
     appId,
@@ -368,5 +375,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     handleNewConversationCompleted,
     newConversationId,
     chatShouldReloadKey,
+    handleFeedback,
   }
 }

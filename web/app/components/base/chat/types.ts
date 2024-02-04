@@ -44,6 +44,7 @@ export type EnableType = {
 export type ChatConfig = Omit<ModelConfig, 'model'> & {
   supportAnnotation?: boolean
   appId?: string
+  supportFeedback?: boolean
 }
 
 export type ChatItem = IChatItem
@@ -52,4 +53,8 @@ export type OnSend = (message: string, files?: VisionFile[]) => void
 
 export type Callback = {
   onSuccess: () => void
+}
+
+export type Feedback = {
+  rating: 'like' | 'dislike' | null
 }

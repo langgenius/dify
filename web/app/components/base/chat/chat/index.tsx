@@ -12,6 +12,7 @@ import { useThrottleEffect } from 'ahooks'
 import type {
   ChatConfig,
   ChatItem,
+  Feedback,
   OnSend,
 } from '../types'
 import Question from './question'
@@ -44,6 +45,7 @@ export type ChatProps = {
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
+  onFeedback?: (messageId: string, feedback: Feedback) => void
 }
 const Chat: FC<ChatProps> = ({
   config,
@@ -66,6 +68,7 @@ const Chat: FC<ChatProps> = ({
   onAnnotationEdited,
   onAnnotationRemoved,
   chatNode,
+  onFeedback,
 }) => {
   const { t } = useTranslation()
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -122,6 +125,7 @@ const Chat: FC<ChatProps> = ({
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
+      onFeedback={onFeedback}
     >
       <div className='relative h-full'>
         <div

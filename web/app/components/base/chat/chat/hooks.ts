@@ -26,6 +26,7 @@ type SendCallback = {
   onGetConvesationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
+  isPublicAPI?: boolean
 }
 
 export const useCheckPromptVariables = () => {
@@ -184,6 +185,7 @@ export const useChat = (
       onGetConvesationMessages,
       onGetSuggestedQuestions,
       onConversationComplete,
+      isPublicAPI,
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
@@ -251,6 +253,7 @@ export const useChat = (
         body: bodyParams,
       },
       {
+        isPublicAPI,
         getAbortController: (abortController) => {
           abortControllerRef.current = abortController
         },

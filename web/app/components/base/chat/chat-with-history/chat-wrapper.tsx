@@ -1,6 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import Chat from '../chat'
-import type { OnSend } from '../types'
+import type {
+  ChatConfig,
+  OnSend,
+} from '../types'
 import { useChat } from '../chat/hooks'
 import { useChatWithHistoryContext } from './context'
 import Header from './header'
@@ -23,14 +26,23 @@ const ChatWrapper = () => {
     isInstalledApp,
     appId,
     appMeta,
+    handleFeedback,
   } = useChatWithHistoryContext()
+  const appConfig = useMemo(() => {
+    const config = appParams || {}
+
+    return {
+      ...config,
+      supportFeedback: true,
+    } as ChatConfig
+  }, [appParams])
   const {
     chatList,
     handleSend,
     handleStop,
     isResponsing,
   } = useChat(
-    appParams,
+    appConfig,
     undefined,
     appPrevChatList,
   )
@@ -42,7 +54,7 @@ const ChatWrapper = () => {
       conversation_id: currentConversationId,
     }
 
-    if (appParams?.file_upload?.image.enabled && files?.length)
+    if (appConfig?.file_upload?.image.enabled && files?.length)
       data.files = files
 
     handleSend(
@@ -51,10 +63,11 @@ const ChatWrapper = () => {
       {
         onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+        isPublicAPI: !isInstalledApp,
       },
     )
   }, [
-    appParams,
+    appConfig,
     currentConversationId,
     currentConversationItem,
     handleSend,
@@ -102,6 +115,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
+      config={appConfig}
       chatList={chatList}
       isResponsing={isResponsing}
       chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
@@ -111,6 +125,7 @@ const ChatWrapper = () => {
       onStopResponding={handleStop}
       chatNode={chatNode}
       allToolIcons={appMeta?.tool_icons || {}}
+      onFeedback={handleFeedback}
     />
   )
 }

@@ -42,7 +42,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       }
       <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && 'flex items-center justify-center'}`}>
         {
-          showConfigPanelBeforeChat && (
+          showConfigPanelBeforeChat && !appChatListDataLoading && (
             <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
               <ConfigPanel />
             </div>
@@ -100,6 +100,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     chatShouldReloadKey,
     isInstalledApp,
     appId,
+    handleFeedback,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -130,6 +131,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       isMobile,
       isInstalledApp,
       appId,
+      handleFeedback,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

@@ -15,6 +15,7 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
+  | 'onFeedback'
 >
 
 const ChatContext = createContext<ChatContextValue>({
@@ -38,6 +39,7 @@ export const ChatContextProvider = ({
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
+  onFeedback,
 }: ChatContextProviderProps) => {
   return (
     <ChatContext.Provider value={{
@@ -52,6 +54,7 @@ export const ChatContextProvider = ({
       onAnnotationEdited,
       onAnnotationAdded,
       onAnnotationRemoved,
+      onFeedback,
     }}>
       {children}
     </ChatContext.Provider>

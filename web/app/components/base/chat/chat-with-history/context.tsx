@@ -5,6 +5,7 @@ import type {
   Callback,
   ChatConfig,
   ChatItem,
+  Feedback,
 } from '../types'
 import type {
   AppConversationData,
@@ -40,6 +41,7 @@ export type ChatWithHistoryContextValue = {
   isMobile: boolean
   isInstalledApp: boolean
   appId?: string
+  handleFeedback: (messageId: string, feedback: Feedback) => void
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -63,5 +65,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
+  handleFeedback: () => {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)
