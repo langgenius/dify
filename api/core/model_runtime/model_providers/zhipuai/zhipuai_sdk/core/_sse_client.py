@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from typing import Generic, Iterator, TYPE_CHECKING, Mapping
+from typing import TYPE_CHECKING, Generic, Iterator, Mapping
 
 import httpx
 

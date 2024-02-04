@@ -5,7 +5,8 @@ from typing import Generator, List, Optional, cast
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageFunction,
-                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage, ToolPromptMessage)
+                                                          PromptMessageTool, SystemPromptMessage, ToolPromptMessage,
+                                                          UserPromptMessage)
 from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
                                               InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError

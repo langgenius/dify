@@ -125,6 +125,9 @@ class BaichuanModel(object):
                         'content': message.content,
                         'role': message.role,
                     })
+            # [baichuan] frequency_penalty must be between 1 and 2
+            if parameters['frequency_penalty'] < 1 or parameters['frequency_penalty'] > 2:
+                parameters['frequency_penalty'] = 1
             # turbo api accepts flat parameters
             return {
                 'model': self._model_mapping(model),

@@ -1,9 +1,9 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.errors import ToolProviderCredentialValidationError
-
-from core.tools.provider.builtin.webscraper.tools.webscraper import WebscraperTool
-
 from typing import Any, Dict, List
+
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.provider.builtin.webscraper.tools.webscraper import WebscraperTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+
 
 class WebscraperProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:

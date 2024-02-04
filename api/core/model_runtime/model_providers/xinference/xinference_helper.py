@@ -1,7 +1,7 @@
+from os import path
 from threading import Lock
 from time import time
 from typing import List
-from os import path
 
 from requests import get
 from requests.adapters import HTTPAdapter
@@ -14,15 +14,17 @@ class XinferenceModelExtraParameter(object):
     model_handle_type: str
     model_ability: List[str]
     max_tokens: int = 512
+    context_length: int = 2048
     support_function_call: bool = False
 
     def __init__(self, model_format: str, model_handle_type: str, model_ability: List[str], 
-                 support_function_call: bool, max_tokens: int) -> None:
+                 support_function_call: bool, max_tokens: int, context_length: int) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type
         self.model_ability = model_ability
         self.support_function_call = support_function_call
         self.max_tokens = max_tokens
+        self.context_length = context_length
 
 cache = {}
 cache_lock = Lock()
@@ -57,7 +59,7 @@ class XinferenceHelper:
 
         url = path.join(server_url, 'v1/models', model_uid)
 
-        # this methid is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
+        # this method is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
         session = Session()
         session.mount('http://', HTTPAdapter(max_retries=3))
         session.mount('https://', HTTPAdapter(max_retries=3))
@@ -88,11 +90,14 @@ class XinferenceHelper:
         
         support_function_call = 'tools' in model_ability
         max_tokens = response_json.get('max_tokens', 512)
+
+        context_length = response_json.get('context_length', 2048)
         
         return XinferenceModelExtraParameter(
             model_format=model_format,
             model_handle_type=model_handle_type,
             model_ability=model_ability,
             support_function_call=support_function_call,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            context_length=context_length
         )

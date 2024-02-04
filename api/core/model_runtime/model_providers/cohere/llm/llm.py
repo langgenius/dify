@@ -1,19 +1,18 @@
 import logging
-from typing import Generator, List, Optional, Union, cast, Tuple
+from typing import Generator, List, Optional, Tuple, Union, cast
 
 import cohere
 from cohere.responses import Chat, Generations
-from cohere.responses.chat import StreamingChat, StreamTextGeneration, StreamEnd
-from cohere.responses.generation import StreamingText, StreamingGenerations
-
+from cohere.responses.chat import StreamEnd, StreamingChat, StreamTextGeneration
+from cohere.responses.generation import StreamingGenerations, StreamingText
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage,
-                                                          PromptMessageContentType, SystemPromptMessage,
-                                                          TextPromptMessageContent, UserPromptMessage,
-                                                          PromptMessageTool)
+                                                          PromptMessageContentType, PromptMessageTool,
+                                                          SystemPromptMessage, TextPromptMessageContent,
+                                                          UserPromptMessage)
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType
-from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeError, \
-    InvokeRateLimitError, InvokeAuthorizationError, InvokeBadRequestError
+from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
+                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 

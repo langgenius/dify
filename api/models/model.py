@@ -1,8 +1,8 @@
 import json
 import uuid
 
-from core.file.upload_file_parser import UploadFileParser
 from core.file.tool_file_parser import ToolFileParser
+from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import UserMixin

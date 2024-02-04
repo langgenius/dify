@@ -144,7 +144,7 @@ export function Markdown(props: { content: string; className?: string }) {
               )
           },
         }}
-        linkTarget={'_blank'}
+        linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
         {props.content}

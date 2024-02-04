@@ -34,7 +34,7 @@ const TryToAsk: FC<TryToAskProps> = ({
           }}
         />
       </div>
-      <div className='flex flex-wrap'>
+      <div className='flex flex-wrap justify-center'>
         {
           suggestedQuestions.map((suggestQuestion, index) => (
             <Button

@@ -1,11 +1,11 @@
-from typing import Any, Dict, List, Union
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
-
 from base64 import b64decode
 from os.path import join
+from typing import Any, Dict, List, Union
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 from openai import OpenAI
+
 
 class DallE2Tool(BuiltinTool):
     def _invoke(self, 

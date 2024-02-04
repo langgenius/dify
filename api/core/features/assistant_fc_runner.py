@@ -1,20 +1,15 @@
 import json
 import logging
+from typing import Any, Dict, Generator, List, Tuple, Union
 
-from typing import Union, Generator, Dict, Any, Tuple, List
-
-from core.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage,\
-      SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage, PromptMessageTool
-from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult, LLMUsage, LLMResultChunkDelta
-from core.model_manager import ModelInstance
 from core.application_queue_manager import PublishFrom
-
-from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
-    ToolNotSupportedError, ToolProviderNotFoundError, ToolParameterValidationError, \
-          ToolProviderCredentialValidationError
-
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
-
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
+                                                          SystemPromptMessage, ToolPromptMessage, UserPromptMessage)
+from core.tools.errors import (ToolInvokeError, ToolNotFoundError, ToolNotSupportedError, ToolParameterValidationError,
+                               ToolProviderCredentialValidationError, ToolProviderNotFoundError)
 from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -97,7 +92,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 tool_input='',
                 messages_ids=message_file_ids
             )
-            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
@@ -124,7 +118,11 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             current_llm_usage = None
 
             if self.stream_tool_call:
+                is_first_chunk = True
                 for chunk in chunks:
+                    if is_first_chunk:
+                        self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                        is_first_chunk = False
                     # check if there is any tool call
                     if self.check_tool_calls(chunk):
                         function_call_state = True
@@ -183,6 +181,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 if not result.message.content:
                     result.message.content = ''
 
+                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                
                 yield LLMResultChunk(
                     model=model_instance.model,
                     prompt_messages=result.prompt_messages,
@@ -266,7 +266,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                             message_file_ids.append(message_file.id)
                             
                     except ToolProviderCredentialValidationError as e:
-                        error_response = f"Plese check your tool provider credentials"
+                        error_response = f"Please check your tool provider credentials"
                     except (
                         ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
                     ) as e:

@@ -5,11 +5,9 @@ from typing import TYPE_CHECKING
 import httpx
 
 from ..core._base_api import BaseAPI
-from ..core._base_type import NOT_GIVEN, Body, Query, Headers, NotGiven, FileTypes
+from ..core._base_type import NOT_GIVEN, Body, FileTypes, Headers, NotGiven, Query
 from ..core._files import is_file_content
-from ..core._http_client import (
-    make_user_request_input,
-)
+from ..core._http_client import make_user_request_input
 from ..types.file_object import FileObject, ListOfFileObject
 
 if TYPE_CHECKING:

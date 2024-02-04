@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
@@ -7,7 +8,6 @@ from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
-from constants.languages import supported_language
 from libs.login import login_required
 from models.model import Site
 from werkzeug.exceptions import Forbidden, NotFound

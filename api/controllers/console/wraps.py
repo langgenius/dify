@@ -1,10 +1,9 @@
 # -*- coding:utf-8 -*-
 import json
 from functools import wraps
-from flask import request
 
 from controllers.console.workspace.error import AccountNotInitializedError
-from flask import abort, current_app
+from flask import abort, current_app, request
 from flask_login import current_user
 from services.feature_service import FeatureService
 from services.operation_service import OperationService

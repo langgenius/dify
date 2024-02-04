@@ -1,20 +1,10 @@
 from __future__ import annotations
 
 from os import PathLike
-from typing import (
-    TYPE_CHECKING,
-    Type,
-    Union,
-    Mapping,
-    TypeVar, IO, Tuple, Sequence, Any, List,
-)
+from typing import IO, TYPE_CHECKING, Any, List, Mapping, Sequence, Tuple, Type, TypeVar, Union
 
 import pydantic
-from typing_extensions import (
-    Literal,
-    override,
-)
-
+from typing_extensions import Literal, override
 
 Query = Mapping[str, object]
 Body = object

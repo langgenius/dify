@@ -58,7 +58,7 @@ const LikedItem = ({
   return (
     <Link className={classNames(s.itemWrapper, 'px-0', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
       <div className={classNames(s.iconWrapper, 'mr-0')}>
-        <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background}/>
+        <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background} />
         {type === 'app' && (
           <div className={s.statusPoint}>
             <Indicator color={appStatus ? 'green' : 'gray'} />
@@ -154,7 +154,7 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
                 ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
                 : 'https://docs.dify.ai/user-guide/creating-dify-apps/prompt-engineering'
             }
-            target='_blank'
+            target='_blank' rel='noopener noreferrer'
           >
             <BookOpenIcon className='mr-1' />
             {t('common.datasetMenus.viewDoc')}

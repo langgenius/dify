@@ -31,6 +31,9 @@ parameter_rules:
     use_template: presence_penalty
   - name: frequency_penalty
     use_template: frequency_penalty
+    default: 1
+    min: 1
+    max: 2
   - name: with_search_enhance
     label:
       zh_Hans: 搜索增强

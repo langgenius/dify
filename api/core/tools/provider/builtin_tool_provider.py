@@ -1,19 +1,17 @@
-from abc import abstractmethod
-from typing import List, Dict, Any
-
-from os import path, listdir
-from yaml import load, FullLoader
-
-from core.tools.entities.tool_entities import ToolProviderType, \
-      ToolParameter, ToolProviderCredentials
-from core.tools.tool.tool import Tool
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.provider.tool_provider import ToolProviderController
-from core.tools.entities.user_entities import UserToolProviderCredentials
-from core.tools.errors import ToolNotFoundError, ToolProviderNotFoundError, \
-    ToolParameterValidationError, ToolProviderCredentialValidationError
-
 import importlib
+from abc import abstractmethod
+from os import listdir, path
+from typing import Any, Dict, List
+
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
+from core.tools.entities.user_entities import UserToolProviderCredentials
+from core.tools.errors import (ToolNotFoundError, ToolParameterValidationError, ToolProviderCredentialValidationError,
+                               ToolProviderNotFoundError)
+from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.tool.builtin_tool import BuiltinTool
+from core.tools.tool.tool import Tool
+from yaml import FullLoader, load
+
 
 class BuiltinToolProviderController(ToolProviderController):
     def __init__(self, **data: Any) -> None:
@@ -231,25 +229,26 @@ class BuiltinToolProviderController(ToolProviderController):
             if credential_schema == ToolProviderCredentials.CredentialsType.SECRET_INPUT or \
                 credential_schema == ToolProviderCredentials.CredentialsType.TEXT_INPUT:
                 if not isinstance(credentials[credential_name], str):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be string')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be string')
             
             elif credential_schema.type == ToolProviderCredentials.CredentialsType.SELECT:
                 if not isinstance(credentials[credential_name], str):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be string')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be string')
                 
                 options = credential_schema.options
                 if not isinstance(options, list):
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} options should be list')
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} options should be list')
                 
                 if credentials[credential_name] not in [x.value for x in options]:
-                    raise ToolProviderCredentialValidationError(f'credential {credential_name} should be one of {options}')
-                
-            credentials_need_to_validate.pop(credential_name)
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be one of {options}')
+            
+            if credentials[credential_name]:
+                credentials_need_to_validate.pop(credential_name)
 
         for credential_name in credentials_need_to_validate:
             credential_schema = credentials_need_to_validate[credential_name]
             if credential_schema.required:
-                raise ToolProviderCredentialValidationError(f'credential {credential_name} is required')
+                raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} is required')
             
             # the credential is not set currently, set the default value if needed
             if credential_schema.default is not None:
