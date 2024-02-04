@@ -36,6 +36,7 @@ import type {
 } from '@/models/share'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
+import { changeLanguage } from '@/i18n/i18next-config'
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
@@ -54,6 +55,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     return appInfo
   }, [isInstalledApp, installedAppInfo, appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
+
+  useEffect(() => {
+    if (appData?.site.default_language)
+      changeLanguage(appData.site.default_language)
+  }, [appData])
 
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, string>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
