@@ -112,23 +112,19 @@ export const useChat = (
     return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
   }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
   useEffect(() => {
-    if (config?.opening_statement && !chatList.length && !prevChatList?.length) {
-      handleUpdateChatList([{
-        id: `${Date.now()}`,
-        content: getIntroduction(config.opening_statement),
-        isAnswer: true,
-        isOpeningStatement: true,
-        suggestedQuestions: config.suggested_questions,
-      }])
+    if (config?.opening_statement && chatListRef.current.filter(item => item.isOpeningStatement).length === 0) {
+      handleUpdateChatList([
+        {
+          id: `${Date.now()}`,
+          content: getIntroduction(config.opening_statement),
+          isAnswer: true,
+          isOpeningStatement: true,
+          suggestedQuestions: config.suggested_questions,
+        },
+        ...chatListRef.current,
+      ])
     }
-  }, [
-    config?.opening_statement,
-    config?.suggested_questions,
-    getIntroduction,
-    chatList,
-    handleUpdateChatList,
-    prevChatList,
-  ])
+  }, [])
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true

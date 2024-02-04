@@ -37,7 +37,7 @@ const Item: FC<ItemProps> = ({
       onClick={() => onChangeConversation(item.id)}
     >
       <MessageDotsCircle className={`shrink-0 mt-1 mr-2 w-4 h-4 text-gray-400 ${currentConversationId === item.id && 'text-primary-600'}`} />
-      <div className='grow py-0.5'>{item.name}</div>
+      <div className='grow py-0.5 break-all' title={item.name}>{item.name}</div>
       {item.id !== '' && (
         <div className='shrink-0 h-6' onClick={e => e.stopPropagation()}>
           <ItemOperation
