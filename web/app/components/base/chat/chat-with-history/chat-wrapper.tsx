@@ -42,6 +42,7 @@ const ChatWrapper = () => {
     handleSend,
     handleStop,
     isResponsing,
+    suggestedQuestions,
   } = useChat(
     appConfig,
     undefined,
@@ -132,6 +133,7 @@ const ChatWrapper = () => {
       chatNode={chatNode}
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
+      suggestedQuestions={suggestedQuestions}
     />
   )
 }

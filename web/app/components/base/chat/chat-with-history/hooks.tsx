@@ -39,7 +39,7 @@ import { useToastContext } from '@/app/components/base/toast'
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
-  const { data: appInfo } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
+  const { data: appInfo, isLoading: appInfoLoading } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
 
   const appData = useMemo(() => {
     if (isInstalledApp) {
@@ -67,7 +67,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       })
     }
   }, [appId, conversationIdInfo, setConversationIdInfo])
-  const [showConfigPanelBeforeChat, setShowConfigPanelBeforeChat] = useState(!currentConversationId)
+  const [showConfigPanelBeforeChat, setShowConfigPanelBeforeChat] = useState(true)
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
@@ -344,6 +344,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [isInstalledApp, appId, t, notify])
 
   return {
+    appInfoLoading,
     isInstalledApp,
     appId,
     currentConversationId,

@@ -16,6 +16,7 @@ import type {
 } from '@/models/share'
 
 export type ChatWithHistoryContextValue = {
+  appInfoLoading?: boolean
   appMeta?: AppMeta
   appData?: AppData
   appParams?: ChatConfig

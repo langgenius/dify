@@ -22,11 +22,21 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
+    appInfoLoading,
+    appPrevChatList,
     showConfigPanelBeforeChat,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
   } = useChatWithHistoryContext()
+
+  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
+
+  if (appInfoLoading) {
+    return (
+      <Loading type='app' />
+    )
+  }
 
   return (
     <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
@@ -40,21 +50,21 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
           <HeaderInMobile />
         )
       }
-      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && 'flex items-center justify-center'}`}>
+      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center'}`}>
         {
-          showConfigPanelBeforeChat && !appChatListDataLoading && (
+          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
             <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
               <ConfigPanel />
             </div>
           )
         }
         {
-          appChatListDataLoading && (
+          appChatListDataLoading && chatReady && (
             <Loading type='app' />
           )
         }
         {
-          !showConfigPanelBeforeChat && !appChatListDataLoading && (
+          chatReady && !appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
           )
         }
@@ -75,6 +85,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const isMobile = media === MediaType.mobile
 
   const {
+    appInfoLoading,
     appData,
     appParams,
     appMeta,
@@ -106,6 +117,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 
   return (
     <ChatWithHistoryContext.Provider value={{
+      appInfoLoading,
       appData,
       appParams,
       appMeta,
