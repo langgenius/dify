@@ -82,7 +82,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              hasAgentThoughts && !content && (
+              hasAgentThoughts && (
                 <AgentContent item={item} />
               )
             }
