@@ -97,7 +97,7 @@ const Answer: FC<AnswerProps> = ({
             <SuggestedQuestions item={item} />
             {
               !!citation?.length && config?.retriever_resource?.enabled && !responsing && (
-                <Citation data={citation} showHitInfo />
+                <Citation data={citation} showHitInfo={config.supportCitationHitInfo} />
               )
             }
           </div>
