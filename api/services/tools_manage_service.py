@@ -101,6 +101,7 @@ class ToolManageService:
                 for index, parameter in enumerate(current_parameters):
                     if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
                         current_parameters[index] = runtime_parameter
+                        found = True
                         break
 
                 if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
