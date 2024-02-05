@@ -7,6 +7,6 @@ identity:
     pt_BR: Maths
   description:
     en_US: A tool for maths.
-    zh_Hans: 一个用于计算数学表达式的工具。
+    zh_Hans: 一个用于数学计算的工具。
     pt_BR: A tool for maths.
   icon: icon.svg
