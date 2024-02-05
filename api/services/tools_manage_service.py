@@ -4,7 +4,7 @@ from typing import List, Tuple
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import (ApiProviderAuthType, ApiProviderSchemaType, ToolCredentialsOption,
-                                               ToolProviderCredentials)
+                                               ToolProviderCredentials, ToolParameter)
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
@@ -69,15 +69,51 @@ class ToolManageService:
         provider_controller: ToolProviderController = ToolManager.get_builtin_provider(provider)
         tools = provider_controller.get_tools()
 
-        result = [
-            UserTool(
+        tool_provider_configurations = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        # check if user has added the provider
+        builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider == provider,
+        ).first()
+
+        credentials = {}
+        if builtin_provider is not None:
+            # get credentials
+            credentials = builtin_provider.credentials
+            credentials = tool_provider_configurations.decrypt_tool_credentials(credentials)
+
+        result = []
+        for tool in tools:
+            # fork tool runtime
+            tool = tool.fork_tool_runtime(meta={
+                'credentials': credentials,
+                'tenant_id': tenant_id,
+            })
+
+            # get tool parameters
+            parameters = tool.parameters or []
+            # get tool runtime parameters
+            runtime_parameters = tool.get_runtime_parameters()
+            # override parameters
+            current_parameters = parameters.copy()
+            for runtime_parameter in runtime_parameters:
+                found = False
+                for index, parameter in enumerate(current_parameters):
+                    if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
+                        current_parameters[index] = runtime_parameter
+                        break
+
+                if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
+                    current_parameters.append(runtime_parameter)
+
+            user_tool = UserTool(
                 author=tool.identity.author,
                 name=tool.identity.name,
                 label=tool.identity.label,
                 description=tool.description.human,
-                parameters=tool.parameters or []
-            ) for tool in tools
-        ]
+                parameters=current_parameters
+            )
+            result.append(user_tool)
 
         return json.loads(
             serialize_base_model_array(result)

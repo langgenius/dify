@@ -164,6 +164,22 @@ class StableDiffusionTool(BuiltinTool):
         except Exception as e:
             raise ToolProviderCredentialValidationError(f'Failed to get models, {e}')
 
+    def get_sd_models(self) -> List[str]:
+        """
+            get sd models
+        """
+        try:
+            base_url = self.runtime.credentials.get('base_url', None)
+            if not base_url:
+                return []
+            response = get(url=f'{base_url}/sdapi/v1/sd-models', timeout=120)
+            if response.status_code != 200:
+                return []
+            else:
+                return [d['model_name'] for d in response.json()]
+        except Exception as e:
+            return []
+
     def img2img(self, base_url: str, lora: str, image_binary: bytes, 
                 prompt: str, negative_prompt: str,
                 width: int, height: int, steps: int) \
@@ -268,5 +284,29 @@ class StableDiffusionTool(BuiltinTool):
                                  label=I18nObject(en_US=i.name, zh_Hans=i.name)
                              ) for i in self.list_default_image_variables()])
             )
+        
+        if self.runtime.credentials:
+            try:
+                models = self.get_sd_models()
+                if len(models) != 0:
+                    parameters.append(
+                        ToolParameter(name='model',
+                                     label=I18nObject(en_US='Model', zh_Hans='Model'),
+                                     human_description=I18nObject(
+                                        en_US='Model of Stable Diffusion, you can check the official documentation of Stable Diffusion',
+                                        zh_Hans='Stable Diffusion 的模型，您可以查看 Stable Diffusion 的官方文档',
+                                     ),
+                                     type=ToolParameter.ToolParameterType.SELECT,
+                                     form=ToolParameter.ToolParameterForm.FORM,
+                                     llm_description='Model of Stable Diffusion, you can check the official documentation of Stable Diffusion',
+                                     required=True,
+                                     default=models[0],
+                                     options=[ToolParameterOption(
+                                         value=i,
+                                         label=I18nObject(en_US=i, zh_Hans=i)
+                                     ) for i in models])
+                    )
+            except:
+                pass
 
         return parameters
