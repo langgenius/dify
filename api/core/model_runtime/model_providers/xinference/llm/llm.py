@@ -70,7 +70,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 elif 'generate' in extra_param.model_ability:
                     credentials['completion_type'] = 'completion'
                 else:
-                    raise ValueError(f'xinference model ability {extra_param.model_ability} is not supported')
+                    raise ValueError(f'xinference model ability {extra_param.model_ability} is not supported, check if you have the right model type')
                 
             if extra_param.support_function_call:
                 credentials['support_function_call'] = True
