@@ -1,5 +1,5 @@
 const translation = {
-  title: 'Aplicativos',
+  title: 'Studio',
   createApp: 'Criar novo aplicativo',
   modes: {
     completion: 'Gerador de Texto',
