@@ -15,6 +15,7 @@ parameters:
   - name: query
     type: string
     required: true
+    form: llm
     label:
       en_US: Query string
       zh_Hans: 查询语句
@@ -24,7 +25,45 @@ parameters:
       zh_Hans: 用于搜索网页内容
       pt_BR: used for searching
     llm_description: key words for searching
-    form: llm
+  - name: limit
+    type: number
+    required: false
+    form: form
+    label:
+      en_US: Limit for results length
+      zh_Hans: 返回长度限制
+      pt_BR: Limit for results length
+    human_description:
+      en_US: limit the number of results
+      zh_Hans: 限制返回结果的数量
+      pt_BR: limit the number of results
+    min: 1
+    max: 10
+    default: 5
+  - name: result_type
+    type: select
+    required: false
+    label:
+      en_US: result type
+      zh_Hans: 结果类型
+      pt_BR: result type
+    human_description:
+      en_US: return a list of links or texts
+      zh_Hans: 返回一个连接列表还是纯文本内容
+      pt_BR: return a list of links or texts
+    default: text
+    options:
+      - value: link
+        label:
+          en_US: Link
+          zh_Hans: 链接
+          pt_BR: Link
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本
+          pt_BR: Text
+    form: form
   - name: market
     type: select
     label:
