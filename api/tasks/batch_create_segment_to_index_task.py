@@ -6,6 +6,8 @@ from typing import List, cast
 
 import click
 from celery import shared_task
+from sqlalchemy import func
+
 from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -14,7 +16,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
 from models.dataset import Dataset, Document, DocumentSegment
-from sqlalchemy import func
 
 
 @shared_task(queue='dataset')

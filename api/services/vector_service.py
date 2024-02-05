@@ -1,8 +1,9 @@
 
 from typing import List, Optional
 
-from core.index.index import IndexBuilder
 from langchain.schema import Document
+
+from core.index.index import IndexBuilder
 from models.dataset import Dataset, DocumentSegment
 
 

@@ -6,6 +6,10 @@ import time
 import uuid
 from typing import List, Optional, cast
 
+from flask import current_app
+from flask_login import current_user
+from sqlalchemy import func
+
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.index.index import IndexBuilder
 from core.model_manager import ModelManager
@@ -15,12 +19,17 @@ from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from flask import current_app
-from flask_login import current_user
 from libs import helper
 from models.account import Account
-from models.dataset import (AppDatasetJoin, Dataset, DatasetCollectionBinding, DatasetProcessRule, DatasetQuery,
-                            Document, DocumentSegment)
+from models.dataset import (
+    AppDatasetJoin,
+    Dataset,
+    DatasetCollectionBinding,
+    DatasetProcessRule,
+    DatasetQuery,
+    Document,
+    DocumentSegment,
+)
 from models.model import UploadFile
 from models.source import DataSourceBinding
 from services.errors.account import NoPermissionError
@@ -28,7 +37,6 @@ from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.vector_service import VectorService
-from sqlalchemy import func
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task

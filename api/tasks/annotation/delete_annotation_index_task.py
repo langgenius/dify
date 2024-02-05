@@ -1,9 +1,9 @@
-import datetime
 import logging
 import time
 
 import click
 from celery import shared_task
+
 from core.index.index import IndexBuilder
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService

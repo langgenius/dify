@@ -1,7 +1,7 @@
-from typing import List, Optional, Union, Generator
+from typing import Generator, List, Optional, Union
 
 from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import (PromptMessage, PromptMessageTool)
+from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAIAPICompatLargeLanguageModel
 
 

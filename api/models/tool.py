@@ -1,8 +1,9 @@
 import json
 from enum import Enum
 
-from extensions.ext_database import db
 from sqlalchemy.dialects.postgresql import UUID
+
+from extensions.ext_database import db
 
 
 class ToolProviderName(Enum):

@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List
 
 from core.model_runtime.entities.llm_entities import LLMResult

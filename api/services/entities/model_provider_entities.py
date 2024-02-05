@@ -1,16 +1,21 @@
 from enum import Enum
 from typing import Optional
 
+from flask import current_app
+from pydantic import BaseModel
+
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
 from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType, ProviderModel
-from core.model_runtime.entities.provider_entities import (ConfigurateMethod, ModelCredentialSchema,
-                                                           ProviderCredentialSchema, ProviderHelpEntity,
-                                                           SimpleProviderEntity)
-from flask import current_app
+from core.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+    ProviderHelpEntity,
+    SimpleProviderEntity,
+)
 from models.provider import ProviderQuotaType, ProviderType
-from pydantic import BaseModel
 
 
 class CustomConfigurationStatus(Enum):

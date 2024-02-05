@@ -1,9 +1,10 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
 from typing import Any, Dict, List, Union
-from os import path
+
 from requests import get
+
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class BingSearchTool(BuiltinTool):
     url = 'https://api.bing.microsoft.com/v7.0/search'

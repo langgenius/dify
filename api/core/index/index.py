@@ -1,10 +1,11 @@
+from flask import current_app
+from langchain.embeddings import OpenAIEmbeddings
+
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableConfig, KeywordTableIndex
 from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from flask import current_app
-from langchain.embeddings import OpenAIEmbeddings
 from models.dataset import Dataset
 
 

@@ -5,7 +5,13 @@ import re
 import threading
 import time
 import uuid
-from typing import AbstractSet, Any, Collection, List, Literal, Optional, Type, Union, cast
+from typing import List, Optional, cast
+
+from flask import Flask, current_app
+from flask_login import current_user
+from langchain.schema import Document
+from langchain.text_splitter import TextSplitter
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
@@ -17,22 +23,15 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.spiltter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from flask import Flask, current_app
-from flask_login import current_user
-from langchain.schema import Document
-from langchain.text_splitter import TS, TextSplitter, TokenTextSplitter
 from libs import helper
-from models.dataset import Dataset, DatasetProcessRule
+from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.dataset import DocumentSegment
 from models.model import UploadFile
 from models.source import DataSourceBinding
-from sqlalchemy.orm.exc import ObjectDeletedError
 
 
 class IndexingRunner:

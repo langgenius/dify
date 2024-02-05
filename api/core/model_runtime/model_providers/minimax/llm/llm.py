@@ -1,17 +1,34 @@
 from typing import Generator, List
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, ToolPromptMessage, UserPromptMessage)
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.minimax.llm.chat_completion import MinimaxChatCompletion
 from core.model_runtime.model_providers.minimax.llm.chat_completion_pro import MinimaxChatCompletionPro
-from core.model_runtime.model_providers.minimax.llm.errors import (BadRequestError, InsufficientAccountBalanceError,
-                                                                   InternalServerError, InvalidAPIKeyError,
-                                                                   InvalidAuthenticationError, RateLimitReachedError)
+from core.model_runtime.model_providers.minimax.llm.errors import (
+    BadRequestError,
+    InsufficientAccountBalanceError,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
 from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 
 

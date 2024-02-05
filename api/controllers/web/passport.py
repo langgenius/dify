@@ -1,13 +1,14 @@
 # -*- coding:utf-8 -*-
 import uuid
 
-from controllers.web import api
-from extensions.ext_database import db
 from flask import request
 from flask_restful import Resource
+from werkzeug.exceptions import NotFound, Unauthorized
+
+from controllers.web import api
+from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
-from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class PassportResource(Resource):

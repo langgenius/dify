@@ -14,7 +14,7 @@ from langchain.docstore.document import Document
 from langchain.embeddings.base import Embeddings
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
-from qdrant_client.http.models import FilterSelector, PayloadSchemaType, TextIndexParams, TextIndexType, TokenizerType
+from qdrant_client.http.models import PayloadSchemaType, TextIndexParams, TextIndexType, TokenizerType
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -1396,9 +1396,7 @@ class Qdrant(VectorStore):
                 "Could not import qdrant-client python package. "
                 "Please install it with `pip install qdrant-client`."
             )
-        from grpc import RpcError
         from qdrant_client.http import models as rest
-        from qdrant_client.http.exceptions import UnexpectedResponse
 
         # Just do a single quick embedding to get vector size
         partial_embeddings = embedding.embed_documents(texts[:1])

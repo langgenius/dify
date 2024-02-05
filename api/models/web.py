@@ -1,6 +1,7 @@
+from sqlalchemy.dialects.postgresql import UUID
+
 from extensions.ext_database import db
 from models.model import Message
-from sqlalchemy.dialects.postgresql import UUID
 
 
 class SavedMessage(db.Model):

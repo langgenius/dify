@@ -2,14 +2,15 @@ import base64
 import secrets
 from datetime import datetime
 
+from flask_restful import Resource, reqparse
+
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
-from flask_restful import Resource, reqparse
 from libs.helper import email, str_len, timezone
 from libs.password import hash_password, valid_password
-from models.account import AccountStatus, Tenant
+from models.account import AccountStatus
 from services.account_service import RegisterService
 
 

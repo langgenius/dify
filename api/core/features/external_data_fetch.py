@@ -4,9 +4,10 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Tuple
 
+from flask import Flask, current_app
+
 from core.entities.application_entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
-from flask import Flask, current_app
 
 logger = logging.getLogger(__name__)
 

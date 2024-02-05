@@ -1,12 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from core.tools.entities.tool_entities import (ToolParameter, ToolProviderCredentials, ToolProviderIdentity,
-                                               ToolProviderType)
+from pydantic import BaseModel
+
+from core.tools.entities.tool_entities import (
+    ToolParameter,
+    ToolProviderCredentials,
+    ToolProviderIdentity,
+    ToolProviderType,
+)
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
-from pydantic import BaseModel
 
 
 class ToolProviderController(BaseModel, ABC):

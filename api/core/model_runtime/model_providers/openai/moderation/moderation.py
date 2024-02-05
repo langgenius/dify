@@ -1,11 +1,12 @@
 from typing import Optional
 
+from openai import OpenAI
+from openai.types import ModerationCreateResponse
+
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
-from openai import OpenAI
-from openai.types import ModerationCreateResponse
 
 
 class OpenAIModerationModel(_CommonOpenAI, ModerationModel):
