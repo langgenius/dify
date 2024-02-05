@@ -30,10 +30,10 @@ class APIBasedExtensionRequestor:
         try:
             # proxy support for security
             proxies = None
-            if os.environ.get("API_BASED_EXTENSION_HTTP_PROXY") and os.environ.get("API_BASED_EXTENSION_HTTPS_PROXY"):
+            if os.environ.get("SSRF_PROXY_HTTP_URL") and os.environ.get("SSRF_PROXY_HTTPS_URL"):
                 proxies = {
-                    'http': os.environ.get("API_BASED_EXTENSION_HTTP_PROXY"),
-                    'https': os.environ.get("API_BASED_EXTENSION_HTTPS_PROXY"),
+                    'http': os.environ.get("SSRF_PROXY_HTTP_URL"),
+                    'https': os.environ.get("SSRF_PROXY_HTTPS_URL"),
                 }
 
             response = requests.request(
