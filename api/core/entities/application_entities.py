@@ -41,6 +41,7 @@ class AdvancedCompletionPromptTemplateEntity(BaseModel):
     """
     Advanced Completion Prompt Template Entity.
     """
+
     class RolePrefixEntity(BaseModel):
         """
         Role Prefix Entity.
@@ -56,6 +57,7 @@ class PromptTemplateEntity(BaseModel):
     """
     Prompt Template Entity.
     """
+
     class PromptType(Enum):
         """
         Prompt Type.
@@ -96,6 +98,7 @@ class DatasetRetrieveConfigEntity(BaseModel):
     """
     Dataset Retrieve Config Entity.
     """
+
     class RetrieveStrategy(Enum):
         """
         Dataset Retrieve Strategy.
@@ -146,7 +149,7 @@ class TextToSpeechEntity(BaseModel):
     """
     Sensitive Word Avoidance Entity.
     """
-    enabled: str
+    enabled: bool
     voice: str
     language: str
 
@@ -167,12 +170,14 @@ class AgentToolEntity(BaseModel):
     tool_name: str
     tool_parameters: dict[str, Any] = {}
 
+
 class AgentPromptEntity(BaseModel):
     """
     Agent Prompt Entity.
     """
     first_prompt: str
     next_iteration: str
+
 
 class AgentScratchpadUnit(BaseModel):
     """
@@ -190,12 +195,14 @@ class AgentScratchpadUnit(BaseModel):
     thought: Optional[str] = None
     action_str: Optional[str] = None
     observation: Optional[str] = None
-    action: Optional[Action] = None    
+    action: Optional[Action] = None
+
 
 class AgentEntity(BaseModel):
     """
     Agent Entity.
     """
+
     class Strategy(Enum):
         """
         Agent Strategy.
@@ -209,6 +216,7 @@ class AgentEntity(BaseModel):
     prompt: Optional[AgentPromptEntity] = None
     tools: list[AgentToolEntity] = None
     max_iteration: int = 5
+
 
 class AppOrchestrationConfigEntity(BaseModel):
     """
@@ -227,7 +235,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
-    text_to_speech: bool = False
+    text_to_speech: dict = {}
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 

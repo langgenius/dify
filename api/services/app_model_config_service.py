@@ -108,8 +108,8 @@ class AppModelConfigService:
 
         if "enabled" not in config["text_to_speech"] or not config["text_to_speech"]["enabled"]:
             config["text_to_speech"]["enabled"] = False
-            config["text_to_speech"]["voice"] = None
-            config["text_to_speech"]["language"] = None
+            config["text_to_speech"]["voice"] = ""
+            config["text_to_speech"]["language"] = ""
 
         if not isinstance(config["text_to_speech"]["enabled"], bool):
             raise ValueError("enabled in text_to_speech must be of boolean type")
