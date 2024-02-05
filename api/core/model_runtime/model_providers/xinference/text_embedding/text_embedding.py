@@ -114,8 +114,10 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
                 credentials['max_tokens'] = extra_args.max_tokens
 
             self._invoke(model=model, credentials=credentials, texts=['ping'])
-        except (InvokeAuthorizationError, RuntimeError):
-            raise CredentialsValidateFailedError('Invalid api key')
+        except InvokeAuthorizationError as e:
+            raise CredentialsValidateFailedError(f'Failed to validate credentials for model {model}: {e}')
+        except RuntimeError as e:
+            raise CredentialsValidateFailedError(e)
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
