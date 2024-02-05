@@ -16,6 +16,7 @@ from core.model_runtime.model_providers.azure_openai._common import _CommonAzure
 from core.model_runtime.model_providers.azure_openai._constant import TTS_MODELS, AzureBaseModel
 
 from flask import Response, stream_with_context
+from extensions.ext_storage import storage
 import concurrent.futures
 import aiohttp
 import threading
@@ -32,27 +33,30 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
         self.tts_api_secret = os.getenv('TTS_API_SECRET')
         self.tts_api_url = os.getenv('TTS_API_URI')
 
-    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+    def _invoke(self, model: str,  tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool, user: Optional[str] = None):
         """
         Invoke tts model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
         :param content_text: text content to be translated
+        :param voice: model timbre
         :param streaming: output is streaming
         :param user: unique user id
         :return: text translated to audio file
         """
-        self._is_ffmpeg_installed()
         audio_type = self._get_model_audio_type(model, credentials)
         if streaming:
             return Response(stream_with_context(self._tts_invoke_streaming(model=model,
                                                                            credentials=credentials,
                                                                            content_text=content_text,
+                                                                           voice=voice,
+                                                                           tenant_id=tenant_id,
                                                                            user=user)),
                             status=200, mimetype=f'audio/{audio_type}')
         else:
-            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, user=user)
+            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice, user=user)
 
     def validate_credentials(self, model: str, credentials: dict):
         """
@@ -101,18 +105,20 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
         }
         return headers, tts_payload
 
-    async def _tts_invoke_streaming1(self, model: str, content_text: str, credentials: dict, user: Optional[str] = None) -> None:
+    async def _tts_invoke_streaming1(self, model: str, tenant_id: str, content_text: str, voice: str, credentials: dict, user: Optional[str] = None) -> None:
         """
         Streaming Invoke tts model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
         :param user: unique user id
         :return: text translated to audio file
         """
         word_limit = self._get_model_word_limit(model, credentials)
-        voice_name = self._get_model_voice(model, credentials)
+        voice_name = self._get_model_default_voice(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
         tts_file_id = self._get_file_name(content_text)
         file_path = f'storage/generate_files/{audio_type}/{tts_file_id}.{audio_type}'
@@ -143,27 +149,33 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
             os.remove(file_path)
             raise InvokeBadRequestError(str(ex))
 
-    def _tts_invoke_streaming(self, model: str, content_text: str, credentials: dict, user: Optional[str] = None) -> Generator:
+    def _tts_invoke_streaming(self, model: str,  tenant_id: str, content_text: str, voice: str, credentials: dict, user: Optional[str] = None) -> any:
         """
         Invoke tts model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
         :param user: unique user id
         :return: text translated to audio file
         """
         word_limit = self._get_model_word_limit(model, credentials)
-        voice_name = self._get_model_voice(model, credentials)
+        if not voice:
+            voice = self._get_model_default_voice(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
+        tts_file_id = self._get_file_name(content_text)
+        file_path = f'generate_filesaudio/{tenant_id}/{tts_file_id}.{audio_type}'
 
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
-                headers, tts_payload = self._prepare_request(user=user, content_text=sentence, voice=voice_name, audio_type=audio_type)
+                headers, tts_payload = self._prepare_request(user=user, content_text=sentence, voice=voice, audio_type=audio_type)
                 response = requests.post(url='{}/tts'.format(self.tts_api_url), json=tts_payload, headers=headers)
                 if isinstance(response.content, bytes) and response.headers['Content-Type'] == f'audio/{audio_type}' and int(response.headers['Content-Length']) > 0:
-                    yield response.content
+                    # yield response.content
+                    storage.save(file_path, response.content)
                 else:
                     response_object = response.json()
                     raise InvokeBadRequestError(
@@ -171,18 +183,20 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _tts_invoke(self, model: str, content_text: str, credentials: dict, user: Optional[str] = None) -> Response:
+    def _tts_invoke(self, model: str, content_text: str, voice: str, credentials: dict, user: Optional[str] = None) -> Response:
         """
         Invoke tts model
 
         :param model: model name
         :param credentials: model credentials
         :param content_text: text content to be translated
+        :param voice: model timbre
         :param user: unique user id
         :return: text translated to audio file
         """
         word_limit = self._get_model_word_limit(model, credentials)
-        voice_name = self._get_model_voice(model, credentials)
+        if not voice:
+            voice = self._get_model_default_voice(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
         max_workers = self._get_model_workers_limit(model, credentials)
 
@@ -192,8 +206,8 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
 
             # Create a thread pool and map the function to the list of sentences
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(self._process_sentence, sentence, user, voice_name, audio_type) for sentence
-                           in sentences]
+                futures = [executor.submit(self._process_sentence, sentence=sentence, user=user, voice=voice,
+                                           audio_type=audio_type) for sentence in sentences]
                 for future in futures:
                     try:
                         audio_bytes_list.append(future.result())
@@ -223,7 +237,7 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
                 ai_model_entity.entity.label.zh_Hans = model
                 return ai_model_entity
 
-    def _process_sentence(self, sentence, user, voice_name, audio_type):
+    def _process_sentence(self, sentence, user, voice, audio_type):
         """
         _tts_invoke openai text2speech model api
 
@@ -231,7 +245,7 @@ class AzureOpenAITTSModel(_CommonAzureOpenAI, TTSModel):
         :return: text translated to audio file
         """
         print(f"Processing sentence on thread {threading.current_thread().name}")
-        headers, tts_payload = self._prepare_request(user=user, content_text=sentence, voice=voice_name,
+        headers, tts_payload = self._prepare_request(user=user, content_text=sentence, voice=voice,
                                                      audio_type=audio_type)
         response = requests.post(url='{}/tts'.format(self.tts_api_url), json=tts_payload, headers=headers)
         if isinstance(response.content, bytes) and response.headers['Content-Type'] == f'audio/{audio_type}':

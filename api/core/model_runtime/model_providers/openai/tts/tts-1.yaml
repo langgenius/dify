@@ -3,12 +3,12 @@ model_type: tts
 model_properties:
   default_voice: 'alloy'
   voices: [
-    {'mode': 'alloy', 'name': 'alloy', 'language': ['zh', 'es']},
-    {'mode': 'echo', 'name': 'echo', 'language': ['zh', 'es']},
-    {'mode': 'fable', 'name': 'fable', 'language': ['zh', 'es']},
-    {'mode': 'onyx', 'name': 'onyx', 'language': ['zh', 'es']},
-    {'mode': 'nova', 'name': 'nova', 'language': ['zh', 'es']},
-    {'mode': 'shimmer', 'name': 'shimmer', 'language': ['zh', 'es']},
+    {'mode': 'alloy', 'name': 'alloy', 'language': ['zh-CN-CN', 'en-US']},
+    {'mode': 'echo', 'name': 'echo', 'language': ['zh-CN', 'en-US']},
+    {'mode': 'fable', 'name': 'fable', 'language': ['zh-CN', 'en-US']},
+    {'mode': 'onyx', 'name': 'onyx', 'language': ['zh-CN', 'en-US']},
+    {'mode': 'nova', 'name': 'nova', 'language': ['zh-CN', 'en-US']},
+    {'mode': 'shimmer', 'name': 'shimmer', 'language': ['zh-CN', 'en-US']},
   ]
   word_limit: 120
   audio_type: 'mp3'

@@ -74,6 +74,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         audio_type = self._get_model_audio_type(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         max_workers = self._get_model_workers_limit(model, credentials)
+        if not voice:
+            voice = self._get_model_default_voice(model, credentials)
 
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
@@ -130,21 +132,20 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _process_sentence(self, sentence: str, model: str, credentials: dict, voice: str, audio_type: str):
+    @staticmethod
+    def _process_sentence(sentence: str, model: str, credentials: dict, voice: str, audio_type: str):
         """
         _tts_invoke Tongyi text2speech model api
 
         :param model: model name
         :param credentials: model credentials
         :param sentence: text content to be translated
+        :param voice: model timbre
         :param audio_type: audio file type
         :return: text translated to audio file
         """
         # transform credentials to kwargs for model instance
         dashscope.api_key = credentials.get('dashscope_api_key')
-        if not voice:
-            voice = self._get_model_default_voice(model, credentials)
-
         response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000, text=sentence.strip(),
                                                               format=audio_type)
         if isinstance(response.get_audio_data(), bytes):

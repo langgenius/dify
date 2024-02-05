@@ -553,6 +553,11 @@ TTS_MODELS = [
             model_type=ModelType.TTS,
             model_properties={
                 ModelPropertyKey.DEFAULT_VOICE: 'StandardF01',
+                ModelPropertyKey.VOICES: [
+                    {'mode': 'StandardF01', 'name': '小明', 'language': ['zh-CN', 'en-US']},
+                    {'mode': 'StandardF03', 'name': '小萍', 'language': ['zh-CN', 'en-US']},
+                    {'mode': 'StandardF04', 'name': '小瑶', 'language': ['zh-CN', 'en-US']}
+                ],
                 ModelPropertyKey.WORD_LIMIT: 40,
                 ModelPropertyKey.AUDOI_TYPE: 'wav',
                 ModelPropertyKey.MAX_WORKERS: 2,
