@@ -9,6 +9,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
 from flask import Response, stream_with_context
+from extensions.ext_storage import storage
 from pydub import AudioSegment
 
 
@@ -32,6 +33,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :return: text translated to audio file
         """
         audio_type = self._get_model_audio_type(model, credentials)
+        if not voice:
+            voice = self._get_model_default_voice(model, credentials)
         if streaming:
             return Response(stream_with_context(self._tts_invoke_streaming(model=model,
                                                                            credentials=credentials,
@@ -56,7 +59,7 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
                 model=model,
                 credentials=credentials,
                 content_text='Hello world!',
-                voice='',
+                voice='sambert-zhiru-v1',
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -74,16 +77,13 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         audio_type = self._get_model_audio_type(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         max_workers = self._get_model_workers_limit(model, credentials)
-        if not voice:
-            voice = self._get_model_default_voice(model, credentials)
-
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             audio_bytes_list = list()
 
             # Create a thread pool and map the function to the list of sentences
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(self._process_sentence, model=model, sentence=sentence,
+                futures = [executor.submit(self._process_sentence, sentence=sentence,
                                            credentials=credentials, voice=voice, audio_type=audio_type) for sentence in
                            sentences]
                 for future in futures:
@@ -114,12 +114,11 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :param content_text: text content to be translated
         :return: text translated to audio file
         """
-        # transform credentials to kwargs for model instance
         dashscope.api_key = credentials.get('dashscope_api_key')
-        if not voice:
-            voice = self._get_model_default_voice(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
+        tts_file_id = self._get_file_name(content_text)
+        file_path = f'generate_files/audio/{tenant_id}/{tts_file_id}.{audio_type}'
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
@@ -128,23 +127,21 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
                                                                       format=audio_type, word_timestamp_enabled=True,
                                                                       phoneme_timestamp_enabled=True)
                 if isinstance(response.get_audio_data(), bytes):
-                    return response.get_audio_data()
+                    storage.save(file_path, response.get_audio_data())
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
     @staticmethod
-    def _process_sentence(sentence: str, model: str, credentials: dict, voice: str, audio_type: str):
+    def _process_sentence(sentence: str, credentials: dict, voice: str, audio_type: str):
         """
         _tts_invoke Tongyi text2speech model api
 
-        :param model: model name
         :param credentials: model credentials
         :param sentence: text content to be translated
         :param voice: model timbre
         :param audio_type: audio file type
         :return: text translated to audio file
         """
-        # transform credentials to kwargs for model instance
         dashscope.api_key = credentials.get('dashscope_api_key')
         response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000, text=sentence.strip(),
                                                               format=audio_type)
