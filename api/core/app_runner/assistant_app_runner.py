@@ -141,8 +141,6 @@ class AssistantApplicationRunner(AppRunner):
                 query=query
             )
 
-        # replace 
-
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         #          memory(optional), external data, dataset context(optional)
