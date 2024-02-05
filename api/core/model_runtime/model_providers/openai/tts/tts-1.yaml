@@ -2,14 +2,25 @@ model: tts-1
 model_type: tts
 model_properties:
   default_voice: 'alloy'
-  voices: [
-    {'mode': 'alloy', 'name': 'alloy', 'language': ['zh-CN-CN', 'en-US']},
-    {'mode': 'echo', 'name': 'echo', 'language': ['zh-CN', 'en-US']},
-    {'mode': 'fable', 'name': 'fable', 'language': ['zh-CN', 'en-US']},
-    {'mode': 'onyx', 'name': 'onyx', 'language': ['zh-CN', 'en-US']},
-    {'mode': 'nova', 'name': 'nova', 'language': ['zh-CN', 'en-US']},
-    {'mode': 'shimmer', 'name': 'shimmer', 'language': ['zh-CN', 'en-US']},
-  ]
+  voices:
+    - mode: 'alloy'
+      name: 'alloy'
+      language: ['zh-CN-CN', 'en-US']
+    - mode: 'echo'
+      name: 'echo'
+      language: ['zh-CN', 'en-US']
+    - mode: 'fable'
+      name: 'fable'
+      language: ['zh-CN', 'en-US']
+    - mode: 'onyx'
+      name: 'onyx'
+      language: ['zh-CN', 'en-US']
+    - mode: 'nova'
+      name: 'nova'
+      language: ['zh-CN', 'en-US']
+    - mode: 'shimmer'
+      name: 'shimmer'
+      language: ['zh-CN', 'en-US']
   word_limit: 120
   audio_type: 'mp3'
   max_workers: 5
