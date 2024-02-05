@@ -152,7 +152,7 @@ class StableDiffusionTool(BuiltinTool):
             if not model:
                 raise ToolProviderCredentialValidationError('Please input model')
 
-            response = get(url=f'{base_url}/sdapi/v1/sd-models', timeout=120)
+            response = get(url=f'{base_url}/sdapi/v1/sd-models', timeout=10)
             if response.status_code != 200:
                 raise ToolProviderCredentialValidationError('Failed to get models')
             else:
@@ -172,7 +172,7 @@ class StableDiffusionTool(BuiltinTool):
             base_url = self.runtime.credentials.get('base_url', None)
             if not base_url:
                 return []
-            response = get(url=f'{base_url}/sdapi/v1/sd-models', timeout=120)
+            response = get(url=f'{base_url}/sdapi/v1/sd-models', timeout=10)
             if response.status_code != 200:
                 return []
             else:
