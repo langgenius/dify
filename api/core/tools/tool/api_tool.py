@@ -32,7 +32,7 @@ class ApiTool(Tool):
             runtime=Tool.Runtime(**meta)
         )
 
-    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
+    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> str:
         """
             validate the credentials for Api tool
         """
@@ -44,7 +44,7 @@ class ApiTool(Tool):
 
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
-        self.validate_and_parse_response(response)
+        return self.validate_and_parse_response(response)
 
     def assembling_request(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         headers = {}
