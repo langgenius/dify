@@ -1,7 +1,8 @@
 model: tts-1
 model_type: tts
 model_properties:
-  default_voice: 'sambert-zhiru-v1' # 音色参考 https://help.aliyun.com/zh/dashscope/model-list 配置
+  default_voice: 'sambert-zhiru-v1'
+  # 音色参考 https://help.aliyun.com/zh/dashscope/model-list 配置
   voices: [
 	{"mode":"sambert-zhichu-v1","name":"知厨","language":["zh-CN","en-US"]},
 	{"mode":"sambert-zhiwei-v1","name":"知薇","language":["zh-CN","en-US"]},
