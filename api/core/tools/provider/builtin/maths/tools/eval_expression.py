@@ -16,9 +16,9 @@ class EvaluateExpressionTool(BuiltinTool):
             invoke tools
         """
         # get expression
-        expression = tool_parameters.get('expression', '')
+        expression = tool_parameters.get('expression', '').strip()
         if not expression:
-            return self.create_text_message('expression')
+            return self.create_text_message('Invalid expression')
 
         try:
             result = ne.evaluate(expression)
