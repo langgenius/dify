@@ -1,5 +1,5 @@
 const translation = {
-  title: '我的应用',
+  title: '探索',
   sidebar: {
     discovery: '发现',
     chat: '智聊',
