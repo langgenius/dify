@@ -28,6 +28,9 @@ class BingSearchTool(BuiltinTool):
         if not query:
             raise Exception('query is required')
         
+        limit = min(tool_parameters.get('limit', 5), 10)
+        result_type = tool_parameters.get('result_type', 'text') or 'text'
+        
         market = tool_parameters.get('market', 'US')
         lang = tool_parameters.get('language', 'en')
 
@@ -49,13 +52,24 @@ class BingSearchTool(BuiltinTool):
             raise Exception(f'Error {response.status_code}: {response.text}')
         
         response = response.json()
-        # get the first 5 results
-        search_results = response['webPages']['value'][:5]
-        results = []
-        for result in search_results:
-            results.append(self.create_text_message(
-                text=f'{result["name"]}: {result["url"]}'
-            ))
+        search_results = response['webPages']['value'][:limit]
 
-        return results
-        
+        if result_type == 'link':
+            results = []
+            for result in search_results:
+                results.append(self.create_text_message(
+                    text=f'{result["name"]}: {result["url"]}'
+                ))
+
+            return results
+        else:
+            # construct text
+            text = ''
+            for i, result in enumerate(search_results):
+                text += f'{i+1}: {result["name"]} - {result["snippet"]}\n'
+
+            text += '\n\nRelated Searches:\n'
+            for related in response['relatedSearches']['value']:
+                text += f'{related["displayText"]} - {related["webSearchUrl"]}\n'
+
+            return self.create_text_message(text=self.summary(user_id=user_id, content=text))
