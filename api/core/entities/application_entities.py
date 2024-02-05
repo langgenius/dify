@@ -142,6 +142,15 @@ class SensitiveWordAvoidanceEntity(BaseModel):
     config: dict[str, Any] = {}
 
 
+class TextToSpeechEntity(BaseModel):
+    """
+    Sensitive Word Avoidance Entity.
+    """
+    enabled: str
+    voice: str
+    language: str
+
+
 class FileUploadEntity(BaseModel):
     """
     File Upload Entity.

@@ -16,27 +16,31 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
     """
     Model class for Tongyi Speech to text model.
     """
-    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None) -> any:
+
+    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool,
+                user: Optional[str] = None) -> any:
         """
         _invoke text2speech model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
         :param streaming: output is streaming
         :param user: unique user id
         :return: text translated to audio file
         """
-        self._is_ffmpeg_installed()
         audio_type = self._get_model_audio_type(model, credentials)
         if streaming:
             return Response(stream_with_context(self._tts_invoke_streaming(model=model,
                                                                            credentials=credentials,
                                                                            content_text=content_text,
-                                                                           user=user)),
+                                                                           voice=voice,
+                                                                           tenant_id=tenant_id)),
                             status=200, mimetype=f'audio/{audio_type}')
         else:
-            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, user=user)
+            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice)
 
     def validate_credentials(self, model: str, credentials: dict, user: Optional[str] = None) -> None:
         """
@@ -52,19 +56,19 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
                 model=model,
                 credentials=credentials,
                 content_text='Hello world!',
-                user=user
+                voice='',
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> Response:
+    def _tts_invoke(self, model: str, credentials: dict, content_text: str, voice: str) -> Response:
         """
         _tts_invoke text2speech model
 
         :param model: model name
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
-        :param user: unique user id
         :return: text translated to audio file
         """
         audio_type = self._get_model_audio_type(model, credentials)
@@ -78,7 +82,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             # Create a thread pool and map the function to the list of sentences
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [executor.submit(self._process_sentence, model=model, sentence=sentence,
-                                           credentials=credentials, audio_type=audio_type) for sentence in sentences]
+                                           credentials=credentials, voice=voice, audio_type=audio_type) for sentence in
+                           sentences]
                 for future in futures:
                     try:
                         audio_bytes_list.append(future.result())
@@ -96,25 +101,28 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             raise InvokeBadRequestError(str(ex))
 
     # Todo: To improve the streaming function
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, user: Optional[str] = None) -> any:
+    def _tts_invoke_streaming(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str) -> any:
         """
         _tts_invoke_streaming text2speech model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
-        :param user: unique user id
         :return: text translated to audio file
         """
         # transform credentials to kwargs for model instance
         dashscope.api_key = credentials.get('dashscope_api_key')
-        voice_name = self._get_model_voice(model, credentials)
+        if not voice:
+            voice = self._get_model_default_voice(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
-                response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(),
+                response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
+                                                                      text=sentence.strip(),
                                                                       format=audio_type, word_timestamp_enabled=True,
                                                                       phoneme_timestamp_enabled=True)
                 if isinstance(response.get_audio_data(), bytes):
@@ -122,7 +130,7 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _process_sentence(self, sentence: str, model: str, credentials: dict, audio_type: str):
+    def _process_sentence(self, sentence: str, model: str, credentials: dict, voice: str, audio_type: str):
         """
         _tts_invoke Tongyi text2speech model api
 
@@ -134,8 +142,10 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         """
         # transform credentials to kwargs for model instance
         dashscope.api_key = credentials.get('dashscope_api_key')
-        voice_name = self._get_model_voice(model, credentials)
+        if not voice:
+            voice = self._get_model_default_voice(model, credentials)
 
-        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice_name, sample_rate=48000, text=sentence.strip(), format=audio_type)
+        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000, text=sentence.strip(),
+                                                              format=audio_type)
         if isinstance(response.get_audio_data(), bytes):
             return response.get_audio_data()

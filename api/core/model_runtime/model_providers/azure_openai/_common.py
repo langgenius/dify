@@ -1,8 +1,6 @@
-import openai
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
-from core.model_runtime.model_providers.azure_openai._constant import AZURE_OPENAI_API_VERSION
 from httpx import Timeout
+from core.model_runtime.errors.invoke import InvokeError
+from core.model_runtime.model_providers.azure_openai._constant import AZURE_OPENAI_API_VERSION
 
 
 class _CommonAzureOpenAI:
@@ -20,25 +18,13 @@ class _CommonAzureOpenAI:
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        return {
-            InvokeConnectionError: [
-                openai.APIConnectionError,
-                openai.APITimeoutError
-            ],
-            InvokeServerUnavailableError: [
-                openai.InternalServerError
-            ],
-            InvokeRateLimitError: [
-                openai.RateLimitError
-            ],
-            InvokeAuthorizationError: [
-                openai.AuthenticationError,
-                openai.PermissionDeniedError
-            ],
-            InvokeBadRequestError: [
-                openai.BadRequestError,
-                openai.NotFoundError,
-                openai.UnprocessableEntityError,
-                openai.APIError
-            ]
-        }
+        """
+        Map model invoke error to unified error
+        The key is the error type thrown to the caller
+        The value is the error type thrown by the model,
+        which needs to be converted into a unified error type for the caller.
+
+        :return: Invoke error mapping
+        """
+        pass
+

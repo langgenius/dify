@@ -517,3 +517,51 @@ EMBEDDING_BASE_MODELS = [
         )
     )
 ]
+
+SPEECH2TEXT_MODELS = [
+    AzureBaseModel(
+        base_model_name='whisper-1',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.SPEECH2TEXT,
+            model_properties={
+                ModelPropertyKey.FILE_UPLOAD_LIMIT: 25,
+                ModelPropertyKey.SUPPORTED_FILE_EXTENSIONS: 'mp3,mp4,mpeg,mpga,m4a,wav,webm,amr',
+            },
+            pricing=PriceConfig(
+                input=0.0000,
+                unit=0.000,
+                currency='USD',
+            )
+        )
+    )
+]
+
+TTS_MODELS = [
+    AzureBaseModel(
+        base_model_name='tts-1',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TTS,
+            model_properties={
+                ModelPropertyKey.DEFAULT_VOICE: 'StandardF01',
+                ModelPropertyKey.WORD_LIMIT: 40,
+                ModelPropertyKey.AUDOI_TYPE: 'wav',
+                ModelPropertyKey.MAX_WORKERS: 2,
+            },
+            pricing=PriceConfig(
+                input=0.0000,
+                unit=0.000,
+                currency='USD',
+            )
+        )
+    )
+]

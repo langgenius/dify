@@ -2,6 +2,19 @@ model: tts-1
 model_type: tts
 model_properties:
   default_voice: 'alloy'
+  voices: [
+    {'mode': 'alloy', 'name': 'alloy', 'language': ['zh', 'es']},
+    {'mode': 'echo', 'name': 'echo', 'language': ['zh', 'es']},
+    {'mode': 'fable', 'name': 'fable', 'language': ['zh', 'es']},
+    {'mode': 'onyx', 'name': 'onyx', 'language': ['zh', 'es']},
+    {'mode': 'nova', 'name': 'nova', 'language': ['zh', 'es']},
+    {'mode': 'shimmer', 'name': 'shimmer', 'language': ['zh', 'es']},
+  ]
   word_limit: 120
   audio_type: 'mp3'
   max_workers: 5
+pricing:
+  input: '0.015'
+  output: '0'
+  unit: '0.001'
+  currency: USD

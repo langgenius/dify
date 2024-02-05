@@ -14,7 +14,7 @@ from core.entities.application_entities import (AdvancedChatPromptTemplateEntity
                                                 AppOrchestrationConfigEntity, DatasetEntity,
                                                 DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
                                                 FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
-                                                SensitiveWordAvoidanceEntity)
+                                                SensitiveWordAvoidanceEntity, TextToSpeechEntity)
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj
@@ -560,7 +560,12 @@ class ApplicationManager:
         text_to_speech_dict = copy_app_model_config_dict.get('text_to_speech')
         if text_to_speech_dict:
             if 'enabled' in text_to_speech_dict and text_to_speech_dict['enabled']:
-                properties['text_to_speech'] = True
+                # properties['text_to_speech'] = True
+                properties['text_to_speech'] = TextToSpeechEntity(
+                    enabled=text_to_speech_dict.get('enabled'),
+                    voice=text_to_speech_dict.get('voice'),
+                    language=text_to_speech_dict.get('language'),
+                )
 
         # sensitive word avoidance
         sensitive_word_avoidance_dict = copy_app_model_config_dict.get('sensitive_word_avoidance')
