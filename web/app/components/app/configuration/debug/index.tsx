@@ -215,6 +215,8 @@ const Debug: FC<IDebug> = ({
     const postModelConfig: BackendModelConfig = {
       text_to_speech: {
         enabled: false,
+        voice: '',
+        language: '',
       },
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
