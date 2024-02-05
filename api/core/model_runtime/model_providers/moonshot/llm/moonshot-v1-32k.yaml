@@ -24,3 +24,8 @@ parameter_rules:
     default: 512
     min: 1
     max: 4096
+pricing:
+  input: '0.024'
+  output: '0.024'
+  unit: '0.001'
+  currency: RMB
