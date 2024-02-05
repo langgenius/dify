@@ -521,8 +521,8 @@ class ToolManageService:
                 'credentials': credentials,
                 'tenant_id': tenant_id,
             })
-            tool.validate_credentials(credentials, parameters)
+            result = tool.validate_credentials(credentials, parameters)
         except Exception as e:
             return { 'error': str(e) }
         
-        return { 'result': 'success' }
+        return { 'result': result or 'empty response' }

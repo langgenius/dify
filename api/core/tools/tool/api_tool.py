@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Union
 
 import httpx
 import requests
+import core.helper.ssrf_proxy as ssrf_proxy
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError
@@ -31,7 +32,7 @@ class ApiTool(Tool):
             runtime=Tool.Runtime(**meta)
         )
 
-    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
+    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> str:
         """
             validate the credentials for Api tool
         """
@@ -43,7 +44,7 @@ class ApiTool(Tool):
 
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
-        self.validate_and_parse_response(response)
+        return self.validate_and_parse_response(response)
 
     def assembling_request(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         headers = {}
@@ -201,23 +202,23 @@ class ApiTool(Tool):
         
         # do http request
         if method == 'get':
-            response = httpx.get(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
+            response = ssrf_proxy.get(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
         elif method == 'post':
-            response = httpx.post(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
+            response = ssrf_proxy.post(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'put':
-            response = httpx.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
+            response = ssrf_proxy.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'delete':
             """
             request body data is unsupported for DELETE method in standard http protocol
             however, OpenAPI 3.0 supports request body data for DELETE method, so we support it here by using requests
             """
-            response = requests.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, allow_redirects=True)
+            response = ssrf_proxy.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, allow_redirects=True)
         elif method == 'patch':
-            response = httpx.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
+            response = ssrf_proxy.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'head':
-            response = httpx.head(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
+            response = ssrf_proxy.head(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
         elif method == 'options':
-            response = httpx.options(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
+            response = ssrf_proxy.options(url, params=params, headers=headers, cookies=cookies, timeout=10, follow_redirects=True)
         else:
             raise ValueError(f'Invalid http method {method}')
         
