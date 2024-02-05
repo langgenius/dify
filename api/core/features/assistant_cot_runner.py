@@ -1,23 +1,20 @@
 import json
 import logging
 import re
-from typing import Literal, Union, Generator, Dict, List
+from typing import Dict, Generator, List, Literal, Union
 
-from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
 from core.application_queue_manager import PublishFrom
-from core.model_runtime.utils.encoders import jsonable_encoder
-from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, \
-    UserPromptMessage, SystemPromptMessage, AssistantPromptMessage
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
-from core.model_manager import ModelInstance
-
-from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
-    ToolNotSupportedError, ToolProviderNotFoundError, ToolParameterValidationError, \
-          ToolProviderCredentialValidationError
-
+from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
-
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
+                                                          SystemPromptMessage, UserPromptMessage)
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.errors import (ToolInvokeError, ToolNotFoundError, ToolNotSupportedError, ToolParameterValidationError,
+                               ToolProviderCredentialValidationError, ToolProviderNotFoundError)
 from models.model import Conversation, Message
+
 
 class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, conversation: Conversation,

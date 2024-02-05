@@ -1,11 +1,11 @@
 from typing import Dict, List, Optional, Union
 
 import requests
-from core.file.file_obj import FileObj, FileTransferMethod, FileType, FileBelongsTo
-from services.file_service import IMAGE_EXTENSIONS
+from core.file.file_obj import FileBelongsTo, FileObj, FileTransferMethod, FileType
 from extensions.ext_database import db
 from models.account import Account
 from models.model import AppModelConfig, EndUser, MessageFile, UploadFile
+from services.file_service import IMAGE_EXTENSIONS
 
 
 class MessageFileParser:

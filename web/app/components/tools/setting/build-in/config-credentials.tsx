@@ -29,7 +29,7 @@ const ConfigCredential: FC<Props> = ({
   const { team_credentials: credentialValue, name: collectionName } = collection
   useEffect(() => {
     fetchBuiltInToolCredentialSchema(collectionName).then((res) => {
-      setCredentialSchema(toolCredentialToFormSchemas(res as any))
+      setCredentialSchema(toolCredentialToFormSchemas(res))
     })
   }, [])
   const [tempCredential, setTempCredential] = React.useState<any>(credentialValue)

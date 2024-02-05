@@ -1,9 +1,9 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.errors import ToolProviderCredentialValidationError
-
-from core.tools.provider.builtin.vectorizer.tools.vectorizer import VectorizerTool
-
 from typing import Any, Dict
+
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.provider.builtin.vectorizer.tools.vectorizer import VectorizerTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+
 
 class VectorizerProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: Dict[str, Any]) -> None:

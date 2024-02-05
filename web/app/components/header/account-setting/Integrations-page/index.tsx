@@ -45,7 +45,7 @@ export default function IntegrationsPage() {
                   <Link
                     className='flex items-center h-8 px-[7px] bg-white rounded-lg border border-gray-200 text-xs font-medium text-gray-700 cursor-pointer'
                     href={integrate.link}
-                    target={'_blank'}>
+                    target='_blank' rel='noopener noreferrer'>
                     {t('common.integrations.connect')}
                   </Link>
                 )

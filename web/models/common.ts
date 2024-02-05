@@ -13,6 +13,10 @@ export type SetupStatusResponse = {
   setup_at?: Date
 }
 
+export type InitValidateStatusResponse = {
+  status: 'finished' | 'not_started'
+}
+
 export type UserProfileResponse = {
   id: string
   name: string

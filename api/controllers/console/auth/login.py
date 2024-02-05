@@ -8,7 +8,7 @@ from flask import current_app, request
 from flask_restful import Resource, reqparse
 from libs.helper import email
 from libs.password import valid_password
-from services.account_service import AccountService, TenantService
+from services.account_service import AccountService
 
 
 class LoginApi(Resource):
@@ -30,11 +30,6 @@ class LoginApi(Resource):
         except services.errors.account.AccountLoginError:
             return {'code': 'unauthorized', 'message': 'Invalid email or password'}, 401
 
-        try:
-            TenantService.switch_tenant(account)
-        except Exception:
-            pass
-
         AccountService.update_last_login(account, request)
 
         # todo: return the user info
@@ -47,7 +42,6 @@ class LogoutApi(Resource):
 
     @setup_required
     def get(self):
-        flask.session.pop('workspace_id', None)
         flask_login.logout_user()
         return {'result': 'success'}
 

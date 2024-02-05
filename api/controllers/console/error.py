@@ -13,6 +13,16 @@ class NotSetupError(BaseHTTPException):
                   "Please proceed with the initialization and installation process first."
     code = 401
 
+class NotInitValidateError(BaseHTTPException):
+    error_code = 'not_init_validated'
+    description = "Init validation has not been completed yet. " \
+                  "Please proceed with the init validation process first."
+    code = 401
+
+class InitValidateFailedError(BaseHTTPException):
+    error_code = 'init_validate_failed'
+    description = "Init validation failed. Please check the password and try again."
+    code = 401
 
 class AccountNotLinkTenantError(BaseHTTPException):
     error_code = 'account_not_link_tenant'

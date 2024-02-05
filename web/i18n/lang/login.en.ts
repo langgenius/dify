@@ -9,7 +9,7 @@ const translation = {
   namePlaceholder: 'Your username',
   forget: 'Forgot your password?',
   signBtn: 'Sign in',
-  installBtn: 'Setting',
+  installBtn: 'Set up',
   setAdminAccount: 'Setting up an admin account',
   setAdminAccountDesc: 'Maximum privileges for admin account, which can be used to create applications and manage LLM providers, etc.',
   createAndSignIn: 'Create and sign in',
@@ -32,7 +32,7 @@ const translation = {
   tosDesc: 'By signing up, you agree to our',
   donthave: 'Don\'t have?',
   invalidInvitationCode: 'Invalid invitation code',
-  accountAlreadyInited: 'Account already inited',
+  accountAlreadyInited: 'Account already initialized',
   error: {
     emailEmpty: 'Email address is required',
     emailInValid: 'Please enter a valid email address',
@@ -51,7 +51,9 @@ const translation = {
   explore: 'Explore Dify',
   activatedTipStart: 'You have joined the',
   activatedTipEnd: 'team',
-  activated: 'Sign In Now',
+  activated: 'Sign in now',
+  adminInitPassword: 'Admin initialization password',
+  validate: 'Validate',
 }
 
 export default translation

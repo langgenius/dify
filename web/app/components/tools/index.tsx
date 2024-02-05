@@ -43,7 +43,7 @@ const Tools: FC<Props> = ({
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   const fetchCollectionList = async () => {
-    const list = await doFetchCollectionList() as Collection[]
+    const list = await doFetchCollectionList()
     setCollectionList(list)
     if (list.length > 0 && currCollectionIndex === null) {
       let index = 0
@@ -103,11 +103,11 @@ const Tools: FC<Props> = ({
       setIsDetailLoading(true)
       try {
         if (currCollection.type === CollectionType.builtIn) {
-          const list = await fetchBuiltInToolList(currCollection.name) as Tool[]
+          const list = await fetchBuiltInToolList(currCollection.name)
           setCurrentTools(list)
         }
         else {
-          const list = await fetchCustomToolList(currCollection.name) as Tool[]
+          const list = await fetchCustomToolList(currCollection.name)
           setCurrentTools(list)
         }
       }

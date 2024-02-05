@@ -5,8 +5,8 @@ from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
+from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
 from langchain.schema.language_model import _get_token_ids_default_method
 
 

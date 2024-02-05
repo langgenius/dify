@@ -12,6 +12,7 @@ import { useThrottleEffect } from 'ahooks'
 import type {
   ChatConfig,
   ChatItem,
+  Feedback,
   OnSend,
 } from '../types'
 import Question from './question'
@@ -32,7 +33,9 @@ export type ChatProps = {
   noChatInput?: boolean
   onSend?: OnSend
   chatContainerclassName?: string
+  chatContainerInnerClassName?: string
   chatFooterClassName?: string
+  chatFooterInnerClassName?: string
   suggestedQuestions?: string[]
   showPromptLog?: boolean
   questionIcon?: ReactNode
@@ -41,6 +44,8 @@ export type ChatProps = {
   onAnnotationEdited?: (question: string, answer: string, index: number) => void
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
+  chatNode?: ReactNode
+  onFeedback?: (messageId: string, feedback: Feedback) => void
 }
 const Chat: FC<ChatProps> = ({
   config,
@@ -51,7 +56,9 @@ const Chat: FC<ChatProps> = ({
   onStopResponding,
   noChatInput,
   chatContainerclassName,
+  chatContainerInnerClassName,
   chatFooterClassName,
+  chatFooterInnerClassName,
   suggestedQuestions,
   showPromptLog,
   questionIcon,
@@ -60,10 +67,14 @@ const Chat: FC<ChatProps> = ({
   onAnnotationAdded,
   onAnnotationEdited,
   onAnnotationRemoved,
+  chatNode,
+  onFeedback,
 }) => {
   const { t } = useTranslation()
   const chatContainerRef = useRef<HTMLDivElement>(null)
+  const chatContainerInnerRef = useRef<HTMLDivElement>(null)
   const chatFooterRef = useRef<HTMLDivElement>(null)
+  const chatFooterInnerRef = useRef<HTMLDivElement>(null)
 
   const handleScrolltoBottom = () => {
     if (chatContainerRef.current)
@@ -75,6 +86,9 @@ const Chat: FC<ChatProps> = ({
 
     if (chatContainerRef.current && chatFooterRef.current)
       chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
+
+    if (chatContainerInnerRef.current && chatFooterInnerRef.current)
+      chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
   }, [chatList], { wait: 500 })
 
   useEffect(() => {
@@ -111,32 +125,39 @@ const Chat: FC<ChatProps> = ({
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
+      onFeedback={onFeedback}
     >
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
           className={`relative h-full overflow-y-auto ${chatContainerclassName}`}
         >
-          {
-            chatList.map((item, index) => {
-              if (item.isAnswer) {
+          {chatNode}
+          <div
+            ref={chatContainerInnerRef}
+            className={`${chatContainerInnerClassName}`}
+          >
+            {
+              chatList.map((item, index) => {
+                if (item.isAnswer) {
+                  return (
+                    <Answer
+                      key={item.id}
+                      item={item}
+                      question={chatList[index - 1]?.content}
+                      index={index}
+                    />
+                  )
+                }
                 return (
-                  <Answer
+                  <Question
                     key={item.id}
                     item={item}
-                    question={chatList[index - 1]?.content}
-                    index={index}
                   />
                 )
-              }
-              return (
-                <Question
-                  key={item.id}
-                  item={item}
-                />
-              )
-            })
-          }
+              })
+            }
+          </div>
         </div>
         <div
           className={`absolute bottom-0 ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
@@ -145,33 +166,38 @@ const Chat: FC<ChatProps> = ({
             background: 'linear-gradient(0deg, #F9FAFB 40%, rgba(255, 255, 255, 0.00) 100%)',
           }}
         >
-          {
-            !noStopResponding && isResponsing && (
-              <div className='flex justify-center mb-2'>
-                <Button className='py-0 px-3 h-7 bg-white shadow-xs' onClick={onStopResponding}>
-                  <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
-                  <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
-                </Button>
-              </div>
-            )
-          }
-          {
-            hasTryToAsk && (
-              <TryToAsk
-                suggestedQuestions={suggestedQuestions}
-                onSend={onSend}
-              />
-            )
-          }
-          {
-            !noChatInput && (
-              <ChatInput
-                visionConfig={config?.file_upload?.image}
-                speechToTextConfig={config?.speech_to_text}
-                onSend={onSend}
-              />
-            )
-          }
+          <div
+            ref={chatFooterInnerRef}
+            className={`${chatFooterInnerClassName}`}
+          >
+            {
+              !noStopResponding && isResponsing && (
+                <div className='flex justify-center mb-2'>
+                  <Button className='py-0 px-3 h-7 bg-white shadow-xs' onClick={onStopResponding}>
+                    <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
+                    <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                  </Button>
+                </div>
+              )
+            }
+            {
+              hasTryToAsk && (
+                <TryToAsk
+                  suggestedQuestions={suggestedQuestions}
+                  onSend={onSend}
+                />
+              )
+            }
+            {
+              !noChatInput && (
+                <ChatInput
+                  visionConfig={config?.file_upload?.image}
+                  speechToTextConfig={config?.speech_to_text}
+                  onSend={onSend}
+                />
+              )
+            }
+          </div>
         </div>
       </div>
     </ChatContextProvider>

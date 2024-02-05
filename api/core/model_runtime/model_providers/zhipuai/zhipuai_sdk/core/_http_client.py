@@ -2,20 +2,14 @@
 from __future__ import annotations
 
 import inspect
-from typing import (
-    Any,
-    Type,
-    Union,
-    cast,
-    Mapping,
-)
+from typing import Any, Mapping, Type, Union, cast
 
 import httpx
 import pydantic
 from httpx import URL, Timeout
 
 from . import _errors
-from ._base_type import NotGiven, ResponseT, Body, Headers, NOT_GIVEN, RequestFiles, Query, Data
+from ._base_type import NOT_GIVEN, Body, Data, Headers, NotGiven, Query, RequestFiles, ResponseT
 from ._errors import APIResponseValidationError, APIStatusError, APITimeoutError
 from ._files import make_httpx_files
 from ._request_opt import ClientRequestParam, UserRequestInput
@@ -38,7 +32,7 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG as HTTPX_DEFAULT_TIMEOUT
 
 ZHIPUAI_DEFAULT_TIMEOUT = httpx.Timeout(timeout=300.0, connect=8.0)
 ZHIPUAI_DEFAULT_MAX_RETRIES = 3
-ZHIPUAI_DEFAULT_LIMITS = httpx.Limits(max_connections=50, max_keepalive_connections=10)
+ZHIPUAI_DEFAULT_LIMITS = httpx.Limits(max_connections=5, max_keepalive_connections=5)
 
 
 class HttpClient:

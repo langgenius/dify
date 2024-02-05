@@ -1,26 +1,23 @@
+import json
 from typing import List, Tuple
 
-from flask import current_app
-
-from core.tools.tool_manager import ToolManager
-from core.tools.entities.user_entities import UserToolProvider, UserTool
-from core.tools.entities.tool_entities import ApiProviderSchemaType, ApiProviderAuthType, ToolProviderCredentials, \
-    ToolCredentialsOption
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.entities.tool_entities import (ApiProviderAuthType, ApiProviderSchemaType, ToolCredentialsOption,
+                                               ToolProviderCredentials)
+from core.tools.entities.user_entities import UserTool, UserToolProvider
+from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
-from core.tools.utils.parser import ApiBasedToolSchemaParser
-from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
+from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolConfiguration
-from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError, ToolNotFoundError
-
+from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
+from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
-from models.tools import BuiltinToolProvider, ApiToolProvider
-
+from flask import current_app
 from httpx import get
+from models.tools import ApiToolProvider, BuiltinToolProvider
 
-import json
 
 class ToolManageService:
     @staticmethod
@@ -362,7 +359,7 @@ class ToolManageService:
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: str, credentials: dict, 
+        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -387,7 +384,7 @@ class ToolManageService:
         
         # update db provider
         provider.name = provider_name
-        provider.icon = icon
+        provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get('description', '')
         provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value

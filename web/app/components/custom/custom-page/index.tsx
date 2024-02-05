@@ -44,7 +44,7 @@ const CustomPage = () => {
         showContact && (
           <div className='absolute bottom-0 h-[50px] leading-[50px] text-xs text-gray-500'>
             {t('custom.customize.prefix')}
-            <a className='text-[#155EEF]' href={contactSalesUrl} target='_blank'>{t('custom.customize.contactUs')}</a>
+            <a className='text-[#155EEF]' href={contactSalesUrl} target='_blank' rel='noopener noreferrer'>{t('custom.customize.contactUs')}</a>
             {t('custom.customize.suffix')}
           </div>
         )

@@ -1,5 +1,6 @@
 
 import json
+
 from models.model import AppModelConfig
 
 languages = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT']

@@ -1,9 +1,10 @@
 import os
 from typing import Any, Dict, Optional, Union
-from pydantic import BaseModel
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
+from pydantic import BaseModel
+
 
 class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     """Callback Handler that prints to std out."""

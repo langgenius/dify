@@ -2,11 +2,10 @@ import os
 from typing import Generator
 
 import pytest
-
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage, \
-    SystemPromptMessage, TextPromptMessageContent, ImagePromptMessageContent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
-    LLMResultChunk
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
+                                                          SystemPromptMessage, TextPromptMessageContent,
+                                                          UserPromptMessage)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.ollama.llm.llm import OllamaLargeLanguageModel
 

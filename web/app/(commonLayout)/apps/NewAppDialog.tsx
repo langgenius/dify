@@ -157,7 +157,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
                   </div>
                   <div className={`${style.listItemDescription} ${style.noClip}`}>{t('app.newApp.chatAppIntro')}</div>
                   {/* <div className={classNames(style.listItemFooter, 'justify-end')}>
-                    <a className={style.listItemLink} href='https://udify.app/chat/7CQBa5yyvYLSkZtx' target='_blank'>{t('app.newApp.previewDemo')}<span className={classNames(style.linkIcon, style.grayLinkIcon)} /></a>
+                    <a className={style.listItemLink} href='https://udify.app/chat/7CQBa5yyvYLSkZtx' target='_blank' rel='noopener noreferrer'>{t('app.newApp.previewDemo')}<span className={classNames(style.linkIcon, style.grayLinkIcon)} /></a>
                   </div> */}
                 </li>
                 <li

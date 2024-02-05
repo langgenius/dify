@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Union, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import httpx
 from typing_extensions import Literal
 
 from ...core._base_api import BaseAPI
-from ...core._base_type import NotGiven, NOT_GIVEN, Headers
+from ...core._base_type import NOT_GIVEN, Headers, NotGiven
 from ...core._http_client import make_user_request_input
 from ...core._sse_client import StreamResponse
 from ...types.chat.chat_completion import Completion

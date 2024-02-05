@@ -147,7 +147,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <p className={`mt-1 ${s.settingsTip} text-gray-500`}>
             <Trans
               i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-              components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' className='text-primary-600' /> }}
+              components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-primary-600' /> }}
             />
           </p>
           <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}

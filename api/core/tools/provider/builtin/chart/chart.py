@@ -1,9 +1,8 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.errors import ToolProviderCredentialValidationError
-
-from core.tools.provider.builtin.chart.tools.line import LinearChartTool
-
 import matplotlib.pyplot as plt
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.provider.builtin.chart.tools.line import LinearChartTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+
 # use a business theme
 plt.style.use('seaborn-v0_8-darkgrid')
 

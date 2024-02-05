@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
+import { produce, setAutoFreeze } from 'immer'
 import dayjs from 'dayjs'
 import type {
   ChatConfig,
@@ -23,8 +23,10 @@ import type { Annotation } from '@/models/log'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
-  onGetConvesationMessages: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
+  onGetConvesationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
+  onConversationComplete?: (conversationId: string) => void
+  isPublicAPI?: boolean
 }
 
 export const useCheckPromptVariables = () => {
@@ -67,7 +69,7 @@ export const useCheckPromptVariables = () => {
 }
 
 export const useChat = (
-  config: ChatConfig,
+  config?: ChatConfig,
   promptVariablesConfig?: {
     inputs: Inputs
     promptVariables: PromptVariable[]
@@ -85,15 +87,21 @@ export const useChat = (
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const taskIdRef = useRef('')
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
-  const abortControllerRef = useRef<AbortController | null>(null)
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const checkPromptVariables = useCheckPromptVariables()
 
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
+
   const handleUpdateChatList = useCallback((newChatList: ChatItem[]) => {
     setChatList(newChatList)
     chatListRef.current = newChatList
-  }, [])
+  }, [setChatList])
   const handleResponsing = useCallback((isResponsing: boolean) => {
     setIsResponsing(isResponsing)
     isResponsingRef.current = isResponsing
@@ -103,30 +111,25 @@ export const useChat = (
     return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
   }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
   useEffect(() => {
-    if (config.opening_statement && !chatList.length) {
-      handleUpdateChatList([{
-        id: `${Date.now()}`,
-        content: getIntroduction(config.opening_statement),
-        isAnswer: true,
-        isOpeningStatement: true,
-        suggestedQuestions: config.suggested_questions,
-      }])
+    if (config?.opening_statement && chatListRef.current.filter(item => item.isOpeningStatement).length === 0) {
+      handleUpdateChatList([
+        {
+          id: `${Date.now()}`,
+          content: getIntroduction(config.opening_statement),
+          isAnswer: true,
+          isOpeningStatement: true,
+          suggestedQuestions: config.suggested_questions,
+        },
+        ...chatListRef.current,
+      ])
     }
-  }, [
-    config.opening_statement,
-    config.suggested_questions,
-    getIntroduction,
-    chatList,
-    handleUpdateChatList,
-  ])
+  }, [])
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
     handleResponsing(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
-    if (abortControllerRef.current)
-      abortControllerRef.current.abort()
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
@@ -136,7 +139,7 @@ export const useChat = (
   const handleRestart = useCallback(() => {
     handleStop()
     connversationId.current = ''
-    const newChatList = config.opening_statement
+    const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
         content: config.opening_statement,
@@ -181,9 +184,13 @@ export const useChat = (
     {
       onGetConvesationMessages,
       onGetSuggestedQuestions,
+      onConversationComplete,
+      isPublicAPI,
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
+    if (!data.query || !data.query.trim())
+      return
     if (isResponsingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
@@ -248,9 +255,7 @@ export const useChat = (
         body: bodyParams,
       },
       {
-        getAbortController: (abortController) => {
-          abortControllerRef.current = abortController
-        },
+        isPublicAPI,
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           if (!isAgentMode) {
             responseItem.content = responseItem.content + message
@@ -286,7 +291,10 @@ export const useChat = (
           if (hasError)
             return
 
-          if (connversationId.current && !hasStopResponded.current) {
+          if (onConversationComplete)
+            onConversationComplete(connversationId.current)
+
+          if (connversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
             const { data }: any = await onGetConvesationMessages(
               connversationId.current,
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
@@ -315,7 +323,7 @@ export const useChat = (
             })
             handleUpdateChatList(newChatList)
           }
-          if (config.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+          if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
             const { data }: any = await onGetSuggestedQuestions(
               responseItem.id,
               newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
@@ -409,7 +417,7 @@ export const useChat = (
     return true
   }, [
     checkPromptVariables,
-    config.suggested_questions_after_answer,
+    config?.suggested_questions_after_answer,
     updateCurrentQA,
     t,
     notify,
@@ -419,7 +427,7 @@ export const useChat = (
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    setChatList(chatListRef.current.map((item, i) => {
+    handleUpdateChatList(chatListRef.current.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -438,9 +446,9 @@ export const useChat = (
       }
       return item
     }))
-  }, [])
+  }, [handleUpdateChatList])
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    setChatList(chatListRef.current.map((item, i) => {
+    handleUpdateChatList(chatListRef.current.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -468,9 +476,9 @@ export const useChat = (
       }
       return item
     }))
-  }, [])
+  }, [handleUpdateChatList])
   const handleAnnotationRemoved = useCallback((index: number) => {
-    setChatList(chatListRef.current.map((item, i) => {
+    handleUpdateChatList(chatListRef.current.map((item, i) => {
       if (i === index) {
         return {
           ...item,
@@ -483,7 +491,7 @@ export const useChat = (
       }
       return item
     }))
-  }, [])
+  }, [handleUpdateChatList])
 
   return {
     chatList,
