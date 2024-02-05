@@ -189,8 +189,10 @@ export const useChat = (
     }: SendCallback,
   ) => {
     setSuggestQuestions([])
-    if (!data.query || !data.query.trim())
+    if (!data.query || !data.query.trim()) {
+      notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
       return
+    }
     if (isResponsingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
