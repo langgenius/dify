@@ -74,6 +74,7 @@ class TextApi(AppApiResource):
                 tenant_id=app_model.tenant_id,
                 text=args['text'],
                 end_user=args['user'],
+                voice=app_model.app_model_config.text_to_speech_dict['voice'],
                 streaming=args['streaming']
             )
 
