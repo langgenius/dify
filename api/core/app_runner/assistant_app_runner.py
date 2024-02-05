@@ -141,6 +141,8 @@ class AssistantApplicationRunner(AppRunner):
                 query=query
             )
 
+        # replace 
+
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         #          memory(optional), external data, dataset context(optional)
@@ -222,6 +224,7 @@ class AssistantApplicationRunner(AppRunner):
                 conversation=conversation,
                 message=message,
                 query=query,
+                inputs=inputs,
             )
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
             assistant_fc_runner = AssistantFunctionCallApplicationRunner(

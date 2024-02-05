@@ -20,6 +20,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, conversation: Conversation,
         message: Message,
         query: str,
+        inputs: Dict[str, str],
     ) -> Union[Generator, LLMResult]:
         """
         Run Cot agent application
@@ -34,6 +35,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # TODO: stop words
             if 'Observation' not in app_orchestration_config.model_config.stop:
                 app_orchestration_config.model_config.stop.append('Observation')
+
+        # override inputs
+        inputs = inputs or {}
+        instruction = self.app_orchestration_config.prompt_template.simple_prompt_template
+        instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
         max_iteration_steps = min(self.app_orchestration_config.agent.max_iteration, 5) + 1
@@ -108,7 +114,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 tools=prompt_messages_tools,
                 agent_scratchpad=agent_scratchpad,
                 agent_prompt_message=app_orchestration_config.agent.prompt,
-                instruction=app_orchestration_config.prompt_template.simple_prompt_template,
+                instruction=instruction,
                 input=query
             )
 
@@ -299,6 +305,18 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             usage=llm_usage['usage'] if llm_usage['usage'] else LLMUsage.empty_usage(),
             system_fingerprint=''
         ), PublishFrom.APPLICATION_MANAGER)
+
+    def _fill_in_inputs_from_external_data_tools(self, instruction: str, inputs: dict) -> str:
+        """
+        fill in inputs from external data tools
+        """
+        for key, value in inputs.items():
+            try:
+                instruction = instruction.replace(f'{{{{{key}}}}}', str(value))
+            except Exception as e:
+                continue
+
+        return instruction
 
     def _extract_response_scratchpad(self, content: str) -> AgentScratchpadUnit:
         """
