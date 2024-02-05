@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 from typing import List, Optional, Union, Generator
+
+import requests
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import (PromptMessage, PromptMessageTool)
@@ -6,6 +10,10 @@ from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAI
 
 
 class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
+    def __init__(self):
+        super().__init__()
+        self._session: requests.Session | None = None
+
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
@@ -22,3 +30,26 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
     def _add_custom_parameters(credentials: dict) -> None:
         credentials['mode'] = 'chat'
         credentials['endpoint_url'] = 'https://api.moonshot.cn/v1'
+
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                       tools: Optional[list[PromptMessageTool]] = None) -> int:
+
+        if len(prompt_messages) == 0:
+            return 0
+
+        if self._session is None:
+            self._session = requests.Session()
+            self._session.headers.update({'Authorization': f"Bearer {credentials['api_key']}"})
+
+        data = {
+            'model': model,
+            'messages': [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+        }
+        resp = self._session.post(
+            f"{credentials['endpoint_url']}/tokenizers/estimate-token-count",
+            json=data,
+            timeout=(10, 60)
+        )
+        resp.raise_for_status()
+        tokens = resp.json()['data']['total_tokens']
+        return tokens
