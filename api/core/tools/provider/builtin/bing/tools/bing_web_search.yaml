@@ -15,7 +15,7 @@ parameters:
   - name: query
     type: string
     required: true
-    form: form
+    form: llm
     label:
       en_US: Query string
       zh_Hans: 查询语句
