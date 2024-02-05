@@ -45,7 +45,7 @@ model_properties:
     { "mode": "sambert-eva-v1", "name": "Eva", "language": [ "en_US" ] },
     { "mode": "sambert-donna-v1", "name": "Donna", "language": [ "en_US" ] },
     { "mode": "sambert-brian-v1", "name": "Brian", "language": [ "en_US" ] },
-    { "mode": "sambert-waan-v1", "name": "Waan", "language": [ "th-TH" ] },
+    { "mode": "sambert-waan-v1", "name": "Waan", "language": [ "th-TH" ] }
   ]
   word_limit: 120
   audio_type: 'mp3'
