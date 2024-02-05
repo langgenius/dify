@@ -62,6 +62,14 @@ const ChatInput: FC<ChatInputProps> = ({
 
   const handleSend = () => {
     if (onSend) {
+      if (files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
+        notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+        return
+      }
+      if (!query || !query.trim()) {
+        notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
+        return
+      }
       onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
         type: 'image',
         transfer_method: fileItem.type,
@@ -69,10 +77,7 @@ const ChatInput: FC<ChatInputProps> = ({
         upload_file_id: fileItem.fileId,
       })))
       setQuery('')
-    }
-    if (!files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
-      if (files.length)
-        onClear()
+      onClear()
     }
   }
 
