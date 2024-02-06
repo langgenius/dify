@@ -123,7 +123,6 @@ class HostingConfiguration:
                 restrict_models=[
                     RestrictModel(model="gpt-4", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-turbo-preview", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-4-32k", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-1106-preview", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-0125-preview", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
