@@ -1,12 +1,13 @@
 from functools import wraps
 
-from controllers.console.wraps import account_initialization_required
-from extensions.ext_database import db
 from flask_login import current_user
 from flask_restful import Resource
+from werkzeug.exceptions import NotFound
+
+from controllers.console.wraps import account_initialization_required
+from extensions.ext_database import db
 from libs.login import login_required
 from models.model import InstalledApp
-from werkzeug.exceptions import NotFound
 
 
 def installed_app_required(view=None):

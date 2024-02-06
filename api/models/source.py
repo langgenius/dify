@@ -1,5 +1,6 @@
-from extensions.ext_database import db
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+from extensions.ext_database import db
 
 
 class DataSourceBinding(db.Model):

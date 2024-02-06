@@ -1,18 +1,17 @@
 import base64
-import json
 import logging
 from typing import List, Optional, cast
 
 import numpy as np
+from langchain.embeddings.base import Embeddings
+from sqlalchemy.exc import IntegrityError
+
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from langchain.embeddings.base import Embeddings
 from libs import helper
-from models.dataset import Embedding
-from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 

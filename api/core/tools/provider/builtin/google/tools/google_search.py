@@ -2,9 +2,10 @@ import os
 import sys
 from typing import Any, Dict, List, Union
 
+from serpapi import GoogleSearch
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from serpapi import GoogleSearch
 
 
 class HiddenPrints:

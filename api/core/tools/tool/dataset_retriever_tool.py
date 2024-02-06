@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List
+
+from langchain.tools import BaseTool
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
@@ -6,7 +8,6 @@ from core.features.dataset_retrieval import DatasetRetrievalFeature
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
 from core.tools.tool.tool import Tool
-from langchain.tools import BaseTool
 
 
 class DatasetRetrieverTool(Tool):

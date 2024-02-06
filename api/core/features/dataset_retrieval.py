@@ -1,5 +1,7 @@
 from typing import List, Optional, cast
 
+from langchain.tools import BaseTool
+
 from core.agent.agent_executor import AgentConfiguration, AgentExecutor, PlanningStrategy
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import DatasetEntity, DatasetRetrieveConfigEntity, InvokeFrom, ModelConfigEntity
@@ -9,7 +11,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
-from langchain.tools import BaseTool
 from models.dataset import Dataset
 
 

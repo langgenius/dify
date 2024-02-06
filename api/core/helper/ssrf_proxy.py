@@ -2,10 +2,15 @@
 Proxy requests to avoid SSRF
 """
 
-from httpx import get as _get, post as _post, put as _put, patch as _patch, head as _head, options as _options
-from requests import delete as _delete
-
 import os
+
+from httpx import get as _get
+from httpx import head as _head
+from httpx import options as _options
+from httpx import patch as _patch
+from httpx import post as _post
+from httpx import put as _put
+from requests import delete as _delete
 
 SSRF_PROXY_HTTP_URL = os.getenv('SSRF_PROXY_HTTP_URL', '')
 SSRF_PROXY_HTTPS_URL = os.getenv('SSRF_PROXY_HTTPS_URL', '')

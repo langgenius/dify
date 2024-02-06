@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union, cast
 
-from core.tools.entities.common_entities import I18nObject
 from pydantic import BaseModel, Field
+
+from core.tools.entities.common_entities import I18nObject
 
 
 class ToolProviderType(Enum):

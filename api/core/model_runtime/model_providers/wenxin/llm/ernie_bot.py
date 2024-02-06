@@ -4,12 +4,16 @@ from json import dumps, loads
 from threading import Lock
 from typing import Any, Dict, Generator, List, Union
 
-from core.model_runtime.entities.message_entities import PromptMessageTool
-from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (BadRequestError, InternalServerError,
-                                                                            InvalidAPIKeyError,
-                                                                            InvalidAuthenticationError,
-                                                                            RateLimitReachedError)
 from requests import Response, post
+
+from core.model_runtime.entities.message_entities import PromptMessageTool
+from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (
+    BadRequestError,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
 
 # map api_key to access_token
 baidu_access_tokens: Dict[str, 'BaiduAccessToken'] = {}

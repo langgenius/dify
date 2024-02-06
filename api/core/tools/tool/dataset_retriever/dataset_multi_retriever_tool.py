@@ -1,6 +1,9 @@
-import json
 import threading
 from typing import List, Optional, Type
+
+from flask import Flask, current_app
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.embedding.cached_embedding import CacheEmbedding
@@ -10,10 +13,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
-from flask import Flask, current_app
-from langchain.tools import BaseTool
 from models.dataset import Dataset, Document, DocumentSegment
-from pydantic import BaseModel, Field
 from services.retrieval_service import RetrievalService
 
 default_retrieval_model = {

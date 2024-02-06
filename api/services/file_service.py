@@ -3,17 +3,18 @@ import hashlib
 import uuid
 from typing import Generator, Tuple, Union
 
+from flask import current_app
+from flask_login import current_user
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import NotFound
+
 from core.data_loader.file_extractor import FileExtractor
 from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from flask import current_app
-from flask_login import current_user
 from models.account import Account
 from models.model import EndUser, UploadFile
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
 
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])

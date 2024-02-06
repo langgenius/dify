@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Union, cast
+from typing import Any, Union
 
-import pydantic.generics
 from httpx import Timeout
 from pydantic import ConfigDict
 from typing_extensions import ClassVar, TypedDict, Unpack

@@ -1,9 +1,10 @@
 from enum import Enum
 from typing import Optional
 
+from pydantic import BaseModel
+
 from core.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderQuotaType
-from pydantic import BaseModel
 
 
 class QuotaUnit(Enum):

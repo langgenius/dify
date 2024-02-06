@@ -4,17 +4,30 @@ import threading
 import uuid
 from typing import Any, Generator, Optional, Tuple, Union, cast
 
+from flask import Flask, current_app
+from pydantic import ValidationError
+
 from core.app_runner.assistant_app_runner import AssistantApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
-from core.entities.application_entities import (AdvancedChatPromptTemplateEntity,
-                                                AdvancedCompletionPromptTemplateEntity, AgentEntity, AgentPromptEntity,
-                                                AgentToolEntity, ApplicationGenerateEntity,
-                                                AppOrchestrationConfigEntity, DatasetEntity,
-                                                DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
-                                                FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
-                                                SensitiveWordAvoidanceEntity)
+from core.entities.application_entities import (
+    AdvancedChatPromptTemplateEntity,
+    AdvancedCompletionPromptTemplateEntity,
+    AgentEntity,
+    AgentPromptEntity,
+    AgentToolEntity,
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    ExternalDataVariableEntity,
+    FileUploadEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+    SensitiveWordAvoidanceEntity,
+)
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj
@@ -26,10 +39,8 @@ from core.prompt.prompt_template import PromptTemplateParser
 from core.provider_manager import ProviderManager
 from core.tools.prompt.template import REACT_PROMPT_TEMPLATES
 from extensions.ext_database import db
-from flask import Flask, current_app
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageFile
-from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
