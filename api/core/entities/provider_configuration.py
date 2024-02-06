@@ -4,20 +4,24 @@ import logging
 from json import JSONDecodeError
 from typing import Dict, Iterator, List, Optional, Tuple
 
+from pydantic import BaseModel
+
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration, SystemConfigurationStatus
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import FetchFrom, ModelType
-from core.model_runtime.entities.provider_entities import (ConfigurateMethod, CredentialFormSchema, FormType,
-                                                           ProviderEntity)
+from core.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
-from core.model_runtime.utils import encoders
 from extensions.ext_database import db
 from models.provider import Provider, ProviderModel, ProviderType, TenantPreferredModelProvider
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 

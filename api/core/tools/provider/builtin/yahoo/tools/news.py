@@ -1,9 +1,10 @@
 from typing import Any, Dict, List, Union
 
 import yfinance
+from requests.exceptions import HTTPError, ReadTimeout
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from requests.exceptions import HTTPError, ReadTimeout
 
 
 class YahooFinanceSearchTickerTool(BuiltinTool):

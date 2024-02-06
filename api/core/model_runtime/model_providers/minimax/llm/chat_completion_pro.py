@@ -1,13 +1,17 @@
-from hashlib import md5
 from json import dumps, loads
-from time import time
 from typing import Any, Dict, Generator, List, Union
 
-from core.model_runtime.model_providers.minimax.llm.errors import (BadRequestError, InsufficientAccountBalanceError,
-                                                                   InternalServerError, InvalidAPIKeyError,
-                                                                   InvalidAuthenticationError, RateLimitReachedError)
-from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 from requests import Response, post
+
+from core.model_runtime.model_providers.minimax.llm.errors import (
+    BadRequestError,
+    InsufficientAccountBalanceError,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
+from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 
 
 class MinimaxChatCompletionPro(object):

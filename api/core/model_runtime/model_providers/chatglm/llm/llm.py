@@ -1,23 +1,44 @@
 import logging
-from json import dumps
 from os.path import join
 from typing import Generator, List, Optional, cast
 
+from httpx import Timeout
+from openai import (
+    APIConnectionError,
+    APITimeoutError,
+    AuthenticationError,
+    ConflictError,
+    InternalServerError,
+    NotFoundError,
+    OpenAI,
+    PermissionDeniedError,
+    RateLimitError,
+    Stream,
+    UnprocessableEntityError,
+)
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.types.chat.chat_completion_message import FunctionCall
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageFunction,
-                                                          PromptMessageTool, SystemPromptMessage, ToolPromptMessage,
-                                                          UserPromptMessage)
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils import helper
-from httpx import Timeout
-from openai import (APIConnectionError, APITimeoutError, AuthenticationError, ConflictError, InternalServerError,
-                    NotFoundError, OpenAI, PermissionDeniedError, RateLimitError, Stream, UnprocessableEntityError)
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
-from openai.types.chat.chat_completion_message import FunctionCall
-from requests import post
 
 logger = logging.getLogger(__name__)
 

@@ -90,6 +90,7 @@ const translation = {
   builtInPromptTitle: '提示词',
   toolRemoved: '工具已被移除',
   notAuthorized: '工具未授权',
+  howToGet: '如何获取',
 }
 
 export default translation

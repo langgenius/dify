@@ -1,5 +1,5 @@
 const translation = {
-  title: 'My Apps',
+  title: 'Explore',
   sidebar: {
     discovery: 'Discovery',
     chat: 'Chat',

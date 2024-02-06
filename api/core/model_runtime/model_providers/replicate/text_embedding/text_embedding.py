@@ -2,13 +2,14 @@ import json
 import time
 from typing import Optional
 
+from replicate import Client as ReplicateClient
+
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.replicate._common import _CommonReplicate
-from replicate import Client as ReplicateClient
 
 
 class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):

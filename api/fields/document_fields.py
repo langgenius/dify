@@ -1,5 +1,6 @@
-from fields.dataset_fields import dataset_fields
 from flask_restful import fields
+
+from fields.dataset_fields import dataset_fields
 from libs.helper import TimestampField
 
 document_fields = {

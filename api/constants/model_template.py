@@ -1,7 +1,5 @@
 import json
 
-from models.model import App, AppModelConfig
-
 model_templates = {
     # completion default mode
     'completion_default': {

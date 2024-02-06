@@ -1,5 +1,4 @@
 const translation = {
-  title: 'Apps',
   createApp: 'Create new App',
   types: {
     all: 'All',

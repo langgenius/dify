@@ -1,6 +1,8 @@
 import json
 import logging
 
+from langchain.schema import OutputParserException
+
 from core.model_manager import ModelManager
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
@@ -9,7 +11,6 @@ from core.prompt.output_parser.rule_config_generator import RuleConfigGeneratorO
 from core.prompt.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, GENERATOR_QA_PROMPT
-from langchain.schema import OutputParserException
 
 
 class LLMGenerator:

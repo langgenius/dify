@@ -1,0 +1,17 @@
+[project]
+requires-python = ">=3.10"
+
+[tool.ruff]
+exclude = [
+    "__init__.py",
+    "tests/",
+]
+line-length = 120
+
+[tool.ruff.lint]
+ignore-init-module-imports = true
+select = [
+    "F401", # unused-import
+    "I001", # unsorted-imports
+    "I002", # missing-required-import
+]

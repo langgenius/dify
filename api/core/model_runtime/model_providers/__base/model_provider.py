@@ -1,9 +1,10 @@
 import importlib
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict
 
 import yaml
+
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel

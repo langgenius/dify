@@ -1,7 +1,6 @@
 from typing import List, Optional, Union
 
 from pydantic import BaseModel
-from typing_extensions import Literal
 
 __all__ = ["FineTuningJob", "Error", "Hyperparameters", "ListOfFineTuningJob" ]
 

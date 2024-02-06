@@ -47,7 +47,7 @@ dashscope[tokenizer]~=1.14.0
 huggingface_hub~=0.16.4
 transformers~=4.31.0
 pandas==1.5.3
-xinference-client~=0.8.1
+xinference-client==0.8.4
 safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug~=3.0.1
@@ -65,3 +65,4 @@ matplotlib~=3.8.2
 yfinance~=0.2.35
 pydub~=0.25.1
 gmpy2~=2.1.5
+numexpr~=2.9.0

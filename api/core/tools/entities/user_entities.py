@@ -1,10 +1,11 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
+from pydantic import BaseModel
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderCredentials
 from core.tools.tool.tool import ToolParameter
-from pydantic import BaseModel
 
 
 class UserToolProvider(BaseModel):

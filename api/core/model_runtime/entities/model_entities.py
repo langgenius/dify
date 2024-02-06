@@ -2,8 +2,9 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional
 
-from core.model_runtime.entities.common_entities import I18nObject
 from pydantic import BaseModel
+
+from core.model_runtime.entities.common_entities import I18nObject
 
 
 class ModelType(Enum):

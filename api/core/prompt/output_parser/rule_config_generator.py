@@ -1,7 +1,8 @@
 from typing import Any
 
-from core.prompt.prompts import RULE_CONFIG_GENERATE_TEMPLATE
 from langchain.schema import BaseOutputParser, OutputParserException
+
+from core.prompt.prompts import RULE_CONFIG_GENERATE_TEMPLATE
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 

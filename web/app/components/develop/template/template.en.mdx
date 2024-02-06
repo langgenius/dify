@@ -271,7 +271,7 @@ The text generation application offers non-session support and is ideal for tran
 ---
 
 <Heading
-  url='/chat-messages/:task_id/stop'
+  url='/completion-messages/:task_id/stop'
   method='POST'
   title='Stop Generate'
   name='#stop-generatebacks'
@@ -289,9 +289,9 @@ The text generation application offers non-session support and is ideal for tran
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}`}>
+  <CodeGroup title="Request" tag="POST" label="/completion-messages/:task_id/stop" targetCode={`curl -X POST 'https://cloud.dify.ai/v1/completion-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}`}>
     ```bash {{ title: 'cURL' }}
-    curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \
+    curl -X POST 'https://cloud.dify.ai/v1/completion-messages/:task_id/stop' \
     -H 'Authorization: Bearer {api_key}' \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -314,7 +314,7 @@ The text generation application offers non-session support and is ideal for tran
 ---
 
 <Heading
-  url='/messages/{message_id}/feedbacks'
+  url='/messages/:message_id/feedbacks'
   method='POST'
   title='Message Feedback'
   name='#feedbacks'
@@ -346,10 +346,10 @@ The text generation application offers non-session support and is ideal for tran
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
+    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{

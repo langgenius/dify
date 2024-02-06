@@ -1,9 +1,10 @@
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from fields.api_based_extension_fields import api_based_extension_fields
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
 from libs.login import login_required
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService

@@ -1,13 +1,14 @@
 from typing import Optional
 
+from flask import Flask, current_app
+from langchain.embeddings.base import Embeddings
+
 from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
-from flask import Flask, current_app
-from langchain.embeddings.base import Embeddings
 from models.dataset import Dataset
 
 default_retrieval_model = {

@@ -2,11 +2,19 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.tools.entities.tool_entities import (ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter,
-                                               ToolRuntimeImageVariable, ToolRuntimeVariable, ToolRuntimeVariablePool)
-from core.tools.tool_file_manager import ToolFileManager
 from pydantic import BaseModel
+
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.tools.entities.tool_entities import (
+    ToolDescription,
+    ToolIdentity,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolRuntimeImageVariable,
+    ToolRuntimeVariable,
+    ToolRuntimeVariablePool,
+)
+from core.tools.tool_file_manager import ToolFileManager
 
 
 class Tool(BaseModel, ABC):
