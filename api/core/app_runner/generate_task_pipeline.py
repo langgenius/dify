@@ -477,7 +477,11 @@ class GenerateTaskPipeline:
         }
 
         # Determine the response based on the type of exception
-        data = error_responses.get(type(e))
+        data = None
+        for k, v in error_responses.items():
+            if isinstance(e, k):
+                data = v
+
         if data:
             data.setdefault('message', getattr(e, 'description', str(e)))
         else:
