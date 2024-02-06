@@ -17,6 +17,7 @@ import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -25,6 +26,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
+    appInfoError,
     appData,
     appInfoLoading,
     appPrevChatList,
@@ -50,6 +52,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   if (appInfoLoading) {
     return (
       <Loading type='app' />
+    )
+  }
+
+  if (appInfoError) {
+    return (
+      <AppUnavailable />
     )
   }
 
@@ -100,6 +108,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const isMobile = media === MediaType.mobile
 
   const {
+    appInfoError,
     appInfoLoading,
     appData,
     appParams,
@@ -132,6 +141,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
 
   return (
     <ChatWithHistoryContext.Provider value={{
+      appInfoError,
       appInfoLoading,
       appData,
       appParams,
@@ -172,14 +182,31 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   className,
 }) => {
   const [inited, setInited] = useState(false)
+  const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
+  const [isUnknwonReason, setIsUnknwonReason] = useState<boolean>(false)
 
   useAsyncEffect(async () => {
     if (!inited) {
-      if (!installedAppInfo)
-        await checkOrSetAccessToken()
+      if (!installedAppInfo) {
+        try {
+          await checkOrSetAccessToken()
+        }
+        catch (e: any) {
+          if (e.status === 404) {
+            setAppUnavailable(true)
+          }
+          else {
+            setIsUnknwonReason(true)
+            setAppUnavailable(true)
+          }
+        }
+      }
       setInited(true)
     }
   }, [])
+
+  if (appUnavailable)
+    return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
   if (!inited)
     return null

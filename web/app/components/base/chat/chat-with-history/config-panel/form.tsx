@@ -1,5 +1,7 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
+import Input from './form-input'
 import { PortalSelect } from '@/app/components/base/select'
 
 const Form = () => {
@@ -11,43 +13,31 @@ const Form = () => {
     isMobile,
   } = useChatWithHistoryContext()
 
-  const handleFormChange = (variable: string, value: string) => {
+  const handleFormChange = useCallback((variable: string, value: string) => {
     handleNewConversationInputsChange({
       ...newConversationInputs,
       [variable]: value,
     })
-  }
+  }, [newConversationInputs, handleNewConversationInputsChange])
 
   const renderField = (form: any) => {
     const {
       label,
       required,
-      max_length,
       variable,
       options,
     } = form
 
-    if (form.type === 'text-input') {
+    if (form.type === 'text-input' || form.type === 'paragraph') {
       return (
-        <input
-          className='grow h-9 rounded-lg bg-gray-100 px-2.5 outline-none appearance-none'
-          value={newConversationInputs[variable] || ''}
-          maxLength={max_length}
-          onChange={e => handleFormChange(variable, e.target.value)}
-          placeholder={`${label}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-        />
-      )
-    }
-    if (form.type === 'paragraph') {
-      return (
-        <textarea
+        <Input
+          form={form}
           value={newConversationInputs[variable]}
-          className='grow h-[104px] rounded-lg bg-gray-100 px-2.5 py-2 outline-none appearance-none resize-none'
-          onChange={e => handleFormChange(variable, e.target.value)}
-          placeholder={`${label}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+          onChange={handleFormChange}
         />
       )
     }
+
     return (
       <PortalSelect
         popupClassName='w-[200px]'
