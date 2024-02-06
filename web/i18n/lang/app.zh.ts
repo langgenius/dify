@@ -1,5 +1,4 @@
 const translation = {
-  title: '工作室',
   createApp: '创建应用',
   types: {
     all: '全部',
