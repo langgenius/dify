@@ -3,6 +3,8 @@ import type {
   ReactNode,
 } from 'react'
 import { memo } from 'react'
+import { useNodeId } from 'reactflow'
+import { useWorkflowContext } from '../../context'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 type BaseNodeProps = {
@@ -12,12 +14,20 @@ type BaseNodeProps = {
 const BaseNode: FC<BaseNodeProps> = ({
   children,
 }) => {
+  const nodeId = useNodeId()
+  const {
+    selectedNodeId,
+    handleSelectedNodeIdChange,
+  } = useWorkflowContext()
+
   return (
     <div
       className={`
-        group relative pb-2 w-[296px] bg-[#fcfdff] border border-white rounded-2xl shadow-xs
+        group relative pb-2 w-[296px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
+        ${selectedNodeId === nodeId ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
+      onClick={() => handleSelectedNodeIdChange(nodeId || '')}
     >
       <div className='flex items-center px-3 pt-3 pb-2'>
         <div className='mr-2'></div>

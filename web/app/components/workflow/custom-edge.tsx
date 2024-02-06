@@ -1,7 +1,9 @@
+import { memo } from 'react'
 import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
-  getBezierPath,
+  EdgeLabelRenderer,
+  getSmoothStepPath,
 } from 'reactflow'
 
 const CustomEdge = ({
@@ -11,19 +13,39 @@ const CustomEdge = ({
   targetX,
   targetY,
 }: EdgeProps) => {
-  const [edgePath] = getBezierPath({
+  const [
+    edgePath,
+    labelX,
+    labelY,
+  ] = getSmoothStepPath({
     sourceX,
     sourceY,
     targetX,
     targetY,
+    borderRadius: 30,
   })
-  console.log('edgePath', edgePath)
 
   return (
     <>
       <BaseEdge id={id} path={edgePath} />
+      <EdgeLabelRenderer>
+        <div
+          className={`
+            flex items-center px-2 h-6 bg-white rounded-lg shadow-xs
+            text-[10px] font-semibold text-gray-700
+            nodrag nopan
+          `}
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+        >
+          Topic 2
+        </div>
+      </EdgeLabelRenderer>
     </>
   )
 }
 
-export default CustomEdge
+export default memo(CustomEdge)

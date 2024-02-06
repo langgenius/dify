@@ -1,9 +1,11 @@
+import type { FC } from 'react'
 import BasePanel from '../_base/panel'
 
-const Panel = () => {
+const Panel: FC = () => {
   return (
     <BasePanel
-      inputsElement={<div>start panel</div>}
+      inputsElement={<div>start panel inputs</div>}
+      ouputsElement={<div>start panel outputs</div>}
     />
   )
 }

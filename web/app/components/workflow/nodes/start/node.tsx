@@ -1,9 +1,10 @@
+import type { FC } from 'react'
 import BaseNode from '../_base/node'
 
-const Node = () => {
+const Node: FC = () => {
   return (
     <BaseNode>
-      start node
+      <div>start node</div>
     </BaseNode>
   )
 }
