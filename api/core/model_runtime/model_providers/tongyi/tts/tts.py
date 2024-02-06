@@ -4,13 +4,14 @@ from io import BytesIO
 from typing import Optional
 
 import dashscope
+from flask import Response, stream_with_context
+from extensions.ext_storage import storage
+from pydub import AudioSegment
+
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
-from flask import Response, stream_with_context
-from extensions.ext_storage import storage
-from pydub import AudioSegment
 
 
 class TongyiText2SpeechModel(_CommonTongyi, TTSModel):

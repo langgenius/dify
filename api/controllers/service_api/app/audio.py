@@ -1,21 +1,33 @@
 import logging
 
+from flask import request
+from flask_restful import reqparse
+from werkzeug.exceptions import InternalServerError
+
 import services
 from controllers.service_api import api
-from controllers.service_api.app.error import (AppUnavailableError, AudioTooLargeError, CompletionRequestError,
-                                               NoAudioUploadedError, ProviderModelCurrentlyNotSupportError,
-                                               ProviderNotInitializeError, ProviderNotSupportSpeechToTextError,
-                                               ProviderQuotaExceededError, UnsupportedAudioTypeError)
+from controllers.service_api.app.error import (
+    AppUnavailableError,
+    AudioTooLargeError,
+    CompletionRequestError,
+    NoAudioUploadedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderNotSupportSpeechToTextError,
+    ProviderQuotaExceededError,
+    UnsupportedAudioTypeError,
+)
 from controllers.service_api.wraps import AppApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import request
-from flask_restful import reqparse
 from models.model import App, AppModelConfig
 from services.audio_service import AudioService
-from services.errors.audio import (AudioTooLargeServiceError, NoAudioUploadedServiceError,
-                                   ProviderNotSupportSpeechToTextServiceError, UnsupportedAudioTypeServiceError)
-from werkzeug.exceptions import InternalServerError
+from services.errors.audio import (
+    AudioTooLargeServiceError,
+    NoAudioUploadedServiceError,
+    ProviderNotSupportSpeechToTextServiceError,
+    UnsupportedAudioTypeServiceError,
+)
 
 
 class AudioApi(AppApiResource):

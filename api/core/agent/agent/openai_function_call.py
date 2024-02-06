@@ -1,4 +1,23 @@
-from typing import Any, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, List, Optional, Sequence, Tuple, Union
+
+from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
+from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
+from langchain.callbacks.base import BaseCallbackManager
+from langchain.callbacks.manager import Callbacks
+from langchain.chat_models.openai import _convert_message_to_dict, _import_tiktoken
+from langchain.memory.prompt import SUMMARY_PROMPT
+from langchain.prompts.chat import BaseMessagePromptTemplate
+from langchain.schema import (
+    AgentAction,
+    AgentFinish,
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    get_buffer_string,
+)
+from langchain.tools import BaseTool
+from pydantic import root_validator
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
@@ -7,19 +26,7 @@ from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.third_party.langchain.llms.fake import FakeLLM
-from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
-from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
-from langchain.callbacks.base import BaseCallbackManager
-from langchain.callbacks.manager import Callbacks
-from langchain.chat_models.openai import _convert_message_to_dict, _import_tiktoken
-from langchain.memory.prompt import SUMMARY_PROMPT
-from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import (AgentAction, AgentFinish, AIMessage, BaseMessage, HumanMessage, SystemMessage,
-                              get_buffer_string)
-from langchain.tools import BaseTool
-from pydantic import root_validator
 
 
 class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixin):

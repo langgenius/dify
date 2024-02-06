@@ -2,9 +2,10 @@ from base64 import b64decode
 from os.path import join
 from typing import Any, Dict, List, Union
 
+from openai import OpenAI
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from openai import OpenAI
 
 
 class DallE3Tool(BuiltinTool):

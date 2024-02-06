@@ -1,9 +1,10 @@
 from typing import IO, Optional
 
+from openai import OpenAI
+
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
-from openai import OpenAI
 
 
 class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):

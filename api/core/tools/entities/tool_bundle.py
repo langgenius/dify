@@ -1,7 +1,8 @@
 from typing import Any, Dict, List, Optional
 
-from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from pydantic import BaseModel
+
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 
 
 class ApiBasedToolBundle(BaseModel):

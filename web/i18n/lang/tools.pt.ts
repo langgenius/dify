@@ -97,6 +97,7 @@ const translation = {
   },
   builtInPromptTitle: 'Prompt',
   toolRemoved: 'Ferramenta removida',
+  howToGet: 'Como conseguir',
 }
 
 export default translation

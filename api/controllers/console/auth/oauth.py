@@ -3,10 +3,11 @@ from datetime import datetime
 from typing import Optional
 
 import requests
-from constants.languages import languages
-from extensions.ext_database import db
 from flask import current_app, redirect, request
 from flask_restful import Resource
+
+from constants.languages import languages
+from extensions.ext_database import db
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService

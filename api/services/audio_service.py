@@ -1,12 +1,17 @@
 import io
 from typing import Optional
 
+from werkzeug.datastructures import FileStorage
+
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from services.errors.audio import (AudioTooLargeServiceError, NoAudioUploadedServiceError,
-                                   ProviderNotSupportSpeechToTextServiceError,
-                                   ProviderNotSupportTextToSpeechServiceError, UnsupportedAudioTypeServiceError)
-from werkzeug.datastructures import FileStorage
+from services.errors.audio import (
+    AudioTooLargeServiceError,
+    NoAudioUploadedServiceError,
+    ProviderNotSupportSpeechToTextServiceError,
+    ProviderNotSupportTextToSpeechServiceError,
+    UnsupportedAudioTypeServiceError,
+)
 
 FILE_SIZE = 15
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024

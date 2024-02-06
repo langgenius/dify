@@ -1,11 +1,12 @@
 # -*- coding:utf-8 -*-
 import json
 
+from flask import current_app
+from flask_restful import fields, marshal_with
+
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
-from flask import current_app
-from flask_restful import fields, marshal_with
 from models.model import App, AppModelConfig
 from models.tools import ApiToolProvider
 

@@ -2,14 +2,15 @@ from typing import Any, List, Optional, cast
 
 import requests
 import weaviate
+from langchain.embeddings.base import Embeddings
+from langchain.schema import Document
+from langchain.vectorstores import VectorStore
+from pydantic import BaseModel, root_validator
+
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
 from core.vector_store.weaviate_vector_store import WeaviateVectorStore
-from langchain.embeddings.base import Embeddings
-from langchain.schema import BaseRetriever, Document
-from langchain.vectorstores import VectorStore
 from models.dataset import Dataset
-from pydantic import BaseModel, root_validator
 
 
 class WeaviateConfig(BaseModel):

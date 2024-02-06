@@ -1,9 +1,10 @@
 import json
 
-from core.index.vector_index.base import BaseVectorIndex
-from extensions.ext_database import db
 from flask import current_app
 from langchain.embeddings.base import Embeddings
+
+from core.index.vector_index.base import BaseVectorIndex
+from extensions.ext_database import db
 from models.dataset import Dataset, Document
 
 

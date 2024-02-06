@@ -1,3 +1,7 @@
+from flask_login import current_user
+from flask_restful import marshal, reqparse
+from werkzeug.exceptions import NotFound
+
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
@@ -6,11 +10,8 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import segment_fields
-from flask_login import current_user
-from flask_restful import marshal, reqparse
 from models.dataset import Dataset, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from werkzeug.exceptions import NotFound
 
 
 class SegmentApi(DatasetApiResource):

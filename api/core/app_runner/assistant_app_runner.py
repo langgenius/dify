@@ -222,6 +222,7 @@ class AssistantApplicationRunner(AppRunner):
                 conversation=conversation,
                 message=message,
                 query=query,
+                inputs=inputs,
             )
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
             assistant_fc_runner = AssistantFunctionCallApplicationRunner(

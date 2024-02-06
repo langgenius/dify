@@ -2,9 +2,14 @@ import time
 from typing import Generator, List, Optional, Tuple, Union, cast
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.application_entities import (ApplicationGenerateEntity, AppOrchestrationConfigEntity,
-                                                ExternalDataVariableEntity, InvokeFrom, ModelConfigEntity,
-                                                PromptTemplateEntity)
+from core.entities.application_entities import (
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    ExternalDataVariableEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.features.annotation_reply import AnnotationReplyFeature
 from core.features.external_data_fetch import ExternalDataFetchFeature
 from core.features.hosting_moderation import HostingModerationFeature

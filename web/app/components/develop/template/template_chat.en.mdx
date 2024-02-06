@@ -369,7 +369,7 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
-  url='/messages/{message_id}/feedbacks'
+  url='/messages/:message_id/feedbacks'
   method='POST'
   title='Message Feedback'
   name='#feedbacks'
@@ -401,10 +401,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
+    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -675,7 +675,7 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
-  url='/conversations/{conversation_id}'
+  url='/conversations/:conversation_id'
   method='DELETE'
   title='Delete Conversation'
   name='#delete'
@@ -700,7 +700,7 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/:conversation_id" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/:conversation_id' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
         curl -X DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
@@ -726,7 +726,7 @@ Chat applications support session persistence, allowing previous chat history to
 
 ---
 <Heading
-  url='/conversations/{conversation_id}/name'
+  url='/conversations/:conversation_id/name'
   method='POST'
   title='Conversation Rename'
   name='#rename'
@@ -756,10 +756,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer {api_key}' \
     --data-raw '{

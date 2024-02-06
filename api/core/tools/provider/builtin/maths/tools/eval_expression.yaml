@@ -1,0 +1,26 @@
+identity:
+  name: eval_expression
+  author: Bowen Liang
+  label:
+    en_US: Evaluate Math Expression
+    zh_Hans: 计算数学表达式
+    pt_BR: Evaluate Math Expression
+description:
+  human:
+    en_US: A tool for evaluating an math expression, calculated locally with NumExpr.
+    zh_Hans: 一个用于计算数学表达式的工具，表达式将通过NumExpr本地执行。
+    pt_BR: A tool for evaluating an math expression, calculated locally with NumExpr.
+  llm: A tool for evaluating an math expression.
+parameters:
+  - name: expression
+    type: string
+    required: true
+    label:
+      en_US: Math Expression
+      zh_Hans: 数学计算表达式
+      pt_BR: Math Expression
+    human_description:
+      en_US: Math Expression
+      zh_Hans: 数学计算表达式
+      pt_BR: Math Expression
+    form: llm

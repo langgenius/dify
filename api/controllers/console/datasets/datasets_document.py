@@ -2,35 +2,52 @@
 from datetime import datetime
 from typing import List
 
+from flask import request
+from flask_login import current_user
+from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from sqlalchemy import asc, desc
+from werkzeug.exceptions import Forbidden, NotFound
+
 import services
 from controllers.console import api
-from controllers.console.app.error import (ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
-                                           ProviderQuotaExceededError)
-from controllers.console.datasets.error import (ArchivedDocumentImmutableError, DocumentAlreadyFinishedError,
-                                                DocumentIndexingError, InvalidActionError, InvalidMetadataError)
+from controllers.console.app.error import (
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.console.datasets.error import (
+    ArchivedDocumentImmutableError,
+    DocumentAlreadyFinishedError,
+    DocumentIndexingError,
+    InvalidActionError,
+    InvalidMetadataError,
+)
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.errors.error import (LLMBadRequestError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError,
-                               QuotaExceededError)
+from core.errors.error import (
+    LLMBadRequestError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from fields.document_fields import (dataset_and_document_fields, document_fields, document_status_fields,
-                                    document_with_segments_fields)
-from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from fields.document_fields import (
+    dataset_and_document_fields,
+    document_fields,
+    document_status_fields,
+    document_with_segments_fields,
+)
 from libs.login import login_required
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
-from sqlalchemy import asc, desc
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
-from werkzeug.exceptions import Forbidden, NotFound
 
 
 class DocumentResource(Resource):

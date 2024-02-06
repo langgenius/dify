@@ -1,9 +1,10 @@
+from pydantic import BaseModel
+
 from core.extension.api_based_extension_requestor import APIBasedExtensionPoint, APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension
-from pydantic import BaseModel
 
 
 class ModerationInputParams(BaseModel):

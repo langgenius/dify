@@ -1,6 +1,8 @@
 import json
 from typing import Any, Generator, Union
 
+from sqlalchemy import and_
+
 from core.application_manager import ApplicationManager
 from core.entities.application_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
@@ -11,7 +13,6 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
-from sqlalchemy import and_
 
 
 class CompletionService:

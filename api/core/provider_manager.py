@@ -3,21 +3,36 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
-from core.entities.provider_entities import (CustomConfiguration, CustomModelConfiguration, CustomProviderConfiguration,
-                                             QuotaConfiguration, SystemConfiguration)
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    CustomModelConfiguration,
+    CustomProviderConfiguration,
+    QuotaConfiguration,
+    SystemConfiguration,
+)
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (ConfigurateMethod, CredentialFormSchema, FormType,
-                                                           ProviderEntity)
+from core.model_runtime.entities.provider_entities import (
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
-from models.provider import (Provider, ProviderModel, ProviderQuotaType, ProviderType, TenantDefaultModel,
-                             TenantPreferredModelProvider)
-from sqlalchemy.exc import IntegrityError
+from models.provider import (
+    Provider,
+    ProviderModel,
+    ProviderQuotaType,
+    ProviderType,
+    TenantDefaultModel,
+    TenantPreferredModelProvider,
+)
 
 
 class ProviderManager:

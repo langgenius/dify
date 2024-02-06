@@ -3,13 +3,12 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from werkzeug.exceptions import NotFound
+
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
-from events.dataset_event import dataset_was_deleted
 from events.event_handlers.document_index_event import document_index_created
 from extensions.ext_database import db
 from models.dataset import Document
-from werkzeug.exceptions import NotFound
 
 
 @document_index_created.connect

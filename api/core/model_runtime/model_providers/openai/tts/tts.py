@@ -3,14 +3,15 @@ from functools import reduce
 from io import BytesIO
 from typing import Optional, Literal
 
-from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 from flask import Response, stream_with_context
 from extensions.ext_storage import storage
 from openai import OpenAI
 from pydub import AudioSegment
+
+from core.model_runtime.errors.invoke import InvokeBadRequestError
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.model_providers.__base.tts_model import TTSModel
+from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 
 
 class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):

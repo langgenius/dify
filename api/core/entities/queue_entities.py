@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import Any
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from pydantic import BaseModel
+
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 
 
 class QueueEvent(Enum):

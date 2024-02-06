@@ -342,7 +342,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 </Row>
 ---
 <Heading
-  url='/chat-messages/{task_id}/stop'
+  url='/chat-messages/:task_id/stop'
   method='POST'
   title='停止响应'
   name='#Stop'
@@ -384,7 +384,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
-  url='/messages/{message_id}/feedbacks'
+  url='/messages/:message_id/feedbacks'
   method='POST'
   title='消息反馈（点赞）'
   name='#feedbacks'
@@ -416,10 +416,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
+    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -609,69 +609,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 </Row>
 
 ---
-<Heading
-  url='/conversations'
-  method='GET'
-  title='获取会话列表'
-  name='#conversations'
-/>
-<Row>
-  <Col>
-    获取当前用户的会话列表，默认返回最近的 20 条。
-
-    ### Query
-
-    <Properties>
-      <Property name='last_id' type='string' key='last_id'>
-        当前页最后面一条记录的 ID，默认 none
-      </Property>
-      <Property name='limit' type='int' key='limit'>
-        一次请求返回多少条记录
-      </Property>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'\\\n--header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "limit": 20,
-      "has_more": false,
-      "data": [
-        {
-          "id": "10799fb8-64f7-4296-bbf7-b42bfbe0ae54",
-          "name": "New chat",
-          "inputs": {
-              "book": "book",
-              "myName": "Lucy"
-          },
-          "status": "normal",
-          "created_at": 1679667915
-        },
-        {
-          "id": "hSIhXBhNe8X1d8Et"
-          // ...
-        }
-      ]
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
 
 <Heading
   url='/conversations'
@@ -751,7 +688,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 ---
 <Heading
-  url='/conversations/{conversation_id}'
+  url='/conversations/:conversation_id'
   method='DELETE'
   title='删除会话'
   name='#delete'
@@ -776,7 +713,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/{conversation_id}" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/:conversation_id" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/:conversation_id' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
         curl -X DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
@@ -803,7 +740,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
-  url='/conversations/{conversation_id}/name'
+  url='/conversations/:conversation_id/name'
   method='POST'
   title='会话重命名'
   name='#rename'
@@ -835,10 +772,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/{conversation_id}/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
