@@ -5,8 +5,8 @@ import {
 } from 'react'
 import type { Node } from './types'
 
-export const useWorkflow = (nodes: Node[]) => {
-  const [selectedNodeId, setSelectedNodeId] = useState('')
+export const useWorkflow = (nodes: Node[], initialSelectedNodeId?: string) => {
+  const [selectedNodeId, setSelectedNodeId] = useState(initialSelectedNodeId)
 
   const handleSelectedNodeIdChange = useCallback((nodeId: string) => setSelectedNodeId(nodeId), [])
 

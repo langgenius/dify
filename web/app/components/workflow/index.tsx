@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import type { Edge } from 'reactflow'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
@@ -16,6 +17,7 @@ import CustomNode, {
   Panel,
 } from './nodes'
 import CustomEdge from './custom-edge'
+import type { Node } from './types'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -23,54 +25,6 @@ const nodeTypes = {
 const edgeTypes = {
   custom: CustomEdge,
 }
-
-const initialNodes = [
-  {
-    id: '1',
-    type: 'custom',
-    position: { x: 330, y: 30 },
-    data: { type: 'start' },
-  },
-  {
-    id: '2',
-    type: 'custom',
-    position: { x: 330, y: 212 },
-    data: { type: 'start' },
-  },
-  {
-    id: '3',
-    type: 'custom',
-    position: { x: 150, y: 394 },
-    data: { type: 'start' },
-  },
-  {
-    id: '4',
-    type: 'custom',
-    position: { x: 510, y: 394 },
-    data: { type: 'start' },
-  },
-]
-
-const initialEdges = [
-  {
-    id: '1',
-    source: '1',
-    target: '2',
-    type: 'custom',
-  },
-  {
-    id: '2',
-    source: '2',
-    target: '3',
-    type: 'custom',
-  },
-  {
-    id: '3',
-    source: '2',
-    target: '4',
-    type: 'custom',
-  },
-]
 
 const Workflow = () => {
   const {
@@ -96,15 +50,23 @@ const Workflow = () => {
     </div>
   )
 }
-
-const WorkflowWrap: FC = () => {
+type WorkflowWrapProps = {
+  selectedNodeId?: string
+  nodes: Node[]
+  edges: Edge[]
+}
+const WorkflowWrap: FC<WorkflowWrapProps> = ({
+  nodes: initialNodes,
+  edges: initialEdges,
+  selectedNodeId: initialSelectedNodeId,
+}) => {
   const [nodes] = useNodesState(initialNodes)
   const [edges] = useEdgesState(initialEdges)
   const {
     selectedNodeId,
     handleSelectedNodeIdChange,
     selectedNode,
-  } = useWorkflow(nodes)
+  } = useWorkflow(nodes, initialSelectedNodeId)
 
   return (
     <WorkflowContext.Provider value={{
@@ -119,10 +81,18 @@ const WorkflowWrap: FC = () => {
   )
 }
 
-const WorkflowWrapWithReactFlowProvider = () => {
+const WorkflowWrapWithReactFlowProvider: FC<WorkflowWrapProps> = ({
+  selectedNodeId,
+  nodes,
+  edges,
+}) => {
   return (
     <ReactFlowProvider>
-      <WorkflowWrap />
+      <WorkflowWrap
+        selectedNodeId={selectedNodeId}
+        nodes={nodes}
+        edges={edges}
+      />
     </ReactFlowProvider>
   )
 }
