@@ -14,15 +14,15 @@ enum TabEnum {
 type BasePanelProps = {
   defaultElement?: ReactNode
   inputsElement?: ReactNode
-  ouputsElement?: ReactNode
+  outputsElement?: ReactNode
 }
 
 const BasePanel: FC<BasePanelProps> = ({
   defaultElement,
   inputsElement,
-  ouputsElement,
+  outputsElement,
 }) => {
-  const initialActiveTab = inputsElement ? TabEnum.Inputs : ouputsElement ? TabEnum.Outputs : ''
+  const initialActiveTab = inputsElement ? TabEnum.Inputs : outputsElement ? TabEnum.Outputs : ''
   const [activeTab, setActiveTab] = useState(initialActiveTab)
   const { handleSelectedNodeIdChange } = useWorkflowContext()
 
@@ -46,7 +46,7 @@ const BasePanel: FC<BasePanelProps> = ({
         </div>
       </div>
       {
-        (inputsElement || ouputsElement) && (
+        (inputsElement || outputsElement) && (
           <div className='flex items-center px-4 h-[42px]'>
             {
               inputsElement && (
@@ -59,7 +59,7 @@ const BasePanel: FC<BasePanelProps> = ({
               )
             }
             {
-              ouputsElement && (
+              outputsElement && (
                 <div
                   className='ml-4 cursor-pointer'
                   onClick={() => setActiveTab(TabEnum.Outputs)}
@@ -74,7 +74,7 @@ const BasePanel: FC<BasePanelProps> = ({
       <div className='py-2 border-t-[0.5px] border-b-[0.5px] border-black/5'>
         {defaultElement}
         {activeTab === TabEnum.Inputs && inputsElement}
-        {activeTab === TabEnum.Outputs && ouputsElement}
+        {activeTab === TabEnum.Outputs && outputsElement}
       </div>
       <div className='p-4'>
         next step
