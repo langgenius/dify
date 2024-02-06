@@ -1,11 +1,8 @@
 import datetime
 from typing import Any, List, Optional, cast, Dict
-
 import requests
 import weaviate
 from pydantic import BaseModel, root_validator
-
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
@@ -62,8 +59,8 @@ class WeaviateVector(BaseVector):
         return 'weaviate'
 
     def get_collection_name(self, dataset: Dataset) -> str:
-        if self.dataset.index_struct_dict:
-            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             if not class_prefix.endswith('_Node'):
                 # original class_prefix
                 class_prefix += '_Node'
@@ -80,17 +77,18 @@ class WeaviateVector(BaseVector):
         }
 
     def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
+        self._client.
 
-        collection_name = self._collection_name
+        schema = self._default_schema(self._collection_name)
 
-        schema = self._default_schema(collection_name)
-
-        # create collection
-        self._client.schema.create_class(schema)
+        # check whether the index already exists
+        if not self._client.schema.contains(schema):
+            # create collection
+            self._client.schema.create_class(schema)
         # create vector
-        self.add_texts(texts, embeddings, collection_name)
+        self.add_texts(texts, embeddings)
 
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -106,7 +104,7 @@ class WeaviateVector(BaseVector):
 
                 batch.add_data_object(
                     data_object=data_properties,
-                    class_name=collection_name,
+                    class_name=self._collection_name,
                     uuid=uuids[i],
                     vector=embeddings[i] if embeddings else None,
                 )

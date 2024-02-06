@@ -35,8 +35,8 @@ class Keyword:
     def create(self, texts: list[Document], **kwargs):
         self._keyword_processor.create(texts, **kwargs)
 
-    def add_texts(self, texts: list[Document], collection_name: str, **kwargs):
-        self._keyword_processor.add_texts(texts, collection_name, **kwargs)
+    def add_texts(self, texts: list[Document], **kwargs):
+        self._keyword_processor.add_texts(texts, **kwargs)
 
     def text_exists(self, id: str) -> bool:
         return self._keyword_processor.text_exists(id)

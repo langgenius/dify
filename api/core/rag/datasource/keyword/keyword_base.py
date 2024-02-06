@@ -18,7 +18,7 @@ class BaseKeyword(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, texts: list[Document], collection_name: str, **kwargs):
+    def add_texts(self, texts: list[Document], **kwargs):
         raise NotImplementedError
 
     @abstractmethod

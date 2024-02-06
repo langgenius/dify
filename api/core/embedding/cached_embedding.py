@@ -1,5 +1,4 @@
 import base64
-import json
 import logging
 from typing import List, Optional, cast
 
@@ -12,7 +11,6 @@ from extensions.ext_database import db
 
 from extensions.ext_redis import redis_client
 from libs import helper
-from models.dataset import Embedding
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)

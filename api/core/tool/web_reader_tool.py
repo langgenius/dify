@@ -12,8 +12,6 @@ from typing import Any, Type
 import requests
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
 from core.chain.llm_chain import LLMChain
-from core.data_loader import file_extractor
-from core.data_loader.file_extractor import FileExtractor
 from core.entities.application_entities import ModelConfigEntity
 from langchain.chains import RefineDocumentsChain
 from langchain.chains.summarize import refine_prompts
@@ -23,6 +21,9 @@ from langchain.tools.base import BaseTool
 from newspaper import Article
 from pydantic import BaseModel, Field
 from regex import regex
+
+from core.rag.extractor import extract_processor
+from core.rag.extractor.extract_processor import ExtractProcessor
 
 FULL_TEMPLATE = """
 TITLE: {title}
@@ -145,7 +146,7 @@ def get_url(url: str) -> str:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    supported_content_types = file_extractor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
+    supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
 
     head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
 
@@ -157,8 +158,8 @@ def get_url(url: str) -> str:
     if main_content_type not in supported_content_types:
         return "Unsupported content-type [{}] of URL.".format(main_content_type)
 
-    if main_content_type in file_extractor.SUPPORT_URL_CONTENT_TYPES:
-        return FileExtractor.load_from_url(url, return_text=True)
+    if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
+        return ExtractProcessor.load_from_url(url, return_text=True)
 
     response = requests.get(url, headers=headers, allow_redirects=True, timeout=(5, 30))
     a = extract_using_readabilipy(response.text)

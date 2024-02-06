@@ -21,7 +21,7 @@ class ExtractSetting(BaseModel):
     datasource_type: str
     upload_file: UploadFile = None
     notion_info: NotionInfo = None
-    document_model: str
+    document_model: str = None
 
     def __init__(self, **data) -> None:
         super().__init__(**data)

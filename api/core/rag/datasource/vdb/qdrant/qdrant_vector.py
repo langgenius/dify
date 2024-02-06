@@ -106,7 +106,7 @@ class QdrantVector(BaseVector):
         self._client.create_payload_index(collection_name, Field.CONTENT_KEY.value,
                                           field_schema=text_index_params)
 
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -116,7 +116,7 @@ class QdrantVector(BaseVector):
                 texts, embeddings, metadatas, uuids
         ):
             self._client.upsert(
-                collection_name=collection_name, points=points
+                collection_name=self._collection_name, points=points
             )
             added_ids.extend(batch_ids)
 

@@ -28,7 +28,7 @@ class RetrievalService:
 
     @classmethod
     def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
-                 top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict]):
+                 top_k: int, score_threshold: Optional[float] = None, reranking_model: Optional[dict] = None):
         all_documents = []
         threads = []
         # retrieval_model source with keyword

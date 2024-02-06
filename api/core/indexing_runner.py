@@ -7,8 +7,6 @@ import time
 import uuid
 from typing import AbstractSet, Any, Collection, List, Literal, Optional, Type, Union, cast
 
-from core.data_loader.file_extractor import FileExtractor
-from core.data_loader.loader.notion import NotionLoader
 from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.errors.error import ProviderTokenNotInitError
 from core.generator.llm_generator import LLMGenerator
@@ -17,7 +15,6 @@ from core.model_manager import ModelManager, ModelInstance
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory

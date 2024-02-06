@@ -1040,7 +1040,7 @@ class SegmentService:
 
         # save vector index
         try:
-            VectorService.create_segment_vector(args['keywords'], segment_document, dataset)
+            VectorService.create_segments_vector([args['keywords']], [segment_document], dataset)
         except Exception as e:
             logging.exception("create segment index failed")
             segment_document.enabled = False
@@ -1067,6 +1067,7 @@ class SegmentService:
         ).scalar()
         pre_segment_data_list = []
         segment_data_list = []
+        keywords_list = []
         for segment_item in segments:
             content = segment_item['content']
             doc_id = str(uuid.uuid4())
@@ -1099,15 +1100,13 @@ class SegmentService:
                 segment_document.answer = segment_item['answer']
             db.session.add(segment_document)
             segment_data_list.append(segment_document)
-            pre_segment_data = {
-                'segment': segment_document,
-                'keywords': segment_item['keywords']
-            }
-            pre_segment_data_list.append(pre_segment_data)
+
+            pre_segment_data_list.append(segment_document)
+            keywords_list.append(segment_item['keywords'])
 
         try:
             # save vector index
-            VectorService.multi_create_segment_vector(pre_segment_data_list, dataset)
+            VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset)
         except Exception as e:
             logging.exception("create segment index failed")
             for segment_document in segment_data_list:

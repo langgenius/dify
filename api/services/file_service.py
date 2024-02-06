@@ -2,9 +2,8 @@ import datetime
 import hashlib
 import uuid
 from typing import Generator, Tuple, Union
-
-from core.data_loader.file_extractor import FileExtractor
 from core.file.upload_file_parser import UploadFileParser
+from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from flask import current_app
@@ -134,7 +133,7 @@ class FileService:
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
 
-        text = FileExtractor.load(upload_file, return_text=True)
+        text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
 
         return text

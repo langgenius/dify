@@ -70,7 +70,7 @@ class VectorIndex:
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 
-    def add_texts(self, texts: list[Document], **kwargs):
+    def sssssssadd_texts(self, texts: list[Document], **kwargs):
         if not self._dataset.index_struct_dict:
             self._vector_index.create(texts, **kwargs)
             self._dataset.index_struct = json.dumps(self._vector_index.to_index_struct())

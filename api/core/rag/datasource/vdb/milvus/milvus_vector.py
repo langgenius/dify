@@ -55,11 +55,13 @@ class MilvusVector(BaseVector):
         }
         metadatas = [d.metadata for d in texts]
 
-        collection_name = self.create_collection(embeddings, metadatas, index_params)
+        # Grab the existing collection if it exists
+        from pymilvus import utility
+        if utility.has_collection(self._collection_name):
+            self.create_collection(embeddings, metadatas, index_params)
+        self.add_texts(texts, embeddings)
 
-        self.add_texts(texts, embeddings, collection_name)
-
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], collection_name: str, **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
 
@@ -71,7 +73,7 @@ class MilvusVector(BaseVector):
         if metadatas is not None:
             for d in metadatas:
                 insert_dict.setdefault(Field.METADATA_KEY.value, []).append(d)
-        ids = self._client.insert(collection_name=collection_name, data=insert_dict)
+        ids = self._client.insert(collection_name=self._collection_name, data=insert_dict)
         return ids
 
     def delete_by_document_id(self, document_id: str):

@@ -34,15 +34,16 @@ class ExtractProcessor:
     @classmethod
     def load_from_upload_file(cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False) \
             -> Union[List[Document], str]:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            suffix = Path(upload_file.key).suffix
-            file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
-            storage.download(upload_file.key, file_path)
-            if return_text:
-                delimiter = '\n'
-                return delimiter.join([document.page_content for document in cls.extract(file_path, is_automatic)])
-            else:
-                return cls.extract(file_path, is_automatic)
+        extract_setting = ExtractSetting(
+            datasource_type="upload_file",
+            upload_file=upload_file,
+            document_model='text_model'
+        )
+        if return_text:
+            delimiter = '\n'
+            return delimiter.join([document.page_content for document in cls.extract(extract_setting, is_automatic)])
+        else:
+            return cls.extract(extract_setting, is_automatic)
 
     @classmethod
     def load_from_url(cls, url: str, return_text: bool = False) -> Union[List[Document], str]:
@@ -55,21 +56,27 @@ class ExtractProcessor:
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
             with open(file_path, 'wb') as file:
                 file.write(response.content)
-
+            extract_setting = ExtractSetting(
+                datasource_type="upload_file",
+                document_model='text_model'
+            )
             if return_text:
                 delimiter = '\n'
-                return delimiter.join([document.page_content for document in cls.extract(file_path)])
+                return delimiter.join([document.page_content for document in cls.extract(
+                    extract_setting=extract_setting, file_path=file_path)])
             else:
-                return cls.extract(file_path)
+                return cls.extract(extract_setting=extract_setting, file_path=file_path)
 
     @classmethod
-    def extract(cls, extract_setting: ExtractSetting, is_automatic: bool = False) -> List[Document]:
+    def extract(cls, extract_setting: ExtractSetting, is_automatic: bool = False,
+                file_path: str = None) -> List[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
-            upload_file: UploadFile = extract_setting.upload_file
             with tempfile.TemporaryDirectory() as temp_dir:
-                suffix = Path(upload_file.key).suffix
-                file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
-                storage.download(upload_file.key, file_path)
+                if not file_path:
+                    upload_file: UploadFile = extract_setting.upload_file
+                    suffix = Path(upload_file.key).suffix
+                    file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
+                    storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
                 etl_type = current_app.config['ETL_TYPE']
