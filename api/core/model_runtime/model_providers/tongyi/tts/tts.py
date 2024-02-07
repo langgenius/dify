@@ -144,7 +144,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :return: text translated to audio file
         """
         dashscope.api_key = credentials.get('dashscope_api_key')
-        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000, text=sentence.strip(),
+        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
+                                                              text=sentence.strip(),
                                                               format=audio_type)
         if isinstance(response.get_audio_data(), bytes):
             return response.get_audio_data()
