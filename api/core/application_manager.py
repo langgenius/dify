@@ -27,7 +27,7 @@ from core.entities.application_entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
     SensitiveWordAvoidanceEntity,
-    TextToSpeechEntity
+    TextToSpeechEntity,
 )
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError

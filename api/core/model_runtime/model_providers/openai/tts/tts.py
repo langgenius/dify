@@ -1,10 +1,9 @@
 import concurrent.futures
 from functools import reduce
 from io import BytesIO
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from flask import Response, stream_with_context
-from extensions.ext_storage import storage
 from openai import OpenAI
 from pydub import AudioSegment
 
@@ -12,13 +11,15 @@ from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from extensions.ext_storage import storage
 
 
 class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
     """
     Model class for OpenAI Speech to text model.
     """
-    def _invoke(self, model: str,  tenant_id: str, credentials: dict,
+
+    def _invoke(self, model: str, tenant_id: str, credentials: dict,
                 content_text: str, voice: str, streaming: bool, user: Optional[str] = None) -> any:
         """
         _invoke text2speech model
@@ -102,7 +103,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             raise InvokeBadRequestError(str(ex))
 
     # Todo: To improve the streaming function
-    def _tts_invoke_streaming(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, tenant_id: str, credentials: dict, content_text: str,
+                              voice: str) -> any:
         """
         _tts_invoke_streaming text2speech model
 

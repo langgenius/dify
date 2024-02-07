@@ -5,13 +5,13 @@ from typing import Optional
 
 import dashscope
 from flask import Response, stream_with_context
-from extensions.ext_storage import storage
 from pydub import AudioSegment
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
+from extensions.ext_storage import storage
 
 
 class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
@@ -104,7 +104,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             raise InvokeBadRequestError(str(ex))
 
     # Todo: To improve the streaming function
-    def _tts_invoke_streaming(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, tenant_id: str, credentials: dict, content_text: str,
+                              voice: str) -> any:
         """
         _tts_invoke_streaming text2speech model
 

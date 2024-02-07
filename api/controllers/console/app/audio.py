@@ -2,11 +2,10 @@
 import logging
 
 from flask import request
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
-from flask_restful import reqparse
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.app.error import (
