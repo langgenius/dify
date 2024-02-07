@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import {
+  memo,
   useRef,
   useState,
 } from 'react'
@@ -126,100 +127,102 @@ const ChatInput: FC<ChatInputProps> = ({
   )
 
   return (
-    <div
-      className={`
-        relative p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
-        ${isDragActive && 'border-primary-600'}
-      `}
-    >
-      {
-        visionConfig?.enabled && (
-          <>
-            <div className='absolute bottom-2 left-2 flex items-center'>
-              <ChatImageUploader
-                settings={visionConfig}
-                onUpload={onUpload}
-                disabled={files.length >= visionConfig.number_limits}
-              />
-              <div className='mx-1 w-[1px] h-4 bg-black/5' />
-            </div>
-            <div className='pl-[52px]'>
-              <ImageList
-                list={files}
-                onRemove={onRemove}
-                onReUpload={onReUpload}
-                onImageLinkLoadSuccess={onImageLinkLoadSuccess}
-                onImageLinkLoadError={onImageLinkLoadError}
-              />
-            </div>
-          </>
-        )
-      }
-      <Textarea
+    <div className='relative'>
+      <div
         className={`
-          block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
-          ${visionConfig?.enabled && 'pl-12'}
+          p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
+          ${isDragActive && 'border-primary-600'}
         `}
-        value={query}
-        onChange={handleContentChange}
-        onKeyUp={handleKeyUp}
-        onKeyDown={handleKeyDown}
-        onPaste={onPaste}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        autoSize
-      />
-      <div className='absolute bottom-[7px] right-2 flex items-center h-8'>
-        <div className='flex items-center px-1 h-5 rounded-md bg-gray-100 text-xs font-medium text-gray-500'>
-          {query.trim().length}
-        </div>
+      >
         {
-          query
-            ? (
-              <div className='flex justify-center items-center ml-2 w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => setQuery('')}>
-                <XCircle className='w-4 h-4 text-[#98A2B3]' />
+          visionConfig?.enabled && (
+            <>
+              <div className='absolute bottom-2 left-2 flex items-center'>
+                <ChatImageUploader
+                  settings={visionConfig}
+                  onUpload={onUpload}
+                  disabled={files.length >= visionConfig.number_limits}
+                />
+                <div className='mx-1 w-[1px] h-4 bg-black/5' />
               </div>
-            )
-            : speechToTextConfig?.enabled
+              <div className='pl-[52px]'>
+                <ImageList
+                  list={files}
+                  onRemove={onRemove}
+                  onReUpload={onReUpload}
+                  onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+                  onImageLinkLoadError={onImageLinkLoadError}
+                />
+              </div>
+            </>
+          )
+        }
+        <Textarea
+          className={`
+            block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
+            ${visionConfig?.enabled && 'pl-12'}
+          `}
+          value={query}
+          onChange={handleContentChange}
+          onKeyUp={handleKeyUp}
+          onKeyDown={handleKeyDown}
+          onPaste={onPaste}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          autoSize
+        />
+        <div className='absolute bottom-[7px] right-2 flex items-center h-8'>
+          <div className='flex items-center px-1 h-5 rounded-md bg-gray-100 text-xs font-medium text-gray-500'>
+            {query.trim().length}
+          </div>
+          {
+            query
               ? (
-                <div
-                  className='group flex justify-center items-center ml-2 w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
-                  onClick={handleVoiceInputShow}
-                >
-                  <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
-                  <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
+                <div className='flex justify-center items-center ml-2 w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => setQuery('')}>
+                  <XCircle className='w-4 h-4 text-[#98A2B3]' />
                 </div>
               )
-              : null
+              : speechToTextConfig?.enabled
+                ? (
+                  <div
+                    className='group flex justify-center items-center ml-2 w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
+                    onClick={handleVoiceInputShow}
+                  >
+                    <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
+                    <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
+                  </div>
+                )
+                : null
+          }
+          <div className='mx-2 w-[1px] h-4 bg-black opacity-5' />
+          {isMobile
+            ? sendBtn
+            : (
+              <TooltipPlus
+                popupContent={
+                  <div>
+                    <div>{t('common.operation.send')} Enter</div>
+                    <div>{t('common.operation.lineBreak')} Shift Enter</div>
+                  </div>
+                }
+              >
+                {sendBtn}
+              </TooltipPlus>
+            )}
+        </div>
+        {
+          voiceInputShow && (
+            <VoiceInput
+              onCancel={() => setVoiceInputShow(false)}
+              onConverted={text => setQuery(text)}
+            />
+          )
         }
-        <div className='mx-2 w-[1px] h-4 bg-black opacity-5' />
-        {isMobile
-          ? sendBtn
-          : (
-            <TooltipPlus
-              popupContent={
-                <div>
-                  <div>{t('common.operation.send')} Enter</div>
-                  <div>{t('common.operation.lineBreak')} Shift Enter</div>
-                </div>
-              }
-            >
-              {sendBtn}
-            </TooltipPlus>
-          )}
       </div>
-      {
-        voiceInputShow && (
-          <VoiceInput
-            onCancel={() => setVoiceInputShow(false)}
-            onConverted={text => setQuery(text)}
-          />
-        )
-      }
     </div>
   )
 }
 
-export default ChatInput
+export default memo(ChatInput)

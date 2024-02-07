@@ -1,23 +1,24 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import type {
   ChatItem,
   VisionFile,
 } from '../../types'
-import { useChatContext } from '../context'
 import { Markdown } from '@/app/components/base/markdown'
 import Thought from '@/app/components/app/chat/thought'
 import ImageGallery from '@/app/components/base/image-gallery'
+import type { Emoji } from '@/app/components/tools/types'
 
 type AgentContentProps = {
   item: ChatItem
+  responsing?: boolean
+  allToolIcons?: Record<string, string | Emoji>
 }
 const AgentContent: FC<AgentContentProps> = ({
   item,
+  responsing,
+  allToolIcons,
 }) => {
-  const {
-    allToolIcons,
-    isResponsing,
-  } = useChatContext()
   const {
     annotation,
     agent_thoughts,
@@ -45,7 +46,7 @@ const AgentContent: FC<AgentContentProps> = ({
             <Thought
               thought={thought}
               allToolIcons={allToolIcons || {}}
-              isFinished={!!thought.observation || !isResponsing}
+              isFinished={!!thought.observation || !responsing}
             />
           )}
 
@@ -58,4 +59,4 @@ const AgentContent: FC<AgentContentProps> = ({
   )
 }
 
-export default AgentContent
+export default memo(AgentContent)
