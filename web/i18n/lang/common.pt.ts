@@ -198,6 +198,7 @@ const translation = {
         lengthError: 'O comprimento da chave da API não pode ser inferior a 5 caracteres',
       },
     },
+    type: 'Tipo',
   },
   about: {
     changeLog: 'Registro de alterações',
