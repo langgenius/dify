@@ -14,7 +14,6 @@ import type {
   PromptVariable,
   VisionFile,
 } from '../types'
-import { useChatContext } from './context'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
@@ -506,15 +505,4 @@ export const useChat = (
     handleAnnotationAdded,
     handleAnnotationRemoved,
   }
-}
-
-export const useCurrentAnswerIsResponsing = (answerId: string) => {
-  const {
-    isResponsing,
-    chatList,
-  } = useChatContext()
-
-  const isLast = answerId === chatList[chatList.length - 1]?.id
-
-  return isLast && isResponsing
 }
