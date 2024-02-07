@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
 
@@ -32,4 +33,4 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
   )
 }
 
-export default SuggestedQuestions
+export default memo(SuggestedQuestions)

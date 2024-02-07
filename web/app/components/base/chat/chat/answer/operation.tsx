@@ -1,8 +1,11 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import {
+  memo,
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem } from '../../types'
-import { useCurrentAnswerIsResponsing } from '../hooks'
 import { useChatContext } from '../context'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -34,16 +37,23 @@ const Operation: FC<OperationProps> = ({
     onFeedback,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const responsing = useCurrentAnswerIsResponsing(item.id)
   const {
     id,
     isOpeningStatement,
-    content,
+    content: messageContent,
     annotation,
     feedback,
+    agent_thoughts,
   } = item
   const hasAnnotation = !!annotation?.id
   const [localFeedback, setLocalFeedback] = useState(feedback)
+
+  const content = useMemo(() => {
+    if (agent_thoughts?.length)
+      return agent_thoughts.reduce((acc, cur) => acc + cur.thought, '')
+
+    return messageContent
+  }, [agent_thoughts, messageContent])
 
   const handleFeedback = async (rating: 'like' | 'dislike' | null) => {
     if (!config?.supportFeedback || !onFeedback)
@@ -56,7 +66,7 @@ const Operation: FC<OperationProps> = ({
   return (
     <div className='absolute top-[-14px] right-[-14px] flex justify-end gap-1'>
       {
-        !isOpeningStatement && !responsing && (
+        !isOpeningStatement && (
           <CopyBtn
             value={content}
             className='hidden group-hover:block'
@@ -159,4 +169,4 @@ const Operation: FC<OperationProps> = ({
   )
 }
 
-export default Operation
+export default memo(Operation)

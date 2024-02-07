@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import {
+  memo,
   useRef,
   useState,
 } from 'react'
@@ -222,4 +223,4 @@ const ChatInput: FC<ChatInputProps> = ({
   )
 }
 
-export default ChatInput
+export default memo(ChatInput)
