@@ -370,6 +370,7 @@ const translation = {
         lengthError: 'API-key length cannot be less than 5 characters',
       },
     },
+    type: 'Type',
   },
   about: {
     changeLog: 'Changlog',

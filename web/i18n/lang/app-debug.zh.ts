@@ -273,7 +273,7 @@ const translation = {
     maxLength: '最大长度',
     options: '选项',
     addOption: '添加选项',
-    apiBasedVar: '基于API的变量',
+    apiBasedVar: '基于 API 的变量',
   },
   vision: {
     name: '视觉',
