@@ -370,6 +370,7 @@ const translation = {
         lengthError: 'API-key 不能少于 5 位',
       },
     },
+    type: '类型',
   },
   about: {
     changeLog: '更新日志',
