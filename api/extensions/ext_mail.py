@@ -3,6 +3,7 @@ from typing import Optional
 import resend
 from flask import Flask
 
+
 class Mail:
     def __init__(self):
         self._client = None
@@ -20,7 +21,7 @@ class Mail:
                 api_key = app.config.get('RESEND_API_KEY')
                 if not api_key:
                     raise ValueError('RESEND_API_KEY is not set')
-                
+
                 api_url = app.config.get('RESEND_API_URL')
                 if api_url:
                     resend.api_url = api_url
