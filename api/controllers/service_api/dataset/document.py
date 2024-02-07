@@ -1,7 +1,6 @@
 import json
 
 from flask import request
-from flask_login import current_user
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
