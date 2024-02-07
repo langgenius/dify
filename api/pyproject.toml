@@ -14,4 +14,5 @@ select = [
     "F401", # unused-import
     "I001", # unsorted-imports
     "I002", # missing-required-import
+    "F811", # redefined-while-unused
 ]
