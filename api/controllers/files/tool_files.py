@@ -32,7 +32,7 @@ class ToolFilePreviewApi(Resource):
             )
 
             if not result:
-                raise NotFound(f'file is not found')
+                raise NotFound('file is not found')
             
             generator, mimetype = result
         except Exception:

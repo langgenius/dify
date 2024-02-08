@@ -30,7 +30,7 @@ class LoggingCallback(Callback):
         """
         self.print_text("\n[on_llm_before_invoke]\n", color='blue')
         self.print_text(f"Model: {model}\n", color='blue')
-        self.print_text(f"Parameters:\n", color='blue')
+        self.print_text("Parameters:\n", color='blue')
         for key, value in model_parameters.items():
             self.print_text(f"\t{key}: {value}\n", color='blue')
 
@@ -38,7 +38,7 @@ class LoggingCallback(Callback):
             self.print_text(f"\tstop: {stop}\n", color='blue')
 
         if tools:
-            self.print_text(f"\tTools:\n", color='blue')
+            self.print_text("\tTools:\n", color='blue')
             for tool in tools:
                 self.print_text(f"\t\t{tool.name}\n", color='blue')
 
@@ -47,7 +47,7 @@ class LoggingCallback(Callback):
         if user:
             self.print_text(f"User: {user}\n", color='blue')
 
-        self.print_text(f"Prompt messages:\n", color='blue')
+        self.print_text("Prompt messages:\n", color='blue')
         for prompt_message in prompt_messages:
             if prompt_message.name:
                 self.print_text(f"\tname: {prompt_message.name}\n", color='blue')
@@ -101,7 +101,7 @@ class LoggingCallback(Callback):
         self.print_text(f"Content: {result.message.content}\n", color='yellow')
 
         if result.message.tool_calls:
-            self.print_text(f"Tool calls:\n", color='yellow')
+            self.print_text("Tool calls:\n", color='yellow')
             for tool_call in result.message.tool_calls:
                 self.print_text(f"\t{tool_call.id}\n", color='yellow')
                 self.print_text(f"\t{tool_call.function.name}\n", color='yellow')

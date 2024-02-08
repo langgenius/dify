@@ -11,8 +11,13 @@ line-length = 120
 [tool.ruff.lint]
 ignore-init-module-imports = true
 select = [
-    "F401", # unused-import
+    "F", # pyflakes rules
     "I001", # unsorted-imports
     "I002", # missing-required-import
-    "F811", # redefined-while-unused
+]
+ignore = [
+    "F403", # undefined-local-with-import-star
+    "F405", # undefined-local-with-import-star-usage
+    "F821", # undefined-name
+    "F841", # unused-variable
 ]
