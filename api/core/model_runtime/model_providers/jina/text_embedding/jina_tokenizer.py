@@ -1,7 +1,5 @@
 from os.path import abspath, dirname, join
 
-from transformers import AutoTokenizer
-
 
 class JinaTokenizer:
     @staticmethod
@@ -11,6 +9,7 @@ class JinaTokenizer:
         """
         base_path = abspath(__file__)
         gpt2_tokenizer_path = join(dirname(base_path), 'tokenizer')
+        from transformers import AutoTokenizer
         tokenizer = AutoTokenizer.from_pretrained(gpt2_tokenizer_path)
         tokens = tokenizer.encode(text)
         return len(tokens)

@@ -2,8 +2,6 @@ from os.path import abspath, dirname, join
 from threading import Lock
 from typing import Any
 
-from transformers import GPT2Tokenizer as TransformerGPT2Tokenizer
-
 _tokenizer = None
 _lock = Lock()
 
@@ -28,6 +26,7 @@ class GPT2Tokenizer:
             if _tokenizer is None:
                 base_path = abspath(__file__)
                 gpt2_tokenizer_path = join(dirname(base_path), 'gpt2')
+                from transformers import GPT2Tokenizer as TransformerGPT2Tokenizer
                 _tokenizer = TransformerGPT2Tokenizer.from_pretrained(gpt2_tokenizer_path)
 
             return _tokenizer
