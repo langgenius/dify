@@ -134,7 +134,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += f"image has been created and sent to user already, you should tell user to check it now."
+                result += "image has been created and sent to user already, you should tell user to check it now."
             else:
                 result += f"tool response: {response.message}."
 

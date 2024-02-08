@@ -140,12 +140,17 @@ const Chat: FC<ChatProps> = ({
             {
               chatList.map((item, index) => {
                 if (item.isAnswer) {
+                  const isLast = item.id === chatList[chatList.length - 1]?.id
                   return (
                     <Answer
                       key={item.id}
                       item={item}
                       question={chatList[index - 1]?.content}
                       index={index}
+                      config={config}
+                      answerIcon={answerIcon}
+                      responsing={isLast && isResponsing}
+                      allToolIcons={allToolIcons}
                     />
                   )
                 }
@@ -153,6 +158,9 @@ const Chat: FC<ChatProps> = ({
                   <Question
                     key={item.id}
                     item={item}
+                    showPromptLog={showPromptLog}
+                    questionIcon={questionIcon}
+                    isResponsing={isResponsing}
                   />
                 )
               })

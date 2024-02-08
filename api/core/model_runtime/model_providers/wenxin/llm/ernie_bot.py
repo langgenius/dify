@@ -231,15 +231,15 @@ class ErnieBotModel(object):
         # so, we just disable function calling for now.
 
         if tools is not None and len(tools) > 0:
-            raise BadRequestError(f'function calling is not supported yet.')
+            raise BadRequestError('function calling is not supported yet.')
 
         if stop is not None:
             if len(stop) > 4:
-                raise BadRequestError(f'stop list should not exceed 4 items.')
+                raise BadRequestError('stop list should not exceed 4 items.')
 
             for s in stop:
                 if len(s) > 20:
-                    raise BadRequestError(f'stop item should not exceed 20 characters.')
+                    raise BadRequestError('stop item should not exceed 20 characters.')
         
     def _build_request_body(self, model: str, messages: List[ErnieMessage], stream: bool, parameters: Dict[str, Any],
                             tools: List[PromptMessageTool], stop: List[str], user: str) -> Dict[str, Any]:
@@ -252,9 +252,9 @@ class ErnieBotModel(object):
                                                 stop: List[str], user: str) \
         -> Dict[str, Any]:
         if len(messages) % 2 == 0:
-            raise BadRequestError(f'The number of messages should be odd.')
+            raise BadRequestError('The number of messages should be odd.')
         if messages[0].role == 'function':
-            raise BadRequestError(f'The first message should be user message.')
+            raise BadRequestError('The first message should be user message.')
         
         """
         TODO: implement function calling
@@ -264,7 +264,7 @@ class ErnieBotModel(object):
                                  parameters: Dict[str, Any], stop: List[str], user: str) \
         -> Dict[str, Any]:
         if len(messages) == 0:
-            raise BadRequestError(f'The number of messages should not be zero.')
+            raise BadRequestError('The number of messages should not be zero.')
         
         # check if the first element is system, shift it
         system_message = ''
@@ -273,9 +273,9 @@ class ErnieBotModel(object):
             system_message = message.content
 
         if len(messages) % 2 == 0:
-            raise BadRequestError(f'The number of messages should be odd.')
+            raise BadRequestError('The number of messages should be odd.')
         if messages[0].role != 'user':
-            raise BadRequestError(f'The first message should be user message.')
+            raise BadRequestError('The first message should be user message.')
         body = {
             'messages': [message.to_dict() for message in messages],
             'stream': stream,

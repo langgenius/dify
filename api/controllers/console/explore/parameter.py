@@ -78,7 +78,7 @@ class ExploreAppMetaApi(InstalledAppResource):
         # get all tools
         tools = agent_config.get('tools', [])
         url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                  + f"/console/api/workspaces/current/tool-provider/builtin/")
+                  + "/console/api/workspaces/current/tool-provider/builtin/")
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:

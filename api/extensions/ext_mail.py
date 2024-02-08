@@ -21,13 +21,27 @@ class Mail:
                 api_key = app.config.get('RESEND_API_KEY')
                 if not api_key:
                     raise ValueError('RESEND_API_KEY is not set')
-                
+
                 api_url = app.config.get('RESEND_API_URL')
                 if api_url:
                     resend.api_url = api_url
 
                 resend.api_key = api_key
                 self._client = resend.Emails
+            elif app.config.get('MAIL_TYPE') == 'smtp':
+                from libs.smtp import SMTPClient
+                if not app.config.get('SMTP_SERVER') or not app.config.get('SMTP_PORT'):
+                    raise ValueError('SMTP_SERVER and SMTP_PORT are required for smtp mail type')
+                if not app.config.get('SMTP_USERNAME') or not app.config.get('SMTP_PASSWORD'):
+                    raise ValueError('SMTP_USERNAME and SMTP_PASSWORD are required for smtp mail type')
+                self._client = SMTPClient(
+                    server=app.config.get('SMTP_SERVER'),
+                    port=app.config.get('SMTP_PORT'),
+                    username=app.config.get('SMTP_USERNAME'),
+                    password=app.config.get('SMTP_PASSWORD'),
+                    _from=app.config.get('MAIL_DEFAULT_SEND_FROM'),
+                    use_tls=app.config.get('SMTP_USE_TLS')
+                )
             else:
                 raise ValueError('Unsupported mail type {}'.format(app.config.get('MAIL_TYPE')))
 

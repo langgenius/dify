@@ -41,7 +41,7 @@ class WorkspaceWebappLogoApi(Resource):
         webapp_logo_file_id = custom_config.get('replace_webapp_logo') if custom_config is not None else None
 
         if not webapp_logo_file_id:
-            raise NotFound(f'webapp logo is not found')
+            raise NotFound('webapp logo is not found')
 
         try:
             generator, mimetype = FileService.get_public_image_preview(
