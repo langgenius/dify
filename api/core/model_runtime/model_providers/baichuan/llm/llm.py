@@ -110,7 +110,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
                  stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         if tools is not None and len(tools) > 0:
-            raise InvokeBadRequestError(f"Baichuan model doesn't support tools")
+            raise InvokeBadRequestError("Baichuan model doesn't support tools")
         
         instance = BaichuanModel(
             api_key=credentials['api_key'],

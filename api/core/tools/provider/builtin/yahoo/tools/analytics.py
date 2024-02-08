@@ -66,5 +66,5 @@ class YahooFinanceAnalyticsTool(BuiltinTool):
         try:
             return self.create_text_message(str(summary_df.to_dict()))
         except (HTTPError, ReadTimeout):
-            return self.create_text_message(f'There is a internet connection problem. Please try again later.')
+            return self.create_text_message('There is a internet connection problem. Please try again later.')
     

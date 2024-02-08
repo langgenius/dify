@@ -143,8 +143,8 @@ class DatasetDocumentSegmentApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
@@ -234,8 +234,8 @@ class DatasetDocumentSegmentAddApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
@@ -286,8 +286,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
             # check segment

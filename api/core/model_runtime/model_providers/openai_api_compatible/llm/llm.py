@@ -146,16 +146,16 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             try:
                 json_result = response.json()
             except json.JSONDecodeError as e:
-                raise CredentialsValidateFailedError(f'Credentials validation failed: JSON decode error')
+                raise CredentialsValidateFailedError('Credentials validation failed: JSON decode error')
 
             if (completion_type is LLMMode.CHAT
                     and ('object' not in json_result or json_result['object'] != 'chat.completion')):
                 raise CredentialsValidateFailedError(
-                    f'Credentials validation failed: invalid response object, must be \'chat.completion\'')
+                    'Credentials validation failed: invalid response object, must be \'chat.completion\'')
             elif (completion_type is LLMMode.COMPLETION
                   and ('object' not in json_result or json_result['object'] != 'text_completion')):
                 raise CredentialsValidateFailedError(
-                    f'Credentials validation failed: invalid response object, must be \'text_completion\'')
+                    'Credentials validation failed: invalid response object, must be \'text_completion\'')
         except CredentialsValidateFailedError:
             raise
         except Exception as ex:

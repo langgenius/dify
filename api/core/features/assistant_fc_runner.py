@@ -277,7 +277,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                             message_file_ids.append(message_file.id)
                             
                     except ToolProviderCredentialValidationError as e:
-                        error_response = f"Please check your tool provider credentials"
+                        error_response = "Please check your tool provider credentials"
                     except (
                         ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
                     ) as e:

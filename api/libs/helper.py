@@ -101,7 +101,7 @@ class datetime_string(object):
             datetime.strptime(value, self.format)
         except ValueError:
             error = ('Invalid {arg}: {val}. {arg} must be conform to the format {format}'
-                     .format(arg=self.argument, val=value, lo=self.format))
+                     .format(arg=self.argument, val=value, format=self.format))
             raise ValueError(error)
 
         return value

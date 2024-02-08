@@ -50,7 +50,7 @@ class ToolManageService:
             :param provider: the provider dict
         """
         url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                      + f"/console/api/workspaces/current/tool-provider/builtin/")
+                      + "/console/api/workspaces/current/tool-provider/builtin/")
         
         if 'icon' in provider:
             if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
@@ -211,7 +211,7 @@ class ToolManageService:
         tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
         if len(tool_bundles) > 10:
-            raise ValueError(f'the number of apis should be less than 10')
+            raise ValueError('the number of apis should be less than 10')
 
         # create db provider
         db_provider = ApiToolProvider(
@@ -269,7 +269,7 @@ class ToolManageService:
             # try to parse schema, avoid SSRF attack
             ToolManageService.parser_api_schema(schema)
         except Exception as e:
-            raise ValueError(f'invalid schema, please check the url you provided')
+            raise ValueError('invalid schema, please check the url you provided')
         
         return {
             'schema': schema
@@ -490,7 +490,7 @@ class ToolManageService:
         try:
             tool_bundles, _ = ApiBasedToolSchemaParser.auto_parse_to_tool_bundle(schema)
         except Exception as e:
-            raise ValueError(f'invalid schema')
+            raise ValueError('invalid schema')
         
         # get tool bundle
         tool_bundle = next(filter(lambda tb: tb.operation_id == tool_name, tool_bundles), None)

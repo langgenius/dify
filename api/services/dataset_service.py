@@ -139,8 +139,8 @@ class DatasetService:
                 )
             except LLMBadRequestError:
                 raise ValueError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ValueError(f"The dataset in unavailable, due to: "
                                  f"{ex.description}")
@@ -176,8 +176,8 @@ class DatasetService:
                     filtered_data['collection_binding_id'] = dataset_collection_binding.id
                 except LLMBadRequestError:
                     raise ValueError(
-                        f"No Embedding Model available. Please configure a valid provider "
-                        f"in the Settings -> Model Provider.")
+                        "No Embedding Model available. Please configure a valid provider "
+                        "in the Settings -> Model Provider.")
                 except ProviderTokenNotInitError as ex:
                     raise ValueError(ex.description)
 
