@@ -26,7 +26,7 @@ class VectorIndex:
             vector_type = self._dataset.index_struct_dict['type']
 
         if not vector_type:
-            raise ValueError(f"Vector store must be specified.")
+            raise ValueError("Vector store must be specified.")
 
         if vector_type == "weaviate":
             from core.index.vector_index.weaviate_vector_index import WeaviateConfig, WeaviateVectorIndex

@@ -19,11 +19,11 @@ class RuleConfigGeneratorOutputParser(BaseOutputParser):
                 raise ValueError("Expected 'prompt' to be a string.")
             if not isinstance(parsed["variables"], list):
                 raise ValueError(
-                    f"Expected 'variables' to be a list."
+                    "Expected 'variables' to be a list."
                 )
             if not isinstance(parsed["opening_statement"], str):
                 raise ValueError(
-                    f"Expected 'opening_statement' to be a str."
+                    "Expected 'opening_statement' to be a str."
                 )
             return parsed
         except Exception as e:

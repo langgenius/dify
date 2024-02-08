@@ -221,7 +221,7 @@ class Tool(BaseModel, ABC):
                 result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += f"image has been created and sent to user already, you should tell user to check it now."
+                result += "image has been created and sent to user already, you should tell user to check it now."
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if len(response.message) > 114:
                     result += str(response.message[:114]) + '...'

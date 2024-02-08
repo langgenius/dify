@@ -238,7 +238,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
                             message_file_ids = [message_file.id for message_file, _ in message_files]
                         except ToolProviderCredentialValidationError as e:
-                            error_response = f"Please check your tool provider credentials"
+                            error_response = "Please check your tool provider credentials"
                         except (
                             ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
                         ) as e:
@@ -473,7 +473,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         next_iteration = agent_prompt_message.next_iteration
 
         if not isinstance(first_prompt, str) or not isinstance(next_iteration, str):
-            raise ValueError(f"first_prompt or next_iteration is required in CoT agent mode")
+            raise ValueError("first_prompt or next_iteration is required in CoT agent mode")
         
         # check instruction, tools, and tool_names slots
         if not first_prompt.find("{{instruction}}") >= 0:

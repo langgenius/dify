@@ -133,8 +133,8 @@ class AppListApi(Resource):
 
                 if not model_instance:
                     raise ProviderNotInitializeError(
-                        f"No Default System Reasoning Model available. Please configure "
-                        f"in the Settings -> Model Provider.")
+                        "No Default System Reasoning Model available. Please configure "
+                        "in the Settings -> Model Provider.")
                 else:
                     model_config_dict["model"]["provider"] = model_instance.provider
                     model_config_dict["model"]["name"] = model_instance.model

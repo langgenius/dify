@@ -35,7 +35,7 @@ class BasicApplicationRunner(AppRunner):
         """
         app_record = db.session.query(App).filter(App.id == application_generate_entity.app_id).first()
         if not app_record:
-            raise ValueError(f"App not found")
+            raise ValueError("App not found")
 
         app_orchestration_config = application_generate_entity.app_orchestration_config_entity
 
