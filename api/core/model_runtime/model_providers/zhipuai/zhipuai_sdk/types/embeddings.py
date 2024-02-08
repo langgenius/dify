@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -12,11 +12,11 @@ __all__ = ["Embedding", "EmbeddingsResponded"]
 class Embedding(BaseModel):
     object: str
     index: Optional[int] = None
-    embedding: List[float]
+    embedding: list[float]
 
 
 class EmbeddingsResponded(BaseModel):
     object: str
-    data: List[Embedding]
+    data: list[Embedding]
     model: str
     usage: CompletionUsage

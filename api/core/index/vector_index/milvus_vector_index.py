@@ -1,4 +1,4 @@
-from typing import Any, List, cast
+from typing import Any, cast
 
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
@@ -160,6 +160,6 @@ class MilvusVectorIndex(BaseVectorIndex):
             ],
         ))
 
-    def search_by_full_text_index(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text_index(self, query: str, **kwargs: Any) -> list[Document]:
         # milvus/zilliz doesn't support bm25 search
         return []

@@ -2,7 +2,8 @@ import json
 import logging
 import threading
 import uuid
-from typing import Any, Generator, Optional, Tuple, Union, cast
+from collections.abc import Generator
+from typing import Any, Optional, Union, cast
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -585,7 +586,7 @@ class ApplicationManager:
         return AppOrchestrationConfigEntity(**properties)
 
     def _init_generate_records(self, application_generate_entity: ApplicationGenerateEntity) \
-            -> Tuple[Conversation, Message]:
+            -> tuple[Conversation, Message]:
         """
         Initialize generate records
         :param application_generate_entity: application generate entity

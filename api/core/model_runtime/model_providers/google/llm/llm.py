@@ -1,5 +1,6 @@
 import logging
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 import google.api_core.exceptions as exceptions
 import google.generativeai as genai
@@ -34,7 +35,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -103,7 +104,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
-                  stop: Optional[List[str]] = None, stream: bool = True,
+                  stop: Optional[list[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke large language model

@@ -1,4 +1,5 @@
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from replicate import Client as ReplicateClient
 from replicate.exceptions import ReplicateError
@@ -29,7 +30,7 @@ from core.model_runtime.model_providers.replicate._common import _CommonReplicat
 class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None, stream: bool = True,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None, stream: bool = True,
                 user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
         version = credentials['model_version']

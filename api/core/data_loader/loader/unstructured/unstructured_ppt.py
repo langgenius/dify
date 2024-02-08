@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
@@ -23,7 +22,7 @@ class UnstructuredPPTLoader(BaseLoader):
         self._file_path = file_path
         self._api_url = api_url
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         from unstructured.partition.ppt import partition_ppt
 
         elements = partition_ppt(filename=self._file_path, api_url=self._api_url)

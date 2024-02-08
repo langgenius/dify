@@ -1,5 +1,5 @@
 import os
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import qdrant_client
 from langchain.embeddings.base import Embeddings
@@ -210,7 +210,7 @@ class QdrantVectorIndex(BaseVectorIndex):
 
         return False
 
-    def search_by_full_text_index(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text_index(self, query: str, **kwargs: Any) -> list[Document]:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 

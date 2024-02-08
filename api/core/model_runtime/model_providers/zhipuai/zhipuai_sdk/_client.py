@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Mapping, Union
+from collections.abc import Mapping
+from typing import Union
 
 import httpx
 from httpx import Timeout

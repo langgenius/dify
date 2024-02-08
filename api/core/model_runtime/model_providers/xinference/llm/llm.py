@@ -1,4 +1,5 @@
-from typing import Generator, Iterator, List, cast
+from collections.abc import Generator, Iterator
+from typing import cast
 
 from openai import (
     APIConnectionError,
@@ -62,7 +63,7 @@ from core.model_runtime.utils import helper
 class XinferenceAILargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
-                stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
+                stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         """
             invoke LLM
@@ -131,7 +132,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         return self._num_tokens_from_messages(prompt_messages, tools)
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage], tools: list[PromptMessageTool], 
+    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool], 
                                   is_completion_model: bool = False) -> int:
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
@@ -359,7 +360,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                  model_parameters: dict, extra_model_kwargs: XinferenceModelExtraParameter,
                  tools: list[PromptMessageTool] | None = None, 
-                 stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
+                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         """
             generate text from LLM
@@ -404,7 +405,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 } for tool in tools
             ]
 
-        if isinstance(xinference_model, (RESTfulChatModelHandle, RESTfulChatglmCppChatModelHandle)):
+        if isinstance(xinference_model, RESTfulChatModelHandle | RESTfulChatglmCppChatModelHandle):
             resp = client.chat.completions.create(
                 model=credentials['model_uid'],
                 messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages], 

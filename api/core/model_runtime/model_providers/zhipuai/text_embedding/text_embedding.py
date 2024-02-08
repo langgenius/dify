@@ -1,5 +1,5 @@
 import time
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -81,7 +81,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def embed_documents(self, model: str, client: ZhipuAI, texts: List[str]) -> Tuple[List[List[float]], int]:
+    def embed_documents(self, model: str, client: ZhipuAI, texts: list[str]) -> tuple[list[list[float]], int]:
         """Call out to ZhipuAI's embedding endpoint.
 
         Args:
@@ -101,7 +101,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
 
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
     
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Call out to ZhipuAI's embedding endpoint.
 
         Args:

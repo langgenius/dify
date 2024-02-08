@@ -1,8 +1,9 @@
 import datetime
 import json
 import logging
+from collections.abc import Iterator
 from json import JSONDecodeError
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -135,7 +136,7 @@ class ProviderConfiguration(BaseModel):
             if self.provider.provider_credential_schema else []
         )
 
-    def custom_credentials_validate(self, credentials: dict) -> Tuple[Provider, dict]:
+    def custom_credentials_validate(self, credentials: dict) -> tuple[Provider, dict]:
         """
         Validate custom credentials.
         :param credentials: provider credentials
@@ -282,7 +283,7 @@ class ProviderConfiguration(BaseModel):
         return None
 
     def custom_model_credentials_validate(self, model_type: ModelType, model: str, credentials: dict) \
-            -> Tuple[ProviderModel, dict]:
+            -> tuple[ProviderModel, dict]:
         """
         Validate custom model credentials.
 
@@ -711,7 +712,7 @@ class ProviderConfigurations(BaseModel):
     Model class for provider configuration dict.
     """
     tenant_id: str
-    configurations: Dict[str, ProviderConfiguration] = {}
+    configurations: dict[str, ProviderConfiguration] = {}
 
     def __init__(self, tenant_id: str):
         super().__init__(tenant_id=tenant_id)
@@ -759,7 +760,7 @@ class ProviderConfigurations(BaseModel):
 
         return all_models
 
-    def to_list(self) -> List[ProviderConfiguration]:
+    def to_list(self) -> list[ProviderConfiguration]:
         """
         Convert to list.
 

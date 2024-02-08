@@ -1,5 +1,4 @@
 import json
-from typing import List
 
 from flask import current_app
 from httpx import get
@@ -103,7 +102,7 @@ class ToolManageService:
         ]
 
     @staticmethod
-    def parser_api_schema(schema: str) -> List[ApiBasedToolBundle]:
+    def parser_api_schema(schema: str) -> list[ApiBasedToolBundle]:
         """
             parse api schema to tool bundle
         """
@@ -173,7 +172,7 @@ class ToolManageService:
             raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> List[ApiBasedToolBundle]:
+    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> list[ApiBasedToolBundle]:
         """
             convert schema to tool bundles
 

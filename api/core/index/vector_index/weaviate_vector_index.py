@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import requests
 import weaviate
@@ -172,7 +172,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
 
         return False
 
-    def search_by_full_text_index(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text_index(self, query: str, **kwargs: Any) -> list[Document]:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
         return vector_store.similarity_search_by_bm25(query, kwargs.get('top_k', 2), **kwargs)

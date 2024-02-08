@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -19,5 +19,5 @@ class AsyncCompletion(BaseModel):
     request_id: Optional[str] = None
     model: Optional[str] = None
     task_status: str
-    choices: List[CompletionChoice]
+    choices: list[CompletionChoice]
     usage: CompletionUsage

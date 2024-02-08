@@ -1,5 +1,6 @@
 import json
-from typing import Any, Generator, Union
+from collections.abc import Generator
+from typing import Any, Union
 
 from sqlalchemy import and_
 

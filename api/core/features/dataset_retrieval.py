@@ -1,4 +1,4 @@
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 from langchain.tools import BaseTool
 
@@ -96,7 +96,7 @@ class DatasetRetrievalFeature:
                                   return_resource: bool,
                                   invoke_from: InvokeFrom,
                                   hit_callback: DatasetIndexToolCallbackHandler) \
-            -> Optional[List[BaseTool]]:
+            -> Optional[list[BaseTool]]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param tenant_id: tenant id

@@ -1,5 +1,6 @@
 import re
-from typing import Any, List, Optional, Sequence, Tuple, Union, cast
+from collections.abc import Sequence
+from typing import Any, Optional, Union, cast
 
 from langchain import BasePromptTemplate, PromptTemplate
 from langchain.agents import Agent, AgentOutputParser, StructuredChatAgent
@@ -68,7 +69,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
 
     def plan(
             self,
-            intermediate_steps: List[Tuple[AgentAction, str]],
+            intermediate_steps: list[tuple[AgentAction, str]],
             callbacks: Callbacks = None,
             **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -125,8 +126,8 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             suffix: str = SUFFIX,
             human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[List[str]] = None,
-            memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            input_variables: Optional[list[str]] = None,
+            memory_prompts: Optional[list[BasePromptTemplate]] = None,
     ) -> BasePromptTemplate:
         tool_strings = []
         for tool in tools:
@@ -153,7 +154,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             tools: Sequence[BaseTool],
             prefix: str = PREFIX,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[List[str]] = None,
+            input_variables: Optional[list[str]] = None,
     ) -> PromptTemplate:
         """Create prompt in the style of the zero shot agent.
 
@@ -180,7 +181,7 @@ Thought: {agent_scratchpad}
         return PromptTemplate(template=template, input_variables=input_variables)
 
     def _construct_scratchpad(
-            self, intermediate_steps: List[Tuple[AgentAction, str]]
+            self, intermediate_steps: list[tuple[AgentAction, str]]
     ) -> str:
         agent_scratchpad = ""
         for action, observation in intermediate_steps:
@@ -213,8 +214,8 @@ Thought: {agent_scratchpad}
             suffix: str = SUFFIX,
             human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[List[str]] = None,
-            memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            input_variables: Optional[list[str]] = None,
+            memory_prompts: Optional[list[BasePromptTemplate]] = None,
             **kwargs: Any,
     ) -> Agent:
         """Construct an agent from an LLM and tools."""
