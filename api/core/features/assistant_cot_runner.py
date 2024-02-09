@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Dict, Generator, List, Literal, Union, Tuple
+from typing import Dict, Generator, List, Literal, Union
 
 from core.application_queue_manager import PublishFrom
 from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
