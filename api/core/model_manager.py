@@ -200,7 +200,7 @@ class ModelInstance:
         :return: tts model voices
         """
         if not isinstance(self.model_type_instance, TTSModel):
-            raise Exception(f"Model type instance is not TTSModel")
+            raise Exception("Model type instance is not TTSModel")
 
         self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return self.model_type_instance.get_tts_model_voices(
