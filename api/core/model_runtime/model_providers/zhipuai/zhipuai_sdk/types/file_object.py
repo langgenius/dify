@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -20,5 +20,5 @@ class FileObject(BaseModel):
 class ListOfFileObject(BaseModel):
 
     object: Optional[str] = None
-    data: List[FileObject]
+    data: list[FileObject]
     has_more: Optional[bool] = None

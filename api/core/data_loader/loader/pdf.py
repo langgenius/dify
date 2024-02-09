@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from langchain.document_loaders import PyPDFium2Loader
 from langchain.document_loaders.base import BaseLoader
@@ -28,7 +28,7 @@ class PdfLoader(BaseLoader):
         self._file_path = file_path
         self._upload_file = upload_file
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         plaintext_file_key = ''
         plaintext_file_exists = False
         if self._upload_file:

@@ -1,21 +1,22 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from os import PathLike
-from typing import IO, TYPE_CHECKING, Any, List, Mapping, Sequence, Tuple, Type, TypeVar, Union
+from typing import IO, TYPE_CHECKING, Any, Literal, TypeVar, Union
 
 import pydantic
-from typing_extensions import Literal, override
+from typing_extensions import override
 
 Query = Mapping[str, object]
 Body = object
 AnyMapping = Mapping[str, object]
 PrimitiveData = Union[str, int, float, bool, None]
-Data = Union[PrimitiveData, List[Any], Tuple[Any], "Mapping[str, Any]"]
+Data = Union[PrimitiveData, list[Any], tuple[Any], "Mapping[str, Any]"]
 ModelT = TypeVar("ModelT", bound=pydantic.BaseModel)
 _T = TypeVar("_T")
 
 if TYPE_CHECKING:
-    NoneType: Type[None]
+    NoneType: type[None]
 else:
     NoneType = type(None)
 
@@ -74,7 +75,7 @@ Headers = Mapping[str, Union[str, Omit]]
 
 ResponseT = TypeVar(
     "ResponseT",
-    bound="Union[str, None, BaseModel, List[Any], Dict[str, Any], Response, UnknownResponse, ModelBuilderProtocol, BinaryResponseContent]",
+    bound="Union[str, None, BaseModel, list[Any], Dict[str, Any], Response, UnknownResponse, ModelBuilderProtocol, BinaryResponseContent]",
 )
 
 # for user input files
@@ -85,21 +86,21 @@ else:
 
 FileTypes = Union[
     FileContent,  # file content
-    Tuple[str, FileContent],  # (filename, file)
-    Tuple[str, FileContent, str],  # (filename, file , content_type)
-    Tuple[str, FileContent, str, Mapping[str, str]],  # (filename, file , content_type, headers)
+    tuple[str, FileContent],  # (filename, file)
+    tuple[str, FileContent, str],  # (filename, file , content_type)
+    tuple[str, FileContent, str, Mapping[str, str]],  # (filename, file , content_type, headers)
 ]
 
-RequestFiles = Union[Mapping[str, FileTypes], Sequence[Tuple[str, FileTypes]]]
+RequestFiles = Union[Mapping[str, FileTypes], Sequence[tuple[str, FileTypes]]]
 
 # for httpx client supported files
 
 HttpxFileContent = Union[bytes, IO[bytes]]
 HttpxFileTypes = Union[
     FileContent,  # file content
-    Tuple[str, HttpxFileContent],  # (filename, file)
-    Tuple[str, HttpxFileContent, str],  # (filename, file , content_type)
-    Tuple[str, HttpxFileContent, str, Mapping[str, str]],  # (filename, file , content_type, headers)
+    tuple[str, HttpxFileContent],  # (filename, file)
+    tuple[str, HttpxFileContent, str],  # (filename, file , content_type)
+    tuple[str, HttpxFileContent, str, Mapping[str, str]],  # (filename, file , content_type, headers)
 ]
 
-HttpxRequestFiles = Union[Mapping[str, HttpxFileTypes], Sequence[Tuple[str, HttpxFileTypes]]]
+HttpxRequestFiles = Union[Mapping[str, HttpxFileTypes], Sequence[tuple[str, HttpxFileTypes]]]

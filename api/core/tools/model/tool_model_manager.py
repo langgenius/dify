@@ -5,7 +5,7 @@
 """
 
 import json
-from typing import List, cast
+from typing import cast
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
@@ -56,7 +56,7 @@ class ToolModelManager:
     @staticmethod
     def calculate_tokens(
         tenant_id: str,
-        prompt_messages: List[PromptMessage]
+        prompt_messages: list[PromptMessage]
     ) -> int:
         """
             calculate tokens from prompt messages and model parameters
@@ -82,7 +82,7 @@ class ToolModelManager:
     def invoke(
         user_id: str, tenant_id: str,
         tool_type: str, tool_name: str,
-        prompt_messages: List[PromptMessage]
+        prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context

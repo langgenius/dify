@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -40,11 +40,11 @@ class UserToolProvider(BaseModel):
         }
 
 class UserToolProviderCredentials(BaseModel):
-    credentials: Dict[str, ToolProviderCredentials]
+    credentials: dict[str, ToolProviderCredentials]
 
 class UserTool(BaseModel):
     author: str
     name: str # identifier
     label: I18nObject # label
     description: I18nObject
-    parameters: Optional[List[ToolParameter]]
+    parameters: Optional[list[ToolParameter]]

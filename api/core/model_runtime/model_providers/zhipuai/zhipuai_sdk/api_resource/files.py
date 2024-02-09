@@ -18,7 +18,7 @@ __all__ = ["Files"]
 
 class Files(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(

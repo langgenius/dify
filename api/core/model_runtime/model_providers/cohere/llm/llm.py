@@ -1,5 +1,6 @@
 import logging
-from typing import Generator, List, Optional, Tuple, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
 
 import cohere
 from cohere.responses import Chat, Generations
@@ -38,7 +39,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -138,7 +139,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
+                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm model
@@ -264,7 +265,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 break
 
     def _chat_generate(self, model: str, credentials: dict,
-                       prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
+                       prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm chat model
@@ -306,7 +307,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         return self._handle_chat_generate_response(model, credentials, response, prompt_messages, stop)
 
     def _handle_chat_generate_response(self, model: str, credentials: dict, response: Chat,
-                                       prompt_messages: list[PromptMessage], stop: Optional[List[str]] = None) \
+                                       prompt_messages: list[PromptMessage], stop: Optional[list[str]] = None) \
             -> LLMResult:
         """
         Handle llm chat response
@@ -352,7 +353,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
     def _handle_chat_generate_stream_response(self, model: str, credentials: dict, response: StreamingChat,
                                               prompt_messages: list[PromptMessage],
-                                              stop: Optional[List[str]] = None) -> Generator:
+                                              stop: Optional[list[str]] = None) -> Generator:
         """
         Handle llm chat stream response
 
@@ -427,7 +428,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 index += 1
 
     def _convert_prompt_messages_to_message_and_chat_histories(self, prompt_messages: list[PromptMessage]) \
-            -> Tuple[str, list[dict]]:
+            -> tuple[str, list[dict]]:
         """
         Convert prompt messages to message and chat histories
         :param prompt_messages: prompt messages
@@ -495,7 +496,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
         return response.length
 
-    def _num_tokens_from_messages(self, model: str, credentials: dict, messages: List[PromptMessage]) -> int:
+    def _num_tokens_from_messages(self, model: str, credentials: dict, messages: list[PromptMessage]) -> int:
         """Calculate num tokens Cohere model."""
         messages = [self._convert_prompt_message_to_dict(m) for m in messages]
         message_strs = [f"{message['role']}: {message['message']}" for message in messages]

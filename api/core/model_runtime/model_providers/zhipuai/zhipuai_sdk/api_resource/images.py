@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class Images(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def generations(

@@ -1,5 +1,6 @@
 import logging
-from typing import Generator, List, Optional, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
 
 import tiktoken
 from openai import OpenAI, Stream
@@ -35,7 +36,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -215,7 +216,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         return ai_model_entities
 
     def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
+                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
@@ -366,7 +367,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
     def _chat_generate(self, model: str, credentials: dict,
                        prompt_messages: list[PromptMessage], model_parameters: dict,
-                       tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                       tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm chat model
@@ -706,7 +707,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return num_tokens
 
-    def _num_tokens_from_messages(self, model: str, messages: List[PromptMessage],
+    def _num_tokens_from_messages(self, model: str, messages: list[PromptMessage],
                                   tools: Optional[list[PromptMessageTool]] = None) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 

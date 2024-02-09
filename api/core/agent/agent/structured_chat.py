@@ -1,5 +1,6 @@
 import re
-from typing import Any, List, Optional, Sequence, Tuple, Union, cast
+from collections.abc import Sequence
+from typing import Any, Optional, Union, cast
 
 from langchain import BasePromptTemplate, PromptTemplate
 from langchain.agents import Agent, AgentOutputParser, StructuredChatAgent
@@ -82,7 +83,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
 
     def plan(
         self,
-        intermediate_steps: List[Tuple[AgentAction, str]],
+        intermediate_steps: list[tuple[AgentAction, str]],
         callbacks: Callbacks = None,
         **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -127,7 +128,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
                                           "I don't know how to respond to that."}, "")
 
-    def summarize_messages(self, intermediate_steps: List[Tuple[AgentAction, str]], **kwargs):
+    def summarize_messages(self, intermediate_steps: list[tuple[AgentAction, str]], **kwargs):
         if len(intermediate_steps) >= 2 and self.summary_model_config:
             should_summary_intermediate_steps = intermediate_steps[self.moving_summary_index:-1]
             should_summary_messages = [AIMessage(content=observation)
@@ -154,7 +155,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
         return self.get_full_inputs([intermediate_steps[-1]], **kwargs)
 
     def predict_new_summary(
-        self, messages: List[BaseMessage], existing_summary: str
+        self, messages: list[BaseMessage], existing_summary: str
     ) -> str:
         new_lines = get_buffer_string(
             messages,
@@ -173,8 +174,8 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             suffix: str = SUFFIX,
             human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[List[str]] = None,
-            memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            input_variables: Optional[list[str]] = None,
+            memory_prompts: Optional[list[BasePromptTemplate]] = None,
     ) -> BasePromptTemplate:
         tool_strings = []
         for tool in tools:
@@ -200,7 +201,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             tools: Sequence[BaseTool],
             prefix: str = PREFIX,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[List[str]] = None,
+            input_variables: Optional[list[str]] = None,
     ) -> PromptTemplate:
         """Create prompt in the style of the zero shot agent.
 
@@ -227,7 +228,7 @@ Thought: {agent_scratchpad}
         return PromptTemplate(template=template, input_variables=input_variables)
 
     def _construct_scratchpad(
-        self, intermediate_steps: List[Tuple[AgentAction, str]]
+        self, intermediate_steps: list[tuple[AgentAction, str]]
     ) -> str:
         agent_scratchpad = ""
         for action, observation in intermediate_steps:
@@ -260,8 +261,8 @@ Thought: {agent_scratchpad}
             suffix: str = SUFFIX,
             human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[List[str]] = None,
-            memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            input_variables: Optional[list[str]] = None,
+            memory_prompts: Optional[list[BasePromptTemplate]] = None,
             agent_llm_callback: Optional[AgentLLMCallback] = None,
             **kwargs: Any,
     ) -> Agent:

@@ -1,7 +1,7 @@
 import datetime
 import logging
 import time
-from typing import List, Optional
+from typing import Optional
 
 import click
 from celery import shared_task
@@ -15,7 +15,7 @@ from models.dataset import DocumentSegment
 
 
 @shared_task(queue='dataset')
-def update_segment_index_task(segment_id: str, keywords: Optional[List[str]] = None):
+def update_segment_index_task(segment_id: str, keywords: Optional[list[str]] = None):
     """
     Async update segment index
     :param segment_id:

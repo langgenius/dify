@@ -1,5 +1,6 @@
 import time
-from typing import Any, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import SimpleChatModel
@@ -19,8 +20,8 @@ class FakeLLM(SimpleChatModel):
 
     def _call(
         self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
+        messages: list[BaseMessage],
+        stop: Optional[list[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> str:
@@ -36,8 +37,8 @@ class FakeLLM(SimpleChatModel):
 
     def _generate(
         self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
+        messages: list[BaseMessage],
+        stop: Optional[list[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> ChatResult:

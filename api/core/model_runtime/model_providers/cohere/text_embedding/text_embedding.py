@@ -1,5 +1,5 @@
 import time
-from typing import Optional, Tuple
+from typing import Optional
 
 import cohere
 import numpy as np
@@ -168,7 +168,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _embedding_invoke(self, model: str, credentials: dict, texts: list[str]) -> Tuple[list[list[float]], int]:
+    def _embedding_invoke(self, model: str, credentials: dict, texts: list[str]) -> tuple[list[list[float]], int]:
         """
         Invoke embedding model
 

@@ -1,4 +1,5 @@
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Any, Optional, Union
 
 from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
 from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
@@ -42,7 +43,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
     def plan(
         self,
-        intermediate_steps: List[Tuple[AgentAction, str]],
+        intermediate_steps: list[tuple[AgentAction, str]],
         callbacks: Callbacks = None,
         **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -85,7 +86,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
     def real_plan(
         self,
-        intermediate_steps: List[Tuple[AgentAction, str]],
+        intermediate_steps: list[tuple[AgentAction, str]],
         callbacks: Callbacks = None,
         **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -146,7 +147,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
     async def aplan(
             self,
-            intermediate_steps: List[Tuple[AgentAction, str]],
+            intermediate_steps: list[tuple[AgentAction, str]],
             callbacks: Callbacks = None,
             **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -158,7 +159,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
-            extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
+            extra_prompt_messages: Optional[list[BaseMessagePromptTemplate]] = None,
             system_message: Optional[SystemMessage] = SystemMessage(
                 content="You are a helpful AI assistant."
             ),

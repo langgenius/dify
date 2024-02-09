@@ -1,7 +1,8 @@
 import datetime
 import hashlib
 import uuid
-from typing import Generator, Tuple, Union
+from collections.abc import Generator
+from typing import Union
 
 from flask import current_app
 from flask_login import current_user
@@ -141,7 +142,7 @@ class FileService:
         return text
 
     @staticmethod
-    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> Tuple[Generator, str]:
+    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> tuple[Generator, str]:
         result = UploadFileParser.verify_image_file_signature(file_id, timestamp, nonce, sign)
         if not result:
             raise NotFound("File not found or signature is invalid")

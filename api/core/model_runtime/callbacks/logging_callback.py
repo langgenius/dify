@@ -1,7 +1,7 @@
 import json
 import logging
 import sys
-from typing import List, Optional
+from typing import Optional
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class LoggingCallback(Callback):
     def on_before_invoke(self, llm_instance: AIModel, model: str, credentials: dict,
                          prompt_messages: list[PromptMessage], model_parameters: dict,
-                         tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                         tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                          stream: bool = True, user: Optional[str] = None) -> None:
         """
         Before invoke callback
@@ -60,7 +60,7 @@ class LoggingCallback(Callback):
 
     def on_new_chunk(self, llm_instance: AIModel, chunk: LLMResultChunk, model: str, credentials: dict,
                      prompt_messages: list[PromptMessage], model_parameters: dict,
-                     tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                     tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                      stream: bool = True, user: Optional[str] = None):
         """
         On new chunk callback
@@ -81,7 +81,7 @@ class LoggingCallback(Callback):
 
     def on_after_invoke(self, llm_instance: AIModel, result: LLMResult, model: str, credentials: dict,
                         prompt_messages: list[PromptMessage], model_parameters: dict,
-                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                         stream: bool = True, user: Optional[str] = None) -> None:
         """
         After invoke callback
@@ -113,7 +113,7 @@ class LoggingCallback(Callback):
 
     def on_invoke_error(self, llm_instance: AIModel, ex: Exception, model: str, credentials: dict,
                         prompt_messages: list[PromptMessage], model_parameters: dict,
-                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                         stream: bool = True, user: Optional[str] = None) -> None:
         """
         Invoke error callback

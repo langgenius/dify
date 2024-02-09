@@ -1,6 +1,7 @@
 import logging
+from collections.abc import Generator
 from os.path import join
-from typing import Generator, List, Optional, cast
+from typing import Optional, cast
 
 from httpx import Timeout
 from openai import (
@@ -45,7 +46,7 @@ logger = logging.getLogger(__name__)
 class ChatGLMLargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, 
                 prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: List[str] | None = None, 
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         """
@@ -138,7 +139,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict, 
                 prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: List[str] | None = None, 
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         """
@@ -394,7 +395,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
 
         return num_tokens
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage],
+    def _num_tokens_from_messages(self, messages: list[PromptMessage],
                                   tools: Optional[list[PromptMessageTool]] = None) -> int:
         """Calculate num tokens for chatglm2 and chatglm3 with GPT2 tokenizer.
 

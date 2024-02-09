@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
+from collections.abc import Callable, Iterable
+from typing import Any, Optional
 from uuid import uuid4
 
 import numpy as np
@@ -13,7 +14,7 @@ from langchain.vectorstores.base import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
 
 
-def _default_schema(index_name: str) -> Dict:
+def _default_schema(index_name: str) -> dict:
     return {
         "class": index_name,
         "properties": [
@@ -89,7 +90,7 @@ class Weaviate(VectorStore):
         index_name: str,
         text_key: str,
         embedding: Optional[Embeddings] = None,
-        attributes: Optional[List[str]] = None,
+        attributes: Optional[list[str]] = None,
         relevance_score_fn: Optional[
             Callable[[float], float]
         ] = _default_score_normalizer,
@@ -131,14 +132,14 @@ class Weaviate(VectorStore):
     def add_texts(
         self,
         texts: Iterable[str],
-        metadatas: Optional[List[dict]] = None,
+        metadatas: Optional[list[dict]] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Upload texts with metadata (properties) to Weaviate."""
         from weaviate.util import get_valid_uuid
 
         ids = []
-        embeddings: Optional[List[List[float]]] = None
+        embeddings: Optional[list[list[float]]] = None
         if self._embedding:
             if not isinstance(texts, list):
                 texts = list(texts)
@@ -172,7 +173,7 @@ class Weaviate(VectorStore):
 
     def similarity_search(
         self, query: str, k: int = 4, **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs most similar to query.
 
         Args:
@@ -195,7 +196,7 @@ class Weaviate(VectorStore):
 
     def similarity_search_by_text(
         self, query: str, k: int = 4, **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs most similar to query.
 
         Args:
@@ -205,7 +206,7 @@ class Weaviate(VectorStore):
         Returns:
             List of Documents most similar to the query.
         """
-        content: Dict[str, Any] = {"concepts": [query]}
+        content: dict[str, Any] = {"concepts": [query]}
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
         query_obj = self._client.query.get(self._index_name, self._query_attrs)
@@ -224,7 +225,7 @@ class Weaviate(VectorStore):
 
     def similarity_search_by_bm25(
         self, query: str, k: int = 4, **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs using BM25F.
 
         Args:
@@ -234,7 +235,7 @@ class Weaviate(VectorStore):
         Returns:
             List of Documents most similar to the query.
         """
-        content: Dict[str, Any] = {"concepts": [query]}
+        content: dict[str, Any] = {"concepts": [query]}
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
         query_obj = self._client.query.get(self._index_name, self._query_attrs)
@@ -253,8 +254,8 @@ class Weaviate(VectorStore):
         return docs
 
     def similarity_search_by_vector(
-        self, embedding: List[float], k: int = 4, **kwargs: Any
-    ) -> List[Document]:
+        self, embedding: list[float], k: int = 4, **kwargs: Any
+    ) -> list[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
         vector = {"vector": embedding}
         query_obj = self._client.query.get(self._index_name, self._query_attrs)
@@ -278,7 +279,7 @@ class Weaviate(VectorStore):
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance.
 
         Maximal marginal relevance optimizes for similarity to query AND diversity
@@ -309,12 +310,12 @@ class Weaviate(VectorStore):
 
     def max_marginal_relevance_search_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: int = 4,
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Return docs selected using the maximal marginal relevance.
 
         Maximal marginal relevance optimizes for similarity to query AND diversity
@@ -359,7 +360,7 @@ class Weaviate(VectorStore):
 
     def similarity_search_with_score(
         self, query: str, k: int = 4, **kwargs: Any
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """
         Return list of documents most similar to the query
         text and cosine distance in float for each.
@@ -369,7 +370,7 @@ class Weaviate(VectorStore):
             raise ValueError(
                 "_embedding cannot be None for similarity_search_with_score"
             )
-        content: Dict[str, Any] = {"concepts": [query]}
+        content: dict[str, Any] = {"concepts": [query]}
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
         query_obj = self._client.query.get(self._index_name, self._query_attrs)
@@ -403,10 +404,10 @@ class Weaviate(VectorStore):
 
     @classmethod
     def from_texts(
-        cls: Type[Weaviate],
-        texts: List[str],
+        cls: type[Weaviate],
+        texts: list[str],
         embedding: Embeddings,
-        metadatas: Optional[List[dict]] = None,
+        metadatas: Optional[list[dict]] = None,
         **kwargs: Any,
     ) -> Weaviate:
         """Construct Weaviate wrapper from raw documents.
@@ -490,7 +491,7 @@ class Weaviate(VectorStore):
             by_text=by_text,
         )
 
-    def delete(self, ids: Optional[List[str]] = None, **kwargs: Any) -> None:
+    def delete(self, ids: Optional[list[str]] = None, **kwargs: Any) -> None:
         """Delete by vector IDs.
 
         Args:
