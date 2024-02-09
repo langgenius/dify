@@ -497,8 +497,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 continue
 
             delta = chunk.choices[0]
+            has_finish_reason = delta.finish_reason is not None
 
-            if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == '') and \
+            if not has_finish_reason and (delta.delta.content is None or delta.delta.content == '') and \
                 delta.delta.function_call is None:
                 continue
 
@@ -520,7 +521,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 if assistant_message_function_call:
                     # start of stream function call
                     delta_assistant_message_function_call_storage = assistant_message_function_call
-                    continue
+                    if not has_finish_reason:
+                        continue
 
             # tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
             function_call = self._extract_response_function_call(assistant_message_function_call)
@@ -534,7 +536,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
             full_assistant_content += delta.delta.content if delta.delta.content else ''
 
-            if delta.finish_reason is not None:
+            if has_finish_reason:
                 # calculate num tokens
                 prompt_tokens = self._num_tokens_from_messages(model, prompt_messages, tools)
 
