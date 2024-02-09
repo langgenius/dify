@@ -294,6 +294,17 @@ const translation = {
       uploadLimit: '上传数量限制',
     },
   },
+  voice: {
+    name: '音色',
+    description: '文本转语音音色设置',
+    settings: '设置',
+    voiceSettings: {
+      title: '音色设置',
+      language: '语言',
+      resolutionTooltip: '文本转语音音色支持语言。',
+      voice: '音色',
+    },
+  },
   openingStatement: {
     title: '对话开场白',
     add: '添加开场白',

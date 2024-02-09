@@ -115,10 +115,13 @@ const Config: FC = () => {
         draft.enabled = value
       }))
     },
+    // ToDo： TTS Voice Choose
     textToSpeech: textToSpeechConfig.enabled,
     setTextToSpeech: (value) => {
       setTextToSpeechConfig(produce(textToSpeechConfig, (draft: TextToSpeechConfig) => {
-        draft.enabled = value
+        draft.enabled = value || textToSpeechConfig.enabled
+        draft.voice = ''
+        draft.language = ''
       }))
     },
     citation: citationConfig.enabled,
@@ -245,6 +248,7 @@ const Config: FC = () => {
         {(isAgent && isChatApp) && (
           <AgentTools />
         )}
+
         <ConfigVision />
 
         {/* Chat History */}
