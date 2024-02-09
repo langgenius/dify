@@ -8,7 +8,7 @@ const LogoSite: FC<LogoSiteProps> = ({
 }) => {
   return (
     <img
-      src='/logo/logo-site.png'
+      src='https://my-buddy.ai/wp-content/uploads/2024/01/dark-logo.png'
       className={`block w-auto h-10 ${className}`}
       alt='logo'
     />

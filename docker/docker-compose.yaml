@@ -124,8 +124,8 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     # uncomment to expose dify-api port to host
-    # ports:
-    #   - "5001:5001"
+    ports:
+      - "5001:5001"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -200,24 +200,24 @@ services:
       - ./volumes/app/storage:/app/api/storage
 
   # Frontend web application.
-  web:
-    image: langgenius/dify-web:0.5.3
-    restart: always
-    environment:
-      EDITION: SELF_HOSTED
-      # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
-      # different from api or web app domain.
-      # example: http://cloud.dify.ai
-      CONSOLE_API_URL: ''
-      # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
-      # console or api domain.
-      # example: http://udify.app
-      APP_API_URL: ''
-      # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
-      SENTRY_DSN: ''
-    # uncomment to expose dify-web port to host
-    # ports:
-    #   - "3000:3000"
+  # web:
+  #   image: langgenius/dify-web:0.5.3
+  #   restart: always
+  #   environment:
+  #     EDITION: SELF_HOSTED
+  #     # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
+  #     # different from api or web app domain.
+  #     # example: http://cloud.dify.ai
+  #     CONSOLE_API_URL: ''
+  #     # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
+  #     # console or api domain.
+  #     # example: http://udify.app
+  #     APP_API_URL: ''
+  #     # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
+  #     SENTRY_DSN: ''
+  #   # uncomment to expose dify-web port to host
+  #   # ports:
+  #   #   - "3000:3000"
 
   # The postgres database.
   db:
@@ -307,6 +307,6 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
     depends_on:
       - api
-      - web
+      # - web
     ports:
       - "80:80"
