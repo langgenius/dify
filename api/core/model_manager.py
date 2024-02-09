@@ -98,7 +98,8 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_rerank(self, query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
+    def invoke_rerank(self, query: str, docs: list[str], score_threshold: Optional[float] = None,
+                      top_n: Optional[int] = None,
                       user: Optional[str] = None) \
             -> RerankResult:
         """
