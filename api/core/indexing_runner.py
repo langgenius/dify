@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 from flask import Flask, current_app
 from flask_login import current_user
@@ -40,7 +40,7 @@ class IndexingRunner:
         self.storage = storage
         self.model_manager = ModelManager()
 
-    def run(self, dataset_documents: List[DatasetDocument]):
+    def run(self, dataset_documents: list[DatasetDocument]):
         """Run the indexing process."""
         for dataset_document in dataset_documents:
             try:
@@ -238,7 +238,7 @@ class IndexingRunner:
             dataset_document.stopped_at = datetime.datetime.utcnow()
             db.session.commit()
 
-    def file_indexing_estimate(self, tenant_id: str, file_details: List[UploadFile], tmp_processing_rule: dict,
+    def file_indexing_estimate(self, tenant_id: str, file_details: list[UploadFile], tmp_processing_rule: dict,
                                doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
                                indexing_technique: str = 'economy') -> dict:
         """
@@ -494,7 +494,7 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def _load_data(self, dataset_document: DatasetDocument, automatic: bool = False) -> List[Document]:
+    def _load_data(self, dataset_document: DatasetDocument, automatic: bool = False) -> list[Document]:
         # load file
         if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
             return []
@@ -526,7 +526,7 @@ class IndexingRunner:
         )
 
         # replace doc id to document model id
-        text_docs = cast(List[Document], text_docs)
+        text_docs = cast(list[Document], text_docs)
         for text_doc in text_docs:
             # remove invalid symbol
             text_doc.page_content = self.filter_string(text_doc.page_content)
@@ -540,7 +540,7 @@ class IndexingRunner:
         text = re.sub(r'\|>', '>', text)
         text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]', '', text)
         # Unicode  U+FFFE
-        text = re.sub(u'\uFFFE', '', text)
+        text = re.sub('\uFFFE', '', text)
         return text
 
     def _get_splitter(self, processing_rule: DatasetProcessRule,
@@ -577,9 +577,9 @@ class IndexingRunner:
 
         return character_splitter
 
-    def _step_split(self, text_docs: List[Document], splitter: TextSplitter,
+    def _step_split(self, text_docs: list[Document], splitter: TextSplitter,
                     dataset: Dataset, dataset_document: DatasetDocument, processing_rule: DatasetProcessRule) \
-            -> List[Document]:
+            -> list[Document]:
         """
         Split the text documents into documents and save them to the document segment.
         """
@@ -624,9 +624,9 @@ class IndexingRunner:
 
         return documents
 
-    def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
+    def _split_to_documents(self, text_docs: list[Document], splitter: TextSplitter,
                             processing_rule: DatasetProcessRule, tenant_id: str,
-                            document_form: str, document_language: str) -> List[Document]:
+                            document_form: str, document_language: str) -> list[Document]:
         """
         Split the text documents into nodes.
         """
@@ -699,8 +699,8 @@ class IndexingRunner:
 
             all_qa_documents.extend(format_documents)
 
-    def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
-                                         processing_rule: DatasetProcessRule) -> List[Document]:
+    def _split_to_documents_for_estimate(self, text_docs: list[Document], splitter: TextSplitter,
+                                         processing_rule: DatasetProcessRule) -> list[Document]:
         """
         Split the text documents into nodes.
         """
@@ -770,7 +770,7 @@ class IndexingRunner:
             for q, a in matches if q and a
         ]
 
-    def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
+    def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: list[Document]) -> None:
         """
         Build the index for the document.
         """
@@ -877,7 +877,7 @@ class IndexingRunner:
         DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
 
-    def batch_add_segments(self, segments: List[DocumentSegment], dataset: Dataset):
+    def batch_add_segments(self, segments: list[DocumentSegment], dataset: Dataset):
         """
         Batch add segments index processing
         """

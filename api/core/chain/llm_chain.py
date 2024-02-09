@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from langchain import LLMChain as LCLLMChain
 from langchain.callbacks.manager import CallbackManagerForChainRun
@@ -16,12 +16,12 @@ class LLMChain(LCLLMChain):
     model_config: ModelConfigEntity
     """The language model instance to use."""
     llm: BaseLanguageModel = FakeLLM(response="")
-    parameters: Dict[str, Any] = {}
+    parameters: dict[str, Any] = {}
     agent_llm_callback: Optional[AgentLLMCallback] = None
 
     def generate(
         self,
-        input_list: List[Dict[str, Any]],
+        input_list: list[dict[str, Any]],
         run_manager: Optional[CallbackManagerForChainRun] = None,
     ) -> LLMResult:
         """Generate LLM result from inputs."""

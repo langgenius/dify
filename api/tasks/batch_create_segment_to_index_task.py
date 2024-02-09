@@ -2,7 +2,7 @@ import datetime
 import logging
 import time
 import uuid
-from typing import List, cast
+from typing import cast
 
 import click
 from celery import shared_task
@@ -19,7 +19,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 
 
 @shared_task(queue='dataset')
-def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: str, document_id: str,
+def batch_create_segment_to_index_task(job_id: str, content: list, dataset_id: str, document_id: str,
                                        tenant_id: str, user_id: str):
     """
     Async batch create segment to index

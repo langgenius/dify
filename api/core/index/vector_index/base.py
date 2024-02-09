@@ -1,7 +1,7 @@
 import json
 import logging
 from abc import abstractmethod
-from typing import Any, List, cast
+from typing import Any, cast
 
 from langchain.embeddings.base import Embeddings
 from langchain.schema import BaseRetriever, Document
@@ -43,13 +43,13 @@ class BaseVectorIndex(BaseIndex):
     def search_by_full_text_index(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError
 
     def search(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 

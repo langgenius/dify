@@ -1,8 +1,9 @@
 import json
 import logging
 import re
+from collections.abc import Generator
 from decimal import Decimal
-from typing import Generator, List, Optional, Union, cast
+from typing import Optional, Union, cast
 from urllib.parse import urljoin
 
 import requests
@@ -51,7 +52,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -131,7 +132,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             raise CredentialsValidateFailedError(f'An error occurred during credentials validation: {str(ex)}')
 
     def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
+                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
@@ -398,7 +399,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         return message_dict
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage]) -> int:
+    def _num_tokens_from_messages(self, messages: list[PromptMessage]) -> int:
         """
         Calculate num tokens.
 

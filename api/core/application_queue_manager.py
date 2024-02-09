@@ -1,7 +1,8 @@
 import queue
 import time
+from collections.abc import Generator
 from enum import Enum
-from typing import Any, Generator
+from typing import Any
 
 from sqlalchemy.orm import DeclarativeMeta
 

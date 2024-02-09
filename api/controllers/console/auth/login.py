@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 import flask_login
 from flask import current_app, request
 from flask_restful import Resource, reqparse

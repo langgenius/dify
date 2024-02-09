@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 from requests import get
 
@@ -11,8 +11,8 @@ class BingSearchTool(BuiltinTool):
 
     def _invoke(self, 
                 user_id: str,
-               tool_parameters: Dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+               tool_parameters: dict[str, Any], 
+        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """

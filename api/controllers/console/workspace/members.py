@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 from flask import current_app
 from flask_login import current_user
 from flask_restful import Resource, abort, fields, marshal_with, reqparse

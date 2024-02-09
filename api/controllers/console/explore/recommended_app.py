@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with
 from sqlalchemy import and_

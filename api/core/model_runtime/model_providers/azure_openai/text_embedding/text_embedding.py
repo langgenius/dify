@@ -1,7 +1,7 @@
 import base64
 import copy
 import time
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import tiktoken
@@ -149,7 +149,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
 
     @staticmethod
     def _embedding_invoke(model: str, client: AzureOpenAI, texts: Union[list[str], str],
-                          extra_model_kwargs: dict) -> Tuple[list[list[float]], int]:
+                          extra_model_kwargs: dict) -> tuple[list[list[float]], int]:
         response = client.embeddings.create(
             input=texts,
             model=model,
