@@ -47,8 +47,7 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.mp3'
 
-        params = {"promot": promot, "end_user": end_user}
-        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user, **params)}
+        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
 
     @classmethod
     def transcript_tts(cls, tenant_id: str, text: str, voice: str, streaming: bool, end_user: Optional[str] = None):
