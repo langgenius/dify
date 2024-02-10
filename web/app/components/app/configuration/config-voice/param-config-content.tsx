@@ -25,7 +25,10 @@ const VoiceParamConfig: FC = () => {
     { value: 'en-US', name: '英语' },
     { value: 'de-DE', name: '德语' },
     { value: 'fr-FR', name: '法语' },
+    { value: 'es-ES', name: '西班牙语' },
     { value: 'it-IT', name: '意大利语' },
+    { value: 'th-TH', name: '泰语' },
+    { value: 'id-ID', name: '印尼语' },
   ]
   const {
     textToSpeechConfig,
