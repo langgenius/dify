@@ -1,5 +1,6 @@
 import io
 from typing import Optional
+from flask_login import current_user
 
 from werkzeug.datastructures import FileStorage
 
@@ -13,14 +14,15 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
-FILE_SIZE = 15
+
+FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
 ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm', 'amr']
 
 
 class AudioService:
     @classmethod
-    def transcript_asr(cls, tenant_id: str, file: FileStorage, end_user: Optional[str] = None):
+    def transcript_asr(cls, tenant_id: str, file: FileStorage, promot: str, end_user: Optional[str] = None):
         if file is None:
             raise NoAudioUploadedServiceError()
 
@@ -46,10 +48,13 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.mp3'
 
-        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
+        params = {"promot": promot, "end_user": end_user}
+        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user, **params)}
 
     @classmethod
     def transcript_tts(cls, tenant_id: str, text: str, voice: str, streaming: bool, end_user: Optional[str] = None):
+        if not end_user:
+            end_user = current_user.ldap_account
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
@@ -59,19 +64,16 @@ class AudioService:
             raise ProviderNotSupportTextToSpeechServiceError()
 
         try:
-            return model_instance.invoke_tts(content_text=text.strip(), user=end_user, streaming=streaming,
-                                             tenant_id=tenant_id, voice=voice)
+            return model_instance.invoke_tts(content_text=text.strip(), user=end_user, streaming=streaming, tenant_id=tenant_id, voice=voice)
         except Exception as e:
             raise e
 
     @classmethod
-    def transcript_tts_voices(cls, tenant_id: str, provider: str, model: str, language: str):
+    def transcript_tts_voices(cls, tenant_id: str, language: str):
         model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
+        model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
-            model_type=ModelType.TTS,
-            model=model,
-            provider=provider
+            model_type=ModelType.TTS
         )
         if model_instance is None:
             raise ProviderNotSupportTextToSpeechServiceError()

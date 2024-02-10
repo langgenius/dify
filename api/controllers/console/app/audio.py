@@ -75,7 +75,7 @@ class ChatMessageAudioApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception(f"internal server error, {str(e)}.")
             raise InternalServerError()
 
 
@@ -123,7 +123,7 @@ class ChatMessageTextApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception(f"internal server error, {str(e)}.")
             raise InternalServerError()
 
 
@@ -142,8 +142,6 @@ class TextModesApi(Resource):
 
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,
-                provider=app_model_config.model_dict.get('provider'),
-                model='tts-1',
                 language=args['language'],
             )
 
@@ -169,7 +167,7 @@ class TextModesApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception(f"internal server error, {str(e)}.")
             raise InternalServerError()
 
 
