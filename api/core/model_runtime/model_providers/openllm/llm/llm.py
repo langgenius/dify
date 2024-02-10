@@ -1,4 +1,4 @@
-from typing import Generator, List
+from collections.abc import Generator
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -40,7 +40,7 @@ from core.model_runtime.model_providers.openllm.llm.openllm_generate_errors impo
 class OpenLLMLargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
-                stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
+                stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         return self._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
@@ -77,7 +77,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                        tools: list[PromptMessageTool] | None = None) -> int:
         return self._num_tokens_from_messages(prompt_messages, tools)
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage], tools: list[PromptMessageTool]) -> int:
+    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool]) -> int:
         """
             Calculate num tokens for OpenLLM model
             it's a generate model, so we just join them by spe
@@ -87,7 +87,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
-                stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
+                stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         client = OpenLLMGenerate()
         response = client.generate(

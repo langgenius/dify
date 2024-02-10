@@ -1,4 +1,5 @@
-from typing import Generator, List, cast
+from collections.abc import Generator
+from typing import cast
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -33,7 +34,7 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors impor
 class BaichuanLarguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, 
                 prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: List[str] | None = None, 
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -43,7 +44,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
                        tools: list[PromptMessageTool] | None = None) -> int:
         return self._num_tokens_from_messages(prompt_messages)
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage],) -> int:
+    def _num_tokens_from_messages(self, messages: list[PromptMessage],) -> int:
         """Calculate num tokens for baichuan model"""
         def tokens(text: str):
             return BaichuanTokenizer._get_num_tokens(text)
@@ -107,7 +108,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                  model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
-                 stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
+                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         if tools is not None and len(tools) > 0:
             raise InvokeBadRequestError("Baichuan model doesn't support tools")

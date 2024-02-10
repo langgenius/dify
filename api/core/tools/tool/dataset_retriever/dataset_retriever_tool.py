@@ -1,5 +1,5 @@
 import threading
-from typing import List, Optional, Type
+from typing import Optional
 
 from flask import current_app
 from langchain.tools import BaseTool
@@ -35,14 +35,14 @@ class DatasetRetrieverToolInput(BaseModel):
 class DatasetRetrieverTool(BaseTool):
     """Tool for querying a Dataset."""
     name: str = "dataset"
-    args_schema: Type[BaseModel] = DatasetRetrieverToolInput
+    args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
 
     tenant_id: str
     dataset_id: str
     top_k: int = 2
     score_threshold: Optional[float] = None
-    hit_callbacks: List[DatasetIndexToolCallbackHandler] = []
+    hit_callbacks: list[DatasetIndexToolCallbackHandler] = []
     return_resource: bool
     retriever_from: str
 

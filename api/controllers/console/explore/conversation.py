@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range

@@ -1,8 +1,8 @@
-# -*- coding:utf-8 -*-
 import json
 import logging
+from collections.abc import Generator
 from datetime import datetime
-from typing import Generator, Union
+from typing import Union
 
 from flask import Response, stream_with_context
 from flask_login import current_user
@@ -164,8 +164,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            for chunk in response:
-                yield chunk
+            yield from response
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

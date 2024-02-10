@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import httpx
 
@@ -14,13 +14,13 @@ if TYPE_CHECKING:
 
 
 class Embeddings(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
             self,
             *,
-            input: Union[str, List[str], List[int], List[List[int]]],
+            input: Union[str, list[str], list[int], list[list[int]]],
             model: Union[str],
             encoding_format: str | NotGiven = NOT_GIVEN,
             user: str | NotGiven = NOT_GIVEN,

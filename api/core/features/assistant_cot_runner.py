@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Dict, Generator, List, Literal, Union
+from collections.abc import Generator
+from typing import Literal, Union
 
 from core.application_queue_manager import PublishFrom
 from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
@@ -29,7 +30,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, conversation: Conversation,
         message: Message,
         query: str,
-        inputs: Dict[str, str],
+        inputs: dict[str, str],
     ) -> Union[Generator, LLMResult]:
         """
         Run Cot agent application
@@ -37,7 +38,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         app_orchestration_config = self.app_orchestration_config
         self._repack_app_orchestration_config(app_orchestration_config)
 
-        agent_scratchpad: List[AgentScratchpadUnit] = []
+        agent_scratchpad: list[AgentScratchpadUnit] = []
 
         # check model mode
         if self.app_orchestration_config.model_config.mode == "completion":
@@ -56,7 +57,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         prompt_messages = self.history_prompt_messages
 
         # convert tools into ModelRuntime Tool format
-        prompt_messages_tools: List[PromptMessageTool] = []
+        prompt_messages_tools: list[PromptMessageTool] = []
         tool_instances = {}
         for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
             try:
@@ -83,7 +84,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         }
         final_answer = ''
 
-        def increase_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
             else:
@@ -493,7 +494,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             if not next_iteration.find("{{observation}}") >= 0:
                 raise ValueError("{{observation}} is required in next_iteration")
             
-    def _convert_scratchpad_list_to_str(self, agent_scratchpad: List[AgentScratchpadUnit]) -> str:
+    def _convert_scratchpad_list_to_str(self, agent_scratchpad: list[AgentScratchpadUnit]) -> str:
         """
             convert agent scratchpad list to str
         """
@@ -506,13 +507,13 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         return result
     
     def _organize_cot_prompt_messages(self, mode: Literal["completion", "chat"],
-                                      prompt_messages: List[PromptMessage],
-                                      tools: List[PromptMessageTool], 
-                                      agent_scratchpad: List[AgentScratchpadUnit],
+                                      prompt_messages: list[PromptMessage],
+                                      tools: list[PromptMessageTool], 
+                                      agent_scratchpad: list[AgentScratchpadUnit],
                                       agent_prompt_message: AgentPromptEntity,
                                       instruction: str,
                                       input: str,
-        ) -> List[PromptMessage]:
+        ) -> list[PromptMessage]:
         """
             organize chain of thought prompt messages, a standard prompt message is like:
                 Respond to the human as helpfully and accurately as possible. 

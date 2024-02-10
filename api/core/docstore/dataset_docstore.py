@@ -1,4 +1,5 @@
-from typing import Any, Dict, Optional, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, Optional, cast
 
 from langchain.schema import Document
 from sqlalchemy import func
@@ -22,10 +23,10 @@ class DatasetDocumentStore:
         self._document_id = document_id
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatasetDocumentStore":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "DatasetDocumentStore":
         return cls(**config_dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "dataset_id": self._dataset.id,
@@ -40,7 +41,7 @@ class DatasetDocumentStore:
         return self._user_id
 
     @property
-    def docs(self) -> Dict[str, Document]:
+    def docs(self) -> dict[str, Document]:
         document_segments = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == self._dataset.id
         ).all()

@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 import base64
 import json
 import logging
@@ -6,7 +5,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta
 from hashlib import sha256
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from flask import current_app
 from sqlalchemy import func
@@ -510,7 +509,7 @@ class RegisterService:
             redis_client.delete(cls._get_invitation_token_key(token))
 
     @classmethod
-    def get_invitation_if_token_valid(cls, workspace_id: str, email: str, token: str) -> Optional[Dict[str, Any]]:
+    def get_invitation_if_token_valid(cls, workspace_id: str, email: str, token: str) -> Optional[dict[str, Any]]:
         invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
@@ -544,7 +543,7 @@ class RegisterService:
         }
 
     @classmethod
-    def _get_invitation_by_token(cls, token: str, workspace_id: str, email: str) -> Optional[Dict[str, str]]:
+    def _get_invitation_by_token(cls, token: str, workspace_id: str, email: str) -> Optional[dict[str, str]]:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f'member_invite_token:{workspace_id}, {email_hash}:{token}'

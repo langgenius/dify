@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 #  Cipher/PKCS1_OAEP.py : PKCS#1 OAEP
 #

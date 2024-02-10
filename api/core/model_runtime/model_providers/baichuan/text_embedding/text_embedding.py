@@ -1,6 +1,6 @@
 import time
 from json import dumps
-from typing import Optional, Tuple
+from typing import Optional
 
 from requests import post
 
@@ -84,7 +84,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
         return result
     
     def embedding(self, model: str, api_key, texts: list[str], user: Optional[str] = None) \
-            -> Tuple[list[list[float]], int]:
+            -> tuple[list[list[float]], int]:
         """
         Embed given texts
 

@@ -1,4 +1,3 @@
-from typing import List
 
 from langchain.schema import Document
 
@@ -40,7 +39,7 @@ class DatasetIndexToolCallbackHandler:
         db.session.add(dataset_query)
         db.session.commit()
 
-    def on_tool_end(self, documents: List[Document]) -> None:
+    def on_tool_end(self, documents: list[Document]) -> None:
         """Handle tool end."""
         for document in documents:
             doc_id = document.metadata['doc_id']
@@ -55,7 +54,7 @@ class DatasetIndexToolCallbackHandler:
 
             db.session.commit()
 
-    def return_retriever_resource_info(self, resource: List):
+    def return_retriever_resource_info(self, resource: list):
         """Handle return_retriever_resource_info."""
         if resource and len(resource) > 0:
             for item in resource:

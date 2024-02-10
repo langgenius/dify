@@ -1,4 +1,5 @@
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
@@ -14,7 +15,7 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         cred_with_endpoint = self._update_endpoint_url(credentials=credentials)
@@ -27,7 +28,7 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         return super().validate_credentials(model, cred_with_endpoint)
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
-                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         cred_with_endpoint = self._update_endpoint_url(credentials=credentials)
 

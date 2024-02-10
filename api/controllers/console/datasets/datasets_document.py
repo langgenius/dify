@@ -1,6 +1,4 @@
-# -*- coding:utf-8 -*-
 from datetime import datetime
-from typing import List
 
 from flask import request
 from flask_login import current_user
@@ -71,7 +69,7 @@ class DocumentResource(Resource):
 
         return document
 
-    def get_batch_documents(self, dataset_id: str, batch: str) -> List[Document]:
+    def get_batch_documents(self, dataset_id: str, batch: str) -> list[Document]:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')

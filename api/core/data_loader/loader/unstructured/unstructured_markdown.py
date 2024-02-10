@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
@@ -34,7 +33,7 @@ class UnstructuredMarkdownLoader(BaseLoader):
         self._file_path = file_path
         self._api_url = api_url
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         from unstructured.partition.md import partition_md
 
         elements = partition_md(filename=self._file_path, api_url=self._api_url)

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 
 
 class MinimaxMessage:
@@ -11,11 +11,11 @@ class MinimaxMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: Dict[str, int] = None
+    usage: dict[str, int] = None
     stop_reason: str = ''
-    function_call: Dict[str, Any] = None
+    function_call: dict[str, Any] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         if self.function_call and self.role == MinimaxMessage.Role.ASSISTANT.value:
             return {
                 'sender_type': 'BOT',

@@ -1,4 +1,5 @@
-from typing import IO, Generator, List, Optional, Union, cast
+from collections.abc import Generator
+from typing import IO, Optional, Union, cast
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.errors.error import ProviderTokenNotInitError
@@ -47,7 +48,7 @@ class ModelInstance:
         return credentials
 
     def invoke_llm(self, prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
-                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                    stream: bool = True, user: Optional[str] = None, callbacks: list[Callback] = None) \
             -> Union[LLMResult, Generator]:
         """

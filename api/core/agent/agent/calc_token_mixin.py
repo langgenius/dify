@@ -1,4 +1,4 @@
-from typing import List, cast
+from typing import cast
 
 from core.entities.application_entities import ModelConfigEntity
 from core.model_runtime.entities.message_entities import PromptMessage
@@ -8,7 +8,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 class CalcTokenMixin:
 
-    def get_message_rest_tokens(self, model_config: ModelConfigEntity, messages: List[PromptMessage], **kwargs) -> int:
+    def get_message_rest_tokens(self, model_config: ModelConfigEntity, messages: list[PromptMessage], **kwargs) -> int:
         """
         Got the rest tokens available for the model after excluding messages tokens and completion max tokens
 

@@ -1,7 +1,7 @@
 import logging
 import mimetypes
 import os
-from typing import Optional, Tuple, cast
+from typing import Optional, cast
 
 import requests
 from flask import current_app
@@ -418,7 +418,7 @@ class ModelProviderService:
             model=model
         )
 
-    def get_model_provider_icon(self, provider: str, icon_type: str, lang: str) -> Tuple[Optional[bytes], Optional[str]]:
+    def get_model_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[Optional[bytes], Optional[str]]:
         """
         get model provider icon.
 
