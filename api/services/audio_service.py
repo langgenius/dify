@@ -1,7 +1,6 @@
 import io
 from typing import Optional
 
-from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelManager
@@ -51,8 +50,6 @@ class AudioService:
 
     @classmethod
     def transcript_tts(cls, tenant_id: str, text: str, voice: str, streaming: bool, end_user: Optional[str] = None):
-        if not end_user:
-            end_user = current_user.ldap_account
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,

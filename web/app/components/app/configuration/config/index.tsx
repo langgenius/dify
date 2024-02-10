@@ -115,13 +115,12 @@ const Config: FC = () => {
         draft.enabled = value
       }))
     },
-    // ToDo： TTS Voice Choose
     textToSpeech: textToSpeechConfig.enabled,
     setTextToSpeech: (value) => {
       setTextToSpeechConfig(produce(textToSpeechConfig, (draft: TextToSpeechConfig) => {
         draft.enabled = value || textToSpeechConfig.enabled
-        draft.voice = ''
-        draft.language = ''
+        draft.voice = textToSpeechConfig.voice
+        draft.language = textToSpeechConfig.language
       }))
     },
     citation: citationConfig.enabled,

@@ -35,8 +35,8 @@ const VoiceParamConfig: FC = () => {
   const languageItem = LanguageItems.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
-  const VoiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'zh-CN'}` }, fetchAppVoices).data
-  const voiceItem = VoiceItems?.find(item => item.value === textToSpeechConfig.voice)
+  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'zh-CN'}` }, fetchAppVoices).data
+  const voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
   return (
@@ -144,7 +144,7 @@ const VoiceParamConfig: FC = () => {
                 >
 
                   <Listbox.Options className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
-                    {VoiceItems?.map((item: Item) => (
+                    {voiceItems?.map((item: Item) => (
                       <Listbox.Option
                         key={item.value}
                         className={({ active }) =>

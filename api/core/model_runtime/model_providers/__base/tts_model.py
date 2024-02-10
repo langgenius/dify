@@ -60,13 +60,13 @@ class TTSModel(AIModel):
         :param language: tts language
         :param model: model name
         :param credentials: model credentials
-        :return: voice
+        :return: voices lists
         """
         model_schema = self.get_model_schema(model, credentials)
 
         if model_schema and ModelPropertyKey.VOICES in model_schema.model_properties:
             voices = model_schema.model_properties[ModelPropertyKey.VOICES]
-            return [d for d in voices if language and language in d.get('language')]
+            return [{'name': d['name'], 'value': d['mode']} for d in voices if language and language in d.get('language')]
 
     def _get_model_default_voice(self, model: str, credentials: dict) -> any:
         """
