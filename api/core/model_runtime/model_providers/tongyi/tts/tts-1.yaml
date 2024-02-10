@@ -28,7 +28,7 @@ model_properties:
       name: "知祥（配音解说）"
       language: [ "zh-CN", "en-US" ]
     - mode: "sambert-zhiwei-v1"
-      name: "知薇（阅读产品简介）"
+      name: "知薇（萝莉女声）"
       language: [ "zh-CN", "en-US" ]
     - mode: "sambert-zhihao-v1"
       name: "知浩（咨询男声）"
@@ -73,13 +73,13 @@ model_properties:
       name: "知柜（直播女声）"
       language: [ "zh-CN", "en-US" ]
     - mode: "sambert-zhishuo-v1"
-      name: "知硕（数字人）"
+      name: "知硕（自然男声）"
       language: [ "zh-CN", "en-US" ]
     - mode: "sambert-zhimiao-emo-v1"
-      name: "知妙（多情感）"
+      name: "知妙（多种情感女声）"
       language: [ "zh-CN", "en-US" ]
     - mode: "sambert-zhimao-v1"
-      name: "知猫（多情感）"
+      name: "知猫（直播女声）"
       language: [ "zh-CN", "en-US" ]
     - mode: "sambert-zhilun-v1"
       name: "知伦（悬疑解说）"
