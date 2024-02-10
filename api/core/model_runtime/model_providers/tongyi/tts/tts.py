@@ -59,8 +59,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             self._tts_invoke(
                 model=model,
                 credentials=credentials,
-                content_text='Hello world!',
-                voice='sambert-zhiru-v1',
+                content_text='Hello Dify!',
+                voice=self._get_model_default_voice(model, credentials),
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))

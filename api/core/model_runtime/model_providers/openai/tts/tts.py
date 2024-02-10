@@ -59,8 +59,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             self._tts_invoke(
                 model=model,
                 credentials=credentials,
-                content_text='Hello world!',
-                voice='alloy'
+                content_text='Hello Dify!',
+                voice=self._get_model_default_voice(model, credentials),
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
