@@ -1,7 +1,7 @@
 import io
 from typing import Optional
-from flask_login import current_user
 
+from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelManager
@@ -13,7 +13,6 @@ from services.errors.audio import (
     ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
 
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
