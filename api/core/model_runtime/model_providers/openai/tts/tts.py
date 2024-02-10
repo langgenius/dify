@@ -88,17 +88,19 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
                                            credentials=credentials) for sentence in sentences]
                 for future in futures:
                     try:
-                        audio_bytes_list.append(future.result())
+                        if future.result():
+                            audio_bytes_list.append(future.result())
                     except Exception as ex:
                         raise InvokeBadRequestError(str(ex))
 
-            audio_segments = [AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type) for audio_bytes in
-                              audio_bytes_list if audio_bytes]
-            combined_segment = reduce(lambda x, y: x + y, audio_segments)
-            buffer: BytesIO = BytesIO()
-            combined_segment.export(buffer, format=audio_type)
-            buffer.seek(0)
-            return Response(buffer.read(), status=200, mimetype=f"audio/{audio_type}")
+            if len(audio_bytes_list) > 0:
+                audio_segments = [AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type) for audio_bytes in
+                                  audio_bytes_list if audio_bytes]
+                combined_segment = reduce(lambda x, y: x + y, audio_segments)
+                buffer: BytesIO = BytesIO()
+                combined_segment.export(buffer, format=audio_type)
+                buffer.seek(0)
+                return Response(buffer.read(), status=200, mimetype=f"audio/{audio_type}")
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
