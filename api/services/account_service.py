@@ -243,7 +243,7 @@ class TenantService:
         return ta
 
     @staticmethod
-    def get_join_tenants(account: Account) -> List[Tenant]:
+    def get_join_tenants(account: Account) -> list[Tenant]:
         """Get account join tenants"""
         return db.session.query(Tenant).join(
             TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id
@@ -282,7 +282,7 @@ class TenantService:
             account.current_tenant_id = tenant_account_join.tenant_id
 
     @staticmethod
-    def get_tenant_members(tenant: Tenant) -> List[Account]:
+    def get_tenant_members(tenant: Tenant) -> list[Account]:
         """Get tenant members"""
         query = (
             db.session.query(Account, TenantAccountJoin.role)
@@ -303,7 +303,7 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
-    def has_roles(tenant: Tenant, roles: List[TenantAccountJoinRole]) -> bool:
+    def has_roles(tenant: Tenant, roles: list[TenantAccountJoinRole]) -> bool:
         """Check if user has any of the given roles for a tenant"""
         if not all(isinstance(role, TenantAccountJoinRole) for role in roles):
             raise ValueError('all roles must be TenantAccountJoinRole')
