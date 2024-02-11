@@ -55,18 +55,19 @@ class AccountService:
 
         if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
             raise Forbidden('Account is banned or closed.')
-        
-        # init owner's tenant
-        tenant_owner = TenantAccountJoin.query.filter_by(account_id=account.id, role='owner').first()
-        if not tenant_owner:
-            _create_tenant_for_account(account)
-        
+
         current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
         if current_tenant:
             account.current_tenant_id = current_tenant.tenant_id
+            account.current_tenant_id = current_tenant.tenant_id
         else:
-            account.current_tenant_id = tenant_owner.tenant_id
-            tenant_owner.current = True
+            available_tenant = TenantAccountJoin.query.filter_by(account_id=account.id) \
+                .order_by(TenantAccountJoin.id.asc()).first()
+            if not available_tenant:
+                raise Forbidden('No available tenant for the user.')
+
+            account.current_tenant_id = available_tenant.tenant_id
+            available_tenant.current = True
             db.session.commit()
        
         if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
