@@ -5,7 +5,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta
 from hashlib import sha256
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 from flask import current_app
 from sqlalchemy import func
