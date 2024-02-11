@@ -5,7 +5,7 @@ model_properties:
   voices:
     - mode: 'alloy'
       name: 'Alloy'
-      language: ['zh-CN-CN', 'en-US']
+      language: ['zh-CN', 'en-US']
     - mode: 'echo'
       name: 'Echo'
       language: ['zh-CN', 'en-US']
