@@ -84,7 +84,7 @@ class TextApi(WebApiResource):
                 tenant_id=app_model.tenant_id,
                 text=request.form['text'],
                 end_user=end_user.external_user_id,
-                voice=app_model.app_model_config.text_to_speech_dict['voice'],
+                voice=app_model.app_model_config.text_to_speech_dict.get('voice'),
                 streaming=False
             )
 
