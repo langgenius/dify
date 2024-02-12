@@ -10,7 +10,7 @@ from constants.languages import languages
 from extensions.ext_database import db
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
-from services.account_service import AccountService, RegisterService
+from services.account_service import AccountService, RegisterService, TenantService
 
 from .. import api
 
@@ -75,6 +75,8 @@ class OAuthCallback(Resource):
             account.status = AccountStatus.ACTIVE.value
             account.initialized_at = datetime.utcnow()
             db.session.commit()
+
+        TenantService.create_owner_tenant_if_not_exist(account)
 
         AccountService.update_last_login(account, request)
 
