@@ -42,12 +42,16 @@ class DatasetIndexToolCallbackHandler:
     def on_tool_end(self, documents: list[Document]) -> None:
         """Handle tool end."""
         for document in documents:
-            doc_id = document.metadata['doc_id']
+            query = db.session.query(DocumentSegment).filter(
+                DocumentSegment.index_node_id == document.metadata['doc_id']
+            )
+
+            # if 'dataset_id' in document.metadata:
+            if 'dataset_id' in document.metadata:
+                query = query.filter(DocumentSegment.dataset_id == document.metadata['dataset_id'])
 
             # add hit count to document segment
-            db.session.query(DocumentSegment).filter(
-                DocumentSegment.index_node_id == doc_id
-            ).update(
+            query.update(
                 {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
                 synchronize_session=False
             )
