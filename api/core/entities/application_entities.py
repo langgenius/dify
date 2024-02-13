@@ -151,8 +151,8 @@ class TextToSpeechEntity(BaseModel):
     Sensitive Word Avoidance Entity.
     """
     enabled: bool
-    voice: str
-    language: str
+    voice: Optional[str] = None
+    language: Optional[str] = None
 
 
 class FileUploadEntity(BaseModel):

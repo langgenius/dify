@@ -73,7 +73,8 @@ const Operation: FC<OperationProps> = ({
           />
         )
       }
-      {!isOpeningStatement && config?.text_to_speech && (
+
+      {(!isOpeningStatement && config?.text_to_speech.enabled) && (
         <AudioBtn
           value={content}
           className='hidden group-hover:block'

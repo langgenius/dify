@@ -118,7 +118,7 @@ const Config: FC = () => {
     textToSpeech: textToSpeechConfig.enabled,
     setTextToSpeech: (value) => {
       setTextToSpeechConfig(produce(textToSpeechConfig, (draft: TextToSpeechConfig) => {
-        draft.enabled = value || textToSpeechConfig.enabled
+        draft.enabled = value
         draft.voice = textToSpeechConfig?.voice
         draft.language = textToSpeechConfig?.language
       }))
