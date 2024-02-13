@@ -11,6 +11,7 @@ from libs.helper import TimestampField
 from libs.login import login_required
 from models.account import Account
 from services.account_service import RegisterService, TenantService
+from services.errors.account import AccountAlreadyInTenantError
 
 account_fields = {
     'id': fields.String,
@@ -71,6 +72,13 @@ class MemberInviteEmailApi(Resource):
                     'email': invitee_email,
                     'url': f'{console_web_url}/activate?email={invitee_email}&token={token}'
                 })
+            except AccountAlreadyInTenantError:
+                invitation_results.append({
+                    'status': 'success',
+                    'email': invitee_email,
+                    'url': f'{console_web_url}/signin'
+                })
+                break
             except Exception as e:
                 invitation_results.append({
                     'status': 'failed',

@@ -7,7 +7,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from libs.helper import email
 from libs.password import valid_password
-from services.account_service import AccountService
+from services.account_service import AccountService, TenantService
 
 
 class LoginApi(Resource):
@@ -28,6 +28,8 @@ class LoginApi(Resource):
             account = AccountService.authenticate(args['email'], args['password'])
         except services.errors.account.AccountLoginError:
             return {'code': 'unauthorized', 'message': 'Invalid email or password'}, 401
+
+        TenantService.create_owner_tenant_if_not_exist(account)
 
         AccountService.update_last_login(account, request)
 
