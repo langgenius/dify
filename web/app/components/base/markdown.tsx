@@ -143,6 +143,33 @@ export function Markdown(props: { content: string; className?: string }) {
                 </code>
               )
           },
+          img({ ...props }) {
+            return (
+              <img
+                {...props}
+                width={250}
+                height={250}
+                className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
+              />
+            )
+          },
+          p: paragraph => {
+            const { node }: any = paragraph;
+            if (node.children[0].tagName === "img") {
+              const image = node.children[0]
+
+              return (
+                <img
+                  src={image.properties.src}
+                  width={250}
+                  height={250}
+                  className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
+                  alt={image.properties.alt}
+                />
+              )
+            }
+            return <p>{paragraph.children}</p>
+          }
         }}
         linkTarget='_blank'
       >
