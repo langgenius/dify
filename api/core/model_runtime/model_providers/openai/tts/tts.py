@@ -1,7 +1,7 @@
 import concurrent.futures
 from functools import reduce
 from io import BytesIO
-from typing import Literal, Optional
+from typing import Optional
 
 from flask import Response, stream_with_context
 from openai import OpenAI
@@ -34,7 +34,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         :return: text translated to audio file
         """
         audio_type = self._get_model_audio_type(model, credentials)
-        if not voice or type(voice) not in Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"]:
+        if not voice:
             voice = self._get_model_default_voice(model, credentials)
         if streaming:
             return Response(stream_with_context(self._tts_invoke_streaming(model=model,
