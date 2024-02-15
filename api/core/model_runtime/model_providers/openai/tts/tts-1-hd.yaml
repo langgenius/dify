@@ -1,26 +1,26 @@
-model: tts-1
+model: tts-1-hd
 model_type: tts
 model_properties:
   default_voice: 'alloy'
   voices:
     - mode: 'alloy'
       name: 'Alloy'
-      language: ['zh-CN', 'en-US']
+      language: ['zh-Hans', 'en-US']
     - mode: 'echo'
       name: 'Echo'
-      language: ['zh-CN', 'en-US']
+      language: ['zh-Hans', 'en-US']
     - mode: 'fable'
       name: 'Fable'
-      language: ['zh-CN', 'en-US']
+      language: ['zh-Hans', 'en-US']
     - mode: 'onyx'
       name: 'Onyx'
-      language: ['zh-CN', 'en-US']
+      language: ['zh-Hans', 'en-US']
     - mode: 'nova'
       name: 'Nova'
-      language: ['zh-CN', 'en-US']
+      language: ['zh-Hans', 'en-US']
     - mode: 'shimmer'
       name: 'Shimmer'
-      language: ['zh-CN', 'en-US']
+      language: ['zh-Hans', 'en-US']
   word_limit: 120
   audio_type: 'mp3'
   max_workers: 5
