@@ -21,14 +21,14 @@ const VoiceParamConfig: FC = () => {
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
 
   const LanguageItems = [
-    { value: 'zh-CN', name: '中文' },
-    { value: 'en-US', name: '英语' },
-    { value: 'de-DE', name: '德语' },
-    { value: 'fr-FR', name: '法语' },
-    { value: 'es-ES', name: '西班牙语' },
-    { value: 'it-IT', name: '意大利语' },
-    { value: 'th-TH', name: '泰语' },
-    { value: 'id-ID', name: '印尼语' },
+    { value: 'zh-Hans', name: 'Chinese' },
+    { value: 'en-US', name: 'English' },
+    { value: 'de-DE', name: 'German' },
+    { value: 'fr-FR', name: 'French' },
+    { value: 'es-ES', name: 'Spanish' },
+    { value: 'it-IT', name: 'Italian' },
+    { value: 'th-TH', name: 'Thai' },
+    { value: 'id-ID', name: 'Indonesian' },
   ]
   const {
     textToSpeechConfig,
@@ -38,7 +38,7 @@ const VoiceParamConfig: FC = () => {
   const languageItem = LanguageItems.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
-  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'zh-CN'}` }, fetchAppVoices).data
+  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'en-US'}` }, fetchAppVoices).data
   const voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
@@ -69,7 +69,9 @@ const VoiceParamConfig: FC = () => {
             >
               <div className={'relative h-9'}>
                 <Listbox.Button className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
-                  <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>{languageItem?.name ?? localLanguagePlaceholder}</span>
+                  <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>
+                    {t(`common.voice.language.${languageItem?.value.replace('-', '')}`) ?? localLanguagePlaceholder}
+                  </span>
                   <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                     <ChevronDownIcon
                       className="h-5 w-5 text-gray-400"
@@ -97,7 +99,8 @@ const VoiceParamConfig: FC = () => {
                       >
                         {({ /* active, */ selected }) => (
                           <>
-                            <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                            <span
+                              className={classNames('block', selected && 'font-normal')}>{t(`common.voice.language.${(item.value).toString().replace('-', '')}`)}</span>
                             {(selected || item.value === textToSpeechConfig.language) && (
                               <span
                                 className={classNames(
