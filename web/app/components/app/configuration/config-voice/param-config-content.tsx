@@ -21,14 +21,14 @@ const VoiceParamConfig: FC = () => {
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
 
   const LanguageItems = [
-    { value: 'zh-CN', name: '中文' },
-    { value: 'en-US', name: '英语' },
-    { value: 'de-DE', name: '德语' },
-    { value: 'fr-FR', name: '法语' },
-    { value: 'es-ES', name: '西班牙语' },
-    { value: 'it-IT', name: '意大利语' },
-    { value: 'th-TH', name: '泰语' },
-    { value: 'id-ID', name: '印尼语' },
+    { value: 'zh-Hans', name: 'Chinese' },
+    { value: 'en-US', name: 'English' },
+    { value: 'de-DE', name: 'German' },
+    { value: 'fr-FR', name: 'French' },
+    { value: 'es-ES', name: 'Spanish' },
+    { value: 'it-IT', name: 'Italian' },
+    { value: 'th-TH', name: 'Thai' },
+    { value: 'id-ID', name: 'Indonesian' },
   ]
   const {
     textToSpeechConfig,
@@ -38,7 +38,7 @@ const VoiceParamConfig: FC = () => {
   const languageItem = LanguageItems.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
-  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'zh-CN'}` }, fetchAppVoices).data
+  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'en-US'}` }, fetchAppVoices).data
   const voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
