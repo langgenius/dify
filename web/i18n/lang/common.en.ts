@@ -39,6 +39,18 @@ const translation = {
     input: 'Please enter',
     select: 'Please select',
   },
+  voice: {
+    language: {
+      zhHans: 'Chinese',
+      enUS: 'English',
+      deDE: 'German',
+      frFR: 'French',
+      esES: 'Spanish',
+      itIT: 'Italian',
+      thTH: 'Thai.',
+      idID: 'Indonesian',
+    },
+  },
   unit: {
     char: 'chars',
   },
