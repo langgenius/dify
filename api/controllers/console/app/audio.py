@@ -86,11 +86,6 @@ class ChatMessageTextApi(Resource):
         app_id = str(app_id)
         app_model = _get_app(app_id, None)
 
-        app_model_config: AppModelConfig = app_model.app_model_config
-
-        if not app_model_config.text_to_speech_dict['enabled']:
-            raise AppUnavailableError()
-
         try:
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
