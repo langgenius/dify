@@ -122,3 +122,8 @@ export type UpdateOpenAIKeyResponse = ValidateOpenAIKeyResponse
 export type GenerationIntroductionResponse = {
   introduction: string
 }
+
+export type AppVoicesListResponse = [{
+  name: string
+  value: string
+}]

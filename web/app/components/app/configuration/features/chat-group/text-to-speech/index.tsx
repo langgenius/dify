@@ -19,6 +19,7 @@ const TextToSpeech: FC = () => {
         <div className='text-xs text-gray-500'>{t('appDebug.feature.textToSpeech.resDes')}</div>
       }
       noBodySpacing
+      isShowTextToSpeech={true}
     />
   )
 }

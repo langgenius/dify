@@ -99,7 +99,8 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_rerank(self, query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
+    def invoke_rerank(self, query: str, docs: list[str], score_threshold: Optional[float] = None,
+                      top_n: Optional[int] = None,
                       user: Optional[str] = None) \
             -> RerankResult:
         """
@@ -166,13 +167,15 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_tts(self, content_text: str, streaming: bool, user: Optional[str] = None) \
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, streaming: bool, user: Optional[str] = None) \
             -> str:
         """
-        Invoke large language model
+        Invoke large language tts model
 
         :param content_text: text content to be translated
+        :param tenant_id: user tenant id
         :param user: unique user id
+        :param voice: model timbre
         :param streaming: output is streaming
         :return: text for given audio file
         """
@@ -185,7 +188,26 @@ class ModelInstance:
             credentials=self.credentials,
             content_text=content_text,
             user=user,
+            tenant_id=tenant_id,
+            voice=voice,
             streaming=streaming
+        )
+
+    def get_tts_voices(self, language: str) -> list:
+        """
+        Invoke large language tts model voices
+
+        :param language: tts language
+        :return: tts model voices
+        """
+        if not isinstance(self.model_type_instance, TTSModel):
+            raise Exception("Model type instance is not TTSModel")
+
+        self.model_type_instance = cast(TTSModel, self.model_type_instance)
+        return self.model_type_instance.get_tts_model_voices(
+            model=self.model,
+            credentials=self.credentials,
+            language=language
         )
 
 
