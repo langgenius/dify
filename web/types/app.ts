@@ -155,6 +155,8 @@ export type ModelConfig = {
   }
   text_to_speech: {
     enabled: boolean
+    voice?: string
+    language?: string
   }
   retriever_resource: {
     enabled: boolean

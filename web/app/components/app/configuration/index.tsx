@@ -30,6 +30,7 @@ import type {
   MoreLikeThisConfig,
   PromptConfig,
   PromptVariable,
+  TextToSpeechConfig,
 } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
@@ -98,8 +99,10 @@ const Configuration: FC = () => {
   const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [textToSpeechConfig, setTextToSpeechConfig] = useState<MoreLikeThisConfig>({
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig>({
     enabled: false,
+    voice: '',
+    language: '',
   })
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
@@ -246,6 +249,8 @@ const Configuration: FC = () => {
     })
     setTextToSpeechConfig(modelConfig.text_to_speech || {
       enabled: false,
+      voice: '',
+      language: '',
     })
     setCitationConfig(modelConfig.retriever_resource || {
       enabled: false,

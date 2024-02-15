@@ -298,6 +298,17 @@ const translation = {
       uploadLimit: 'Upload Limit',
     },
   },
+  voice: {
+    name: 'Voice',
+    description: 'Text to speech voice Settings',
+    settings: 'Settings',
+    voiceSettings: {
+      title: 'Voice Settings',
+      language: 'Language',
+      resolutionTooltip: 'Text-to-speech voice support language。',
+      voice: 'Voice',
+    },
+  },
   openingStatement: {
     title: 'Conversation Opener',
     add: 'Add',

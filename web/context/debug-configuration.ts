@@ -156,6 +156,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setSpeechToTextConfig: () => { },
   textToSpeechConfig: {
     enabled: false,
+    voice: '',
+    language: '',
   },
   setTextToSpeechConfig: () => { },
   citationConfig: {
