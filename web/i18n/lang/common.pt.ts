@@ -12,6 +12,18 @@ const translation = {
     displayLanguage: 'Idioma de exibição',
     timezone: 'Fuso horário',
   },
+  voice: {
+    language: {
+      zhHans: 'chinês',
+      enUS: 'inglês',
+      deDE: 'alemão',
+      frFR: 'francês',
+      esES: 'espanhol',
+      itIT: 'italiano',
+      thTH: 'tailandês',
+      idID: 'indonésio',
+    },
+  },
   provider: {
     apiKey: 'Chave da API',
     enterYourKey: 'Insira sua chave da API aqui',

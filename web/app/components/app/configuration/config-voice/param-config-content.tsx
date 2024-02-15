@@ -70,7 +70,7 @@ const VoiceParamConfig: FC = () => {
               <div className={'relative h-9'}>
                 <Listbox.Button className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
                   <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>
-                    {t(`common.voice.language.${languageItem?.value.replace('-', '')}`) ?? localLanguagePlaceholder}
+                    {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
                   </span>
                   <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                     <ChevronDownIcon
