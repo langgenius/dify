@@ -41,6 +41,18 @@ const translation = {
       useYourModel: 'Atualmente usando seu próprio provedor de modelo.',
       close: 'Fechar',
     },
+    voice: {
+      language: {
+        zhHans: 'chinês',
+        enUS: 'inglês',
+        deDE: 'alemão',
+        frFR: 'francês',
+        esES: 'espanhol',
+        itIT: 'italiano',
+        thTH: 'tailandês',
+        idID: 'indonésio',
+      },
+    },
     anthropicHosted: {
       anthropicHosted: 'Anthropic Claude',
       onTrial: 'EM TESTE',
