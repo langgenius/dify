@@ -23,7 +23,6 @@ from controllers.console.wraps import account_initialization_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
-from models.model import AppModelConfig
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -86,11 +85,6 @@ class ChatMessageTextApi(Resource):
         app_id = str(app_id)
         app_model = _get_app(app_id, None)
 
-        app_model_config: AppModelConfig = app_model.app_model_config
-
-        if not app_model_config.text_to_speech_dict['enabled']:
-            raise AppUnavailableError()
-
         try:
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
@@ -129,10 +123,6 @@ class ChatMessageTextApi(Resource):
 class TextModesApi(Resource):
     def get(self, app_id: str):
         app_model = _get_app(str(app_id))
-        app_model_config: AppModelConfig = app_model.app_model_config
-
-        if not app_model_config.text_to_speech_dict['enabled']:
-            raise AppUnavailableError()
 
         try:
             parser = reqparse.RequestParser()
