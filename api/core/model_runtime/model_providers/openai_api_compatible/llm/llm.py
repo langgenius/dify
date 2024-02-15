@@ -369,7 +369,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             if chunk:
                 #ignore ": OPENROUTER PROCESSING" to support openrouter.ai streaming
                 chunk = chunk.strip().lstrip(': OPENROUTER PROCESSING').lstrip()                
-            if chunk:                
                 decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
                 chunk_json = None
                 try:
