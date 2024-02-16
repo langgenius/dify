@@ -22,7 +22,7 @@ const TextToSpeech: FC = () => {
       headerIcon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
       headerRight={
         <div className='text-xs text-gray-500'>
-          {textToSpeechConfig.voice} {languages.find(i => i.value === textToSpeechConfig.language)?.name}
+          {languages.find(i => i.value === textToSpeechConfig.language)?.name} {textToSpeechConfig.voice}
         </div>
       }
       noBodySpacing
