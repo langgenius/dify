@@ -8,14 +8,15 @@ from core.tools.entities.common_entities import I18nObject
 
 class ToolProviderType(Enum):
     """
-        Enum class for tool provider
+    Enum class for tool provider
     """
+
     BUILT_IN = "built-in"
     APP_BASED = "app-based"
     API_BASED = "api-based"
 
     @classmethod
-    def value_of(cls, value: str) -> 'ToolProviderType':
+    def value_of(cls, value: str) -> "ToolProviderType":
         """
         Get value of given mode.
 
@@ -25,19 +26,21 @@ class ToolProviderType(Enum):
         for mode in cls:
             if mode.value == value:
                 return mode
-        raise ValueError(f'invalid mode value {value}')
+        raise ValueError(f"invalid mode value {value}")
+
 
 class ApiProviderSchemaType(Enum):
     """
     Enum class for api provider schema type.
     """
+
     OPENAPI = "openapi"
     SWAGGER = "swagger"
     OPENAI_PLUGIN = "openai_plugin"
     OPENAI_ACTIONS = "openai_actions"
 
     @classmethod
-    def value_of(cls, value: str) -> 'ApiProviderSchemaType':
+    def value_of(cls, value: str) -> "ApiProviderSchemaType":
         """
         Get value of given mode.
 
@@ -47,18 +50,20 @@ class ApiProviderSchemaType(Enum):
         for mode in cls:
             if mode.value == value:
                 return mode
-        raise ValueError(f'invalid mode value {value}')
+        raise ValueError(f"invalid mode value {value}")
+
 
 class ApiProviderAuthType(Enum):
     """
     Enum class for api provider auth type.
     """
+
     NONE = "none"
     API_KEY = "api_key"
     OAUTH = "oauth"
 
     @classmethod
-    def value_of(cls, value: str) -> 'ApiProviderAuthType':
+    def value_of(cls, value: str) -> "ApiProviderAuthType":
         """
         Get value of given mode.
 
@@ -68,7 +73,8 @@ class ApiProviderAuthType(Enum):
         for mode in cls:
             if mode.value == value:
                 return mode
-        raise ValueError(f'invalid mode value {value}')
+        raise ValueError(f"invalid mode value {value}")
+
 
 class ToolInvokeMessage(BaseModel):
     class MessageType(Enum):
@@ -84,16 +90,19 @@ class ToolInvokeMessage(BaseModel):
     """
     message: Union[str, bytes] = None
     meta: dict[str, Any] = None
-    save_as: str = ''
+    save_as: str = ""
+
 
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
-    save_as: str = ''
+    save_as: str = ""
+
 
 class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+
 
 class ToolParameter(BaseModel):
     class ToolParameterType(Enum):
@@ -103,9 +112,9 @@ class ToolParameter(BaseModel):
         SELECT = "select"
 
     class ToolParameterForm(Enum):
-        SCHEMA = "schema" # should be set while adding tool
-        FORM = "form"     # should be set before invoking tool
-        LLM = "llm"       # will be set by LLM
+        SCHEMA = "schema"  # should be set while adding tool
+        FORM = "form"  # should be set before invoking tool
+        LLM = "llm"  # will be set by LLM
 
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
@@ -120,31 +129,39 @@ class ToolParameter(BaseModel):
     options: Optional[list[ToolParameterOption]] = None
 
     @classmethod
-    def get_simple_instance(cls,
-                       name: str, llm_description: str, type: ToolParameterType,
-                       required: bool, options: Optional[list[str]] = None) -> 'ToolParameter':
+    def get_simple_instance(
+        cls,
+        name: str,
+        llm_description: str,
+        type: ToolParameterType,
+        required: bool,
+        options: Optional[list[str]] = None,
+    ) -> "ToolParameter":
         """
-            get a simple tool parameter
+        get a simple tool parameter
 
-            :param name: the name of the parameter
-            :param llm_description: the description presented to the LLM
-            :param type: the type of the parameter
-            :param required: if the parameter is required
-            :param options: the options of the parameter
+        :param name: the name of the parameter
+        :param llm_description: the description presented to the LLM
+        :param type: the type of the parameter
+        :param required: if the parameter is required
+        :param options: the options of the parameter
         """
         # convert options to ToolParameterOption
         if options:
-            options = [ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
+            options = [
+                ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options
+            ]
         return cls(
             name=name,
-            label=I18nObject(en_US='', zh_Hans=''),
-            human_description=I18nObject(en_US='', zh_Hans=''),
+            label=I18nObject(en_US="", zh_Hans=""),
+            human_description=I18nObject(en_US="", zh_Hans=""),
             type=type,
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
             required=required,
             options=options,
         )
+
 
 class ToolProviderIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
@@ -153,14 +170,17 @@ class ToolProviderIdentity(BaseModel):
     icon: str = Field(..., description="The icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
 
+
 class ToolDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
     llm: str = Field(..., description="The description presented to the LLM")
+
 
 class ToolIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
+
 
 class ToolCredentialsOption(BaseModel):
     value: str = Field(..., description="The value of the option")
@@ -201,20 +221,22 @@ class ToolProviderCredentials(BaseModel):
     def to_dict(self) -> dict:
         """Serializes the object to a dictionary."""
         return {
-            'name': self.name,
-            'type': self.type.value,
-            'required': self.required,
-            'default': self.default,
-            'options': [option.dict() for option in self.options] if self.options else None,
-            'label': self.label.dict() if self.label else None,
-            'help': self.help.dict() if self.help else None,
-            'url': self.url,
-            'placeholder': self.placeholder.dict() if self.placeholder else None,
+            "name": self.name,
+            "type": self.type.value,
+            "required": self.required,
+            "default": self.default,
+            "options": [option.dict() for option in self.options] if self.options else None,
+            "label": self.label.to_dict() if self.label else None,
+            "help": self.help.to_dict() if self.help else None,
+            "url": self.url,
+            "placeholder": self.placeholder.to_dict() if self.placeholder else None,
         }
+
 
 class ToolRuntimeVariableType(Enum):
     TEXT = "text"
     IMAGE = "image"
+
 
 class ToolRuntimeVariable(BaseModel):
     type: ToolRuntimeVariableType = Field(..., description="The type of the variable")
@@ -222,11 +244,14 @@ class ToolRuntimeVariable(BaseModel):
     position: int = Field(..., description="The position of the variable")
     tool_name: str = Field(..., description="The name of the tool")
 
+
 class ToolRuntimeTextVariable(ToolRuntimeVariable):
     value: str = Field(..., description="The value of the variable")
 
+
 class ToolRuntimeImageVariable(ToolRuntimeVariable):
     value: str = Field(..., description="The path of the image")
+
 
 class ToolRuntimeVariablePool(BaseModel):
     conversation_id: str = Field(..., description="The conversation id")
@@ -236,26 +261,26 @@ class ToolRuntimeVariablePool(BaseModel):
     pool: list[ToolRuntimeVariable] = Field(..., description="The pool of variables")
 
     def __init__(self, **data: Any):
-        pool = data.get('pool', [])
+        pool = data.get("pool", [])
         # convert pool into correct type
         for index, variable in enumerate(pool):
-            if variable['type'] == ToolRuntimeVariableType.TEXT.value:
+            if variable["type"] == ToolRuntimeVariableType.TEXT.value:
                 pool[index] = ToolRuntimeTextVariable(**variable)
-            elif variable['type'] == ToolRuntimeVariableType.IMAGE.value:
+            elif variable["type"] == ToolRuntimeVariableType.IMAGE.value:
                 pool[index] = ToolRuntimeImageVariable(**variable)
         super().__init__(**data)
 
     def dict(self) -> dict:
         return {
-            'conversation_id': self.conversation_id,
-            'user_id': self.user_id,
-            'tenant_id': self.tenant_id,
-            'pool': [variable.dict() for variable in self.pool],
+            "conversation_id": self.conversation_id,
+            "user_id": self.user_id,
+            "tenant_id": self.tenant_id,
+            "pool": [variable.dict() for variable in self.pool],
         }
 
     def set_text(self, tool_name: str, name: str, value: str) -> None:
         """
-            set a text variable
+        set a text variable
         """
         for variable in self.pool:
             if variable.name == name:
@@ -276,10 +301,10 @@ class ToolRuntimeVariablePool(BaseModel):
 
     def set_file(self, tool_name: str, value: str, name: str = None) -> None:
         """
-            set an image variable
+        set an image variable
 
-            :param tool_name: the name of the tool
-            :param value: the id of the file
+        :param tool_name: the name of the tool
+        :param value: the id of the file
         """
         # check how many image variables are there
         image_variable_count = 0
