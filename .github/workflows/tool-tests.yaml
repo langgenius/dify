@@ -22,5 +22,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r ./api/requirements.txt
 
+      - name: cd api
+        run: cd api
+
       - name: Run pytest
-        run: pytest ./api/tests/integration_tests/tools/
+        run: pytest ./tests/integration_tests/tools/
