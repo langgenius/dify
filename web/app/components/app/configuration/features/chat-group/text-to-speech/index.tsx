@@ -5,6 +5,7 @@ import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { Speaker } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import ConfigContext from '@/context/debug-configuration'
+import { languages } from '@/utils/language'
 
 const TextToSpeech: FC = () => {
   const { t } = useTranslation()
@@ -20,7 +21,9 @@ const TextToSpeech: FC = () => {
       }
       headerIcon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
       headerRight={
-        <div className='text-xs text-gray-500'>{textToSpeechConfig.voice} {textToSpeechConfig.language}</div>
+        <div className='text-xs text-gray-500'>
+          {textToSpeechConfig.voice} {languages.find(i => i.value === textToSpeechConfig.language)?.name}
+        </div>
       }
       noBodySpacing
       isShowTextToSpeech={true}
