@@ -63,6 +63,10 @@ const translation = {
         itIT: 'italiano',
         thTH: 'tailandês',
         idID: 'indonésio',
+        jaJP: 'japonês',
+        koKR: 'coreano',
+        ptBR: 'português',
+        ruRU: 'russo',
       },
     },
     anthropicHosted: {
