@@ -367,13 +367,16 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             if chunk:
+                #ignore sse comments
+                if chunk.startswith(':'):
+                    continue                 
                 decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
                 chunk_json = None
                 try:
                     chunk_json = json.loads(decoded_chunk)
                 # stream ended
                 except json.JSONDecodeError as e:
-                    logger.error(f"decoded_chunk error,delimiter={delimiter},decoded_chunk={decoded_chunk}")
+                    logger.error(f"decoded_chunk error: {e}, delimiter={delimiter}, decoded_chunk={decoded_chunk}")
                     yield create_final_llm_result_chunk(
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),

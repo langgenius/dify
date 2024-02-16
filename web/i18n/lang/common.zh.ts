@@ -49,6 +49,10 @@ const translation = {
       itIT: '意大利语',
       thTH: '泰语',
       idID: '印尼语',
+      jaJP: '日语',
+      koKR: '韩语',
+      ptBR: '葡萄牙语',
+      ruRU: '俄语',
     },
   },
   unit: {

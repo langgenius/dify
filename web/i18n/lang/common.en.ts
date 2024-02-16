@@ -49,6 +49,10 @@ const translation = {
       itIT: 'Italian',
       thTH: 'Thai.',
       idID: 'Indonesian',
+      jaJP: 'Japanese',
+      koKR: 'Korean',
+      ptBR: 'Portuguese',
+      ruRU: 'Russian',
     },
   },
   unit: {

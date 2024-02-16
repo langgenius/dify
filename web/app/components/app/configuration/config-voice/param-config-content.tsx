@@ -13,29 +13,19 @@ import ConfigContext from '@/context/debug-configuration'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-
+import { languages } from '@/utils/language'
 const VoiceParamConfig: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
 
-  const LanguageItems = [
-    { value: 'zh-Hans', name: 'Chinese' },
-    { value: 'en-US', name: 'English' },
-    { value: 'de-DE', name: 'German' },
-    { value: 'fr-FR', name: 'French' },
-    { value: 'es-ES', name: 'Spanish' },
-    { value: 'it-IT', name: 'Italian' },
-    { value: 'th-TH', name: 'Thai' },
-    { value: 'id-ID', name: 'Indonesian' },
-  ]
   const {
     textToSpeechConfig,
     setTextToSpeechConfig,
   } = useContext(ConfigContext)
 
-  const languageItem = LanguageItems.find(item => item.value === textToSpeechConfig.language)
+  const languageItem = languages.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
   const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'en-US'}` }, fetchAppVoices).data
@@ -87,7 +77,7 @@ const VoiceParamConfig: FC = () => {
                 >
 
                   <Listbox.Options className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
-                    {LanguageItems.map((item: Item) => (
+                    {languages.map((item: Item) => (
                       <Listbox.Option
                         key={item.value}
                         className={({ active }) =>
