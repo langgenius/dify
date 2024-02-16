@@ -16,6 +16,7 @@ from models.tools import ApiToolProvider
 
 
 class ApiBasedToolProviderController(ToolProviderController):
+
     @staticmethod
     def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiBasedToolProviderController':
         credentials_schema = {
@@ -25,15 +26,18 @@ class ApiBasedToolProviderController(ToolProviderController):
                 type=ToolProviderCredentials.CredentialsType.SELECT,
                 options=[
                     ToolCredentialsOption(value='none', label=I18nObject(en_US='None', zh_Hans='无')),
-                    ToolCredentialsOption(value='api_key', label=I18nObject(en_US='api_key', zh_Hans='api_key'))
+                    ToolCredentialsOption(value='api_key', label=I18nObject(en_US='API Key', zh_Hans='API 密钥')),
+                    ToolCredentialsOption(value='oauth', label=I18nObject(en_US='OAuth', zh_Hans='OAuth'))
                 ],
                 default='none',
                 help=I18nObject(
                     en_US='The auth type of the api provider',
-                    zh_Hans='api provider 的认证类型'
+                    zh_Hans='API 提供者的认证类型'
                 )
             )
         }
+
+        # Handle API Key auth type
         if auth_type == ApiProviderAuthType.API_KEY:
             credentials_schema = {
                 **credentials_schema,
@@ -57,11 +61,41 @@ class ApiBasedToolProviderController(ToolProviderController):
                     )
                 )
             }
+        # Handle OAuth auth type
+        elif auth_type == ApiProviderAuthType.OAUTH:
+            credentials_schema.update({
+                'client_id': ToolProviderCredentials(
+                    name='client_id',
+                    required=True,
+                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    help=I18nObject(en_US='The client ID for OAuth', zh_Hans='OAuth 的客户端 ID')
+                ),
+                'client_secret': ToolProviderCredentials(
+                    name='client_secret',
+                    required=True,
+                    type=ToolProviderCredentials.CredentialsType.SECRET_INPUT,
+                    help=I18nObject(en_US='The client secret for OAuth', zh_Hans='OAuth 的客户端密钥')
+                ),
+                'authorization_url': ToolProviderCredentials(
+                    name='authorization_url',
+                    required=True,
+                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    help=I18nObject(en_US='The authorization URL for OAuth', zh_Hans='OAuth 的授权 URL')
+                ),
+                'token_url': ToolProviderCredentials(
+                    name='token_url',
+                    required=True,
+                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    help=I18nObject(en_US='The token URL for OAuth', zh_Hans='OAuth 的令牌 URL')
+                ),
+                # Add more OAuth related fields as needed
+            })
         elif auth_type == ApiProviderAuthType.NONE:
-            pass
+            pass  # No additional action needed for 'none' auth type
         else:
-            raise ValueError(f'invalid auth type {auth_type}')
+            raise ValueError(f'Invalid auth type: {auth_type}')
 
+        # Return the updated controller instance
         return ApiBasedToolProviderController(**{
             'identity': {
                 'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
@@ -82,7 +116,7 @@ class ApiBasedToolProviderController(ToolProviderController):
     @property
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.API_BASED
-    
+
     def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
         pass
 
@@ -138,7 +172,7 @@ class ApiBasedToolProviderController(ToolProviderController):
         """
         if self.tools is not None:
             return self.tools
-        
+
         tools: list[Tool] = []
 
         # get tenant api providers
@@ -153,10 +187,10 @@ class ApiBasedToolProviderController(ToolProviderController):
                     assistant_tool = self._parse_tool_bundle(tool)
                     assistant_tool.is_team_authorization = True
                     tools.append(assistant_tool)
-        
+
         self.tools = tools
         return tools
-    
+
     def get_tool(self, tool_name: str) -> ApiTool:
         """
             get tool by name

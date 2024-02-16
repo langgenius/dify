@@ -26,7 +26,7 @@ class ToolProviderType(Enum):
             if mode.value == value:
                 return mode
         raise ValueError(f'invalid mode value {value}')
-    
+
 class ApiProviderSchemaType(Enum):
     """
     Enum class for api provider schema type.
@@ -48,13 +48,14 @@ class ApiProviderSchemaType(Enum):
             if mode.value == value:
                 return mode
         raise ValueError(f'invalid mode value {value}')
-    
+
 class ApiProviderAuthType(Enum):
     """
     Enum class for api provider auth type.
     """
     NONE = "none"
     API_KEY = "api_key"
+    OAUTH = "oauth"
 
     @classmethod
     def value_of(cls, value: str) -> 'ApiProviderAuthType':
@@ -119,8 +120,8 @@ class ToolParameter(BaseModel):
     options: Optional[list[ToolParameterOption]] = None
 
     @classmethod
-    def get_simple_instance(cls, 
-                       name: str, llm_description: str, type: ToolParameterType, 
+    def get_simple_instance(cls,
+                       name: str, llm_description: str, type: ToolParameterType,
                        required: bool, options: Optional[list[str]] = None) -> 'ToolParameter':
         """
             get a simple tool parameter
@@ -165,50 +166,50 @@ class ToolCredentialsOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
+
 class ToolProviderCredentials(BaseModel):
     class CredentialsType(Enum):
         SECRET_INPUT = "secret-input"
         TEXT_INPUT = "text-input"
         SELECT = "select"
+        OAUTH = "oauth"  # Added OAUTH type
 
         @classmethod
         def value_of(cls, value: str) -> "ToolProviderCredentials.CredentialsType":
             """
-            Get value of given mode.
+            Get value of given type.
 
-            :param value: mode value
-            :return: mode
+            :param value: type value
+            :return: CredentialsType
             """
-            for mode in cls:
-                if mode.value == value:
-                    return mode
-            raise ValueError(f'invalid mode value {value}')
-        
-        @staticmethod
-        def default(value: str) -> str:
-            return ""
+            for item in cls:
+                if item.value == value:
+                    return item
+            valid_values = ", ".join([item.value for item in cls])
+            raise ValueError(f'Invalid credentials type "{value}". Valid types are: {valid_values}')
 
     name: str = Field(..., description="The name of the credentials")
     type: CredentialsType = Field(..., description="The type of the credentials")
-    required: bool = False
-    default: Optional[str] = None
-    options: Optional[list[ToolCredentialsOption]] = None
-    label: Optional[I18nObject] = None
-    help: Optional[I18nObject] = None
-    url: Optional[str] = None
-    placeholder: Optional[I18nObject] = None
+    required: bool = Field(default=False, description="Flag indicating if the credential is required")
+    default: Optional[str] = Field(None, description="Default value for the credential")
+    options: Optional[list[ToolCredentialsOption]] = Field(None, description="Options for SELECT type credentials")
+    label: Optional[I18nObject] = Field(None, description="Localized label for the credential")
+    help: Optional[I18nObject] = Field(None, description="Localized help text for the credential")
+    url: Optional[str] = Field(None, description="URL for additional help or credential setup")
+    placeholder: Optional[I18nObject] = Field(None, description="Localized placeholder text for the credential")
 
     def to_dict(self) -> dict:
+        """Serializes the object to a dictionary."""
         return {
             'name': self.name,
             'type': self.type.value,
             'required': self.required,
             'default': self.default,
-            'options': self.options,
-            'help': self.help.to_dict() if self.help else None,
-            'label': self.label.to_dict(),
+            'options': [option.dict() for option in self.options] if self.options else None,
+            'label': self.label.dict() if self.label else None,
+            'help': self.help.dict() if self.help else None,
             'url': self.url,
-            'placeholder': self.placeholder.to_dict() if self.placeholder else None,
+            'placeholder': self.placeholder.dict() if self.placeholder else None,
         }
 
 class ToolRuntimeVariableType(Enum):
@@ -251,7 +252,7 @@ class ToolRuntimeVariablePool(BaseModel):
             'tenant_id': self.tenant_id,
             'pool': [variable.dict() for variable in self.pool],
         }
-    
+
     def set_text(self, tool_name: str, name: str, value: str) -> None:
         """
             set a text variable
@@ -262,7 +263,7 @@ class ToolRuntimeVariablePool(BaseModel):
                     variable = cast(ToolRuntimeTextVariable, variable)
                     variable.value = value
                     return
-                
+
         variable = ToolRuntimeTextVariable(
             type=ToolRuntimeVariableType.TEXT,
             name=name,
@@ -295,7 +296,7 @@ class ToolRuntimeVariablePool(BaseModel):
                     variable = cast(ToolRuntimeImageVariable, variable)
                     variable.value = value
                     return
-                
+
         variable = ToolRuntimeImageVariable(
             type=ToolRuntimeVariableType.IMAGE,
             name=name,

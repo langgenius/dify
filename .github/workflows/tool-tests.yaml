@@ -23,4 +23,4 @@ jobs:
         run: pip install -r ./api/requirements.txt
 
       - name: Run pytest
-        run: pytest ./api/tests/integration_tests/tools/test_all_provider.py
+        run: pytest ./api/tests/integration_tests/tools/
