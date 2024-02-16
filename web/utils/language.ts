@@ -6,6 +6,17 @@ export type Item = {
 export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT']
 export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT']
 
+export const SpeechLanguageItems = [
+  { value: 'zh-Hans', name: 'Chinese' },
+  { value: 'en-US', name: 'English' },
+  { value: 'de-DE', name: 'German' },
+  { value: 'fr-FR', name: 'French' },
+  { value: 'es-ES', name: 'Spanish' },
+  { value: 'it-IT', name: 'Italian' },
+  { value: 'th-TH', name: 'Thai' },
+  { value: 'id-ID', name: 'Indonesian' },
+]
+
 export const languages = [
   {
     value: 'en-US',

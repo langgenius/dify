@@ -43,14 +43,11 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
             {headerIcon && <div className='flex items-center justify-center w-6 h-6'>{headerIcon}</div>}
             <div className='text-sm font-semibold text-gray-800'>{title}</div>
           </div>
-          <div>
-            {isShowTextToSpeech
-              ? (
-                <div className='flex items-center'>
-                  <ParamsConfig/>
-                </div>
-              )
-              : headerRight}
+          <div className='flex gap-2 items-center'>
+            {headerRight && <div>{headerRight}</div>}
+            {isShowTextToSpeech && <div className='flex items-center'>
+              <ParamsConfig/>
+            </div>}
           </div>
         </div>
       </div>
