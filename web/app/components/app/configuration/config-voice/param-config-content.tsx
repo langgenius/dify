@@ -28,7 +28,8 @@ const VoiceParamConfig: FC = () => {
   const languageItem = languages.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
-  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${languageItem ? languageItem.value : 'en-US'}` }, fetchAppVoices).data
+  const language = languageItem?.value
+  const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
   const voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
