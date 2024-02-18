@@ -1,13 +1,21 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import BasePanel from '../_base/panel'
+import useInput from './use-input'
+import { mockLLMNodeData } from './mock'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
+  const { inputs, handleModelChanged } = useInput(mockLLMNodeData)
+  const {
+    textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList()
   const handleAddVariable = () => {
     console.log('add variable')
   }
@@ -18,7 +26,16 @@ const Panel: FC = () => {
           <Field
             title={t(`${i18nPrefix}.model`)}
           >
-            Model Selector
+            <ModelSelector
+              defaultModel={(inputs.model?.provider && inputs.model?.name)
+                ? {
+                  provider: inputs.model.provider,
+                  model: inputs.model.name,
+                }
+                : undefined}
+              modelList={textGenerationModelList}
+              onSelect={handleModelChanged}
+            />
           </Field>
 
           <Field
