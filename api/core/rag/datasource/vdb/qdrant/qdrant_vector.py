@@ -265,7 +265,6 @@ class QdrantVector(BaseVector):
         return len(response) > 0
 
     def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
-        query_vector = (Field.VECTOR.value, query_vector)
         from qdrant_client.http import models
         filter = models.Filter(
             must=[
@@ -288,7 +287,7 @@ class QdrantVector(BaseVector):
         for result in results:
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
-            score_threshold = kwargs.get("score_threshold", .0)
+            score_threshold = kwargs.get("score_threshold", .0) if kwargs.get('score_threshold', .0) else 0.0
             if result.score > score_threshold:
                 metadata['score'] = result.score
                 doc = Document(

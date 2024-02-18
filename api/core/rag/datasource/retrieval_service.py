@@ -28,7 +28,7 @@ class RetrievalService:
 
     @classmethod
     def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
-                 top_k: int, score_threshold: Optional[float] = None, reranking_model: Optional[dict] = None):
+                 top_k: int, score_threshold: Optional[float] = .0, reranking_model: Optional[dict] = None):
         all_documents = []
         threads = []
         # retrieval_model source with keyword
@@ -62,7 +62,7 @@ class RetrievalService:
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
                 'query': query,
-                'search_method': retrival_method,
+                'retrival_method': retrival_method,
                 'score_threshold': score_threshold,
                 'top_k': top_k,
                 'reranking_model': reranking_model,
@@ -150,9 +150,8 @@ class RetrievalService:
                 dataset=dataset,
             )
 
-            documents = vector_processor.vector.search_by_full_text(
+            documents = vector_processor.search_by_full_text(
                 query,
-                search_type='similarity_score_threshold',
                 top_k=top_k
             )
             if documents:
