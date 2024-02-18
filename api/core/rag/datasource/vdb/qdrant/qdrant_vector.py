@@ -151,7 +151,7 @@ class QdrantVector(BaseVector):
             points = [
                 rest.PointStruct(
                     id=point_id,
-                    vector=vector if Field.VECTOR.value is None else {Field.VECTOR.value: vector},
+                    vector=vector,
                     payload=payload,
                 )
                 for point_id, vector, payload in zip(

@@ -99,7 +99,7 @@ class Vector:
 
     def create(self, texts: list = None, **kwargs):
         if texts:
-            embeddings = self._embeddings.embed_documents(texts)
+            embeddings = self._embeddings.embed_documents([document.page_content for document in texts])
             self._vector_processor.create(
                 texts=texts,
                 embeddings=embeddings,

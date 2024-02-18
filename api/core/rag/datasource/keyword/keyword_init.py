@@ -16,7 +16,7 @@ from models.dataset import Dataset
 class Keyword:
     def __init__(self, dataset: Dataset):
         self._dataset = dataset
-        self._keyword_processor = self._init_vector()
+        self._keyword_processor = self._init_keyword()
 
     def _init_keyword(self) -> BaseKeyword:
         config = cast(dict, current_app.config)
@@ -57,9 +57,9 @@ class Keyword:
         return self._keyword_processor.search(query, **kwargs)
 
     def __getattr__(self, name):
-        if self._vector_processor is not None:
-            method = getattr(self._vector_processor, name)
+        if self._keyword_processor is not None:
+            method = getattr(self._keyword_processor, name)
             if callable(method):
                 return method
 
-        raise AttributeError(f"'vector_processor' object has no attribute '{name}'")
+        raise AttributeError(f"'Keyword' object has no attribute '{name}'")
