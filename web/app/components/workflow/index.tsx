@@ -88,6 +88,7 @@ const WorkflowWrapWithReactFlowProvider: FC<WorkflowWrapProps> = ({
 }) => {
   return (
     <ReactFlowProvider>
+      {selectedNodeId}
       <WorkflowWrap
         selectedNodeId={selectedNodeId}
         nodes={nodes}
