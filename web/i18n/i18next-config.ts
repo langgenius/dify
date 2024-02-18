@@ -61,6 +61,9 @@ import customPt from './lang/custom.pt' // Portuguese import
 import toolsEn from './lang/tools.en'
 import toolsZh from './lang/tools.zh'
 import toolsPt from './lang/tools.pt' // Portuguese import
+import workflowEn from './lang/workflow.en'
+import workflowZh from './lang/workflow.zh'
+import workflowPt from './lang/workflow.pt' // Portuguese import
 
 const resources = {
   'en-US': {
@@ -89,6 +92,7 @@ const resources = {
       custom: customEn,
       // tools
       tools: toolsEn,
+      workflow: workflowEn,
     },
   },
   'zh-Hans': {
@@ -116,6 +120,7 @@ const resources = {
       custom: customZh,
       // tools
       tools: toolsZh,
+      workflow: workflowZh,
     },
   },
   'pt-BR': {
@@ -142,6 +147,7 @@ const resources = {
       billing: billingPt,
       custom: customPt,
       tools: toolsPt,
+      workflow: workflowPt,
     },
   },
 }
