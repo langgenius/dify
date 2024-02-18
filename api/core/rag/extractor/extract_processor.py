@@ -1,9 +1,7 @@
 import tempfile
 from pathlib import Path
 from typing import List, Optional, Union
-
 import requests
-from core.data_loader.loader.word import DocExtractor
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -21,6 +19,7 @@ from core.rag.extractor.unstructured.unstructured_ppt_extractor import Unstructu
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
 from core.rag.extractor.unstructured.unstructured_text_extractor import UnstructuredTextExtractor
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
+from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
 from flask import current_app
@@ -119,7 +118,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx', '.doc']:
-                        extractor = DocExtractor(file_path)
+                        extractor = WordExtractor(file_path)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     else:
