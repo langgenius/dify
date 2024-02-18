@@ -8,6 +8,7 @@ import {
   useNodeId,
 } from 'reactflow'
 import { useWorkflowContext } from '../../context'
+import BlockSelector from '../../block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 type BaseNodeProps = {
@@ -48,15 +49,17 @@ const BaseNode: FC<BaseNodeProps> = ({
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
         Define the initial parameters for launching a workflow
       </div>
-      <div
-        className={`
-          hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
-          w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10
-          ${!outgoers.length && 'group-hover:flex'}
-        `}
-      >
-        <Plus className='w-2.5 h-2.5 text-white' />
-      </div>
+      <BlockSelector>
+        <div
+          className={`
+            hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
+            w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10
+            ${!outgoers.length && 'group-hover:flex'}
+          `}
+        >
+          <Plus className='w-2.5 h-2.5 text-white' />
+        </div>
+      </BlockSelector>
     </div>
   )
 }
