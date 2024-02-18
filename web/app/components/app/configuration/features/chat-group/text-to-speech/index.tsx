@@ -19,7 +19,8 @@ const TextToSpeech: FC = () => {
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const voiceItems = useSWR({ url: `/apps/${appId}/text-to-audio/voices?language=${textToSpeechConfig.language}` }, fetchAppVoices).data
+  const language = textToSpeechConfig.language
+  const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
   const voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
   return (
     <Panel
@@ -31,7 +32,7 @@ const TextToSpeech: FC = () => {
       headerIcon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
       headerRight={
         <div className='text-xs text-gray-500'>
-          {languages.find(i => i.value === textToSpeechConfig.language)?.name} - {voiceItem?.name}
+          {languages.find(i => i.value === textToSpeechConfig.language)?.name} - {voiceItem?.name ?? t('appDebug.voice.defaultDisplay')}
         </div>
       }
       noBodySpacing
