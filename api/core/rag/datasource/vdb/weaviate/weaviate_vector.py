@@ -154,12 +154,13 @@ class WeaviateVector(BaseVector):
     def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
         collection_name = self._collection_name
-        query_obj = self._client.query.get(collection_name)
+        query_obj = self._client.query.get(collection_name, self._attributes.append(Field.CONTENT_KEY.value))
 
         vector = {"vector": query_vector}
+        if kwargs.get("where_filter"):
+            query_obj = query_obj.with_where(kwargs.get("where_filter"))
         result = (
             query_obj.with_near_vector(vector)
-            .with_where(kwargs.get("where_filter"))
             .with_limit(kwargs.get("top_k", 4))
             .with_additional(["vector", "distance"])
             .do()
@@ -169,7 +170,7 @@ class WeaviateVector(BaseVector):
 
         docs_and_scores = []
         for res in result["data"]["Get"][collection_name]:
-            text = res.pop(Field.TEXT_KEY.value)
+            text = res.pop(Field.CONTENT_KEY.value)
             score = res["_additional"]["distance"]
             docs_and_scores.append((Document(page_content=text, metadata=res), score))
 
@@ -197,7 +198,7 @@ class WeaviateVector(BaseVector):
         content: Dict[str, Any] = {"concepts": [query]}
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
-        query_obj = self._client.query.get(collection_name)
+        query_obj = self._client.query.get(collection_name, self._attributes.append(Field.CONTENT_KEY.value))
         if kwargs.get("where_filter"):
             query_obj = query_obj.with_where(kwargs.get("where_filter"))
         if kwargs.get("additional"):
@@ -208,7 +209,7 @@ class WeaviateVector(BaseVector):
             raise ValueError(f"Error during query: {result['errors']}")
         docs = []
         for res in result["data"]["Get"][collection_name]:
-            text = res.pop(Field.TEXT_KEY.value)
+            text = res.pop(Field.CONTENT_KEY.value)
             docs.append(Document(page_content=text, metadata=res))
         return docs
 

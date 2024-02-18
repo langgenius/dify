@@ -5,8 +5,8 @@ from typing import Any, List, Optional, cast, Iterable, Generator, Tuple, Sequen
 
 import qdrant_client
 from pydantic import BaseModel
-from qdrant_client.conversions.common_types import HnswConfigDiff, PayloadSchemaType
-from qdrant_client.http.models import TextIndexParams, TextIndexType, TokenizerType, FilterSelector
+from qdrant_client.http.models import TextIndexParams, TextIndexType, TokenizerType, FilterSelector, HnswConfigDiff, \
+    PayloadSchemaType
 from qdrant_client.local.qdrant_local import QdrantLocal
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     DictFilter = dict[str, Union[str, int, bool, dict, list]]
     MetadataFilter = Union[DictFilter, common_types.Filter]
+
 
 class QdrantConfig(BaseModel):
     endpoint: str
@@ -86,12 +87,12 @@ class QdrantVector(BaseVector):
             size=vector_size,
             distance=rest.Distance[self._distance_func],
         )
-
+        hnsw_config = HnswConfigDiff(m=0, payload_m=16, ef_construct=100, full_scan_threshold=10000,
+                                     max_indexing_threads=0, on_disk=False)
         self._client.recreate_collection(
             collection_name=collection_name,
             vectors_config=vectors_config,
-            hnsw_config=HnswConfigDiff(m=0, payload_m=16, ef_construct=100, full_scan_threshold=10000,
-                                       max_indexing_threads=0, on_disk=False),
+            hnsw_config=hnsw_config,
             timeout=int(self._client_config.timeout),
         )
 
@@ -117,7 +118,7 @@ class QdrantVector(BaseVector):
 
         added_ids = []
         for batch_ids, points in self._generate_rest_batches(
-                texts, embeddings, metadatas, uuids
+                texts, embeddings, metadatas, uuids, 64, self._group_id
         ):
             self._client.upsert(
                 collection_name=self._collection_name, points=points
