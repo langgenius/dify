@@ -23,6 +23,7 @@ const CustomEdge = ({
     targetX,
     targetY,
     borderRadius: 30,
+    offset: -20,
   })
 
   return (

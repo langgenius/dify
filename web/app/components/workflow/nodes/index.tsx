@@ -1,8 +1,8 @@
 import { memo } from 'react'
+import type { NodeProps } from 'reactflow'
 import {
   Handle,
   Position,
-  useNodeId,
 } from 'reactflow'
 import { useWorkflowContext } from '../context'
 import {
@@ -10,11 +10,10 @@ import {
   PanelMap,
 } from './constants'
 
-const CustomNode = () => {
-  const nodeId = useNodeId()
-  const { nodes } = useWorkflowContext()
-  const currentNode = nodes.find(node => node.id === nodeId)
-  const NodeComponent = NodeMap[currentNode!.data.type as string]
+const CustomNode = ({
+  data,
+}: NodeProps) => {
+  const NodeComponent = NodeMap[data.type]
 
   return (
     <>

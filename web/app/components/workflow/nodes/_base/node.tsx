@@ -2,8 +2,11 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo } from 'react'
-import { useNodeId } from 'reactflow'
+import { memo, useMemo } from 'react'
+import {
+  getOutgoers,
+  useNodeId,
+} from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
@@ -16,9 +19,17 @@ const BaseNode: FC<BaseNodeProps> = ({
 }) => {
   const nodeId = useNodeId()
   const {
+    nodes,
+    edges,
     selectedNodeId,
     handleSelectedNodeIdChange,
   } = useWorkflowContext()
+  const currentNode = useMemo(() => {
+    return nodes.find(node => node.id === nodeId)
+  }, [nodeId, nodes])
+  const outgoers = useMemo(() => {
+    return getOutgoers(currentNode!, nodes, edges)
+  }, [currentNode, nodes, edges])
 
   return (
     <div
@@ -39,8 +50,9 @@ const BaseNode: FC<BaseNodeProps> = ({
       </div>
       <div
         className={`
-          hidden absolute -bottom-2 left-1/2 -translate-x-1/2 group-hover:flex items-center justify-center 
+          hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
           w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10
+          ${!outgoers.length && 'group-hover:flex'}
         `}
       >
         <Plus className='w-2.5 h-2.5 text-white' />
