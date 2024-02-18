@@ -7,7 +7,7 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 type Props = {
   title: string
   tooltip?: string
-  children: JSX.Element | string
+  children?: JSX.Element | string | null
   operations?: JSX.Element
   inline?: boolean
 }
@@ -33,7 +33,7 @@ const Filed: FC<Props> = ({
         </div>
         {operations && <div>{operations}</div>}
       </div>
-      <div>{children}</div>
+      {children && <div className={cn(!inline && 'mt-1')}>{children}</div>}
     </div>
   )
 }

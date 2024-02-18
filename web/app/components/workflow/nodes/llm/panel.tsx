@@ -7,15 +7,21 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import Switch from '@/app/components/base/switch'
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
-  const { inputs, handleModelChanged } = useInput(mockLLMNodeData)
   const {
     textGenerationModelList,
-  } = useTextGenerationCurrentProviderAndModelAndModelList()
+    inputs,
+    handleModelChanged,
+    toggleContextEnabled,
+  } = useInput(mockLLMNodeData)
+
+  const modelMode = inputs.model.mode
+  const isChatMode = modelMode === 'chat'
+
   const handleAddVariable = () => {
     console.log('add variable')
   }
@@ -49,11 +55,22 @@ const Panel: FC = () => {
 
           <Field
             title={t(`${i18nPrefix}.context`)}
+            operations={
+              <Switch
+                defaultValue={inputs.context.enabled}
+                onChange={toggleContextEnabled}
+                size='md'
+              />
+            }
           >
-            Context
+            {inputs.context.enabled
+              ? (
+                <div>Context</div>
+              )
+              : null}
           </Field>
           <Field
-            title={t(`${i18nPrefix}.context`)}
+            title={t(`${i18nPrefix}.prompt`)}
           >
             Prompt
           </Field>

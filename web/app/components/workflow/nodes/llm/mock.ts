@@ -9,7 +9,7 @@ export const mockLLMNodeData: LLMNodeData = {
   model: {
     provider: 'openai',
     name: 'gpt-4',
-    mode: 'completion',
+    mode: 'chat',
     completion_params: {
       temperature: 0.7,
     },
