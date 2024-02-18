@@ -1,7 +1,22 @@
 import type { Node as ReactFlowNode } from 'reactflow'
 import type { Resolution } from '@/types/app'
+
+export enum BlockEnum {
+  Start = 'start',
+  End = 'end',
+  DirectAnswer = 'direct-answer',
+  LLM = 'llm',
+  KnowledgeRetrieval = 'knowledge-retrieval',
+  QuestionClassifier = 'question-classifier',
+  IfElse = 'if-else',
+  Code = 'code',
+  TemplateTransform = 'template-transform',
+  HttpRequest = 'http-request',
+  VariableAssigner = 'variable-assigner',
+}
+
 export type NodeData = {
-  type: string
+  type: BlockEnum
   name?: string
   icon?: any
   description?: string
@@ -65,4 +80,11 @@ export type LLMNodeData = {
       detail: Resolution
     }
   }
+}
+
+export type Block = {
+  classification?: string
+  type: BlockEnum
+  title: string
+  description?: string
 }

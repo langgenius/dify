@@ -9,6 +9,7 @@ import {
 } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockSelector from '../../block-selector'
+import BlockIcon from '../../block-icon'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 type BaseNodeProps = {
@@ -42,7 +43,11 @@ const BaseNode: FC<BaseNodeProps> = ({
       onClick={() => handleSelectedNodeIdChange(nodeId || '')}
     >
       <div className='flex items-center px-3 pt-3 pb-2'>
-        <div className='mr-2'></div>
+        <BlockIcon
+          className='mr-2'
+          type={currentNode!.data.type}
+          size='md'
+        />
         <div className='text-[13px] font-semibold text-gray-700'>START</div>
       </div>
       {children}

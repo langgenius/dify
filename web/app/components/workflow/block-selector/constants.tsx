@@ -1,3 +1,6 @@
+import type { Block } from '../types'
+import { BlockEnum } from '../types'
+
 export const TABS = [
   {
     key: 'blocks',
@@ -13,68 +16,57 @@ export const TABS = [
   },
 ]
 
-export const BLOCKS = [
+export const BLOCKS: Block[] = [
   {
-    type: 'start',
+    type: BlockEnum.Start,
     title: 'Start',
     description: '',
-    icon: '',
   },
   {
-    type: 'llm',
+    type: BlockEnum.LLM,
     title: 'LLM',
-    icon: '',
   },
   {
-    type: 'end',
+    type: BlockEnum.End,
     title: 'End',
-    icon: '',
   },
   {
-    type: 'direct-answer',
+    type: BlockEnum.DirectAnswer,
     title: 'Direct Answer',
-    icon: '',
   },
   {
     classification: 'Question Understand',
-    type: 'knowledge-retrieval',
+    type: BlockEnum.KnowledgeRetrieval,
     title: 'Knowledge Retrieval',
-    icon: '',
   },
   {
     classification: 'Question Understand',
-    type: 'question-classifier',
+    type: BlockEnum.QuestionClassifier,
     title: 'Question Classifier',
-    icon: '',
   },
   {
     classification: 'Logic',
-    type: 'if-else',
+    type: BlockEnum.IfElse,
     title: 'IF/ELSE',
-    icon: '',
   },
   {
     classification: 'Transform',
-    type: 'code',
+    type: BlockEnum.Code,
     title: 'Code',
-    icon: '',
   },
   {
     classification: 'Transform',
-    type: 'template-transform',
+    type: BlockEnum.TemplateTransform,
     title: 'Templating Transform',
-    icon: '',
   },
   {
     classification: 'Transform',
-    type: 'variable-assigner',
+    type: BlockEnum.VariableAssigner,
     title: 'Variable Assigner',
-    icon: '',
   },
   {
     classification: 'Utilities',
-    type: 'http-request',
+    type: BlockEnum.HttpRequest,
     title: 'HTTP Request',
-    icon: '',
   },
 ]

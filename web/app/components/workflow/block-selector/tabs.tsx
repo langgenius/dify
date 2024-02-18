@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import BlockIcon from '../block-icon'
 import {
   BLOCKS,
   TABS,
@@ -30,9 +31,12 @@ const Tabs = () => {
           BLOCKS.map(block => (
             <div
               key={block.type}
-              className='flex items-center h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+              className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
             >
-              <div className='mr-2 w-5 h-5' />
+              <BlockIcon
+                className='mr-2'
+                type={block.type}
+              />
               <div className='text-sm text-gray-900'>{block.title}</div>
             </div>
           ))

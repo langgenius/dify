@@ -4,6 +4,7 @@ import type {
 } from 'react'
 import { useState } from 'react'
 import { useWorkflowContext } from '../../context'
+import BlockIcon from '../../block-icon'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 enum TabEnum {
@@ -24,12 +25,19 @@ const BasePanel: FC<BasePanelProps> = ({
 }) => {
   const initialActiveTab = inputsElement ? TabEnum.Inputs : outputsElement ? TabEnum.Outputs : ''
   const [activeTab, setActiveTab] = useState(initialActiveTab)
-  const { handleSelectedNodeIdChange } = useWorkflowContext()
+  const {
+    handleSelectedNodeIdChange,
+    selectedNode,
+  } = useWorkflowContext()
 
   return (
     <div className='absolute top-2 right-2 bottom-2 w-[420px] bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl z-20'>
       <div className='flex items-center px-4 pt-3'>
-        <div className='shrink-0 mr-2 w-6 h-6'></div>
+        <BlockIcon
+          className='shrink-0 mr-2'
+          type={selectedNode!.data.type}
+          size='md'
+        />
         <div className='grow py-1 text-base text-gray-900 font-semibold '>LLM</div>
         <div className='shrink-0 flex items-center'>
           <div
