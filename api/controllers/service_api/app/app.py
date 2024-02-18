@@ -1,7 +1,7 @@
 import json
 
 from flask import current_app
-from flask_restful import fields, marshal_with
+from flask_restful import fields, marshal_with, reqparse
 
 from controllers.service_api import api
 from controllers.service_api.wraps import AppApiResource
@@ -45,7 +45,12 @@ class AppParameterApi(AppApiResource):
     @marshal_with(parameters_fields)
     def get(self, app_model: App, end_user):
         """Retrieve app parameters."""
-        app_model_config = app_model.app_model_config
+        parser = reqparse.RequestParser()
+        parser.add_argument('app_model_config_id', type=str, required=False, location='args')
+        args = parser.parse_args()
+
+        app_model_config_id = args['app_model_config_id'] if 'app_model_config_id' in args else None
+        app_model_config = app_model.get_app_model_config(app_model_config_id)
 
         return {
             'opening_statement': app_model_config.opening_statement,
@@ -67,7 +72,12 @@ class AppParameterApi(AppApiResource):
 class AppMetaApi(AppApiResource):
     def get(self, app_model: App, end_user):
         """Get app meta"""
-        app_model_config: AppModelConfig = app_model.app_model_config
+        parser = reqparse.RequestParser()
+        parser.add_argument('app_model_config_id', type=str, required=False, location='args')
+        args = parser.parse_args()
+
+        app_model_config_id = args['app_model_config_id'] if 'app_model_config_id' in args else None
+        app_model_config: AppModelConfig = app_model.get_app_model_config(app_model_config_id)
 
         agent_config = app_model_config.agent_mode_dict or {}
         meta = {

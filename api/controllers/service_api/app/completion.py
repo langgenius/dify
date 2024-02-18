@@ -40,6 +40,7 @@ class CompletionApi(AppApiResource):
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('user', required=True, nullable=False, type=str, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
+        parser.add_argument('app_model_config_id', type=str, required=False, location='json')
 
         args = parser.parse_args()
 
@@ -117,6 +118,7 @@ class ChatApi(AppApiResource):
         parser.add_argument('user', type=str, required=True, nullable=False, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
         parser.add_argument('auto_generate_name', type=bool, required=False, default=True, location='json')
+        parser.add_argument('app_model_config_id', type=str, required=False, location='json')
 
         args = parser.parse_args()
 

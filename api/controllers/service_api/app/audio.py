@@ -32,7 +32,8 @@ from services.errors.audio import (
 
 class AudioApi(AppApiResource):
     def post(self, app_model: App, end_user):
-        app_model_config: AppModelConfig = app_model.app_model_config
+        app_model_config_id = request.form['app_model_config_id'] if 'app_model_config_id' in request.form else None
+        app_model_config: AppModelConfig = app_model.get_app_model_config(app_model_config_id)
 
         if not app_model_config.speech_to_text_dict['enabled']:
             raise AppUnavailableError()

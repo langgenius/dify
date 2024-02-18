@@ -85,5 +85,5 @@ class AppSiteInfo:
             }
 
         if app.enable_site and site.prompt_public:
-            app_model_config = app.app_model_config
+            app_model_config = app.get_app_model_config()
             self.model_config = app_model_config

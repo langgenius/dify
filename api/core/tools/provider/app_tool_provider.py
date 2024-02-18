@@ -15,7 +15,7 @@ class AppBasedToolProviderEntity(ToolProviderController):
     @property
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.APP_BASED
-    
+
     def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
         pass
 
@@ -59,7 +59,7 @@ class AppBasedToolProviderEntity(ToolProviderController):
                 logger.error(f"app {db_tool.app_id} not found")
                 continue
 
-            app_model_config: AppModelConfig = app.app_model_config
+            app_model_config: AppModelConfig = app.get_app_model_config()
             user_input_form_list = app_model_config.user_input_form_list
             for input_form in user_input_form_list:
                 # get type

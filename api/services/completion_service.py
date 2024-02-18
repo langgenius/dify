@@ -103,7 +103,8 @@ class CompletionService:
             if app_model.app_model_config_id is None:
                 raise AppModelConfigBrokenError()
 
-            app_model_config = app_model.app_model_config
+            app_model_config_id = args['app_model_config_id'] if 'app_model_config_id' in args else None
+            app_model_config = app_model.get_app_model_config(app_model_config_id)
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
@@ -175,13 +176,12 @@ class CompletionService:
         if not message:
             raise MessageNotExistsError()
 
-        current_app_model_config = app_model.app_model_config
-        more_like_this = current_app_model_config.more_like_this_dict
+        app_model_config = message.app_model_config
+        more_like_this = app_model_config.more_like_this_dict
 
-        if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
+        if not app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
             raise MoreLikeThisDisabledError()
 
-        app_model_config = message.app_model_config
         model_dict = app_model_config.model_dict
         completion_params = model_dict.get('completion_params')
         completion_params['temperature'] = 0.9

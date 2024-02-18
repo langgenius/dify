@@ -44,6 +44,7 @@ class CompletionApi(InstalledAppResource):
         parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='explore_app', location='json')
+        parser.add_argument('app_model_config_id', type=str, required=False, location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
@@ -108,6 +109,7 @@ class ChatApi(InstalledAppResource):
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='explore_app', location='json')
+        parser.add_argument('app_model_config_id', type=str, required=False, location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'

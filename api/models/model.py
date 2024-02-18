@@ -60,6 +60,16 @@ class App(db.Model):
             AppModelConfig.id == self.app_model_config_id).first()
         return app_model_config
 
+    def get_app_model_config(self, config_id: str | None = None):
+        if config_id is None or not config_id:
+            return self.app_model_config
+
+        config = db.session.query(AppModelConfig).filter(
+            AppModelConfig.id == config_id,
+            AppModelConfig.app_id == self.id
+            ).first()
+        return config
+
     @property
     def api_base_url(self):
         return (current_app.config['SERVICE_API_URL'] if current_app.config['SERVICE_API_URL']
@@ -69,30 +79,30 @@ class App(db.Model):
     def tenant(self):
         tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
         return tenant
-    
+
     @property
     def is_agent(self) -> bool:
-        app_model_config = self.app_model_config
+        app_model_config = self.get_app_model_config()
         if not app_model_config:
             return False
         if not app_model_config.agent_mode:
             return False
-        if self.app_model_config.agent_mode_dict.get('enabled', False) \
-            and self.app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
+        if app_model_config.agent_mode_dict.get('enabled', False) \
+            and app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
             return True
         return False
-    
+
     @property
     def deleted_tools(self) -> list:
         # get agent mode tools
-        app_model_config = self.app_model_config
+        app_model_config = self.get_app_model_config()
         if not app_model_config:
             return []
         if not app_model_config.agent_mode:
             return []
         agent_mode = app_model_config.agent_mode_dict
         tools = agent_mode.get('tools', [])
-        
+
         provider_ids = []
 
         for tool in tools:
@@ -1032,7 +1042,7 @@ class MessageAgentThought(db.Model):
             return json.loads(self.message_files)
         else:
             return []
-        
+
     @property
     def tool_labels(self) -> dict:
         try:
