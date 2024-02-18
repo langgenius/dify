@@ -1,6 +1,8 @@
 import pytest
+
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolProviderCredentials
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
+
 
 # Mocking the database provider object
 class MockApiToolProvider:
@@ -24,7 +26,7 @@ def test_from_db_with_different_auth_types(auth_type, expected_fields):
     assert all(key in credentials_schema for key in expected_fields), f"Not all expected fields are present for auth type {auth_type}"
 
 @pytest.mark.parametrize("auth_type", [
-    (ApiProviderAuthType.OAUTH),
+    ApiProviderAuthType.OAUTH,
 ])
 def test_oauth_credentials_schema(auth_type):
     db_provider = MockApiToolProvider()

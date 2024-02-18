@@ -1,9 +1,15 @@
 import pytest
 
 from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ApiProviderSchemaType,
+    ToolCredentialsOption,
+    ToolProviderType,
+    ToolRuntimeVariablePool,
+    ToolRuntimeVariableType,
+)
 from core.tools.provider.tool_provider import ToolProviderCredentials
-from core.tools.entities.tool_entities import ToolCredentialsOption
-from core.tools.entities.tool_entities import ToolProviderType, ApiProviderAuthType, ApiProviderSchemaType, ToolRuntimeVariablePool, ToolRuntimeVariableType
 
 
 @pytest.mark.parametrize("enum_class, valid_value, expected_enum", [

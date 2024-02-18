@@ -1,10 +1,11 @@
 import json
 from json import dumps
-from typing import Any, Union
+from typing import Any
 
-import core.helper.ssrf_proxy as ssrf_proxy
 import httpx
 import requests
+
+import core.helper.ssrf_proxy as ssrf_proxy
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError
