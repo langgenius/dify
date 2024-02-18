@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import requests
 from flask_login import current_user
@@ -10,6 +10,8 @@ from extensions.ext_database import db
 from flask import current_app
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
+
+from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceBinding
 
@@ -60,7 +62,7 @@ class NotionExtractor(BaseExtractor):
 
     def _load_data_as_documents(
             self, notion_obj_id: str, notion_page_type: str
-    ) -> List[Document]:
+    ) -> list[Document]:
         docs = []
         if notion_page_type == 'database':
             # get all the pages in the database
@@ -76,8 +78,8 @@ class NotionExtractor(BaseExtractor):
         return docs
 
     def _get_notion_database_data(
-            self, database_id: str, query_dict: Dict[str, Any] = {}
-    ) -> List[Document]:
+            self, database_id: str, query_dict: dict[str, Any] = {}
+    ) -> list[Document]:
         """Get all the pages from a Notion database."""
         res = requests.post(
             DATABASE_URL_TMPL.format(database_id=database_id),
@@ -131,12 +133,12 @@ class NotionExtractor(BaseExtractor):
 
         return database_content_list
 
-    def _get_notion_block_data(self, page_id: str) -> List[str]:
+    def _get_notion_block_data(self, page_id: str) -> list[str]:
         result_lines_arr = []
         cur_block_id = page_id
         while True:
             block_url = BLOCK_CHILD_URL_TMPL.format(block_id=cur_block_id)
-            query_dict: Dict[str, Any] = {}
+            query_dict: dict[str, Any] = {}
 
             res = requests.request(
                 "GET",
@@ -198,7 +200,7 @@ class NotionExtractor(BaseExtractor):
         cur_block_id = block_id
         while True:
             block_url = BLOCK_CHILD_URL_TMPL.format(block_id=cur_block_id)
-            query_dict: Dict[str, Any] = {}
+            query_dict: dict[str, Any] = {}
 
             res = requests.request(
                 "GET",
@@ -262,7 +264,7 @@ class NotionExtractor(BaseExtractor):
         cur_block_id = block_id
         while not done:
             block_url = BLOCK_CHILD_URL_TMPL.format(block_id=cur_block_id)
-            query_dict: Dict[str, Any] = {}
+            query_dict: dict[str, Any] = {}
 
             res = requests.request(
                 "GET",
@@ -328,7 +330,7 @@ class NotionExtractor(BaseExtractor):
         else:
             retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=obj_id)
 
-        query_dict: Dict[str, Any] = {}
+        query_dict: dict[str, Any] = {}
 
         res = requests.request(
             "GET",

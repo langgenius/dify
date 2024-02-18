@@ -1,23 +1,27 @@
 import json
 
+from flask import request
+from flask_restful import marshal, reqparse
+from sqlalchemy import desc
+from werkzeug.exceptions import NotFound
+
 import services.dataset_service
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
-from controllers.service_api.dataset.error import (ArchivedDocumentImmutableError, DocumentIndexingError,
-                                                   NoFileUploadedError, TooManyFilesError)
+from controllers.service_api.dataset.error import (
+    ArchivedDocumentImmutableError,
+    DocumentIndexingError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from core.errors.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
-from flask import request
-from flask_login import current_user
-from flask_restful import marshal, reqparse
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DocumentService
 from services.file_service import FileService
-from sqlalchemy import desc
-from werkzeug.exceptions import NotFound
 
 
 class DocumentAddByTextApi(DatasetApiResource):

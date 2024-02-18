@@ -1,12 +1,13 @@
 import datetime
 import time
 
-import app
 import click
-from extensions.ext_database import db
 from flask import current_app
-from models.dataset import Embedding
 from werkzeug.exceptions import NotFound
+
+import app
+from extensions.ext_database import db
+from models.dataset import Embedding
 
 
 @app.celery.task(queue='dataset')

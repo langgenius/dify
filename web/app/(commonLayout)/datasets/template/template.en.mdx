@@ -873,7 +873,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/datasets/{dataset_id}/segments/{segment_id}'
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='DELETE'
   title='delete document segment'
   name='#delete_segment'
@@ -894,7 +894,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="DELETE"
-      label="/datasets/{dataset_id}/segments/{segment_id}"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
       targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
@@ -916,7 +916,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/datasets/{dataset_id}/segments/{segment_id}'
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
   title='update document segment'
   name='#update_segment'
@@ -947,7 +947,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/segments/{segment_id}"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{\"segments\": {\"content\": \"1\",\"answer\": \"1\", \"keywords\": [\"a\"], \"enabled\": false}}'`}
     >
     ```bash {{ title: 'cURL' }}

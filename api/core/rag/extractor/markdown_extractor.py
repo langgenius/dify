@@ -43,13 +43,13 @@ class MarkdownExtractor(BaseExtractor):
 
         return documents
 
-    def markdown_to_tups(self, markdown_text: str) -> List[Tuple[Optional[str], str]]:
+    def markdown_to_tups(self, markdown_text: str) -> list[tuple[Optional[str], str]]:
         """Convert a markdown file to a dictionary.
 
         The keys are the headers and the values are the text under each header.
 
         """
-        markdown_tups: List[Tuple[Optional[str], str]] = []
+        markdown_tups: list[tuple[Optional[str], str]] = []
         lines = markdown_text.split("\n")
 
         current_header = None
@@ -92,11 +92,11 @@ class MarkdownExtractor(BaseExtractor):
         content = re.sub(pattern, r"\1", content)
         return content
 
-    def parse_tups(self, filepath: str) -> List[Tuple[Optional[str], str]]:
+    def parse_tups(self, filepath: str) -> list[tuple[Optional[str], str]]:
         """Parse file into tuples."""
         content = ""
         try:
-            with open(filepath, "r", encoding=self._encoding) as f:
+            with open(filepath, encoding=self._encoding) as f:
                 content = f.read()
         except UnicodeDecodeError as e:
             if self._autodetect_encoding:

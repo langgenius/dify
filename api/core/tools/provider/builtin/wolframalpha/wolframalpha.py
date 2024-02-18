@@ -1,14 +1,12 @@
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.tool.tool import Tool
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from typing import Any
+
 from core.tools.errors import ToolProviderCredentialValidationError
-
 from core.tools.provider.builtin.wolframalpha.tools.wolframalpha import WolframAlphaTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
-from typing import Any, Dict, List
 
 class GoogleProvider(BuiltinToolProviderController):
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             WolframAlphaTool().fork_tool_runtime(
                 meta={
@@ -16,7 +14,7 @@ class GoogleProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "query": "1+2+....+111",
                 },
             )

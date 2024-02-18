@@ -1,15 +1,16 @@
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
 
 import requests
 import weaviate
+from langchain.embeddings.base import Embeddings
+from langchain.schema import Document
+from langchain.vectorstores import VectorStore
+from pydantic import BaseModel, root_validator
+
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
 from core.vector_store.weaviate_vector_store import WeaviateVectorStore
-from langchain.embeddings.base import Embeddings
-from langchain.schema import BaseRetriever, Document
-from langchain.vectorstores import VectorStore
 from models.dataset import Dataset
-from pydantic import BaseModel, root_validator
 
 
 class WeaviateConfig(BaseModel):
@@ -171,7 +172,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
 
         return False
 
-    def search_by_full_text_index(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text_index(self, query: str, **kwargs: Any) -> list[Document]:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
         return vector_store.similarity_search_by_bm25(query, kwargs.get('top_k', 2), **kwargs)

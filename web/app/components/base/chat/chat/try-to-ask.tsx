@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { OnSend } from '../types'
 import { Star04 } from '@/app/components/base/icons/src/vender/solid/shapes'
@@ -34,7 +35,7 @@ const TryToAsk: FC<TryToAskProps> = ({
           }}
         />
       </div>
-      <div className='flex flex-wrap'>
+      <div className='flex flex-wrap justify-center'>
         {
           suggestedQuestions.map((suggestQuestion, index) => (
             <Button
@@ -51,4 +52,4 @@ const TryToAsk: FC<TryToAskProps> = ({
   )
 }
 
-export default TryToAsk
+export default memo(TryToAsk)

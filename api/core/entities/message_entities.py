@@ -1,11 +1,18 @@
 import enum
 from typing import Any, cast
 
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
-                                                          PromptMessage, SystemPromptMessage, TextPromptMessageContent,
-                                                          ToolPromptMessage, UserPromptMessage)
 from langchain.schema import AIMessage, BaseMessage, FunctionMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel
+
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
 
 
 class PromptMessageFileType(enum.Enum):
@@ -34,7 +41,7 @@ class ImagePromptMessageFile(PromptMessageFile):
 
 
 class LCHumanMessageWithFiles(HumanMessage):
-    # content: Union[str, List[Union[str, Dict]]]
+    # content: Union[str, list[Union[str, Dict]]]
     content: str
     files: list[PromptMessageFile]
 

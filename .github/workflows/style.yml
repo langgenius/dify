@@ -10,9 +10,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  python-style:
+    name: Python Style
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Python dependencies
+        run: pip install ruff
+
+      - name: Ruff check
+        run: ruff check ./api
+
+      - name: Lint hints
+        if: failure()
+        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
+
   test:
     name: ESLint and SuperLinter
     runs-on: ubuntu-latest
+    needs: python-style
 
     steps:
       - name: Checkout code

@@ -98,6 +98,7 @@ const translation = {
   builtInPromptTitle: 'Prompt',
   toolRemoved: 'Tool removed',
   notAuthorized: 'Tool not authorized',
+  howToGet: 'How to get',
 }
 
 export default translation

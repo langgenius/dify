@@ -1,10 +1,6 @@
-from typing import Any, List, Optional, Sequence, Tuple, Union, cast
+from collections.abc import Sequence
+from typing import Any, Optional, Union
 
-from core.entities.application_entities import ModelConfigEntity
-from core.entities.message_entities import lc_messages_to_prompt_messages
-from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import PromptMessageTool
-from core.third_party.langchain.llms.fake import FakeLLM
 from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
 from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
 from langchain.callbacks.base import BaseCallbackManager
@@ -13,6 +9,12 @@ from langchain.prompts.chat import BaseMessagePromptTemplate
 from langchain.schema import AgentAction, AgentFinish, AIMessage, SystemMessage
 from langchain.tools import BaseTool
 from pydantic import root_validator
+
+from core.entities.application_entities import ModelConfigEntity
+from core.entities.message_entities import lc_messages_to_prompt_messages
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.message_entities import PromptMessageTool
+from core.third_party.langchain.llms.fake import FakeLLM
 
 
 class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
@@ -41,7 +43,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
     def plan(
         self,
-        intermediate_steps: List[Tuple[AgentAction, str]],
+        intermediate_steps: list[tuple[AgentAction, str]],
         callbacks: Callbacks = None,
         **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -84,7 +86,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
     def real_plan(
         self,
-        intermediate_steps: List[Tuple[AgentAction, str]],
+        intermediate_steps: list[tuple[AgentAction, str]],
         callbacks: Callbacks = None,
         **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -145,7 +147,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
     async def aplan(
             self,
-            intermediate_steps: List[Tuple[AgentAction, str]],
+            intermediate_steps: list[tuple[AgentAction, str]],
             callbacks: Callbacks = None,
             **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -157,7 +159,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
-            extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
+            extra_prompt_messages: Optional[list[BaseMessagePromptTemplate]] = None,
             system_message: Optional[SystemMessage] = SystemMessage(
                 content="You are a helpful AI assistant."
             ),

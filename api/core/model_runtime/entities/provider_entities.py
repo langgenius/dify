@@ -1,9 +1,10 @@
 from enum import Enum
 from typing import Optional
 
+from pydantic import BaseModel
+
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType, ProviderModel
-from pydantic import BaseModel
 
 
 class ConfigurateMethod(Enum):

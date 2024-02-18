@@ -1,12 +1,23 @@
 import json
 import logging
-from typing import Generator, Union
+from collections.abc import Generator
+from typing import Union
+
+from flask import Response, stream_with_context
+from flask_login import current_user
+from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
 from controllers.console.app import _get_app
-from controllers.console.app.error import (AppMoreLikeThisDisabledError, CompletionRequestError,
-                                           ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
-                                           ProviderQuotaExceededError)
+from controllers.console.app.error import (
+    AppMoreLikeThisDisabledError,
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.entities.application_entities import InvokeFrom
@@ -14,10 +25,6 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from fields.conversation_fields import annotation_fields, message_detail_fields
-from flask import Response, stream_with_context
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
@@ -28,7 +35,6 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_service import MessageService
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 
 class ChatMessageListApi(Resource):
@@ -241,8 +247,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            for chunk in response:
-                yield chunk
+            yield from response
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

@@ -1,15 +1,16 @@
 import base64
 import time
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import tiktoken
+from openai import OpenAI
+
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
-from openai import OpenAI
 
 
 class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
@@ -161,7 +162,7 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def _embedding_invoke(self, model: str, client: OpenAI, texts: Union[list[str], str],
-                          extra_model_kwargs: dict) -> Tuple[list[list[float]], int]:
+                          extra_model_kwargs: dict) -> tuple[list[list[float]], int]:
         """
         Invoke embedding model
 

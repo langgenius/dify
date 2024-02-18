@@ -1,6 +1,5 @@
 import base64
 import logging
-from typing import List
 
 from bs4 import BeautifulSoup
 

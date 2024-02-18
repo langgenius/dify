@@ -1,7 +1,12 @@
-import type { FC } from 'react'
-import { useRef } from 'react'
+import type {
+  FC,
+  ReactNode,
+} from 'react'
+import {
+  memo,
+  useRef,
+} from 'react'
 import type { ChatItem } from '../types'
-import { useChatContext } from './context'
 import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import Log from '@/app/components/app/chat/log'
@@ -10,16 +15,17 @@ import ImageGallery from '@/app/components/base/image-gallery'
 
 type QuestionProps = {
   item: ChatItem
+  showPromptLog?: boolean
+  questionIcon?: ReactNode
+  isResponsing?: boolean
 }
 const Question: FC<QuestionProps> = ({
   item,
+  showPromptLog,
+  isResponsing,
+  questionIcon,
 }) => {
   const ref = useRef(null)
-  const {
-    showPromptLog,
-    isResponsing,
-    questionIcon,
-  } = useChatContext()
   const {
     content,
     message_files,
@@ -59,4 +65,4 @@ const Question: FC<QuestionProps> = ({
   )
 }
 
-export default Question
+export default memo(Question)

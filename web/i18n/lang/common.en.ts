@@ -39,6 +39,22 @@ const translation = {
     input: 'Please enter',
     select: 'Please select',
   },
+  voice: {
+    language: {
+      zhHans: 'Chinese',
+      enUS: 'English',
+      deDE: 'German',
+      frFR: 'French',
+      esES: 'Spanish',
+      itIT: 'Italian',
+      thTH: 'Thai.',
+      idID: 'Indonesian',
+      jaJP: 'Japanese',
+      koKR: 'Korean',
+      ptBR: 'Portuguese',
+      ruRU: 'Russian',
+    },
+  },
   unit: {
     char: 'chars',
   },
@@ -370,6 +386,7 @@ const translation = {
         lengthError: 'API-key length cannot be less than 5 characters',
       },
     },
+    type: 'Type',
   },
   about: {
     changeLog: 'Changlog',

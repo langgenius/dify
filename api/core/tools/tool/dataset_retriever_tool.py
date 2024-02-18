@@ -1,12 +1,14 @@
-from typing import Any, Dict, List, Union
-from core.features.dataset_retrieval import DatasetRetrievalFeature
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParamter, ToolIdentity, ToolDescription
-from core.tools.tool.tool import Tool
-from core.tools.entities.common_entities import I18nObject
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
+from typing import Any
 
 from langchain.tools import BaseTool
+
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
+from core.features.dataset_retrieval import DatasetRetrievalFeature
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
+from core.tools.tool.tool import Tool
+
 
 class DatasetRetrieverTool(Tool):
     langchain_tool: BaseTool
@@ -18,7 +20,7 @@ class DatasetRetrieverTool(Tool):
                          return_resource: bool,
                          invoke_from: InvokeFrom,
                          hit_callback: DatasetIndexToolCallbackHandler
-    ) -> List['DatasetRetrieverTool']:
+    ) -> list['DatasetRetrieverTool']:
         """
         get dataset tool
         """
@@ -63,23 +65,23 @@ class DatasetRetrieverTool(Tool):
 
         return tools
 
-    def get_runtime_parameters(self) -> List[ToolParamter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         return [
-            ToolParamter(name='query',
+            ToolParameter(name='query',
                          label=I18nObject(en_US='', zh_Hans=''),
                          human_description=I18nObject(en_US='', zh_Hans=''),
-                         type=ToolParamter.ToolParameterType.STRING,
-                         form=ToolParamter.ToolParameterForm.LLM,
+                         type=ToolParameter.ToolParameterType.STRING,
+                         form=ToolParameter.ToolParameterForm.LLM,
                          llm_description='Query for the dataset to be used to retrieve the dataset.',
                          required=True,
                          default=''),
         ]
 
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         invoke dataset retriever tool
         """
-        query = tool_paramters.get('query', None)
+        query = tool_parameters.get('query', None)
         if not query:
             return self.create_text_message(text='please input query')
         
@@ -88,7 +90,7 @@ class DatasetRetrieverTool(Tool):
 
         return self.create_text_message(text=result)
 
-    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
         """
         validate the credentials for dataset retriever tool
         """

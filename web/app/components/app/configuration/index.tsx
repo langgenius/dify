@@ -13,7 +13,10 @@ import Button from '../../base/button'
 import Loading from '../../base/loading'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
-import { useDebugWithSingleOrMultipleModel } from './debug/hooks'
+import {
+  useDebugWithSingleOrMultipleModel,
+  useFormattingChangedDispatcher,
+} from './debug/hooks'
 import type { ModelAndParameter } from './debug/types'
 import { APP_SIDEBAR_SHOULD_COLLAPSE } from './debug/types'
 import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
@@ -27,6 +30,7 @@ import type {
   MoreLikeThisConfig,
   PromptConfig,
   PromptVariable,
+  TextToSpeechConfig,
 } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
@@ -43,9 +47,8 @@ import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG, supportFunctionCallModels } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
-import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
@@ -96,8 +99,10 @@ const Configuration: FC = () => {
   const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [textToSpeechConfig, setTextToSpeechConfig] = useState<MoreLikeThisConfig>({
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig>({
     enabled: false,
+    voice: '',
+    language: '',
   })
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
@@ -111,10 +116,11 @@ const Configuration: FC = () => {
       embedding_model_name: '',
     },
   })
+  const formattingChangedDispatcher = useFormattingChangedDispatcher()
   const setAnnotationConfig = (config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => {
     doSetAnnotationConfig(config)
     if (!notSetFormatChanged)
-      setFormattingChanged(true)
+      formattingChangedDispatcher()
   }
 
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
@@ -154,6 +160,7 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
+
   const isChatApp = mode === AppType.chat
   const isAgent = modelConfig.agentConfig?.enabled
   const setIsAgent = (value: boolean) => {
@@ -163,7 +170,7 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
   const isOpenAI = modelConfig.provider === 'openai'
-  const isFunctionCall = (isOpenAI && modelConfig.mode === ModelModeType.chat) || supportFunctionCallModels.includes(modelConfig.model_id)
+
   const [collectionList, setCollectionList] = useState<Collection[]>([])
   useEffect(() => {
 
@@ -203,7 +210,7 @@ const Configuration: FC = () => {
       return
     }
 
-    setFormattingChanged(true)
+    formattingChangedDispatcher()
     if (data.find(item => !item.name)) { // has not loaded selected dataset
       const newSelected = produce(data, (draft: any) => {
         data.forEach((item, index) => {
@@ -242,6 +249,8 @@ const Configuration: FC = () => {
     })
     setTextToSpeechConfig(modelConfig.text_to_speech || {
       enabled: false,
+      voice: '',
+      language: '',
     })
     setCitationConfig(modelConfig.retriever_resource || {
       enabled: false,
@@ -258,6 +267,13 @@ const Configuration: FC = () => {
       model: modelConfig.model_id,
     },
   )
+
+  const isFunctionCall = (() => {
+    const features = currModel?.features
+    if (!features)
+      return false
+    return features.includes(ModelFeatureEnum.toolCall) || features.includes(ModelFeatureEnum.multiToolCall)
+  })()
 
   // Fill old app data missing model mode.
   useEffect(() => {
@@ -299,7 +315,7 @@ const Configuration: FC = () => {
       transfer_methods: config.transfer_methods || [TransferMethod.local_file],
     })
     if (!notNoticeFormattingChanged)
-      setFormattingChanged(true)
+      formattingChangedDispatcher()
   }
 
   const {
@@ -370,7 +386,7 @@ const Configuration: FC = () => {
 
   useEffect(() => {
     (async () => {
-      const collectionList = await fetchCollectionList() as Collection[]
+      const collectionList = await fetchCollectionList()
       setCollectionList(collectionList)
       fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
         setMode(res.mode)
@@ -634,7 +650,6 @@ const Configuration: FC = () => {
   }
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
-  const { locale } = useContext(I18n)
 
   const { eventEmitter } = useEventEmitterContextContext()
   const {
@@ -820,7 +835,7 @@ const Configuration: FC = () => {
                     )
                 }
               </div>
-              <div className='flex flex-col grow h-0 px-6 py-4 rounded-tl-2xl border-t border-l bg-gray-50 '>
+              <div className='flex flex-col grow h-0 rounded-tl-2xl border-t border-l bg-gray-50 '>
                 <Debug
                   hasSetAPIKEY={hasSettedApiKey}
                   onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}

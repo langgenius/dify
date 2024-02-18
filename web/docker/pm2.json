@@ -1,12 +1,11 @@
 {
-    "apps": [
-      {
-        "name": "WebApp",
-        "exec_mode": "cluster",
-        "instances": 1,
-        "script": "./node_modules/next/dist/bin/next",
-        "cwd": "/app/web",
-        "args": "start"
-      }
-    ]
-  }
+  "apps": [
+    {
+      "name": "dify-web",
+      "script": "/app/web/server.js",
+      "cwd": "/app/web",
+      "exec_mode": "cluster",
+      "instances": 2
+    }
+  ]
+}

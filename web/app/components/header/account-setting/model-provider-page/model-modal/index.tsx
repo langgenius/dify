@@ -247,7 +247,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     ? (
                       <a
                         href={provider.help?.url[language]}
-                        target='_blank'
+                        target='_blank' rel='noopener noreferrer'
                         className='inline-flex items-center text-xs text-primary-600'
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
@@ -300,7 +300,7 @@ const ModelModal: FC<ModelModalProps> = ({
                       {t('common.modelProvider.encrypted.front')}
                       <a
                         className='text-primary-600 mx-1'
-                        target={'_blank'}
+                        target='_blank' rel='noopener noreferrer'
                         href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
                       >
                         PKCS1_OAEP

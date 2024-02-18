@@ -71,6 +71,11 @@ const translation = {
       description: 'Uma vez ativado, você pode usar entrada de voz.',
       resDes: 'Entrada de voz está ativada',
     },
+    textToSpeech: {
+      title: 'Texto para voz',
+      description: 'Quando ativado, o texto pode ser convertido em fala.',
+      resDes: 'Texto para áudio ativado',
+    },
     citation: {
       title: 'Citações e Atribuições',
       description: 'Uma vez ativado, mostra o documento de origem e a seção atribuída do conteúdo gerado.',
@@ -291,6 +296,17 @@ const translation = {
       localUpload: 'Upload Local',
       url: 'URL',
       uploadLimit: 'Limite de Upload',
+    },
+  },
+  voice: {
+    name: 'voz',
+    description: 'Texto para configurações de timbre de voz',
+    settings: 'As configurações',
+    voiceSettings: {
+      title: 'voz As configurações',
+      language: 'línguas',
+      resolutionTooltip: 'Texto para voz timbre suporta idiomas.',
+      voice: 'voz',
     },
   },
   openingStatement: {

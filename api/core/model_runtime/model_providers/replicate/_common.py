@@ -1,5 +1,6 @@
-from core.model_runtime.errors.invoke import InvokeBadRequestError, InvokeError
 from replicate.exceptions import ModelError, ReplicateError
+
+from core.model_runtime.errors.invoke import InvokeBadRequestError, InvokeError
 
 
 class _CommonReplicate:

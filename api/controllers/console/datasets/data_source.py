@@ -1,6 +1,11 @@
 import datetime
 import json
 
+from flask import request
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+from werkzeug.exceptions import NotFound
+
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
@@ -9,15 +14,11 @@ from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
-from flask import request
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
 from libs.login import login_required
 from models.dataset import Document
 from models.source import DataSourceBinding
 from services.dataset_service import DatasetService, DocumentService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
-from werkzeug.exceptions import NotFound
 
 
 class DataSourceApi(Resource):

@@ -3,12 +3,12 @@ import time
 
 import click
 from celery import shared_task
+from langchain.schema import Document
+
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
-from langchain.schema import Document
-from models.dataset import Dataset
+from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.dataset import DocumentSegment
 
 
 @shared_task(queue='dataset')

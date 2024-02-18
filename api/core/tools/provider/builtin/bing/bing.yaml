@@ -1,0 +1,45 @@
+identity:
+  author: Dify
+  name: bing
+  label:
+    en_US: Bing
+    zh_Hans: Bing
+    pt_BR: Bing
+  description:
+    en_US: Bing Search
+    zh_Hans: Bing 搜索
+    pt_BR: Bing Search
+  icon: icon.png
+credentials_for_provider:
+  subscription_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Bing subscription key
+      zh_Hans: Bing subscription key
+      pt_BR: Bing subscription key
+    placeholder:
+      en_US: Please input your Bing subscription key
+      zh_Hans: 请输入你的 Bing subscription key
+      pt_BR: Please input your Bing subscription key
+    help:
+      en_US: Get your Bing subscription key from Bing
+      zh_Hans: 从 Bing 获取您的 Bing subscription key
+      pt_BR: Get your Bing subscription key from Bing
+    url: https://www.microsoft.com/cognitive-services/en-us/bing-web-search-api
+  server_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Bing endpoint
+      zh_Hans: Bing endpoint
+      pt_BR: Bing endpoint
+    placeholder:
+      en_US: Please input your Bing endpoint
+      zh_Hans: 请输入你的 Bing 端点
+      pt_BR: Please input your Bing endpoint
+    help:
+      en_US: An endpoint is like "https://api.bing.microsoft.com/v7.0/search"
+      zh_Hans: 例如 "https://api.bing.microsoft.com/v7.0/search"
+      pt_BR: An endpoint is like "https://api.bing.microsoft.com/v7.0/search"
+    default: https://api.bing.microsoft.com/v7.0/search

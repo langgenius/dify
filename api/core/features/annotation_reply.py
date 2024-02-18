@@ -1,13 +1,14 @@
 import logging
 from typing import Optional
 
+from flask import current_app
+
 from core.embedding.cached_embedding import CacheEmbedding
 from core.entities.application_entities import InvokeFrom
 from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
-from flask import current_app
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, Message, MessageAnnotation
 from services.annotation_service import AppAnnotationService

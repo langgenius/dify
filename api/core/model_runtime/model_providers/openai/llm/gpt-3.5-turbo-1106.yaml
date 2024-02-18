@@ -6,6 +6,7 @@ model_type: llm
 features:
   - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 16385
@@ -22,7 +23,7 @@ parameter_rules:
     use_template: max_tokens
     default: 512
     min: 1
-    max: 16385
+    max: 4096
 pricing:
   input: '0.001'
   output: '0.002'

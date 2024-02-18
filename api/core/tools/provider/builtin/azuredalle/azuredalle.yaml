@@ -1,0 +1,73 @@
+identity:
+  author: Leslie
+  name: azuredalle
+  label:
+    en_US: Azure DALL-E
+    zh_Hans: Azure DALL-E 绘画
+    pt_BR: Azure DALL-E
+  description:
+    en_US: Azure DALL-E art
+    zh_Hans: Azure DALL-E 绘画
+    pt_BR: Azure DALL-E art
+  icon: icon.png
+credentials_for_provider:
+  azure_openai_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API key
+      zh_Hans: 密钥
+      pt_BR: API key
+    help:
+      en_US: Please input your Azure OpenAI API key
+      zh_Hans: 请输入你的 Azure OpenAI API key
+      pt_BR: Introduza a sua chave de API OpenAI do Azure
+    placeholder:
+      en_US: Please input your Azure OpenAI API key
+      zh_Hans: 请输入你的 Azure OpenAI API key
+      pt_BR: Introduza a sua chave de API OpenAI do Azure
+  azure_openai_api_model_name:
+    type: text-input
+    required: true
+    label:
+      en_US: Deployment Name
+      zh_Hans: 部署名称
+      pt_BR: Nome da Implantação
+    help:
+      en_US: Please input the name of your Azure Openai DALL-E API deployment
+      zh_Hans: 请输入你的 Azure Openai DALL-E API 部署名称
+      pt_BR: Insira o nome da implantação da API DALL-E do Azure Openai
+    placeholder:
+      en_US: Please input the name of your Azure Openai DALL-E API deployment
+      zh_Hans: 请输入你的 Azure Openai DALL-E API 部署名称
+      pt_BR: Insira o nome da implantação da API DALL-E do Azure Openai
+  azure_openai_base_url:
+    type: text-input
+    required: true
+    label:
+      en_US: API Endpoint URL
+      zh_Hans: API 域名
+      pt_BR: API Endpoint URL
+    help:
+      en_US: Please input your Azure OpenAI Endpoint URL, e.g. https://xxx.openai.azure.com/
+      zh_Hans: 请输入你的 Azure OpenAI API域名，例如：https://xxx.openai.azure.com/
+      pt_BR: Introduza a URL do Azure OpenAI Endpoint, e.g. https://xxx.openai.azure.com/
+    placeholder:
+      en_US: Please input your Azure OpenAI Endpoint URL, e.g. https://xxx.openai.azure.com/
+      zh_Hans: 请输入你的 Azure OpenAI API域名，例如：https://xxx.openai.azure.com/
+      pt_BR: Introduza a URL do Azure OpenAI Endpoint, e.g. https://xxx.openai.azure.com/
+  azure_openai_api_version:
+    type: text-input
+    required: true
+    label:
+      en_US: API Version
+      zh_Hans: API 版本
+      pt_BR: API Version
+    help:
+      en_US: Please input your Azure OpenAI API Version,e.g. 2023-12-01-preview
+      zh_Hans: 请输入你的 Azure OpenAI API 版本，例如：2023-12-01-preview
+      pt_BR: Introduza a versão da API OpenAI do Azure,e.g. 2023-12-01-preview
+    placeholder:
+      en_US: Please input your Azure OpenAI API Version,e.g. 2023-12-01-preview
+      zh_Hans: 请输入你的 Azure OpenAI API 版本，例如：2023-12-01-preview
+      pt_BR: Introduza a versão da API OpenAI do Azure,e.g. 2023-12-01-preview

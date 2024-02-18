@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-from core.index.index import IndexBuilder
 from langchain.schema import Document
 
 from core.rag.datasource.keyword.keyword_init import Keyword
@@ -41,7 +40,7 @@ class VectorService:
             keyword.add_texts(documents)
 
     @classmethod
-    def update_segment_vector(cls, keywords: Optional[List[str]], segment: DocumentSegment, dataset: Dataset):
+    def update_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
         # update segment index task
 
         # format new index

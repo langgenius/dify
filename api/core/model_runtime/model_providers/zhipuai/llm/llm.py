@@ -1,23 +1,30 @@
-import json
-from typing import Any, Dict, Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageRole,
-                                                          PromptMessageTool, SystemPromptMessage, UserPromptMessage, ToolPromptMessage,
-                                                          TextPromptMessageContent, ImagePromptMessageContent, PromptMessageContentType)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageContentType,
+    PromptMessageRole,
+    PromptMessageTool,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.utils import helper
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
 from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion_chunk import ChatCompletionChunk
 from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion import Completion
+from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion_chunk import ChatCompletionChunk
+from core.model_runtime.utils import helper
+
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -83,7 +90,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
     def _generate(self, model: str, credentials_kwargs: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
                   tools: Optional[list[PromptMessageTool]] = None,
-                  stop: Optional[List[str]] = None, stream: bool = True,
+                  stop: Optional[list[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -113,7 +120,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 prompt_messages = prompt_messages[1:]
 
         # resolve zhipuai model not support system message and user message, assistant message must be in sequence
-        new_prompt_messages: List[PromptMessage] = []
+        new_prompt_messages: list[PromptMessage] = []
         for prompt_message in prompt_messages:
             copy_prompt_message = prompt_message.copy()
             if copy_prompt_message.role in [PromptMessageRole.USER, PromptMessageRole.SYSTEM, PromptMessageRole.TOOL]:
@@ -194,6 +201,27 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                             'content': prompt_message.content,
                             'tool_call_id': prompt_message.tool_call_id
                         })
+                    elif isinstance(prompt_message, AssistantPromptMessage):
+                        if prompt_message.tool_calls:
+                            params['messages'].append({
+                                'role': 'assistant',
+                                'content': prompt_message.content,
+                                'tool_calls': [
+                                    {
+                                        'id': tool_call.id,
+                                        'type': tool_call.type,
+                                        'function': {
+                                            'name': tool_call.function.name,
+                                            'arguments': tool_call.function.arguments
+                                        }
+                                    } for tool_call in prompt_message.tool_calls
+                                ]
+                            })
+                        else:
+                            params['messages'].append({
+                                'role': 'assistant',
+                                'content': prompt_message.content
+                            })
                     else:
                         params['messages'].append({
                             'role': prompt_message.role.value,
@@ -248,7 +276,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         :return: llm response
         """
         text = ''
-        assistant_tool_calls: List[AssistantPromptMessage.ToolCall] = []
+        assistant_tool_calls: list[AssistantPromptMessage.ToolCall] = []
         for choice in response.choices:
             if choice.message.tool_calls:
                 for tool_call in choice.message.tool_calls:
@@ -308,7 +336,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ''):
                 continue
             
-            assistant_tool_calls: List[AssistantPromptMessage.ToolCall] = []
+            assistant_tool_calls: list[AssistantPromptMessage.ToolCall] = []
             for tool_call in delta.delta.tool_calls or []:
                 if tool_call.type == 'function':
                     assistant_tool_calls.append(
@@ -382,7 +410,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         return message_text
 
 
-    def _convert_messages_to_prompt(self, messages: List[PromptMessage], tools: Optional[list[PromptMessageTool]] = None) -> str:
+    def _convert_messages_to_prompt(self, messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None) -> str:
         """
         :param messages: List of PromptMessage to combine.
         :return: Combined string with necessary human_prompt and ai_prompt tags.

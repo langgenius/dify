@@ -52,11 +52,11 @@ const ToolList: FC<Props> = ({
       return
     (async () => {
       if (collection.type === CollectionType.custom) {
-        const res = await fetchCustomCollection(collection.name) as any
+        const res = await fetchCustomCollection(collection.name)
         setCustomCollection({
           ...res,
           provider: collection.name,
-        } as CustomCollectionBackend)
+        })
       }
     })()
   }, [collection])

@@ -1,13 +1,14 @@
 import json
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
+
+from langchain.schema import BaseRetriever, Document
+from pydantic import BaseModel, Extra, Field
 
 from core.index.base import BaseIndex
 from core.index.keyword_table_index.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from extensions.ext_database import db
-from langchain.schema import BaseRetriever, Document
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
-from pydantic import BaseModel, Extra, Field
 
 
 class KeywordTableConfig(BaseModel):
@@ -115,7 +116,7 @@ class KeywordTableIndex(BaseIndex):
     def search(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         keyword_table = self._get_dataset_keyword_table()
 
         search_kwargs = kwargs.get('search_kwargs') if kwargs.get('search_kwargs') else {}
@@ -220,7 +221,7 @@ class KeywordTableIndex(BaseIndex):
         keywords = keyword_table_handler.extract_keywords(query)
 
         # go through text chunks in order of most matching keywords
-        chunk_indices_count: Dict[str, int] = defaultdict(int)
+        chunk_indices_count: dict[str, int] = defaultdict(int)
         keywords = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
         for keyword in keywords:
             for node_id in keyword_table[keyword]:
@@ -234,7 +235,7 @@ class KeywordTableIndex(BaseIndex):
 
         return sorted_chunk_indices[: k]
 
-    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: List[str]):
+    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
         document_segment = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.index_node_id == node_id
@@ -243,7 +244,7 @@ class KeywordTableIndex(BaseIndex):
             document_segment.keywords = keywords
             db.session.commit()
 
-    def create_segment_keywords(self, node_id: str, keywords: List[str]):
+    def create_segment_keywords(self, node_id: str, keywords: list[str]):
         keyword_table = self._get_dataset_keyword_table()
         self._update_segment_keywords(self.dataset.id, node_id, keywords)
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
@@ -265,7 +266,7 @@ class KeywordTableIndex(BaseIndex):
                 keyword_table = self._add_text_to_keyword_table(keyword_table, segment.index_node_id, list(keywords))
         self._save_dataset_keyword_table(keyword_table)
 
-    def update_segment_keywords_index(self, node_id: str, keywords: List[str]):
+    def update_segment_keywords_index(self, node_id: str, keywords: list[str]):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
@@ -281,7 +282,7 @@ class KeywordTableRetriever(BaseRetriever, BaseModel):
         extra = Extra.forbid
         arbitrary_types_allowed = True
 
-    def get_relevant_documents(self, query: str) -> List[Document]:
+    def get_relevant_documents(self, query: str) -> list[Document]:
         """Get documents relevant for a query.
 
         Args:
@@ -292,7 +293,7 @@ class KeywordTableRetriever(BaseRetriever, BaseModel):
         """
         return self.index.search(query, **self.search_kwargs)
 
-    async def aget_relevant_documents(self, query: str) -> List[Document]:
+    async def aget_relevant_documents(self, query: str) -> list[Document]:
         raise NotImplementedError("KeywordTableRetriever does not support async")
 
 

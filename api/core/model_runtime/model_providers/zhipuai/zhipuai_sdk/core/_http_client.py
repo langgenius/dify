@@ -1,21 +1,15 @@
-# -*- coding:utf-8 -*-
 from __future__ import annotations
 
 import inspect
-from typing import (
-    Any,
-    Type,
-    Union,
-    cast,
-    Mapping,
-)
+from collections.abc import Mapping
+from typing import Any, Union, cast
 
 import httpx
 import pydantic
 from httpx import URL, Timeout
 
 from . import _errors
-from ._base_type import NotGiven, ResponseT, Body, Headers, NOT_GIVEN, RequestFiles, Query, Data
+from ._base_type import NOT_GIVEN, Body, Data, Headers, NotGiven, Query, RequestFiles, ResponseT
 from ._errors import APIResponseValidationError, APIStatusError, APITimeoutError
 from ._files import make_httpx_files
 from ._request_opt import ClientRequestParam, UserRequestInput
@@ -38,7 +32,7 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG as HTTPX_DEFAULT_TIMEOUT
 
 ZHIPUAI_DEFAULT_TIMEOUT = httpx.Timeout(timeout=300.0, connect=8.0)
 ZHIPUAI_DEFAULT_MAX_RETRIES = 3
-ZHIPUAI_DEFAULT_LIMITS = httpx.Limits(max_connections=50, max_keepalive_connections=10)
+ZHIPUAI_DEFAULT_LIMITS = httpx.Limits(max_connections=5, max_keepalive_connections=5)
 
 
 class HttpClient:
@@ -146,7 +140,7 @@ class HttpClient:
             for k, v in value.items():
                 items.extend(self._object_to_formfata(f"{key}[{k}]", v))
             return items
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             for v in value:
                 items.extend(self._object_to_formfata(key + "[]", v))
             return items
@@ -181,7 +175,7 @@ class HttpClient:
     def _parse_response(
             self,
             *,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             response: httpx.Response,
             enable_stream: bool,
             request_param: ClientRequestParam,
@@ -230,7 +224,7 @@ class HttpClient:
     def request(
             self,
             *,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             params: ClientRequestParam,
             enable_stream: bool = False,
             stream_cls: type[StreamResponse[Any]] | None = None,
@@ -265,7 +259,7 @@ class HttpClient:
             self,
             path: str,
             *,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             options: UserRequestInput = {},
             enable_stream: bool = False,
     ) -> ResponseT | StreamResponse:
@@ -280,7 +274,7 @@ class HttpClient:
             path: str,
             *,
             body: Body | None = None,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             options: UserRequestInput = {},
             files: RequestFiles | None = None,
             enable_stream: bool = False,
@@ -300,7 +294,7 @@ class HttpClient:
             path: str,
             *,
             body: Body | None = None,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             options: UserRequestInput = {},
     ) -> ResponseT:
         opts = ClientRequestParam.construct(method="patch", url=path, json_data=body, **options)
@@ -314,7 +308,7 @@ class HttpClient:
             path: str,
             *,
             body: Body | None = None,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             options: UserRequestInput = {},
             files: RequestFiles | None = None,
     ) -> ResponseT | StreamResponse:
@@ -330,7 +324,7 @@ class HttpClient:
             path: str,
             *,
             body: Body | None = None,
-            cast_type: Type[ResponseT],
+            cast_type: type[ResponseT],
             options: UserRequestInput = {},
     ) -> ResponseT | StreamResponse:
         opts = ClientRequestParam.construct(method="delete", url=path, json_data=body, **options)

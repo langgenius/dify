@@ -4,8 +4,7 @@ from typing import Optional
 from core.app_runner.app_runner import AppRunner
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import (ApplicationGenerateEntity, DatasetEntity,
-                                                 InvokeFrom, ModelConfigEntity)
+from core.entities.application_entities import ApplicationGenerateEntity, DatasetEntity, InvokeFrom, ModelConfigEntity
 from core.features.dataset_retrieval import DatasetRetrievalFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
@@ -36,7 +35,7 @@ class BasicApplicationRunner(AppRunner):
         """
         app_record = db.session.query(App).filter(App.id == application_generate_entity.app_id).first()
         if not app_record:
-            raise ValueError(f"App not found")
+            raise ValueError("App not found")
 
         app_orchestration_config = application_generate_entity.app_orchestration_config_entity
 

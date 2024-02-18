@@ -1,13 +1,22 @@
 """Functionality for splitting text."""
 from __future__ import annotations
 
-from typing import Any, List, Optional, cast
+from typing import Any, Optional, cast
+
+from langchain.text_splitter import (
+    TS,
+    AbstractSet,
+    Collection,
+    Literal,
+    RecursiveCharacterTextSplitter,
+    TokenTextSplitter,
+    Type,
+    Union,
+)
 
 from core.model_manager import ModelInstance
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
-from langchain.text_splitter import (TS, AbstractSet, Collection, Literal, RecursiveCharacterTextSplitter,
-                                     TokenTextSplitter, Type, Union)
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
@@ -19,8 +28,8 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
     def from_encoder(
             cls: Type[TS],
             embedding_model_instance: Optional[ModelInstance],
-            allowed_special: Union[Literal["all"], AbstractSet[str]] = set(),
-            disallowed_special: Union[Literal["all"], Collection[str]] = "all",
+            allowed_special: Union[Literal[all], AbstractSet[str]] = set(),
+            disallowed_special: Union[Literal[all], Collection[str]] = "all",
             **kwargs: Any,
     ):
         def _token_encoder(text: str) -> int:
@@ -50,13 +59,13 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
 
 
 class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter):
-    def __init__(self, fixed_separator: str = "\n\n", separators: Optional[List[str]] = None, **kwargs: Any):
+    def __init__(self, fixed_separator: str = "\n\n", separators: Optional[list[str]] = None, **kwargs: Any):
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         self._fixed_separator = fixed_separator
         self._separators = separators or ["\n\n", "\n", " ", ""]
 
-    def split_text(self, text: str) -> List[str]:
+    def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         if self._fixed_separator:
             chunks = text.split(self._fixed_separator)
@@ -72,7 +81,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
 
         return final_chunks
 
-    def recursive_split_text(self, text: str) -> List[str]:
+    def recursive_split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         final_chunks = []
         # Get appropriate separator to use

@@ -1,4 +1,5 @@
 from flask_restful import fields
+
 from libs.helper import TimestampField
 
 
@@ -176,6 +177,7 @@ conversation_detail_fields = {
     'from_account_id': fields.String,
     'created_at': TimestampField,
     'annotated': fields.Boolean,
+    'introduction': fields.String,
     'model_config': fields.Nested(model_config_fields),
     'message_count': fields.Integer,
     'user_feedback_stats': fields.Nested(feedback_stat_fields),

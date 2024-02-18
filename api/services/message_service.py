@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from core.generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -12,8 +12,12 @@ from models.model import App, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
-from services.errors.message import (FirstMessageNotExistsError, LastMessageNotExistsError, MessageNotExistsError,
-                                     SuggestedQuestionsAfterAnswerDisabledError)
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    LastMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 
 
 class MessageService:
@@ -173,7 +177,7 @@ class MessageService:
 
     @classmethod
     def get_suggested_questions_after_answer(cls, app_model: App, user: Optional[Union[Account, EndUser]],
-                                             message_id: str, check_enabled: bool = True) -> List[Message]:
+                                             message_id: str, check_enabled: bool = True) -> list[Message]:
         if not user:
             raise ValueError('user cannot be None')
 

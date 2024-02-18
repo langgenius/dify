@@ -13,6 +13,10 @@ export type SetupStatusResponse = {
   setup_at?: Date
 }
 
+export type InitValidateStatusResponse = {
+  status: 'finished' | 'not_started'
+}
+
 export type UserProfileResponse = {
   id: string
   name: string
@@ -251,11 +255,3 @@ export type ModerationService = (
     text: string
   }
 ) => Promise<ModerateResponse>
-
-export type Utm = {
-  utm_source?: string
-  utm_medium?: string
-  utm_campaign?: string
-  utm_term?: string
-  utm_content?: string
-}

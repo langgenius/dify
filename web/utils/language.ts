@@ -3,8 +3,8 @@ export type Item = {
   name: string
 }
 
-export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT']
-export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT']
+export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH', 'id-ID']
+export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT', 'th_TH', 'id_ID']
 
 export const languages = [
   {
@@ -19,34 +19,42 @@ export const languages = [
     value: 'pt-BR',
     name: 'Português(Brasil)',
   },
-  // {
-  //   value: 'es-ES',
-  //   name: 'Español(España)',
-  // },
-  // {
-  //   value: 'fr-FR',
-  //   name: 'Français(France)',
-  // },
-  // {
-  //   value: 'de-DE',
-  //   name: 'Deutsch(Deutschland)',
-  // },
-  // {
-  //   value: 'ja-JP',
-  //   name: '日本語(日本)',
-  // },
-  // {
-  //   value: 'ko-KR',
-  //   name: '한국어(대한민국)',
-  // },
-  // {
-  //   value: 'ru-RU',
-  //   name: 'Русский(Россия)',
-  // },
-  // {
-  //   value: 'it-IT',
-  //   name: 'Italiano(Italia)',
-  // },
+  {
+    value: 'es-ES',
+    name: 'Español(España)',
+  },
+  {
+    value: 'fr-FR',
+    name: 'Français(France)',
+  },
+  {
+    value: 'de-DE',
+    name: 'Deutsch(Deutschland)',
+  },
+  {
+    value: 'ja-JP',
+    name: '日本語(日本)',
+  },
+  {
+    value: 'ko-KR',
+    name: '한국어(대한민국)',
+  },
+  {
+    value: 'ru-RU',
+    name: 'Русский(Россия)',
+  },
+  {
+    value: 'it-IT',
+    name: 'Italiano(Italia)',
+  },
+  {
+    value: 'th-TH',
+    name: 'ไทย(ประเทศไทย)',
+  },
+  {
+    value: 'id-ID',
+    name: 'Bahasa Indonesia',
+  },
 ]
 
 export const getModelRuntimeSupported = (locale: string) => {

@@ -49,7 +49,7 @@ const HistoryPanel: FC<Props> = ({
             <a href={`${language === LanguagesSupported[1]
               ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
               : 'https://docs.dify.ai/features/prompt-engineering'}`}
-            target='_blank'
+            target='_blank' rel='noopener noreferrer'
             className='text-[#155EEF]'>{t('appDebug.feature.conversationHistory.learnMore')}
             </a>
           </div>
