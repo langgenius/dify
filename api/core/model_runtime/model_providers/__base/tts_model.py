@@ -53,7 +53,7 @@ class TTSModel(AIModel):
         """
         raise NotImplementedError
 
-    def get_tts_model_voices(self, model: str, credentials: dict, language: str) -> list:
+    def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list:
         """
         Get voice for given tts model voices
 
@@ -66,7 +66,10 @@ class TTSModel(AIModel):
 
         if model_schema and ModelPropertyKey.VOICES in model_schema.model_properties:
             voices = model_schema.model_properties[ModelPropertyKey.VOICES]
-            return [{'name': d['name'], 'value': d['mode']} for d in voices if language and language in d.get('language')]
+            if language:
+                return [{'name': d['name'], 'value': d['mode']} for d in voices if language and language in d.get('language')]
+            else:
+                return [{'name': d['name'], 'value': d['mode']} for d in voices]
 
     def _get_model_default_voice(self, model: str, credentials: dict) -> any:
         """
