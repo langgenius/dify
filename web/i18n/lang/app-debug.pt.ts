@@ -300,6 +300,7 @@ const translation = {
   },
   voice: {
     name: 'voz',
+    defaultDisplay: 'Voz padrão',
     description: 'Texto para configurações de timbre de voz',
     settings: 'As configurações',
     voiceSettings: {

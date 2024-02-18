@@ -94,6 +94,6 @@ export const generationIntroduction: Fetcher<GenerationIntroductionResponse, { u
   return post<GenerationIntroductionResponse>(url, { body })
 }
 
-export const fetchAppVoices: Fetcher<AppVoicesListResponse, { url: string }> = ({ url }) => {
-  return get<AppVoicesListResponse>(url)
+export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; language?: string }> = ({ appId, language }) => {
+  return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
 }

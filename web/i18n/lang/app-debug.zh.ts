@@ -296,6 +296,7 @@ const translation = {
   },
   voice: {
     name: '音色',
+    defaultDisplay: '缺省音色',
     description: '文本转语音音色设置',
     settings: '设置',
     voiceSettings: {

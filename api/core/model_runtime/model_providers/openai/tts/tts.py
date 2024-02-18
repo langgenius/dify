@@ -119,7 +119,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         """
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
-        if not voice:
+        if not voice or voice not in self.get_tts_model_voices(model=model, credentials=credentials):
             voice = self._get_model_default_voice(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
