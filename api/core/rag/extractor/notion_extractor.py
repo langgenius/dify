@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 import requests
 from flask_login import current_user
@@ -33,25 +33,30 @@ class NotionExtractor(BaseExtractor):
             notion_workspace_id: str,
             notion_obj_id: str,
             notion_page_type: str,
-            document_model: Optional[DocumentModel] = None
+            document_model: Optional[DocumentModel] = None,
+            notion_access_token: Optional[str] = None
     ):
         self._notion_access_token = None
         self._document_model = document_model
         self._notion_workspace_id = notion_workspace_id
         self._notion_obj_id = notion_obj_id
         self._notion_page_type = notion_page_type
+        if notion_access_token:
+            self._notion_access_token = notion_access_token
+        else:
+            self._notion_access_token = self._get_access_token(current_user.current_tenant_id,
+                                                               self._notion_workspace_id)
+            if not self._notion_access_token:
+                integration_token = current_app.config.get('NOTION_INTEGRATION_TOKEN')
+                if integration_token is None:
+                    raise ValueError(
+                        "Must specify `integration_token` or set environment "
+                        "variable `NOTION_INTEGRATION_TOKEN`."
+                    )
+
+                self._notion_access_token = integration_token
 
     def extract(self) -> List[Document]:
-        self._notion_access_token = self._get_access_token(current_user.current_tenant_id, self._notion_workspace_id)
-        if not self._notion_access_token:
-            integration_token = current_app.config.get('NOTION_INTEGRATION_TOKEN')
-            if integration_token is None:
-                raise ValueError(
-                    "Must specify `integration_token` or set environment "
-                    "variable `NOTION_INTEGRATION_TOKEN`."
-                )
-
-            self._notion_access_token = integration_token
         self.update_last_edited_time(
             self._document_model
         )

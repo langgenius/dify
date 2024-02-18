@@ -6,9 +6,9 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.data_loader.loader.notion import NotionLoader
 from core.index.index import IndexBuilder
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.source import DataSourceBinding
@@ -54,11 +54,11 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         if not data_source_binding:
             raise ValueError('Data source binding not found.')
 
-        loader = NotionLoader(
-            notion_access_token=data_source_binding.access_token,
+        loader = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
-            notion_page_type=page_type
+            notion_page_type=page_type,
+            notion_access_token=data_source_binding.access_token
         )
 
         last_edited_time = loader.get_notion_last_edited_time()

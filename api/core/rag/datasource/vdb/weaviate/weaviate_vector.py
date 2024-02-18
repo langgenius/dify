@@ -77,7 +77,6 @@ class WeaviateVector(BaseVector):
         }
 
     def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
-        self._client.
 
         schema = self._default_schema(self._collection_name)
 

@@ -474,21 +474,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-
-            indexing_runner = IndexingRunner()
-            try:
-                response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
-                                                                    info_list,
-                                                                    data_process_rule_dict,
-                                                                    None, 'English', dataset_id)
-            except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
-            except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
-        else:
-            raise ValueError('Data source type not support')
         return response
 
 

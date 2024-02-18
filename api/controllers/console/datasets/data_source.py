@@ -9,9 +9,9 @@ from werkzeug.exceptions import NotFound
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.data_loader.loader.notion import NotionLoader
 from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from libs.login import login_required
@@ -174,14 +174,14 @@ class DataSourceNotionApi(Resource):
         if not data_source_binding:
             raise NotFound('Data source binding not found.')
 
-        loader = NotionLoader(
-            notion_access_token=data_source_binding.access_token,
+        extractor = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
-            notion_page_type=page_type
+            notion_page_type=page_type,
+            notion_access_token=data_source_binding.access_token
         )
 
-        text_docs = loader.load()
+        text_docs = extractor.extract()
         return {
             'content': "\n".join([doc.page_content for doc in text_docs])
         }, 200

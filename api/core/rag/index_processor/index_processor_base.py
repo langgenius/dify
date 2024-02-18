@@ -11,7 +11,7 @@ from core.rag.cleaner.cleaner_base import BaseCleaner
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from core.spiltter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
+from core.splitter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
 from models.dataset import DatasetProcessRule, Dataset
 
 

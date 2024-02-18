@@ -1,7 +1,9 @@
-from pydantic import Field
+from typing import Optional
+
+from pydantic import Field, BaseModel
 
 
-class Document:
+class Document(BaseModel):
     """Class for storing a piece of text and associated metadata."""
 
     page_content: str
@@ -9,9 +11,6 @@ class Document:
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory=dict)
+    metadata: Optional[dict] = Field(default_factory=dict)
 
-    def __init__(self, page_content:  str, metadata: dict = None):
-        self.page_content = page_content
-        self.metadata = metadata
 

@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Optional, cast
+from typing import Optional, cast, List
 
 from flask import Flask, current_app
 from flask_login import current_user
@@ -24,7 +24,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.spiltter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
+from core.splitter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter, EnhanceRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage

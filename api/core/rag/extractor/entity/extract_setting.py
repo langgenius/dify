@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-
 from models.dataset import Document
 from models.model import UploadFile
 
@@ -13,6 +12,12 @@ class NotionInfo(BaseModel):
     notion_page_type: str
     document: Document = None
 
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
 
 class ExtractSetting(BaseModel):
     """
@@ -22,6 +27,9 @@ class ExtractSetting(BaseModel):
     upload_file: UploadFile = None
     notion_info: NotionInfo = None
     document_model: str = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(self, **data) -> None:
         super().__init__(**data)

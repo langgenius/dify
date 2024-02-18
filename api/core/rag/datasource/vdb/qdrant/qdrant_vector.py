@@ -1,21 +1,25 @@
 import os
 import uuid
 from itertools import islice
-from typing import Any, List, Optional, cast, Iterable, Generator, Tuple, Sequence
+from typing import Any, List, Optional, cast, Iterable, Generator, Tuple, Sequence, TYPE_CHECKING, Union
 
 import qdrant_client
 from pydantic import BaseModel
 from qdrant_client.conversions.common_types import HnswConfigDiff, PayloadSchemaType
 from qdrant_client.http.models import TextIndexParams, TextIndexType, TokenizerType, FilterSelector
 from qdrant_client.local.qdrant_local import QdrantLocal
-from toolz.itertoolz import rest
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
-from extensions.ext_database import db
-from models.dataset import Dataset, DatasetCollectionBinding
+from qdrant_client.http import models as rest
 
+if TYPE_CHECKING:
+    from qdrant_client import grpc  # noqa
+    from qdrant_client.conversions import common_types
+    from qdrant_client.http import models as rest
+
+    DictFilter = dict[str, Union[str, int, bool, dict, list]]
+    MetadataFilter = Union[DictFilter, common_types.Filter]
 
 class QdrantConfig(BaseModel):
     endpoint: str
@@ -74,10 +78,10 @@ class QdrantVector(BaseVector):
                 # create collection
                 self.create_collection(collection_name, vector_size)
 
-            self.add_texts(texts, embeddings, collection_name, **kwargs)
+            self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(self, collection_name: str, vector_size: int):
-
+        from qdrant_client.http import models as rest
         vectors_config = rest.VectorParams(
             size=vector_size,
             distance=rest.Distance[self._distance_func],
@@ -132,7 +136,6 @@ class QdrantVector(BaseVector):
             group_id: Optional[str] = None,
     ) -> Generator[Tuple[List[str], List[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
-
         texts_iterator = iter(texts)
         embeddings_iterator = iter(embeddings)
         metadatas_iterator = iter(metadatas or [])
@@ -143,7 +146,7 @@ class QdrantVector(BaseVector):
             batch_ids = list(islice(ids_iterator, batch_size))
 
             # Generate the embeddings for all the texts in a batch
-            batch_embeddings = list(islice(embeddings_iterator, 5))
+            batch_embeddings = list(islice(embeddings_iterator, batch_size))
 
             points = [
                 rest.PointStruct(
@@ -263,15 +266,23 @@ class QdrantVector(BaseVector):
 
     def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
         query_vector = (Field.VECTOR.value, query_vector)
+        from qdrant_client.http import models
+        filter = models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="group_id",
+                    match=models.MatchValue(value=self._group_id),
+                ),
+            ],
+        )
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
-            query_filter=kwargs.get("filter", None),
+            query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
-            score_threshold=kwargs.get("score_threshold", .0),
-            **kwargs,
+            score_threshold=kwargs.get("score_threshold", .0)
         )
         docs = []
         for result in results:
