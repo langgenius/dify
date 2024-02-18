@@ -9,6 +9,7 @@ import {
 } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockSelector from '../../block-selector'
+import { getBlockByType } from '../../block-selector/utils'
 import BlockIcon from '../../block-icon'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
@@ -48,7 +49,9 @@ const BaseNode: FC<BaseNodeProps> = ({
           type={currentNode!.data.type}
           size='md'
         />
-        <div className='text-[13px] font-semibold text-gray-700'>START</div>
+        <div className='text-[13px] font-semibold text-gray-700'>
+          {getBlockByType(currentNode!.data.type)?.title}
+        </div>
       </div>
       {children}
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>

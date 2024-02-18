@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import BlockIcon from '../block-icon'
 import {
-  BLOCKS,
+  BLOCK_CLASSIFICATIONS,
+  BLOCK_GROUP_BY_CLASSIFICATION,
   TABS,
 } from './constants'
 
@@ -28,16 +29,32 @@ const Tabs = () => {
       </div>
       <div className='p-1'>
         {
-          BLOCKS.map(block => (
+          BLOCK_CLASSIFICATIONS.map(classification => (
             <div
-              key={block.type}
-              className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+              key={classification}
+              className='mb-1 last-of-type:mb-0'
             >
-              <BlockIcon
-                className='mr-2'
-                type={block.type}
-              />
-              <div className='text-sm text-gray-900'>{block.title}</div>
+              {
+                classification !== '-' && (
+                  <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
+                    {classification}
+                  </div>
+                )
+              }
+              {
+                BLOCK_GROUP_BY_CLASSIFICATION[classification].map(block => (
+                  <div
+                    key={block.type}
+                    className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+                  >
+                    <BlockIcon
+                      className='mr-2'
+                      type={block.type}
+                    />
+                    <div className='text-sm text-gray-900'>{block.title}</div>
+                  </div>
+                ))
+              }
             </div>
           ))
         }

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import { BlockEnum } from './types'
 import {
   Code,
@@ -67,4 +68,4 @@ const BlockIcon: FC<BlockIconProps> = ({
   )
 }
 
-export default BlockIcon
+export default memo(BlockIcon)

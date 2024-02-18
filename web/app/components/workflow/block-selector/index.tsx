@@ -33,7 +33,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         {children}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-50'>
         <div className='w-[256px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg'>
           <div className='px-2 pt-2'>
             <div className='flex items-center px-2 rounded-lg bg-gray-100'>
