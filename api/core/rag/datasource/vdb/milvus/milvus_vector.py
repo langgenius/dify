@@ -78,6 +78,27 @@ class MilvusVector(BaseVector):
             Field.CONTENT_KEY.value: texts,
             Field.VECTOR.value: embeddings,
         }
+
+        # Total insert count
+        total_count = len(texts)
+
+        pks: list[str] = []
+
+        for i in range(0, total_count, 1000):
+            # Grab end index
+            end = min(i + 1000, total_count)
+            # Convert dict to list of lists batch for insertion
+            insert_list = [insert_dict[x][i:end] for x in self.fields]
+            # Insert into the collection.
+            try:
+                res: Collection
+                res = self.col.insert(insert_list, timeout=timeout, **kwargs)
+                pks.extend(res.primary_keys)
+            except MilvusException as e:
+                logger.error(
+                    "Failed to insert batch starting at entity: %s/%s", i, total_count
+                )
+                raise e
         if metadatas is not None:
             for d in metadatas:
                 insert_dict.setdefault(Field.METADATA_KEY.value, []).append(d)
