@@ -103,7 +103,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
             ], parameters={
                 'max_tokens': 1,
             }, timeout=60)
-        except (InvalidAPIKeyError, InvalidAuthenticationError) as e:
+        except Exception as e:
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
