@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import { getOutgoers } from 'reactflow'
@@ -25,6 +26,42 @@ const NextStep: FC<NextStepProps> = ({
     return getOutgoers(selectedNode, nodes, edges)
   }, [selectedNode, nodes, edges])
 
+  const renderBlockSelectorChildren = useCallback(({ open, ref, ...restProps }: any) => {
+    return (
+      <div
+        {...restProps}
+        ref={ref}
+        className={`
+          flex items-center px-2 w-[328px] h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
+          hover:bg-gray-100 text-xs text-gray-500 cursor-pointer
+          ${open && '!bg-gray-100'}
+        `}
+      >
+        <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-gray-200'>
+          <Plus className='w-3 h-3' />
+        </div>
+        SELECT NEXT BLOCK
+      </div>
+    )
+  }, [])
+  const renderBlockSelectorButtonChildren = useCallback(({ open, ref, ...restProps }: any) => {
+    return (
+      <div
+        {...restProps}
+        ref={ref}
+      >
+        <Button
+          className={`
+            hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md 
+            ${open && '!bg-gray-100 !flex'}
+          `}
+        >
+          Change
+        </Button>
+      </div>
+    )
+  }, [])
+
   return (
     <div className='flex py-1'>
       <div className='shrink-0 relative flex items-center justify-center w-9 h-9 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
@@ -34,13 +71,8 @@ const NextStep: FC<NextStepProps> = ({
       <div className='grow'>
         {
           !outgoers.length && (
-            <BlockSelector>
-              <div className='flex items-center px-2 w-[328px] h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-500 cursor-pointer'>
-                <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-gray-200'>
-                  <Plus className='w-3 h-3' />
-                </div>
-                SELECT NEXT BLOCK
-              </div>
+            <BlockSelector className='!w-[328px]'>
+              {renderBlockSelectorChildren}
             </BlockSelector>
           )
         }
@@ -55,10 +87,11 @@ const NextStep: FC<NextStepProps> = ({
                 className='shrink-0 mr-1.5'
               />
               <div className='grow'>{outgoer.data.name}</div>
-              <BlockSelector>
-                <Button className='hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md'>
-                  Change
-                </Button>
+              <BlockSelector
+                placement='top-end'
+                offset={6}
+              >
+                {renderBlockSelectorButtonChildren}
               </BlockSelector>
             </div>
           ))

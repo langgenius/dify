@@ -2,7 +2,11 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useMemo } from 'react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
 import {
   getOutgoers,
   useNodeId,
@@ -33,6 +37,23 @@ const BaseNode: FC<BaseNodeProps> = ({
   const outgoers = useMemo(() => {
     return getOutgoers(currentNode!, nodes, edges)
   }, [currentNode, nodes, edges])
+  const renderBlockSelectorChildren = useCallback(({ open, ref, ...restProps }: any) => {
+    return (
+      <div onClick={e => e.stopPropagation()}>
+        <div
+          {...restProps}
+          ref={ref}
+          className={`
+            hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
+            w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
+            ${open && '!flex'}
+          `}
+        >
+          <Plus className='w-2.5 h-2.5 text-white' />
+        </div>
+      </div>
+    )
+  }, [])
 
   return (
     <div
@@ -57,17 +78,16 @@ const BaseNode: FC<BaseNodeProps> = ({
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
         Define the initial parameters for launching a workflow
       </div>
-      <BlockSelector>
-        <div
-          className={`
-            hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
-            w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10
-            ${!outgoers.length && 'group-hover:flex'}
-          `}
-        >
-          <Plus className='w-2.5 h-2.5 text-white' />
-        </div>
-      </BlockSelector>
+      {
+        !outgoers.length && (
+          <BlockSelector
+            placement='right'
+            offset={6}
+          >
+            {renderBlockSelectorChildren}
+          </BlockSelector>
+        )
+      }
     </div>
   )
 }
