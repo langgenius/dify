@@ -1,9 +1,8 @@
-
 import json
 
 from models.model import AppModelConfig
 
-languages = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT']
+languages = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'uk-UA']
 
 language_timezone_mapping = {
     'en-US': 'America/New_York',
@@ -16,7 +15,9 @@ language_timezone_mapping = {
     'ko-KR': 'Asia/Seoul',
     'ru-RU': 'Europe/Moscow',
     'it-IT': 'Europe/Rome',
+    'uk-UA': 'Europe/Kyiv',
 }
+
 
 def supported_language(lang):
     if lang in languages:
@@ -25,6 +26,7 @@ def supported_language(lang):
     error = ('{lang} is not a valid language.'
              .format(lang=lang))
     raise ValueError(error)
+
 
 user_input_form_template = {
     "en-US": [
@@ -61,6 +63,16 @@ user_input_form_template = {
         {
             "paragraph": {
                 "label": "Consulta",
+                "variable": "default_input",
+                "required": False,
+                "default": ""
+            }
+        }
+    ],
+    "ua-UK": [
+        {
+            "paragraph": {
+                "label": "Запит",
                 "variable": "default_input",
                 "required": False,
                 "default": ""
@@ -145,7 +157,7 @@ demo_model_templates = {
                                 'Italian',
                             ]
                         }
-                    },{
+                    }, {
                         "paragraph": {
                             "label": "Query",
                             "variable": "query",
@@ -272,7 +284,7 @@ demo_model_templates = {
                                 "意大利语",
                             ]
                         }
-                    },{
+                    }, {
                         "paragraph": {
                             "label": "文本内容",
                             "variable": "query",
@@ -321,6 +333,131 @@ demo_model_templates = {
                 }),
                 user_input_form=None
             )
+        }
+    ],
+    'uk-UA': [{
+        "name": "Помічник перекладу",
+        "icon": "",
+        "icon_background": "",
+        "description": "Багатомовний перекладач, який надає можливості перекладу різними мовами, перекладаючи введені користувачем дані на потрібну мову.",
+        "mode": "completion",
+        "model_config": AppModelConfig(
+            provider="openai",
+            model_id="gpt-3.5-turbo-instruct",
+            configs={
+                "prompt_template": "Будь ласка, перекладіть наступний текст на {{target_language}}:\n",
+                "prompt_variables": [
+                    {
+                        "key": "target_language",
+                        "name": "Цільова мова",
+                        "description": "Мова, на яку ви хочете перекласти.",
+                        "type": "select",
+                        "default": "Ukrainian",
+                        "options": [
+                            "Chinese",
+                            "English",
+                            "Japanese",
+                            "French",
+                            "Russian",
+                            "German",
+                            "Spanish",
+                            "Korean",
+                            "Italian",
+                        ],
+                    },
+                ],
+                "completion_params": {
+                    "max_token": 1000,
+                    "temperature": 0,
+                    "top_p": 0,
+                    "presence_penalty": 0.1,
+                    "frequency_penalty": 0.1,
+                },
+            },
+            opening_statement="",
+            suggested_questions=None,
+            pre_prompt="Будь ласка, перекладіть наступний текст на {{target_language}}:\n{{query}}\ntranslate:",
+            model=json.dumps({
+                "provider": "openai",
+                "name": "gpt-3.5-turbo-instruct",
+                "mode": "completion",
+                "completion_params": {
+                    "max_tokens": 1000,
+                    "temperature": 0,
+                    "top_p": 0,
+                    "presence_penalty": 0.1,
+                    "frequency_penalty": 0.1,
+                },
+            }),
+            user_input_form=json.dumps([
+                {
+                    "select": {
+                        "label": "Цільова мова",
+                        "variable": "target_language",
+                        "description": "Мова, на яку ви хочете перекласти.",
+                        "default": "Chinese",
+                        "required": True,
+                        'options': [
+                            'Chinese',
+                            'English',
+                            'Japanese',
+                            'French',
+                            'Russian',
+                            'German',
+                            'Spanish',
+                            'Korean',
+                            'Italian',
+                        ]
+                    }
+                }, {
+                    "paragraph": {
+                        "label": "Запит",
+                        "variable": "query",
+                        "required": True,
+                        "default": ""
+                    }
+                }
+            ])
+        )
+    },
+        {
+            "name": "AI інтерв’юер фронтенду",
+            "icon": "",
+            "icon_background": "",
+            "description": "Симульований інтерв’юер фронтенду, який перевіряє рівень кваліфікації у розробці фронтенду через опитування.",
+            "mode": "chat",
+            "model_config": AppModelConfig(
+                provider="openai",
+                model_id="gpt-3.5-turbo",
+                configs={
+                    "introduction": "Привіт, ласкаво просимо на наше співбесіду. Я інтерв'юер цієї технологічної компанії, і я перевірю ваші навички веб-розробки фронтенду. Далі я поставлю вам декілька технічних запитань. Будь ласка, відповідайте якомога ретельніше. ",
+                    "prompt_template": "Ви будете грати роль інтерв'юера технологічної компанії, перевіряючи навички розробки фронтенду користувача та ставлячи 5-10 чітких технічних питань.\n\nЗверніть увагу:\n- Ставте лише одне запитання за раз.\n- Після того, як користувач відповість на запитання, ставте наступне запитання безпосередньо, не намагаючись виправити будь-які помилки, допущені кандидатом.\n- Якщо ви вважаєте, що користувач не відповів правильно на кілька питань поспіль, задайте менше запитань.\n- Після того, як ви задали останнє запитання, ви можете поставити таке запитання: Чому ви залишили свою попередню роботу? Після того, як користувач відповість на це питання, висловіть своє розуміння та підтримку.\n",
+                    "prompt_variables": [],
+                    "completion_params": {
+                        "max_token": 300,
+                        "temperature": 0.8,
+                        "top_p": 0.9,
+                        "presence_penalty": 0.1,
+                        "frequency_penalty": 0.1,
+                    },
+                },
+                opening_statement="Привіт, ласкаво просимо на наше співбесіду. Я інтерв'юер цієї технологічної компанії, і я перевірю ваші навички веб-розробки фронтенду. Далі я поставлю вам декілька технічних запитань. Будь ласка, відповідайте якомога ретельніше. ",
+                suggested_questions=None,
+                pre_prompt="Ви будете грати роль інтерв'юера технологічної компанії, перевіряючи навички розробки фронтенду користувача та ставлячи 5-10 чітких технічних питань.\n\nЗверніть увагу:\n- Ставте лише одне запитання за раз.\n- Після того, як користувач відповість на запитання, ставте наступне запитання безпосередньо, не намагаючись виправити будь-які помилки, допущені кандидатом.\n- Якщо ви вважаєте, що користувач не відповів правильно на кілька питань поспіль, задайте менше запитань.\n- Після того, як ви задали останнє запитання, ви можете поставити таке запитання: Чому ви залишили свою попередню роботу? Після того, як користувач відповість на це питання, висловіть своє розуміння та підтримку.\n",
+                model=json.dumps({
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {
+                        "max_tokens": 300,
+                        "temperature": 0.8,
+                        "top_p": 0.9,
+                        "presence_penalty": 0.1,
+                        "frequency_penalty": 0.1,
+                    },
+                }),
+                user_input_form=None
+            ),
         }
     ],
 
