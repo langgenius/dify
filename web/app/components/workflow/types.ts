@@ -83,6 +83,15 @@ export type LLMNodeData = {
   }
 }
 
+export type NodeOutPutVar = {
+  title: string
+  vars: {
+    variable: string
+    type: string
+    struct?: string[]
+  }[]
+}
+
 export type Block = {
   classification?: string
   type: BlockEnum

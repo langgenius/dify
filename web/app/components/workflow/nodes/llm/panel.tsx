@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import BasePanel from '../_base/panel'
 import VarList from '../_base/components/variable/var-list'
-import useInput from './use-input'
+import useConfig from './use-config'
 import { mockLLMNodeData } from './mock'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
@@ -23,10 +23,10 @@ const Panel: FC = () => {
     handleVarListChange,
     handleAddVariable,
     toggleContextEnabled,
-  } = useInput(mockLLMNodeData)
+  } = useConfig(mockLLMNodeData)
   const model = inputs.model
-  const modelMode = inputs.model?.mode
-  const isChatMode = modelMode === 'chat'
+  // const modelMode = inputs.model?.mode
+  // const isChatMode = modelMode === 'chat'
 
   return (
     <BasePanel
