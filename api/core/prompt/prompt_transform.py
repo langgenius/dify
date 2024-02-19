@@ -6,8 +6,9 @@ from typing import Optional, cast
 
 from core.entities.application_entities import (
     AdvancedCompletionPromptTemplateEntity,
+    AppMode,
     ModelConfigEntity,
-    PromptTemplateEntity, AppMode,
+    PromptTemplateEntity,
 )
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory

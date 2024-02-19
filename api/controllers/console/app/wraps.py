@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from functools import wraps
-from typing import Union, Optional, Callable
+from typing import Optional, Union
 
 from controllers.console.app.error import AppNotFoundError
 from core.entities.application_entities import AppMode
