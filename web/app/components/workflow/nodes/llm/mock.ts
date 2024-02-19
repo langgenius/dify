@@ -17,11 +17,11 @@ export const mockLLMNodeData: LLMNodeData = {
   variables: [
     {
       variable: 'name',
-      value_selector: ['start', 'name'],
+      value_selector: ['aaa', 'name'],
     },
     {
       variable: 'age',
-      value_selector: ['a', 'b', 'c'],
+      value_selector: ['bbb', 'b', 'c'],
     },
   ],
   prompt: [],
