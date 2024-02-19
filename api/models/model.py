@@ -12,6 +12,7 @@ from extensions.ext_database import db
 from libs.helper import generate_string
 
 from .account import Account, Tenant
+from .workflow import WorkflowRun, Workflow
 
 
 class DifySetup(db.Model):
@@ -156,12 +157,14 @@ class AppModelConfig(db.Model):
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
     retriever_resource = db.Column(db.Text)
-    prompt_type = db.Column(db.String(255), nullable=False, default='simple')
+    prompt_type = db.Column(db.String(255), nullable=False, server_default=db.text("'simple'::character varying"))
     chat_prompt_config = db.Column(db.Text)
     completion_prompt_config = db.Column(db.Text)
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
     file_upload = db.Column(db.Text)
+    chatbot_app_engine = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    workflow_id = db.Column(UUID)
 
     @property
     def app(self):
@@ -260,6 +263,13 @@ class AppModelConfig(db.Model):
         return json.loads(self.file_upload) if self.file_upload else {
             "image": {"enabled": False, "number_limits": 3, "detail": "high",
                       "transfer_methods": ["remote_url", "local_file"]}}
+
+    @property
+    def workflow(self):
+        if self.workflow_id:
+            return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+
+        return None
 
     def to_dict(self) -> dict:
         return {
@@ -581,6 +591,7 @@ class Message(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    workflow_run_id = db.Column(UUID)
 
     @property
     def user_feedback(self):
@@ -678,6 +689,13 @@ class Message(db.Model):
             })
 
         return files
+
+    @property
+    def workflow_run(self):
+        if self.workflow_run_id:
+            return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
+
+        return None
 
 
 class MessageFeedback(db.Model):

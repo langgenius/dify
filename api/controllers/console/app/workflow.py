@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -12,9 +12,20 @@ class DefaultBlockConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.WORKFLOW])
-    def post(self, app_model):
-        return 'success', 200
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('app_mode', type=str, required=True, nullable=False,
+                            choices=[AppMode.CHAT.value, AppMode.WORKFLOW.value], location='args')
+        args = parser.parse_args()
+
+        app_mode = args.get('app_mode')
+        app_mode = AppMode.value_of(app_mode)
+
+        # TODO: implement this
+
+        return {
+            "blocks": []
+        }
 
 
-api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/default-workflow-block-configs')
+api.add_resource(DefaultBlockConfigApi, '/default-workflow-block-configs')
