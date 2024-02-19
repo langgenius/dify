@@ -14,7 +14,16 @@ export const mockLLMNodeData: LLMNodeData = {
       temperature: 0.7,
     },
   },
-  variables: [],
+  variables: [
+    {
+      variable: 'name',
+      value_selector: ['start', 'name'],
+    },
+    {
+      variable: 'age',
+      value_selector: ['a', 'b', 'c'],
+    },
+  ],
   prompt: [],
   memory: {
     role_prefix: MemoryRole.assistant,

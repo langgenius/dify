@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { LLMNodeData } from '../../types'
+import type { LLMNodeData, Variable } from '../../types'
 
 const useInput = (initInputs: LLMNodeData) => {
   const [inputs, setInputs] = useState<LLMNodeData>(initInputs)
 
+  // model
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.provider = model.provider
@@ -22,6 +23,25 @@ const useInput = (initInputs: LLMNodeData) => {
     setInputs(newInputs)
   }, [inputs.model])
 
+  // variables
+  const handleVarListChange = useCallback((newList: Variable[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.variables = newList
+    })
+    setInputs(newInputs)
+  }, [inputs.variables])
+
+  const handleAddVariable = useCallback(() => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.variables.push({
+        variable: '',
+        value_selector: [],
+      })
+    })
+    setInputs(newInputs)
+  }, [inputs.variables])
+
+  // context
   const toggleContextEnabled = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
       draft.context.enabled = !draft.context.enabled
@@ -30,9 +50,11 @@ const useInput = (initInputs: LLMNodeData) => {
   }, [inputs.context.enabled])
 
   return {
-    handleCompletionParamsChange,
     inputs,
     handleModelChanged,
+    handleCompletionParamsChange,
+    handleVarListChange,
+    handleAddVariable,
     toggleContextEnabled,
   }
 }

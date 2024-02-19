@@ -1,14 +1,15 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import BasePanel from '../_base/panel'
+import VarList from '../_base/components/var/var-list'
 import useInput from './use-input'
 import { mockLLMNodeData } from './mock'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-
 import Switch from '@/app/components/base/switch'
+
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC = () => {
@@ -16,16 +17,15 @@ const Panel: FC = () => {
   const {
     inputs,
     handleModelChanged,
-    toggleContextEnabled,
     handleCompletionParamsChange,
+    handleVarListChange,
+    handleAddVariable,
+    toggleContextEnabled,
   } = useInput(mockLLMNodeData)
   const model = inputs.model
   const modelMode = inputs.model?.mode
   const isChatMode = modelMode === 'chat'
 
-  const handleAddVariable = () => {
-    console.log('add variable')
-  }
   return (
     <BasePanel
       inputsElement={
@@ -53,7 +53,10 @@ const Panel: FC = () => {
               <AddButton onClick={handleAddVariable} />
             }
           >
-            Var Selector
+            <VarList
+              list={inputs.variables}
+              onChange={handleVarListChange}
+            />
           </Field>
 
           <Field
