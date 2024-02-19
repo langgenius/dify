@@ -14,6 +14,8 @@ const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
+  const readOnly = false
+
   const {
     inputs,
     handleModelChanged,
@@ -54,6 +56,7 @@ const Panel: FC = () => {
             }
           >
             <VarList
+              readonly={readOnly}
               list={inputs.variables}
               onChange={handleVarListChange}
             />

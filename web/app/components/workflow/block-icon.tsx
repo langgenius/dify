@@ -13,7 +13,7 @@ import {
   QuestionClassifier,
   TemplatingTransform,
   VariableX,
-} from '@/app/components/base/icons/src/public/workflow'
+} from '@/app/components/base/icons/src/vender/workflow'
 
 type BlockIconProps = {
   type: BlockEnum
@@ -24,18 +24,20 @@ const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   sm: 'w-5 h-5 rounded-md shadow-xs',
   md: 'w-6 h-6 rounded-lg shadow-md',
 }
-const ICON_MAP: Record<string, any> = {
-  [BlockEnum.Start]: <Home className='w-3.5 h-3.5' />,
-  [BlockEnum.LLM]: <Llm className='w-3.5 h-3.5' />,
-  [BlockEnum.Code]: <Code className='w-3.5 h-3.5' />,
-  [BlockEnum.End]: <End className='w-3.5 h-3.5' />,
-  [BlockEnum.IfElse]: <IfElse className='w-3.5 h-3.5' />,
-  [BlockEnum.HttpRequest]: <Http className='w-3.5 h-3.5' />,
-  [BlockEnum.DirectAnswer]: <DirectAnswer className='w-3.5 h-3.5' />,
-  [BlockEnum.KnowledgeRetrieval]: <KnowledgeRetrieval className='w-3.5 h-3.5' />,
-  [BlockEnum.QuestionClassifier]: <QuestionClassifier className='w-3.5 h-3.5' />,
-  [BlockEnum.TemplateTransform]: <TemplatingTransform className='w-3.5 h-3.5' />,
-  [BlockEnum.VariableAssigner]: <VariableX className='w-3.5 h-3.5' />,
+const getIcon = (type: BlockEnum, className: string) => {
+  return {
+    [BlockEnum.Start]: <Home className={className} />,
+    [BlockEnum.LLM]: <Llm className={className} />,
+    [BlockEnum.Code]: <Code className={className} />,
+    [BlockEnum.End]: <End className={className} />,
+    [BlockEnum.IfElse]: <IfElse className={className} />,
+    [BlockEnum.HttpRequest]: <Http className={className} />,
+    [BlockEnum.DirectAnswer]: <DirectAnswer className={className} />,
+    [BlockEnum.KnowledgeRetrieval]: <KnowledgeRetrieval className={className} />,
+    [BlockEnum.QuestionClassifier]: <QuestionClassifier className={className} />,
+    [BlockEnum.TemplateTransform]: <TemplatingTransform className={className} />,
+    [BlockEnum.VariableAssigner]: <VariableX className={className} />,
+  }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Start]: 'bg-primary-500',
@@ -57,14 +59,25 @@ const BlockIcon: FC<BlockIconProps> = ({
 }) => {
   return (
     <div className={`
-      flex items-center justify-center border-[0.5px] border-white/[0.02]
+      flex items-center justify-center border-[0.5px] border-white/[0.02] text-white
       ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]} 
       ${ICON_CONTAINER_BG_COLOR_MAP[type]}
       ${className}
     `}
     >
-      {ICON_MAP[type]}
+      {getIcon(type, 'w-3.5 h-3.5')}
     </div>
+  )
+}
+
+export const VarBlockIcon: FC<BlockIconProps> = ({
+  type,
+  className,
+}) => {
+  return (
+    <>
+      {getIcon(type, `w-3 h-3 ${className}`)}
+    </>
   )
 }
 
