@@ -7,7 +7,7 @@ from typing import Optional, cast
 from core.entities.application_entities import (
     AdvancedCompletionPromptTemplateEntity,
     ModelConfigEntity,
-    PromptTemplateEntity,
+    PromptTemplateEntity, AppMode,
 )
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -23,24 +23,6 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import PromptTemplateParser
-
-
-class AppMode(enum.Enum):
-    COMPLETION = 'completion'
-    CHAT = 'chat'
-
-    @classmethod
-    def value_of(cls, value: str) -> 'AppMode':
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f'invalid mode value {value}')
 
 
 class ModelMode(enum.Enum):

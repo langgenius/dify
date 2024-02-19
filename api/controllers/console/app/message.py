@@ -10,7 +10,6 @@ from flask_restful.inputs import int_range
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
-from controllers.console.app import _get_app
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -18,9 +17,10 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.entities.application_entities import InvokeFrom
+from core.entities.application_entities import InvokeFrom, AppMode
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
@@ -46,14 +46,10 @@ class ChatMessageListApi(Resource):
 
     @setup_required
     @login_required
+    @get_app_model(mode=AppMode.CHAT)
     @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
-    def get(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id, 'chat')
-
+    def get(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('conversation_id', required=True, type=uuid_value, location='args')
         parser.add_argument('first_id', type=uuid_value, location='args')
@@ -62,7 +58,7 @@ class ChatMessageListApi(Resource):
 
         conversation = db.session.query(Conversation).filter(
             Conversation.id == args['conversation_id'],
-            Conversation.app_id == app.id
+            Conversation.app_id == app_model.id
         ).first()
 
         if not conversation:
@@ -110,12 +106,8 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id)
-
+    @get_app_model
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('message_id', required=True, type=uuid_value, location='json')
         parser.add_argument('rating', type=str, choices=['like', 'dislike', None], location='json')
@@ -125,7 +117,7 @@ class MessageFeedbackApi(Resource):
 
         message = db.session.query(Message).filter(
             Message.id == message_id,
-            Message.app_id == app.id
+            Message.app_id == app_model.id
         ).first()
 
         if not message:
@@ -141,7 +133,7 @@ class MessageFeedbackApi(Resource):
             raise ValueError('rating cannot be None when feedback not exists')
         else:
             feedback = MessageFeedback(
-                app_id=app.id,
+                app_id=app_model.id,
                 conversation_id=message.conversation_id,
                 message_id=message.id,
                 rating=args['rating'],
@@ -160,13 +152,12 @@ class MessageAnnotationApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check('annotation')
+    @get_app_model
     @marshal_with(annotation_fields)
-    def post(self, app_id):
+    def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-
-        app_id = str(app_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('message_id', required=False, type=uuid_value, location='json')
@@ -174,7 +165,7 @@ class MessageAnnotationApi(Resource):
         parser.add_argument('answer', required=True, type=str, location='json')
         parser.add_argument('annotation_reply', required=False, type=dict, location='json')
         args = parser.parse_args()
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
 
         return annotation
 
@@ -183,14 +174,10 @@ class MessageAnnotationCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id)
-
+    @get_app_model
+    def get(self, app_model):
         count = db.session.query(MessageAnnotation).filter(
-            MessageAnnotation.app_id == app.id
+            MessageAnnotation.app_id == app_model.id
         ).count()
 
         return {'count': count}
@@ -200,8 +187,8 @@ class MessageMoreLikeThisApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id, message_id):
-        app_id = str(app_id)
+    @get_app_model(mode=AppMode.COMPLETION)
+    def get(self, app_model, message_id):
         message_id = str(message_id)
 
         parser = reqparse.RequestParser()
@@ -210,9 +197,6 @@ class MessageMoreLikeThisApi(Resource):
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
-
-        # get app info
-        app_model = _get_app(app_id, 'completion')
 
         try:
             response = CompletionService.generate_more_like_this(
@@ -257,12 +241,9 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id, message_id):
-        app_id = str(app_id)
+    @get_app_model(mode=AppMode.CHAT)
+    def get(self, app_model, message_id):
         message_id = str(message_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'chat')
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
@@ -294,13 +275,10 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @get_app_model
     @marshal_with(message_detail_fields)
-    def get(self, app_id, message_id):
-        app_id = str(app_id)
+    def get(self, app_model, message_id):
         message_id = str(message_id)
-
-        # get app info
-        app_model = _get_app(app_id)
 
         message = db.session.query(Message).filter(
             Message.id == message_id,
