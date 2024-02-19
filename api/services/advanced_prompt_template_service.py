@@ -1,6 +1,7 @@
 
 import copy
 
+from core.entities.application_entities import AppMode
 from core.prompt.advanced_prompt_templates import (
     BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG,
     BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG,
@@ -13,7 +14,6 @@ from core.prompt.advanced_prompt_templates import (
     COMPLETION_APP_COMPLETION_PROMPT_CONFIG,
     CONTEXT,
 )
-from core.prompt.prompt_transform import AppMode
 
 
 class AdvancedPromptTemplateService:

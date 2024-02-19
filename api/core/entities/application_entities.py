@@ -9,6 +9,26 @@ from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import AIModelEntity
 
 
+class AppMode(Enum):
+    COMPLETION = 'completion'  # will be deprecated in the future
+    WORKFLOW = 'workflow'  # instead of 'completion'
+    CHAT = 'chat'
+    AGENT = 'agent'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'AppMode':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid mode value {value}')
+
+
 class ModelConfigEntity(BaseModel):
     """
     Model Config Entity.

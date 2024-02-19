@@ -10,7 +10,6 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
-from controllers.console.app import _get_app
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -19,10 +18,11 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.application_queue_manager import ApplicationQueueManager
-from core.entities.application_entities import InvokeFrom
+from core.entities.application_entities import InvokeFrom, AppMode
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
@@ -36,12 +36,8 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'completion')
-
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, location='json', default='')
@@ -93,12 +89,8 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id, task_id):
-        app_id = str(app_id)
-
-        # get app info
-        _get_app(app_id, 'completion')
-
+    @get_app_model(mode=AppMode.WORKFLOW)
+    def post(self, app_model, task_id):
         account = flask_login.current_user
 
         ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
@@ -110,12 +102,8 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'chat')
-
+    @get_app_model(mode=AppMode.CHAT)
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, required=True, location='json')
@@ -179,12 +167,8 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id, task_id):
-        app_id = str(app_id)
-
-        # get app info
-        _get_app(app_id, 'chat')
-
+    @get_app_model(mode=AppMode.CHAT)
+    def post(self, app_model, task_id):
         account = flask_login.current_user
 
         ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)

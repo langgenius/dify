@@ -2,11 +2,11 @@ import re
 import uuid
 
 from core.entities.agent_entities import PlanningStrategy
+from core.entities.application_entities import AppMode
 from core.external_data_tool.factory import ExternalDataToolFactory
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from core.moderation.factory import ModerationFactory
-from core.prompt.prompt_transform import AppMode
 from core.provider_manager import ProviderManager
 from models.account import Account
 from services.dataset_service import DatasetService
