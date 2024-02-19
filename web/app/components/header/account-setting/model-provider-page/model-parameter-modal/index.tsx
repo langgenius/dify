@@ -5,6 +5,7 @@ import type {
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type {
   DefaultModel,
   FormValue,
@@ -33,6 +34,7 @@ import { TONE_LIST } from '@/config'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ModelParameterModalProps = {
+  popupClassName?: string
   isAdvancedMode: boolean
   mode: string
   modelId: string
@@ -40,8 +42,9 @@ export type ModelParameterModalProps = {
   setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
-  debugWithMultipleModel: boolean
-  onDebugWithMultipleModelChange: () => void
+  hideDebugWithMultipleModel?: boolean
+  debugWithMultipleModel?: boolean
+  onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
 }
 const stopParameerRule: ModelParameterRule = {
@@ -65,12 +68,14 @@ const stopParameerRule: ModelParameterRule = {
 
 const PROVIDER_WITH_PRESET_TONE = ['openai', 'azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
+  popupClassName,
   isAdvancedMode,
   modelId,
   provider,
   setModel,
   completionParams,
   onCompletionParamsChange,
+  hideDebugWithMultipleModel,
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
   renderTrigger,
@@ -196,7 +201,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[60]'>
-          <div className='w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl'>
+          <div className={cn(popupClassName, 'w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl')}>
             <div className='max-h-[480px] px-10 pt-6 pb-8 overflow-y-auto'>
               <div className='flex items-center justify-between h-8'>
                 <div className='font-semibold text-gray-900'>
@@ -248,17 +253,19 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 )
               }
             </div>
-            <div
-              className='flex items-center justify-between px-6 h-[50px] bg-gray-50 border-t border-t-gray-100 text-xs font-medium text-primary-600 cursor-pointer rounded-b-xl'
-              onClick={() => onDebugWithMultipleModelChange()}
-            >
-              {
-                debugWithMultipleModel
-                  ? t('appDebug.debugAsSingleModel')
-                  : t('appDebug.debugAsMultipleModel')
-              }
-              <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
-            </div>
+            {!hideDebugWithMultipleModel && (
+              <div
+                className='flex items-center justify-between px-6 h-[50px] bg-gray-50 border-t border-t-gray-100 text-xs font-medium text-primary-600 cursor-pointer rounded-b-xl'
+                onClick={() => onDebugWithMultipleModelChange?.()}
+              >
+                {
+                  debugWithMultipleModel
+                    ? t('appDebug.debugAsSingleModel')
+                    : t('appDebug.debugAsMultipleModel')
+                }
+                <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
+              </div>
+            )}
           </div>
         </PortalToFollowElemContent>
       </div>

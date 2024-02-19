@@ -1,25 +1,26 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useState } from 'react'
 import produce from 'immer'
 import type { LLMNodeData } from '../../types'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const useInput = (initInputs: LLMNodeData) => {
-  const {
-    textGenerationModelList,
-  } = useTextGenerationCurrentProviderAndModelAndModelList()
-
   const [inputs, setInputs] = useState<LLMNodeData>(initInputs)
 
-  const handleModelChanged = useCallback((model: { provider: string; model: string }) => {
-    const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === model.provider)
-    const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model.model)
+  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.provider = model.provider
-      draft.model.name = model.model
-      draft.model.mode = targetModelItem?.model_properties.mode as string
+      draft.model.name = model.modelId
+      draft.model.mode = model.mode!
     })
     setInputs(newInputs)
-  }, [inputs.model, textGenerationModelList])
+  }, [inputs.model])
+
+  const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.model.completion_params = newParams
+    })
+    setInputs(newInputs)
+  }, [inputs.model])
 
   const toggleContextEnabled = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
@@ -29,7 +30,7 @@ const useInput = (initInputs: LLMNodeData) => {
   }, [inputs.context.enabled])
 
   return {
-    textGenerationModelList,
+    handleCompletionParamsChange,
     inputs,
     handleModelChanged,
     toggleContextEnabled,

@@ -6,20 +6,21 @@ import { mockLLMNodeData } from './mock'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+
 import Switch from '@/app/components/base/switch'
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
   const {
-    textGenerationModelList,
     inputs,
     handleModelChanged,
     toggleContextEnabled,
+    handleCompletionParamsChange,
   } = useInput(mockLLMNodeData)
-
-  const modelMode = inputs.model.mode
+  const model = inputs.model
+  const modelMode = inputs.model?.mode
   const isChatMode = modelMode === 'chat'
 
   const handleAddVariable = () => {
@@ -32,15 +33,17 @@ const Panel: FC = () => {
           <Field
             title={t(`${i18nPrefix}.model`)}
           >
-            <ModelSelector
-              defaultModel={(inputs.model?.provider && inputs.model?.name)
-                ? {
-                  provider: inputs.model.provider,
-                  model: inputs.model.name,
-                }
-                : undefined}
-              modelList={textGenerationModelList}
-              onSelect={handleModelChanged}
+            <ModelParameterModal
+              popupClassName='!w-[387px]'
+              isAdvancedMode={true}
+              mode={model?.mode}
+              provider={model?.provider}
+              completionParams={model.completion_params}
+              modelId={model.name}
+              setModel={handleModelChanged}
+              onCompletionParamsChange={handleCompletionParamsChange}
+              hideDebugWithMultipleModel
+              debugWithMultipleModel={false}
             />
           </Field>
 
