@@ -1,3 +1,4 @@
+import logging
 from typing import Any, List, Optional
 from uuid import uuid4
 
@@ -5,7 +6,9 @@ from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from pydantic import BaseModel, root_validator
-from pymilvus import MilvusClient, connections
+from pymilvus import MilvusClient, connections, MilvusException
+
+logger = logging.getLogger(__name__)
 
 
 class MilvusConfig(BaseModel):
@@ -45,6 +48,7 @@ class MilvusVector(BaseVector):
         self._client_config = config
         self._client = self._init_client(config)
         self._consistency_level = 'Session'
+        self._fields = []
 
     def get_type(self) -> str:
         return 'milvus'
@@ -70,40 +74,31 @@ class MilvusVector(BaseVector):
         self.add_texts(texts, embeddings)
 
     def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
-        texts = [d.page_content for d in documents]
-        metadatas = [d.metadata for d in documents]
-
-        # Dict to hold all insert columns
-        insert_dict: dict[str, list] = {
-            Field.CONTENT_KEY.value: texts,
-            Field.VECTOR.value: embeddings,
-        }
-
+        insert_dict_list = []
+        for i in range(len(documents)):
+            insert_dict = {
+                Field.CONTENT_KEY.value: documents[i].page_content,
+                Field.VECTOR.value: embeddings[i],
+                Field.METADATA_KEY.value: documents[i].metadata
+            }
+            insert_dict_list.append(insert_dict)
         # Total insert count
-        total_count = len(texts)
+        total_count = len(insert_dict_list)
 
         pks: list[str] = []
 
         for i in range(0, total_count, 1000):
-            # Grab end index
-            end = min(i + 1000, total_count)
-            # Convert dict to list of lists batch for insertion
-            insert_list = [insert_dict[x][i:end] for x in self.fields]
+            batch_insert_list = insert_dict_list[i:i + 1000]
             # Insert into the collection.
             try:
-                res: Collection
-                res = self.col.insert(insert_list, timeout=timeout, **kwargs)
-                pks.extend(res.primary_keys)
+                ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
+                pks.extend(ids)
             except MilvusException as e:
                 logger.error(
                     "Failed to insert batch starting at entity: %s/%s", i, total_count
                 )
                 raise e
-        if metadatas is not None:
-            for d in metadatas:
-                insert_dict.setdefault(Field.METADATA_KEY.value, []).append(d)
-        ids = self._client.insert(collection_name=self._collection_name, data=insert_dict)
-        return ids
+        return pks
 
     def delete_by_document_id(self, document_id: str):
 
@@ -147,18 +142,18 @@ class MilvusVector(BaseVector):
 
         # Set search parameters.
         results = self._client.search(collection_name=self._collection_name,
-                                      query_records=[query_vector],
-                                      anns_field=Field.VECTOR.value,
+                                      data=[query_vector],
                                       limit=kwargs.get('top_k', 4),
-                                      **kwargs,
+                                      output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
                                       )
         # Organize results.
         docs = []
         for result in results[0]:
-            metadata = result.entity.get(Field.METADATA_KEY.value)
-            metadata['score'] = result.score
-            if result.score > kwargs.get('threshold', 0.0):
-                doc = Document(page_content=result.entity.get(Field.CONTENT_KEY.value),
+            metadata = result['entity'].get(Field.METADATA_KEY.value)
+            metadata['score'] = result['distance']
+            score_threshold = kwargs.get('score_threshold') if kwargs.get('score_threshold') else 0.0
+            if result['distance'] > score_threshold:
+                doc = Document(page_content=result['entity'].get(Field.CONTENT_KEY.value),
                                metadata=metadata)
                 docs.append(doc)
         return docs
@@ -196,6 +191,11 @@ class MilvusVector(BaseVector):
 
         # Create the schema for the collection
         schema = CollectionSchema(fields)
+
+        for x in schema.fields:
+            self._fields.append(x.name)
+        # Since primary field is auto-id, no need to track it
+        self._fields.remove(Field.PRIMARY_KEY.value)
 
         # Create the collection
         collection_name = self._collection_name
