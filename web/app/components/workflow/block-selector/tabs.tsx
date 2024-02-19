@@ -1,5 +1,10 @@
-import { useState } from 'react'
+import {
+  memo,
+  useState,
+} from 'react'
+import { useNodeId } from 'reactflow'
 import BlockIcon from '../block-icon'
+import { useWorkflowContext } from '../context'
 import {
   BLOCK_CLASSIFICATIONS,
   BLOCK_GROUP_BY_CLASSIFICATION,
@@ -7,7 +12,13 @@ import {
 } from './constants'
 
 const Tabs = () => {
+  const {
+    nodes,
+    handleAddNextNode,
+  } = useWorkflowContext()
   const [activeTab, setActiveTab] = useState(TABS[0].key)
+  const nodeId = useNodeId()
+  const currentNode = nodes.find(node => node.id === nodeId)
 
   return (
     <div>
@@ -46,6 +57,10 @@ const Tabs = () => {
                   <div
                     key={block.type}
                     className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleAddNextNode(currentNode!, block.type)
+                    }}
                   >
                     <BlockIcon
                       className='mr-2'
@@ -63,4 +78,4 @@ const Tabs = () => {
   )
 }
 
-export default Tabs
+export default memo(Tabs)

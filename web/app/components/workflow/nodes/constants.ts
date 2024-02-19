@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { BlockEnum } from '../types'
 import StartNode from './start/node'
 import StartPanel from './start/panel'
 import EndNode from './end/node'
@@ -23,29 +24,29 @@ import ToolNode from './tool/node'
 import ToolPanel from './tool/panel'
 
 export const NodeMap: Record<string, ComponentType> = {
-  start: StartNode,
-  end: EndNode,
-  directAnswer: DirectAnswerNode,
-  llm: LLMNode,
-  knowledgeRetrieval: KnowledgeRetrievalNode,
-  questionClassifier: QuestionClassifierNode,
-  ifElse: IfElseNode,
-  code: CodeNode,
-  templateTransform: TemplateTransformNode,
-  http: HttpNode,
-  tool: ToolNode,
+  [BlockEnum.Start]: StartNode,
+  [BlockEnum.End]: EndNode,
+  [BlockEnum.DirectAnswer]: DirectAnswerNode,
+  [BlockEnum.LLM]: LLMNode,
+  [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalNode,
+  [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
+  [BlockEnum.IfElse]: IfElseNode,
+  [BlockEnum.Code]: CodeNode,
+  [BlockEnum.TemplateTransform]: TemplateTransformNode,
+  [BlockEnum.HttpRequest]: HttpNode,
+  [BlockEnum.Tool]: ToolNode,
 }
 
 export const PanelMap: Record<string, ComponentType> = {
-  start: StartPanel,
-  end: EndPanel,
-  directAnswer: DirectAnswerPanel,
-  llm: LLMPanel,
-  knowledgeRetrieval: KnowledgeRetrievalPanel,
-  questionClassifier: QuestionClassifierPanel,
-  ifElse: IfElsePanel,
-  code: CodePanel,
-  templateTransform: TemplateTransformPanel,
-  http: HttpPanel,
-  tool: ToolPanel,
+  [BlockEnum.Start]: StartPanel,
+  [BlockEnum.End]: EndPanel,
+  [BlockEnum.DirectAnswer]: DirectAnswerPanel,
+  [BlockEnum.LLM]: LLMPanel,
+  [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalPanel,
+  [BlockEnum.QuestionClassifier]: QuestionClassifierPanel,
+  [BlockEnum.IfElse]: IfElsePanel,
+  [BlockEnum.Code]: CodePanel,
+  [BlockEnum.TemplateTransform]: TemplateTransformPanel,
+  [BlockEnum.HttpRequest]: HttpPanel,
+  [BlockEnum.Tool]: ToolPanel,
 }

@@ -13,6 +13,7 @@ export enum BlockEnum {
   TemplateTransform = 'template-transform',
   HttpRequest = 'http-request',
   VariableAssigner = 'variable-assigner',
+  Tool = 'tool',
 }
 
 export type NodeData = {

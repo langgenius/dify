@@ -5,6 +5,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import {
@@ -60,21 +61,31 @@ const WorkflowWrap: FC<WorkflowWrapProps> = ({
   edges: initialEdges,
   selectedNodeId: initialSelectedNodeId,
 }) => {
-  const [nodes] = useNodesState(initialNodes)
-  const [edges] = useEdgesState(initialEdges)
+  const reactFlow = useReactFlow()
+  const [nodes, setNodes] = useNodesState(initialNodes)
+  const [edges, setEdges] = useEdgesState(initialEdges)
   const {
     selectedNodeId,
     handleSelectedNodeIdChange,
     selectedNode,
-  } = useWorkflow(nodes, initialSelectedNodeId)
+    handleAddNextNode,
+  } = useWorkflow(
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    initialSelectedNodeId,
+  )
 
   return (
     <WorkflowContext.Provider value={{
+      reactFlow,
       selectedNodeId,
       handleSelectedNodeIdChange,
       selectedNode,
       nodes,
       edges,
+      handleAddNextNode,
     }}>
       <Workflow />
     </WorkflowContext.Provider>
