@@ -12,7 +12,6 @@ import type { NodeProps } from 'reactflow'
 import { getOutgoers } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockSelector from '../../block-selector'
-import { getBlockByType } from '../../block-selector/utils'
 import BlockIcon from '../../block-icon'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
@@ -71,7 +70,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           size='md'
         />
         <div className='text-[13px] font-semibold text-gray-700'>
-          {getBlockByType(currentNode!.data.type)?.title}
+          {data.title}
         </div>
       </div>
       {cloneElement(children, { id: nodeId, data })}

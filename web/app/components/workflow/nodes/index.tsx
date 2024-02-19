@@ -6,8 +6,8 @@ import {
 } from 'reactflow'
 import { useWorkflowContext } from '../context'
 import {
-  NodeMap,
-  PanelMap,
+  NodeComponentMap,
+  PanelComponentMap,
 } from './constants'
 import BaseNode from './_base/node'
 import BasePanel from './_base/panel'
@@ -16,7 +16,7 @@ const CustomNode = ({
   id,
   data,
 }: NodeProps) => {
-  const NodeComponent = NodeMap[data.type]
+  const NodeComponent = NodeComponentMap[data.type]
 
   return (
     <>
@@ -40,13 +40,13 @@ const CustomNode = ({
   )
 }
 
-export const Panel = () => {
+export const Panel = memo(() => {
   const { selectedNode } = useWorkflowContext()
 
   if (!selectedNode)
     return null
 
-  const PanelComponent = PanelMap[selectedNode.data.type]
+  const PanelComponent = PanelComponentMap[selectedNode.data.type]
 
   return (
     <BasePanel
@@ -56,6 +56,8 @@ export const Panel = () => {
       <PanelComponent />
     </BasePanel>
   )
-}
+})
+
+Panel.displayName = 'Panel'
 
 export default memo(CustomNode)

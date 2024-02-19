@@ -9,7 +9,6 @@ import {
 import type { NodeProps } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockIcon from '../../block-icon'
-import { getBlockByType } from '../../block-selector/utils'
 import NextStep from './components/next-step'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/development'
@@ -37,7 +36,7 @@ const BasePanel: FC<BasePanelProps> = ({
             type={selectedNode!.data.type}
             size='md'
           />
-          <div className='grow py-1 text-base text-gray-900 font-semibold '>{getBlockByType(selectedNode!.data.type)?.title}</div>
+          <div className='grow py-1 text-base text-gray-900 font-semibold '>{data.title}</div>
           <div className='shrink-0 flex items-center'>
             <div
               className='flex items-center justify-center w-6 h-6 cursor-pointer'

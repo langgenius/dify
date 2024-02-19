@@ -23,7 +23,7 @@ import HttpPanel from './http/panel'
 import ToolNode from './tool/node'
 import ToolPanel from './tool/panel'
 
-export const NodeMap: Record<string, ComponentType> = {
+export const NodeComponentMap: Record<string, ComponentType> = {
   [BlockEnum.Start]: StartNode,
   [BlockEnum.End]: EndNode,
   [BlockEnum.DirectAnswer]: DirectAnswerNode,
@@ -37,7 +37,7 @@ export const NodeMap: Record<string, ComponentType> = {
   [BlockEnum.Tool]: ToolNode,
 }
 
-export const PanelMap: Record<string, ComponentType> = {
+export const PanelComponentMap: Record<string, ComponentType> = {
   [BlockEnum.Start]: StartPanel,
   [BlockEnum.End]: EndPanel,
   [BlockEnum.DirectAnswer]: DirectAnswerPanel,
