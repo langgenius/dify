@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import BasePanel from '../_base/panel'
-import VarList from '../_base/components/var/var-list'
+import VarList from '../_base/components/variable/var-list'
 import useInput from './use-input'
 import { mockLLMNodeData } from './mock'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
