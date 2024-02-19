@@ -34,10 +34,11 @@ const CustomNode = ({
 
 export const Panel = () => {
   const { selectedNode } = useWorkflowContext()
-  const PanelComponent = PanelMap[selectedNode?.data.type || '']
 
-  if (!PanelComponent)
+  if (!selectedNode)
     return null
+
+  const PanelComponent = PanelMap[selectedNode.data.type]
 
   return (
     <PanelComponent />

@@ -37,6 +37,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.QuestionClassifier]: <QuestionClassifier className={className} />,
     [BlockEnum.TemplateTransform]: <TemplatingTransform className={className} />,
     [BlockEnum.VariableAssigner]: <VariableX className={className} />,
+    [BlockEnum.Tool]: <VariableX className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {

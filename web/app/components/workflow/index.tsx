@@ -17,6 +17,8 @@ import Header from './header'
 import CustomNode, {
   Panel,
 } from './nodes'
+import AppInfoPanel from './app-info-panel'
+import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import type { Node } from './types'
 
@@ -36,7 +38,9 @@ const Workflow = () => {
   return (
     <div className='relative w-full h-full'>
       <Header />
+      <AppInfoPanel />
       <Panel />
+      <ZoomInOut />
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
