@@ -1,7 +1,12 @@
 import type {
   FC,
-  ReactNode,
+  ReactElement,
 } from 'react'
+import {
+  cloneElement,
+  memo,
+} from 'react'
+import type { NodeProps } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockIcon from '../../block-icon'
 import { getBlockByType } from '../../block-selector/utils'
@@ -10,10 +15,12 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/development'
 
 type BasePanelProps = {
-  children?: ReactNode
-}
+  children: ReactElement
+} & Pick<NodeProps, 'id' | 'data'>
 
 const BasePanel: FC<BasePanelProps> = ({
+  id,
+  data,
   children,
 }) => {
   const {
@@ -47,7 +54,7 @@ const BasePanel: FC<BasePanelProps> = ({
         </div>
       </div>
       <div className='py-2 border-b-[0.5px] border-black/5'>
-        {children}
+        {cloneElement(children, { id, data })}
       </div>
       <div className='p-4'>
         <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
@@ -63,4 +70,4 @@ const BasePanel: FC<BasePanelProps> = ({
   )
 }
 
-export default BasePanel
+export default memo(BasePanel)

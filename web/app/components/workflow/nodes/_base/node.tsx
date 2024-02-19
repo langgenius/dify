@@ -1,16 +1,15 @@
 import type {
   FC,
-  ReactNode,
+  ReactElement,
 } from 'react'
 import {
+  cloneElement,
   memo,
   useCallback,
   useMemo,
 } from 'react'
-import {
-  getOutgoers,
-  useNodeId,
-} from 'reactflow'
+import type { NodeProps } from 'reactflow'
+import { getOutgoers } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockSelector from '../../block-selector'
 import { getBlockByType } from '../../block-selector/utils'
@@ -18,13 +17,14 @@ import BlockIcon from '../../block-icon'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 type BaseNodeProps = {
-  children: ReactNode
-}
+  children: ReactElement
+} & Pick<NodeProps, 'id' | 'data'>
 
 const BaseNode: FC<BaseNodeProps> = ({
+  id: nodeId,
+  data,
   children,
 }) => {
-  const nodeId = useNodeId()
   const {
     nodes,
     edges,
@@ -74,7 +74,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           {getBlockByType(currentNode!.data.type)?.title}
         </div>
       </div>
-      {children}
+      {cloneElement(children, { id: nodeId, data })}
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
         Define the initial parameters for launching a workflow
       </div>

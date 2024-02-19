@@ -9,8 +9,11 @@ import {
   NodeMap,
   PanelMap,
 } from './constants'
+import BaseNode from './_base/node'
+import BasePanel from './_base/panel'
 
 const CustomNode = ({
+  id,
   data,
 }: NodeProps) => {
   const NodeComponent = NodeMap[data.type]
@@ -22,7 +25,12 @@ const CustomNode = ({
         position={Position.Top}
         className='!-top-0.5 !w-2 !h-0.5 !bg-primary-500 !rounded-none !border-none !min-h-[2px]'
       />
-      <NodeComponent />
+      <BaseNode
+        id={id}
+        data={data}
+      >
+        <NodeComponent />
+      </BaseNode>
       <Handle
         type='source'
         position={Position.Bottom}
@@ -41,7 +49,12 @@ export const Panel = () => {
   const PanelComponent = PanelMap[selectedNode.data.type]
 
   return (
-    <PanelComponent />
+    <BasePanel
+      id={selectedNode.id}
+      data={selectedNode.data}
+    >
+      <PanelComponent />
+    </BasePanel>
   )
 }
 
