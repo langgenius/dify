@@ -3,15 +3,16 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import Workflow from '@/app/components/workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
 const nodes = [
-  'start', 'directAnswer', 'llm', 'knowledgeRetrieval', 'questionClassifier',
-  'questionClassifier', 'ifElse', 'code', 'templateTransform', 'http',
-  'tool',
+  BlockEnum.Start, BlockEnum.DirectAnswer, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.QuestionClassifier,
+  BlockEnum.QuestionClassifier, BlockEnum.IfElse, BlockEnum.Code, BlockEnum.TemplateTransform, BlockEnum.HttpRequest,
+  BlockEnum.Tool,
 ].map((item, i) => ({
   id: `${i + 1}`,
   type: 'custom',
   position: { x: 330, y: 30 + i * 200 },
-  data: { type: item },
+  data: { type: item, name: item },
 }))
 const initialNodes = nodes
 
