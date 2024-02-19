@@ -154,7 +154,9 @@ class WeaviateVector(BaseVector):
     def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
         collection_name = self._collection_name
-        query_obj = self._client.query.get(collection_name, self._attributes.append(Field.TEXT_KEY.value))
+        properties = self._attributes
+        properties.append(Field.TEXT_KEY.value)
+        query_obj = self._client.query.get(collection_name, properties)
 
         vector = {"vector": query_vector}
         if kwargs.get("where_filter"):
@@ -171,7 +173,7 @@ class WeaviateVector(BaseVector):
         docs_and_scores = []
         for res in result["data"]["Get"][collection_name]:
             text = res.pop(Field.TEXT_KEY.value)
-            score = res["_additional"]["distance"]
+            score = 1 - res["_additional"]["distance"]
             docs_and_scores.append((Document(page_content=text, metadata=res), score))
 
         docs = []
@@ -196,9 +198,11 @@ class WeaviateVector(BaseVector):
         """
         collection_name = self._collection_name
         content: Dict[str, Any] = {"concepts": [query]}
+        properties = self._attributes
+        properties.append(Field.TEXT_KEY.value)
         if kwargs.get("search_distance"):
             content["certainty"] = kwargs.get("search_distance")
-        query_obj = self._client.query.get(collection_name, self._attributes.append(Field.TEXT_KEY.value))
+        query_obj = self._client.query.get(collection_name, properties)
         if kwargs.get("where_filter"):
             query_obj = query_obj.with_where(kwargs.get("where_filter"))
         if kwargs.get("additional"):

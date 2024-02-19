@@ -1,9 +1,11 @@
 from typing import Any, List, Optional
+from uuid import uuid4
+
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from pydantic import BaseModel, root_validator
-from pymilvus import MilvusClient
+from pymilvus import MilvusClient, connections
 
 
 class MilvusConfig(BaseModel):
@@ -57,7 +59,13 @@ class MilvusVector(BaseVector):
 
         # Grab the existing collection if it exists
         from pymilvus import utility
-        if utility.has_collection(self._collection_name):
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        if not utility.has_collection(self._collection_name, using=alias):
             self.create_collection(embeddings, metadatas, index_params)
         self.add_texts(texts, embeddings)
 
