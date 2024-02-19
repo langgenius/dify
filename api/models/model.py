@@ -12,7 +12,7 @@ from extensions.ext_database import db
 from libs.helper import generate_string
 
 from .account import Account, Tenant
-from .workflow import WorkflowRun, Workflow
+from .workflow import Workflow, WorkflowRun
 
 
 class DifySetup(db.Model):
