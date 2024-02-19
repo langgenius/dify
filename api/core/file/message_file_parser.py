@@ -1,6 +1,7 @@
-from typing import Dict, List, Optional, Union
+from typing import Optional, Union
 
 import requests
+
 from core.file.file_obj import FileBelongsTo, FileObj, FileTransferMethod, FileType
 from extensions.ext_database import db
 from models.account import Account
@@ -14,8 +15,8 @@ class MessageFileParser:
         self.tenant_id = tenant_id
         self.app_id = app_id
 
-    def validate_and_transform_files_arg(self, files: List[dict], app_model_config: AppModelConfig,
-                                         user: Union[Account, EndUser]) -> List[FileObj]:
+    def validate_and_transform_files_arg(self, files: list[dict], app_model_config: AppModelConfig,
+                                         user: Union[Account, EndUser]) -> list[FileObj]:
         """
         validate and transform files arg
 
@@ -95,7 +96,7 @@ class MessageFileParser:
         # return all file objs
         return new_files
 
-    def transform_message_files(self, files: List[MessageFile], app_model_config: Optional[AppModelConfig]) -> List[FileObj]:
+    def transform_message_files(self, files: list[MessageFile], app_model_config: Optional[AppModelConfig]) -> list[FileObj]:
         """
         transform message files
 
@@ -109,8 +110,8 @@ class MessageFileParser:
         # return all file objs
         return [file_obj for file_objs in type_file_objs.values() for file_obj in file_objs]
 
-    def _to_file_objs(self, files: List[Union[Dict, MessageFile]],
-                      file_upload_config: dict) -> Dict[FileType, List[FileObj]]:
+    def _to_file_objs(self, files: list[Union[dict, MessageFile]],
+                      file_upload_config: dict) -> dict[FileType, list[FileObj]]:
         """
         transform files to file objs
 
@@ -118,7 +119,7 @@ class MessageFileParser:
         :param file_upload_config:
         :return:
         """
-        type_file_objs: Dict[FileType, List[FileObj]] = {
+        type_file_objs: dict[FileType, list[FileObj]] = {
             # Currently only support image
             FileType.IMAGE: []
         }

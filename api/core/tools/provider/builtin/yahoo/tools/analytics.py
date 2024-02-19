@@ -1,16 +1,17 @@
 from datetime import datetime
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import pandas as pd
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
 from requests.exceptions import HTTPError, ReadTimeout
 from yfinance import download
 
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class YahooFinanceAnalyticsTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
-          -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) \
+          -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """
@@ -65,5 +66,5 @@ class YahooFinanceAnalyticsTool(BuiltinTool):
         try:
             return self.create_text_message(str(summary_df.to_dict()))
         except (HTTPError, ReadTimeout):
-            return self.create_text_message(f'There is a internet connection problem. Please try again later.')
+            return self.create_text_message('There is a internet connection problem. Please try again later.')
     

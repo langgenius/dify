@@ -1,16 +1,17 @@
-# -*- coding:utf-8 -*-
+from flask import current_app
+from flask_login import current_user
+from flask_restful import Resource, abort, fields, marshal_with, reqparse
+
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
-from flask import current_app
-from flask_login import current_user
-from flask_restful import Resource, abort, fields, marshal_with, reqparse
 from libs.helper import TimestampField
 from libs.login import login_required
 from models.account import Account
 from services.account_service import RegisterService, TenantService
+from services.errors.account import AccountAlreadyInTenantError
 
 account_fields = {
     'id': fields.String,
@@ -71,6 +72,13 @@ class MemberInviteEmailApi(Resource):
                     'email': invitee_email,
                     'url': f'{console_web_url}/activate?email={invitee_email}&token={token}'
                 })
+            except AccountAlreadyInTenantError:
+                invitation_results.append({
+                    'status': 'success',
+                    'email': invitee_email,
+                    'url': f'{console_web_url}/signin'
+                })
+                break
             except Exception as e:
                 invitation_results.append({
                     'status': 'failed',

@@ -1,21 +1,21 @@
 import logging
 import threading
 import time
-from typing import List
 
 import numpy as np
+from flask import current_app
+from langchain.embeddings.base import Embeddings
+from langchain.schema import Document
+from sklearn.manifold import TSNE
+
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
-from flask import current_app
-from langchain.embeddings.base import Embeddings
-from langchain.schema import Document
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from services.retrieval_service import RetrievalService
-from sklearn.manifold import TSNE
 
 default_retrieval_model = {
     'search_method': 'semantic_search',
@@ -130,7 +130,7 @@ class HitTestingService:
         return cls.compact_retrieve_response(dataset, embeddings, query, all_documents)
 
     @classmethod
-    def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: List[Document]):
+    def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: list[Document]):
         text_embeddings = [
             embeddings.embed_query(query)
         ]

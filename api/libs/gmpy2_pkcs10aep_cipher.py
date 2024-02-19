@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 #  Cipher/PKCS1_OAEP.py : PKCS#1 OAEP
 #
@@ -238,41 +237,3 @@ def new(key, hashAlgo=None, mgfunc=None, label=b'', randfunc=None):
     if randfunc is None:
         randfunc = Random.get_random_bytes
     return PKCS1OAEP_Cipher(key, hashAlgo, mgfunc, label, randfunc)
-
-
-def new(key, hashAlgo=None, mgfunc=None, label=b'', randfunc=None):
-    """Return a cipher object :class:`PKCS1OAEP_Cipher` that can be used to perform PKCS#1 OAEP encryption or decryption.
-
-    :param key:
-      The key object to use to encrypt or decrypt the message.
-      Decryption is only possible with a private RSA key.
-    :type key: RSA key object
-
-    :param hashAlgo:
-      The hash function to use. This can be a module under `Crypto.Hash`
-      or an existing hash object created from any of such modules.
-      If not specified, `Crypto.Hash.SHA1` is used.
-    :type hashAlgo: hash object
-
-    :param mgfunc:
-      A mask generation function that accepts two parameters: a string to
-      use as seed, and the lenth of the mask to generate, in bytes.
-      If not specified, the standard MGF1 consistent with ``hashAlgo`` is used (a safe choice).
-    :type mgfunc: callable
-
-    :param label:
-      A label to apply to this particular encryption. If not specified,
-      an empty string is used. Specifying a label does not improve
-      security.
-    :type label: bytes/bytearray/memoryview
-
-    :param randfunc:
-      A function that returns random bytes.
-      The default is `Random.get_random_bytes`.
-    :type randfunc: callable
-    """
-
-    if randfunc is None:
-        randfunc = Random.get_random_bytes
-    return PKCS1OAEP_Cipher(key, hashAlgo, mgfunc, label, randfunc)
-

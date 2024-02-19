@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 from ..core._base_api import BaseAPI
-from ..core._base_type import NOT_GIVEN, Body, FileTypes, Headers, NotGiven, Query
+from ..core._base_type import NOT_GIVEN, FileTypes, Headers, NotGiven
 from ..core._files import is_file_content
 from ..core._http_client import make_user_request_input
 from ..types.file_object import FileObject, ListOfFileObject
@@ -18,7 +18,7 @@ __all__ = ["Files"]
 
 class Files(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(

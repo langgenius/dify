@@ -1,21 +1,44 @@
 import json
 import logging
 import re
+from collections.abc import Generator
 from decimal import Decimal
-from typing import Generator, List, Optional, Union, cast
+from typing import Optional, Union, cast
 from urllib.parse import urljoin
 
 import requests
+
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
-                                                          PromptMessage, PromptMessageContentType, PromptMessageTool,
-                                                          SystemPromptMessage, TextPromptMessageContent,
-                                                          UserPromptMessage)
-from core.model_runtime.entities.model_entities import (AIModelEntity, DefaultParameterName, FetchFrom, I18nObject,
-                                                        ModelFeature, ModelPropertyKey, ModelType, ParameterRule,
-                                                        ParameterType, PriceConfig)
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentType,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
+from core.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    DefaultParameterName,
+    FetchFrom,
+    I18nObject,
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+    ParameterType,
+    PriceConfig,
+)
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
@@ -29,7 +52,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -109,7 +132,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             raise CredentialsValidateFailedError(f'An error occurred during credentials validation: {str(ex)}')
 
     def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
+                  prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
@@ -376,7 +399,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         return message_dict
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage]) -> int:
+    def _num_tokens_from_messages(self, messages: list[PromptMessage]) -> int:
         """
         Calculate num tokens.
 

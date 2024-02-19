@@ -1,20 +1,25 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
-from core.tools.entities.tool_entities import (ToolParameter, ToolProviderCredentials, ToolProviderIdentity,
-                                               ToolProviderType)
+from pydantic import BaseModel
+
+from core.tools.entities.tool_entities import (
+    ToolParameter,
+    ToolProviderCredentials,
+    ToolProviderIdentity,
+    ToolProviderType,
+)
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import ToolNotFoundError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
-from pydantic import BaseModel
 
 
 class ToolProviderController(BaseModel, ABC):
     identity: Optional[ToolProviderIdentity] = None
-    tools: Optional[List[Tool]] = None
-    credentials_schema: Optional[Dict[str, ToolProviderCredentials]] = None
+    tools: Optional[list[Tool]] = None
+    credentials_schema: Optional[dict[str, ToolProviderCredentials]] = None
 
-    def get_credentials_schema(self) -> Dict[str, ToolProviderCredentials]:
+    def get_credentials_schema(self) -> dict[str, ToolProviderCredentials]:
         """
             returns the credentials schema of the provider
 
@@ -32,7 +37,7 @@ class ToolProviderController(BaseModel, ABC):
         return UserToolProviderCredentials(credentials=credentials)
 
     @abstractmethod
-    def get_tools(self) -> List[Tool]:
+    def get_tools(self) -> list[Tool]:
         """
             returns a list of tools that the provider can provide
 
@@ -49,7 +54,7 @@ class ToolProviderController(BaseModel, ABC):
         """
         pass
 
-    def get_parameters(self, tool_name: str) -> List[ToolParameter]:
+    def get_parameters(self, tool_name: str) -> list[ToolParameter]:
         """
             returns the parameters of the tool
 
@@ -70,7 +75,7 @@ class ToolProviderController(BaseModel, ABC):
         """
         return ToolProviderType.BUILT_IN
 
-    def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
+    def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         """
             validate the parameters of the tool and set the default value if needed
 
@@ -79,7 +84,7 @@ class ToolProviderController(BaseModel, ABC):
         """
         tool_parameters_schema = self.get_parameters(tool_name)
         
-        tool_parameters_need_to_validate: Dict[str, ToolParameter] = {}
+        tool_parameters_need_to_validate: dict[str, ToolParameter] = {}
         for parameter in tool_parameters_schema:
             tool_parameters_need_to_validate[parameter.name] = parameter
 
@@ -94,7 +99,7 @@ class ToolProviderController(BaseModel, ABC):
                     raise ToolParameterValidationError(f'parameter {parameter} should be string')
             
             elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
-                if not isinstance(tool_parameters[parameter], (int, float)):
+                if not isinstance(tool_parameters[parameter], int | float):
                     raise ToolParameterValidationError(f'parameter {parameter} should be number')
                 
                 if parameter_schema.min is not None and tool_parameters[parameter] < parameter_schema.min:
@@ -139,7 +144,7 @@ class ToolProviderController(BaseModel, ABC):
 
                 tool_parameters[parameter] = default_value
 
-    def validate_credentials_format(self, credentials: Dict[str, Any]) -> None:
+    def validate_credentials_format(self, credentials: dict[str, Any]) -> None:
         """
             validate the format of the credentials of the provider and set the default value if needed
 
@@ -149,7 +154,7 @@ class ToolProviderController(BaseModel, ABC):
         if credentials_schema is None:
             return
         
-        credentials_need_to_validate: Dict[str, ToolProviderCredentials] = {}
+        credentials_need_to_validate: dict[str, ToolProviderCredentials] = {}
         for credential_name in credentials_schema:
             credentials_need_to_validate[credential_name] = credentials_schema[credential_name]
 
@@ -193,7 +198,7 @@ class ToolProviderController(BaseModel, ABC):
 
                 credentials[credential_name] = default_value
     
-    def validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 
@@ -207,7 +212,7 @@ class ToolProviderController(BaseModel, ABC):
         self._validate_credentials(credentials)
 
     @abstractmethod
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 

@@ -1,20 +1,21 @@
 import datetime
 import logging
 import time
-from typing import List, Optional
+from typing import Optional
 
 import click
 from celery import shared_task
+from langchain.schema import Document
+from werkzeug.exceptions import NotFound
+
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from langchain.schema import Document
 from models.dataset import DocumentSegment
-from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')
-def update_segment_index_task(segment_id: str, keywords: Optional[List[str]] = None):
+def update_segment_index_task(segment_id: str, keywords: Optional[list[str]] = None):
     """
     Async update segment index
     :param segment_id:

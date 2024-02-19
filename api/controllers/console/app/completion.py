@@ -1,27 +1,33 @@
-# -*- coding:utf-8 -*-
 import json
 import logging
-from typing import Generator, Union
+from collections.abc import Generator
+from typing import Union
 
 import flask_login
+from flask import Response, stream_with_context
+from flask_restful import Resource, reqparse
+from werkzeug.exceptions import InternalServerError, NotFound
+
 import services
 from controllers.console import api
 from controllers.console.app import _get_app
-from controllers.console.app.error import (AppUnavailableError, CompletionRequestError, ConversationCompletedError,
-                                           ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
-                                           ProviderQuotaExceededError)
+from controllers.console.app.error import (
+    AppUnavailableError,
+    CompletionRequestError,
+    ConversationCompletedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import Response, stream_with_context
-from flask_restful import Resource, reqparse
 from libs.helper import uuid_value
 from libs.login import login_required
 from services.completion_service import CompletionService
-from werkzeug.exceptions import InternalServerError, NotFound
 
 
 # define completion message api for user
@@ -163,8 +169,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            for chunk in response:
-                yield chunk
+            yield from response
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

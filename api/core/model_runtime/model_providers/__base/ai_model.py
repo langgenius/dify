@@ -4,10 +4,18 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import yaml
+
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
-from core.model_runtime.entities.model_entities import (AIModelEntity, DefaultParameterName, FetchFrom, ModelType,
-                                                        PriceConfig, PriceInfo, PriceType)
+from core.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    DefaultParameterName,
+    FetchFrom,
+    ModelType,
+    PriceConfig,
+    PriceInfo,
+    PriceType,
+)
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 
@@ -145,7 +153,7 @@ class AIModel(ABC):
         # read _position.yaml file
         position_map = {}
         if os.path.exists(position_file_path):
-            with open(position_file_path, 'r', encoding='utf-8') as f:
+            with open(position_file_path, encoding='utf-8') as f:
                 positions = yaml.safe_load(f)
                 # convert list to dict with key as model provider name, value as index
                 position_map = {position: index for index, position in enumerate(positions)}
@@ -153,7 +161,7 @@ class AIModel(ABC):
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
             # read yaml data from yaml file
-            with open(model_schema_yaml_path, 'r', encoding='utf-8') as f:
+            with open(model_schema_yaml_path, encoding='utf-8') as f:
                 yaml_data = yaml.safe_load(f)
 
             new_parameter_rules = []

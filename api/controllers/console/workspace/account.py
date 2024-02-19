@@ -1,17 +1,21 @@
-# -*- coding:utf-8 -*-
 from datetime import datetime
 
 import pytz
-from constants.languages import supported_language
-from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.workspace.error import (AccountAlreadyInitedError, CurrentPasswordIncorrectError,
-                                                 InvalidInvitationCodeError, RepeatPasswordNotMatchError)
-from controllers.console.wraps import account_initialization_required
-from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
+
+from constants.languages import supported_language
+from controllers.console import api
+from controllers.console.setup import setup_required
+from controllers.console.workspace.error import (
+    AccountAlreadyInitedError,
+    CurrentPasswordIncorrectError,
+    InvalidInvitationCodeError,
+    RepeatPasswordNotMatchError,
+)
+from controllers.console.wraps import account_initialization_required
+from extensions.ext_database import db
 from libs.helper import TimestampField, timezone
 from libs.login import login_required
 from models.account import AccountIntegrate, InvitationCode

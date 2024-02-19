@@ -1,23 +1,21 @@
 from os import path
 from threading import Lock
 from time import time
-from typing import List
 
-from requests import get
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, MissingSchema, Timeout
 from requests.sessions import Session
 
 
-class XinferenceModelExtraParameter(object):
+class XinferenceModelExtraParameter:
     model_format: str
     model_handle_type: str
-    model_ability: List[str]
+    model_ability: list[str]
     max_tokens: int = 512
     context_length: int = 2048
     support_function_call: bool = False
 
-    def __init__(self, model_format: str, model_handle_type: str, model_ability: List[str], 
+    def __init__(self, model_format: str, model_handle_type: str, model_ability: list[str], 
                  support_function_call: bool, max_tokens: int, context_length: int) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type

@@ -1,22 +1,24 @@
-from typing import Dict, Any
+from typing import Any
+
 from pydantic import BaseModel
 
+from core.helper import encrypter
+from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.entities.tool_entities import ToolProviderCredentials
 from core.tools.provider.tool_provider import ToolProviderController
-from core.helper import encrypter
-from core.helper.tool_provider_cache import ToolProviderCredentialsCacheType, ToolProviderCredentialsCache
+
 
 class ToolConfiguration(BaseModel):
     tenant_id: str
     provider_controller: ToolProviderController
 
-    def _deep_copy(self, credentials: Dict[str, str]) -> Dict[str, str]:
+    def _deep_copy(self, credentials: dict[str, str]) -> dict[str, str]:
         """
         deep copy credentials
         """
         return {key: value for key, value in credentials.items()}
     
-    def encrypt_tool_credentials(self, credentials: Dict[str, str]) -> Dict[str, str]:
+    def encrypt_tool_credentials(self, credentials: dict[str, str]) -> dict[str, str]:
         """
         encrypt tool credentials with tenant id
 
@@ -34,7 +36,7 @@ class ToolConfiguration(BaseModel):
         
         return credentials
     
-    def mask_tool_credentials(self, credentials: Dict[str, Any]) -> Dict[str, Any]:
+    def mask_tool_credentials(self, credentials: dict[str, Any]) -> dict[str, Any]:
         """
         mask tool credentials
 
@@ -57,7 +59,7 @@ class ToolConfiguration(BaseModel):
 
         return credentials
 
-    def decrypt_tool_credentials(self, credentials: Dict[str, str]) -> Dict[str, str]:
+    def decrypt_tool_credentials(self, credentials: dict[str, str]) -> dict[str, str]:
         """
         decrypt tool credentials with tenant id
 
@@ -84,3 +86,11 @@ class ToolConfiguration(BaseModel):
 
         cache.set(credentials)
         return credentials
+    
+    def delete_tool_credentials_cache(self):
+        cache = ToolProviderCredentialsCache(
+            tenant_id=self.tenant_id, 
+            identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
+            cache_type=ToolProviderCredentialsCacheType.PROVIDER
+        )
+        cache.delete()

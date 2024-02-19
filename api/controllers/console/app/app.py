@@ -1,7 +1,10 @@
-# -*- coding:utf-8 -*-
 import json
 import logging
 from datetime import datetime
+
+from flask_login import current_user
+from flask_restful import Resource, abort, inputs, marshal_with, reqparse
+from werkzeug.exceptions import Forbidden
 
 from constants.languages import demo_model_templates, languages
 from constants.model_template import model_templates
@@ -15,16 +18,15 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from events.app_event import app_was_created, app_was_deleted
 from extensions.ext_database import db
-from fields.app_fields import (app_detail_fields, app_detail_fields_with_site, app_pagination_fields,
-                               template_list_fields)
-from flask import current_app
-from flask_login import current_user
-from flask_restful import Resource, abort, inputs, marshal_with, reqparse
+from fields.app_fields import (
+    app_detail_fields,
+    app_detail_fields_with_site,
+    app_pagination_fields,
+    template_list_fields,
+)
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
-from models.tools import ApiToolProvider
 from services.app_model_config_service import AppModelConfigService
-from werkzeug.exceptions import Forbidden
 
 
 def _get_app(app_id, tenant_id):
@@ -130,8 +132,8 @@ class AppListApi(Resource):
 
                 if not model_instance:
                     raise ProviderNotInitializeError(
-                        f"No Default System Reasoning Model available. Please configure "
-                        f"in the Settings -> Model Provider.")
+                        "No Default System Reasoning Model available. Please configure "
+                        "in the Settings -> Model Provider.")
                 else:
                     model_config_dict["model"]["provider"] = model_instance.provider
                     model_config_dict["model"]["name"] = model_instance.model

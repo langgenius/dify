@@ -3,14 +3,20 @@ import os
 import re
 import time
 from abc import abstractmethod
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import (ModelPropertyKey, ModelType, ParameterRule, ParameterType,
-                                                        PriceType)
+from core.model_runtime.entities.model_entities import (
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+    ParameterType,
+    PriceType,
+)
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 logger = logging.getLogger(__name__)
@@ -24,7 +30,7 @@ class LargeLanguageModel(AIModel):
 
     def invoke(self, model: str, credentials: dict,
                prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
-               tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+               tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                stream: bool = True, user: Optional[str] = None, callbacks: list[Callback] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -117,7 +123,7 @@ class LargeLanguageModel(AIModel):
     def _invoke_result_generator(self, model: str, result: Generator, credentials: dict,
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
                                  tools: Optional[list[PromptMessageTool]] = None,
-                                 stop: Optional[List[str]] = None, stream: bool = True,
+                                 stop: Optional[list[str]] = None, stream: bool = True,
                                  user: Optional[str] = None, callbacks: list[Callback] = None) -> Generator:
         """
         Invoke result generator
@@ -181,7 +187,7 @@ class LargeLanguageModel(AIModel):
     @abstractmethod
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -213,7 +219,7 @@ class LargeLanguageModel(AIModel):
         """
         raise NotImplementedError
 
-    def enforce_stop_tokens(self, text: str, stop: List[str]) -> str:
+    def enforce_stop_tokens(self, text: str, stop: list[str]) -> str:
         """Cut off the text as soon as any stop words occur."""
         return re.split("|".join(stop), text, maxsplit=1)[0]
 
@@ -324,7 +330,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_before_invoke_callbacks(self, model: str, credentials: dict,
                                          prompt_messages: list[PromptMessage], model_parameters: dict,
                                          tools: Optional[list[PromptMessageTool]] = None,
-                                         stop: Optional[List[str]] = None, stream: bool = True,
+                                         stop: Optional[list[str]] = None, stream: bool = True,
                                          user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger before invoke callbacks
@@ -362,7 +368,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_new_chunk_callbacks(self, chunk: LLMResultChunk, model: str, credentials: dict,
                                      prompt_messages: list[PromptMessage], model_parameters: dict,
                                      tools: Optional[list[PromptMessageTool]] = None,
-                                     stop: Optional[List[str]] = None, stream: bool = True,
+                                     stop: Optional[list[str]] = None, stream: bool = True,
                                      user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger new chunk callbacks
@@ -401,7 +407,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_after_invoke_callbacks(self, model: str, result: LLMResult, credentials: dict,
                                         prompt_messages: list[PromptMessage], model_parameters: dict,
                                         tools: Optional[list[PromptMessageTool]] = None,
-                                        stop: Optional[List[str]] = None, stream: bool = True,
+                                        stop: Optional[list[str]] = None, stream: bool = True,
                                         user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger after invoke callbacks
@@ -441,7 +447,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_invoke_error_callbacks(self, model: str, ex: Exception, credentials: dict,
                                         prompt_messages: list[PromptMessage], model_parameters: dict,
                                         tools: Optional[list[PromptMessageTool]] = None,
-                                        stop: Optional[List[str]] = None, stream: bool = True,
+                                        stop: Optional[list[str]] = None, stream: bool = True,
                                         user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger invoke error callbacks
@@ -522,7 +528,7 @@ class LargeLanguageModel(AIModel):
                     raise ValueError(
                         f"Model Parameter {parameter_name} should be less than or equal to {parameter_rule.max}.")
             elif parameter_rule.type == ParameterType.FLOAT:
-                if not isinstance(parameter_value, (float, int)):
+                if not isinstance(parameter_value, float | int):
                     raise ValueError(f"Model Parameter {parameter_name} should be float.")
 
                 # validate parameter value precision

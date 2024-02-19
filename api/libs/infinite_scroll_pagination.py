@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 
 class InfiniteScrollPagination:
     def __init__(self, data, limit, has_more):

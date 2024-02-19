@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Union, cast
+from typing import Any, ClassVar, Union
 
-import pydantic.generics
 from httpx import Timeout
 from pydantic import ConfigDict
-from typing_extensions import ClassVar, TypedDict, Unpack
+from typing_extensions import TypedDict, Unpack
 
 from ._base_type import Body, Headers, HttpxRequestFiles, NotGiven, Query
 from ._utils import remove_notgiven_indict
@@ -18,7 +17,7 @@ class UserRequestInput(TypedDict, total=False):
     params: Query | None
 
 
-class ClientRequestParam():
+class ClientRequestParam:
     method: str
     url: str
     max_retries: Union[int, NotGiven] = NotGiven()

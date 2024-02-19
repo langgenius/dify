@@ -1,9 +1,9 @@
-# -*- coding:utf-8 -*-
 from functools import wraps
 
-from extensions.ext_database import db
 from flask import current_app, request
 from flask_restful import Resource, reqparse
+
+from extensions.ext_database import db
 from libs.helper import email, str_len
 from libs.password import valid_password
 from models.model import DifySetup

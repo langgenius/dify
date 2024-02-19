@@ -1,12 +1,12 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from typing import Any
+
 from core.tools.errors import ToolProviderCredentialValidationError
-
 from core.tools.provider.builtin.bing.tools.bing_web_search import BingSearchTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
-from typing import Any, Dict, List
 
 class BingProvider(BuiltinToolProviderController):
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             BingSearchTool().fork_tool_runtime(
                 meta={

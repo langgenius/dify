@@ -1,6 +1,4 @@
-import json
 import logging
-from typing import List
 
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
@@ -24,7 +22,7 @@ class ExcelLoader(BaseLoader):
         """Initialize with file path."""
         self._file_path = file_path
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         data = []
         keys = []
         wb = load_workbook(filename=self._file_path, read_only=True)

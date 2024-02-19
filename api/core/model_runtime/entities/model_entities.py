@@ -2,8 +2,9 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional
 
-from core.model_runtime.entities.common_entities import I18nObject
 from pydantic import BaseModel
+
+from core.model_runtime.entities.common_entities import I18nObject
 
 
 class ModelType(Enum):
@@ -126,6 +127,7 @@ class ModelPropertyKey(Enum):
     SUPPORTED_FILE_EXTENSIONS = "supported_file_extensions"
     MAX_CHARACTERS_PER_CHUNK = "max_characters_per_chunk"
     DEFAULT_VOICE = "default_voice"
+    VOICES = "voices"
     WORD_LIMIT = "word_limit"
     AUDOI_TYPE = "audio_type"
     MAX_WORKERS = "max_workers"

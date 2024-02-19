@@ -1,10 +1,11 @@
 import os
 import sys
-from typing import Any, Dict, List, Union
+from typing import Any, Union
+
+from serpapi import GoogleSearch
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from serpapi import GoogleSearch
 
 
 class HiddenPrints:
@@ -47,7 +48,7 @@ class SerpAPI:
             res = search.get_dict()
         return res
 
-    def get_params(self, query: str) -> Dict[str, str]:
+    def get_params(self, query: str) -> dict[str, str]:
         """Get parameters for SerpAPI."""
         _params = {
             "api_key": self.serpapi_api_key,
@@ -147,8 +148,8 @@ class SerpAPI:
 class GoogleSearchTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
-               tool_parameters: Dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+               tool_parameters: dict[str, Any], 
+        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """

@@ -2,7 +2,7 @@ version: '3.1'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.5.3
+    image: langgenius/dify-api:0.5.5
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -104,10 +104,15 @@ services:
       MILVUS_PASSWORD: Milvus
       # The milvus tls switch.
       MILVUS_SECURE: 'false'
-      # Mail configuration, support: resend
+      # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
       MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      SMTP_SERVER: ''
+      SMTP_PORT: 587
+      SMTP_USERNAME: ''
+      SMTP_PASSWORD: ''
+      SMTP_USE_TLS: 'true'
       # the api-key for resend (https://resend.com)
       RESEND_API_KEY: ''
       RESEND_API_URL: https://api.resend.com
@@ -130,7 +135,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.5.3
+    image: langgenius/dify-api:0.5.5
     restart: always
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
@@ -201,7 +206,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.5.3
+    image: langgenius/dify-web:0.5.5
     restart: always
     environment:
       EDITION: SELF_HOSTED

@@ -7,14 +7,10 @@ import subprocess
 import tempfile
 import unicodedata
 from contextlib import contextmanager
-from typing import Any, Type
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
-from core.chain.llm_chain import LLMChain
-from core.data_loader import file_extractor
-from core.data_loader.file_extractor import FileExtractor
-from core.entities.application_entities import ModelConfigEntity
 from langchain.chains import RefineDocumentsChain
 from langchain.chains.summarize import refine_prompts
 from langchain.schema import Document
@@ -23,6 +19,11 @@ from langchain.tools.base import BaseTool
 from newspaper import Article
 from pydantic import BaseModel, Field
 from regex import regex
+
+from core.chain.llm_chain import LLMChain
+from core.data_loader import file_extractor
+from core.data_loader.file_extractor import FileExtractor
+from core.entities.application_entities import ModelConfigEntity
 
 FULL_TEMPLATE = """
 TITLE: {title}
@@ -55,7 +56,7 @@ class WebReaderTool(BaseTool):
     """Reader tool for getting website title and contents. Gives more control than SimpleReaderTool."""
 
     name: str = "web_reader"
-    args_schema: Type[BaseModel] = WebReaderToolInput
+    args_schema: type[BaseModel] = WebReaderToolInput
     description: str = "use this to read a website. " \
                        "If you can answer the question based on the information provided, " \
                        "there is no need to use."
@@ -207,7 +208,7 @@ def extract_using_readabilipy(html):
         subprocess.check_call(["node", "ExtractArticle.js", "-i", html_path, "-o", article_json_path])
 
     # Read output of call to Readability.parse() from JSON file and return as Python dictionary
-    with open(article_json_path, "r", encoding="utf-8") as json_file:
+    with open(article_json_path, encoding="utf-8") as json_file:
         input_json = json.loads(json_file.read())
 
     # Deleting files after processing

@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Union
+from typing import Any
+
+from langchain.tools import BaseTool
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
@@ -6,7 +8,6 @@ from core.features.dataset_retrieval import DatasetRetrievalFeature
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
 from core.tools.tool.tool import Tool
-from langchain.tools import BaseTool
 
 
 class DatasetRetrieverTool(Tool):
@@ -19,7 +20,7 @@ class DatasetRetrieverTool(Tool):
                          return_resource: bool,
                          invoke_from: InvokeFrom,
                          hit_callback: DatasetIndexToolCallbackHandler
-    ) -> List['DatasetRetrieverTool']:
+    ) -> list['DatasetRetrieverTool']:
         """
         get dataset tool
         """
@@ -64,7 +65,7 @@ class DatasetRetrieverTool(Tool):
 
         return tools
 
-    def get_runtime_parameters(self) -> List[ToolParameter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         return [
             ToolParameter(name='query',
                          label=I18nObject(en_US='', zh_Hans=''),
@@ -76,7 +77,7 @@ class DatasetRetrieverTool(Tool):
                          default=''),
         ]
 
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         invoke dataset retriever tool
         """
@@ -89,7 +90,7 @@ class DatasetRetrieverTool(Tool):
 
         return self.create_text_message(text=result)
 
-    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
         """
         validate the credentials for dataset retriever tool
         """

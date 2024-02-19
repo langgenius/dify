@@ -1,13 +1,14 @@
 import dataclasses
 import datetime
 from collections import defaultdict, deque
+from collections.abc import Callable
 from decimal import Decimal
 from enum import Enum
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6Interface, IPv6Network
 from pathlib import Path, PurePath
 from re import Pattern
 from types import GeneratorType
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -46,7 +47,7 @@ def decimal_encoder(dec_value: Decimal) -> Union[int, float]:
         return float(dec_value)
 
 
-ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
+ENCODERS_BY_TYPE: dict[type[Any], Callable[[Any], Any]] = {
     bytes: lambda o: o.decode(),
     Color: str,
     datetime.date: isoformat,
@@ -77,9 +78,9 @@ ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
 
 
 def generate_encoders_by_class_tuples(
-    type_encoder_map: Dict[Any, Callable[[Any], Any]]
-) -> Dict[Callable[[Any], Any], Tuple[Any, ...]]:
-    encoders_by_class_tuples: Dict[Callable[[Any], Any], Tuple[Any, ...]] = defaultdict(
+    type_encoder_map: dict[Any, Callable[[Any], Any]]
+) -> dict[Callable[[Any], Any], tuple[Any, ...]]:
+    encoders_by_class_tuples: dict[Callable[[Any], Any], tuple[Any, ...]] = defaultdict(
         tuple
     )
     for type_, encoder in type_encoder_map.items():
@@ -96,7 +97,7 @@ def jsonable_encoder(
     exclude_unset: bool = False,
     exclude_defaults: bool = False,
     exclude_none: bool = False,
-    custom_encoder: Optional[Dict[Any, Callable[[Any], Any]]] = None,
+    custom_encoder: Optional[dict[Any, Callable[[Any], Any]]] = None,
     sqlalchemy_safe: bool = True,
 ) -> Any:
     custom_encoder = custom_encoder or {}
@@ -109,7 +110,7 @@ def jsonable_encoder(
                     return encoder_instance(obj)
     if isinstance(obj, BaseModel):
         # TODO: remove when deprecating Pydantic v1
-        encoders: Dict[Any, Any] = {}
+        encoders: dict[Any, Any] = {}
         if not PYDANTIC_V2:
             encoders = getattr(obj.__config__, "json_encoders", {})  # type: ignore[attr-defined]
             if custom_encoder:
@@ -149,7 +150,7 @@ def jsonable_encoder(
         return obj.value
     if isinstance(obj, PurePath):
         return str(obj)
-    if isinstance(obj, (str, int, float, type(None))):
+    if isinstance(obj, str | int | float | type(None)):
         return obj
     if isinstance(obj, Decimal):
         return format(obj, 'f')
@@ -184,7 +185,7 @@ def jsonable_encoder(
                 )
                 encoded_dict[encoded_key] = encoded_value
         return encoded_dict
-    if isinstance(obj, (list, set, frozenset, GeneratorType, tuple, deque)):
+    if isinstance(obj, list | set | frozenset | GeneratorType | tuple | deque):
         encoded_list = []
         for item in obj:
             encoded_list.append(
@@ -209,7 +210,7 @@ def jsonable_encoder(
     try:
         data = dict(obj)
     except Exception as e:
-        errors: List[Exception] = []
+        errors: list[Exception] = []
         errors.append(e)
         try:
             data = vars(obj)

@@ -1,7 +1,6 @@
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 from pydantic import BaseModel
-from typing_extensions import Literal
 
 __all__ = ["FineTuningJobEvent", "Metric", "JobEvent"]
 
@@ -32,5 +31,5 @@ class JobEvent(BaseModel):
 
 class FineTuningJobEvent(BaseModel):
     object: Optional[str] = None
-    data: List[JobEvent]
+    data: list[JobEvent]
     has_more: Optional[bool] = None

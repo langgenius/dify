@@ -1,7 +1,11 @@
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Optional, Union, cast
+
+from langchain.agents import openai_functions_agent, openai_functions_multi_agent
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.schema import AgentAction, AgentFinish, BaseMessage, LLMResult
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.entity.agent_loop import AgentLoop
@@ -10,9 +14,6 @@ from core.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResu
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
-from langchain.agents import openai_functions_agent, openai_functions_multi_agent
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, BaseMessage, ChatGeneration, LLMResult
 from models.model import Message, MessageAgentThought, MessageChain
 
 
@@ -36,7 +37,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         self._message_agent_thought = None
 
     @property
-    def agent_loops(self) -> List[AgentLoop]:
+    def agent_loops(self) -> list[AgentLoop]:
         return self._agent_loops
 
     def clear_agent_loops(self) -> None:
@@ -94,14 +95,14 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
 
     def on_chat_model_start(
             self,
-            serialized: Dict[str, Any],
-            messages: List[List[BaseMessage]],
+            serialized: dict[str, Any],
+            messages: list[list[BaseMessage]],
             **kwargs: Any
     ) -> Any:
         pass
 
     def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+        self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any
     ) -> None:
         pass
 
@@ -119,7 +120,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
 
     def on_tool_start(
         self,
-        serialized: Dict[str, Any],
+        serialized: dict[str, Any],
         input_str: str,
         **kwargs: Any,
     ) -> None:

@@ -1,8 +1,8 @@
-# -*- coding:utf-8 -*-
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Generic, Iterator, Mapping
+from collections.abc import Iterator, Mapping
+from typing import TYPE_CHECKING, Generic
 
 import httpx
 
@@ -36,8 +36,7 @@ class StreamResponse(Generic[ResponseT]):
         return self._stream_chunks.__next__()
 
     def __iter__(self) -> Iterator[ResponseT]:
-        for item in self._stream_chunks:
-            yield item
+        yield from self._stream_chunks
 
     def __stream__(self) -> Iterator[ResponseT]:
 
@@ -62,7 +61,7 @@ class StreamResponse(Generic[ResponseT]):
             pass
 
 
-class Event(object):
+class Event:
     def __init__(
             self,
             event: str | None = None,

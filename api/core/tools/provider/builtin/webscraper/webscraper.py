@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.webscraper.tools.webscraper import WebscraperTool
@@ -6,7 +6,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 
 
 class WebscraperProvider(BuiltinToolProviderController):
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             WebscraperTool().fork_tool_runtime(
                 meta={

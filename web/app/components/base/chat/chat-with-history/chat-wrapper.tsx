@@ -36,8 +36,9 @@ const ChatWrapper = () => {
     return {
       ...config,
       supportFeedback: true,
+      opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
     } as ChatConfig
-  }, [appParams])
+  }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
     chatList,
     handleSend,
@@ -46,7 +47,10 @@ const ChatWrapper = () => {
     suggestedQuestions,
   } = useChat(
     appConfig,
-    undefined,
+    {
+      inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
+      promptVariables: inputsForms,
+    },
     appPrevChatList,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
   )

@@ -1,13 +1,18 @@
-import services
-from controllers.console import api
-from controllers.console.datasets.error import (FileTooLargeError, NoFileUploadedError, TooManyFilesError,
-                                                UnsupportedFileTypeError)
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
-from fields.file_fields import file_fields, upload_config_fields
 from flask import current_app, request
 from flask_login import current_user
 from flask_restful import Resource, marshal_with
+
+import services
+from controllers.console import api
+from controllers.console.datasets.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
+from controllers.console.setup import setup_required
+from controllers.console.wraps import account_initialization_required
+from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import ALLOWED_EXTENSIONS, UNSTRUSTURED_ALLOWED_EXTENSIONS, FileService
 

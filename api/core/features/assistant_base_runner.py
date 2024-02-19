@@ -2,14 +2,20 @@ import json
 import logging
 from datetime import datetime
 from mimetypes import guess_extension
-from typing import List, Optional, Tuple, Union, cast
+from typing import Optional, Union, cast
 
 from core.app_runner.app_runner import AppRunner
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import (AgentEntity, AgentToolEntity, ApplicationGenerateEntity,
-                                                AppOrchestrationConfigEntity, InvokeFrom, ModelConfigEntity)
+from core.entities.application_entities import (
+    AgentEntity,
+    AgentToolEntity,
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+)
 from core.file.message_file_parser import FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
@@ -18,8 +24,12 @@ from core.model_runtime.entities.message_entities import PromptMessage, PromptMe
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.tool_entities import (ToolInvokeMessage, ToolInvokeMessageBinary, ToolParameter,
-                                               ToolRuntimeVariablePool)
+from core.tools.entities.tool_entities import (
+    ToolInvokeMessage,
+    ToolInvokeMessageBinary,
+    ToolParameter,
+    ToolRuntimeVariablePool,
+)
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_file_manager import ToolFileManager
@@ -40,7 +50,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                  message: Message,
                  user_id: str,
                  memory: Optional[TokenBufferMemory] = None,
-                 prompt_messages: Optional[List[PromptMessage]] = None,
+                 prompt_messages: Optional[list[PromptMessage]] = None,
                  variables_pool: Optional[ToolRuntimeVariablePool] = None,
                  db_variables: Optional[ToolConversationVariables] = None,
                  model_instance: ModelInstance = None
@@ -112,7 +122,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return app_orchestration_config
 
-    def _convert_tool_response_to_str(self, tool_response: List[ToolInvokeMessage]) -> str:
+    def _convert_tool_response_to_str(self, tool_response: list[ToolInvokeMessage]) -> str:
         """
         Handle tool response
         """
@@ -124,13 +134,13 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += f"image has been created and sent to user already, you should tell user to check it now."
+                result += "image has been created and sent to user already, you should tell user to check it now."
             else:
                 result += f"tool response: {response.message}."
 
         return result
     
-    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> Tuple[PromptMessageTool, Tool]:
+    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
         """
             convert tool to prompt message tool
         """
@@ -315,7 +325,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return prompt_tool
     
-    def extract_tool_response_binary(self, tool_response: List[ToolInvokeMessage]) -> List[ToolInvokeMessageBinary]:
+    def extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[ToolInvokeMessageBinary]:
         """
         Extract tool response binary
         """
@@ -346,7 +356,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return result
     
-    def create_message_files(self, messages: List[ToolInvokeMessageBinary]) -> List[Tuple[MessageFile, bool]]:
+    def create_message_files(self, messages: list[ToolInvokeMessageBinary]) -> list[tuple[MessageFile, bool]]:
         """
         Create message file
 
@@ -394,7 +404,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         return result
         
     def create_agent_thought(self, message_id: str, message: str, 
-                             tool_name: str, tool_input: str, messages_ids: List[str]
+                             tool_name: str, tool_input: str, messages_ids: list[str]
                              ) -> MessageAgentThought:
         """
         Create agent thought
@@ -439,7 +449,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                            thought: str, 
                            observation: str, 
                            answer: str,
-                           messages_ids: List[str],
+                           messages_ids: list[str],
                            llm_usage: LLMUsage = None) -> MessageAgentThought:
         """
         Save agent thought
@@ -495,7 +505,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         db.session.commit()
 
-    def get_history_prompt_messages(self) -> List[PromptMessage]:
+    def get_history_prompt_messages(self) -> list[PromptMessage]:
         """
         Get history prompt messages
         """
@@ -506,7 +516,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return self.history_prompt_messages
     
-    def transform_tool_invoke_messages(self, messages: List[ToolInvokeMessage]) -> List[ToolInvokeMessage]:
+    def transform_tool_invoke_messages(self, messages: list[ToolInvokeMessage]) -> list[ToolInvokeMessage]:
         """
         Transform tool message into agent thought
         """

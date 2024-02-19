@@ -1,16 +1,17 @@
 from base64 import b64decode
-from typing import Any, Dict, List, Union
+from typing import Any, Union
+
+from httpx import post
 
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.vectorizer.tools.test_data import VECTORIZER_ICON_PNG
 from core.tools.tool.builtin_tool import BuiltinTool
-from httpx import post
 
 
 class VectorizerTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
-        -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) \
+        -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """
@@ -55,7 +56,7 @@ class VectorizerTool(BuiltinTool):
                                     meta={'mime_type': 'image/svg+xml'})
         ]
     
-    def get_runtime_parameters(self) -> List[ToolParameter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         """
         override the runtime parameters
         """

@@ -1,17 +1,19 @@
+from collections.abc import Generator
 from enum import Enum
 from hashlib import md5
 from json import dumps, loads
-from os.path import join
-from time import time
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Union
 
-from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (BadRequestError,
-                                                                                   InsufficientAccountBalance,
-                                                                                   InternalServerError,
-                                                                                   InvalidAPIKeyError,
-                                                                                   InvalidAuthenticationError,
-                                                                                   RateLimitReachedError)
 from requests import post
+
+from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
+    BadRequestError,
+    InsufficientAccountBalance,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
 
 
 class BaichuanMessage:
@@ -23,10 +25,10 @@ class BaichuanMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: Dict[str, int] = None
+    usage: dict[str, int] = None
     stop_reason: str = ''
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'role': self.role,
             'content': self.content,
@@ -36,7 +38,7 @@ class BaichuanMessage:
         self.content = content
         self.role = role
 
-class BaichuanModel(object):
+class BaichuanModel:
     api_key: str
     secret_key: str
 
@@ -105,9 +107,9 @@ class BaichuanModel(object):
                 message.stop_reason = stop_reason
                 yield message
 
-    def _build_parameters(self, model: str, stream: bool, messages: List[BaichuanMessage],
-                               parameters: Dict[str, Any]) \
-        -> Dict[str, Any]:
+    def _build_parameters(self, model: str, stream: bool, messages: list[BaichuanMessage],
+                               parameters: dict[str, Any]) \
+        -> dict[str, Any]:
         if model == 'baichuan2-turbo' or model == 'baichuan2-turbo-192k' or model == 'baichuan2-53b':
             prompt_messages = []
             for message in messages:
@@ -126,8 +128,10 @@ class BaichuanModel(object):
                         'role': message.role,
                     })
             # [baichuan] frequency_penalty must be between 1 and 2
-            if parameters['frequency_penalty'] < 1 or parameters['frequency_penalty'] > 2:
-                parameters['frequency_penalty'] = 1
+            if 'frequency_penalty' in parameters:
+                if parameters['frequency_penalty'] < 1 or parameters['frequency_penalty'] > 2:
+                    parameters['frequency_penalty'] = 1
+
             # turbo api accepts flat parameters
             return {
                 'model': self._model_mapping(model),
@@ -138,7 +142,7 @@ class BaichuanModel(object):
         else:
             raise BadRequestError(f"Unknown model: {model}")
         
-    def _build_headers(self, model: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_headers(self, model: str, data: dict[str, Any]) -> dict[str, Any]:
         if model == 'baichuan2-turbo' or model == 'baichuan2-turbo-192k' or model == 'baichuan2-53b':
             # there is no secret key for turbo api
             return {
@@ -152,8 +156,8 @@ class BaichuanModel(object):
     def _calculate_md5(self, input_string):
         return md5(input_string.encode('utf-8')).hexdigest()
 
-    def generate(self, model: str, stream: bool, messages: List[BaichuanMessage], 
-                 parameters: Dict[str, Any], timeout: int) \
+    def generate(self, model: str, stream: bool, messages: list[BaichuanMessage], 
+                 parameters: dict[str, Any], timeout: int) \
         -> Union[Generator, BaichuanMessage]:
         
         if model == 'baichuan2-turbo' or model == 'baichuan2-turbo-192k' or model == 'baichuan2-53b':

@@ -2,10 +2,11 @@
 
 set -x
 
-# python style checks rely on `isort` in path
-if ! command -v isort &> /dev/null
-then
-    echo "Skip Python imports linting, since 'isort' is not available. Please install it with 'pip install isort'."
-else
-    isort  --settings ./.github/linters/.isort.cfg ./
+# python style checks rely on `ruff` in path
+if ! command -v ruff &> /dev/null; then
+    echo "Installing Ruff ..."
+    pip install ruff
 fi
+
+# run ruff linter
+ruff check --fix ./api

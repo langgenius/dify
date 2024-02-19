@@ -1,21 +1,32 @@
-# -*- coding:utf-8 -*-
 import logging
+
+from flask import request
+from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.console import api
-from controllers.console.app.error import (AppUnavailableError, AudioTooLargeError, CompletionRequestError,
-                                           NoAudioUploadedError, ProviderModelCurrentlyNotSupportError,
-                                           ProviderNotInitializeError, ProviderNotSupportSpeechToTextError,
-                                           ProviderQuotaExceededError, UnsupportedAudioTypeError)
+from controllers.console.app.error import (
+    AppUnavailableError,
+    AudioTooLargeError,
+    CompletionRequestError,
+    NoAudioUploadedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderNotSupportSpeechToTextError,
+    ProviderQuotaExceededError,
+    UnsupportedAudioTypeError,
+)
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import request
 from models.model import AppModelConfig
 from services.audio_service import AudioService
-from services.errors.audio import (AudioTooLargeServiceError, NoAudioUploadedServiceError,
-                                   ProviderNotSupportSpeechToTextServiceError, UnsupportedAudioTypeServiceError)
-from werkzeug.exceptions import InternalServerError
+from services.errors.audio import (
+    AudioTooLargeServiceError,
+    NoAudioUploadedServiceError,
+    ProviderNotSupportSpeechToTextServiceError,
+    UnsupportedAudioTypeServiceError,
+)
 
 
 class ChatAudioApi(InstalledAppResource):
@@ -74,6 +85,7 @@ class ChatTextApi(InstalledAppResource):
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=request.form['text'],
+                voice=app_model.app_model_config.text_to_speech_dict.get('voice'),
                 streaming=False
             )
             return {'data': response.data.decode('latin1')}

@@ -1,9 +1,13 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import (ApiProviderAuthType, ToolCredentialsOption, ToolProviderCredentials,
-                                               ToolProviderType)
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ToolCredentialsOption,
+    ToolProviderCredentials,
+    ToolProviderType,
+)
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.tool import Tool
@@ -79,10 +83,10 @@ class ApiBasedToolProviderController(ToolProviderController):
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.API_BASED
     
-    def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
         pass
 
-    def validate_parameters(self, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
+    def validate_parameters(self, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         pass
 
     def _parse_tool_bundle(self, tool_bundle: ApiBasedToolBundle) -> ApiTool:
@@ -113,7 +117,7 @@ class ApiBasedToolProviderController(ToolProviderController):
             'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
         })
 
-    def load_bundled_tools(self, tools: List[ApiBasedToolBundle]) -> List[ApiTool]:
+    def load_bundled_tools(self, tools: list[ApiBasedToolBundle]) -> list[ApiTool]:
         """
             load bundled tools
 
@@ -124,7 +128,7 @@ class ApiBasedToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tools(self, user_id: str, tenant_id: str) -> List[ApiTool]:
+    def get_tools(self, user_id: str, tenant_id: str) -> list[ApiTool]:
         """
             fetch tools from database
 
@@ -135,10 +139,10 @@ class ApiBasedToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
         
-        tools: List[Tool] = []
+        tools: list[Tool] = []
 
         # get tenant api providers
-        db_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
+        db_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
             ApiToolProvider.tenant_id == tenant_id,
             ApiToolProvider.name == self.identity.name
         ).all()

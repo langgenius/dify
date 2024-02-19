@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from bs4 import BeautifulSoup
 from langchain.document_loaders.base import BaseLoader
@@ -23,7 +22,7 @@ class HTMLLoader(BaseLoader):
         """Initialize with file path."""
         self._file_path = file_path
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         return [Document(page_content=self._load_as_text())]
 
     def _load_as_text(self) -> str:

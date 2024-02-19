@@ -1,5 +1,3 @@
-from enum import Enum
-from typing import List
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
@@ -23,7 +21,7 @@ class BuiltinTool(Tool):
     """
 
     def invoke_model(
-        self, user_id: str, prompt_messages: List[PromptMessage], stop: List[str]
+        self, user_id: str, prompt_messages: list[PromptMessage], stop: list[str]
     ) -> LLMResult:
         """
             invoke model
@@ -53,7 +51,7 @@ class BuiltinTool(Tool):
             tenant_id=self.runtime.tenant_id,
         )
 
-    def get_prompt_tokens(self, prompt_messages: List[PromptMessage]) -> int:
+    def get_prompt_tokens(self, prompt_messages: list[PromptMessage]) -> int:
         """
             get prompt tokens
 
@@ -105,7 +103,7 @@ class BuiltinTool(Tool):
                 new_lines.append(line)
 
         # merge lines into messages with max tokens
-        messages: List[str] = []
+        messages: list[str] = []
         for i in new_lines:
             if len(messages) == 0:
                 messages.append(i)

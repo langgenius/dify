@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union
+from collections.abc import Iterable, Sequence
+from typing import Any, Optional, Union
 from uuid import uuid4
 
 import numpy as np
@@ -381,11 +382,11 @@ class Milvus(VectorStore):
     def add_texts(
         self,
         texts: Iterable[str],
-        metadatas: Optional[List[dict]] = None,
+        metadatas: Optional[list[dict]] = None,
         timeout: Optional[int] = None,
         batch_size: int = 1000,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> list[str]:
         """Insert text data into Milvus.
 
         Inserting data when the collection has not be made yet will result
@@ -476,7 +477,7 @@ class Milvus(VectorStore):
         expr: Optional[str] = None,
         timeout: Optional[int] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Perform a similarity search against the query string.
 
         Args:
@@ -502,13 +503,13 @@ class Milvus(VectorStore):
 
     def similarity_search_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: int = 4,
         param: Optional[dict] = None,
         expr: Optional[str] = None,
         timeout: Optional[int] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Perform a similarity search against the query string.
 
         Args:
@@ -540,7 +541,7 @@ class Milvus(VectorStore):
         expr: Optional[str] = None,
         timeout: Optional[int] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """Perform a search on a query string and return results with score.
 
         For more information about the search parameters, take a look at the pymilvus
@@ -577,7 +578,7 @@ class Milvus(VectorStore):
         query: str,
         k: int = 4,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """Return docs and relevance scores in the range [0, 1].
 
         0 is dissimilar, 1 is most similar.
@@ -596,13 +597,13 @@ class Milvus(VectorStore):
 
     def similarity_search_with_score_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: int = 4,
         param: Optional[dict] = None,
         expr: Optional[str] = None,
         timeout: Optional[int] = None,
         **kwargs: Any,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         """Perform a search on a query string and return results with score.
 
         For more information about the search parameters, take a look at the pymilvus
@@ -664,7 +665,7 @@ class Milvus(VectorStore):
         expr: Optional[str] = None,
         timeout: Optional[int] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Perform a search and return results that are reordered by MMR.
 
         Args:
@@ -714,7 +715,7 @@ class Milvus(VectorStore):
         expr: Optional[str] = None,
         timeout: Optional[int] = None,
         **kwargs: Any,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Perform a search and return results that are reordered by MMR.
 
         Args:
@@ -797,9 +798,9 @@ class Milvus(VectorStore):
     @classmethod
     def from_texts(
         cls,
-        texts: List[str],
+        texts: list[str],
         embedding: Embeddings,
-        metadatas: Optional[List[dict]] = None,
+        metadatas: Optional[list[dict]] = None,
         collection_name: str = "LangChainCollection",
         connection_args: dict[str, Any] = DEFAULT_MILVUS_CONNECTION,
         consistency_level: str = "Session",

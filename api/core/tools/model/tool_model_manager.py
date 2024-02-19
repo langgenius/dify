@@ -5,14 +5,19 @@
 """
 
 import json
-from typing import List, cast
+from typing import cast
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeRateLimitError, InvokeServerUnavailableError)
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel, ModelPropertyKey
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.model.errors import InvokeModelError
@@ -34,13 +39,13 @@ class ToolModelManager:
         )
 
         if not model_instance:
-            raise InvokeModelError(f'Model not found')
+            raise InvokeModelError('Model not found')
         
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
         if not schema:
-            raise InvokeModelError(f'No model schema found')
+            raise InvokeModelError('No model schema found')
 
         max_tokens = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE, None)
         if max_tokens is None:
@@ -51,7 +56,7 @@ class ToolModelManager:
     @staticmethod
     def calculate_tokens(
         tenant_id: str,
-        prompt_messages: List[PromptMessage]
+        prompt_messages: list[PromptMessage]
     ) -> int:
         """
             calculate tokens from prompt messages and model parameters
@@ -64,7 +69,7 @@ class ToolModelManager:
         )
 
         if not model_instance:
-            raise InvokeModelError(f'Model not found')
+            raise InvokeModelError('Model not found')
         
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
 
@@ -77,7 +82,7 @@ class ToolModelManager:
     def invoke(
         user_id: str, tenant_id: str,
         tool_type: str, tool_name: str,
-        prompt_messages: List[PromptMessage]
+        prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context
@@ -151,7 +156,7 @@ class ToolModelManager:
         except InvokeConnectionError as e:
             raise InvokeModelError(f'Invoke connection error: {e}')
         except InvokeAuthorizationError as e:
-            raise InvokeModelError(f'Invoke authorization error')
+            raise InvokeModelError('Invoke authorization error')
         except InvokeServerUnavailableError as e:
             raise InvokeModelError(f'Invoke server unavailable error: {e}')
         except Exception as e:

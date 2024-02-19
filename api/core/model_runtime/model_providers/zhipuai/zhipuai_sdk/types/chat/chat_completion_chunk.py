@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -32,7 +32,7 @@ class ChoiceDeltaToolCall(BaseModel):
 class ChoiceDelta(BaseModel):
     content: Optional[str] = None
     role: Optional[str] = None
-    tool_calls: Optional[List[ChoiceDeltaToolCall]] = None
+    tool_calls: Optional[list[ChoiceDeltaToolCall]] = None
 
 
 class Choice(BaseModel):
@@ -49,7 +49,7 @@ class CompletionUsage(BaseModel):
 
 class ChatCompletionChunk(BaseModel):
     id: Optional[str] = None
-    choices: List[Choice]
+    choices: list[Choice]
     created: Optional[int] = None
     model: Optional[str] = None
     usage: Optional[CompletionUsage] = None

@@ -3,14 +3,15 @@ import json
 from base64 import b64decode, b64encode
 from copy import deepcopy
 from os.path import join
-from typing import Any, Dict, List, Union
+from typing import Any, Union
+
+from httpx import get, post
+from PIL import Image
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
-from httpx import get, post
-from PIL import Image
 
 DRAW_TEXT_OPTIONS = {
     "prompt": "",
@@ -59,8 +60,8 @@ DRAW_TEXT_OPTIONS = {
 
 
 class StableDiffusionTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
-        -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) \
+        -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """
@@ -140,7 +141,7 @@ class StableDiffusionTool(BuiltinTool):
                              height=height,
                              steps=steps)
 
-    def validate_models(self) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def validate_models(self) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             validate models
         """
@@ -167,7 +168,7 @@ class StableDiffusionTool(BuiltinTool):
     def img2img(self, base_url: str, lora: str, image_binary: bytes, 
                 prompt: str, negative_prompt: str,
                 width: int, height: int, steps: int) \
-        -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+        -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             generate image
         """
@@ -206,7 +207,7 @@ class StableDiffusionTool(BuiltinTool):
             return self.create_text_message('Failed to generate image')
 
     def text2img(self, base_url: str, lora: str, prompt: str, negative_prompt: str, width: int, height: int, steps: int) \
-        -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+        -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             generate image
         """
@@ -238,7 +239,7 @@ class StableDiffusionTool(BuiltinTool):
         except Exception as e:
             return self.create_text_message('Failed to generate image')
 
-    def get_runtime_parameters(self) -> List[ToolParameter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         parameters = [
             ToolParameter(name='prompt',
                          label=I18nObject(en_US='Prompt', zh_Hans='Prompt'),

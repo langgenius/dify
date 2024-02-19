@@ -1,12 +1,10 @@
-from enum import Enum
-from typing import List
 
 from pydantic import BaseModel
 
 
-def serialize_base_model_array(l: List[BaseModel]) -> str:
+def serialize_base_model_array(l: list[BaseModel]) -> str:
     class _BaseModel(BaseModel):
-        __root__: List[BaseModel]
+        __root__: list[BaseModel]
 
     """
         {"__root__": [BaseModel, BaseModel, ...]}

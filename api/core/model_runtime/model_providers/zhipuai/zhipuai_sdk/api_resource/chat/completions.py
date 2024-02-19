@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Literal, Optional, Union
 
 import httpx
-from typing_extensions import Literal
 
 from ...core._base_api import BaseAPI
 from ...core._base_type import NOT_GIVEN, Headers, NotGiven
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class Completions(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
@@ -31,8 +30,8 @@ class Completions(BaseAPI):
             top_p: Optional[float] | NotGiven = NOT_GIVEN,
             max_tokens: int | NotGiven = NOT_GIVEN,
             seed: int | NotGiven = NOT_GIVEN,
-            messages: Union[str, List[str], List[int], object, None],
-            stop: Optional[Union[str, List[str], None]] | NotGiven = NOT_GIVEN,
+            messages: Union[str, list[str], list[int], object, None],
+            stop: Optional[Union[str, list[str], None]] | NotGiven = NOT_GIVEN,
             sensitive_word_check: Optional[object] | NotGiven = NOT_GIVEN,
             tools: Optional[object] | NotGiven = NOT_GIVEN,
             tool_choice: str | NotGiven = NOT_GIVEN,

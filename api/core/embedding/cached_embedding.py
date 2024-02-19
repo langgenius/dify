@@ -1,18 +1,17 @@
 import base64
-import json
 import logging
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 import numpy as np
+from langchain.embeddings.base import Embeddings
+from sqlalchemy.exc import IntegrityError
+
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from langchain.embeddings.base import Embeddings
 from libs import helper
-from models.dataset import Embedding
-from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class CacheEmbedding(Embeddings):
         self._model_instance = model_instance
         self._user = user
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
         text_embeddings = []
         try:
@@ -53,7 +52,7 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)

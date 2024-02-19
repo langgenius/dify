@@ -1,6 +1,7 @@
-from controllers.service_api import api
 from flask import current_app
 from flask_restful import Resource
+
+from controllers.service_api import api
 
 
 class IndexApi(Resource):

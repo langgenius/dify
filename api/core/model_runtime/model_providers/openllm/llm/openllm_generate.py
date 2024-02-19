@@ -1,15 +1,16 @@
+from collections.abc import Generator
 from enum import Enum
 from json import dumps, loads
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Union
 
-from core.model_runtime.model_providers.openllm.llm.openllm_generate_errors import (BadRequestError,
-                                                                                    InsufficientAccountBalanceError,
-                                                                                    InternalServerError,
-                                                                                    InvalidAPIKeyError,
-                                                                                    InvalidAuthenticationError,
-                                                                                    RateLimitReachedError)
 from requests import Response, post
 from requests.exceptions import ConnectionError, InvalidSchema, MissingSchema
+
+from core.model_runtime.model_providers.openllm.llm.openllm_generate_errors import (
+    BadRequestError,
+    InternalServerError,
+    InvalidAuthenticationError,
+)
 
 
 class OpenLLMGenerateMessage:
@@ -19,10 +20,10 @@ class OpenLLMGenerateMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: Dict[str, int] = None
+    usage: dict[str, int] = None
     stop_reason: str = ''
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'role': self.role,
             'content': self.content,
@@ -33,10 +34,10 @@ class OpenLLMGenerateMessage:
         self.role = role
 
 
-class OpenLLMGenerate(object):
+class OpenLLMGenerate:
     def generate(
-            self, server_url: str, model_name: str, stream: bool, model_parameters: Dict[str, Any],
-            stop: List[str], prompt_messages: List[OpenLLMGenerateMessage], user: str,
+            self, server_url: str, model_name: str, stream: bool, model_parameters: dict[str, Any],
+            stop: list[str], prompt_messages: list[OpenLLMGenerateMessage], user: str,
     ) -> Union[Generator[OpenLLMGenerateMessage, None, None], OpenLLMGenerateMessage]:
         if not server_url:
             raise InvalidAuthenticationError('Invalid server URL')

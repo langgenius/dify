@@ -1,17 +1,18 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from typing import Any, Union
 
-from typing import Any, Dict, List, Union
-from os import path
 from requests import get
+
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class BingSearchTool(BuiltinTool):
     url = 'https://api.bing.microsoft.com/v7.0/search'
 
     def _invoke(self, 
                 user_id: str,
-               tool_parameters: Dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+               tool_parameters: dict[str, Any], 
+        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """

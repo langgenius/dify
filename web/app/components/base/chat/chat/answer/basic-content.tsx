@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import type { ChatItem } from '../../types'
 import { Markdown } from '@/app/components/base/markdown'
 
@@ -19,4 +20,4 @@ const BasicContent: FC<BasicContentProps> = ({
   return <Markdown content={content} />
 }
 
-export default BasicContent
+export default memo(BasicContent)

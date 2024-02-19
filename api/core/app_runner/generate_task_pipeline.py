@@ -1,30 +1,45 @@
 import json
 import logging
 import time
-from typing import Generator, Optional, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
+
+from pydantic import BaseModel
 
 from core.app_runner.moderation_handler import ModerationRule, OutputModerationHandler
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
-from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentMessageEvent, QueueAgentThoughtEvent,
-                                          QueueErrorEvent, QueueMessageEndEvent, QueueMessageEvent,
-                                          QueueMessageFileEvent, QueueMessageReplaceEvent, QueuePingEvent,
-                                          QueueRetrieverResourcesEvent, QueueStopEvent)
+from core.entities.queue_entities import (
+    AnnotationReplyEvent,
+    QueueAgentMessageEvent,
+    QueueAgentThoughtEvent,
+    QueueErrorEvent,
+    QueueMessageEndEvent,
+    QueueMessageEvent,
+    QueueMessageFileEvent,
+    QueueMessageReplaceEvent,
+    QueuePingEvent,
+    QueueRetrieverResourcesEvent,
+    QueueStopEvent,
+)
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
-                                                          PromptMessage, PromptMessageContentType, PromptMessageRole,
-                                                          TextPromptMessageContent)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentType,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
-from pydantic import BaseModel
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -104,7 +119,7 @@ class GenerateTaskPipeline:
                     }
 
                     self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
@@ -187,7 +202,7 @@ class GenerateTaskPipeline:
                 data = self._error_to_stream_response_data(self._handle_error(event))
                 yield self._yield_response(data)
                 break
-            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
@@ -339,7 +354,7 @@ class GenerateTaskPipeline:
 
                     yield self._yield_response(response)
 
-            elif isinstance(event, (QueueMessageEvent, QueueAgentMessageEvent)):
+            elif isinstance(event, QueueMessageEvent | QueueAgentMessageEvent):
                 chunk = event.chunk
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
@@ -477,7 +492,11 @@ class GenerateTaskPipeline:
         }
 
         # Determine the response based on the type of exception
-        data = error_responses.get(type(e))
+        data = None
+        for k, v in error_responses.items():
+            if isinstance(e, k):
+                data = v
+
         if data:
             data.setdefault('message', getattr(e, 'description', str(e)))
         else:

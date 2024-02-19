@@ -4,14 +4,16 @@ import hmac
 import logging
 import os
 import time
+from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Generator, Tuple, Union
+from typing import Union
 from uuid import uuid4
+
+from flask import current_app
+from httpx import get
 
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from flask import current_app
-from httpx import get
 from models.model import MessageFile
 from models.tools import ToolFile
 
@@ -112,7 +114,7 @@ class ToolFileManager:
         return tool_file
     
     @staticmethod
-    def get_file_binary(id: str) -> Union[Tuple[bytes, str], None]:
+    def get_file_binary(id: str) -> Union[tuple[bytes, str], None]:
         """
         get file binary
 
@@ -132,7 +134,7 @@ class ToolFileManager:
         return blob, tool_file.mimetype
     
     @staticmethod
-    def get_file_binary_by_message_file_id(id: str) -> Union[Tuple[bytes, str], None]:
+    def get_file_binary_by_message_file_id(id: str) -> Union[tuple[bytes, str], None]:
         """
         get file binary
 
@@ -161,7 +163,7 @@ class ToolFileManager:
         return blob, tool_file.mimetype
         
     @staticmethod
-    def get_file_generator_by_message_file_id(id: str) -> Union[Tuple[Generator, str], None]:
+    def get_file_generator_by_message_file_id(id: str) -> Union[tuple[Generator, str], None]:
         """
         get file binary
 
