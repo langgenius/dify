@@ -17,7 +17,7 @@ __all__ = ["Jobs"]
 
 class Jobs(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(

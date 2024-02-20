@@ -1,6 +1,6 @@
 import csv
 import logging
-from typing import Dict, List, Optional
+from typing import Optional
 
 from langchain.document_loaders import CSVLoader as LCCSVLoader
 from langchain.document_loaders.helpers import detect_file_encodings
@@ -14,7 +14,7 @@ class CSVLoader(LCCSVLoader):
             self,
             file_path: str,
             source_column: Optional[str] = None,
-            csv_args: Optional[Dict] = None,
+            csv_args: Optional[dict] = None,
             encoding: Optional[str] = None,
             autodetect_encoding: bool = True,
     ):
@@ -24,7 +24,7 @@ class CSVLoader(LCCSVLoader):
         self.csv_args = csv_args or {}
         self.autodetect_encoding = autodetect_encoding
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         """Load data into document objects."""
         try:
             with open(self.file_path, newline="", encoding=self.encoding) as csvfile:

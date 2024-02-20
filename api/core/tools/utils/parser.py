@@ -1,6 +1,5 @@
 
 from json import loads as json_loads
-from typing import List, Tuple
 
 from requests import get
 from yaml import FullLoader, load
@@ -13,7 +12,7 @@ from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolPro
 
 class ApiBasedToolSchemaParser:
     @staticmethod
-    def parse_openapi_to_tool_bundle(openapi: dict, extra_info: dict = None, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def parse_openapi_to_tool_bundle(openapi: dict, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
 
@@ -61,7 +60,7 @@ class ApiBasedToolSchemaParser:
                         required=parameter.get('required', False),
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get('description'),
-                        default=parameter['default'] if 'default' in parameter else None,
+                        default=parameter['schema']['default'] if 'schema' in parameter and 'default' in parameter['schema'] else None,
                     ))
             # create tool bundle
             # check if there is a request body
@@ -116,7 +115,12 @@ class ApiBasedToolSchemaParser:
 
             # check if there is a operation id, use $path_$method as operation id if not
             if 'operationId' not in interface['operation']:
-                interface['operation']['operationId'] = f'{interface["path"]}_{interface["method"]}'
+                # remove special characters like / to ensure the operation id is valid ^[a-zA-Z0-9_-]{1,64}$
+                path = interface['path']
+                if interface['path'].startswith('/'):
+                    path = interface['path'][1:]
+                path = path.replace('/', '_')
+                interface['operation']['operationId'] = f'{path}_{interface["method"]}'
 
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
@@ -132,7 +136,7 @@ class ApiBasedToolSchemaParser:
         return bundles
         
     @staticmethod
-    def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
             parse openapi yaml to tool bundle
 
@@ -148,7 +152,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
     
     @staticmethod
-    def parse_openapi_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def parse_openapi_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
             parse openapi yaml to tool bundle
 
@@ -232,7 +236,7 @@ class ApiBasedToolSchemaParser:
         return openapi
 
     @staticmethod
-    def parse_swagger_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def parse_swagger_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
             parse swagger yaml to tool bundle
 
@@ -248,7 +252,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def parse_swagger_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
             parse swagger yaml to tool bundle
 
@@ -264,7 +268,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_openai_plugin_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> List[ApiBasedToolBundle]:
+    def parse_openai_plugin_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
             parse openapi plugin yaml to tool bundle
 
@@ -296,7 +300,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text, extra_info=extra_info, warning=warning)
     
     @staticmethod
-    def auto_parse_to_tool_bundle(content: str, extra_info: dict = None, warning: dict = None) -> Tuple[List[ApiBasedToolBundle], str]:
+    def auto_parse_to_tool_bundle(content: str, extra_info: dict = None, warning: dict = None) -> tuple[list[ApiBasedToolBundle], str]:
         """
             auto parse to tool bundle
 

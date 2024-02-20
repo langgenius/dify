@@ -149,7 +149,7 @@ const Debug: FC<IDebug> = ({
     }
     let hasEmptyInput = ''
     const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
-      if (type === 'api')
+      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
         return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
@@ -213,9 +213,6 @@ const Debug: FC<IDebug> = ({
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
-      text_to_speech: {
-        enabled: false,
-      },
       pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
       prompt_type: promptMode,
       chat_prompt_config: {},
@@ -233,6 +230,11 @@ const Debug: FC<IDebug> = ({
         name: modelConfig.model_id,
         mode: modelConfig.mode,
         completion_params: completionParams as any,
+      },
+      text_to_speech: {
+        enabled: false,
+        voice: '',
+        language: '',
       },
       agent_mode: {
         enabled: false,

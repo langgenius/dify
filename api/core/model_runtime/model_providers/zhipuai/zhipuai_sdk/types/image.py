@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -15,4 +15,4 @@ class GeneratedImage(BaseModel):
 
 class ImagesResponded(BaseModel):
     created: int
-    data: List[GeneratedImage]
+    data: list[GeneratedImage]

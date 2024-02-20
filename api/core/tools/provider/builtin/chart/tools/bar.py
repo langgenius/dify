@@ -1,5 +1,5 @@
 import io
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import matplotlib.pyplot as plt
 
@@ -8,8 +8,8 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class BarChartTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) \
-          -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) \
+          -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         data = tool_parameters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')

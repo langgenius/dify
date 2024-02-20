@@ -1,6 +1,6 @@
 import type { Fetcher } from 'swr'
 import { del, get, post } from './base'
-import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse } from '@/models/app'
+import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
 
@@ -92,4 +92,8 @@ export const updateOpenAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: string; bo
 
 export const generationIntroduction: Fetcher<GenerationIntroductionResponse, { url: string; body: { prompt_template: string } }> = ({ url, body }) => {
   return post<GenerationIntroductionResponse>(url, { body })
+}
+
+export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; language?: string }> = ({ appId, language }) => {
+  return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
 }

@@ -1,6 +1,5 @@
 import base64
 import logging
-from typing import List
 
 from bs4 import BeautifulSoup
 from langchain.document_loaders.base import BaseLoader
@@ -24,7 +23,7 @@ class UnstructuredEmailLoader(BaseLoader):
         self._file_path = file_path
         self._api_url = api_url
 
-    def load(self) -> List[Document]:
+    def load(self) -> list[Document]:
         from unstructured.partition.email import partition_email
         elements = partition_email(filename=self._file_path, api_url=self._api_url)
 

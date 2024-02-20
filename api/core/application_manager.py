@@ -2,7 +2,8 @@ import json
 import logging
 import threading
 import uuid
-from typing import Any, Generator, Optional, Tuple, Union, cast
+from collections.abc import Generator
+from typing import Any, Optional, Union, cast
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -27,6 +28,7 @@ from core.entities.application_entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
     SensitiveWordAvoidanceEntity,
+    TextToSpeechEntity,
 )
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -571,7 +573,11 @@ class ApplicationManager:
         text_to_speech_dict = copy_app_model_config_dict.get('text_to_speech')
         if text_to_speech_dict:
             if 'enabled' in text_to_speech_dict and text_to_speech_dict['enabled']:
-                properties['text_to_speech'] = True
+                properties['text_to_speech'] = TextToSpeechEntity(
+                    enabled=text_to_speech_dict.get('enabled'),
+                    voice=text_to_speech_dict.get('voice'),
+                    language=text_to_speech_dict.get('language'),
+                )
 
         # sensitive word avoidance
         sensitive_word_avoidance_dict = copy_app_model_config_dict.get('sensitive_word_avoidance')
@@ -585,7 +591,7 @@ class ApplicationManager:
         return AppOrchestrationConfigEntity(**properties)
 
     def _init_generate_records(self, application_generate_entity: ApplicationGenerateEntity) \
-            -> Tuple[Conversation, Message]:
+            -> tuple[Conversation, Message]:
         """
         Initialize generate records
         :param application_generate_entity: application generate entity

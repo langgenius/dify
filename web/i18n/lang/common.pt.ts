@@ -12,6 +12,18 @@ const translation = {
     displayLanguage: 'Idioma de exibição',
     timezone: 'Fuso horário',
   },
+  voice: {
+    language: {
+      zhHans: 'chinês',
+      enUS: 'inglês',
+      deDE: 'alemão',
+      frFR: 'francês',
+      esES: 'espanhol',
+      itIT: 'italiano',
+      thTH: 'tailandês',
+      idID: 'indonésio',
+    },
+  },
   provider: {
     apiKey: 'Chave da API',
     enterYourKey: 'Insira sua chave da API aqui',
@@ -40,6 +52,22 @@ const translation = {
       usedUp: 'Cota de teste esgotada. Adicione seu próprio provedor de modelo.',
       useYourModel: 'Atualmente usando seu próprio provedor de modelo.',
       close: 'Fechar',
+    },
+    voice: {
+      language: {
+        zhHans: 'chinês',
+        enUS: 'inglês',
+        deDE: 'alemão',
+        frFR: 'francês',
+        esES: 'espanhol',
+        itIT: 'italiano',
+        thTH: 'tailandês',
+        idID: 'indonésio',
+        jaJP: 'japonês',
+        koKR: 'coreano',
+        ptBR: 'português',
+        ruRU: 'russo',
+      },
     },
     anthropicHosted: {
       anthropicHosted: 'Anthropic Claude',

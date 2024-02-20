@@ -1,7 +1,8 @@
 import json
 import logging
+from collections.abc import Generator
 from decimal import Decimal
-from typing import Generator, List, Optional, Union, cast
+from typing import Optional, Union, cast
 from urllib.parse import urljoin
 
 import requests
@@ -46,7 +47,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -245,7 +246,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
-                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                   stream: bool = True, \
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
@@ -366,13 +367,16 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             if chunk:
+                #ignore sse comments
+                if chunk.startswith(':'):
+                    continue                 
                 decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
                 chunk_json = None
                 try:
                     chunk_json = json.loads(decoded_chunk)
                 # stream ended
                 except json.JSONDecodeError as e:
-                    logger.error(f"decoded_chunk error,delimiter={delimiter},decoded_chunk={decoded_chunk}")
+                    logger.error(f"decoded_chunk error: {e}, delimiter={delimiter}, decoded_chunk={decoded_chunk}")
                     yield create_final_llm_result_chunk(
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),
@@ -567,7 +571,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         return num_tokens
 
-    def _num_tokens_from_messages(self, model: str, messages: List[PromptMessage],
+    def _num_tokens_from_messages(self, model: str, messages: list[PromptMessage],
                                   tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Approximate num tokens with GPT2 tokenizer.

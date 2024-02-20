@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 import numpy as np
 from langchain.embeddings.base import Embeddings
@@ -21,7 +21,7 @@ class CacheEmbedding(Embeddings):
         self._model_instance = model_instance
         self._user = user
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs in batches of 10."""
         text_embeddings = []
         try:
@@ -52,7 +52,7 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)

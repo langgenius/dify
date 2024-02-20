@@ -1,5 +1,5 @@
 
-from typing import List, Optional
+from typing import Optional
 
 from langchain.schema import Document
 
@@ -10,7 +10,7 @@ from models.dataset import Dataset, DocumentSegment
 class VectorService:
 
     @classmethod
-    def create_segment_vector(cls, keywords: Optional[List[str]], segment: DocumentSegment, dataset: Dataset):
+    def create_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
         document = Document(
             page_content=segment.content,
             metadata={
@@ -61,7 +61,7 @@ class VectorService:
             keyword_index.multi_create_segment_keywords(pre_segment_data_list)
 
     @classmethod
-    def update_segment_vector(cls, keywords: Optional[List[str]], segment: DocumentSegment, dataset: Dataset):
+    def update_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
         # update segment index task
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         kw_index = IndexBuilder.get_index(dataset, 'economy')

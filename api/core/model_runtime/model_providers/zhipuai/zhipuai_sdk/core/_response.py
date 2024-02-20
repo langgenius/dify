@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast, get_args, get_origin
 
 import httpx
 import pydantic
-from typing_extensions import ParamSpec, get_args, get_origin
+from typing_extensions import ParamSpec
 
 from ._base_type import NoneType
 from ._sse_client import StreamResponse
@@ -19,7 +19,7 @@ R = TypeVar("R")
 
 class HttpResponse(Generic[R]):
     _cast_type: type[R]
-    _client: "HttpClient"
+    _client: HttpClient
     _parsed: R | None
     _enable_stream: bool
     _stream_cls: type[StreamResponse[Any]]
@@ -30,7 +30,7 @@ class HttpResponse(Generic[R]):
             *,
             raw_response: httpx.Response,
             cast_type: type[R],
-            client: "HttpClient",
+            client: HttpClient,
             enable_stream: bool = False,
             stream_cls: type[StreamResponse[Any]] | None = None,
     ) -> None:

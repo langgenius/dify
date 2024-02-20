@@ -39,6 +39,22 @@ const translation = {
     input: '请输入',
     select: '请选择',
   },
+  voice: {
+    language: {
+      zhHans: '中文',
+      enUS: '英语',
+      deDE: '德语',
+      frFR: '法语',
+      esES: '西班牙语',
+      itIT: '意大利语',
+      thTH: '泰语',
+      idID: '印尼语',
+      jaJP: '日语',
+      koKR: '韩语',
+      ptBR: '葡萄牙语',
+      ruRU: '俄语',
+    },
+  },
   unit: {
     char: '个字符',
   },

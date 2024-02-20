@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import io
 import os
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Mapping, Sequence
 
 from ._base_type import FileTypes, HttpxFileTypes, HttpxRequestFiles, RequestFiles
 
 
 def is_file_content(obj: object) -> bool:
-    return isinstance(obj, (bytes, tuple, io.IOBase, os.PathLike))
+    return isinstance(obj, bytes | tuple | io.IOBase | os.PathLike)
 
 
 def _transform_file(file: FileTypes) -> HttpxFileTypes:

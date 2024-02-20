@@ -4,7 +4,7 @@ import logging
 import random
 import time
 import uuid
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 from flask import current_app
 from flask_login import current_user
@@ -366,7 +366,7 @@ class DocumentService:
         return document
 
     @staticmethod
-    def get_document_by_dataset_id(dataset_id: str) -> List[Document]:
+    def get_document_by_dataset_id(dataset_id: str) -> list[Document]:
         documents = db.session.query(Document).filter(
             Document.dataset_id == dataset_id,
             Document.enabled == True
@@ -375,7 +375,7 @@ class DocumentService:
         return documents
 
     @staticmethod
-    def get_batch_documents(dataset_id: str, batch: str) -> List[Document]:
+    def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
         documents = db.session.query(Document).filter(
             Document.batch == batch,
             Document.dataset_id == dataset_id,

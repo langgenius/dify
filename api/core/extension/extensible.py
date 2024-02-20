@@ -61,7 +61,7 @@ class Extensible:
 
                     builtin_file_path = os.path.join(subdir_path, '__builtin__')
                     if os.path.exists(builtin_file_path):
-                        with open(builtin_file_path, 'r', encoding='utf-8') as f:
+                        with open(builtin_file_path, encoding='utf-8') as f:
                             position = int(f.read().strip())
 
                 if (extension_name + '.py') not in file_names:
@@ -93,7 +93,7 @@ class Extensible:
                     json_path = os.path.join(subdir_path, 'schema.json')
                     json_data = {}
                     if os.path.exists(json_path):
-                        with open(json_path, 'r', encoding='utf-8') as f:
+                        with open(json_path, encoding='utf-8') as f:
                             json_data = json.load(f)
 
                 extensions[extension_name] = ModuleExtension(

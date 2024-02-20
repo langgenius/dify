@@ -1,7 +1,8 @@
 import json
 import logging
 import time
-from typing import Generator, Optional, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
 
 from pydantic import BaseModel
 
@@ -118,7 +119,7 @@ class GenerateTaskPipeline:
                     }
 
                     self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
@@ -201,7 +202,7 @@ class GenerateTaskPipeline:
                 data = self._error_to_stream_response_data(self._handle_error(event))
                 yield self._yield_response(data)
                 break
-            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
@@ -353,7 +354,7 @@ class GenerateTaskPipeline:
 
                     yield self._yield_response(response)
 
-            elif isinstance(event, (QueueMessageEvent, QueueAgentMessageEvent)):
+            elif isinstance(event, QueueMessageEvent | QueueAgentMessageEvent):
                 chunk = event.chunk
                 delta_text = chunk.delta.message.content
                 if delta_text is None:

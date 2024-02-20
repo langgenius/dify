@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import NotFound

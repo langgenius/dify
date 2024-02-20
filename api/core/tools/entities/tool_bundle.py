@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ class ApiBasedToolBundle(BaseModel):
     # operation_id
     operation_id: str = None
     # parameters
-    parameters: Optional[List[ToolParameter]] = None
+    parameters: Optional[list[ToolParameter]] = None
     # author
     author: str
     # icon
@@ -31,6 +31,6 @@ class AppToolBundle(BaseModel):
     This class is used to store the schema information of an tool for an app.
     """
     type: ToolProviderType
-    credential: Optional[Dict[str, Any]] = None
+    credential: Optional[dict[str, Any]] = None
     provider_id: str
     tool_name: str

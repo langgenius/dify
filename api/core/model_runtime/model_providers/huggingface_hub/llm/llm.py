@@ -1,4 +1,5 @@
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from huggingface_hub import InferenceClient
 from huggingface_hub.hf_api import HfApi
@@ -29,7 +30,7 @@ from core.model_runtime.model_providers.huggingface_hub._common import _CommonHu
 
 class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None, stream: bool = True,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None, stream: bool = True,
                 user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
         client = InferenceClient(token=credentials['huggingfacehub_api_token'])

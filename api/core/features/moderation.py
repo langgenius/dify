@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 
 from core.entities.application_entities import AppOrchestrationConfigEntity
 from core.moderation.base import ModerationAction, ModerationException
@@ -13,7 +12,7 @@ class ModerationFeature:
               tenant_id: str,
               app_orchestration_config_entity: AppOrchestrationConfigEntity,
               inputs: dict,
-              query: str) -> Tuple[bool, dict, str]:
+              query: str) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id

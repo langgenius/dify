@@ -16,3 +16,7 @@ class ProviderNotSupportSpeechToTextServiceError(Exception):
 
 class ProviderNotSupportTextToSpeechServiceError(Exception):
     pass
+
+
+class ProviderNotSupportTextToSpeechLanageServiceError(Exception):
+    pass

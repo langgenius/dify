@@ -1,5 +1,4 @@
 import json
-from typing import List
 
 from langchain.schema import OutputParserException
 
@@ -30,7 +29,7 @@ def parse_json_markdown(json_string: str) -> dict:
     return parsed
 
 
-def parse_and_check_json_markdown(text: str, expected_keys: List[str]) -> dict:
+def parse_and_check_json_markdown(text: str, expected_keys: list[str]) -> dict:
     try:
         json_obj = parse_json_markdown(text)
     except json.JSONDecodeError as e:

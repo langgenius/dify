@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
@@ -16,8 +16,8 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
 
     def on_chat_model_start(
             self,
-            serialized: Dict[str, Any],
-            messages: List[List[BaseMessage]],
+            serialized: dict[str, Any],
+            messages: list[list[BaseMessage]],
             **kwargs: Any
     ) -> Any:
         print_text("\n[on_chat_model_start]\n", color='blue')
@@ -26,7 +26,7 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
                 print_text(str(sub_message) + "\n", color='blue')
 
     def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+        self, serialized: dict[str, Any], prompts: list[str], **kwargs: Any
     ) -> None:
         """Print out the prompts."""
         print_text("\n[on_llm_start]\n", color='blue')
@@ -48,13 +48,13 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
         print_text("\n[on_llm_error]\nError: " + str(error) + "\n", color='blue')
 
     def on_chain_start(
-        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
+        self, serialized: dict[str, Any], inputs: dict[str, Any], **kwargs: Any
     ) -> None:
         """Print out that we are entering a chain."""
         chain_type = serialized['id'][-1]
         print_text("\n[on_chain_start]\nChain: " + chain_type + "\nInputs: " + str(inputs) + "\n", color='pink')
 
-    def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
+    def on_chain_end(self, outputs: dict[str, Any], **kwargs: Any) -> None:
         """Print out that we finished a chain."""
         print_text("\n[on_chain_end]\nOutputs: " + str(outputs) + "\n", color='pink')
 
@@ -66,7 +66,7 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
 
     def on_tool_start(
         self,
-        serialized: Dict[str, Any],
+        serialized: dict[str, Any],
         input_str: str,
         **kwargs: Any,
     ) -> None:
