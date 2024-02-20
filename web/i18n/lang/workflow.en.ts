@@ -2,6 +2,7 @@ const translation = {
   nodes: {
     common: {
       outputVars: 'Output Variables',
+      insertVarTip: 'Insert Variable',
     },
     directAnswer: {
       answer: 'Answer',

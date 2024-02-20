@@ -2,6 +2,7 @@ const translation = {
   nodes: {
     common: {
       outputVars: '输出变量',
+      insertVarTip: '插入变量',
     },
     directAnswer: {
       answer: '回复',
