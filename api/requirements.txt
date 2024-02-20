@@ -66,3 +66,4 @@ yfinance~=0.2.35
 pydub~=0.25.1
 gmpy2~=2.1.5
 numexpr~=2.9.0
+duckduckgo-search==4.4.3
