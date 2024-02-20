@@ -8,6 +8,7 @@ import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import Switch from '@/app/components/base/switch'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -94,6 +95,21 @@ const Panel: FC = () => {
         >
           Functions
         </Field> */}
+
+      <OutputVars>
+        <>
+          <VarItem
+            name='output'
+            type='string'
+            description={t(`${i18nPrefix}.outputVars.output`)}
+          />
+          <VarItem
+            name='usage'
+            type='object'
+            description={t(`${i18nPrefix}.outputVars.usage`)}
+          />
+        </>
+      </OutputVars>
     </div>
   )
 }
