@@ -60,7 +60,7 @@ class ApiBasedToolSchemaParser:
                         required=parameter.get('required', False),
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get('description'),
-                        default=parameter['default'] if 'default' in parameter else None,
+                        default=parameter['schema']['default'] if 'schema' in parameter and 'default' in parameter['schema'] else None,
                     ))
             # create tool bundle
             # check if there is a request body
