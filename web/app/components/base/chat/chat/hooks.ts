@@ -42,7 +42,7 @@ export const useCheckPromptVariables = () => {
     } = promptVariablesConfig
     let hasEmptyInput = ''
     const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
-      if (type === 'api')
+      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
         return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
