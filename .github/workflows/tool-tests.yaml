@@ -1,6 +1,9 @@
 name: Run Tool Pytest
 
 on:
+  push:
+    # only trigger on branches, not on tags
+    branches: '**'
   pull_request:
     branches:
       - main
@@ -23,4 +26,6 @@ jobs:
         run: pip install -r ./api/requirements.txt
 
       - name: Run pytest
-        run: pytest ./api/tests/integration_tests/tools/test_all_provider.py
+        run: |
+          export PYTHONPATH=$(pwd)/api:$PYTHONPATH
+          pytest ./api/tests/integration_tests/tools/

@@ -7,6 +7,7 @@ class I18nObject(BaseModel):
     """
     Model class for i18n object.
     """
+
     zh_Hans: Optional[str] = None
     en_US: str
 
@@ -17,6 +18,6 @@ class I18nObject(BaseModel):
 
     def to_dict(self) -> dict:
         return {
-            'zh_Hans': self.zh_Hans,
-            'en_US': self.en_US,
+            "zh_Hans": self.zh_Hans,
+            "en_US": self.en_US,
         }
