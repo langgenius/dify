@@ -30,6 +30,8 @@ const VarList: FC<Props> = ({
     return (value: ValueSelector) => {
       const newList = produce(list, (draft) => {
         draft[index].value_selector = value
+        if (!draft[index].variable)
+          draft[index].variable = value[value.length - 1]
       })
       onChange(newList)
     }
