@@ -1,0 +1,6 @@
+1. pip install --user virtualenv
+2. mkdir py311 && cd py311
+3. pyenv install 3.11.8
+4. pyenv local 3.11.8
+5. source ./.venv/bin/activate
+6. 
