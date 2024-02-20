@@ -8,7 +8,6 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 const Node: FC = () => {
   const { provider, name: modelId } = mockData.model
   const {
-
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()
   return (

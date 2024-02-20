@@ -6,7 +6,7 @@ import Workflow from '@/app/components/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 const nodes = [
   BlockEnum.Start, BlockEnum.DirectAnswer, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.QuestionClassifier,
-  BlockEnum.QuestionClassifier, BlockEnum.IfElse, BlockEnum.Code, BlockEnum.TemplateTransform, BlockEnum.HttpRequest,
+  BlockEnum.IfElse, BlockEnum.Code, BlockEnum.TemplateTransform, BlockEnum.HttpRequest,
   BlockEnum.Tool,
 ].map((item, i) => ({
   id: `${i + 1}`,
@@ -45,9 +45,9 @@ const Page: FC = () => {
         edges={initialEdges}
         /*
         * TODO: for debug.
-        * 2 directAnswer 3: llm
+        * 2 directAnswer 3: llm 5: questionClassifier
         */
-        selectedNodeId='2'
+        selectedNodeId='5'
       />
     </div>
   )
