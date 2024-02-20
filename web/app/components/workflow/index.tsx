@@ -21,6 +21,7 @@ import AppInfoPanel from './app-info-panel'
 import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import type { Node } from './types'
+import { BlockSelectorContextProvider } from './block-selector/context'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -93,7 +94,9 @@ const WorkflowWrap: FC<WorkflowWrapProps> = ({
       handleAddNextNode,
       handleUpdateNodeData,
     }}>
-      <Workflow />
+      <BlockSelectorContextProvider>
+        <Workflow />
+      </BlockSelectorContextProvider>
     </WorkflowContext.Provider>
   )
 }

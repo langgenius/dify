@@ -1,24 +1,23 @@
+import type { FC } from 'react'
 import {
   memo,
   useState,
 } from 'react'
-import { useNodeId } from 'reactflow'
 import BlockIcon from '../block-icon'
-import { useWorkflowContext } from '../context'
+import type { OnSelect } from './types'
 import {
   BLOCK_CLASSIFICATIONS,
   BLOCK_GROUP_BY_CLASSIFICATION,
   TABS,
 } from './constants'
 
-const Tabs = () => {
-  const {
-    nodes,
-    handleAddNextNode,
-  } = useWorkflowContext()
+export type TabsProps = {
+  onSelect: OnSelect
+}
+const Tabs: FC<TabsProps> = ({
+  onSelect,
+}) => {
   const [activeTab, setActiveTab] = useState(TABS[0].key)
-  const nodeId = useNodeId()
-  const currentNode = nodes.find(node => node.id === nodeId)
 
   return (
     <div>
@@ -59,7 +58,7 @@ const Tabs = () => {
                     className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleAddNextNode(currentNode!, block.type)
+                      onSelect(block.type)
                     }}
                   >
                     <BlockIcon

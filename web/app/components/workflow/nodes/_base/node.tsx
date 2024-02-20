@@ -11,7 +11,8 @@ import {
 import type { NodeProps } from 'reactflow'
 import { getOutgoers } from 'reactflow'
 import { useWorkflowContext } from '../../context'
-import BlockSelector from '../../block-selector'
+import type { BlockEnum } from '../../types'
+import { useBlockSelectorContext } from '../../block-selector/context'
 import NodeControl from '../../node-control'
 import BlockIcon from '../../block-icon'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -30,30 +31,23 @@ const BaseNode: FC<BaseNodeProps> = ({
     edges,
     selectedNodeId,
     handleSelectedNodeIdChange,
+    handleAddNextNode,
   } = useWorkflowContext()
+  const {
+    from,
+    open,
+    referenceRef,
+    handleToggle,
+  } = useBlockSelectorContext()
   const currentNode = useMemo(() => {
     return nodes.find(node => node.id === nodeId)
   }, [nodeId, nodes])
   const outgoers = useMemo(() => {
     return getOutgoers(currentNode!, nodes, edges)
   }, [currentNode, nodes, edges])
-  const renderBlockSelectorChildren = useCallback(({ open, ref, ...restProps }: any) => {
-    return (
-      <div onClick={e => e.stopPropagation()}>
-        <div
-          {...restProps}
-          ref={ref}
-          className={`
-            hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
-            w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
-            ${open && '!flex'}
-          `}
-        >
-          <Plus02 className='w-2.5 h-2.5 text-white' />
-        </div>
-      </div>
-    )
-  }, [])
+  const handleSelectBlock = useCallback((type: BlockEnum) => {
+    handleAddNextNode(currentNode!, type)
+  }, [currentNode, handleAddNextNode])
 
   return (
     <div
@@ -81,12 +75,24 @@ const BaseNode: FC<BaseNodeProps> = ({
       </div>
       {
         !outgoers.length && (
-          <BlockSelector
-            placement='right'
-            offset={6}
+          <div
+            ref={from === 'node' ? referenceRef : null}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleToggle({
+                placement: 'right',
+                offset: 6,
+                callback: handleSelectBlock,
+              })
+            }}
+            className={`
+              hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
+              w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
+              ${open && from === 'node' && '!flex'}
+            `}
           >
-            {renderBlockSelectorChildren}
-          </BlockSelector>
+            <Plus02 className='w-2.5 h-2.5 text-white' />
+          </div>
         )
       }
     </div>

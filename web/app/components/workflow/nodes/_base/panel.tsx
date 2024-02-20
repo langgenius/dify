@@ -10,7 +10,10 @@ import type { NodeProps } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockIcon from '../../block-icon'
 import NextStep from './components/next-step'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import {
+  DotsHorizontal,
+  XClose,
+} from '@/app/components/base/icons/src/vender/line/general'
 import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/development'
 
 type BasePanelProps = {
@@ -37,12 +40,16 @@ const BasePanel: FC<BasePanelProps> = ({
             size='md'
           />
           <div className='grow py-1 text-base text-gray-900 font-semibold '>{data.title}</div>
-          <div className='shrink-0 flex items-center'>
+          <div className='shrink-0 flex items-center text-gray-500'>
+            <div className='flex items-center justify-center w-6 h-6 cursor-pointer'>
+              <DotsHorizontal className='w-4 h-4' />
+            </div>
+            <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
             <div
               className='flex items-center justify-center w-6 h-6 cursor-pointer'
               onClick={() => handleSelectedNodeIdChange('')}
             >
-              <XClose className='w-4 h-4 text-gray-500' />
+              <XClose className='w-4 h-4' />
             </div>
           </div>
         </div>
