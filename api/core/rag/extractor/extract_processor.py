@@ -117,7 +117,7 @@ class ExtractProcessor:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
-                    elif file_extension in ['.docx', '.doc']:
+                    elif file_extension in ['.docx']:
                         extractor = WordExtractor(file_path)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)

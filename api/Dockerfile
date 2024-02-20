@@ -9,6 +9,8 @@ FROM base as packages
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
 
+RUN apt-get install -y libreoffice
+
 COPY requirements.txt /requirements.txt
 
 RUN pip install --prefix=/pkg -r requirements.txt
