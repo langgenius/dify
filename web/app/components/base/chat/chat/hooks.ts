@@ -146,8 +146,9 @@ export const useChat = (
   }, [stopChat, handleResponsing])
 
   const handleRestart = useCallback(() => {
-    handleStop()
     connversationId.current = ''
+    taskIdRef.current = ''
+    handleStop()
     const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
