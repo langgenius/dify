@@ -356,10 +356,10 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             except:
                 return json_str
             
-        def extra_json_from_code_block(code_block) -> Union[dict, str]:
+        def extra_json_from_code_block(code_block) -> Generator[Union[dict, str], None, None]:
             code_blocks = re.findall(r'```(.*?)```', code_block, re.DOTALL)
             if not code_blocks:
-                return []
+                return
             for block in code_blocks:
                 json_text = re.sub(r'^[a-zA-Z]+\n', '', block.strip(), flags=re.MULTILINE)
                 yield parse_json(json_text)
@@ -396,8 +396,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
                 if code_block_delimiter_count == 3:
                     if in_code_block:
-                        for k in extra_json_from_code_block(code_block_cache):
-                            yield k
+                        yield from extra_json_from_code_block(code_block_cache)
                         code_block_cache = ''
                         
                     in_code_block = not in_code_block
