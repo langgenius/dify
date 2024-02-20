@@ -60,10 +60,21 @@ export const useWorkflow = (
     })
   }, [setNodes, setEdges])
 
+  const handleUpdateNodeData = useCallback((nodeId: string, data: Node['data']) => {
+    setNodes((oldNodes) => {
+      return produce(oldNodes, (draft) => {
+        const node = draft.find(node => node.id === nodeId)
+        if (node)
+          node.data = data
+      })
+    })
+  }, [setNodes])
+
   return {
     selectedNodeId,
     selectedNode,
     handleSelectedNodeIdChange,
     handleAddNextNode,
+    handleUpdateNodeData,
   }
 }

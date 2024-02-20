@@ -12,8 +12,9 @@ import type { NodeProps } from 'reactflow'
 import { getOutgoers } from 'reactflow'
 import { useWorkflowContext } from '../../context'
 import BlockSelector from '../../block-selector'
+import NodeControl from '../../node-control'
 import BlockIcon from '../../block-icon'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -48,7 +49,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             ${open && '!flex'}
           `}
         >
-          <Plus className='w-2.5 h-2.5 text-white' />
+          <Plus02 className='w-2.5 h-2.5 text-white' />
         </div>
       </div>
     )
@@ -63,6 +64,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       `}
       onClick={() => handleSelectedNodeIdChange(nodeId || '')}
     >
+      <NodeControl />
       <div className='flex items-center px-3 pt-3 pb-2'>
         <BlockIcon
           className='mr-2'

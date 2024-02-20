@@ -18,6 +18,7 @@ export type WorkflowContextValue = {
   handleSelectedNodeIdChange: (nodeId: string) => void
   selectedNode?: Node
   handleAddNextNode: (prevNode: Node, nextNodeType: BlockEnum) => void
+  handleUpdateNodeData: (nodeId: string, data: Node['data']) => void
 }
 
 export const WorkflowContext = createContext<WorkflowContextValue>({
@@ -26,5 +27,6 @@ export const WorkflowContext = createContext<WorkflowContextValue>({
   edges: [],
   handleSelectedNodeIdChange: () => {},
   handleAddNextNode: () => {},
+  handleUpdateNodeData: () => {},
 })
 export const useWorkflowContext = () => useContext(WorkflowContext)

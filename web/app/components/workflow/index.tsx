@@ -73,6 +73,7 @@ const WorkflowWrap: FC<WorkflowWrapProps> = ({
     handleSelectedNodeIdChange,
     selectedNode,
     handleAddNextNode,
+    handleUpdateNodeData,
   } = useWorkflow(
     nodes,
     edges,
@@ -90,6 +91,7 @@ const WorkflowWrap: FC<WorkflowWrapProps> = ({
       nodes,
       edges,
       handleAddNextNode,
+      handleUpdateNodeData,
     }}>
       <Workflow />
     </WorkflowContext.Provider>
