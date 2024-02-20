@@ -1,12 +1,24 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-const i18nPrefix = 'workflow.nodes.llm'
+import { mockLLMNodeData } from './mock'
+import {
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
 const Node: FC = () => {
-  const { t } = useTranslation()
+  const { provider, name: modelId } = mockLLMNodeData.model
+  const {
 
+    textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList()
   return (
-    <div>llm</div>
+    <div className='px-3'>
+      <ModelSelector
+        defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
+        modelList={textGenerationModelList}
+        readonly
+      />
+    </div>
   )
 }
 

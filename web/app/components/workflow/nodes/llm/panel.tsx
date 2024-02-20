@@ -88,13 +88,6 @@ const Panel: FC = () => {
       >
         Vision
       </Field>
-      {/* This version not support function */}
-      {/* <Field
-          title={t(`${i18nPrefix}.fu`)}
-          inline
-        >
-          Functions
-        </Field> */}
 
       <OutputVars>
         <>

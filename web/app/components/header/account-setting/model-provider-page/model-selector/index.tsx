@@ -74,6 +74,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
                 provider={currentProvider}
                 model={currentModel}
                 className={triggerClassName}
+                readonly={readonly}
               />
             )
           }
