@@ -1,5 +1,6 @@
 from flask_restful import fields
 
+from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
 
@@ -8,31 +9,25 @@ class MessageTextField(fields.Raw):
         return value[0]['text'] if value else ''
 
 
-account_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'email': fields.String
-}
-
 feedback_fields = {
     'rating': fields.String,
     'content': fields.String,
     'from_source': fields.String,
     'from_end_user_id': fields.String,
-    'from_account': fields.Nested(account_fields, allow_null=True),
+    'from_account': fields.Nested(simple_account_fields, allow_null=True),
 }
 
 annotation_fields = {
     'id': fields.String,
     'question': fields.String,
     'content': fields.String,
-    'account': fields.Nested(account_fields, allow_null=True),
+    'account': fields.Nested(simple_account_fields, allow_null=True),
     'created_at': TimestampField
 }
 
 annotation_hit_history_fields = {
     'annotation_id': fields.String(attribute='id'),
-    'annotation_create_account': fields.Nested(account_fields, allow_null=True),
+    'annotation_create_account': fields.Nested(simple_account_fields, allow_null=True),
     'created_at': TimestampField
 }
 

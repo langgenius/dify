@@ -6,7 +6,6 @@ from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import (
     ApplicationGenerateEntity,
-    AppMode,
     DatasetEntity,
     InvokeFrom,
     ModelConfigEntity,
@@ -16,7 +15,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationException
 from extensions.ext_database import db
-from models.model import App, Conversation, Message
+from models.model import App, Conversation, Message, AppMode
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +249,7 @@ class BasicApplicationRunner(AppRunner):
             invoke_from
         )
 
+        # TODO
         if (app_record.mode == AppMode.COMPLETION.value and dataset_config
                 and dataset_config.retrieve_config.query_variable):
             query = inputs.get(dataset_config.retrieve_config.query_variable, "")

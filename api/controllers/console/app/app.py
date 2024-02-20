@@ -26,7 +26,7 @@ from fields.app_fields import (
     template_list_fields,
 )
 from libs.login import login_required
-from models.model import App, AppModelConfig, Site
+from models.model import App, AppModelConfig, Site, AppMode
 from services.app_model_config_service import AppModelConfigService
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.tool_manager import ToolManager
@@ -80,7 +80,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
-        parser.add_argument('mode', type=str, choices=['completion', 'chat', 'assistant'], location='json')
+        parser.add_argument('mode', type=str, choices=[mode.value for mode in AppMode], location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         parser.add_argument('model_config', type=dict, location='json')
@@ -90,18 +90,7 @@ class AppListApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        try:
-            provider_manager = ProviderManager()
-            default_model_entity = provider_manager.get_default_model(
-                tenant_id=current_user.current_tenant_id,
-                model_type=ModelType.LLM
-            )
-        except (ProviderTokenNotInitError, LLMBadRequestError):
-            default_model_entity = None
-        except Exception as e:
-            logging.exception(e)
-            default_model_entity = None
-
+        # TODO: MOVE TO IMPORT API
         if args['model_config'] is not None:
             # validate config
             model_config_dict = args['model_config']
@@ -150,27 +139,30 @@ class AppListApi(Resource):
             if 'mode' not in args or args['mode'] is None:
                 abort(400, message="mode is required")
 
-            model_config_template = model_templates[args['mode'] + '_default']
+            app_mode = AppMode.value_of(args['mode'])
+
+            model_config_template = model_templates[app_mode.value + '_default']
 
             app = App(**model_config_template['app'])
             app_model_config = AppModelConfig(**model_config_template['model_config'])
 
-            # get model provider
-            model_manager = ModelManager()
+            if app_mode in [AppMode.CHAT, AppMode.AGENT]:
+                # get model provider
+                model_manager = ModelManager()
 
-            try:
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=current_user.current_tenant_id,
-                    model_type=ModelType.LLM
-                )
-            except ProviderTokenNotInitError:
-                model_instance = None
+                try:
+                    model_instance = model_manager.get_default_model_instance(
+                        tenant_id=current_user.current_tenant_id,
+                        model_type=ModelType.LLM
+                    )
+                except ProviderTokenNotInitError:
+                    model_instance = None
 
-            if model_instance:
-                model_dict = app_model_config.model_dict
-                model_dict['provider'] = model_instance.provider
-                model_dict['name'] = model_instance.model
-                app_model_config.model = json.dumps(model_dict)
+                if model_instance:
+                    model_dict = app_model_config.model_dict
+                    model_dict['provider'] = model_instance.provider
+                    model_dict['name'] = model_instance.model
+                    app_model_config.model = json.dumps(model_dict)
 
         app.name = args['name']
         app.mode = args['mode']

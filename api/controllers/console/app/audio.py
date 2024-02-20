@@ -20,10 +20,10 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.entities.application_entities import AppMode
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
+from models.model import AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,

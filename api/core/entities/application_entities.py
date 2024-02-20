@@ -9,26 +9,6 @@ from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import AIModelEntity
 
 
-class AppMode(Enum):
-    COMPLETION = 'completion'  # will be deprecated in the future
-    WORKFLOW = 'workflow'  # instead of 'completion'
-    CHAT = 'chat'
-    AGENT = 'agent'
-
-    @classmethod
-    def value_of(cls, value: str) -> 'AppMode':
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f'invalid mode value {value}')
-
-
 class ModelConfigEntity(BaseModel):
     """
     Model Config Entity.
@@ -104,6 +84,38 @@ class PromptTemplateEntity(BaseModel):
     simple_prompt_template: Optional[str] = None
     advanced_chat_prompt_template: Optional[AdvancedChatPromptTemplateEntity] = None
     advanced_completion_prompt_template: Optional[AdvancedCompletionPromptTemplateEntity] = None
+
+
+class VariableEntity(BaseModel):
+    """
+    Variable Entity.
+    """
+    class Type(Enum):
+        TEXT_INPUT = 'text-input'
+        SELECT = 'select'
+        PARAGRAPH = 'paragraph'
+
+        @classmethod
+        def value_of(cls, value: str) -> 'VariableEntity.Type':
+            """
+            Get value of given mode.
+
+            :param value: mode value
+            :return: mode
+            """
+            for mode in cls:
+                if mode.value == value:
+                    return mode
+            raise ValueError(f'invalid variable type value {value}')
+
+    variable: str
+    label: str
+    description: Optional[str] = None
+    type: Type
+    required: bool = False
+    max_length: Optional[int] = None
+    options: Optional[list[str]] = None
+    default: Optional[str] = None
 
 
 class ExternalDataVariableEntity(BaseModel):
@@ -245,6 +257,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     """
     model_config: ModelConfigEntity
     prompt_template: PromptTemplateEntity
+    variables: list[VariableEntity] = []
     external_data_variables: list[ExternalDataVariableEntity] = []
     agent: Optional[AgentEntity] = None
 
@@ -256,7 +269,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
-    text_to_speech: dict = {}
+    text_to_speech: Optional[TextToSpeechEntity] = None
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 
