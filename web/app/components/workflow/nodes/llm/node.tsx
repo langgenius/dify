@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { mockLLMNodeData } from './mock'
+import { mockData } from './mock'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
 const Node: FC = () => {
-  const { provider, name: modelId } = mockLLMNodeData.model
+  const { provider, name: modelId } = mockData.model
   const {
 
     textGenerationModelList,

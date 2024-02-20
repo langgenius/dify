@@ -23,6 +23,12 @@ export type NodeData = {
 }
 export type Node = ReactFlowNode<NodeData>
 
+export type CommonNodeType = {
+  title: string
+  desc: string
+  type: string
+}
+
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 
 export type Variable = {

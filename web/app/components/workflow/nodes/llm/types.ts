@@ -1,10 +1,7 @@
 import type { Resolution } from '@/types/app'
-import type { Memory, ModelConfig, PromptItem, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Variable } from '@/app/components/workflow/types'
 
-export type LLMNodeData = {
-  title: string
-  desc: string
-  type: string
+export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
   variables: Variable[]
   prompt: PromptItem[] | PromptItem

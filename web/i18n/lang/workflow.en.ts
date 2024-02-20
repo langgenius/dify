@@ -3,6 +3,10 @@ const translation = {
     common: {
       outputVars: 'Output Variables',
     },
+    directAnswer: {
+      answer: 'Answer',
+      inputVars: 'Input Variables',
+    },
     llm: {
       model: 'model',
       variables: 'variables',

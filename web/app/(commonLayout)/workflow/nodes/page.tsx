@@ -43,7 +43,11 @@ const Page: FC = () => {
       <Workflow
         nodes={initialNodes}
         edges={initialEdges}
-        selectedNodeId='3'// TODO: for debug. 3: llm.
+        /*
+        * TODO: for debug.
+        * 2 directAnswer 3: llm
+        */
+        selectedNodeId='2'
       />
     </div>
   )
