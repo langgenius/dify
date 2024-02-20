@@ -1,10 +1,10 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { LLMNodeData, Variable } from '../../types'
+import type { Variable } from '../../types'
+import type { LLMNodeType } from './types'
 
-const useInput = (initInputs: LLMNodeData) => {
-  const [inputs, setInputs] = useState<LLMNodeData>(initInputs)
+const useConfig = (initInputs: LLMNodeType) => {
+  const [inputs, setInputs] = useState<LLMNodeType>(initInputs)
 
   // model
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
@@ -14,14 +14,14 @@ const useInput = (initInputs: LLMNodeData) => {
       draft.model.mode = model.mode!
     })
     setInputs(newInputs)
-  }, [inputs.model])
+  }, [inputs, setInputs])
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.completion_params = newParams
     })
     setInputs(newInputs)
-  }, [inputs.model])
+  }, [inputs, setInputs])
 
   // variables
   const handleVarListChange = useCallback((newList: Variable[]) => {
@@ -29,7 +29,7 @@ const useInput = (initInputs: LLMNodeData) => {
       draft.variables = newList
     })
     setInputs(newInputs)
-  }, [inputs.variables])
+  }, [inputs, setInputs])
 
   const handleAddVariable = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
@@ -39,7 +39,7 @@ const useInput = (initInputs: LLMNodeData) => {
       })
     })
     setInputs(newInputs)
-  }, [inputs.variables])
+  }, [inputs, setInputs])
 
   // context
   const toggleContextEnabled = useCallback(() => {
@@ -47,7 +47,7 @@ const useInput = (initInputs: LLMNodeData) => {
       draft.context.enabled = !draft.context.enabled
     })
     setInputs(newInputs)
-  }, [inputs.context.enabled])
+  }, [inputs, setInputs])
 
   return {
     inputs,
@@ -59,4 +59,4 @@ const useInput = (initInputs: LLMNodeData) => {
   }
 }
 
-export default useInput
+export default useConfig
