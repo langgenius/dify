@@ -12,8 +12,8 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
+    ToolPromptMessage,
     UserPromptMessage,
-    ToolPromptMessage
 )
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.errors import (

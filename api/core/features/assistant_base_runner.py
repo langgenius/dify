@@ -22,12 +22,12 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
-    PromptMessage, 
-    PromptMessageTool, 
-    UserPromptMessage, 
-    AssistantPromptMessage, 
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
     ToolPromptMessage,
-    SystemPromptMessage
+    UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -43,7 +43,7 @@ from core.tools.tool.tool import Tool
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
-from models.model import App, Message, MessageAgentThought, MessageFile
+from models.model import Message, MessageAgentThought, MessageFile
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
