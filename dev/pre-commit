@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # start templated
-INSTALL_PYTHON=$(which python3 || command -v python3)
+INSTALL_PYTHON=$(which python || command -v python)
 if [ -z "$INSTALL_PYTHON" ]; then
     echo "Python3 could not be found. Please ensure it is installed and available in your PATH." 1>&2
     exit 1
