@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { Variable } from '../../types'
+import useVarList from '../_base/hooks/use-var-list'
 import type { LLMNodeType } from './types'
 
 const useConfig = (initInputs: LLMNodeType) => {
@@ -24,22 +24,10 @@ const useConfig = (initInputs: LLMNodeType) => {
   }, [inputs, setInputs])
 
   // variables
-  const handleVarListChange = useCallback((newList: Variable[]) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.variables = newList
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleAddVariable = useCallback(() => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.variables.push({
-        variable: '',
-        value_selector: [],
-      })
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const { handleVarListChange, handleAddVariable } = useVarList<LLMNodeType>({
+    inputs,
+    setInputs,
+  })
 
   // context
   const toggleContextEnabled = useCallback(() => {

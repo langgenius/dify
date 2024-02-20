@@ -18,6 +18,9 @@ const translation = {
         output: '生成内容',
         usage: '模型用量信息',
       },
+      code: {
+        inputVars: '输入变量',
+      },
     },
   },
 }

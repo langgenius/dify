@@ -19,6 +19,9 @@ const translation = {
         usage: 'Model Usage Information',
       },
     },
+    code: {
+      inputVars: 'Input Variables',
+    },
   },
 }
 
