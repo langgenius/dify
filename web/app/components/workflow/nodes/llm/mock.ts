@@ -1,5 +1,5 @@
-import type { LLMNodeData } from '../../types'
 import { MemoryRole } from '../../types'
+import type { LLMNodeData } from './types'
 import { Resolution } from '@/types/app'
 
 export const mockLLMNodeData: LLMNodeData = {

@@ -1,5 +1,4 @@
 import type { Node as ReactFlowNode } from 'reactflow'
-import type { Resolution } from '@/types/app'
 
 export enum BlockEnum {
   Start = 'start',
@@ -59,27 +58,6 @@ export type Memory = {
   window: {
     enabled: boolean
     size: number
-  }
-}
-
-export type LLMNodeData = {
-  title: string
-  desc: string
-  type: string
-  model: ModelConfig
-  variables: Variable[]
-  prompt: PromptItem[] | PromptItem
-  memory: Memory
-  context: {
-    enabled: boolean
-    size: number
-  }
-  vision: {
-    enabled: boolean
-    variable_selector: ValueSelector
-    configs: {
-      detail: Resolution
-    }
   }
 }
 
