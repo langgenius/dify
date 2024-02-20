@@ -90,6 +90,7 @@ export type Var = {
 }
 
 export type NodeOutPutVar = {
+  nodeId: string
   title: string
   vars: Var[]
 }

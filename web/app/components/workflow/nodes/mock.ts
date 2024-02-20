@@ -18,6 +18,7 @@ export const mockNodesData: Record<string, any> = {
 
 export const mockNodeOutputVars: NodeOutPutVar[] = [
   {
+    nodeId: 'aaa',
     title: 'Start',
     vars: [
       {
@@ -31,6 +32,7 @@ export const mockNodeOutputVars: NodeOutPutVar[] = [
     ],
   },
   {
+    nodeId: 'bbb',
     title: 'LLM',
     vars: [
       {

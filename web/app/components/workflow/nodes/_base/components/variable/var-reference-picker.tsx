@@ -39,6 +39,7 @@ const VarReferencePicker: FC<Props> = ({
   className,
   isShowNodeName,
   value,
+  onChange,
 }) => {
   const [open, setOpen] = useState(false)
   const hasValue = value.length > 0
@@ -87,7 +88,13 @@ const VarReferencePicker: FC<Props> = ({
           zIndex: 100,
           minWidth: 227,
         }}>
-          <VarReferencePopup vars={mockNodeOutputVars} />
+          <VarReferencePopup
+            vars={mockNodeOutputVars}
+            onChange={(value) => {
+              onChange(value)
+              setOpen(false)
+            }}
+          />
         </PortalToFollowElemContent>
       </PortalToFollowElem>
     </div>
