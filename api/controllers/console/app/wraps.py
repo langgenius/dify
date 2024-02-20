@@ -3,13 +3,14 @@ from functools import wraps
 from typing import Optional, Union
 
 from controllers.console.app.error import AppNotFoundError
-from core.entities.application_entities import AppMode
 from extensions.ext_database import db
 from libs.login import current_user
-from models.model import App
+from models.model import App, ChatbotAppEngine, AppMode
 
 
-def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode]] = None):
+def get_app_model(view: Optional[Callable] = None, *,
+                  mode: Union[AppMode, list[AppMode]] = None,
+                  app_engine: ChatbotAppEngine = None):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):
@@ -37,13 +38,19 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
                 else:
                     modes = [mode]
 
-                # [temp] if workflow is in the mode list, then completion should be in the mode list
-                if AppMode.WORKFLOW in modes:
-                    modes.append(AppMode.COMPLETION)
-
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}
                     raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
+
+            if app_engine is not None:
+                if app_mode not in [AppMode.CHAT, AppMode.WORKFLOW]:
+                    raise AppNotFoundError(f"App mode is not supported for {app_engine.value} app engine.")
+
+                if app_mode == AppMode.CHAT:
+                    # fetch current app model config
+                    app_model_config = app_model.app_model_config
+                    if not app_model_config or app_model_config.chatbot_app_engine != app_engine.value:
+                        raise AppNotFoundError(f"{app_engine.value} app engine is not supported.")
 
             kwargs['app_model'] = app_model
 

@@ -1,5 +1,7 @@
 import json
 import uuid
+from enum import Enum
+from typing import Optional
 
 from flask import current_app, request
 from flask_login import UserMixin
@@ -23,6 +25,25 @@ class DifySetup(db.Model):
 
     version = db.Column(db.String(255), nullable=False)
     setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class AppMode(Enum):
+    WORKFLOW = 'workflow'
+    CHAT = 'chat'
+    AGENT = 'agent'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'AppMode':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid mode value {value}')
 
 
 class App(db.Model):
@@ -56,7 +77,7 @@ class App(db.Model):
         return site
 
     @property
-    def app_model_config(self):
+    def app_model_config(self) -> Optional['AppModelConfig']:
         app_model_config = db.session.query(AppModelConfig).filter(
             AppModelConfig.id == self.app_model_config_id).first()
         return app_model_config
@@ -129,6 +150,12 @@ class App(db.Model):
                     deleted_tools.append(tool['tool_name'])
 
         return deleted_tools
+
+
+class ChatbotAppEngine(Enum):
+    NORMAL = 'normal'
+    WORKFLOW = 'workflow'
+
 
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'

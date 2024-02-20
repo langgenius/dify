@@ -1,10 +1,10 @@
 import json
 
 model_templates = {
-    # completion default mode
-    'completion_default': {
+    # workflow default mode
+    'workflow_default': {
         'app': {
-            'mode': 'completion',
+            'mode': 'workflow',
             'enable_site': True,
             'enable_api': True,
             'is_demo': False,
@@ -15,24 +15,7 @@ model_templates = {
         'model_config': {
             'provider': '',
             'model_id': '',
-            'configs': {},
-            'model': json.dumps({
-                "provider": "openai",
-                "name": "gpt-3.5-turbo-instruct",
-                "mode": "completion",
-                "completion_params": {}
-            }),
-            'user_input_form': json.dumps([
-                {
-                    "paragraph": {
-                        "label": "Query",
-                        "variable": "query",
-                        "required": True,
-                        "default": ""
-                    }
-                }
-            ]),
-            'pre_prompt': '{{query}}'
+            'configs': {}
         }
     },
 
@@ -48,14 +31,70 @@ model_templates = {
             'status': 'normal'
         },
         'model_config': {
-            'provider': '',
-            'model_id': '',
-            'configs': {},
+            'provider': 'openai',
+            'model_id': 'gpt-4',
+            'configs': {
+                'prompt_template': '',
+                'prompt_variables': [],
+                'completion_params': {
+                    'max_token': 512,
+                    'temperature': 1,
+                    'top_p': 1,
+                    'presence_penalty': 0,
+                    'frequency_penalty': 0,
+                }
+            },
             'model': json.dumps({
                 "provider": "openai",
-                "name": "gpt-3.5-turbo",
+                "name": "gpt-4",
                 "mode": "chat",
-                "completion_params": {}
+                "completion_params": {
+                    "max_tokens": 512,
+                    "temperature": 1,
+                    "top_p": 1,
+                    "presence_penalty": 0,
+                    "frequency_penalty": 0
+                }
+            })
+        }
+    },
+
+    # agent default mode
+    'agent_default': {
+        'app': {
+            'mode': 'agent',
+            'enable_site': True,
+            'enable_api': True,
+            'is_demo': False,
+            'api_rpm': 0,
+            'api_rph': 0,
+            'status': 'normal'
+        },
+        'model_config': {
+            'provider': 'openai',
+            'model_id': 'gpt-4',
+            'configs': {
+                'prompt_template': '',
+                'prompt_variables': [],
+                'completion_params': {
+                    'max_token': 512,
+                    'temperature': 1,
+                    'top_p': 1,
+                    'presence_penalty': 0,
+                    'frequency_penalty': 0,
+                }
+            },
+            'model': json.dumps({
+                "provider": "openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": {
+                    "max_tokens": 512,
+                    "temperature": 1,
+                    "top_p": 1,
+                    "presence_penalty": 0,
+                    "frequency_penalty": 0
+                }
             })
         }
     },

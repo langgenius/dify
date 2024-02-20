@@ -11,7 +11,6 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
 from controllers.console.app.error import (
-    AppMoreLikeThisDisabledError,
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
@@ -20,7 +19,6 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.entities.application_entities import AppMode, InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
@@ -28,10 +26,8 @@ from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import Conversation, Message, MessageAnnotation, MessageFeedback
+from models.model import Conversation, Message, MessageAnnotation, MessageFeedback, AppMode
 from services.annotation_service import AppAnnotationService
-from services.completion_service import CompletionService
-from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_service import MessageService
@@ -183,49 +179,6 @@ class MessageAnnotationCountApi(Resource):
         return {'count': count}
 
 
-class MessageMoreLikeThisApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, app_model, message_id):
-        message_id = str(message_id)
-
-        parser = reqparse.RequestParser()
-        parser.add_argument('response_mode', type=str, required=True, choices=['blocking', 'streaming'],
-                            location='args')
-        args = parser.parse_args()
-
-        streaming = args['response_mode'] == 'streaming'
-
-        try:
-            response = CompletionService.generate_more_like_this(
-                app_model=app_model,
-                user=current_user,
-                message_id=message_id,
-                invoke_from=InvokeFrom.DEBUGGER,
-                streaming=streaming
-            )
-            return compact_response(response)
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
-        except MoreLikeThisDisabledError:
-            raise AppMoreLikeThisDisabledError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logging.exception("internal server error.")
-            raise InternalServerError()
-
-
 def compact_response(response: Union[dict, Generator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
@@ -291,7 +244,6 @@ class MessageApi(Resource):
         return message
 
 
-api.add_resource(MessageMoreLikeThisApi, '/apps/<uuid:app_id>/completion-messages/<uuid:message_id>/more-like-this')
 api.add_resource(MessageSuggestedQuestionApi, '/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions')
 api.add_resource(ChatMessageListApi, '/apps/<uuid:app_id>/chat-messages', endpoint='console_chat_messages')
 api.add_resource(MessageFeedbackApi, '/apps/<uuid:app_id>/feedbacks')

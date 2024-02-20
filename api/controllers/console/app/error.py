@@ -85,3 +85,9 @@ class TooManyFilesError(BaseHTTPException):
     error_code = 'too_many_files'
     description = "Only one file is allowed."
     code = 400
+
+
+class DraftWorkflowNotExist(BaseHTTPException):
+    error_code = 'draft_workflow_not_exist'
+    description = "Draft workflow need to be initialized."
+    code = 400

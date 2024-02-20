@@ -8,12 +8,10 @@ from core.application_manager import ApplicationManager
 from core.entities.application_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from extensions.ext_database import db
-from models.model import Account, App, AppModelConfig, Conversation, EndUser, Message
+from models.model import Account, App, AppModelConfig, Conversation, EndUser
 from services.app_model_config_service import AppModelConfigService
-from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
-from services.errors.message import MessageNotExistsError
 
 
 class CompletionService:
@@ -154,62 +152,6 @@ class CompletionService:
             stream=streaming,
             extras={
                 "auto_generate_conversation_name": auto_generate_name
-            }
-        )
-
-    @classmethod
-    def generate_more_like_this(cls, app_model: App, user: Union[Account, EndUser],
-                                message_id: str, invoke_from: InvokeFrom, streaming: bool = True) \
-            -> Union[dict, Generator]:
-        if not user:
-            raise ValueError('user cannot be None')
-
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app_model.id,
-            Message.from_source == ('api' if isinstance(user, EndUser) else 'console'),
-            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Message.from_account_id == (user.id if isinstance(user, Account) else None),
-        ).first()
-
-        if not message:
-            raise MessageNotExistsError()
-
-        current_app_model_config = app_model.app_model_config
-        more_like_this = current_app_model_config.more_like_this_dict
-
-        if not current_app_model_config.more_like_this or more_like_this.get("enabled", False) is False:
-            raise MoreLikeThisDisabledError()
-
-        app_model_config = message.app_model_config
-        model_dict = app_model_config.model_dict
-        completion_params = model_dict.get('completion_params')
-        completion_params['temperature'] = 0.9
-        model_dict['completion_params'] = completion_params
-        app_model_config.model = json.dumps(model_dict)
-
-        # parse files
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
-        file_objs = message_file_parser.transform_message_files(
-            message.files, app_model_config
-        )
-
-        application_manager = ApplicationManager()
-        return application_manager.generate(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            app_model_config_id=app_model_config.id,
-            app_model_config_dict=app_model_config.to_dict(),
-            app_model_config_override=True,
-            user=user,
-            invoke_from=invoke_from,
-            inputs=message.inputs,
-            query=message.query,
-            files=file_objs,
-            conversation=None,
-            stream=streaming,
-            extras={
-                "auto_generate_conversation_name": False
             }
         )
 

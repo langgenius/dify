@@ -2,12 +2,6 @@ from flask_restful import fields
 
 from libs.helper import TimestampField
 
-account_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'email': fields.String
-}
-
 
 annotation_fields = {
     "id": fields.String,
@@ -15,7 +9,7 @@ annotation_fields = {
     "answer": fields.Raw(attribute='content'),
     "hit_count": fields.Integer,
     "created_at": TimestampField,
-    # 'account': fields.Nested(account_fields, allow_null=True)
+    # 'account': fields.Nested(simple_account_fields, allow_null=True)
 }
 
 annotation_list_fields = {

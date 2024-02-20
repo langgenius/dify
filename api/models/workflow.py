@@ -1,6 +1,43 @@
+from enum import Enum
+from typing import Union
+
 from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
+from models.account import Account
+from models.model import AppMode
+
+
+class WorkflowType(Enum):
+    """
+    Workflow Type Enum
+    """
+    WORKFLOW = 'workflow'
+    CHAT = 'chat'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'WorkflowType':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid workflow type value {value}')
+
+    @classmethod
+    def from_app_mode(cls, app_mode: Union[str, AppMode]) -> 'WorkflowType':
+        """
+        Get workflow type from app mode.
+
+        :param app_mode: app mode
+        :return: workflow type
+        """
+        app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
+        return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
 class Workflow(db.Model):
@@ -39,7 +76,7 @@ class Workflow(db.Model):
     __tablename__ = 'workflows'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='workflow_pkey'),
-        db.Index('workflow_version_idx', 'tenant_id', 'app_id', 'type', 'version'),
+        db.Index('workflow_version_idx', 'tenant_id', 'app_id', 'version'),
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
@@ -52,6 +89,14 @@ class Workflow(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_by = db.Column(UUID)
     updated_at = db.Column(db.DateTime)
+
+    @property
+    def created_by_account(self):
+        return Account.query.get(self.created_by)
+
+    @property
+    def updated_by_account(self):
+        return Account.query.get(self.updated_by)
 
 
 class WorkflowRun(db.Model):
@@ -115,6 +160,14 @@ class WorkflowRun(db.Model):
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     finished_at = db.Column(db.DateTime)
+
+    @property
+    def created_by_account(self):
+        return Account.query.get(self.created_by)
+
+    @property
+    def updated_by_account(self):
+        return Account.query.get(self.updated_by)
 
 
 class WorkflowNodeExecution(db.Model):

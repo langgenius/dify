@@ -28,7 +28,7 @@ from core.entities.application_entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
     SensitiveWordAvoidanceEntity,
-    TextToSpeechEntity,
+    TextToSpeechEntity, VariableEntity,
 )
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -93,7 +93,7 @@ class ApplicationManager:
             app_id=app_id,
             app_model_config_id=app_model_config_id,
             app_model_config_dict=app_model_config_dict,
-            app_orchestration_config_entity=self._convert_from_app_model_config_dict(
+            app_orchestration_config_entity=self.convert_from_app_model_config_dict(
                 tenant_id=tenant_id,
                 app_model_config_dict=app_model_config_dict
             ),
@@ -234,7 +234,7 @@ class ApplicationManager:
                 logger.exception(e)
                 raise e
 
-    def _convert_from_app_model_config_dict(self, tenant_id: str, app_model_config_dict: dict) \
+    def convert_from_app_model_config_dict(self, tenant_id: str, app_model_config_dict: dict) \
             -> AppOrchestrationConfigEntity:
         """
         Convert app model config dict to entity.
@@ -384,8 +384,10 @@ class ApplicationManager:
                     config=external_data_tool['config']
                 )
             )
+
+        properties['variables'] = []
         
-        # current external_data_tools
+        # variables and external_data_tools
         for variable in copy_app_model_config_dict.get('user_input_form', []):
             typ = list(variable.keys())[0]
             if typ == 'external_data_tool':
@@ -395,6 +397,30 @@ class ApplicationManager:
                         variable=val['variable'],
                         type=val['type'],
                         config=val['config']
+                    )
+                )
+            elif typ in [VariableEntity.Type.TEXT_INPUT.value, VariableEntity.Type.PARAGRAPH.value]:
+                properties['variables'].append(
+                    VariableEntity(
+                        type=VariableEntity.Type.TEXT_INPUT,
+                        variable=variable[typ].get('variable'),
+                        description=variable[typ].get('description'),
+                        label=variable[typ].get('label'),
+                        required=variable[typ].get('required', False),
+                        max_length=variable[typ].get('max_length'),
+                        default=variable[typ].get('default'),
+                    )
+                )
+            elif typ == VariableEntity.Type.SELECT.value:
+                properties['variables'].append(
+                    VariableEntity(
+                        type=VariableEntity.Type.SELECT,
+                        variable=variable[typ].get('variable'),
+                        description=variable[typ].get('description'),
+                        label=variable[typ].get('label'),
+                        required=variable[typ].get('required', False),
+                        options=variable[typ].get('options'),
+                        default=variable[typ].get('default'),
                     )
                 )
 
