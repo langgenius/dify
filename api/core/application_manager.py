@@ -2,18 +2,34 @@ import json
 import logging
 import threading
 import uuid
-from typing import Any, Generator, Optional, Tuple, Union, cast
+from collections.abc import Generator
+from typing import Any, Optional, Union, cast
+
+from flask import Flask, current_app
+from pydantic import ValidationError
 
 from core.app_runner.assistant_app_runner import AssistantApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException, PublishFrom
-from core.entities.application_entities import (AdvancedChatPromptTemplateEntity,
-                                                AdvancedCompletionPromptTemplateEntity, AgentEntity, AgentToolEntity,
-                                                ApplicationGenerateEntity, AppOrchestrationConfigEntity, DatasetEntity,
-                                                DatasetRetrieveConfigEntity, ExternalDataVariableEntity,
-                                                FileUploadEntity, InvokeFrom, ModelConfigEntity, PromptTemplateEntity,
-                                                SensitiveWordAvoidanceEntity, AgentPromptEntity)
+from core.entities.application_entities import (
+    AdvancedChatPromptTemplateEntity,
+    AdvancedCompletionPromptTemplateEntity,
+    AgentEntity,
+    AgentPromptEntity,
+    AgentToolEntity,
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    ExternalDataVariableEntity,
+    FileUploadEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+    SensitiveWordAvoidanceEntity,
+    TextToSpeechEntity,
+)
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileObj
@@ -25,10 +41,8 @@ from core.prompt.prompt_template import PromptTemplateParser
 from core.provider_manager import ProviderManager
 from core.tools.prompt.template import REACT_PROMPT_TEMPLATES
 from extensions.ext_database import db
-from flask import Flask, current_app
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageFile
-from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -559,7 +573,11 @@ class ApplicationManager:
         text_to_speech_dict = copy_app_model_config_dict.get('text_to_speech')
         if text_to_speech_dict:
             if 'enabled' in text_to_speech_dict and text_to_speech_dict['enabled']:
-                properties['text_to_speech'] = True
+                properties['text_to_speech'] = TextToSpeechEntity(
+                    enabled=text_to_speech_dict.get('enabled'),
+                    voice=text_to_speech_dict.get('voice'),
+                    language=text_to_speech_dict.get('language'),
+                )
 
         # sensitive word avoidance
         sensitive_word_avoidance_dict = copy_app_model_config_dict.get('sensitive_word_avoidance')
@@ -573,7 +591,7 @@ class ApplicationManager:
         return AppOrchestrationConfigEntity(**properties)
 
     def _init_generate_records(self, application_generate_entity: ApplicationGenerateEntity) \
-            -> Tuple[Conversation, Message]:
+            -> tuple[Conversation, Message]:
         """
         Initialize generate records
         :param application_generate_entity: application generate entity

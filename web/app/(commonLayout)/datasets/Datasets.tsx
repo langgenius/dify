@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { debounce } from 'lodash-es'
+import { useTranslation } from 'react-i18next'
 import NewDatasetCard from './NewDatasetCard'
 import DatasetCard from './DatasetCard'
 import type { DataSetListResponse } from '@/models/datasets'
@@ -27,8 +28,11 @@ const Datasets = ({
   const loadingStateRef = useRef(false)
   const anchorRef = useRef<HTMLAnchorElement>(null)
 
+  const { t } = useTranslation()
+
   useEffect(() => {
     loadingStateRef.current = isLoading
+    document.title = `${t('dataset.knowledge')} - Dify`
   }, [isLoading])
 
   useEffect(() => {

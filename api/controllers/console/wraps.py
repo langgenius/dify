@@ -1,10 +1,12 @@
-# -*- coding:utf-8 -*-
+import json
 from functools import wraps
 
-from controllers.console.workspace.error import AccountNotInitializedError
-from flask import abort, current_app
+from flask import abort, current_app, request
 from flask_login import current_user
+
+from controllers.console.workspace.error import AccountNotInitializedError
 from services.feature_service import FeatureService
+from services.operation_service import OperationService
 
 
 def account_initialization_required(view):
@@ -73,3 +75,20 @@ def cloud_edition_billing_resource_check(resource: str,
         return decorated
     return interceptor
 
+
+def cloud_utm_record(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        try:
+            features = FeatureService.get_features(current_user.current_tenant_id)
+
+            if features.billing.enabled:
+                utm_info = request.cookies.get('utm_info')
+
+                if utm_info:
+                    utm_info = json.loads(utm_info)
+                    OperationService.record_utm(current_user.current_tenant_id, utm_info)
+        except Exception as e:
+            pass
+        return view(*args, **kwargs)
+    return decorated

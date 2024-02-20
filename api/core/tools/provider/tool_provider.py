@@ -1,21 +1,25 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from core.tools.entities.tool_entities import ToolProviderType, \
-    ToolProviderIdentity, ToolParamter, ToolProviderCredentials
-from core.tools.tool.tool import Tool
+from core.tools.entities.tool_entities import (
+    ToolParameter,
+    ToolProviderCredentials,
+    ToolProviderIdentity,
+    ToolProviderType,
+)
 from core.tools.entities.user_entities import UserToolProviderCredentials
-from core.tools.errors import ToolNotFoundError, \
-    ToolParamterValidationError, ToolProviderCredentialValidationError
+from core.tools.errors import ToolNotFoundError, ToolParameterValidationError, ToolProviderCredentialValidationError
+from core.tools.tool.tool import Tool
+
 
 class ToolProviderController(BaseModel, ABC):
     identity: Optional[ToolProviderIdentity] = None
-    tools: Optional[List[Tool]] = None
-    credentials_schema: Optional[Dict[str, ToolProviderCredentials]] = None
+    tools: Optional[list[Tool]] = None
+    credentials_schema: Optional[dict[str, ToolProviderCredentials]] = None
 
-    def get_credentials_schema(self) -> Dict[str, ToolProviderCredentials]:
+    def get_credentials_schema(self) -> dict[str, ToolProviderCredentials]:
         """
             returns the credentials schema of the provider
 
@@ -33,7 +37,7 @@ class ToolProviderController(BaseModel, ABC):
         return UserToolProviderCredentials(credentials=credentials)
 
     @abstractmethod
-    def get_tools(self) -> List[Tool]:
+    def get_tools(self) -> list[Tool]:
         """
             returns a list of tools that the provider can provide
 
@@ -50,7 +54,7 @@ class ToolProviderController(BaseModel, ABC):
         """
         pass
 
-    def get_parameters(self, tool_name: str) -> List[ToolParamter]:
+    def get_parameters(self, tool_name: str) -> list[ToolParameter]:
         """
             returns the parameters of the tool
 
@@ -71,7 +75,7 @@ class ToolProviderController(BaseModel, ABC):
         """
         return ToolProviderType.BUILT_IN
 
-    def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
+    def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         """
             validate the parameters of the tool and set the default value if needed
 
@@ -80,67 +84,67 @@ class ToolProviderController(BaseModel, ABC):
         """
         tool_parameters_schema = self.get_parameters(tool_name)
         
-        tool_parameters_need_to_validate: Dict[str, ToolParamter] = {}
+        tool_parameters_need_to_validate: dict[str, ToolParameter] = {}
         for parameter in tool_parameters_schema:
             tool_parameters_need_to_validate[parameter.name] = parameter
 
         for parameter in tool_parameters:
             if parameter not in tool_parameters_need_to_validate:
-                raise ToolParamterValidationError(f'parameter {parameter} not found in tool {tool_name}')
+                raise ToolParameterValidationError(f'parameter {parameter} not found in tool {tool_name}')
             
             # check type
             parameter_schema = tool_parameters_need_to_validate[parameter]
-            if parameter_schema.type == ToolParamter.ToolParameterType.STRING:
+            if parameter_schema.type == ToolParameter.ToolParameterType.STRING:
                 if not isinstance(tool_parameters[parameter], str):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be string')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be string')
             
-            elif parameter_schema.type == ToolParamter.ToolParameterType.NUMBER:
-                if not isinstance(tool_parameters[parameter], (int, float)):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be number')
+            elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
+                if not isinstance(tool_parameters[parameter], int | float):
+                    raise ToolParameterValidationError(f'parameter {parameter} should be number')
                 
                 if parameter_schema.min is not None and tool_parameters[parameter] < parameter_schema.min:
-                    raise ToolParamterValidationError(f'parameter {parameter} should be greater than {parameter_schema.min}')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be greater than {parameter_schema.min}')
                 
                 if parameter_schema.max is not None and tool_parameters[parameter] > parameter_schema.max:
-                    raise ToolParamterValidationError(f'parameter {parameter} should be less than {parameter_schema.max}')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be less than {parameter_schema.max}')
                 
-            elif parameter_schema.type == ToolParamter.ToolParameterType.BOOLEAN:
+            elif parameter_schema.type == ToolParameter.ToolParameterType.BOOLEAN:
                 if not isinstance(tool_parameters[parameter], bool):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be boolean')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be boolean')
                 
-            elif parameter_schema.type == ToolParamter.ToolParameterType.SELECT:
+            elif parameter_schema.type == ToolParameter.ToolParameterType.SELECT:
                 if not isinstance(tool_parameters[parameter], str):
-                    raise ToolParamterValidationError(f'parameter {parameter} should be string')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be string')
                 
                 options = parameter_schema.options
                 if not isinstance(options, list):
-                    raise ToolParamterValidationError(f'parameter {parameter} options should be list')
+                    raise ToolParameterValidationError(f'parameter {parameter} options should be list')
                 
                 if tool_parameters[parameter] not in [x.value for x in options]:
-                    raise ToolParamterValidationError(f'parameter {parameter} should be one of {options}')
+                    raise ToolParameterValidationError(f'parameter {parameter} should be one of {options}')
                 
             tool_parameters_need_to_validate.pop(parameter)
 
         for parameter in tool_parameters_need_to_validate:
             parameter_schema = tool_parameters_need_to_validate[parameter]
             if parameter_schema.required:
-                raise ToolParamterValidationError(f'parameter {parameter} is required')
+                raise ToolParameterValidationError(f'parameter {parameter} is required')
             
             # the parameter is not set currently, set the default value if needed
             if parameter_schema.default is not None:
                 default_value = parameter_schema.default
                 # parse default value into the correct type
-                if parameter_schema.type == ToolParamter.ToolParameterType.STRING or \
-                    parameter_schema.type == ToolParamter.ToolParameterType.SELECT:
+                if parameter_schema.type == ToolParameter.ToolParameterType.STRING or \
+                    parameter_schema.type == ToolParameter.ToolParameterType.SELECT:
                     default_value = str(default_value)
-                elif parameter_schema.type == ToolParamter.ToolParameterType.NUMBER:
+                elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
                     default_value = float(default_value)
-                elif parameter_schema.type == ToolParamter.ToolParameterType.BOOLEAN:
+                elif parameter_schema.type == ToolParameter.ToolParameterType.BOOLEAN:
                     default_value = bool(default_value)
 
                 tool_parameters[parameter] = default_value
 
-    def validate_credentials_format(self, credentials: Dict[str, Any]) -> None:
+    def validate_credentials_format(self, credentials: dict[str, Any]) -> None:
         """
             validate the format of the credentials of the provider and set the default value if needed
 
@@ -150,7 +154,7 @@ class ToolProviderController(BaseModel, ABC):
         if credentials_schema is None:
             return
         
-        credentials_need_to_validate: Dict[str, ToolProviderCredentials] = {}
+        credentials_need_to_validate: dict[str, ToolProviderCredentials] = {}
         for credential_name in credentials_schema:
             credentials_need_to_validate[credential_name] = credentials_schema[credential_name]
 
@@ -194,7 +198,7 @@ class ToolProviderController(BaseModel, ABC):
 
                 credentials[credential_name] = default_value
     
-    def validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 
@@ -208,7 +212,7 @@ class ToolProviderController(BaseModel, ABC):
         self._validate_credentials(credentials)
 
     @abstractmethod
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 

@@ -4,6 +4,13 @@ import {
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type {
+  AppConversationData,
+  AppData,
+  AppMeta,
+  ConversationItem,
+} from '@/models/share'
+import type { ChatConfig } from '@/app/components/base/chat/types'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -18,7 +25,7 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boo
   }
 }
 
-function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
+export function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
@@ -59,11 +66,11 @@ export const sendCompletionMessage = async (body: Record<string, any>, { onData,
 }
 
 export const fetchAppInfo = async () => {
-  return get('/site')
+  return get('/site') as Promise<AppData>
 }
 
 export const fetchConversations = async (isInstalledApp: boolean, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
-  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } })
+  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
 }
 
 export const pinConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
@@ -83,11 +90,11 @@ export const renameConversation = async (isInstalledApp: boolean, installedAppId
 }
 
 export const generationConversationName = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
-  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } })
+  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } }) as Promise<ConversationItem>
 }
 
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
-  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
+  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }) as any
 }
 
 // Abandoned API interface
@@ -97,11 +104,11 @@ export const fetchChatList = async (conversationId: string, isInstalledApp: bool
 
 // init value. wait for server update
 export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '') => {
-  return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId))
+  return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
 }
 
 export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {
-  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId))
+  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId)) as Promise<AppMeta>
 }
 
 export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {

@@ -1,26 +1,27 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
-from typing import Any, Dict, List, Union
-from requests.exceptions import HTTPError, ReadTimeout
+from typing import Any, Union
 
 import yfinance
+from requests.exceptions import HTTPError, ReadTimeout
+
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class YahooFinanceSearchTickerTool(BuiltinTool):
-    def _invoke(self,user_id: str, tool_paramters: Dict[str, Any]) \
-          -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self,user_id: str, tool_parameters: dict[str, Any]) \
+          -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         '''
             invoke tools
         '''
         
-        query = tool_paramters.get('symbol', '')
+        query = tool_parameters.get('symbol', '')
         if not query:
             return self.create_text_message('Please input symbol')
         
         try:
             return self.run(ticker=query, user_id=user_id)
         except (HTTPError, ReadTimeout):
-            return self.create_text_message(f'There is a internet connection problem. Please try again later.')
+            return self.create_text_message('There is a internet connection problem. Please try again later.')
 
     def run(self, ticker: str, user_id: str) -> ToolInvokeMessage:
         company = yfinance.Ticker(ticker)

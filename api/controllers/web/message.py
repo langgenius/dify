@@ -1,30 +1,37 @@
-# -*- coding:utf-8 -*-
 import json
 import logging
-from typing import Generator, Union
+from collections.abc import Generator
+from typing import Union
+
+from flask import Response, stream_with_context
+from flask_restful import fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.web import api
-from controllers.web.error import (AppMoreLikeThisDisabledError, AppSuggestedQuestionsAfterAnswerDisabledError,
-                                   CompletionRequestError, NotChatAppError, NotCompletionAppError,
-                                   ProviderModelCurrentlyNotSupportError, ProviderNotInitializeError,
-                                   ProviderQuotaExceededError)
+from controllers.web.error import (
+    AppMoreLikeThisDisabledError,
+    AppSuggestedQuestionsAfterAnswerDisabledError,
+    CompletionRequestError,
+    NotChatAppError,
+    NotCompletionAppError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.web.wraps import WebApiResource
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields
-from flask import Response, stream_with_context
-from flask_restful import fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
 from libs.helper import TimestampField, uuid_value
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
-from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class MessageListApi(WebApiResource):
@@ -153,8 +160,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            for chunk in response:
-                yield chunk
+            yield from response
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

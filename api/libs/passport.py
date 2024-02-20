@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 import jwt
 from flask import current_app
 from werkzeug.exceptions import Unauthorized

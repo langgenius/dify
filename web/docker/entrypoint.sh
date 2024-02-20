@@ -10,4 +10,4 @@ export NEXT_PUBLIC_PUBLIC_API_PREFIX=${APP_API_URL}/api
 export NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN}
 export NEXT_PUBLIC_SITE_ABOUT=${SITE_ABOUT}
 
-node ./server.js
+pm2 start ./pm2.json --no-daemon

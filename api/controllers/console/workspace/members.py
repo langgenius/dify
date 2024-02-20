@@ -1,4 +1,3 @@
-# -*- coding:utf-8 -*-
 from flask import current_app
 from flask_login import current_user
 from flask_restful import Resource, abort, fields, marshal_with, reqparse
@@ -12,6 +11,7 @@ from libs.helper import TimestampField
 from libs.login import login_required
 from models.account import Account
 from services.account_service import RegisterService, TenantService
+from services.errors.account import AccountAlreadyInTenantError
 
 account_fields = {
     'id': fields.String,
@@ -52,10 +52,12 @@ class MemberInviteEmailApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('emails', type=str, required=True, location='json', action='append')
         parser.add_argument('role', type=str, required=True, default='admin', location='json')
+        parser.add_argument('language', type=str, required=False, location='json')
         args = parser.parse_args()
 
         invitee_emails = args['emails']
         invitee_role = args['role']
+        interface_language = args['language']
         if invitee_role not in ['admin', 'normal']:
             return {'code': 'invalid-role', 'message': 'Invalid role'}, 400
 
@@ -64,13 +66,19 @@ class MemberInviteEmailApi(Resource):
         console_web_url = current_app.config.get("CONSOLE_WEB_URL")
         for invitee_email in invitee_emails:
             try:
-                token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role,
-                                                          inviter=inviter)
+                token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter)
                 invitation_results.append({
                     'status': 'success',
                     'email': invitee_email,
                     'url': f'{console_web_url}/activate?email={invitee_email}&token={token}'
                 })
+            except AccountAlreadyInTenantError:
+                invitation_results.append({
+                    'status': 'success',
+                    'email': invitee_email,
+                    'url': f'{console_web_url}/signin'
+                })
+                break
             except Exception as e:
                 invitation_results.append({
                     'status': 'failed',

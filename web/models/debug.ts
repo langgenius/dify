@@ -75,7 +75,11 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 
-export type TextToSpeechConfig = MoreLikeThisConfig
+export type TextToSpeechConfig = {
+  enabled: boolean
+  voice?: string
+  language?: string
+}
 
 export type CitationConfig = MoreLikeThisConfig
 

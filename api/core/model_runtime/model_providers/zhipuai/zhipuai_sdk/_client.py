@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import Union, Mapping
-
-from typing_extensions import override
-
-from .core import _jwt_token
-from .core._errors import ZhipuAIError
-from .core._http_client import HttpClient, ZHIPUAI_DEFAULT_MAX_RETRIES
-from .core._base_type import NotGiven, NOT_GIVEN
-from . import api_resource
 import os
+from collections.abc import Mapping
+from typing import Union
+
 import httpx
 from httpx import Timeout
+from typing_extensions import override
+
+from . import api_resource
+from .core import _jwt_token
+from .core._base_type import NOT_GIVEN, NotGiven
+from .core._errors import ZhipuAIError
+from .core._http_client import ZHIPUAI_DEFAULT_MAX_RETRIES, HttpClient
 
 
 class ZhipuAI(HttpClient):
@@ -37,7 +38,7 @@ class ZhipuAI(HttpClient):
         if base_url is None:
             base_url = os.environ.get("ZHIPUAI_BASE_URL")
         if base_url is None:
-            base_url = f"https://open.bigmodel.cn/api/paas/v4"
+            base_url = "https://open.bigmodel.cn/api/paas/v4"
         from .__version__ import __version__
         super().__init__(
             version=__version__,

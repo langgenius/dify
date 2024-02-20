@@ -1,5 +1,9 @@
 import threading
-from typing import List, Optional, Type
+from typing import Optional
+
+from flask import current_app
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.embedding.cached_embedding import CacheEmbedding
@@ -9,10 +13,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
-from flask import current_app
-from langchain.tools import BaseTool
 from models.dataset import Dataset, Document, DocumentSegment
-from pydantic import BaseModel, Field
 from services.retrieval_service import RetrievalService
 
 default_retrieval_model = {
@@ -34,14 +35,14 @@ class DatasetRetrieverToolInput(BaseModel):
 class DatasetRetrieverTool(BaseTool):
     """Tool for querying a Dataset."""
     name: str = "dataset"
-    args_schema: Type[BaseModel] = DatasetRetrieverToolInput
+    args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
 
     tenant_id: str
     dataset_id: str
     top_k: int = 2
     score_threshold: Optional[float] = None
-    hit_callbacks: List[DatasetIndexToolCallbackHandler] = []
+    hit_callbacks: list[DatasetIndexToolCallbackHandler] = []
     return_resource: bool
     retriever_from: str
 

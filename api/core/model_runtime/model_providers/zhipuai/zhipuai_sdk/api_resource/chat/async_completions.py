@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-from typing import Union, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Optional, Union
 
 import httpx
-from typing_extensions import Literal
 
 from ...core._base_api import BaseAPI
-from ...core._base_type import NotGiven, NOT_GIVEN, Headers
+from ...core._base_type import NOT_GIVEN, Headers, NotGiven
 from ...core._http_client import make_user_request_input
-from ...types.chat.async_chat_completion import AsyncTaskStatus, AsyncCompletion
+from ...types.chat.async_chat_completion import AsyncCompletion, AsyncTaskStatus
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI
 
 
 class AsyncCompletions(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
 
@@ -29,8 +28,8 @@ class AsyncCompletions(BaseAPI):
             top_p: Optional[float] | NotGiven = NOT_GIVEN,
             max_tokens: int | NotGiven = NOT_GIVEN,
             seed: int | NotGiven = NOT_GIVEN,
-            messages: Union[str, List[str], List[int], List[List[int]], None],
-            stop: Optional[Union[str, List[str], None]] | NotGiven = NOT_GIVEN,
+            messages: Union[str, list[str], list[int], list[list[int]], None],
+            stop: Optional[Union[str, list[str], None]] | NotGiven = NOT_GIVEN,
             sensitive_word_check: Optional[object] | NotGiven = NOT_GIVEN,
             tools: Optional[object] | NotGiven = NOT_GIVEN,
             tool_choice: str | NotGiven = NOT_GIVEN,

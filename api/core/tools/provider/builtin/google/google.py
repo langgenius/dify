@@ -1,12 +1,12 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from typing import Any
+
 from core.tools.errors import ToolProviderCredentialValidationError
-
 from core.tools.provider.builtin.google.tools.google_search import GoogleSearchTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
-from typing import Any, Dict, List
 
 class GoogleProvider(BuiltinToolProviderController):
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             GoogleSearchTool().fork_tool_runtime(
                 meta={
@@ -14,7 +14,7 @@ class GoogleProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id='',
-                tool_paramters={
+                tool_parameters={
                     "query": "test",
                     "result_type": "link"
                 },

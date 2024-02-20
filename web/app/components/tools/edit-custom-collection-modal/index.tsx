@@ -83,7 +83,7 @@ const EditCustomCollectionModal: FC<Props> = ({
     (async () => {
       const customCollection = getCustomCollection()
       try {
-        const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema) as any
+        const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema)
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = schema_type
         })
@@ -126,6 +126,19 @@ const EditCustomCollectionModal: FC<Props> = ({
     })
   }
 
+  const getPath = (url: string) => {
+    if (!url)
+      return ''
+
+    try {
+      const path = new URL(url).pathname
+      return path || ''
+    }
+    catch (e) {
+      return url
+    }
+  }
+
   return (
     <>
       <Drawer
@@ -164,7 +177,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                     <div className='mx-2 w-px h-3 bg-black/5'></div>
                     <a
                       href="https://swagger.io/specification/"
-                      target='_blank'
+                      target='_blank' rel='noopener noreferrer'
                       className='flex items-center h-[18px] space-x-1  text-[#155EEF]'
                     >
                       <div className='text-xs font-normal'>{t('tools.createTool.viewSchemaSpec')}</div>
@@ -202,7 +215,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3">{item.operation_id}</td>
                           <td className="p-2 pl-3 text-gray-500 w-[236px]">{item.summary}</td>
                           <td className="p-2 pl-3">{item.method}</td>
-                          <td className="p-2 pl-3">{item.server_url ? new URL(item.server_url).pathname : ''}</td>
+                          <td className="p-2 pl-3">{getPath(item.server_url)}</td>
                           <td className="p-2 pl-3 w-[62px]">
                             <Button
                               className='!h-6 !px-2 text-xs font-medium text-gray-700 whitespace-nowrap'

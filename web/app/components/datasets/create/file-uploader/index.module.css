@@ -1,6 +1,7 @@
 .fileUploader {
   @apply mb-6;
 }
+
 .fileUploader .title {
   @apply mb-2;
   font-weight: 500;
@@ -8,12 +9,14 @@
   line-height: 24px;
   color: #344054;
 }
+
 .fileUploader .tip {
   font-weight: 400;
   font-size: 12px;
   line-height: 18px;
   color: #667085;
 }
+
 .uploader {
   @apply relative box-border flex justify-center items-center mb-2 p-3;
   flex-direction: column;
@@ -27,10 +30,12 @@
   line-height: 20px;
   color: #667085;
 }
+
 .uploader.dragging {
   background: #F5F8FF;
   border: 1px dashed #B2CCFF;
 }
+
 .uploader .draggingCover {
   position: absolute;
   top: 0;
@@ -38,6 +43,7 @@
   width: 100%;
   height: 100%;
 }
+
 .uploader .uploadIcon {
   content: '';
   display: block;
@@ -47,25 +53,29 @@
   background: center no-repeat url(../assets/upload-cloud-01.svg);
   background-size: contain;
 }
-.uploader .browse{
+
+.uploader .browse {
   @apply pl-1 cursor-pointer;
   color: #155eef;
 }
+
 .fileList {
   @apply space-y-2;
 }
+
 .file {
   @apply box-border relative flex items-center justify-between;
   padding: 8px 12px 8px 8px;
   max-width: 640px;
   height: 40px;
   background: #ffffff;
-  border:  0.5px solid #EAECF0;
+  border: 0.5px solid #EAECF0;
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
 }
+
 .progressbar {
   position: absolute;
   top: 0;
@@ -79,11 +89,13 @@
   background: #FCFCFD;
   border: 0.5px solid #EAECF0;
 }
+
 .file.active {
   background: #F5F8FF;
   border: 1px solid #D1E0FF;
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
 }
+
 .file:hover {
   background: #F5F8FF;
   border: 1px solid #D1E0FF;
@@ -95,33 +107,46 @@
   background-image: url(../assets/unknow.svg);
   background-size: 24px;
 }
+
 .fileIcon.csv {
   background-image: url(../assets/csv.svg);
 }
+
+.fileIcon.doc {
+  background-image: url(../assets/doc.svg);
+}
+
 .fileIcon.docx {
   background-image: url(../assets/docx.svg);
 }
+
 .fileIcon.xlsx,
 .fileIcon.xls {
   background-image: url(../assets/xlsx.svg);
 }
+
 .fileIcon.pdf {
   background-image: url(../assets/pdf.svg);
 }
+
 .fileIcon.html,
 .fileIcon.htm {
   background-image: url(../assets/html.svg);
 }
+
 .fileIcon.md,
 .fileIcon.markdown {
   background-image: url(../assets/md.svg);
 }
+
 .fileIcon.txt {
   background-image: url(../assets/txt.svg);
 }
+
 .fileIcon.json {
   background-image: url(../assets/json.svg);
 }
+
 .fileInfo {
   @apply grow flex items-center;
   z-index: 1;
@@ -129,6 +154,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .filename {
   font-weight: 500;
   font-size: 13px;
@@ -143,10 +169,12 @@
   line-height: 18px;
   color: #667085;
 }
+
 .actionWrapper {
   @apply flex items-center shrink-0;
   z-index: 1;
 }
+
 .actionWrapper .percent {
   font-weight: 400;
   font-size: 13px;
@@ -162,6 +190,7 @@
   background-size: 16px;
   cursor: pointer;
 }
+
 .file:hover .actionWrapper .remove {
   display: block;
 }

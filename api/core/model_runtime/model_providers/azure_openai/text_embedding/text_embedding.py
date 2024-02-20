@@ -1,17 +1,18 @@
 import base64
 import copy
 import time
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import tiktoken
+from openai import AzureOpenAI
+
 from core.model_runtime.entities.model_entities import AIModelEntity, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
 from core.model_runtime.model_providers.azure_openai._constant import EMBEDDING_BASE_MODELS, AzureBaseModel
-from openai import AzureOpenAI
 
 
 class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
@@ -148,7 +149,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
 
     @staticmethod
     def _embedding_invoke(model: str, client: AzureOpenAI, texts: Union[list[str], str],
-                          extra_model_kwargs: dict) -> Tuple[list[list[float]], int]:
+                          extra_model_kwargs: dict) -> tuple[list[list[float]], int]:
         response = client.embeddings.create(
             input=texts,
             model=model,

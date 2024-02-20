@@ -273,7 +273,7 @@ const translation = {
     maxLength: '最大长度',
     options: '选项',
     addOption: '添加选项',
-    apiBasedVar: '基于API的变量',
+    apiBasedVar: '基于 API 的变量',
   },
   vision: {
     name: '视觉',
@@ -292,6 +292,18 @@ const translation = {
       localUpload: '本地上传',
       url: 'URL',
       uploadLimit: '上传数量限制',
+    },
+  },
+  voice: {
+    name: '音色',
+    defaultDisplay: '缺省音色',
+    description: '文本转语音音色设置',
+    settings: '设置',
+    voiceSettings: {
+      title: '音色设置',
+      language: '语言',
+      resolutionTooltip: '文本转语音音色支持语言。',
+      voice: '音色',
     },
   },
   openingStatement: {

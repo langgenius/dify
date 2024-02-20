@@ -48,6 +48,10 @@
   - `file_upload_limit` (int) Maximum file upload limit, in MB (available for model type `speech2text`)
   - `supported_file_extensions` (string) Supported file extension formats, e.g., mp3, mp4 (available for model type `speech2text`)
   - `default_voice` (string)  default voice, e.g.：alloy,echo,fable,onyx,nova,shimmer（available for model type `tts`）
+  - `voices` (list)  List of available voice.（available for model type `tts`）
+    - `mode` (string)  voice model.（available for model type `tts`）
+    - `name` (string)  voice model display name.（available for model type `tts`）
+    - `lanuage` (string)  the voice model supports languages.（available for model type `tts`）
   - `word_limit` (int)  Single conversion word limit, paragraphwise by default（available for model type `tts`）
   - `audio_type` (string)  Support audio file extension format, e.g.：mp3,wav（available for model type `tts`）
   - `max_workers` (int)  Number of concurrent workers supporting text and audio conversion（available for model type`tts`）

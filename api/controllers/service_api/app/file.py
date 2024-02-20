@@ -1,12 +1,17 @@
+from flask import request
+from flask_restful import marshal_with
+
 import services
 from controllers.service_api import api
 from controllers.service_api.app import create_or_update_end_user_for_user_id
-from controllers.service_api.app.error import (FileTooLargeError, NoFileUploadedError, TooManyFilesError,
-                                               UnsupportedFileTypeError)
+from controllers.service_api.app.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.service_api.wraps import AppApiResource
 from fields.file_fields import file_fields
-from flask import request
-from flask_restful import marshal_with
 from services.file_service import FileService
 
 

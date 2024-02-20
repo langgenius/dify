@@ -1,22 +1,31 @@
 import logging
 
+from flask_login import current_user
+from flask_restful import Resource, marshal, reqparse
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+
 import services
 from controllers.console import api
-from controllers.console.app.error import (CompletionRequestError, ProviderModelCurrentlyNotSupportError,
-                                           ProviderNotInitializeError, ProviderQuotaExceededError)
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.datasets.error import DatasetNotInitializedError, HighQualityDatasetOnlyError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.errors.error import (LLMBadRequestError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError,
-                               QuotaExceededError)
+from core.errors.error import (
+    LLMBadRequestError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from fields.hit_testing_fields import hit_testing_record_fields
-from flask_login import current_user
-from flask_restful import Resource, marshal, reqparse
 from libs.login import login_required
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 
 class HitTestingApi(Resource):
@@ -67,8 +76,8 @@ class HitTestingApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                f"No Embedding Model or Reranking Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
+                "No Embedding Model or Reranking Model available. Please configure a valid provider "
+                "in the Settings -> Model Provider.")
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:

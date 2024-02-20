@@ -32,7 +32,7 @@ const Popup: FC<PopupProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const fileType = data.dataSourceType === 'upload_file'
+  const fileType = data.dataSourceType !== 'notion'
     ? (/\.([^.]*)$/g.exec(data.documentName)?.[1] || '')
     : 'notion'
 
@@ -48,7 +48,7 @@ const Popup: FC<PopupProps> = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className='flex items-center px-2 max-w-[240px] h-7 bg-white rounded-lg'>
-          <FileIcon type={fileType} className='mr-1 w-4 h-4' />
+          <FileIcon type={fileType} className='shrink-0 mr-1 w-4 h-4' />
           <div className='text-xs text-gray-600 truncate'>{data.documentName}</div>
         </div>
       </PortalToFollowElemTrigger>
@@ -56,7 +56,7 @@ const Popup: FC<PopupProps> = ({
         <div className='w-[360px] bg-gray-50 rounded-xl shadow-lg'>
           <div className='px-4 pt-3 pb-2'>
             <div className='flex items-center h-[18px]'>
-              <FileIcon type={fileType} className='mr-1 w-4 h-4' />
+              <FileIcon type={fileType} className='shrink-0 mr-1 w-4 h-4' />
               <div className='text-xs font-medium text-gray-600 truncate'>{data.documentName}</div>
             </div>
           </div>
@@ -65,22 +65,24 @@ const Popup: FC<PopupProps> = ({
               data.sources.map((source, index) => (
                 <Fragment key={index}>
                   <div className='group py-3'>
-                    {
-                      showHitInfo && (
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center px-1.5 h-5 border border-gray-200 rounded-md'>
-                            <Hash02 className='mr-0.5 w-3 h-3 text-gray-400' />
-                            <div className='text-[11px] font-medium text-gray-500'>{source.segment_position}</div>
-                          </div>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='flex items-center px-1.5 h-5 border border-gray-200 rounded-md'>
+                        <Hash02 className='mr-0.5 w-3 h-3 text-gray-400' />
+                        <div className='text-[11px] font-medium text-gray-500'>
+                          {source.segment_position || index + 1}
+                        </div>
+                      </div>
+                      {
+                        showHitInfo && (
                           <Link
                             href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
                             className='hidden items-center h-[18px] text-xs text-primary-600 group-hover:flex'>
                             {t('common.chat.citation.linkToDataset')}
                             <ArrowUpRight className='ml-1 w-3 h-3' />
                           </Link>
-                        </div>
-                      )
-                    }
+                        )
+                      }
+                    </div>
                     <div className='text-[13px] text-gray-800'>{source.content}</div>
                     {
                       showHitInfo && (

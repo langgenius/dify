@@ -154,7 +154,7 @@ const Prompt: FC<ISimplePromptInput> = ({
               <>
                 <div className='mx-1 w-px h-3.5 bg-black/5'></div>
                 <div
-                  className='flex items-center px-2 space-x-1 leading-[18px] text-xs font-semibold text-[#444CE7] cursor-pointer'
+                  className='flex items-center px-2 space-x-1 text-xs font-semibold text-[#444CE7] cursor-pointer'
                   onClick={() => setPromptMode(PromptMode.advanced)}
                 >
                   <div>{t('appDebug.promptMode.advanced')}</div>

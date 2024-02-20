@@ -1,31 +1,32 @@
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.entities.tool_entities import ToolInvokeMessage
-
-from typing import Any, Dict, List, Union
-from requests.exceptions import HTTPError, ReadTimeout
 from datetime import datetime
+from typing import Any, Union
 
-from yfinance import download
 import pandas as pd
+from requests.exceptions import HTTPError, ReadTimeout
+from yfinance import download
+
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class YahooFinanceAnalyticsTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_paramters: Dict[str, Any]) \
-          -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) \
+          -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        symbol = tool_paramters.get('symbol', '')
+        symbol = tool_parameters.get('symbol', '')
         if not symbol:
             return self.create_text_message('Please input symbol')
         
         time_range = [None, None]
-        start_date = tool_paramters.get('start_date', '')
+        start_date = tool_parameters.get('start_date', '')
         if start_date:
             time_range[0] = start_date
         else:
             time_range[0] = '1800-01-01'
 
-        end_date = tool_paramters.get('end_date', '')
+        end_date = tool_parameters.get('end_date', '')
         if end_date:
             time_range[1] = end_date
         else:
@@ -65,5 +66,5 @@ class YahooFinanceAnalyticsTool(BuiltinTool):
         try:
             return self.create_text_message(str(summary_df.to_dict()))
         except (HTTPError, ReadTimeout):
-            return self.create_text_message(f'There is a internet connection problem. Please try again later.')
+            return self.create_text_message('There is a internet connection problem. Please try again later.')
     

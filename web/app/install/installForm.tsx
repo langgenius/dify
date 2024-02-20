@@ -9,8 +9,8 @@ import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
 // import I18n from '@/context/i18n'
 
-import { fetchSetupStatus, setup } from '@/service/common'
-import type { SetupStatusResponse } from '@/models/common'
+import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
+import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
@@ -70,10 +70,16 @@ const InstallForm = () => {
 
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished')
+      if (res.step === 'finished') {
         window.location.href = '/signin'
-      else
-        setLoading(false)
+      }
+      else {
+        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+          if (res.status === 'not_started')
+            window.location.href = '/init'
+        })
+      }
+      setLoading(false)
     })
   }, [])
 
@@ -166,10 +172,10 @@ const InstallForm = () => {
             </form>
             <div className="block w-hull mt-2 text-xs text-gray-600">
               {t('login.license.tip')}
-            &nbsp;
+              &nbsp;
               <Link
                 className='text-primary-600'
-                target={'_blank'}
+                target='_blank' rel='noopener noreferrer'
                 href={'https://docs.dify.ai/user-agreement/open-source'}
               >{t('login.license.link')}</Link>
             </div>

@@ -6,8 +6,9 @@ import os
 import time
 from typing import Optional
 
-from extensions.ext_storage import storage
 from flask import current_app
+
+from extensions.ext_storage import storage
 
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])

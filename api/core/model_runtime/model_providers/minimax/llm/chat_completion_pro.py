@@ -1,23 +1,28 @@
-from hashlib import md5
+from collections.abc import Generator
 from json import dumps, loads
-from time import time
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Union
 
-from core.model_runtime.model_providers.minimax.llm.errors import (BadRequestError, InsufficientAccountBalanceError,
-                                                                   InternalServerError, InvalidAPIKeyError,
-                                                                   InvalidAuthenticationError, RateLimitReachedError)
-from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 from requests import Response, post
 
+from core.model_runtime.model_providers.minimax.llm.errors import (
+    BadRequestError,
+    InsufficientAccountBalanceError,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
+from core.model_runtime.model_providers.minimax.llm.types import MinimaxMessage
 
-class MinimaxChatCompletionPro(object):
+
+class MinimaxChatCompletionPro:
     """
         Minimax Chat Completion Pro API, supports function calling
         however, we do not have enough time and energy to implement it, but the parameters are reserved
     """
     def generate(self, model: str, api_key: str, group_id: str, 
-                 prompt_messages: List[MinimaxMessage], model_parameters: dict,
-                 tools: Dict[str, Any], stop: List[str] | None, stream: bool, user: str) \
+                 prompt_messages: list[MinimaxMessage], model_parameters: dict,
+                 tools: list[dict[str, Any]], stop: list[str] | None, stream: bool, user: str) \
         -> Union[MinimaxMessage, Generator[MinimaxMessage, None, None]]:
         """
             generate chat completion
@@ -82,6 +87,10 @@ class MinimaxChatCompletionPro(object):
             **extra_kwargs
         }
 
+        if tools:
+            body['functions'] = tools
+            body['function_call'] = { 'type': 'auto' }
+
         try:
             response = post(
                 url=url, data=dumps(body), headers=headers, stream=stream, timeout=(10, 300))
@@ -135,6 +144,7 @@ class MinimaxChatCompletionPro(object):
         """
             handle stream chat generate response
         """
+        function_call_storage = None
         for line in response.iter_lines():
             if not line:
                 continue
@@ -148,7 +158,7 @@ class MinimaxChatCompletionPro(object):
                 msg = data['base_resp']['status_msg']
                 self._handle_error(code, msg)
 
-            if data['reply']:
+            if data['reply'] or 'usage' in data and data['usage']:
                 total_tokens = data['usage']['total_tokens']
                 message =  MinimaxMessage(
                     role=MinimaxMessage.Role.ASSISTANT.value,
@@ -160,6 +170,12 @@ class MinimaxChatCompletionPro(object):
                     'total_tokens': total_tokens
                 }
                 message.stop_reason = data['choices'][0]['finish_reason']
+
+                if function_call_storage:
+                    function_call_message = MinimaxMessage(content='', role=MinimaxMessage.Role.ASSISTANT.value)
+                    function_call_message.function_call = function_call_storage
+                    yield function_call_message
+
                 yield message
                 return
 
@@ -168,11 +184,28 @@ class MinimaxChatCompletionPro(object):
                 continue
 
             for choice in choices:
-                message = choice['messages'][0]['text']
-                if not message:
-                    continue
+                message = choice['messages'][0]
+
+                if 'function_call' in message:
+                    if not function_call_storage:
+                        function_call_storage = message['function_call']
+                        if 'arguments' not in function_call_storage or not function_call_storage['arguments']:
+                            function_call_storage['arguments'] = ''
+                            continue
+                    else:
+                        function_call_storage['arguments'] += message['function_call']['arguments']
+                        continue
+                else:
+                    if function_call_storage:
+                        message['function_call'] = function_call_storage
+                        function_call_storage = None
                 
-                yield MinimaxMessage(
-                    content=message,
-                    role=MinimaxMessage.Role.ASSISTANT.value
-                )
+                minimax_message = MinimaxMessage(content='', role=MinimaxMessage.Role.ASSISTANT.value)
+
+                if 'function_call' in message:
+                    minimax_message.function_call = message['function_call']
+
+                if 'text' in message:
+                    minimax_message.content = message['text']
+
+                yield minimax_message

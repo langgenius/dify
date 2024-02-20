@@ -1,18 +1,36 @@
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from dashscope import get_tokenizer
+from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
+from dashscope.common.error import (
+    AuthenticationError,
+    InvalidParameter,
+    RequestFailure,
+    ServiceUnavailableError,
+    UnsupportedHTTPMethod,
+    UnsupportedModel,
+)
+from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMMode
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, UserPromptMessage)
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
-from dashscope.common.error import (AuthenticationError, InvalidParameter, RequestFailure, ServiceUnavailableError,
-                                    UnsupportedHTTPMethod, UnsupportedModel)
-from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
 
 from ._client import EnhanceTongyi
 
@@ -21,7 +39,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -83,7 +101,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
-                  stop: Optional[List[str]] = None, stream: bool = True,
+                  stop: Optional[list[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -168,7 +186,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: list[Generator],
+    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: Generator,
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -182,7 +200,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         for index, response in enumerate(responses):
             resp_finish_reason = response.output.finish_reason
             resp_content = response.output.text
-            useage = response.usage
+            usage = response.usage
 
             if resp_finish_reason is None and (resp_content is None or resp_content == ''):
                 continue
@@ -194,7 +212,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
             if resp_finish_reason is not None:
                 # transform usage
-                usage = self._calc_response_usage(model, credentials, useage.input_tokens, useage.output_tokens)
+                usage = self._calc_response_usage(model, credentials, usage.input_tokens, usage.output_tokens)
 
                 yield LLMResultChunk(
                     model=model,
@@ -251,7 +269,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         return message_text
     
-    def _convert_messages_to_prompt(self, messages: List[PromptMessage]) -> str:
+    def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         """
         Format a list of messages into a full prompt for the Anthropic model
 

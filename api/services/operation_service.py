@@ -20,13 +20,13 @@ class OperationService:
         return response.json()
 
     @classmethod
-    def record_utm(cls, tenant_id, args):
+    def record_utm(cls, tenant_id: str, utm_info: dict):
         params = {
             'tenant_id': tenant_id,
-            'utm_source': args['utm_source'],
-            'utm_medium': args['utm_medium'],
-            'utm_campaign': args['utm_campaign'],
-            'utm_content': args['utm_content'],
-            'utm_term': args['utm_term']
+            'utm_source': utm_info.get('utm_source', ''),
+            'utm_medium': utm_info.get('utm_medium', ''),
+            'utm_campaign': utm_info.get('utm_campaign', ''),
+            'utm_content': utm_info.get('utm_content', ''),
+            'utm_term': utm_info.get('utm_term', '')
         }
         return cls._send_request('POST', '/tenant_utms', params=params)

@@ -4,13 +4,14 @@ import time
 
 import click
 from celery import shared_task
+from werkzeug.exceptions import NotFound
+
 from core.data_loader.loader.notion import NotionLoader
 from core.index.index import IndexBuilder
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.source import DataSourceBinding
-from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')

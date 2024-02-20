@@ -9,6 +9,7 @@ import type {
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
+  InitValidateStatusResponse,
   InvitationResponse,
   LangGeniusVersionResponse,
   Member,
@@ -20,7 +21,6 @@ import type {
   ProviderAzureToken,
   SetupStatusResponse,
   UserProfileOriginResponse,
-  Utm,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -41,6 +41,14 @@ export const login: Fetcher<CommonResponse & { data: string }, { url: string; bo
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
+}
+
+export const initValidate: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
+  return post<CommonResponse>('/init', { body })
+}
+
+export const fetchInitValidateStatus = () => {
+  return get<InitValidateStatusResponse>('/init')
 }
 
 export const fetchSetupStatus = () => {
@@ -262,8 +270,4 @@ type RetrievalMethodsRes = {
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
-}
-
-export const operationUtm: Fetcher<CommonResponse, { url: string; body: Utm }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<CommonResponse>
 }

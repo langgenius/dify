@@ -5,12 +5,13 @@ from collections import OrderedDict
 from typing import Optional
 
 import yaml
+from pydantic import BaseModel
+
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ class ModelProviderFactory:
         # read _position.yaml file
         position_map = {}
         if os.path.exists(position_file_path):
-            with open(position_file_path, 'r', encoding='utf-8') as f:
+            with open(position_file_path, encoding='utf-8') as f:
                 positions = yaml.safe_load(f)
                 # convert list to dict with key as model provider name, value as index
                 position_map = {position: index for index, position in enumerate(positions)}

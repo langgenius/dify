@@ -97,18 +97,21 @@ const CacheCtrlBtn: FC<Props> = ({
               </div>
             </div>
           )
-          : (
-            <TooltipPlus
-              popupContent={t('appDebug.feature.annotation.add') as string}
-            >
-              <div
-                className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
-                onClick={handleAdd}
+          : answer
+            ? (
+              <TooltipPlus
+                popupContent={t('appDebug.feature.annotation.add') as string}
               >
-                <MessageFastPlus className='w-4 h-4' />
-              </div>
-            </TooltipPlus>
-          )}
+                <div
+                  className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
+                  onClick={handleAdd}
+                >
+                  <MessageFastPlus className='w-4 h-4' />
+                </div>
+              </TooltipPlus>
+            )
+            : null
+        }
         <TooltipPlus
           popupContent={t('appDebug.feature.annotation.edit') as string}
         >

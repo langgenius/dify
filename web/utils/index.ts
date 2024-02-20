@@ -30,3 +30,10 @@ export function randomString(length: number) {
   for (let i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)]
   return result
 }
+
+export const getPurifyHref = (href: string) => {
+  if (!href)
+    return ''
+
+  return href.replace(/javascript:/ig, '').replace(/vbscript:/ig, '').replace(/data:/ig, '')
+}

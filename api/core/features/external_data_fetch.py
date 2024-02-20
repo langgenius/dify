@@ -2,11 +2,12 @@ import concurrent
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Tuple
+from typing import Optional
+
+from flask import Flask, current_app
 
 from core.entities.application_entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
-from flask import Flask, current_app
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class ExternalDataFetchFeature:
                                   app_id: str,
                                   external_data_tool: ExternalDataVariableEntity,
                                   inputs: dict,
-                                  query: str) -> Tuple[Optional[str], Optional[str]]:
+                                  query: str) -> tuple[Optional[str], Optional[str]]:
         """
         Query external data tool.
         :param flask_app: flask app

@@ -1,14 +1,13 @@
-# -*- coding:utf-8 -*-
-import os
+
+from flask import current_app
+from flask_restful import fields, marshal_with
+from werkzeug.exceptions import Forbidden
 
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
-from flask import current_app
-from flask_restful import fields, marshal_with
 from models.model import Site
 from services.feature_service import FeatureService
-from werkzeug.exceptions import Forbidden
 
 
 class AppSiteApi(WebApiResource):

@@ -3,11 +3,11 @@ import time
 
 import click
 from celery import shared_task
+
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, Document, DocumentSegment
-from werkzeug.exceptions import NotFound
+from models.dataset import Dataset, Document
 
 
 @shared_task(queue='dataset')

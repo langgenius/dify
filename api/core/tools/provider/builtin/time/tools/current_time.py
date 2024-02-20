@@ -1,17 +1,27 @@
+from datetime import datetime, timezone
+from typing import Any, Union
+
+from pytz import timezone as pytz_timezone
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-from typing import Any, Dict, List, Union
-
-from datetime import datetime, timezone
 
 class CurrentTimeTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
-               tool_paramters: Dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+               tool_parameters: dict[str, Any], 
+        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """
-        return self.create_text_message(f'{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")}')
-    
+        # get timezone
+        tz = tool_parameters.get('timezone', 'UTC')
+        if tz == 'UTC':
+            return self.create_text_message(f'{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")}')
+
+        try:
+            tz = pytz_timezone(tz)
+        except:
+            return self.create_text_message(f'Invalid timezone: {tz}')
+        return self.create_text_message(f'{datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S %Z")}')

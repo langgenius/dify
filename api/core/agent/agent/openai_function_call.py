@@ -1,4 +1,24 @@
-from typing import Any, List, Optional, Sequence, Tuple, Union, cast
+from collections.abc import Sequence
+from typing import Any, Optional, Union
+
+from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
+from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
+from langchain.callbacks.base import BaseCallbackManager
+from langchain.callbacks.manager import Callbacks
+from langchain.chat_models.openai import _convert_message_to_dict, _import_tiktoken
+from langchain.memory.prompt import SUMMARY_PROMPT
+from langchain.prompts.chat import BaseMessagePromptTemplate
+from langchain.schema import (
+    AgentAction,
+    AgentFinish,
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    get_buffer_string,
+)
+from langchain.tools import BaseTool
+from pydantic import root_validator
 
 from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
@@ -7,19 +27,7 @@ from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.third_party.langchain.llms.fake import FakeLLM
-from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
-from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
-from langchain.callbacks.base import BaseCallbackManager
-from langchain.callbacks.manager import Callbacks
-from langchain.chat_models.openai import _convert_message_to_dict, _import_tiktoken
-from langchain.memory.prompt import SUMMARY_PROMPT
-from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import (AgentAction, AgentFinish, AIMessage, BaseMessage, HumanMessage, SystemMessage,
-                              get_buffer_string)
-from langchain.tools import BaseTool
-from pydantic import root_validator
 
 
 class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixin):
@@ -44,7 +52,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
-            extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
+            extra_prompt_messages: Optional[list[BaseMessagePromptTemplate]] = None,
             system_message: Optional[SystemMessage] = SystemMessage(
                 content="You are a helpful AI assistant."
             ),
@@ -118,7 +126,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
 
     def plan(
             self,
-            intermediate_steps: List[Tuple[AgentAction, str]],
+            intermediate_steps: list[tuple[AgentAction, str]],
             callbacks: Callbacks = None,
             **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
@@ -200,7 +208,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
     def return_stopped_response(
             self,
             early_stopping_method: str,
-            intermediate_steps: List[Tuple[AgentAction, str]],
+            intermediate_steps: list[tuple[AgentAction, str]],
             **kwargs: Any,
     ) -> AgentFinish:
         try:
@@ -208,7 +216,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         except ValueError:
             return AgentFinish({"output": "I'm sorry, I don't know how to respond to that."}, "")
 
-    def summarize_messages_if_needed(self, messages: List[PromptMessage], **kwargs) -> List[PromptMessage]:
+    def summarize_messages_if_needed(self, messages: list[PromptMessage], **kwargs) -> list[PromptMessage]:
         # calculate rest tokens and summarize previous function observation messages if rest_tokens < 0
         rest_tokens = self.get_message_rest_tokens(
             self.model_config,
@@ -257,7 +265,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         return new_messages
 
     def predict_new_summary(
-        self, messages: List[BaseMessage], existing_summary: str
+        self, messages: list[BaseMessage], existing_summary: str
     ) -> str:
         new_lines = get_buffer_string(
             messages,
@@ -268,7 +276,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         chain = LLMChain(model_config=self.summary_model_config, prompt=SUMMARY_PROMPT)
         return chain.predict(summary=existing_summary, new_lines=new_lines)
 
-    def get_num_tokens_from_messages(self, model_config: ModelConfigEntity, messages: List[BaseMessage], **kwargs) -> int:
+    def get_num_tokens_from_messages(self, model_config: ModelConfigEntity, messages: list[BaseMessage], **kwargs) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/

@@ -1,11 +1,12 @@
-import services
-from controllers.files import api
 from flask import Response, request
 from flask_restful import Resource
+from werkzeug.exceptions import NotFound
+
+import services
+from controllers.files import api
 from libs.exception import BaseHTTPException
 from services.account_service import TenantService
 from services.file_service import FileService
-from werkzeug.exceptions import NotFound
 
 
 class ImagePreviewApi(Resource):
@@ -40,7 +41,7 @@ class WorkspaceWebappLogoApi(Resource):
         webapp_logo_file_id = custom_config.get('replace_webapp_logo') if custom_config is not None else None
 
         if not webapp_logo_file_id:
-            raise NotFound(f'webapp logo is not found')
+            raise NotFound('webapp logo is not found')
 
         try:
             generator, mimetype = FileService.get_public_image_preview(

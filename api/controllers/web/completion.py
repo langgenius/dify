@@ -1,23 +1,31 @@
-# -*- coding:utf-8 -*-
 import json
 import logging
-from typing import Generator, Union
+from collections.abc import Generator
+from typing import Union
+
+from flask import Response, stream_with_context
+from flask_restful import reqparse
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.web import api
-from controllers.web.error import (AppUnavailableError, CompletionRequestError, ConversationCompletedError,
-                                   NotChatAppError, NotCompletionAppError, ProviderModelCurrentlyNotSupportError,
-                                   ProviderNotInitializeError, ProviderQuotaExceededError)
+from controllers.web.error import (
+    AppUnavailableError,
+    CompletionRequestError,
+    ConversationCompletedError,
+    NotChatAppError,
+    NotCompletionAppError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.web.wraps import WebApiResource
 from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import Response, stream_with_context
-from flask_restful import reqparse
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
-from werkzeug.exceptions import InternalServerError, NotFound
 
 
 # define completion api for user
@@ -146,8 +154,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
         def generate() -> Generator:
-            for chunk in response:
-                yield chunk
+            yield from response
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')

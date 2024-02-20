@@ -1,16 +1,16 @@
 import logging
 import time
-from typing import List
 
 import click
 from celery import shared_task
+
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 
 @shared_task(queue='dataset')
-def clean_notion_document_task(document_ids: List[str], dataset_id: str):
+def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     """
     Clean document when document deleted.
     :param document_ids: document ids

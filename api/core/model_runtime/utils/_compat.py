@@ -1,8 +1,7 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 from pydantic.version import VERSION as PYDANTIC_VERSION
-from typing_extensions import Literal
 
 PYDANTIC_V2 = PYDANTIC_VERSION.startswith("2.")
 

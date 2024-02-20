@@ -52,7 +52,7 @@ const SettingBuiltInTool: FC<Props> = ({
     (async () => {
       setIsLoading(true)
       try {
-        const list = await fetchBuiltInToolList(collection.name) as Tool[]
+        const list = await fetchBuiltInToolList(collection.name)
         setTools(list)
         const currTool = list.find(tool => tool.name === toolName)
         if (currTool) {

@@ -1,7 +1,134 @@
 model: tts-1
 model_type: tts
 model_properties:
-  default_voice: 'sambert-zhiru-v1' # 音色参考 https://help.aliyun.com/zh/dashscope/model-list 配置
+  default_voice: 'sambert-zhiru-v1'
+  voices:
+    - mode: "sambert-zhinan-v1"
+      name: "知楠（广告男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiqi-v1"
+      name: "知琪（温柔女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhichu-v1"
+      name: "知厨（新闻播报）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhide-v1"
+      name: "知德（新闻男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhijia-v1"
+      name: "知佳（标准女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiru-v1"
+      name: "知茹（新闻女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiqian-v1"
+      name: "知倩（配音解说、新闻播报）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhixiang-v1"
+      name: "知祥（配音解说）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiwei-v1"
+      name: "知薇（萝莉女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhihao-v1"
+      name: "知浩（咨询男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhijing-v1"
+      name: "知婧（严厉女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiming-v1"
+      name: "知茗（诙谐男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhimo-v1"
+      name: "知墨（情感男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhina-v1"
+      name: "知娜（浙普女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhishu-v1"
+      name: "知树（资讯男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhistella-v1"
+      name: "知莎（知性女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiting-v1"
+      name: "知婷（电台女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhixiao-v1"
+      name: "知笑（资讯女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiya-v1"
+      name: "知雅（严厉女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiye-v1"
+      name: "知晔（青年男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiying-v1"
+      name: "知颖（软萌童声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhiyuan-v1"
+      name: "知媛（知心姐姐）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhigui-v1"
+      name: "知柜（直播女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhishuo-v1"
+      name: "知硕（自然男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhimiao-emo-v1"
+      name: "知妙（多种情感女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhimao-v1"
+      name: "知猫（直播女声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhilun-v1"
+      name: "知伦（悬疑解说）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhifei-v1"
+      name: "知飞（激昂解说）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-zhida-v1"
+      name: "知达（标准男声）"
+      language: [ "zh-Hans", "en-US" ]
+    - mode: "sambert-camila-v1"
+      name: "Camila（西班牙语女声）"
+      language: [ "es-ES" ]
+    - mode: "sambert-perla-v1"
+      name: "Perla（意大利语女声）"
+      language: [ "it-IT" ]
+    - mode: "sambert-indah-v1"
+      name: "Indah（印尼语女声）"
+      language: [ "id-ID" ]
+    - mode: "sambert-clara-v1"
+      name: "Clara（法语女声）"
+      language: [ "fr-FR" ]
+    - mode: "sambert-hanna-v1"
+      name: "Hanna（德语女声）"
+      language: [ "de-DE" ]
+    - mode: "sambert-beth-v1"
+      name: "Beth（咨询女声）"
+      language: [ "en-US" ]
+    - mode: "sambert-betty-v1"
+      name: "Betty（客服女声）"
+      language: [ "en-US" ]
+    - mode: "sambert-cally-v1"
+      name: "Cally（自然女声）"
+      language: [ "en-US" ]
+    - mode: "sambert-cindy-v1"
+      name: "Cindy（对话女声）"
+      language: [ "en-US" ]
+    - mode: "sambert-eva-v1"
+      name: "Eva（陪伴女声）"
+      language: [ "en-US" ]
+    - mode: "sambert-donna-v1"
+      name: "Donna（教育女声）"
+      language: [ "en-US" ]
+    - mode: "sambert-brian-v1"
+      name: "Brian（客服男声）"
+      language: [ "en-US" ]
+    - mode: "sambert-waan-v1"
+      name: "Waan（泰语女声）"
+      language: [ "th-TH" ]
   word_limit: 120
   audio_type: 'mp3'
   max_workers: 5

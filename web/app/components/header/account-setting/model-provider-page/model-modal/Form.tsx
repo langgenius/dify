@@ -28,6 +28,7 @@ type FormProps = {
   readonly?: boolean
   inputClassName?: string
   isShowDefaultValue?: boolean
+  fieldMoreInfo?: (payload: CredentialFormSchema) => JSX.Element | null
 }
 
 const Form: FC<FormProps> = ({
@@ -41,6 +42,7 @@ const Form: FC<FormProps> = ({
   readonly,
   inputClassName,
   isShowDefaultValue = false,
+  fieldMoreInfo,
 }) => {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
@@ -106,6 +108,7 @@ const Form: FC<FormProps> = ({
             type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
+          {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
       )
@@ -162,6 +165,7 @@ const Form: FC<FormProps> = ({
               ))
             }
           </div>
+          {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
       )
@@ -205,6 +209,7 @@ const Form: FC<FormProps> = ({
             onSelect={item => handleFormChange(variable, item.value as string)}
             placeholder={placeholder?.[language]}
           />
+          {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
       )

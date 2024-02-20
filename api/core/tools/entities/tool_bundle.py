@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from typing import Dict, Optional, Any, List
+from typing import Any, Optional
 
-from core.tools.entities.tool_entities import ToolProviderType, ToolParamter
+from pydantic import BaseModel
+
+from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
+
 
 class ApiBasedToolBundle(BaseModel):
     """
@@ -16,7 +18,7 @@ class ApiBasedToolBundle(BaseModel):
     # operation_id
     operation_id: str = None
     # parameters
-    parameters: Optional[List[ToolParamter]] = None
+    parameters: Optional[list[ToolParameter]] = None
     # author
     author: str
     # icon
@@ -29,6 +31,6 @@ class AppToolBundle(BaseModel):
     This class is used to store the schema information of an tool for an app.
     """
     type: ToolProviderType
-    credential: Optional[Dict[str, Any]] = None
+    credential: Optional[dict[str, Any]] = None
     provider_id: str
     tool_name: str

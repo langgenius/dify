@@ -1,18 +1,23 @@
+from collections.abc import Generator
 from datetime import datetime, timedelta
 from enum import Enum
 from json import dumps, loads
 from threading import Lock
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Union
 
-from core.model_runtime.entities.message_entities import PromptMessageTool
-from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (BadRequestError, InternalServerError,
-                                                                            InvalidAPIKeyError,
-                                                                            InvalidAuthenticationError,
-                                                                            RateLimitReachedError)
 from requests import Response, post
 
+from core.model_runtime.entities.message_entities import PromptMessageTool
+from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (
+    BadRequestError,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
+
 # map api_key to access_token
-baidu_access_tokens: Dict[str, 'BaiduAccessToken'] = {}
+baidu_access_tokens: dict[str, 'BaiduAccessToken'] = {}
 baidu_access_tokens_lock = Lock()
 
 class BaiduAccessToken:
@@ -101,10 +106,10 @@ class ErnieMessage:
 
     role: str = Role.USER.value
     content: str
-    usage: Dict[str, int] = None
+    usage: dict[str, int] = None
     stop_reason: str = ''
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             'role': self.role,
             'content': self.content,
@@ -114,7 +119,7 @@ class ErnieMessage:
         self.content = content
         self.role = role
 
-class ErnieBotModel(object):
+class ErnieBotModel:
     api_bases = {
         'ernie-bot': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions',
         'ernie-bot-4': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro',
@@ -134,9 +139,9 @@ class ErnieBotModel(object):
         self.api_key = api_key
         self.secret_key = secret_key
 
-    def generate(self, model: str, stream: bool, messages: List[ErnieMessage], 
-                 parameters: Dict[str, Any], timeout: int, tools: List[PromptMessageTool], \
-                 stop: List[str], user: str) \
+    def generate(self, model: str, stream: bool, messages: list[ErnieMessage], 
+                 parameters: dict[str, Any], timeout: int, tools: list[PromptMessageTool], \
+                 stop: list[str], user: str) \
         -> Union[Generator[ErnieMessage, None, None], ErnieMessage]:
 
         # check parameters
@@ -212,11 +217,11 @@ class ErnieBotModel(object):
         token = BaiduAccessToken.get_access_token(self.api_key, self.secret_key)
         return token.access_token
     
-    def _copy_messages(self, messages: List[ErnieMessage]) -> List[ErnieMessage]:
+    def _copy_messages(self, messages: list[ErnieMessage]) -> list[ErnieMessage]:
         return [ErnieMessage(message.content, message.role) for message in messages]
 
-    def _check_parameters(self, model: str, parameters: Dict[str, Any], 
-                          tools: List[PromptMessageTool], stop: List[str]) -> None:
+    def _check_parameters(self, model: str, parameters: dict[str, Any], 
+                          tools: list[PromptMessageTool], stop: list[str]) -> None:
         if model not in self.api_bases:
             raise BadRequestError(f'Invalid model: {model}')
         
@@ -227,40 +232,40 @@ class ErnieBotModel(object):
         # so, we just disable function calling for now.
 
         if tools is not None and len(tools) > 0:
-            raise BadRequestError(f'function calling is not supported yet.')
+            raise BadRequestError('function calling is not supported yet.')
 
         if stop is not None:
             if len(stop) > 4:
-                raise BadRequestError(f'stop list should not exceed 4 items.')
+                raise BadRequestError('stop list should not exceed 4 items.')
 
             for s in stop:
                 if len(s) > 20:
-                    raise BadRequestError(f'stop item should not exceed 20 characters.')
+                    raise BadRequestError('stop item should not exceed 20 characters.')
         
-    def _build_request_body(self, model: str, messages: List[ErnieMessage], stream: bool, parameters: Dict[str, Any],
-                            tools: List[PromptMessageTool], stop: List[str], user: str) -> Dict[str, Any]:
+    def _build_request_body(self, model: str, messages: list[ErnieMessage], stream: bool, parameters: dict[str, Any],
+                            tools: list[PromptMessageTool], stop: list[str], user: str) -> dict[str, Any]:
         # if model in self.function_calling_supports:
         #     return self._build_function_calling_request_body(model, messages, parameters, tools, stop, user)
         return self._build_chat_request_body(model, messages, stream, parameters, stop, user)
         
-    def _build_function_calling_request_body(self, model: str, messages: List[ErnieMessage], stream: bool,
-                                                parameters: Dict[str, Any], tools: List[PromptMessageTool], 
-                                                stop: List[str], user: str) \
-        -> Dict[str, Any]:
+    def _build_function_calling_request_body(self, model: str, messages: list[ErnieMessage], stream: bool,
+                                                parameters: dict[str, Any], tools: list[PromptMessageTool], 
+                                                stop: list[str], user: str) \
+        -> dict[str, Any]:
         if len(messages) % 2 == 0:
-            raise BadRequestError(f'The number of messages should be odd.')
+            raise BadRequestError('The number of messages should be odd.')
         if messages[0].role == 'function':
-            raise BadRequestError(f'The first message should be user message.')
+            raise BadRequestError('The first message should be user message.')
         
         """
         TODO: implement function calling
         """
 
-    def _build_chat_request_body(self, model: str, messages: List[ErnieMessage], stream: bool, 
-                                 parameters: Dict[str, Any], stop: List[str], user: str) \
-        -> Dict[str, Any]:
+    def _build_chat_request_body(self, model: str, messages: list[ErnieMessage], stream: bool, 
+                                 parameters: dict[str, Any], stop: list[str], user: str) \
+        -> dict[str, Any]:
         if len(messages) == 0:
-            raise BadRequestError(f'The number of messages should not be zero.')
+            raise BadRequestError('The number of messages should not be zero.')
         
         # check if the first element is system, shift it
         system_message = ''
@@ -269,9 +274,9 @@ class ErnieBotModel(object):
             system_message = message.content
 
         if len(messages) % 2 == 0:
-            raise BadRequestError(f'The number of messages should be odd.')
+            raise BadRequestError('The number of messages should be odd.')
         if messages[0].role != 'user':
-            raise BadRequestError(f'The first message should be user message.')
+            raise BadRequestError('The first message should be user message.')
         body = {
             'messages': [message.to_dict() for message in messages],
             'stream': stream,

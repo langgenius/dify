@@ -1,9 +1,10 @@
 import os
-from typing import Any, Dict, Optional, Union
-from pydantic import BaseModel
+from typing import Any, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
+from pydantic import BaseModel
+
 
 class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     """Callback Handler that prints to std out."""
@@ -20,7 +21,7 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     def on_tool_start(
         self,
         tool_name: str,
-        tool_inputs: Dict[str, Any],
+        tool_inputs: dict[str, Any],
     ) -> None:
         """Do nothing."""
         print_text("\n[on_tool_start] ToolCall:" + tool_name + "\n" + str(tool_inputs) + "\n", color=self.color)
@@ -28,7 +29,7 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     def on_tool_end(
         self,
         tool_name: str,
-        tool_inputs: Dict[str, Any],
+        tool_inputs: dict[str, Any],
         tool_outputs: str,
     ) -> None:
         """If not the final action, print out observation."""

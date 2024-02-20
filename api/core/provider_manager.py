@@ -3,21 +3,36 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
-from core.entities.provider_entities import (CustomConfiguration, CustomModelConfiguration, CustomProviderConfiguration,
-                                             QuotaConfiguration, SystemConfiguration)
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    CustomModelConfiguration,
+    CustomProviderConfiguration,
+    QuotaConfiguration,
+    SystemConfiguration,
+)
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (ConfigurateMethod, CredentialFormSchema, FormType,
-                                                           ProviderEntity)
+from core.model_runtime.entities.provider_entities import (
+    CredentialFormSchema,
+    FormType,
+    ProviderEntity,
+)
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
-from models.provider import (Provider, ProviderModel, ProviderQuotaType, ProviderType, TenantDefaultModel,
-                             TenantPreferredModelProvider)
-from sqlalchemy.exc import IntegrityError
+from models.provider import (
+    Provider,
+    ProviderModel,
+    ProviderQuotaType,
+    ProviderType,
+    TenantDefaultModel,
+    TenantPreferredModelProvider,
+)
 
 
 class ProviderManager:
@@ -218,15 +233,30 @@ class ProviderManager:
             )
 
             if available_models:
-                available_model = available_models[0]
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type.to_origin_model_type(),
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model
-                )
-                db.session.add(default_model)
-                db.session.commit()
+                found = False
+                for available_model in available_models:
+                    if available_model.model == "gpt-3.5-turbo-1106":
+                        default_model = TenantDefaultModel(
+                            tenant_id=tenant_id,
+                            model_type=model_type.to_origin_model_type(),
+                            provider_name=available_model.provider.provider,
+                            model_name=available_model.model
+                        )
+                        db.session.add(default_model)
+                        db.session.commit()
+                        found = True
+                        break
+
+                if not found:
+                    available_model = available_models[0]
+                    default_model = TenantDefaultModel(
+                        tenant_id=tenant_id,
+                        model_type=model_type.to_origin_model_type(),
+                        provider_name=available_model.provider.provider,
+                        model_name=available_model.model
+                    )
+                    db.session.add(default_model)
+                    db.session.commit()
 
         if not default_model:
             return None

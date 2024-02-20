@@ -1,11 +1,10 @@
 import enum
 import json
-from math import e
-from typing import List
 
-from extensions.ext_database import db
 from flask_login import UserMixin
 from sqlalchemy.dialects.postgresql import UUID
+
+from extensions.ext_database import db
 
 
 class AccountStatus(str, enum.Enum):
@@ -96,7 +95,7 @@ class Account(UserMixin, db.Model):
                 one_or_none()
         return None
 
-    def get_integrates(self) -> List[db.Model]:
+    def get_integrates(self) -> list[db.Model]:
         ai = db.Model
         return db.session.query(ai).filter(
             ai.account_id == self.id
@@ -121,7 +120,7 @@ class Tenant(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
-    def get_accounts(self) -> List[db.Model]:
+    def get_accounts(self) -> list[db.Model]:
         Account = db.Model
         return db.session.query(Account).filter(
             Account.id == TenantAccountJoin.account_id,
@@ -155,6 +154,7 @@ class TenantAccountJoin(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(UUID, nullable=False)
     account_id = db.Column(UUID, nullable=False)
+    current = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     role = db.Column(db.String(16), nullable=False, server_default='normal')
     invited_by = db.Column(UUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
