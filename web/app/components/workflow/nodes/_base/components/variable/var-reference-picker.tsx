@@ -85,7 +85,7 @@ const VarReferencePicker: FC<Props> = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{
           zIndex: 100,
-          width: 227,
+          minWidth: 227,
         }}>
           <VarReferencePopup vars={mockNodeOutputVars} />
         </PortalToFollowElemContent>

@@ -36,7 +36,44 @@ export const mockNodeOutputVars: NodeOutPutVar[] = [
       {
         variable: 'usage',
         type: 'object',
-        struct: ['token', 'value'],
+        children: [
+          {
+            variable: 'token',
+            type: 'object',
+            children: [
+              {
+                variable: 'num',
+                type: 'number',
+              },
+              {
+                variable: 'price',
+                type: 'number',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        variable: 'other',
+        type: 'object',
+        children: [
+          {
+            variable: 'a',
+            type: 'object',
+            children: [
+              {
+                variable: 'b',
+                type: 'object',
+                children: [
+                  {
+                    variable: 'c',
+                    type: 'string',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
     ],
   },

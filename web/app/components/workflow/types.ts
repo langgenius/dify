@@ -83,13 +83,15 @@ export type LLMNodeData = {
   }
 }
 
+export type Var = {
+  variable: string
+  type: string
+  children?: Var[] // if type is obj, has the children struct
+}
+
 export type NodeOutPutVar = {
   title: string
-  vars: {
-    variable: string
-    type: string
-    struct?: string[]
-  }[]
+  vars: Var[]
 }
 
 export type Block = {
