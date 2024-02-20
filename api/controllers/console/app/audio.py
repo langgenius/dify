@@ -47,7 +47,6 @@ class ChatMessageAudioApi(Resource):
                 tenant_id=app_model.tenant_id,
                 file=file,
                 end_user=None,
-                promot=app_model.app_model_config.pre_prompt
             )
 
             return response
