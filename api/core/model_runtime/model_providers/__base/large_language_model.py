@@ -120,6 +120,22 @@ class LargeLanguageModel(AIModel):
 
         return result
 
+    def invoke_json_mode(self, model: str, credentials: dict,
+                            prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
+                            tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
+                            stream: bool = True, user: Optional[str] = None, callbacks: list[Callback] = None) \
+            -> Union[LLMResult, Generator]:
+        """
+        Invoke large language model in json mode
+        """
+        # transform prompt messages to ensure a valid json format response
+        try:
+            self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+        except NotImplementedError:
+            pass
+        
+        return self.invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, callbacks)
+
     def _invoke_result_generator(self, model: str, result: Generator, credentials: dict,
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
                                  tools: Optional[list[PromptMessageTool]] = None,
@@ -202,6 +218,16 @@ class LargeLanguageModel(AIModel):
         :param stream: is stream response
         :param user: unique user id
         :return: full response or stream response chunk generator result
+        """
+        raise NotImplementedError
+    
+    def _transform_json_prompts(self, model: str, credentials: dict,
+                            prompt_messages: list[PromptMessage], model_parameters: dict,
+                            tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
+                            stream: bool = True, user: Optional[str] = None) \
+            -> None:
+        """
+        Transform the prompt messages to ensure a valid json format response
         """
         raise NotImplementedError
 

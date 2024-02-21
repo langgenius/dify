@@ -31,6 +31,16 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 logger = logging.getLogger(__name__)
 
+GEMINI_JSON_MODE_PROMPT = """You should always follow the instructions and output a valid JSON object.
+The structure of the JSON object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+<instructions>
+{{instructions}}
+</instructions>
+"""
+
+
 class GoogleLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
@@ -52,7 +62,41 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
+        stop = stop or []
+        self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
+
+    def _transform_json_prompts(self, model: str, credentials: dict, 
+                                prompt_messages: list[PromptMessage], model_parameters: dict, 
+                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+                                stream: bool = True, user: str | None = None) \
+                            -> None:
+        """
+        Transform json prompts to model prompts
+        """
+        if "```\n" not in stop:
+            stop.append("```\n")
+
+        # check if there is a system message
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+            # override the system message
+            prompt_messages[0] = SystemPromptMessage(
+                content=GEMINI_JSON_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content)
+            )
+        else:
+            # insert the system message
+            prompt_messages.insert(0, SystemPromptMessage(
+                content=GEMINI_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
+            ))
+        # check if the last message is a user message
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+            # add ```JSON\n to the last message
+            prompt_messages[-1].content += "\n```JSON\n"
+        else:
+            # append a user message
+            prompt_messages.append(UserPromptMessage(
+                content="```JSON\n"
+            ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
