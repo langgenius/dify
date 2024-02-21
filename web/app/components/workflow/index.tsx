@@ -18,7 +18,8 @@ import Header from './header'
 import CustomNode, {
   Panel,
 } from './nodes'
-import AppInfoPanel from './app-info-panel'
+// import AppInfoPanel from './app-info-panel'
+import DebugAndPreview from './debug-and-preview'
 import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import type { Node } from './types'
@@ -40,7 +41,8 @@ const Workflow = () => {
   return (
     <div className='relative w-full h-full'>
       <Header />
-      <AppInfoPanel />
+      {/* <AppInfoPanel /> */}
+      <DebugAndPreview />
       <Panel />
       <ZoomInOut />
       <ReactFlow

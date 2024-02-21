@@ -70,7 +70,7 @@ const AddNode: FC<AddNodeProps> = ({
         ref={buttonRef}
         onClick={handleAdd}
         className={`
-          hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
+          hidden absolute -right-2 top-4 items-center justify-center 
           w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
           ${buttonShouldShow && '!flex'}
         `}
