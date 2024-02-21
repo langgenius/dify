@@ -62,18 +62,18 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
-        if 'block_mode' in model_parameters and model_parameters['block_mode']:
+        if 'response_format' in model_parameters and model_parameters['response_format']:
             stop = stop or []
             self._transform_json_prompts(
-                model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, model_parameters['block_mode']
+                model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, model_parameters['response_format']
             )
-            model_parameters.pop('block_mode')
+            model_parameters.pop('response_format')
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
 
     def _transform_json_prompts(self, model: str, credentials: dict, 
                                 prompt_messages: list[PromptMessage], model_parameters: dict, 
                                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
-                                stream: bool = True, user: str | None = None, block_mode: str = 'JSON') \
+                                stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
                             -> None:
         """
         Transform json prompts to model prompts
@@ -87,14 +87,14 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             prompt_messages[0] = SystemPromptMessage(
                 content=GEMINI_BLOCK_MODE_PROMPT
                     .replace("{{instructions}}", prompt_messages[0].content)
-                    .replace("{{block}}", block_mode)
+                    .replace("{{block}}", response_format)
             )
         else:
             # insert the system message
             prompt_messages.insert(0, SystemPromptMessage(
                 content=GEMINI_BLOCK_MODE_PROMPT
-                    .replace("{{instructions}}", f"Please output a valid {block_mode} object.")
-                    .replace("{{block}}", block_mode)
+                    .replace("{{instructions}}", f"Please output a valid {response_format} object.")
+                    .replace("{{block}}", response_format)
             ))
         # check if the last message is a user message
         if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
