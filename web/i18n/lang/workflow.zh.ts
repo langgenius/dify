@@ -43,6 +43,23 @@ const translation = {
         output: '转换后内容',
       },
     },
+    ifElse: {
+      conditions: '条件',
+      and: '且',
+      or: '或',
+      comparisonOperator: {
+        'contains': '包含',
+        'not contains': '不包含',
+        'start with': '开始是',
+        'end with': '结束是',
+        'is': '是',
+        'is not': '不是',
+        'empty': '为空',
+        'not empty': '不为空',
+        'null': '空',
+        'not null': '不为空',
+      },
+    },
   },
 }
 

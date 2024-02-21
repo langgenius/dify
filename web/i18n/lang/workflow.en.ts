@@ -43,6 +43,23 @@ const translation = {
         output: 'Transformed content',
       },
     },
+    ifElse: {
+      conditions: 'Conditions',
+      and: 'and',
+      or: 'or',
+      comparisonOperator: {
+        'contains': 'contains',
+        'not contains': 'not contains',
+        'start with': 'start with',
+        'end with': 'end with',
+        'is': 'is',
+        'is not': 'is not',
+        'empty': 'empty',
+        'not empty': 'not empty',
+        'null': 'is null',
+        'not null': 'is not null',
+      },
+    },
   },
 }
 
