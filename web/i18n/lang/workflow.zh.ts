@@ -21,6 +21,13 @@ const translation = {
       code: {
         inputVars: '输入变量',
       },
+      templateTransform: {
+        inputVars: '输入变量',
+        code: '代码',
+        outputVars: {
+          output: '转换后内容',
+        },
+      },
     },
   },
 }

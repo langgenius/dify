@@ -57,8 +57,6 @@ const Panel: FC = () => {
         }
         value={inputs.code}
         onChange={handleCodeChange}
-        codeLanguage={inputs.code_language}
-        onCodeLanguageChange={handleCodeLanguageChange}
       />
       <Split />
     </div>

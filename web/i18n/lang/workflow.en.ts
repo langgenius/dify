@@ -22,6 +22,13 @@ const translation = {
     code: {
       inputVars: 'Input Variables',
     },
+    templateTransform: {
+      inputVars: 'Input Variables',
+      code: 'Code',
+      outputVars: {
+        output: 'Transformed content',
+      },
+    },
   },
 }
 

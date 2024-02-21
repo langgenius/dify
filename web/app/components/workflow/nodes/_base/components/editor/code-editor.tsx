@@ -1,15 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { CodeLanguage } from '../../../code/types'
 import Base from './base'
 
 type Props = {
   value: string
   onChange: (value: string) => void
   title: JSX.Element
-  codeLanguage: string
-  onCodeLanguageChange: (codeLanguage: CodeLanguage) => void
 }
 
 const CodeEditor: FC<Props> = ({
