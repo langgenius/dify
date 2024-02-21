@@ -1,27 +1,15 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { Variable } from '../../types'
+import useVarList from '../_base/hooks/use-var-list'
 import type { DirectAnswerNodeType } from './types'
 
 const useConfig = (initInputs: DirectAnswerNodeType) => {
   const [inputs, setInputs] = useState<DirectAnswerNodeType>(initInputs)
   // variables
-  const handleVarListChange = useCallback((newList: Variable[]) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.variables = newList
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleAddVariable = useCallback(() => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.variables.push({
-        variable: '',
-        value_selector: [],
-      })
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const { handleVarListChange, handleAddVariable } = useVarList<DirectAnswerNodeType>({
+    inputs,
+    setInputs,
+  })
 
   const handleAnswerChange = useCallback((value: string) => {
     const newInputs = produce(inputs, (draft) => {

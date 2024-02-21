@@ -33,32 +33,37 @@ const Panel: FC = () => {
     handleCodeLanguageChange,
   } = useConfig(mockData)
   return (
-    <div className='mt-2 px-4 space-y-4'>
-      <Field
-        title={t(`${i18nPrefix}.inputVars`)}
-        operations={
-          <AddButton onClick={handleAddVariable} />
-        }
-      >
-        <VarList
-          readonly={readOnly}
-          list={inputs.variables}
-          onChange={handleVarListChange}
-        />
-      </Field>
-      <Split />
-      <CodeEditor
-        title={
-          <TypeSelector
-            list={codeLanguages}
-            value={inputs.code_language}
-            onChange={handleCodeLanguageChange}
+    <div className='mt-2'>
+      <div className='px-4 pb-4 space-y-4'>
+        <Field
+          title={t(`${i18nPrefix}.inputVars`)}
+          operations={
+            <AddButton onClick={handleAddVariable} />
+          }
+        >
+          <VarList
+            readonly={readOnly}
+            list={inputs.variables}
+            onChange={handleVarListChange}
           />
-        }
-        value={inputs.code}
-        onChange={handleCodeChange}
-      />
+        </Field>
+        <Split />
+        <CodeEditor
+          title={
+            <TypeSelector
+              list={codeLanguages}
+              value={inputs.code_language}
+              onChange={handleCodeLanguageChange}
+            />
+          }
+          value={inputs.code}
+          onChange={handleCodeChange}
+        />
+      </div>
       <Split />
+      <div className='px-4 pt-4 pb-2'>
+        output var
+      </div>
     </div>
   )
 }

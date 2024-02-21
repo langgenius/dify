@@ -2,7 +2,8 @@ import type { FC } from 'react'
 
 const Node: FC = () => {
   return (
-    <div>template-transform</div>
+    // No summary content
+    <div></div>
   )
 }
 

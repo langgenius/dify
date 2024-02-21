@@ -29,80 +29,85 @@ const Panel: FC = () => {
   // const isChatMode = modelMode === 'chat'
 
   return (
-    <div className='mt-2 px-4 space-y-4'>
-      <Field
-        title={t(`${i18nPrefix}.model`)}
-      >
-        <ModelParameterModal
-          popupClassName='!w-[387px]'
-          isAdvancedMode={true}
-          mode={model?.mode}
-          provider={model?.provider}
-          completionParams={model.completion_params}
-          modelId={model.name}
-          setModel={handleModelChanged}
-          onCompletionParamsChange={handleCompletionParamsChange}
-          hideDebugWithMultipleModel
-          debugWithMultipleModel={false}
-        />
-      </Field>
-
-      <Field
-        title={t(`${i18nPrefix}.variables`)}
-        operations={
-          <AddButton onClick={handleAddVariable} />
-        }
-      >
-        <VarList
-          readonly={readOnly}
-          list={inputs.variables}
-          onChange={handleVarListChange}
-        />
-      </Field>
-
-      <Field
-        title={t(`${i18nPrefix}.context`)}
-        operations={
-          <Switch
-            defaultValue={inputs.context.enabled}
-            onChange={toggleContextEnabled}
-            size='md'
+    <div className='mt-2'>
+      <div className='px-4 pb-4 space-y-4'>
+        <Field
+          title={t(`${i18nPrefix}.model`)}
+        >
+          <ModelParameterModal
+            popupClassName='!w-[387px]'
+            isAdvancedMode={true}
+            mode={model?.mode}
+            provider={model?.provider}
+            completionParams={model.completion_params}
+            modelId={model.name}
+            setModel={handleModelChanged}
+            onCompletionParamsChange={handleCompletionParamsChange}
+            hideDebugWithMultipleModel
+            debugWithMultipleModel={false}
           />
-        }
-      >
-        {inputs.context.enabled
-          ? (
-            <div>Context</div>
-          )
-          : null}
-      </Field>
-      <Field
-        title={t(`${i18nPrefix}.prompt`)}
-      >
-        Prompt
-      </Field>
+        </Field>
+
+        <Field
+          title={t(`${i18nPrefix}.variables`)}
+          operations={
+            <AddButton onClick={handleAddVariable} />
+          }
+        >
+          <VarList
+            readonly={readOnly}
+            list={inputs.variables}
+            onChange={handleVarListChange}
+          />
+        </Field>
+
+        <Field
+          title={t(`${i18nPrefix}.context`)}
+          operations={
+            <Switch
+              defaultValue={inputs.context.enabled}
+              onChange={toggleContextEnabled}
+              size='md'
+            />
+          }
+        >
+          {inputs.context.enabled
+            ? (
+              <div>Context</div>
+            )
+            : null}
+        </Field>
+        <Field
+          title={t(`${i18nPrefix}.prompt`)}
+        >
+          Prompt
+        </Field>
+        <Split />
+        <Field
+          title={t(`${i18nPrefix}.vision`)}
+          inline
+        >
+          Vision
+        </Field>
+      </div>
       <Split />
-      <Field
-        title={t(`${i18nPrefix}.vision`)}
-        inline
-      >
-        Vision
-      </Field>
+      <div className='px-4 pt-4 pb-2'>
+        <OutputVars>
+          <>
+            <VarItem
+              name='output'
+              type='string'
+              description={t(`${i18nPrefix}.outputVars.output`)}
+            />
+            <VarItem
+              name='usage'
+              type='object'
+              description={t(`${i18nPrefix}.outputVars.usage`)}
+            />
+          </>
+        </OutputVars>
+      </div>
 
-      <OutputVars>
-        <>
-          <VarItem
-            name='output'
-            type='string'
-            description={t(`${i18nPrefix}.outputVars.output`)}
-          />
-          <VarItem
-            name='usage'
-            type='object'
-            description={t(`${i18nPrefix}.outputVars.usage`)}
-          />
-        </>
-      </OutputVars>
     </div>
   )
 }
