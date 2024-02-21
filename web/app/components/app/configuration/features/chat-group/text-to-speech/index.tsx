@@ -29,20 +29,19 @@ const TextToSpeech: FC = () => {
   return (
     <Panel
       title={
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center'>
           <div>{t('appDebug.feature.textToSpeech.title')}</div>
         </div>
       }
       headerIcon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
       headerRight={
-        <div className='text-xs text-gray-500'>
+        <div className='text-xs text-gray-500 inline-flex items-center gap-2'>
+          {languageInfo && (`${languageInfo?.name} - `)}{voiceItem?.name ?? t('appDebug.voice.defaultDisplay')}
           { languageInfo?.example && (
             <AudioBtn
               value={languageInfo?.example}
-              className={'mr-1'}
             />
           )}
-          {languageInfo && (`${languageInfo?.name} - `)}{voiceItem?.name ?? t('appDebug.voice.defaultDisplay')}
         </div>
       }
       noBodySpacing
