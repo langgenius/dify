@@ -22,6 +22,7 @@ const translation = {
       itIT: 'italiano',
       thTH: 'tailandês',
       idID: 'indonésio',
+      ukUA: 'ucraniana',
     },
   },
   provider: {

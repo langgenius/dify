@@ -53,6 +53,7 @@ const translation = {
       koKR: '韩语',
       ptBR: '葡萄牙语',
       ruRU: '俄语',
+      ukUA: '乌克兰语',
     },
   },
   unit: {
