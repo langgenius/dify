@@ -5,7 +5,8 @@ import { mockData } from './mock'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import AddButton from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 const i18nPrefix = 'workflow.nodes.code'
 
 const Panel: FC = () => {
@@ -16,6 +17,8 @@ const Panel: FC = () => {
     inputs,
     handleVarListChange,
     handleAddVariable,
+    handleCodeChange,
+    handleCodeLanguageChange,
   } = useConfig(mockData)
   return (
     <div className='mt-2 px-4 space-y-4'>
@@ -31,6 +34,14 @@ const Panel: FC = () => {
           onChange={handleVarListChange}
         />
       </Field>
+      <Split />
+      <CodeEditor
+        value={inputs.code}
+        onChange={handleCodeChange}
+        codeLanguage={inputs.code_language}
+        onCodeLanguageChange={handleCodeLanguageChange}
+      />
+      <Split />
     </div>
   )
 }
