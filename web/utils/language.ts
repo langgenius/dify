@@ -41,17 +41,17 @@ export const languages = [
   {
     value: 'ja-JP',
     name: '日本語(日本)',
-    example: 'こんにちは、ディファイ!',
+    example: 'こんにちは、Dify!',
   },
   {
     value: 'ko-KR',
     name: '한국어(대한민국)',
-    example: '안녕, 디피!',
+    example: '안녕, Dify!',
   },
   {
     value: 'ru-RU',
     name: 'Русский(Россия)',
-    example: ' Привет, Дифи!',
+    example: ' Привет, Dify!',
   },
   {
     value: 'it-IT',
@@ -61,17 +61,17 @@ export const languages = [
   {
     value: 'th-TH',
     name: 'ไทย(ประเทศไทย)',
-    example: 'สวัสดี ดิฟฟี่',
+    example: 'สวัสดี Dify!',
   },
   {
     value: 'id-ID',
     name: 'Bahasa Indonesia',
-    example: 'Saluto, Difo!',
+    example: 'Saluto, Dify!',
   },
   {
     value: 'uk-UA',
     name: 'Українська(Україна)',
-    example: 'Привет, Дифи!',
+    example: 'Привет, Dify!',
   },
 ]
 
