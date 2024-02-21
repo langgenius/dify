@@ -36,6 +36,8 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
+
+You should also complete the text started with ``` but not tell ``` directly.
 """
 
 class ErnieBotLargeLanguageModel(LargeLanguageModel):
@@ -49,9 +51,62 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
             stop = stop or []
             self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, response_format)
             model_parameters.pop('response_format')
+            if stream:
+                return self._stream_json_processor(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    input_generator=self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
+                                                    model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
+                )
 
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                 model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
+
+    def _stream_json_processor(self, model: str, prompt_messages: list[PromptMessage], input_generator: Generator[LLMResultChunk, None, None]) -> Generator[LLMResultChunk, None, None]:
+        """
+        """
+        state = "normal"
+        backtick_count = 0
+        for piece in input_generator:
+            if piece.delta.message.content:
+                piece = piece.delta.message.content
+            else:
+                yield piece
+                continue
+            new_piece = ""
+            for char in piece:
+                if state == "normal":
+                    if char == "`":
+                        state = "in_backticks"
+                        backtick_count = 1
+                    else:
+                        new_piece += char
+                elif state == "in_backticks":
+                    if char == "`":
+                        backtick_count += 1
+                        if backtick_count == 3:
+                            state = "skip_content"
+                            backtick_count = 0
+                    else:
+                        new_piece += "`" * backtick_count + char
+                        state = "normal"
+                        backtick_count = 0
+                elif state == "skip_content":
+                    if char.isspace():
+                        state = "normal"
+
+            if new_piece:
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=new_piece,
+                            tool_calls=[]
+                        ),
+                    )
+                )
 
     def _transform_json_prompts(self, model: str, credentials: dict, 
                                 prompt_messages: list[PromptMessage], model_parameters: dict, 
