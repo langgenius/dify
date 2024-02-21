@@ -6,10 +6,8 @@ import {
 } from 'react'
 import { getOutgoers } from 'reactflow'
 import BlockIcon from '../../../block-icon'
-import type {
-  BlockEnum,
-  Node,
-} from '../../../types'
+import type { Node } from '../../../types'
+import { BlockEnum } from '../../../types'
 import { useWorkflowContext } from '../../../context'
 import { useBlockSelectorContext } from '../../../block-selector/context'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
@@ -47,7 +45,44 @@ const NextStep: FC<NextStepProps> = ({
       <div className='shrink-0 w-6'></div>
       <div className='grow'>
         {
-          !outgoers.length && (
+          !!outgoers.length && outgoers.map(outgoer => (
+            <div
+              key={outgoer.id}
+              className='group flex items-center mb-3 last-of-type:mb-0 px-2 h-9 rounded-lg border-[0.5px] border-gray-200 bg-white hover:bg-gray-50 shadow-xs text-xs text-gray-700 cursor-pointer'
+            >
+              <BlockIcon
+                type={outgoer.data.type}
+                className='shrink-0 mr-1.5'
+              />
+              <div className='grow'>{outgoer.data.name}</div>
+              <div
+                ref={from === 'panel' ? referenceRef : null}
+                onClick={() => {
+                  handleToggle({
+                    from: 'panel',
+                    className: 'w-[328px]',
+                    placement: 'top-end',
+                    offset: {
+                      mainAxis: 6,
+                      crossAxis: 8,
+                    },
+                  })
+                }}
+              >
+                <Button
+                  className={`
+                    hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md 
+                    ${open && '!bg-gray-100 !flex'}
+                  `}
+                >
+                  Change
+                </Button>
+              </div>
+            </div>
+          ))
+        }
+        {
+          (!outgoers.length || selectedNode.data.type === BlockEnum.IfElse) && (
             <div
               onClick={() => {
                 handleToggle({
@@ -69,40 +104,6 @@ const NextStep: FC<NextStepProps> = ({
               SELECT NEXT BLOCK
             </div>
           )
-        }
-        {
-          !!outgoers.length && outgoers.map(outgoer => (
-            <div
-              key={outgoer.id}
-              className='group flex items-center mb-3 last-of-type:mb-0 px-2 h-9 rounded-lg border-[0.5px] border-gray-200 bg-white hover:bg-gray-50 shadow-xs text-xs text-gray-700 cursor-pointer'
-            >
-              <BlockIcon
-                type={outgoer.data.type}
-                className='shrink-0 mr-1.5'
-              />
-              <div className='grow'>{outgoer.data.name}</div>
-              <div
-                ref={from === 'panel' ? referenceRef : null}
-                onClick={() => {
-                  handleToggle({
-                    from: 'panel',
-                    className: 'w-[328px]',
-                    placement: 'top-end',
-                    offset: 6,
-                  })
-                }}
-              >
-                <Button
-                  className={`
-                    hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md 
-                    ${open && '!bg-gray-100 !flex'}
-                  `}
-                >
-                  Change
-                </Button>
-              </div>
-            </div>
-          ))
         }
       </div>
     </div>

@@ -22,6 +22,7 @@ type UpdateParams = {
   from?: string
   placement?: Placement
   offset?: OffsetOptions
+  open?: boolean
   className?: string
   callback?: OnSelect
 }
@@ -30,6 +31,9 @@ export type BlockSelectorContextValue = {
   open: boolean
   setOpen: (open: boolean) => void
   referenceRef: any
+  floatingRef: any
+  floatingStyles: React.CSSProperties
+  getFloatingProps: any
   handleToggle: (v: UpdateParams) => void
 }
 
@@ -38,6 +42,9 @@ export const BlockSelectorContext = createContext<BlockSelectorContextValue>({
   open: false,
   setOpen: () => {},
   referenceRef: null,
+  floatingRef: null,
+  floatingStyles: {},
+  getFloatingProps: () => {},
   handleToggle: () => {},
 })
 export const useBlockSelectorContext = () => useContext(BlockSelectorContext)
@@ -73,13 +80,17 @@ export const BlockSelectorContextProvider = ({
 
   const handleToggle = useCallback(({
     from,
+    open,
     placement,
     offset,
     className,
     callback,
   }: UpdateParams) => {
     setFrom(from || 'node')
-    setOpen(v => !v)
+    if (open !== undefined)
+      setOpen(open)
+    else
+      setOpen(v => !v)
     setPlacement(placement || 'top')
     setOffsetValue(offset || 0)
     setClassName(className || '')
@@ -99,10 +110,13 @@ export const BlockSelectorContextProvider = ({
       setOpen,
       handleToggle,
       referenceRef: refs.setReference,
+      floatingRef: refs.setFloating,
+      floatingStyles,
+      getFloatingProps,
     }}>
       {children}
       {
-        open && (
+        open && (from === 'node' || from === 'panel') && (
           <FloatingPortal>
             <div
               ref={refs.setFloating}

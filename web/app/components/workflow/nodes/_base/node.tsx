@@ -11,11 +11,10 @@ import {
 import type { NodeProps } from 'reactflow'
 import { getOutgoers } from 'reactflow'
 import { useWorkflowContext } from '../../context'
-import type { BlockEnum } from '../../types'
-import { useBlockSelectorContext } from '../../block-selector/context'
+import { BlockEnum } from '../../types'
 import NodeControl from '../../node-control'
 import BlockIcon from '../../block-icon'
-import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import AddNode from './components/add-node/index'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -33,12 +32,6 @@ const BaseNode: FC<BaseNodeProps> = ({
     handleSelectedNodeIdChange,
     handleAddNextNode,
   } = useWorkflowContext()
-  const {
-    from,
-    open,
-    referenceRef,
-    handleToggle,
-  } = useBlockSelectorContext()
   const currentNode = useMemo(() => {
     return nodes.find(node => node.id === nodeId)
   }, [nodeId, nodes])
@@ -48,6 +41,20 @@ const BaseNode: FC<BaseNodeProps> = ({
   const handleSelectBlock = useCallback((type: BlockEnum) => {
     handleAddNextNode(currentNode!, type)
   }, [currentNode, handleAddNextNode])
+  const branches = useMemo(() => {
+    if (data.type === BlockEnum.IfElse) {
+      return [
+        {
+          id: '1',
+          name: 'Is True',
+        },
+        {
+          id: '2',
+          name: 'Is False',
+        },
+      ]
+    }
+  }, [data])
 
   return (
     <div
@@ -73,28 +80,11 @@ const BaseNode: FC<BaseNodeProps> = ({
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
         Define the initial parameters for launching a workflow
       </div>
-      {
-        !outgoers.length && (
-          <div
-            ref={from === 'node' ? referenceRef : null}
-            onClick={(e) => {
-              e.stopPropagation()
-              handleToggle({
-                placement: 'right',
-                offset: 6,
-                callback: handleSelectBlock,
-              })
-            }}
-            className={`
-              hidden absolute -bottom-2 left-1/2 -translate-x-1/2 items-center justify-center 
-              w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
-              ${open && from === 'node' && '!flex'}
-            `}
-          >
-            <Plus02 className='w-2.5 h-2.5 text-white' />
-          </div>
-        )
-      }
+      <AddNode
+        outgoers={outgoers}
+        branches={branches}
+        onAddNextNode={handleSelectBlock}
+      />
     </div>
   )
 }
