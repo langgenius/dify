@@ -25,8 +25,8 @@ from core.model_runtime.errors.invoke import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
-ANTHROPIC_JSON_MODE_PROMPT = """You should always follow the instructions and output a valid JSON object.
-The structure of the JSON object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
 if you are not sure about the structure.
 
 <instructions>
@@ -35,7 +35,6 @@ if you are not sure about the structure.
 """
 
 class AnthropicLargeLanguageModel(LargeLanguageModel):
-
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
@@ -55,14 +54,19 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
-        stop = stop or []
-        self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+        if 'block_mode' in model_parameters and model_parameters['block_mode']:
+            stop = stop or []
+            self._transform_json_prompts(
+                model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, model_parameters['block_mode']
+            )
+            model_parameters.pop('block_mode')
+
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
     
     def _transform_json_prompts(self, model: str, credentials: dict, 
                                prompt_messages: list[PromptMessage], model_parameters: dict, 
                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
-                               stream: bool = True, user: str | None = None) \
+                               stream: bool = True, user: str | None = None, block_mode: str = 'JSON') \
                             -> None:
         """
         Transform json prompts
@@ -74,16 +78,20 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
             # override the system message
             prompt_messages[0] = SystemPromptMessage(
-                content=ANTHROPIC_JSON_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content)
+                content=ANTHROPIC_BLOCK_MODE_PROMPT
+                    .replace("{{instructions}}", prompt_messages[0].content)
+                    .replace("{{block}}", block_mode)
             )
         else:
             # insert the system message
             prompt_messages.insert(0, SystemPromptMessage(
-                content=ANTHROPIC_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
+                content=ANTHROPIC_BLOCK_MODE_PROMPT
+                    .replace("{{instructions}}", f"Please output a valid {block_mode} object.")
+                    .replace("{{block}}", block_mode)
             ))
 
         prompt_messages.append(AssistantPromptMessage(
-            content="```JSON\n"
+            content=f"```{block_mode}\n"
         ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],

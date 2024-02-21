@@ -26,6 +26,8 @@ parameter_rules:
     default: 4096
     min: 1
     max: 4096
+  - name: block_mode
+    use_template: block_mode
 pricing:
   input: '1.63'
   output: '5.51'

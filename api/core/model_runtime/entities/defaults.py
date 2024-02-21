@@ -81,5 +81,18 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         'min': 1,
         'max': 2048,
         'precision': 0,
+    },
+    DefaultParameterName.BLOCK_MODE: {
+        'label': {
+            'en_US': 'Code Block Mode',
+            'zh_Hans': '代码块模式',
+        },
+        'type': 'string',
+        'help': {
+            'en_US': 'Code block mode, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc.',
+            'zh_Hans': '代码块模式，确保llm的输出尽可能是有效的代码块，如JSON、XML等',
+        },
+        'required': False,
+        'options': ['JSON', 'XML'],
     }
 }

@@ -91,6 +91,7 @@ class DefaultParameterName(Enum):
     PRESENCE_PENALTY = "presence_penalty"
     FREQUENCY_PENALTY = "frequency_penalty"
     MAX_TOKENS = "max_tokens"
+    BLOCK_MODE = "block_mode"
 
     @classmethod
     def value_of(cls, value: Any) -> 'DefaultParameterName':

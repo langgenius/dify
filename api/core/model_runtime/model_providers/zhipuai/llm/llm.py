@@ -55,41 +55,41 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
         # invoke model
-        stop = stop or []
-        self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+        # stop = stop or []
+        # self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
         return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, tools, stop, stream, user)
 
-    def _transform_json_prompts(self, model: str, credentials: dict, 
-                                prompt_messages: list[PromptMessage], model_parameters: dict, 
-                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
-                                stream: bool = True, user: str | None = None) \
-                            -> None:
-        """
-        Transform json prompts to model prompts
-        """
-        if "}\n\n" not in stop:
-            stop.append("}\n\n")
+    # def _transform_json_prompts(self, model: str, credentials: dict, 
+    #                             prompt_messages: list[PromptMessage], model_parameters: dict, 
+    #                             tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    #                             stream: bool = True, user: str | None = None) \
+    #                         -> None:
+    #     """
+    #     Transform json prompts to model prompts
+    #     """
+    #     if "}\n\n" not in stop:
+    #         stop.append("}\n\n")
 
-        # check if there is a system message
-        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
-            # override the system message
-            prompt_messages[0] = SystemPromptMessage(
-                content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content)
-            )
-        else:
-            # insert the system message
-            prompt_messages.insert(0, SystemPromptMessage(
-                content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
-            ))
-        # check if the last message is a user message
-        if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
-            # add ```JSON\n to the last message
-            prompt_messages[-1].content += "\n```JSON\n"
-        else:
-            # append a user message
-            prompt_messages.append(UserPromptMessage(
-                content="```JSON\n"
-            ))
+    #     # check if there is a system message
+    #     if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+    #         # override the system message
+    #         prompt_messages[0] = SystemPromptMessage(
+    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content)
+    #         )
+    #     else:
+    #         # insert the system message
+    #         prompt_messages.insert(0, SystemPromptMessage(
+    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
+    #         ))
+    #     # check if the last message is a user message
+    #     if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+    #         # add ```JSON\n to the last message
+    #         prompt_messages[-1].content += "\n```JSON\n"
+    #     else:
+    #         # append a user message
+    #         prompt_messages.append(UserPromptMessage(
+    #             content="```JSON\n"
+    #         ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
