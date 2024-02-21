@@ -31,7 +31,7 @@ export type Condition = {
   value: string
 }
 
-export type IfElseType = CommonNodeType & {
+export type IfElseNodeType = CommonNodeType & {
   logical_operator: LogicalOperator
   conditions: Condition[]
 }

@@ -1,7 +1,7 @@
-import type { IfElseType } from './types'
+import type { IfElseNodeType } from './types'
 import { ComparisonOperator, LogicalOperator } from './types'
 
-export const mockData: IfElseType = {
+export const mockData: IfElseNodeType = {
   title: 'Test',
   desc: 'Test',
   type: 'Test',

@@ -4,6 +4,9 @@ const translation = {
       outputVars: 'Output Variables',
       insertVarTip: 'Insert Variable',
     },
+    start: {
+      required: 'required',
+    },
     directAnswer: {
       answer: 'Answer',
       inputVars: 'Input Variables',

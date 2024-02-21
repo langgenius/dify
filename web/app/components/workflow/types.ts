@@ -36,6 +36,26 @@ export type Variable = {
   value_selector: ValueSelector
 }
 
+export enum InputVarType {
+  textInput = 'text-input',
+  paragraph = 'paragraph',
+  select = 'select',
+  number = 'number',
+  url = 'url',
+  files = 'files',
+}
+
+export type InputVar = {
+  type: InputVarType
+  label: string
+  variable: string
+  max_length?: number
+  default?: string
+  required: boolean
+  hint?: string
+  options?: string[]
+}
+
 export type ModelConfig = {
   provider: string
   name: string

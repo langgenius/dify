@@ -4,6 +4,9 @@ const translation = {
       outputVars: '输出变量',
       insertVarTip: '插入变量',
     },
+    start: {
+      required: '必填',
+    },
     directAnswer: {
       answer: '回复',
       inputVars: '输入变量',

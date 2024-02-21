@@ -1,3 +1,5 @@
+export { default as AlignLeft } from './AlignLeft'
 export { default as BezierCurve03 } from './BezierCurve03'
 export { default as Colors } from './Colors'
+export { default as LetterSpacing01 } from './LetterSpacing01'
 export { default as TypeSquare } from './TypeSquare'
