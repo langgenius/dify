@@ -31,7 +31,7 @@ export const languages = [
   {
     value: 'fr-FR',
     name: 'Français(France)',
-    example: 'Bonjour, dify!',
+    example: 'Bonjour, Dify!',
   },
   {
     value: 'de-DE',
