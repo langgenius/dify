@@ -156,7 +156,6 @@ class DatasetRetrieveConfigEntity(BaseModel):
     query_variable: Optional[str] = None  # Only when app mode is completion
 
     retrieve_strategy: RetrieveStrategy
-    single_strategy: Optional[str] = None  # for temp
     top_k: Optional[int] = None
     score_threshold: Optional[float] = None
     reranking_model: Optional[dict] = None

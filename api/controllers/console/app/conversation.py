@@ -21,7 +21,7 @@ from fields.conversation_fields import (
 )
 from libs.helper import datetime_string
 from libs.login import login_required
-from models.model import Conversation, Message, MessageAnnotation, AppMode
+from models.model import AppMode, Conversation, Message, MessageAnnotation
 
 
 class CompletionConversationApi(Resource):

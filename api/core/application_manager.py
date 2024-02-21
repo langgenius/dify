@@ -28,7 +28,8 @@ from core.entities.application_entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
     SensitiveWordAvoidanceEntity,
-    TextToSpeechEntity, VariableEntity,
+    TextToSpeechEntity,
+    VariableEntity,
 )
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -541,8 +542,7 @@ class ApplicationManager:
                         query_variable=query_variable,
                             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
                             dataset_configs['retrieval_model']
-                        ),
-                        single_strategy=datasets.get('strategy', 'router')
+                        )
                     )
                 )
             else:

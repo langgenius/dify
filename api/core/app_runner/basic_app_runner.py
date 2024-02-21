@@ -15,7 +15,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationException
 from extensions.ext_database import db
-from models.model import App, Conversation, Message, AppMode
+from models.model import App, AppMode, Conversation, Message
 
 logger = logging.getLogger(__name__)
 
