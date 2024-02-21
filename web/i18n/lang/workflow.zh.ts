@@ -21,6 +21,7 @@ const translation = {
     },
     code: {
       inputVars: '输入变量',
+      outputVars: '输出变量',
     },
     templateTransform: {
       inputVars: '输入变量',

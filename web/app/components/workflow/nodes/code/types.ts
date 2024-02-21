@@ -5,12 +5,14 @@ export enum CodeLanguage {
   javascript = 'javascript',
 }
 
+export type OutputVar = {
+  variable: string
+  variable_type: string
+}
+
 export type CodeNodeType = CommonNodeType & {
   variables: Variable[]
   code_language: CodeLanguage
   code: string
-  outputs: {
-    variable: string
-    variable_type: string
-  }[]
+  outputs: OutputVar[]
 }

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import useVarList from '../_base/hooks/use-var-list'
+import useOutputVarList from '../_base/hooks/use-output-var-list'
 import type { CodeLanguage, CodeNodeType } from './types'
 
 const useConfig = (initInputs: CodeNodeType) => {
@@ -17,12 +18,19 @@ const useConfig = (initInputs: CodeNodeType) => {
     setInputs(prev => ({ ...prev, code_language: codeLanguage }))
   }, [setInputs])
 
+  const { handleVarListChange: handleOutputVarListChange, handleAddVariable: handleAddOutputVariable } = useOutputVarList<CodeNodeType>({
+    inputs,
+    setInputs,
+  })
+
   return {
     inputs,
     handleVarListChange,
     handleAddVariable,
     handleCodeChange,
     handleCodeLanguageChange,
+    handleOutputVarListChange,
+    handleAddOutputVariable,
   }
 }
 

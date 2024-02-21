@@ -4,6 +4,7 @@ import useConfig from './use-config'
 import { mockData } from './mock'
 import { CodeLanguage } from './types'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
+import OutputVarList from '@/app/components/workflow/nodes/_base/components/variable/output-var-list'
 import AddButton from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -31,6 +32,8 @@ const Panel: FC = () => {
     handleAddVariable,
     handleCodeChange,
     handleCodeLanguageChange,
+    handleOutputVarListChange,
+    handleAddOutputVariable,
   } = useConfig(mockData)
   return (
     <div className='mt-2'>
@@ -62,7 +65,18 @@ const Panel: FC = () => {
       </div>
       <Split />
       <div className='px-4 pt-4 pb-2'>
-        output var
+        <Field
+          title={t(`${i18nPrefix}.outputVars`)}
+          operations={
+            <AddButton onClick={handleAddOutputVariable} />
+          }
+        >
+          <OutputVarList
+            readonly={readOnly}
+            list={inputs.outputs}
+            onChange={handleOutputVarListChange}
+          />
+        </Field>
       </div>
     </div>
   )
