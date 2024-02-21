@@ -19,6 +19,18 @@ const translation = {
         usage: 'Model Usage Information',
       },
     },
+    http: {
+      inputVars: 'Input Variables',
+      api: 'API',
+      headers: 'Headers',
+      params: 'Params',
+      body: 'Body',
+      outputVars: {
+        body: 'Response Content',
+        statusCode: 'Response Status Code',
+        headers: 'Response Header List JSON',
+      },
+    },
     code: {
       inputVars: 'Input Variables',
       outputVars: 'Output Variables',

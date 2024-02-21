@@ -107,7 +107,6 @@ const Panel: FC = () => {
           </>
         </OutputVars>
       </div>
-
     </div>
   )
 }

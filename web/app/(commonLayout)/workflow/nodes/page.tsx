@@ -46,9 +46,9 @@ const Page: FC = () => {
         /*
         * TODO: for debug.
         * 2 directAnswer 3: llm 5: questionClassifier
-        * 7 Code, 8 TemplateTransform
+        * 7 Code, 8 TemplateTransform 9 http
         */
-        selectedNodeId='7'
+        selectedNodeId='9'
       />
     </div>
   )

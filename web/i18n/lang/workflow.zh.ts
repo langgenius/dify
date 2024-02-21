@@ -19,6 +19,18 @@ const translation = {
         usage: '模型用量信息',
       },
     },
+    http: {
+      inputVars: '输入变量',
+      api: 'API',
+      headers: '响应头',
+      params: '参数',
+      body: '响应内容',
+      outputVars: {
+        body: '响应内容',
+        statusCode: '响应状态码',
+        headers: '响应头列表 JSON',
+      },
+    },
     code: {
       inputVars: '输入变量',
       outputVars: '输出变量',
