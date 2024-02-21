@@ -1,7 +1,7 @@
 import enum
 import json
 import os
-from typing import Optional, Tuple
+from typing import Optional
 
 from core.entities.application_entities import (
     ModelConfigEntity,
@@ -85,7 +85,7 @@ class SimplePromptTransform(PromptTransform):
                                  query: Optional[str] = None,
                                  context: Optional[str] = None,
                                  histories: Optional[str] = None,
-                                 ) -> Tuple[str, dict]:
+                                 ) -> tuple[str, dict]:
         # get prompt template
         prompt_template_config = self.get_prompt_template(
             app_mode=app_mode,
@@ -160,7 +160,7 @@ class SimplePromptTransform(PromptTransform):
                                                              files: list[FileObj],
                                                              memory: Optional[TokenBufferMemory],
                                                              model_config: ModelConfigEntity) \
-            -> Tuple[list[PromptMessage], Optional[list[str]]]:
+            -> tuple[list[PromptMessage], Optional[list[str]]]:
         prompt_messages = []
 
         # get prompt
@@ -193,7 +193,7 @@ class SimplePromptTransform(PromptTransform):
                                                                    files: list[FileObj],
                                                                    memory: Optional[TokenBufferMemory],
                                                                    model_config: ModelConfigEntity) \
-            -> Tuple[list[PromptMessage], Optional[list[str]]]:
+            -> tuple[list[PromptMessage], Optional[list[str]]]:
         # get prompt
         prompt, prompt_rules = self.get_prompt_str_and_rules(
             app_mode=AppMode.CHAT,
