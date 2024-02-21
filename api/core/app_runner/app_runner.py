@@ -22,7 +22,7 @@ from core.model_runtime.entities.message_entities import AssistantPromptMessage,
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.prompt.prompt_transform import PromptTransform
+from core.prompt.simple_prompt_transform import SimplePromptTransform
 from models.model import App, Message, MessageAnnotation
 
 
@@ -140,12 +140,11 @@ class AppRunner:
         :param memory: memory
         :return:
         """
-        prompt_transform = PromptTransform()
+        prompt_transform = SimplePromptTransform()
 
         # get prompt without memory and context
         if prompt_template_entity.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
             prompt_messages, stop = prompt_transform.get_prompt(
-                app_mode=app_record.mode,
                 prompt_template_entity=prompt_template_entity,
                 inputs=inputs,
                 query=query if query else '',
@@ -155,17 +154,7 @@ class AppRunner:
                 model_config=model_config
             )
         else:
-            prompt_messages = prompt_transform.get_advanced_prompt(
-                app_mode=app_record.mode,
-                prompt_template_entity=prompt_template_entity,
-                inputs=inputs,
-                query=query,
-                files=files,
-                context=context,
-                memory=memory,
-                model_config=model_config
-            )
-            stop = model_config.stop
+            raise NotImplementedError("Advanced prompt is not supported yet.")
 
         return prompt_messages, stop
 

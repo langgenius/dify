@@ -5,7 +5,6 @@ from flask_restful import fields
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
-
 workflow_fields = {
     'id': fields.String,
     'graph': fields.Raw(attribute=lambda x: json.loads(x.graph) if hasattr(x, 'graph') else None),

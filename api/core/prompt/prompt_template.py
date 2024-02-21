@@ -32,7 +32,8 @@ class PromptTemplateParser:
                 return PromptTemplateParser.remove_template_variables(value)
             return value
 
-        return re.sub(REGEX, replacer, self.template)
+        prompt = re.sub(REGEX, replacer, self.template)
+        return re.sub(r'<\|.*?\|>', '', prompt)
 
     @classmethod
     def remove_template_variables(cls, text: str):

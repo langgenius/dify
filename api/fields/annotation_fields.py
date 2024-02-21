@@ -2,7 +2,6 @@ from flask_restful import fields
 
 from libs.helper import TimestampField
 
-
 annotation_fields = {
     "id": fields.String,
     "question": fields.String,

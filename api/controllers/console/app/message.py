@@ -26,7 +26,7 @@ from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
-from models.model import Conversation, Message, MessageAnnotation, MessageFeedback, AppMode
+from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError

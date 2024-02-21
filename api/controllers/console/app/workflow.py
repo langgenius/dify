@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse, marshal_with
+from flask_restful import Resource, marshal_with, reqparse
 
 from controllers.console import api
 from controllers.console.app.error import DraftWorkflowNotExist
@@ -6,8 +6,8 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from fields.workflow_fields import workflow_fields
-from libs.login import login_required, current_user
-from models.model import App, ChatbotAppEngine, AppMode
+from libs.login import current_user, login_required
+from models.model import App, AppMode, ChatbotAppEngine
 from services.workflow_service import WorkflowService
 
 
