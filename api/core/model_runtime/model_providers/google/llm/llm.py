@@ -96,7 +96,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     .replace("{{instructions}}", f"Please output a valid {response_format} object.")
                     .replace("{{block}}", response_format)
             ))
-        # check if the last message is a user message
+
         if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
             # add ```JSON\n to the last message
             prompt_messages[-1].content += "\n```JSON\n"
