@@ -7,6 +7,7 @@ import Base from './base'
 type Props = {
   value: string
   onChange: (value: string) => void
+  title: JSX.Element
   codeLanguage: string
   onCodeLanguageChange: (codeLanguage: CodeLanguage) => void
 }
@@ -14,13 +15,14 @@ type Props = {
 const CodeEditor: FC<Props> = ({
   value,
   onChange,
+  title,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
 
   return (
     <div>
       <Base
-        title={<div>Code</div>}
+        title={title}
         value={value}
         isFocus={isFocus}
         minHeight={86}
