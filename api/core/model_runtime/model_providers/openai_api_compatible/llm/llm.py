@@ -376,7 +376,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     chunk_json = json.loads(decoded_chunk)
                 # stream ended
                 except json.JSONDecodeError as e:
-                    logger.error(f"decoded_chunk error: {e}, delimiter={delimiter}, decoded_chunk={decoded_chunk}")
                     yield create_final_llm_result_chunk(
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),

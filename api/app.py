@@ -38,10 +38,11 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
-
-# DO NOT REMOVE BELOW
 from services.account_service import AccountService
 
+# DO NOT REMOVE BELOW
+from events import event_handlers
+from models import account, dataset, model, source, task, tool, tools, web
 # DO NOT REMOVE ABOVE
 
 

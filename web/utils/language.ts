@@ -3,8 +3,8 @@ export type Item = {
   name: string
 }
 
-export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH', 'id-ID']
-export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT', 'th_TH', 'id_ID']
+export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH', 'id-ID', 'uk-UA']
+export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT', 'th_TH', 'id_ID', 'uk_UA']
 
 export const languages = [
   {
@@ -55,6 +55,10 @@ export const languages = [
     value: 'id-ID',
     name: 'Bahasa Indonesia',
   },
+  {
+    value: 'uk-UA',
+    name: 'Українська(Україна)',
+  },
 ]
 
 export const getModelRuntimeSupported = (locale: string) => {
@@ -74,6 +78,7 @@ export const languageMaps = {
   'ko-KR': 'ko-KR',
   'ru-RU': 'ru-RU',
   'it-IT': 'it-IT',
+  'uk-UA': 'uk-UA',
 }
 
 export type I18nText = {
@@ -87,6 +92,7 @@ export type I18nText = {
   'ko-KR': string
   'ru-RU': string
   'it-IT': string
+  'uk-UA': string
 }
 
 export const NOTICE_I18N = {
@@ -99,6 +105,7 @@ export const NOTICE_I18N = {
     de_DE: 'Wichtiger Hinweis',
     ja_JP: '重要なお知らせ',
     ko_KR: '중요 공지',
+    uk_UA: 'Важливе повідомлення',
   },
   desc: {
     en_US: 'Our system will be unavailable from 19:00 to 24:00 UTC on August 28 for an upgrade. For questions, kindly contact our support team (support@dify.ai). We value your patience.',
@@ -109,6 +116,7 @@ export const NOTICE_I18N = {
     de_DE: 'Our system will be unavailable from 19:00 to 24:00 UTC on August 28 for an upgrade. For questions, kindly contact our support team (support@dify.ai). We value your patience.',
     ja_JP: 'Our system will be unavailable from 19:00 to 24:00 UTC on August 28 for an upgrade. For questions, kindly contact our support team (support@dify.ai). We value your patience.',
     ko_KR: 'Our system will be unavailable from 19:00 to 24:00 UTC on August 28 for an upgrade. For questions, kindly contact our support team (support@dify.ai). We value your patience.',
+    uk_UA: 'Наша система буде недоступна з 19:00 до 24:00 UTC 28 серпня для оновлення. Якщо у вас виникнуть запитання, будь ласка, зв’яжіться з нашою службою підтримки (support@dify.ai). Дякуємо за терпіння.',
   },
   href: '#',
 }

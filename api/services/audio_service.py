@@ -20,7 +20,7 @@ ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm', 'amr']
 
 class AudioService:
     @classmethod
-    def transcript_asr(cls, tenant_id: str, file: FileStorage, promot: str, end_user: Optional[str] = None):
+    def transcript_asr(cls, tenant_id: str, file: FileStorage, end_user: Optional[str] = None):
         if file is None:
             raise NoAudioUploadedServiceError()
 

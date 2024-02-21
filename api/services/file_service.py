@@ -20,9 +20,9 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'doc', 'csv'] + IMAGE_EXTENSIONS
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv'] + IMAGE_EXTENSIONS
 UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-                                      'docx', 'doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml'] + IMAGE_EXTENSIONS
+                                   'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml'] + IMAGE_EXTENSIONS
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -162,7 +162,7 @@ class FileService:
         generator = storage.load(upload_file.key, stream=True)
 
         return generator, upload_file.mime_type
-    
+
     @staticmethod
     def get_public_image_preview(file_id: str) -> str:
         upload_file = db.session.query(UploadFile) \
