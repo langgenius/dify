@@ -40,6 +40,7 @@ const TextToSpeech: FC = () => {
           { languageInfo?.example && (
             <AudioBtn
               value={languageInfo?.example}
+              isAudition={true}
             />
           )}
         </div>
