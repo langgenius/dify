@@ -18,15 +18,16 @@ const translation = {
         output: '生成内容',
         usage: '模型用量信息',
       },
-      code: {
-        inputVars: '输入变量',
-      },
-      templateTransform: {
-        inputVars: '输入变量',
-        code: '代码',
-        outputVars: {
-          output: '转换后内容',
-        },
+    },
+    code: {
+      inputVars: '输入变量',
+    },
+    templateTransform: {
+      inputVars: '输入变量',
+      code: '代码',
+      codeSupportTip: '只支持 Jinja2',
+      outputVars: {
+        output: '转换后内容',
       },
     },
   },

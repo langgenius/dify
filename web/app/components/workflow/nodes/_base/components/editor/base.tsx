@@ -42,8 +42,8 @@ const Base: FC<Props> = ({
   return (
     <div className={cn(className, 'rounded-lg border', isFocus ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-100')}>
       <div className='flex justify-between items-center h-7 pt-1 pl-3 pr-1'>
-        <div className=''>{title}</div>
-        <div className='flex'>
+        <div className='text-xs font-semibold text-gray-700'>{title}</div>
+        <div className='flex items-center'>
           {headerRight}
           {!isCopied
             ? (

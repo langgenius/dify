@@ -25,6 +25,7 @@ const translation = {
     templateTransform: {
       inputVars: 'Input Variables',
       code: 'Code',
+      codeSupportTip: 'Only supports Jinja2',
       outputVars: {
         output: 'Transformed content',
       },

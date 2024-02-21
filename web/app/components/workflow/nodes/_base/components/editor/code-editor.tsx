@@ -7,12 +7,14 @@ type Props = {
   value: string
   onChange: (value: string) => void
   title: JSX.Element
+  headerRight?: JSX.Element
 }
 
 const CodeEditor: FC<Props> = ({
   value,
   onChange,
   title,
+  headerRight,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
 
@@ -21,6 +23,7 @@ const CodeEditor: FC<Props> = ({
       <Base
         title={title}
         value={value}
+        headerRight={headerRight}
         isFocus={isFocus}
         minHeight={86}
       >
