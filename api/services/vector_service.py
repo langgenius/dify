@@ -65,6 +65,6 @@ class VectorService:
 
         # save keyword index
         if keywords and len(keywords) > 0:
-            keyword.add_texts([document], keyword_list=[keywords])
+            keyword.add_texts([document], keywords_list=[keywords])
         else:
             keyword.add_texts([document])

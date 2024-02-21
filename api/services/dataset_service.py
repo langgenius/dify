@@ -43,6 +43,7 @@ from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
+from core.rag.models.document import Document as RAGDocument
 
 
 class DatasetService:
@@ -1146,7 +1147,7 @@ class SegmentService:
                 if args['keywords']:
                     keyword = Keyword(dataset)
                     keyword.delete_by_ids([segment.index_node_id])
-                    document = Document(
+                    document = RAGDocument(
                         page_content=segment.content,
                         metadata={
                             "doc_id": segment.index_node_id,
@@ -1155,7 +1156,7 @@ class SegmentService:
                             "dataset_id": segment.dataset_id,
                         }
                     )
-                    keyword.add_texts([document], keywords_list=[segment.keywords])
+                    keyword.add_texts([document], keywords_list=[args['keywords']])
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0

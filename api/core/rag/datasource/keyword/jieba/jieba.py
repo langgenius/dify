@@ -193,6 +193,7 @@ class Jieba(BaseKeyword):
         ).first()
         if document_segment:
             document_segment.keywords = keywords
+            db.session.add(document_segment)
             db.session.commit()
 
     def create_segment_keywords(self, node_id: str, keywords: List[str]):

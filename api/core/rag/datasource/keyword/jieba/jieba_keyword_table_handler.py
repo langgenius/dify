@@ -1,7 +1,6 @@
 import re
 from typing import Set
-
-from core.rag.datasource.keyword.jieba import jieba
+import jieba
 from jieba.analyse import default_tfidf
 from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 

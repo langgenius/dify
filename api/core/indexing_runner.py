@@ -244,11 +244,11 @@ class IndexingRunner:
         total_price = 0
         currency = 'USD'
         index_type = doc_form
-        index_processor = IndexProcessorFactory(index_type, tmp_processing_rule).init_index_processor()
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
         all_text_docs = []
         for extract_setting in extract_settings:
             # extract
-            text_docs = index_processor.extract(extract_setting)
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
             all_text_docs.extend(text_docs)
             processing_rule = DatasetProcessRule(
                 mode=tmp_processing_rule["mode"],
