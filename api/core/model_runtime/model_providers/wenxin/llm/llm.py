@@ -29,15 +29,65 @@ from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (
     RateLimitReachedError,
 )
 
+ERNIE_BOT_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
 
-class ErnieBotLarguageModel(LargeLanguageModel):
+<instructions>
+{{instructions}}
+</instructions>
+"""
+
+class ErnieBotLargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, 
                 prompt_messages: list[PromptMessage], model_parameters: dict, 
                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
+        if 'response_format' in model_parameters and model_parameters['response_format'] in ['JSON', 'XML']:
+            response_format = model_parameters['response_format']
+            stop = stop or []
+            self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, response_format)
+            model_parameters.pop('response_format')
+
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                 model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
+
+    def _transform_json_prompts(self, model: str, credentials: dict, 
+                                prompt_messages: list[PromptMessage], model_parameters: dict, 
+                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+                                stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
+                            -> None:
+        """
+        Transform json prompts to model prompts
+        """
+        if "```\n" not in stop:
+            stop.append("```\n")
+
+        # check if there is a system message
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+            # override the system message
+            prompt_messages[0] = SystemPromptMessage(
+                content=ERNIE_BOT_BLOCK_MODE_PROMPT
+                    .replace("{{instructions}}", prompt_messages[0].content)
+                    .replace("{{block}}", response_format)
+            )
+        else:
+            # insert the system message
+            prompt_messages.insert(0, SystemPromptMessage(
+                content=ERNIE_BOT_BLOCK_MODE_PROMPT
+                    .replace("{{instructions}}", f"Please output a valid {response_format} object.")
+                    .replace("{{block}}", response_format)
+            ))
+
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+            # add ```JSON\n to the last message
+            prompt_messages[-1].content += "\n```JSON\n"
+        else:
+            # append a user message
+            prompt_messages.append(UserPromptMessage(
+                content="```JSON\n"
+            ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
