@@ -1,11 +1,20 @@
 from typing import Optional
 
-from core.entities.application_entities import PromptTemplateEntity, ModelConfigEntity, \
-    AdvancedCompletionPromptTemplateEntity
+from core.entities.application_entities import (
+    AdvancedCompletionPromptTemplateEntity,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, UserPromptMessage, \
-    SystemPromptMessage, AssistantPromptMessage, TextPromptMessageContent
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageRole,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
