@@ -1,8 +1,15 @@
 import type { FC } from 'react'
+import { mockData } from './mock'
 
 const Node: FC = () => {
+  const { method, url } = mockData
   return (
-    <div>http</div>
+    <div className='px-3'>
+      <div className='flex items-center p-1 rounded-md bg-gray-100'>
+        <div className='shrink-0 px-1 h-7 leading-7 rounded bg-gray-25 text-xs font-semibold text-gray-700 uppercase'>{method}</div>
+        <div className='ml-1 w-0 grow truncate text-xs font-normal text-gray-700'>{url}</div>
+      </div>
+    </div>
   )
 }
 
