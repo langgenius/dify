@@ -9,14 +9,12 @@ from typing import Optional, cast, List
 
 from flask import Flask, current_app
 from flask_login import current_user
-from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.errors.error import ProviderTokenNotInitError
 from core.generator.llm_generator import LLMGenerator
-from core.index.index import IndexBuilder
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -24,6 +22,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.models.document import Document
 from core.splitter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter, EnhanceRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -32,7 +31,6 @@ from libs import helper
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from models.source import DataSourceBinding
 
 
 class IndexingRunner:
@@ -58,12 +56,12 @@ class IndexingRunner:
                     filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
                     first()
                 index_type = dataset_document.doc_form
-                index_processor = IndexProcessorFactory(index_type, processing_rule.to_dict()).init_index_processor()
+                index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 # extract
-                text_docs = self._extract(index_processor, dataset_document)
+                text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
 
                 # transform
-                documents = self._transform(index_processor, dataset, text_docs)
+                documents = self._transform(index_processor, dataset, text_docs, processing_rule.to_dict())
                 # save segment
                 self._load_segments(dataset, dataset_document, documents)
 
@@ -116,12 +114,12 @@ class IndexingRunner:
                 first()
 
             index_type = dataset_document.doc_form
-            index_processor = IndexProcessorFactory(index_type, processing_rule.to_dict()).init_index_processor()
+            index_processor = IndexProcessorFactory(index_type).init_index_processor()
             # extract
-            text_docs = self._extract(index_processor, dataset_document)
+            text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
 
             # transform
-            documents = self._transform(index_processor, dataset, text_docs)
+            documents = self._transform(index_processor, dataset, text_docs, processing_rule.to_dict())
             # save segment
             self._load_segments(dataset, dataset_document, documents)
 
@@ -326,7 +324,8 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def _extract(self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument) -> List[Document]:
+    def _extract(self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict) \
+            -> List[Document]:
         # load file
         if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
             return []
@@ -347,7 +346,7 @@ class IndexingRunner:
                     upload_file=file_detail,
                     document_model=dataset_document.doc_form
                 )
-                text_docs = index_processor.extract(extract_setting)
+                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
         elif dataset_document.data_source_type == 'notion_import':
             if (not data_source_info or 'notion_workspace_id' not in data_source_info
                     or 'notion_page_id' not in data_source_info):
@@ -362,7 +361,7 @@ class IndexingRunner:
                 },
                 document_model=dataset_document.doc_form
             )
-            text_docs = index_processor.extract(extract_setting)
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,
@@ -735,17 +734,12 @@ class IndexingRunner:
             )
             documents.append(document)
         # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.add_texts(documents, duplicate_check=True)
-
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
-            index.add_texts(documents)
+        index_type = dataset.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_processor.load(dataset, documents)
 
     def _transform(self, index_processor: BaseIndexProcessor, dataset: Dataset,
-                   text_docs: List[Document]) -> List[Document]:
+                   text_docs: List[Document], process_rule: dict) -> List[Document]:
         # get embedding model instance
         embedding_model_instance = None
         if dataset.indexing_technique == 'high_quality':
@@ -762,7 +756,8 @@ class IndexingRunner:
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
 
-        documents = index_processor.transform(text_docs, embedding_model_instance=embedding_model_instance)
+        documents = index_processor.transform(text_docs, embedding_model_instance=embedding_model_instance,
+                                              process_rule=process_rule)
 
         return documents
 

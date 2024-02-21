@@ -95,6 +95,14 @@ class Dataset(db.Model):
             .filter(Document.dataset_id == self.id).scalar()
 
     @property
+    def doc_form(self):
+        document = db.session.query(Document).filter(
+            Document.dataset_id == self.id).first()
+        if document:
+            return document.doc_form
+        return None
+
+    @property
     def retrieval_model_dict(self):
         default_retrieval_model = {
             'search_method': 'semantic_search',

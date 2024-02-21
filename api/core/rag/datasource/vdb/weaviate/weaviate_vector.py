@@ -124,7 +124,6 @@ class WeaviateVector(BaseVector):
             output='minimal'
         )
 
-
     def delete(self):
         self._client.schema.delete_class(self._collection_name)
 

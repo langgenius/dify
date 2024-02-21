@@ -2,8 +2,8 @@ import re
 from typing import Set
 
 from core.rag.datasource.keyword.jieba import jieba
-from core.index.keyword_table_index.stopwords import STOPWORDS
-from core.rag.datasource.keyword.jieba.jieba import default_tfidf
+from jieba.analyse import default_tfidf
+from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
 
 class JiebaKeywordTableHandler:

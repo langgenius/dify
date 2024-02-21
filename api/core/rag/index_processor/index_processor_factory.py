@@ -11,8 +11,7 @@ class IndexProcessorFactory:
     """IndexProcessorInit.
     """
 
-    def __init__(self, index_type: str, process_rule: dict):
-        self._process_rule = process_rule
+    def __init__(self, index_type: str):
         self._index_type = index_type
 
     def init_index_processor(self) -> BaseIndexProcessor:
@@ -22,13 +21,9 @@ class IndexProcessorFactory:
             raise ValueError(f"Index type must be specified.")
 
         if self._index_type == IndexType.PARAGRAPH_INDEX.value:
-            return ParagraphIndexProcessor(
-                process_rule=self._process_rule
-            )
+            return ParagraphIndexProcessor()
         elif self._index_type == IndexType.QA_INDEX.value:
 
-            return QAIndexProcessor(
-                process_rule=self._process_rule
-            )
+            return QAIndexProcessor()
         else:
             raise ValueError(f"Index type {self._index_type} is not supported.")

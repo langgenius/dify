@@ -19,25 +19,25 @@ class BaseIndexProcessor(ABC):
     """Interface for extract files.
     """
 
-    def __init__(self, process_rule: dict):
-        self._process_rule = process_rule
-
     @abstractmethod
-    def extract(self, extract_setting: ExtractSetting) -> List[Document]:
-        pass
+    def extract(self, extract_setting: ExtractSetting, **kwargs) -> List[Document]:
+        raise NotImplementedError
 
     @abstractmethod
     def transform(self, documents: List[Document], **kwargs) -> List[Document]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def load(self, dataset: Dataset, documents: List[Document]):
-        pass
+    def load(self, dataset: Dataset, documents: List[Document], with_keywords: bool = True):
+        raise NotImplementedError
+
+    def clean(self, dataset: Dataset, node_ids: Optional[List[str]], with_keywords: bool = True):
+        raise NotImplementedError
 
     @abstractmethod
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> List[Document]:
-        pass
+        raise NotImplementedError
 
     def _get_splitter(self, processing_rule: dict,
                       embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:

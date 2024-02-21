@@ -1,13 +1,7 @@
 import logging
-import threading
 import time
 
 import numpy as np
-from flask import current_app
-from langchain.embeddings.base import Embeddings
-from langchain.schema import Document
-from sklearn.manifold import TSNE
-
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType

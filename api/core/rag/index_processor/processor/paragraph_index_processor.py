@@ -1,6 +1,6 @@
 """Paragraph index processor."""
 import uuid
-from typing import List
+from typing import List, Optional
 import pandas as pd
 from werkzeug.datastructures import FileStorage
 
@@ -18,21 +18,21 @@ from models.dataset import Dataset
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
 
-    def extract(self, extract_setting: ExtractSetting) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting, **kwargs) -> List[Document]:
 
         text_docs = ExtractProcessor.extract(extract_setting=extract_setting,
-                                             is_automatic=self._process_rule["mode"] == "automatic")
+                                             is_automatic=kwargs.get('process_rule_mode') == "automatic")
 
         return text_docs
 
-    def transform(self,  documents: List[Document], **kwargs) -> List[Document]:
+    def transform(self, documents: List[Document], **kwargs) -> List[Document]:
         # Split the text documents into nodes.
-        splitter = self._get_splitter(processing_rule=self._process_rule,
+        splitter = self._get_splitter(processing_rule=kwargs.get('process_rule'),
                                       embedding_model_instance=kwargs.get('embedding_model_instance'))
         all_documents = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, self._process_rule)
+            document_text = CleanProcessor.clean(document.page_content, kwargs.get('process_rule'))
             document.page_content = document_text
             # parse document to nodes
             document_nodes = splitter.split_documents([document])
@@ -55,13 +55,27 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
-    def load(self, dataset: Dataset, documents: List[Document]):
+    def load(self, dataset: Dataset, documents: List[Document], with_keywords: bool = True):
         if dataset.indexing_technique == 'high_quality':
             vector = Vector(dataset)
             vector.create(documents)
+        if with_keywords:
+            keyword = Keyword(dataset)
+            keyword.create(documents)
 
-        keyword = Keyword(dataset)
-        keyword.create(documents)
+    def clean(self, dataset: Dataset, node_ids: Optional[List[str]], with_keywords: bool = True):
+        if dataset.indexing_technique == 'high_quality':
+            vector = Vector(dataset)
+            if node_ids:
+                vector.delete_by_ids(node_ids)
+            else:
+                vector.delete()
+        if with_keywords:
+            keyword = Keyword(dataset)
+            if node_ids:
+                keyword.delete_by_ids(node_ids)
+            else:
+                keyword.delete()
 
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> List[Document]:

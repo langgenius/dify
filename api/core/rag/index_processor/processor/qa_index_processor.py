@@ -3,7 +3,7 @@ import logging
 import re
 import threading
 import uuid
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from flask import current_app, Flask
@@ -24,14 +24,14 @@ from models.dataset import Dataset
 
 
 class QAIndexProcessor(BaseIndexProcessor):
-    def extract(self, extract_setting: ExtractSetting) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting, **kwargs) -> List[Document]:
 
         text_docs = ExtractProcessor.extract(extract_setting=extract_setting,
-                                             is_automatic=self._process_rule["mode"] == "automatic")
+                                             is_automatic=kwargs.get('process_rule_mode') == "automatic")
         return text_docs
 
     def transform(self, documents: List[Document], **kwargs) -> List[Document]:
-        splitter = self._get_splitter(processing_rule=self._process_rule,
+        splitter = self._get_splitter(processing_rule=kwargs.get('process_rule'),
                                       embedding_model_instance=None)
 
         # Split the text documents into nodes.
@@ -39,7 +39,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         all_qa_documents = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, self._process_rule)
+            document_text = CleanProcessor.clean(document.page_content, kwargs.get('process_rule'))
             document.page_content = document_text
 
             # parse document to nodes
@@ -97,10 +97,17 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
-    def load(self, dataset: Dataset, documents: List[Document]):
+    def load(self, dataset: Dataset, documents: List[Document], with_keywords: bool = True):
         if dataset.indexing_technique == 'high_quality':
             vector = Vector(dataset)
             vector.create(documents)
+
+    def clean(self, dataset: Dataset, node_ids: Optional[List[str]], with_keywords: bool = True):
+        vector = Vector(dataset)
+        if node_ids:
+            vector.delete_by_ids(node_ids)
+        else:
+            vector.delete()
 
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict):
