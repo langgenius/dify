@@ -59,7 +59,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   return (
     <div
       className={`
-        group relative pb-2 w-[296px] bg-[#fcfdff] rounded-2xl shadow-xs
+        group relative pb-2 w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
         ${selectedNodeId === nodeId ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}

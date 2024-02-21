@@ -4,6 +4,7 @@ import {
   memo,
   useState,
 } from 'react'
+import { useWorkflowContext } from './context'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -42,7 +43,19 @@ const ZOOM_IN_OUT_OPTIONS = [
 ]
 
 const ZoomInOut: FC = () => {
+  const { reactFlow } = useWorkflowContext()
   const [open, setOpen] = useState(false)
+
+  const handleZoom = (type: string) => {
+    if (type === 'in')
+      reactFlow.zoomIn()
+
+    if (type === 'out')
+      reactFlow.zoomOut()
+
+    if (type === 'fit')
+      reactFlow.fitView()
+  }
 
   return (
     <PortalToFollowElem
@@ -78,6 +91,7 @@ const ZoomInOut: FC = () => {
                       <div
                         key={option.key}
                         className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer text-sm text-gray-700'
+                        onClick={() => handleZoom(option.key)}
                       >
                         {option.text}
                       </div>

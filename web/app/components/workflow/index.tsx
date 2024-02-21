@@ -8,6 +8,7 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
+import './style.css'
 import {
   WorkflowContext,
   useWorkflowContext,

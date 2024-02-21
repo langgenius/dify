@@ -5,6 +5,7 @@ import {
   Position,
 } from 'reactflow'
 import { useWorkflowContext } from '../context'
+import { BlockEnum } from '../types'
 import {
   NodeComponentMap,
   PanelComponentMap,
@@ -22,8 +23,13 @@ const CustomNode = ({
     <>
       <Handle
         type='target'
-        position={Position.Top}
-        className='!-top-0.5 !w-2 !h-0.5 !bg-primary-500 !rounded-none !border-none !min-h-[2px]'
+        position={Position.Left}
+        className={`
+          !top-4 !left-0 !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
+          after:absolute after:w-0.5 after:h-2 after:-left-0.5 after:top-1 after:bg-primary-500
+          ${data.type === BlockEnum.Start && 'opacity-0'}
+        `}
+        isConnectable={data.type !== BlockEnum.Start}
       />
       <BaseNode
         id={id}
@@ -33,8 +39,11 @@ const CustomNode = ({
       </BaseNode>
       <Handle
         type='source'
-        position={Position.Bottom}
-        className='!-bottom-0.5 !w-2 !h-0.5 !bg-primary-500 !rounded-none !border-none !min-h-[2px]'
+        position={Position.Right}
+        className={`
+          !top-4 !right-0 !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0
+          after:absolute after:w-0.5 after:h-2 after:-right-0.5 after:top-1 after:bg-primary-500
+        `}
       />
     </>
   )

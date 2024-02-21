@@ -31,15 +31,12 @@ export const useWorkflow = (
   }, [nodes, selectedNodeId])
 
   const handleAddNextNode = useCallback((prevNode: Node, nextNodeType: BlockEnum) => {
-    const prevNodeDom = document.querySelector(`.react-flow__node-custom[data-id="${prevNode.id}"]`)
-    const prevNodeDomHeight = prevNodeDom?.getBoundingClientRect().height || 0
-
     const nextNode = {
       id: `node-${Date.now()}`,
       type: 'custom',
       position: {
-        x: prevNode.position.x,
-        y: prevNode.position.y + prevNodeDomHeight + 64,
+        x: prevNode.position.x + 304,
+        y: prevNode.position.y,
       },
       data: NodeInitialData[nextNodeType],
     }
