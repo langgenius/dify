@@ -456,7 +456,6 @@ class DocumentService:
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
-            vector_space = features.vector_space
             if 'original_document_id' not in document_data or not document_data['original_document_id']:
                 count = 0
                 if document_data["data_source"]["type"] == "upload_file":
@@ -469,9 +468,6 @@ class DocumentService:
                 batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-                if count + vector_space.size > vector_space.limit:
-                    raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
-                                     "your subscription.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -754,8 +750,6 @@ class DocumentService:
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
-            vector_space = features.vector_space
-
             count = 0
             if document_data["data_source"]["type"] == "upload_file":
                 upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
@@ -767,9 +761,7 @@ class DocumentService:
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-            if count + vector_space.size > vector_space.limit:
-                raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
-                                 "your subscription.")
+
         embedding_model = None
         dataset_collection_binding_id = None
         retrieval_model = None

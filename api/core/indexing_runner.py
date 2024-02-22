@@ -248,14 +248,10 @@ class IndexingRunner:
         # check document limit
         features = FeatureService.get_features(tenant_id)
         if features.billing.enabled:
-            vector_space = features.vector_space
             count = len(file_details)
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-            if count + vector_space.size > vector_space.limit:
-                raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
-                                 "your subscription.")
 
         embedding_model_instance = None
         if dataset_id:
@@ -377,14 +373,10 @@ class IndexingRunner:
         # check document limit
         features = FeatureService.get_features(tenant_id)
         if features.billing.enabled:
-            vector_space = features.vector_space
             count = len(notion_info_list)
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-            if count + vector_space.size > vector_space.limit:
-                raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
-                                 "your subscription.")
 
         embedding_model_instance = None
         if dataset_id:
