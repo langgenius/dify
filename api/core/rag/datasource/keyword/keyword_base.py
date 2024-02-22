@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any, List
-
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
 

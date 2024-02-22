@@ -1,12 +1,6 @@
 from typing import cast, Any, List
-
-from core.embedding.cached_embedding import CacheEmbedding
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
-from core.rag.datasource.vdb.vector_base import BaseVector
 from flask import current_app
 
 from core.rag.models.document import Document
