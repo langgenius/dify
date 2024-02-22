@@ -28,6 +28,7 @@ const translation = {
         typeError: 'File type not supported',
         size: 'File too large. Maximum is {{size}}MB',
         count: 'Multiple files not supported',
+        filesNumber: 'You have reached the batch upload limit of {{filesNumber}}.',
       },
       cancel: 'Cancel',
       change: 'Change',
