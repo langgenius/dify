@@ -260,18 +260,19 @@ const translation = {
     queryNoBeEmpty: 'Запит має бути встановлений у підказці', // Query must be set in the prompt
   },
   variableConig: {
-    modalTitle: 'Налаштування поля', // Field settings
-    description: 'Налаштування для змінної {{varName}}', // Setting for variable {{varName}}
-    fieldType: 'Тип поля', // Field type
-    string: 'Короткий текст', // Short Text
-    paragraph: 'Абзац', // Paragraph
-    select: 'Вибрати', // Select
-    notSet: 'Не налаштовано, спробуйте ввести {{input}} у префіксну підказку', // Not set, try typing {{input}} in the prefix prompt
-    stringTitle: 'Опції текстового поля форми', // Form text box options
-    maxLength: 'Максимальна довжина', // Max length
-    options: 'Опції', // Options
-    addOption: 'Додати опцію', // Add option
-    apiBasedVar: 'Змінна на основі API', // API-based Variable
+    'addModalTitle': 'Налаштування поля', // Field settings
+    'description': 'Налаштування для змінної {{varName}}', // Setting for variable {{varName}}
+    'fieldType': 'Тип поля', // Field type
+    'string': 'Короткий текст', // Short Text
+    'text-input': 'Короткий текст', // Short Text
+    'paragraph': 'Абзац', // Paragraph
+    'select': 'Вибрати', // Select
+    'notSet': 'Не налаштовано, спробуйте ввести {{input}} у префіксну підказку', // Not set, try typing {{input}} in the prefix prompt
+    'stringTitle': 'Опції текстового поля форми', // Form text box options
+    'maxLength': 'Максимальна довжина', // Max length
+    'options': 'Опції', // Options
+    'addOption': 'Додати опцію', // Add option
+    'apiBasedVar': 'Змінна на основі API', // API-based Variable
   },
   vision: {
     name: 'Зображення', // Vision

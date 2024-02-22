@@ -1,4 +1,5 @@
 /* eslint-disable import/no-mutable-exports */
+import { InputVarType } from '@/app/components/workflow/types'
 import { AgentStrategy } from '@/types/app'
 
 export let apiPrefix = ''
@@ -113,6 +114,15 @@ export const VAR_ITEM_TEMPLATE = {
   type: 'string',
   max_length: DEFAULT_VALUE_MAX_LEN,
   required: true,
+}
+
+export const VAR_ITEM_TEMPLATE_IN_WORKFLOW = {
+  variable: '',
+  label: '',
+  type: InputVarType.textInput,
+  max_length: DEFAULT_VALUE_MAX_LEN,
+  required: true,
+  options: [],
 }
 
 export const appDefaultIconBackground = '#D5F5F6'

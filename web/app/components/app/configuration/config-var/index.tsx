@@ -25,6 +25,8 @@ import { AppType } from '@/types/app'
 import type { ExternalDataTool } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import type { InputVar } from '@/app/components/workflow/types'
+import { InputVarType } from '@/app/components/workflow/types'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
@@ -71,6 +73,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   }
 
   const batchUpdatePromptVariable = (key: string, updateKeys: string[], newValues: any[], isParagraph?: boolean) => {
+    console.log(key)
     const newPromptVariables = promptVariables.map((item) => {
       if (item.key === key) {
         const newItem: any = { ...item }
@@ -111,7 +114,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
 
     conflictTimer = setTimeout(() => {
-      const isKeyExists = promptVariables.some(item => item.key.trim() === newKey.trim())
+      const isKeyExists = promptVariables.some(item => item.key?.trim() === newKey.trim())
       if (isKeyExists) {
         Toast.notify({
           type: 'error',
@@ -242,6 +245,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
 
   const [currKey, setCurrKey] = useState<string | null>(null)
   const currItem = currKey ? promptVariables.find(item => item.key === currKey) : null
+  const currItemToEdit: InputVar | null = (() => {
+    if (!currItem)
+      return null
+
+    return {
+      ...currItem,
+      label: currItem.name,
+      variable: currItem.key,
+      type: currItem.type === 'string' ? InputVarType.textInput : currItem.type,
+    } as InputVar
+  })()
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
   const handleConfig = ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
@@ -297,6 +311,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                 <tr key={index} className="h-9 leading-9">
                   <td className="w-[160px] border-b border-gray-100 pl-3">
                     <div className='flex items-center space-x-1'>
+                      {type}
                       <IconTypeIcon type={type as IInputTypeIconProps['type']} className='text-gray-400' />
                       {!readonly
                         ? (
@@ -358,14 +373,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
 
       {isShowEditModal && (
         <EditModal
-          payload={currItem as PromptVariable}
+          payload={currItemToEdit!}
           isShow={isShowEditModal}
           onClose={hideEditModal}
-          onConfirm={({ type, value }) => {
-            if (type === 'string')
-              batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], [type, value || DEFAULT_VALUE_MAX_LEN])
+          onConfirm={(item) => {
+            const { type, max_length, options } = item
+            if (type === InputVarType.textInput)
+              batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], ['string', max_length || DEFAULT_VALUE_MAX_LEN])
+            if (type === InputVarType.paragraph)
+              batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], [InputVarType.paragraph, max_length || DEFAULT_VALUE_MAX_LEN], true)
             else
-              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, value || []], type === 'paragraph')
+              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, options || []], false)
 
             hideEditModal()
           }}
