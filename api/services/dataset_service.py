@@ -468,9 +468,10 @@ class DocumentService:
                         count = count + len(notion_info['pages'])
                 batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
                 if count > batch_upload_limit:
-                    raise ValueError("You have reached the batch upload limit of your subscription.")
+                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
                 if count + vector_space.size > vector_space.limit:
-                    raise ValueError("You have over the limit of your subscription.")
+                    raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
+                                     "your subscription.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -765,9 +766,10 @@ class DocumentService:
                     count = count + len(notion_info['pages'])
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
-                raise ValueError("You have reached the batch upload limit of your subscription.")
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
             if count + vector_space.size > vector_space.limit:
-                raise ValueError("You have over the limit of your subscription.")
+                raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
+                                 "your subscription.")
         embedding_model = None
         dataset_collection_binding_id = None
         retrieval_model = None
@@ -1157,7 +1159,7 @@ class SegmentService:
                     segment.answer = args['answer']
                 if 'keywords' in args and args['keywords']:
                     segment.keywords = args['keywords']
-                if'enabled' in args and args['enabled'] is not None:
+                if 'enabled' in args and args['enabled'] is not None:
                     segment.enabled = args['enabled']
                 db.session.add(segment)
                 db.session.commit()

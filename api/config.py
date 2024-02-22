@@ -56,7 +56,7 @@ DEFAULTS = {
     'BILLING_ENABLED': 'False',
     'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
-    'BATCH_UPLOAD_LIMIT': 10
+    'BATCH_UPLOAD_LIMIT': 20
 }
 
 
