@@ -25,6 +25,7 @@ from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom,
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from core.model_runtime.callbacks.base_callback import Callback
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,45 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # get model mode
         model_mode = self.get_model_mode(base_model, credentials)
 
+        if model_mode == LLMMode.CHAT:
+            # chat model
+            return self._chat_generate(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=stop,
+                stream=stream,
+                user=user
+            )
+        else:
+            # text completion model
+            return self._generate(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                stop=stop,
+                stream=stream,
+                user=user
+            )
+
+    def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                           model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
+                           stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
+                           callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+        """
+        Code block mode wrapper for invoking large language model
+        """
+        # handle fine tune remote models
+        base_model = model
+        if model.startswith('ft:'):
+            base_model = model.split(':')[1]
+
+        # get model mode
+        model_mode = self.get_model_mode(base_model, credentials)
+
         # transform response format
         if 'response_format' in model_parameters and model_parameters['response_format'] in ['JSON', 'XML']:
             stop = stop or []
@@ -98,29 +138,16 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 )
             model_parameters.pop('response_format')
 
-        if model_mode == LLMMode.CHAT:
-            # chat model
-            return self._chat_generate(
-                model=model,
-                credentials=credentials,
-                prompt_messages=prompt_messages,
-                model_parameters=model_parameters,
-                tools=tools,
-                stop=stop,
-                stream=stream,
-                user=user
-            )
-        else:
-            # text completion model
-            return self._generate(
-                model=model,
-                credentials=credentials,
-                prompt_messages=prompt_messages,
-                model_parameters=model_parameters,
-                stop=stop,
-                stream=stream,
-                user=user
-            )
+        return self._invoke(
+            model=model,
+            credentials=credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            user=user
+        )
 
     def _transform_chat_json_prompts(self, model: str, credentials: dict, 
                                prompt_messages: list[PromptMessage], model_parameters: dict, 

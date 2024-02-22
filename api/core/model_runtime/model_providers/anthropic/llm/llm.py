@@ -5,6 +5,7 @@ import anthropic
 from anthropic import Anthropic, Stream
 from anthropic.types import Completion, completion_create_params
 from httpx import Timeout
+from core.model_runtime.callbacks.base_callback import Callback
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -54,6 +55,15 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
+        return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
+    
+    def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                           model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
+                           stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
+                           callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+        """
+        Code block mode wrapper for invoking large language model
+        """
         if 'response_format' in model_parameters and model_parameters['response_format']:
             stop = stop or []
             self._transform_json_prompts(
@@ -61,8 +71,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             )
             model_parameters.pop('response_format')
 
-        return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
-    
+        return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+
     def _transform_json_prompts(self, model: str, credentials: dict, 
                                prompt_messages: list[PromptMessage], model_parameters: dict, 
                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
