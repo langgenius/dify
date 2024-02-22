@@ -468,7 +468,7 @@ class DocumentService:
                         count = count + len(notion_info['pages'])
                 batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
                 if count > batch_upload_limit:
-                    raise ValueError("You have reached the limit of your subscription.")
+                    raise ValueError("You have reached the batch upload limit of your subscription.")
                 if count + vector_space.size > vector_space.limit:
                     raise ValueError("You have over the limit of your subscription.")
         # if dataset is empty, update dataset data_source_type
@@ -765,7 +765,7 @@ class DocumentService:
                     count = count + len(notion_info['pages'])
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
-                raise ValueError("You have reached the limit of your subscription.")
+                raise ValueError("You have reached the batch upload limit of your subscription.")
             if count + vector_space.size > vector_space.limit:
                 raise ValueError("You have over the limit of your subscription.")
         embedding_model = None

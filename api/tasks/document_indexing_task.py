@@ -4,10 +4,12 @@ import time
 
 import click
 from celery import shared_task
+from flask import current_app
 
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
 from extensions.ext_database import db
-from models.dataset import Document
+from models.dataset import Document, Dataset
+from services.feature_service import FeatureService
 
 
 @shared_task(queue='dataset')
@@ -21,6 +23,34 @@ def document_indexing_task(dataset_id: str, document_ids: list):
     """
     documents = []
     start_at = time.perf_counter()
+
+    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+
+    # check document limit
+    features = FeatureService.get_features(dataset.tenant_id)
+    try:
+        if features.billing.enabled:
+            vector_space = features.vector_space
+            count = len(document_ids)
+            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            if count > batch_upload_limit:
+                raise ValueError("You have reached the batch upload limit of your subscription.")
+            if count + vector_space.size > vector_space.limit:
+                raise ValueError("You have over the limit of your subscription.")
+    except Exception as e:
+        for document_id in document_ids:
+            document = db.session.query(Document).filter(
+                Document.id == document_id,
+                Document.dataset_id == dataset_id
+            ).first()
+            if document:
+                document.indexing_status = 'error'
+                document.error = str(e)
+                document.stopped_at = datetime.datetime.utcnow()
+                db.session.add(document)
+        db.session.commit()
+        return
+
     for document_id in document_ids:
         logging.info(click.style('Start process document: {}'.format(document_id), fg='green'))
 
