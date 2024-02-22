@@ -15,7 +15,7 @@ const initI18next = async (lng: Locale, ns: string) => {
     .use(initReactI18next)
     .use(resourcesToBackend((language: string, namespace: string) => import(`./lang/${namespace}.${language}.ts`)))
     .init({
-      lng: lng === 'zh-Hans' ? 'zh' : lng,
+      lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
       ns,
       fallbackLng: 'en-US',
     })
