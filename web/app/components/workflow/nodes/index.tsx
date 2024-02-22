@@ -1,10 +1,11 @@
+import type { FC } from 'react'
 import { memo } from 'react'
 import type { NodeProps } from 'reactflow'
 import {
   Handle,
   Position,
 } from 'reactflow'
-import { useWorkflowContext } from '../context'
+import type { Node } from '../types'
 import { BlockEnum } from '../types'
 import {
   NodeComponentMap,
@@ -49,18 +50,18 @@ const CustomNode = ({
   )
 }
 
-export const Panel = memo(() => {
-  const { selectedNode } = useWorkflowContext()
-
-  if (!selectedNode)
-    return null
-
-  const PanelComponent = PanelComponentMap[selectedNode.data.type]
+type PanelProps = {
+  node: Node
+}
+export const Panel: FC<PanelProps> = memo(({
+  node,
+}) => {
+  const PanelComponent = PanelComponentMap[node.data.type]
 
   return (
     <BasePanel
-      id={selectedNode.id}
-      data={selectedNode.data}
+      id={node.id}
+      data={node.data}
     >
       <PanelComponent />
     </BasePanel>

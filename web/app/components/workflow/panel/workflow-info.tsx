@@ -1,19 +1,13 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import BlockIcon from './block-icon'
-import { BlockEnum } from './types'
-import { useWorkflowContext } from './context'
+import BlockIcon from '../block-icon'
+import { BlockEnum } from '../types'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { FileCheck02 } from '@/app/components/base/icons/src/vender/line/files'
 
-const AppInfoPanel: FC = () => {
-  const { selectedNode } = useWorkflowContext()
-
-  if (selectedNode)
-    return null
-
+const WorkflowInfo: FC = () => {
   return (
-    <div className='absolute top-14 right-2 bottom-2 w-[420px] bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl z-10 overflow-y-auto'>
+    <div className='mr-2 w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl z-10 overflow-y-auto'>
       <div className='sticky top-0 bg-white border-b-[0.5px] border-black/5'>
         <div className='flex pt-4 px-4 pb-1'>
           <div className='mr-3 w-10 h-10'></div>
@@ -55,4 +49,4 @@ const AppInfoPanel: FC = () => {
   )
 }
 
-export default memo(AppInfoPanel)
+export default memo(WorkflowInfo)

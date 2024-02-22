@@ -11,6 +11,7 @@ import type {
 } from './types'
 
 export type WorkflowContextValue = {
+  mode: string
   reactFlow: ReactFlowInstance
   nodes: Node[]
   edges: Edge[]
@@ -22,6 +23,7 @@ export type WorkflowContextValue = {
 }
 
 export const WorkflowContext = createContext<WorkflowContextValue>({
+  mode: 'workflow',
   reactFlow: null as any,
   nodes: [],
   edges: [],

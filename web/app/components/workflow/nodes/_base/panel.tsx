@@ -31,7 +31,7 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useWorkflowContext()
 
   return (
-    <div className='absolute top-14 right-2 bottom-2 w-[420px] bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl z-10 overflow-y-auto'>
+    <div className='mr-2 w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl z-10 overflow-y-auto'>
       <div className='sticky top-0 bg-white border-b-[0.5px] border-black/5'>
         <div className='flex items-center px-4 pt-3'>
           <BlockIcon

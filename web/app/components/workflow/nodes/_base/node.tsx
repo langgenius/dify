@@ -9,9 +9,9 @@ import {
 } from 'react'
 import type { NodeProps } from 'reactflow'
 import { useWorkflowContext } from '../../context'
-import NodeControl from '../../node-control'
 import BlockIcon from '../../block-icon'
 import BlockSelector from '../../block-selector'
+import NodeControl from './components/node-control'
 
 type BaseNodeProps = {
   children: ReactElement

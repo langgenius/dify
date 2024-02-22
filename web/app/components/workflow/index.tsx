@@ -15,13 +15,10 @@ import {
 } from './context'
 import { useWorkflow } from './hooks'
 import Header from './header'
-import CustomNode, {
-  Panel,
-} from './nodes'
-// import AppInfoPanel from './app-info-panel'
-import DebugAndPreview from './debug-and-preview'
+import CustomNode from './nodes'
 import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
+import Panel from './panel'
 import type { Node } from './types'
 
 const nodeTypes = {
@@ -40,8 +37,6 @@ const Workflow = () => {
   return (
     <div className='relative w-full h-full'>
       <Header />
-      {/* <AppInfoPanel /> */}
-      <DebugAndPreview />
       <Panel />
       <ZoomInOut />
       <ReactFlow
@@ -87,6 +82,7 @@ const WorkflowWrap: FC<WorkflowWrapProps> = ({
 
   return (
     <WorkflowContext.Provider value={{
+      mode: 'workflow',
       reactFlow,
       selectedNodeId,
       handleSelectedNodeIdChange,
