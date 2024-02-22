@@ -116,7 +116,7 @@ const SettingBuiltInTool: FC<Props> = ({
     </div>
   )
 
-  const setttingUI = (
+  const settingUI = (
     <Form
       value={tempSetting}
       onChange={setTempSetting}
@@ -174,7 +174,7 @@ const SettingBuiltInTool: FC<Props> = ({
             </div>
             : (<div className='flex flex-col h-full'>
               <div className='grow h-0 overflow-y-auto  px-6'>
-                {isInfoActive ? infoUI : setttingUI}
+                {isInfoActive ? infoUI : settingUI}
               </div>
               {!readonly && !isInfoActive && (
                 <div className='mt-2 shrink-0 flex justify-end py-4 px-6  space-x-2 rounded-b-[10px] bg-gray-50 border-t border-black/5'>

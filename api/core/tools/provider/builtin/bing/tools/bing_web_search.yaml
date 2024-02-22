@@ -25,9 +25,74 @@ parameters:
       zh_Hans: 用于搜索网页内容
       pt_BR: used for searching
     llm_description: key words for searching
+  - name: enable_computation
+    type: boolean
+    required: false
+    form: form
+    label:
+      en_US: Enable computation
+      zh_Hans: 启用计算
+      pt_BR: Enable computation
+    human_description:
+      en_US: enable computation
+      zh_Hans: 启用计算
+      pt_BR: enable computation
+    default: false
+  - name: enable_entities
+    type: boolean
+    required: false
+    form: form
+    label:
+      en_US: Enable entities
+      zh_Hans: 启用实体搜索
+      pt_BR: Enable entities
+    human_description:
+      en_US: enable entities
+      zh_Hans: 启用实体搜索
+      pt_BR: enable entities
+    default: true
+  - name: enable_news
+    type: boolean
+    required: false
+    form: form
+    label:
+      en_US: Enable news
+      zh_Hans: 启用新闻搜索
+      pt_BR: Enable news
+    human_description:
+      en_US: enable news
+      zh_Hans: 启用新闻搜索
+      pt_BR: enable news
+    default: false
+  - name: enable_related_search
+    type: boolean
+    required: false
+    form: form
+    label:
+      en_US: Enable related search
+      zh_Hans: 启用相关搜索
+      pt_BR: Enable related search
+    human_description:
+      en_US: enable related search
+      zh_Hans: 启用相关搜索
+      pt_BR: enable related search
+    default: false
+  - name: enable_webpages
+    type: boolean
+    required: false
+    form: form
+    label:
+      en_US: Enable webpages search
+      zh_Hans: 启用网页搜索
+      pt_BR: Enable webpages search
+    human_description:
+      en_US: enable webpages search
+      zh_Hans: 启用网页搜索
+      pt_BR: enable webpages search
+    default: true
   - name: limit
     type: number
-    required: false
+    required: true
     form: form
     label:
       en_US: Limit for results length
@@ -42,7 +107,7 @@ parameters:
     default: 5
   - name: result_type
     type: select
-    required: false
+    required: true
     label:
       en_US: result type
       zh_Hans: 结果类型
