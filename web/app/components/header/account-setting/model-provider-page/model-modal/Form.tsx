@@ -229,14 +229,12 @@ const Form: FC<FormProps> = ({
       return (
         <div key={variable} className='py-3'>
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
-            {/* 使用 flex 容器包裹 label 和 tooltipContent，使它们在左侧 */}
             <div className='flex items-center space-x-2'>
               <span>{label[language]}</span>
               {tooltipContent}
             </div>
-            {/* Radio.Group 现在会自动对齐到右侧 */}
             <Radio.Group
-              className='flex items-center' // 适当调整以适应布局
+              className='flex items-center'
               value={value[variable] ? 1 : 0}
               onChange={val => handleFormChange(variable, val === 1)}
             >
