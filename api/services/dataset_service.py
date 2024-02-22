@@ -36,6 +36,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from services.feature_service import FeatureService
 from services.vector_service import VectorService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
@@ -452,7 +453,9 @@ class DocumentService:
                                       created_from: str = 'web'):
 
         # check document limit
-        if current_app.config['EDITION'] == 'CLOUD':
+        features = FeatureService.get_features(current_user.current_tenant_id)
+
+        if features.billing.enabled:
             if 'original_document_id' not in document_data or not document_data['original_document_id']:
                 count = 0
                 if document_data["data_source"]["type"] == "upload_file":
@@ -462,6 +465,9 @@ class DocumentService:
                     notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                     for notion_info in notion_info_list:
                         count = count + len(notion_info['pages'])
+                batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+                if count > batch_upload_limit:
+                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -741,14 +747,20 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
-        count = 0
-        if document_data["data_source"]["type"] == "upload_file":
-            upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
-            count = len(upload_file_list)
-        elif document_data["data_source"]["type"] == "notion_import":
-            notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
-            for notion_info in notion_info_list:
-                count = count + len(notion_info['pages'])
+        features = FeatureService.get_features(current_user.current_tenant_id)
+
+        if features.billing.enabled:
+            count = 0
+            if document_data["data_source"]["type"] == "upload_file":
+                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                count = len(upload_file_list)
+            elif document_data["data_source"]["type"] == "notion_import":
+                notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
+                for notion_info in notion_info_list:
+                    count = count + len(notion_info['pages'])
+            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            if count > batch_upload_limit:
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
         embedding_model = None
         dataset_collection_binding_id = None
@@ -1139,7 +1151,7 @@ class SegmentService:
                     segment.answer = args['answer']
                 if 'keywords' in args and args['keywords']:
                     segment.keywords = args['keywords']
-                if'enabled' in args and args['enabled'] is not None:
+                if 'enabled' in args and args['enabled'] is not None:
                     segment.enabled = args['enabled']
                 db.session.add(segment)
                 db.session.commit()

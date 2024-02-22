@@ -28,6 +28,7 @@ const translation = {
         typeError: 'Tipo de arquivo não suportado',
         size: 'Arquivo muito grande. Máximo é {{size}}MB',
         count: 'Vários arquivos não suportados',
+        filesNumber: 'Limite de upload em massa {{filesNumber}}.',
       },
       cancel: 'Cancelar',
       change: 'Alterar',

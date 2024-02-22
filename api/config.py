@@ -56,6 +56,7 @@ DEFAULTS = {
     'BILLING_ENABLED': 'False',
     'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
+    'BATCH_UPLOAD_LIMIT': 20
 }
 
 
@@ -284,6 +285,8 @@ class Config:
         self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
         self.BILLING_ENABLED = get_bool_env('BILLING_ENABLED')
         self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
+
+        self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
 
 
 class CloudEditionConfig(Config):

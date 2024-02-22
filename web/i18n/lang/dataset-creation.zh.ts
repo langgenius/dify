@@ -28,6 +28,7 @@ const translation = {
         typeError: '文件类型不支持',
         size: '文件太大了，不能超过 {{size}}MB',
         count: '暂不支持多个文件',
+        filesNumber: '批量上传限制 {{filesNumber}}。',
       },
       cancel: '取消',
       change: '更改文件',

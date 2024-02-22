@@ -14,6 +14,8 @@ import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
 import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
 
+const FILES_NUMBER_LIMIT = 20
+
 type IFileUploaderProps = {
   fileList: FileItem[]
   titleClassName?: string
@@ -176,6 +178,11 @@ const FileUploader = ({
     if (!files.length)
       return false
 
+    if (files.length + fileList.length > FILES_NUMBER_LIMIT) {
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
+      return false
+    }
+
     const preparedFiles = files.map((file, index) => ({
       fileID: `file${index}-${Date.now()}`,
       file,
@@ -185,7 +192,7 @@ const FileUploader = ({
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles])
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
