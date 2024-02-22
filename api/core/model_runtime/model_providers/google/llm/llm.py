@@ -7,7 +7,6 @@ import google.generativeai as genai
 import google.generativeai.client as client
 from google.generativeai.types import ContentType, GenerateContentResponse, HarmBlockThreshold, HarmCategory
 from google.generativeai.types.content_types import to_part
-from core.model_runtime.callbacks.base_callback import Callback
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (

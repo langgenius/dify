@@ -5,8 +5,8 @@ import anthropic
 from anthropic import Anthropic, Stream
 from anthropic.types import Completion, completion_create_params
 from httpx import Timeout
-from core.model_runtime.callbacks.base_callback import Callback
 
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,

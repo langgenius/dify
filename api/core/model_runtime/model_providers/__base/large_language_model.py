@@ -10,11 +10,11 @@ from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage, 
-    PromptMessage, 
+    AssistantPromptMessage,
+    PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
-    UserPromptMessage
+    UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
     ModelPropertyKey,

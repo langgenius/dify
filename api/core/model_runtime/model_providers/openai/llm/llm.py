@@ -9,6 +9,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletio
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
 from openai.types.chat.chat_completion_message import FunctionCall
 
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -25,7 +26,6 @@ from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom,
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
-from core.model_runtime.callbacks.base_callback import Callback
 
 logger = logging.getLogger(__name__)
 

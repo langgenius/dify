@@ -1,7 +1,7 @@
 from collections.abc import Generator
-from typing import cast, Optional, Union
-from core.model_runtime.callbacks.base_callback import Callback
+from typing import Optional, Union, cast
 
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
