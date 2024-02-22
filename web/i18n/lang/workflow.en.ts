@@ -71,6 +71,9 @@ const translation = {
         'not null': 'is not null',
       },
     },
+    variableAssigner: {
+      title: 'Assign variables',
+    },
   },
 }
 

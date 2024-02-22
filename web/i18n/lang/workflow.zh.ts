@@ -71,6 +71,9 @@ const translation = {
         'not null': '不为空',
       },
     },
+    variableAssigner: {
+      title: '变量赋值',
+    },
   },
 }
 

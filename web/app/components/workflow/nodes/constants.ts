@@ -22,6 +22,8 @@ import HttpNode from './http/node'
 import HttpPanel from './http/panel'
 import ToolNode from './tool/node'
 import ToolPanel from './tool/panel'
+import VariableAssignerNode from './variable-assigner/node'
+import VariableAssignerPanel from './variable-assigner/panel'
 
 export const NodeComponentMap: Record<string, ComponentType> = {
   [BlockEnum.Start]: StartNode,
@@ -35,6 +37,7 @@ export const NodeComponentMap: Record<string, ComponentType> = {
   [BlockEnum.TemplateTransform]: TemplateTransformNode,
   [BlockEnum.HttpRequest]: HttpNode,
   [BlockEnum.Tool]: ToolNode,
+  [BlockEnum.VariableAssigner]: VariableAssignerNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType> = {
@@ -49,4 +52,5 @@ export const PanelComponentMap: Record<string, ComponentType> = {
   [BlockEnum.TemplateTransform]: TemplateTransformPanel,
   [BlockEnum.HttpRequest]: HttpPanel,
   [BlockEnum.Tool]: ToolPanel,
+  [BlockEnum.VariableAssigner]: VariableAssignerPanel,
 }
