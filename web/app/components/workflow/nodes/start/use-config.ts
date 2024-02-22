@@ -10,7 +10,7 @@ const useConfig = (initInputs: StartNodeType) => {
   const [isShowAddVarModal, {
     setTrue: showAddVarModal,
     setFalse: hideAddVarModal,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
 
   const handleVarListChange = useCallback((newList: InputVar[]) => {
     const newInputs = produce(inputs, (draft: any) => {
