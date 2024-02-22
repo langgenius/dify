@@ -2,10 +2,6 @@ import React from 'react'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import Form from '@/app/components/datasets/settings/form'
 
-type Props = {
-  params: { datasetId: string }
-}
-
 const Settings = async () => {
   const locale = getLocaleOnServer()
   const { t } = await translate(locale, 'dataset-settings')
