@@ -1,10 +1,11 @@
 from typing import Any, Union
+from urllib.parse import quote
 
 from requests import get
-from urllib.parse import quote
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class BingSearchTool(BuiltinTool):
     url = 'https://api.bing.microsoft.com/v7.0/search'
