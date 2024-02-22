@@ -178,7 +178,7 @@ const FileUploader = ({
     if (!files.length)
       return false
 
-    if (files.length > FILES_NUMBER_LIMIT) {
+    if (files.length + fileList.length > FILES_NUMBER_LIMIT) {
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
       return false
     }
@@ -192,7 +192,7 @@ const FileUploader = ({
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles, notify, t])
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
