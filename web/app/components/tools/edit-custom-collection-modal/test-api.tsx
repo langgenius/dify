@@ -10,7 +10,6 @@ import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import I18n from '@/context/i18n'
 import { testAPIAvailable } from '@/service/tools'
-import { getModelRuntimeSupported } from '@/utils/language'
 
 type Props = {
   customCollection: CustomCollectionBackend
@@ -27,7 +26,6 @@ const TestApi: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(customCollection.credentials)
   const [result, setResult] = useState<string>('')
@@ -80,7 +78,7 @@ const TestApi: FC<Props> = ({
                       {parameters.map((item, index) => (
                         <tr key={index} className='border-b last:border-0 border-gray-200'>
                           <td className="py-2 pl-3 pr-2.5">
-                            {item.label[language]}
+                            {item.label[locale]}
                           </td>
                           <td className="">
                             <input

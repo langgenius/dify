@@ -6,7 +6,6 @@ import cn from 'classnames'
 import AppIcon from '../../base/app-icon'
 import type { Collection } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { getModelRuntimeSupported } from '@/utils/language'
 
 type Props = {
   isCurrent: boolean
@@ -20,7 +19,7 @@ const Item: FC<Props> = ({
   onClick,
 }) => {
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+
   return (
     <div
       className={cn(isCurrent && 'bg-white shadow-xs rounded-lg', 'mt-1 flex h-9 items-center px-2 space-x-2 cursor-pointer')}
@@ -42,7 +41,7 @@ const Item: FC<Props> = ({
             background={payload.icon.background}
           />
         )}
-      <div className={cn(isCurrent && 'text-primary-600 font-semibold', 'leading-5 text-sm font-normal truncate')}>{payload.label[language]}</div>
+      <div className={cn(isCurrent && 'text-primary-600 font-semibold', 'leading-5 text-sm font-normal truncate')}>{payload.label[locale]}</div>
 
     </div>
   )

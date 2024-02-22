@@ -1,7 +1,7 @@
 import { LanguagesSupported } from '@/utils/language'
 
 export const i18n = {
-  defaultLocale: 'en',
+  defaultLocale: 'en-US',
   locales: LanguagesSupported,
 } as const
 
