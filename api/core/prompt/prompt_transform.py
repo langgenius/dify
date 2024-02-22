@@ -10,11 +10,13 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 class PromptTransform:
     def _append_chat_histories(self, memory: TokenBufferMemory,
                                prompt_messages: list[PromptMessage],
-                               model_config: ModelConfigEntity) -> None:
+                               model_config: ModelConfigEntity) -> list[PromptMessage]:
         if memory:
             rest_tokens = self._calculate_rest_token(prompt_messages, model_config)
             histories = self._get_history_messages_list_from_memory(memory, rest_tokens)
             prompt_messages.extend(histories)
+
+        return prompt_messages
 
     def _calculate_rest_token(self, prompt_messages: list[PromptMessage], model_config: ModelConfigEntity) -> int:
         rest_tokens = 2000
