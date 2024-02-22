@@ -1,1 +1,2 @@
 export { default as ClockFastForward } from './ClockFastForward'
+export { default as ClockPlay } from './ClockPlay'
