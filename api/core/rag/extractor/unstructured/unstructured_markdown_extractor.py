@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -34,7 +33,7 @@ class UnstructuredMarkdownExtractor(BaseExtractor):
         self._file_path = file_path
         self._api_url = api_url
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         from unstructured.partition.md import partition_md
 
         elements = partition_md(filename=self._file_path, api_url=self._api_url)

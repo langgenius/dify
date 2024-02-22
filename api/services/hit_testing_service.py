@@ -2,6 +2,8 @@ import logging
 import time
 
 import numpy as np
+from sklearn.manifold import TSNE
+
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -11,7 +13,6 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
-from sklearn.manifold import TSNE
 
 default_retrieval_model = {
     'search_method': 'semantic_search',

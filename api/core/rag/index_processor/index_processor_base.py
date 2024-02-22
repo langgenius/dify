@@ -1,18 +1,14 @@
 """Abstract interface for document loader implementations."""
-import json
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import Optional
 
 from langchain.text_splitter import TextSplitter
-from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelInstance
-from core.rag.cleaner.cleaner_base import BaseCleaner
 from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from core.splitter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
-from models.dataset import DatasetProcessRule, Dataset
+from models.dataset import Dataset, DatasetProcessRule
 
 
 class BaseIndexProcessor(ABC):
@@ -20,23 +16,23 @@ class BaseIndexProcessor(ABC):
     """
 
     @abstractmethod
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
-    def transform(self, documents: List[Document], **kwargs) -> List[Document]:
+    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
-    def load(self, dataset: Dataset, documents: List[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
         raise NotImplementedError
 
-    def clean(self, dataset: Dataset, node_ids: Optional[List[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
         raise NotImplementedError
 
     @abstractmethod
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
-                 score_threshold: float, reranking_model: dict) -> List[Document]:
+                 score_threshold: float, reranking_model: dict) -> list[Document]:
         raise NotImplementedError
 
     def _get_splitter(self, processing_rule: dict,

@@ -1,8 +1,10 @@
 import datetime
-from typing import Any, List, Optional, cast, Dict
+from typing import Any, Optional
+
 import requests
 import weaviate
 from pydantic import BaseModel, root_validator
+
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
@@ -76,7 +78,7 @@ class WeaviateVector(BaseVector):
             "vector_store": {"class_prefix": self._collection_name}
         }
 
-    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
 
         schema = self._default_schema(self._collection_name)
 
@@ -87,7 +89,7 @@ class WeaviateVector(BaseVector):
         # create vector
         self.add_texts(texts, embeddings)
 
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -150,7 +152,7 @@ class WeaviateVector(BaseVector):
             class_name=self._collection_name
         )
 
-    def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
+    def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Look up similar documents by embedding vector in Weaviate."""
         collection_name = self._collection_name
         properties = self._attributes
@@ -185,7 +187,7 @@ class WeaviateVector(BaseVector):
 
         return docs
 
-    def search_by_full_text(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs using BM25F.
 
         Args:
@@ -196,7 +198,7 @@ class WeaviateVector(BaseVector):
             List of Documents most similar to the query.
         """
         collection_name = self._collection_name
-        content: Dict[str, Any] = {"concepts": [query]}
+        content: dict[str, Any] = {"concepts": [query]}
         properties = self._attributes
         properties.append(Field.TEXT_KEY.value)
         if kwargs.get("search_distance"):
@@ -216,7 +218,7 @@ class WeaviateVector(BaseVector):
             docs.append(Document(page_content=text, metadata=res))
         return docs
 
-    def _default_schema(self, index_name: str) -> Dict:
+    def _default_schema(self, index_name: str) -> dict:
         return {
             "class": index_name,
             "properties": [

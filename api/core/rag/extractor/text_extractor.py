@@ -1,5 +1,5 @@
 """Abstract interface for document loader implementations."""
-from typing import List, Iterator, Optional
+from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -25,7 +25,7 @@ class TextExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         """Load from file path."""
         text = ""
         try:

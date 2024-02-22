@@ -11,8 +11,6 @@ from typing import Any
 
 import requests
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
-from core.chain.llm_chain import LLMChain
-from core.entities.application_entities import ModelConfigEntity
 from langchain.chains import RefineDocumentsChain
 from langchain.chains.summarize import refine_prompts
 from langchain.schema import Document
@@ -22,6 +20,8 @@ from newspaper import Article
 from pydantic import BaseModel, Field
 from regex import regex
 
+from core.chain.llm_chain import LLMChain
+from core.entities.application_entities import ModelConfigEntity
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
 

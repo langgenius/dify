@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment

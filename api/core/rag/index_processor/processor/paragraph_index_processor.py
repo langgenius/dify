@@ -1,8 +1,6 @@
 """Paragraph index processor."""
 import uuid
-from typing import List, Optional
-import pandas as pd
-from werkzeug.datastructures import FileStorage
+from typing import Optional
 
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -18,14 +16,14 @@ from models.dataset import Dataset
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
 
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
 
         text_docs = ExtractProcessor.extract(extract_setting=extract_setting,
                                              is_automatic=kwargs.get('process_rule_mode') == "automatic")
 
         return text_docs
 
-    def transform(self, documents: List[Document], **kwargs) -> List[Document]:
+    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         # Split the text documents into nodes.
         splitter = self._get_splitter(processing_rule=kwargs.get('process_rule'),
                                       embedding_model_instance=kwargs.get('embedding_model_instance'))
@@ -55,7 +53,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
-    def load(self, dataset: Dataset, documents: List[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
         if dataset.indexing_technique == 'high_quality':
             vector = Vector(dataset)
             vector.create(documents)
@@ -63,7 +61,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             keyword = Keyword(dataset)
             keyword.create(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[List[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
         if dataset.indexing_technique == 'high_quality':
             vector = Vector(dataset)
             if node_ids:
@@ -78,7 +76,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword.delete()
 
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
-                 score_threshold: float, reranking_model: dict) -> List[Document]:
+                 score_threshold: float, reranking_model: dict) -> list[Document]:
         # Set search parameters.
         results = RetrievalService.retrieve(retrival_method=retrival_method, dataset_id=dataset.id, query=query,
                                             top_k=top_k, score_threshold=score_threshold,

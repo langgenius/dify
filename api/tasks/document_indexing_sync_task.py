@@ -5,6 +5,7 @@ import time
 import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
+
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory

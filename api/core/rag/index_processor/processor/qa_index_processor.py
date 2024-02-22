@@ -3,16 +3,15 @@ import logging
 import re
 import threading
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 import pandas as pd
-from flask import current_app, Flask
+from flask import Flask, current_app
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 
 from core.generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
-from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -24,13 +23,13 @@ from models.dataset import Dataset
 
 
 class QAIndexProcessor(BaseIndexProcessor):
-    def extract(self, extract_setting: ExtractSetting, **kwargs) -> List[Document]:
+    def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
 
         text_docs = ExtractProcessor.extract(extract_setting=extract_setting,
                                              is_automatic=kwargs.get('process_rule_mode') == "automatic")
         return text_docs
 
-    def transform(self, documents: List[Document], **kwargs) -> List[Document]:
+    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         splitter = self._get_splitter(processing_rule=kwargs.get('process_rule'),
                                       embedding_model_instance=None)
 
@@ -77,7 +76,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 thread.join()
         return all_qa_documents
 
-    def format_by_template(self, file: FileStorage, **kwargs) -> List[Document]:
+    def format_by_template(self, file: FileStorage, **kwargs) -> list[Document]:
 
         # check file type
         if not file.filename.endswith('.csv'):
@@ -97,12 +96,12 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
-    def load(self, dataset: Dataset, documents: List[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
         if dataset.indexing_technique == 'high_quality':
             vector = Vector(dataset)
             vector.create(documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[List[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
         vector = Vector(dataset)
         if node_ids:
             vector.delete_by_ids(node_ids)

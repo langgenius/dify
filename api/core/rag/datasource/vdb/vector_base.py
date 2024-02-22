@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Any
 
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.models.document import Document
-from models.dataset import Dataset
 
 
 class BaseVector(ABC):
@@ -14,11 +12,11 @@ class BaseVector(ABC):
         self._collection_name = collection_name
 
     @abstractmethod
-    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -36,16 +34,16 @@ class BaseVector(ABC):
     @abstractmethod
     def search_by_vector(
             self,
-            query_vector: List[float],
+            query_vector: list[float],
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
     def search_by_full_text(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError
 
     def delete(self) -> None:

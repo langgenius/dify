@@ -1,6 +1,4 @@
-import json
 import re
-from models.dataset import DatasetProcessRule
 
 
 class CleanProcessor:
@@ -13,7 +11,7 @@ class CleanProcessor:
         text = re.sub(r'\|>', '>', text)
         text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]', '', text)
         # Unicode  U+FFFE
-        text = re.sub(u'\uFFFE', '', text)
+        text = re.sub('\uFFFE', '', text)
 
         rules = process_rule['rules'] if process_rule else None
         if 'pre_processing_rules' in rules:

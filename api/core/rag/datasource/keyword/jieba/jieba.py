@@ -1,13 +1,14 @@
 import json
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
+
+from pydantic import BaseModel
 
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
-from pydantic import BaseModel
 
 
 class KeywordTableConfig(BaseModel):
@@ -74,7 +75,7 @@ class Jieba(BaseKeyword):
     def search(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         keyword_table = self._get_dataset_keyword_table()
 
         k = kwargs.get('top_k', 4)
@@ -172,7 +173,7 @@ class Jieba(BaseKeyword):
         keywords = keyword_table_handler.extract_keywords(query)
 
         # go through text chunks in order of most matching keywords
-        chunk_indices_count: Dict[str, int] = defaultdict(int)
+        chunk_indices_count: dict[str, int] = defaultdict(int)
         keywords = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
         for keyword in keywords:
             for node_id in keyword_table[keyword]:
@@ -186,7 +187,7 @@ class Jieba(BaseKeyword):
 
         return sorted_chunk_indices[: k]
 
-    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: List[str]):
+    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: list[str]):
         document_segment = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.index_node_id == node_id
@@ -196,7 +197,7 @@ class Jieba(BaseKeyword):
             db.session.add(document_segment)
             db.session.commit()
 
-    def create_segment_keywords(self, node_id: str, keywords: List[str]):
+    def create_segment_keywords(self, node_id: str, keywords: list[str]):
         keyword_table = self._get_dataset_keyword_table()
         self._update_segment_keywords(self.dataset.id, node_id, keywords)
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
@@ -218,7 +219,7 @@ class Jieba(BaseKeyword):
                 keyword_table = self._add_text_to_keyword_table(keyword_table, segment.index_node_id, list(keywords))
         self._save_dataset_keyword_table(keyword_table)
 
-    def update_segment_keywords_index(self, node_id: str, keywords: List[str]):
+    def update_segment_keywords_index(self, node_id: str, keywords: list[str]):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)

@@ -1,6 +1,5 @@
 import base64
 import logging
-from typing import List
 
 from bs4 import BeautifulSoup
 
@@ -25,7 +24,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
         self._file_path = file_path
         self._api_url = api_url
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         from unstructured.partition.email import partition_email
         elements = partition_email(filename=self._file_path, api_url=self._api_url)
 

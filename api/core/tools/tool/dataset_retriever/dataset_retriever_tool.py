@@ -1,15 +1,12 @@
-from typing import List, Optional, Type
-import threading
-from flask import current_app
+from typing import Optional
+
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.rag.datasource.retrieval_service import RetrievalService
 from extensions.ext_database import db
-from langchain.tools import BaseTool
 from models.dataset import Dataset, Document, DocumentSegment
-from pydantic import BaseModel, Field
 
 default_retrieval_model = {
     'search_method': 'semantic_search',

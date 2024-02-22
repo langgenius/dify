@@ -1,8 +1,10 @@
 import threading
-from typing import List, Optional, Type
+from typing import Optional
+
 from flask import Flask, current_app
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
+
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -10,7 +12,6 @@ from core.rag.datasource.retrieval_service import RetrievalService
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
-from pydantic import BaseModel, Field
 
 default_retrieval_model = {
     'search_method': 'semantic_search',

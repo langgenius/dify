@@ -1,5 +1,6 @@
 """Abstract interface for document loader implementations."""
-from typing import List, Iterator, Optional
+from typing import Optional
+
 from openpyxl.reader.excel import load_workbook
 
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -25,7 +26,7 @@ class ExcelExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         """Load from file path."""
         data = []
         keys = []

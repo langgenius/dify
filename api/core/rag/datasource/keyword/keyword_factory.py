@@ -1,8 +1,9 @@
-from typing import cast, Any, List
-from core.rag.datasource.keyword.jieba.jieba import Jieba
-from core.rag.datasource.keyword.keyword_base import BaseKeyword
+from typing import Any, cast
+
 from flask import current_app
 
+from core.rag.datasource.keyword.jieba.jieba import Jieba
+from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
@@ -17,7 +18,7 @@ class Keyword:
         keyword_type = config.get('KEYWORD_STORE')
 
         if not keyword_type:
-            raise ValueError(f"Keyword store must be specified.")
+            raise ValueError("Keyword store must be specified.")
 
         if keyword_type == "jieba":
             return Jieba(
@@ -47,7 +48,7 @@ class Keyword:
     def search(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         return self._keyword_processor.search(query, **kwargs)
 
     def __getattr__(self, name):

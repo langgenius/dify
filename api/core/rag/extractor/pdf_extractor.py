@@ -1,5 +1,6 @@
 """Abstract interface for document loader implementations."""
-from typing import List, Iterator, Optional
+from collections.abc import Iterator
+from typing import Optional
 
 from core.rag.extractor.blod.blod import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -24,7 +25,7 @@ class PdfExtractor(BaseExtractor):
         self._file_path = file_path
         self._file_cache_key = file_cache_key
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         plaintext_file_key = ''
         plaintext_file_exists = False
         if self._file_cache_key:

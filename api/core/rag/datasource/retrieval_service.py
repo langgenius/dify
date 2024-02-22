@@ -1,11 +1,13 @@
 import threading
 from typing import Optional
+
+from flask import Flask, current_app
 from flask_login import current_user
+
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
-from flask import Flask, current_app
 from models.dataset import Dataset
 
 default_retrieval_model = {

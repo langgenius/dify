@@ -1,6 +1,6 @@
 """Abstract interface for document loader implementations."""
-from typing import List, Iterator, Optional, Tuple, cast
 import re
+from typing import Optional, cast
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -30,7 +30,7 @@ class MarkdownExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         """Load from file path."""
         tups = self.parse_tups(self._file_path)
         documents = []

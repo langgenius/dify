@@ -1,7 +1,10 @@
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Union
+
 import requests
+from flask import current_app
+
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -22,7 +25,6 @@ from core.rag.extractor.unstructured.unstructured_xml_extractor import Unstructu
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
-from flask import current_app
 from models.model import UploadFile
 
 SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
@@ -32,7 +34,7 @@ USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 class ExtractProcessor:
     @classmethod
     def load_from_upload_file(cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False) \
-            -> Union[List[Document], str]:
+            -> Union[list[Document], str]:
         extract_setting = ExtractSetting(
             datasource_type="upload_file",
             upload_file=upload_file,
@@ -45,7 +47,7 @@ class ExtractProcessor:
             return cls.extract(extract_setting, is_automatic)
 
     @classmethod
-    def load_from_url(cls, url: str, return_text: bool = False) -> Union[List[Document], str]:
+    def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
         response = requests.get(url, headers={
             "User-Agent": USER_AGENT
         })
@@ -68,7 +70,7 @@ class ExtractProcessor:
 
     @classmethod
     def extract(cls, extract_setting: ExtractSetting, is_automatic: bool = False,
-                file_path: str = None) -> List[Document]:
+                file_path: str = None) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
             with tempfile.TemporaryDirectory() as temp_dir:
                 if not file_path:

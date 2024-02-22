@@ -1,7 +1,7 @@
 """Document loader helpers."""
 
 import concurrent.futures
-from typing import List, NamedTuple, Optional, cast
+from typing import NamedTuple, Optional, cast
 
 
 class FileEncoding(NamedTuple):
@@ -15,7 +15,7 @@ class FileEncoding(NamedTuple):
     """The language of the file."""
 
 
-def detect_file_encodings(file_path: str, timeout: int = 5) -> List[FileEncoding]:
+def detect_file_encodings(file_path: str, timeout: int = 5) -> list[FileEncoding]:
     """Try to detect the file encoding.
 
     Returns a list of `FileEncoding` tuples with the detected encodings ordered
@@ -27,10 +27,10 @@ def detect_file_encodings(file_path: str, timeout: int = 5) -> List[FileEncoding
     """
     import chardet
 
-    def read_and_detect(file_path: str) -> List[dict]:
+    def read_and_detect(file_path: str) -> list[dict]:
         with open(file_path, "rb") as f:
             rawdata = f.read()
-        return cast(List[dict], chardet.detect_all(rawdata))
+        return cast(list[dict], chardet.detect_all(rawdata))
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future = executor.submit(read_and_detect, file_path)

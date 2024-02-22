@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import Optional
+
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
@@ -8,8 +9,8 @@ from models.dataset import Dataset, DocumentSegment
 class VectorService:
 
     @classmethod
-    def create_segments_vector(cls, keywords_list: Optional[List[List[str]]],
-                               segments: List[DocumentSegment], dataset: Dataset):
+    def create_segments_vector(cls, keywords_list: Optional[list[list[str]]],
+                               segments: list[DocumentSegment], dataset: Dataset):
         documents = []
         for segment in segments:
             document = Document(

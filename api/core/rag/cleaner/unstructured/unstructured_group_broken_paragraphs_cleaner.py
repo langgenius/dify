@@ -7,6 +7,7 @@ class UnstructuredGroupBrokenParagraphsCleaner(BaseCleaner):
     def clean(self, content) -> str:
         """clean document content."""
         import re
+
         from unstructured.cleaners.core import group_broken_paragraphs
 
         para_split_re = re.compile(r"(\s*\n\s*){3}")

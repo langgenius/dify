@@ -6,6 +6,7 @@ from typing import Optional
 import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
+
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
 from extensions.ext_database import db

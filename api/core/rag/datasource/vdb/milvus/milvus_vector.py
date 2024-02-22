@@ -1,12 +1,13 @@
 import logging
-from typing import Any, List, Optional
+from typing import Any, Optional
 from uuid import uuid4
+
+from pydantic import BaseModel, root_validator
+from pymilvus import MilvusClient, MilvusException, connections
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
-from pydantic import BaseModel, root_validator
-from pymilvus import MilvusClient, connections, MilvusException
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class MilvusVector(BaseVector):
     def get_type(self) -> str:
         return 'milvus'
 
-    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {
             'metric_type': 'IP',
             'index_type': "HNSW",
@@ -73,7 +74,7 @@ class MilvusVector(BaseVector):
             self.create_collection(embeddings, metadatas, index_params)
         self.add_texts(texts, embeddings)
 
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         insert_dict_list = []
         for i in range(len(documents)):
             insert_dict = {
@@ -138,7 +139,7 @@ class MilvusVector(BaseVector):
 
         return len(result) > 0
 
-    def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
+    def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
 
         # Set search parameters.
         results = self._client.search(collection_name=self._collection_name,
@@ -158,7 +159,7 @@ class MilvusVector(BaseVector):
                 docs.append(doc)
         return docs
 
-    def search_by_full_text(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # milvus/zilliz doesn't support bm25 search
         return []
 

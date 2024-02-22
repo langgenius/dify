@@ -1,11 +1,12 @@
 """Abstract interface for document loader implementations."""
-from core.rag.extractor.extractor_base import BaseExtractor
-from core.rag.models.document import Document
 import os
 import tempfile
-from typing import List
 from urllib.parse import urlparse
+
 import requests
+
+from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.models.document import Document
 
 
 class WordExtractor(BaseExtractor):
@@ -43,7 +44,7 @@ class WordExtractor(BaseExtractor):
         if hasattr(self, "temp_file"):
             self.temp_file.close()
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         """Load given path as single page."""
         import docx2txt
 

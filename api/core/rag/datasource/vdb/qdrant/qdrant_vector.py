@@ -1,17 +1,25 @@
 import os
 import uuid
+from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import Any, List, Optional, cast, Iterable, Generator, Tuple, Sequence, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 import qdrant_client
 from pydantic import BaseModel
-from qdrant_client.http.models import TextIndexParams, TextIndexType, TokenizerType, FilterSelector, HnswConfigDiff, \
-    PayloadSchemaType
+from qdrant_client.http import models as rest
+from qdrant_client.http.models import (
+    FilterSelector,
+    HnswConfigDiff,
+    PayloadSchemaType,
+    TextIndexParams,
+    TextIndexType,
+    TokenizerType,
+)
 from qdrant_client.local.qdrant_local import QdrantLocal
+
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
-from qdrant_client.http import models as rest
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -63,7 +71,7 @@ class QdrantVector(BaseVector):
             "vector_store": {"class_prefix": self._collection_name}
         }
 
-    def create(self, texts: list[Document], embeddings: List[List[float]], **kwargs):
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         if texts:
             # get embedding vector size
             vector_size = len(embeddings[0])
@@ -111,7 +119,7 @@ class QdrantVector(BaseVector):
         self._client.create_payload_index(collection_name, Field.CONTENT_KEY.value,
                                           field_schema=text_index_params)
 
-    def add_texts(self, documents: list[Document], embeddings: List[List[float]], **kwargs):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
@@ -130,12 +138,12 @@ class QdrantVector(BaseVector):
     def _generate_rest_batches(
             self,
             texts: Iterable[str],
-            embeddings: List[List[float]],
-            metadatas: Optional[List[dict]] = None,
+            embeddings: list[list[float]],
+            metadatas: Optional[list[dict]] = None,
             ids: Optional[Sequence[str]] = None,
             batch_size: int = 64,
             group_id: Optional[str] = None,
-    ) -> Generator[Tuple[List[str], List[rest.PointStruct]], None, None]:
+    ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
         texts_iterator = iter(texts)
         embeddings_iterator = iter(embeddings)
@@ -175,12 +183,12 @@ class QdrantVector(BaseVector):
     def _build_payloads(
             cls,
             texts: Iterable[str],
-            metadatas: Optional[List[dict]],
+            metadatas: Optional[list[dict]],
             content_payload_key: str,
             metadata_payload_key: str,
             group_id: str,
             group_payload_key: str
-    ) -> List[dict]:
+    ) -> list[dict]:
         payloads = []
         for i, text in enumerate(texts):
             if text is None:
@@ -265,7 +273,7 @@ class QdrantVector(BaseVector):
 
         return len(response) > 0
 
-    def search_by_vector(self, query_vector: List[float], **kwargs: Any) -> List[Document]:
+    def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
         filter = models.Filter(
             must=[
@@ -298,7 +306,7 @@ class QdrantVector(BaseVector):
                 docs.append(doc)
         return docs
 
-    def search_by_full_text(self, query: str, **kwargs: Any) -> List[Document]:
+    def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs most similar by bm25.
         Returns:
             List of documents most similar to the query text and distance for each.

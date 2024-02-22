@@ -1,10 +1,9 @@
 """Abstract interface for document loader implementations."""
-from typing import List, Iterator, Optional, Dict
+import csv
+from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from core.rag.extractor.helpers import detect_file_encodings
-import csv
 
 
 class CSVExtractor(BaseExtractor):
@@ -21,7 +20,7 @@ class CSVExtractor(BaseExtractor):
             encoding: Optional[str] = None,
             autodetect_encoding: bool = False,
             source_column: Optional[str] = None,
-            csv_args: Optional[Dict] = None,
+            csv_args: Optional[dict] = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path
@@ -30,7 +29,7 @@ class CSVExtractor(BaseExtractor):
         self.source_column = source_column
         self.csv_args = csv_args or {}
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         """Load data into document objects."""
         try:
             with open(self._file_path, newline="", encoding=self._encoding) as csvfile:
@@ -50,7 +49,7 @@ class CSVExtractor(BaseExtractor):
 
         return docs
 
-    def _read_from_file(self, csvfile) -> List[Document]:
+    def _read_from_file(self, csvfile) -> list[Document]:
         docs = []
         csv_reader = csv.DictReader(csvfile, **self.csv_args)  # type: ignore
         for i, row in enumerate(csv_reader):

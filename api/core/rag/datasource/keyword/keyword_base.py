@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Any
+
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
@@ -37,7 +38,7 @@ class BaseKeyword(ABC):
     def search(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         raise NotImplementedError
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:

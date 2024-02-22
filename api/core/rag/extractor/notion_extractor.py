@@ -1,16 +1,13 @@
 import json
 import logging
-from typing import Any, Optional, List
+from typing import Any, Optional
 
 import requests
-from flask_login import current_user
-
-from core.rag.extractor.extractor_base import BaseExtractor
-from extensions.ext_database import db
 from flask import current_app
-from langchain.document_loaders.base import BaseLoader
+from flask_login import current_user
 from langchain.schema import Document
 
+from core.rag.extractor.extractor_base import BaseExtractor
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceBinding
@@ -56,7 +53,7 @@ class NotionExtractor(BaseExtractor):
 
                 self._notion_access_token = integration_token
 
-    def extract(self) -> List[Document]:
+    def extract(self) -> list[Document]:
         self.update_last_edited_time(
             self._document_model
         )

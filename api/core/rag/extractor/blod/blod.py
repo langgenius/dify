@@ -9,9 +9,10 @@ from __future__ import annotations
 import contextlib
 import mimetypes
 from abc import ABC, abstractmethod
+from collections.abc import Generator, Iterable, Mapping
 from io import BufferedReader, BytesIO
 from pathlib import PurePath
-from typing import Any, Generator, Iterable, Mapping, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, root_validator
 
@@ -56,7 +57,7 @@ class Blob(BaseModel):
     def as_string(self) -> str:
         """Read data as a string."""
         if self.data is None and self.path:
-            with open(str(self.path), "r", encoding=self.encoding) as f:
+            with open(str(self.path), encoding=self.encoding) as f:
                 return f.read()
         elif isinstance(self.data, bytes):
             return self.data.decode(self.encoding)

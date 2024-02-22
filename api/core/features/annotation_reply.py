@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+
 from core.entities.application_entities import InvokeFrom
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db

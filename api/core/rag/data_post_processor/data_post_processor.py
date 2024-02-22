@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -16,8 +16,8 @@ class DataPostProcessor:
         self.rerank_runner = self._get_rerank_runner(reranking_model, tenant_id)
         self.reorder_runner = self._get_reorder_runner(reorder_enabled)
 
-    def invoke(self, query: str, documents: List[Document], score_threshold: Optional[float] = None,
-               top_n: Optional[int] = None, user: Optional[str] = None) -> List[Document]:
+    def invoke(self, query: str, documents: list[Document], score_threshold: Optional[float] = None,
+               top_n: Optional[int] = None, user: Optional[str] = None) -> list[Document]:
         if self.rerank_runner:
             documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user)
 

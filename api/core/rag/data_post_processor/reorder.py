@@ -1,12 +1,10 @@
-from typing import List, Optional
 
-from core.model_manager import ModelInstance
 from langchain.schema import Document
 
 
 class ReorderRunner:
 
-    def run(self, documents: List[Document]) -> List[Document]:
+    def run(self, documents: list[Document]) -> list[Document]:
         # Retrieve elements from odd indices (0, 2, 4, etc.) of the documents list
         odd_elements = documents[::2]
 

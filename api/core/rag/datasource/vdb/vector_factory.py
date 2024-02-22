@@ -1,12 +1,12 @@
-from typing import cast, List, Any
+from typing import Any, cast
+
+from flask import current_app
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
-from flask import current_app
-
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetCollectionBinding
@@ -29,7 +29,7 @@ class Vector:
             vector_type = self._dataset.index_struct_dict['type']
 
         if not vector_type:
-            raise ValueError(f"Vector store must be specified.")
+            raise ValueError("Vector store must be specified.")
 
         if vector_type == "weaviate":
             from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
@@ -128,14 +128,14 @@ class Vector:
     def search_by_vector(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         query_vector = self._embeddings.embed_query(query)
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_full_text(
             self, query: str,
             **kwargs: Any
-    ) -> List[Document]:
+    ) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 
     def delete(self) -> None:

@@ -1,10 +1,9 @@
 """Abstract interface for document loader implementations."""
 
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
-from models.dataset import DatasetProcessRule
 
 
 class IndexProcessorFactory:
@@ -18,7 +17,7 @@ class IndexProcessorFactory:
         """Init index processor."""
 
         if not self._index_type:
-            raise ValueError(f"Index type must be specified.")
+            raise ValueError("Index type must be specified.")
 
         if self._index_type == IndexType.PARAGRAPH_INDEX.value:
             return ParagraphIndexProcessor()

@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Optional, cast, List
+from typing import Optional, cast
 
 from flask import Flask, current_app
 from flask_login import current_user
@@ -23,7 +23,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
-from core.splitter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter, EnhanceRecursiveCharacterTextSplitter
+from core.splitter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -207,7 +207,7 @@ class IndexingRunner:
             dataset_document.stopped_at = datetime.datetime.utcnow()
             db.session.commit()
 
-    def indexing_estimate(self, tenant_id: str, extract_settings: List[ExtractSetting], tmp_processing_rule: dict,
+    def indexing_estimate(self, tenant_id: str, extract_settings: list[ExtractSetting], tmp_processing_rule: dict,
                           doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
                           indexing_technique: str = 'economy') -> dict:
         """
@@ -334,7 +334,7 @@ class IndexingRunner:
         }
 
     def _extract(self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict) \
-            -> List[Document]:
+            -> list[Document]:
         # load file
         if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
             return []
@@ -625,7 +625,7 @@ class IndexingRunner:
         ]
 
     def _load(self, index_processor: BaseIndexProcessor, dataset: Dataset,
-              dataset_document: DatasetDocument, documents: List[Document]) -> None:
+              dataset_document: DatasetDocument, documents: list[Document]) -> None:
         """
         insert index and update document/segment status to completed
         """
@@ -748,7 +748,7 @@ class IndexingRunner:
         index_processor.load(dataset, documents)
 
     def _transform(self, index_processor: BaseIndexProcessor, dataset: Dataset,
-                   text_docs: List[Document], process_rule: dict) -> List[Document]:
+                   text_docs: list[Document], process_rule: dict) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
         if dataset.indexing_technique == 'high_quality':
