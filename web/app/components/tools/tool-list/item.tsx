@@ -10,7 +10,7 @@ import { CollectionType } from '../types'
 import TooltipPlus from '../../base/tooltip-plus'
 import I18n from '@/context/i18n'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-
+import { getLanguage } from '@/utils/language'
 type Props = {
   collection: Collection
   icon: JSX.Element
@@ -32,6 +32,8 @@ const Item: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const language = getLanguage(locale)
+
   const isBuiltIn = collection.type === CollectionType.builtIn
   const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
   const [showDetail, setShowDetail] = useState(false)
@@ -45,9 +47,9 @@ const Item: FC<Props> = ({
         <div className='flex items-start w-full'>
           {icon}
           <div className='ml-3 w-0 grow'>
-            <div className={cn('text-base font-semibold text-gray-900 truncate')}>{payload.label[locale]}</div>
+            <div className={cn('text-base font-semibold text-gray-900 truncate')}>{payload.label[language]}</div>
             <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500')}>
-              {payload.description[locale]}
+              {payload.description[language]}
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
+import { getLanguage } from '@/utils/language'
 type Props = {
   collection: Collection
   toolName: string
@@ -31,6 +32,7 @@ const SettingBuiltInTool: FC<Props> = ({
   onSave,
 }) => {
   const { locale } = useContext(I18n)
+  const language = getLanguage(locale)
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
@@ -82,7 +84,7 @@ const SettingBuiltInTool: FC<Props> = ({
         {t('tools.setBuiltInTools.toolDescription')}
       </div>
       <div className='mt-1 leading-[18px] text-xs font-normal text-gray-600'>
-        {currTool?.description[locale]}
+        {currTool?.description[language]}
       </div>
 
       {infoSchemas.length > 0 && (
