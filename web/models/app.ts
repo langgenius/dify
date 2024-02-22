@@ -1,7 +1,5 @@
 import type { App, AppTemplate, SiteConfig } from '@/types/app'
 
-export type AppMode = 'chat' | 'completion'
-
 /* export type App = {
   id: string
   name: string

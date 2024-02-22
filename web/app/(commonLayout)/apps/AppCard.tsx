@@ -13,7 +13,9 @@ import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
+import { createApp, deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
+import DuplicateAppModal from '@/app/components/app/duplicate-modal'
+import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext, { useAppContext } from '@/context/app-context'
 import type { HtmlContentProps } from '@/app/components/base/popover'
@@ -21,6 +23,7 @@ import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { asyncRunSafe } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
 export type AppCardProps = {
   app: App
@@ -39,8 +42,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     state => state.mutateApps,
   )
 
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [detailState, setDetailState] = useState<{
     loading: boolean
     detail?: App
@@ -69,11 +73,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     const [err, res] = await asyncRunSafe(
       fetchAppDetail({ url: '/apps', id: app.id }),
     )
-    if (!err) {
+    if (!err)
       setDetailState({ loading: false, detail: res })
-      setShowSettingsModal(true)
-    }
-    else { setDetailState({ loading: false }) }
+    else
+      setDetailState({ loading: false })
   }
 
   const onSaveSiteConfig = useCallback(
@@ -103,12 +106,49 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     [app.id],
   )
 
+  const onCreate: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+    const { app_model_config: model_config } = await fetchAppDetail({ url: '/apps', id: app.id })
+
+    try {
+      const newApp = await createApp({
+        name,
+        icon,
+        icon_background,
+        mode: app.mode,
+        config: model_config,
+      })
+      setShowDuplicateModal(false)
+      notify({
+        type: 'success',
+        message: t('app.newApp.appCreated'),
+      })
+      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      push(`/app/${newApp.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+    }
+  }
+
   const Operations = (props: HtmlContentProps) => {
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       await getAppDetail()
+      setShowSettingsModal(true)
+    }
+    const onClickDuplicate = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowDuplicateModal(true)
+    }
+    const onClickExport = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      // TODO export
     }
     const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
@@ -121,7 +161,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         <button className={s.actionItem} onClick={onClickSettings} disabled={detailState.loading}>
           <span className={s.actionName}>{t('common.operation.settings')}</span>
         </button>
-
+        <Divider className="!my-1" />
+        <button className={s.actionItem} onClick={onClickDuplicate} disabled={detailState.loading}>
+          <span className={s.actionName}>{t('app.duplicate')}</span>
+        </button>
+        <button className={s.actionItem} onClick={onClickExport} disabled={detailState.loading}>
+          <span className={s.actionName}>{t('app.export')}</span>
+        </button>
         <Divider className="!my-1" />
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
@@ -149,7 +195,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       >
         <div className={style.listItemTitle}>
           <AppIcon
-            size="small"
+            size="large"
             icon={app.icon}
             background={app.icon_background}
           />
@@ -175,9 +221,26 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           {app.model_config?.pre_prompt}
         </div>
         <div className={style.listItemFooter}>
-          <AppModeLabel mode={app.mode} isAgent={app.is_agent} />
+          <AppModeLabel mode={app.mode} />
         </div>
-
+        {showSettingsModal && detailState.detail && (
+          <SettingsModal
+            appInfo={detailState.detail}
+            isShow={showSettingsModal}
+            onClose={() => setShowSettingsModal(false)}
+            onSave={onSaveSiteConfig}
+          />
+        )}
+        {showDuplicateModal && (
+          <DuplicateAppModal
+            appName={app.name}
+            icon={app.icon}
+            icon_background={app.icon_background}
+            show={showDuplicateModal}
+            onConfirm={onCreate}
+            onHide={() => setShowDuplicateModal(false)}
+          />
+        )}
         {showConfirmDelete && (
           <Confirm
             title={t('app.deleteAppConfirmTitle')}
@@ -186,14 +249,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             onClose={() => setShowConfirmDelete(false)}
             onConfirm={onConfirmDelete}
             onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
-        {showSettingsModal && detailState.detail && (
-          <SettingsModal
-            appInfo={detailState.detail}
-            isShow={showSettingsModal}
-            onClose={() => setShowSettingsModal(false)}
-            onSave={onSaveSiteConfig}
           />
         )}
       </div>

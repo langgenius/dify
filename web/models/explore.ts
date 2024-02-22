@@ -1,5 +1,4 @@
-import type { AppMode } from './app'
-
+import type { AppMode } from '@/types/app'
 export type AppBasicInfo = {
   id: string
   name: string

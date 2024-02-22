@@ -2,14 +2,18 @@ const translation = {
   createApp: '创建应用',
   types: {
     all: '全部',
-    assistant: '助手',
-    completion: '文本生成',
+    chatbot: '聊天助手',
+    agent: 'Agent',
+    workflow: '工作流',
   },
   modes: {
     completion: '文本生成型',
     chat: '基础助手',
   },
-  createFromConfigFile: '通过导入应用配置文件创建',
+  duplicate: '复制',
+  duplicateTitle: '复制应用',
+  export: '导出 DSL',
+  createFromConfigFile: '通过 DSL 文件创建',
   deleteAppConfirmTitle: '确认删除应用?',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',

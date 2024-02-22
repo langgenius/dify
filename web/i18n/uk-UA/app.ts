@@ -1,15 +1,19 @@
 const translation = { // Add the Ukrainian translation object
-  createApp: 'Створити новий додаток',
+  createApp: 'Створити додаток',
   types: {
-    all: 'Всі',
-    assistant: 'Асистент',
-    completion: 'Автодоповнення',
+    all: 'Все',
+    chatbot: 'Чатбот',
+    agent: 'Агент',
+    workflow: 'Робочий Процес',
   },
   modes: {
     completion: 'Генератор тексту',
     chat: 'Базовий асистент',
   },
-  createFromConfigFile: 'Створити додаток з файла конфігурації',
+  duplicate: 'Дублювати',
+  duplicateTitle: 'Дублювати додаток',
+  export: 'Експортувати DSL',
+  createFromConfigFile: 'Створити через файл DSL',
   deleteAppConfirmTitle: 'Видалити цей додаток?',
   deleteAppConfirmContent:
       'Видалення додатка є незворотнім. Користувачі більше не матимуть доступ до вашого додатка, всі конфігурації підказок та журнали будуть видалені назавжди.',

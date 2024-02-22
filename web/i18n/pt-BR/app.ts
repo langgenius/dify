@@ -1,10 +1,19 @@
 const translation = {
-  createApp: 'Criar novo aplicativo',
+  createApp: 'Criar aplicativo',
+  types: {
+    all: 'Tudo',
+    chatbot: 'Chatbot',
+    agent: 'Agente',
+    workflow: 'Fluxo de trabalho',
+  },
   modes: {
     completion: 'Gerador de Texto',
     chat: 'Aplicativo de Chat',
   },
-  createFromConfigFile: 'Criar aplicativo a partir do arquivo de configuração',
+  duplicate: 'Duplicar',
+  duplicateTitle: 'Duplicate aplicativo',
+  export: 'Exportar DSL',
+  createFromConfigFile: 'Criar através do arquivo DSL',
   deleteAppConfirmTitle: 'Excluir este aplicativo?',
   deleteAppConfirmContent:
     'A exclusão do aplicativo é irreversível. Os usuários não poderão mais acessar seu aplicativo e todas as configurações de prompt e logs serão excluídas permanentemente.',

@@ -1,15 +1,19 @@
 const translation = {
-  createApp: 'Create new App',
+  createApp: 'Create App',
   types: {
     all: 'All',
-    assistant: 'Assistant',
-    completion: 'Completion',
+    chatbot: 'Chatbot',
+    agent: 'Agent',
+    workflow: 'Workflow',
   },
   modes: {
     completion: 'Text Generator',
     chat: 'Basic Assistant',
   },
-  createFromConfigFile: 'Create app from config file',
+  duplicate: 'Duplicate',
+  duplicateTitle: 'Duplicate App',
+  export: 'Export DSL',
+  createFromConfigFile: 'Create from DSL file',
   deleteAppConfirmTitle: 'Delete this app?',
   deleteAppConfirmContent:
     'Deleting the app is irreversible. Users will no longer be able to access your app, and all prompt configurations and logs will be permanently deleted.',
