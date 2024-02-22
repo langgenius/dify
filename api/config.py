@@ -56,6 +56,7 @@ DEFAULTS = {
     'BILLING_ENABLED': 'False',
     'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
+    'KEYWORD_STORE': 'jieba',
     'BATCH_UPLOAD_LIMIT': 20
 }
 
@@ -183,7 +184,7 @@ class Config:
         # Currently, only support: qdrant, milvus, zilliz, weaviate
         # ------------------------
         self.VECTOR_STORE = get_env('VECTOR_STORE')
-
+        self.KEYWORD_STORE = get_env('KEYWORD_STORE')
         # qdrant settings
         self.QDRANT_URL = get_env('QDRANT_URL')
         self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')

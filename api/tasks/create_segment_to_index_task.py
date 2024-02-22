@@ -5,10 +5,10 @@ from typing import Optional
 
 import click
 from celery import shared_task
-from langchain.schema import Document
 from werkzeug.exceptions import NotFound
 
-from core.index.index import IndexBuilder
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
@@ -68,18 +68,9 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
             logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
             return
 
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.add_texts([document], duplicate_check=True)
-
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
-            if keywords and len(keywords) > 0:
-                index.create_segment_keywords(segment.index_node_id, keywords)
-            else:
-                index.add_texts([document])
+        index_type = dataset.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_processor.load(dataset, [document])
 
         # update segment to completed
         update_params = {

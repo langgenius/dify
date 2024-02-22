@@ -11,10 +11,11 @@ from flask_login import current_user
 from sqlalchemy import func
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.index.index import IndexBuilder
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.datasource.keyword.keyword_factory import Keyword
+from core.rag.models.document import Document as RAGDocument
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -402,7 +403,7 @@ class DocumentService:
     @staticmethod
     def delete_document(document):
         # trigger document_was_deleted signal
-        document_was_deleted.send(document.id, dataset_id=document.dataset_id)
+        document_was_deleted.send(document.id, dataset_id=document.dataset_id, doc_form=document.doc_form)
 
         db.session.delete(document)
         db.session.commit()
@@ -1060,7 +1061,7 @@ class SegmentService:
 
         # save vector index
         try:
-            VectorService.create_segment_vector(args['keywords'], segment_document, dataset)
+            VectorService.create_segments_vector([args['keywords']], [segment_document], dataset)
         except Exception as e:
             logging.exception("create segment index failed")
             segment_document.enabled = False
@@ -1087,6 +1088,7 @@ class SegmentService:
         ).scalar()
         pre_segment_data_list = []
         segment_data_list = []
+        keywords_list = []
         for segment_item in segments:
             content = segment_item['content']
             doc_id = str(uuid.uuid4())
@@ -1119,15 +1121,13 @@ class SegmentService:
                 segment_document.answer = segment_item['answer']
             db.session.add(segment_document)
             segment_data_list.append(segment_document)
-            pre_segment_data = {
-                'segment': segment_document,
-                'keywords': segment_item['keywords']
-            }
-            pre_segment_data_list.append(pre_segment_data)
+
+            pre_segment_data_list.append(segment_document)
+            keywords_list.append(segment_item['keywords'])
 
         try:
             # save vector index
-            VectorService.multi_create_segment_vector(pre_segment_data_list, dataset)
+            VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset)
         except Exception as e:
             logging.exception("create segment index failed")
             for segment_document in segment_data_list:
@@ -1157,11 +1157,18 @@ class SegmentService:
                 db.session.commit()
                 # update segment index task
                 if args['keywords']:
-                    kw_index = IndexBuilder.get_index(dataset, 'economy')
-                    # delete from keyword index
-                    kw_index.delete_by_ids([segment.index_node_id])
-                    # save keyword index
-                    kw_index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
+                    keyword = Keyword(dataset)
+                    keyword.delete_by_ids([segment.index_node_id])
+                    document = RAGDocument(
+                        page_content=segment.content,
+                        metadata={
+                            "doc_id": segment.index_node_id,
+                            "doc_hash": segment.index_node_hash,
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                        }
+                    )
+                    keyword.add_texts([document], keywords_list=[args['keywords']])
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
