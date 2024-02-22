@@ -53,7 +53,7 @@ export default function LanguagePage() {
         <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
         <SimpleSelect
           defaultValue={locale || userProfile.interface_language}
-          items={languages}
+          items={languages.filter(item => item.supported)}
           onSelect={item => handleSelect('language', item)}
           disabled={editing}
         />

@@ -122,7 +122,7 @@ const OneMoreStep = () => {
             <div className="relative mt-1 rounded-md shadow-sm">
               <SimpleSelect
                 defaultValue={LanguagesSupported[0]}
-                items={languages}
+                items={languages.filter(item => item.supported)}
                 onSelect={(item) => {
                   dispatch({ type: 'interface_language', value: item.value })
                 }}

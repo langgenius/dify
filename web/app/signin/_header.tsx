@@ -17,7 +17,7 @@ const Header = () => {
     <LogoSite />
     <Select
       value={locale}
-      items={languages}
+      items={languages.filter(item => item.supported)}
       onChange={(value) => {
         setLocaleOnClient(value as Locale)
       }}

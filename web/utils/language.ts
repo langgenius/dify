@@ -77,13 +77,13 @@ export const languages = [
     value: 'it-IT',
     name: 'Italiano(Italia)',
     example: 'Ciao, Dify!',
-    supported: true,
+    supported: false,
   },
   {
     value: 'th-TH',
     name: 'ไทย(ประเทศไทย)',
     example: 'สวัสดี Dify!',
-    supported: true,
+    supported: false,
   },
   {
     value: 'id-ID',

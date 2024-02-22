@@ -122,7 +122,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         />
         <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.language`)}</div>
         <SimpleSelect
-          items={languages}
+          items={languages.filter(item => item.supported)}
           defaultValue={language}
           onSelect={item => setLanguage(item.value as Language)}
         />
