@@ -6,6 +6,7 @@ const translation = {
     },
     start: {
       required: 'required',
+      inputField: 'Input Field',
       builtInVar: 'Built-in Variables',
       outputVars: {
         query: 'User input',
