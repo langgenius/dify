@@ -6,7 +6,7 @@ export const mockData: EndNodeType = {
   desc: 'Test',
   type: 'Test',
   outputs: {
-    type: EndVarType.none,
+    type: EndVarType.plainText,
     plain_text_selector: ['test'],
     structured_variables: [
       {

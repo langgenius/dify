@@ -7,6 +7,14 @@ const translation = {
     start: {
       required: 'required',
     },
+    end: {
+      outputs: 'Outputs',
+      type: {
+        'none': 'None',
+        'plain-text': 'Plain Text',
+        'structured': 'Structured',
+      },
+    },
     directAnswer: {
       answer: 'Answer',
       inputVars: 'Input Variables',

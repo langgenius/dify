@@ -7,11 +7,11 @@ import { BlockEnum } from '@/app/components/workflow/types'
 const nodes = [
   BlockEnum.Start, BlockEnum.DirectAnswer, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.QuestionClassifier,
   BlockEnum.IfElse, BlockEnum.Code, BlockEnum.TemplateTransform, BlockEnum.HttpRequest,
-  BlockEnum.Tool,
+  BlockEnum.Tool, BlockEnum.End,
 ].map((item, i) => ({
   id: `${i + 1}`,
   type: 'custom',
-  position: { x: 330, y: 30 + i * 200 },
+  position: { x: 330, y: 30 + i * 300 },
   data: { type: item, name: item },
 }))
 const initialNodes = nodes

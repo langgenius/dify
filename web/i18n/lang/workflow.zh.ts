@@ -7,6 +7,14 @@ const translation = {
     start: {
       required: '必填',
     },
+    end: {
+      outputs: '输出',
+      type: {
+        'none': '无',
+        'plain-text': '纯文本',
+        'structured': '结构化',
+      },
+    },
     directAnswer: {
       answer: '回复',
       inputVars: '输入变量',
