@@ -5,7 +5,6 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
 from models.account import Account
-from models.model import AppMode
 
 
 class WorkflowType(Enum):
@@ -29,13 +28,14 @@ class WorkflowType(Enum):
         raise ValueError(f'invalid workflow type value {value}')
 
     @classmethod
-    def from_app_mode(cls, app_mode: Union[str, AppMode]) -> 'WorkflowType':
+    def from_app_mode(cls, app_mode: Union[str, 'AppMode']) -> 'WorkflowType':
         """
         Get workflow type from app mode.
 
         :param app_mode: app mode
         :return: workflow type
         """
+        from models.model import AppMode
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
