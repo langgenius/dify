@@ -3,8 +3,11 @@ import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
+  Position,
+  getSimpleBezierPath,
 } from 'reactflow'
+import BlockSelector from './block-selector'
+import { useStore } from './store'
 
 const CustomEdge = ({
   id,
@@ -12,38 +15,50 @@ const CustomEdge = ({
   sourceY,
   targetX,
   targetY,
+  selected,
 }: EdgeProps) => {
+  const hoveringEdgeId = useStore(state => state.hoveringEdgeId)
   const [
     edgePath,
     labelX,
     labelY,
-  ] = getSmoothStepPath({
+  ] = getSimpleBezierPath({
     sourceX,
     sourceY,
+    sourcePosition: Position.Right,
     targetX,
     targetY,
-    borderRadius: 30,
-    offset: -20,
+    targetPosition: Position.Left,
   })
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} style={{ strokeWidth: 5 }} />
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={{
+          stroke: selected ? '#2970FF' : '#D0D5DD',
+          strokeWidth: 2,
+        }}
+      />
       <EdgeLabelRenderer>
-        <div
-          className={`
-            flex items-center px-2 h-6 bg-white rounded-lg shadow-xs
-            text-[10px] font-semibold text-gray-700
-            nodrag nopan
-          `}
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'all',
-          }}
-        >
-          Topic 2
-        </div>
+        {
+          hoveringEdgeId === id && (
+            <div
+              className='nopan nodrag'
+              style={{
+                position: 'absolute',
+                transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+                pointerEvents: 'all',
+              }}
+            >
+              <BlockSelector
+                asChild
+                onSelect={() => {}}
+              />
+            </div>
+          )
+        }
       </EdgeLabelRenderer>
     </>
   )

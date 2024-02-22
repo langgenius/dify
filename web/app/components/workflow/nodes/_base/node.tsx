@@ -8,7 +8,9 @@ import {
   useMemo,
 } from 'react'
 import type { NodeProps } from 'reactflow'
-import { useWorkflowContext } from '../../context'
+import { useNodes } from 'reactflow'
+import { useStore } from '../../store'
+import type { NodeData } from '../../types'
 import BlockIcon from '../../block-icon'
 import BlockSelector from '../../block-selector'
 import NodeControl from './components/node-control'
@@ -22,11 +24,9 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
-  const {
-    nodes,
-    selectedNodeId,
-    handleSelectedNodeIdChange,
-  } = useWorkflowContext()
+  const nodes = useNodes<NodeData>()
+  const selectedNodeId = useStore(state => state.selectedNodeId)
+  const handleSelectedNodeId = useStore(state => state.handleSelectedNodeId)
   const currentNode = useMemo(() => {
     return nodes.find(node => node.id === nodeId)
   }, [nodeId, nodes])
@@ -38,7 +38,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         hover:shadow-lg
         ${selectedNodeId === nodeId ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
-      onClick={() => handleSelectedNodeIdChange(nodeId || '')}
+      onClick={() => handleSelectedNodeId(nodeId || '')}
     >
       <NodeControl />
       <div className='flex items-center px-3 pt-3 pb-2'>

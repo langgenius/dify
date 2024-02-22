@@ -5,9 +5,11 @@ import type {
 import {
   cloneElement,
   memo,
+  useMemo,
 } from 'react'
 import type { NodeProps } from 'reactflow'
 import { useWorkflowContext } from '../../context'
+import { useStore } from '../../store'
 import BlockIcon from '../../block-icon'
 import NextStep from './components/next-step'
 import {
@@ -26,9 +28,13 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const {
-    handleSelectedNodeIdChange,
-    selectedNode,
+    nodes,
   } = useWorkflowContext()
+  const selectedNodeId = useStore(state => state.selectedNodeId)
+  const handleSelectedNodeId = useStore(state => state.handleSelectedNodeId)
+  const selectedNode = useMemo(() => {
+    return nodes.find(node => node.id === selectedNodeId)
+  }, [nodes, selectedNodeId])
 
   return (
     <div className='mr-2 w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl z-10 overflow-y-auto'>
@@ -47,7 +53,7 @@ const BasePanel: FC<BasePanelProps> = ({
             <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
             <div
               className='flex items-center justify-center w-6 h-6 cursor-pointer'
-              onClick={() => handleSelectedNodeIdChange('')}
+              onClick={() => handleSelectedNodeId('')}
             >
               <XClose className='w-4 h-4' />
             </div>

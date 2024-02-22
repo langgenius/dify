@@ -3,16 +3,22 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { useNodes } from 'reactflow'
 import { useWorkflowContext } from '../context'
 import { Panel as NodePanel } from '../nodes'
+import { useStore } from '../store'
 import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
 
 const Panel: FC = () => {
   const {
     mode,
-    selectedNode,
   } = useWorkflowContext()
+  const nodes = useNodes()
+  const selectedNodeId = useStore(state => state.selectedNodeId)
+  const selectedNode = useMemo(() => {
+    return nodes.find(node => node.id === selectedNodeId)
+  }, [nodes, selectedNodeId])
   const {
     showWorkflowInfoPanel,
     showNodePanel,
@@ -29,7 +35,7 @@ const Panel: FC = () => {
     <div className='absolute top-14 right-0 bottom-2 flex'>
       {
         showNodePanel && (
-          <NodePanel node={selectedNode!} />
+          <NodePanel node={selectedNode as any} />
         )
       }
       {

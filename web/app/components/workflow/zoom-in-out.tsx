@@ -4,7 +4,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { useWorkflowContext } from './context'
+import { useReactFlow } from 'reactflow'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -43,7 +43,7 @@ const ZOOM_IN_OUT_OPTIONS = [
 ]
 
 const ZoomInOut: FC = () => {
-  const { reactFlow } = useWorkflowContext()
+  const reactFlow = useReactFlow()
   const [open, setOpen] = useState(false)
 
   const handleZoom = (type: string) => {

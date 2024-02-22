@@ -24,6 +24,7 @@ type NodeSelectorProps = {
   trigger?: (open: boolean) => React.ReactNode
   placement?: Placement
   offset?: OffsetOptions
+  triggerStyle?: React.CSSProperties
   popupClassName?: string
   asChild?: boolean
 }
@@ -32,6 +33,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   trigger,
   placement = 'right',
   offset = 6,
+  triggerStyle,
   popupClassName,
   asChild,
 }) => {
@@ -50,10 +52,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             : (
               <div
                 className={`
-                  hidden absolute -right-2 top-4 items-center justify-center 
+                  flex items-center justify-center 
                   w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
-                  ${open && '!flex'}
                 `}
+                style={triggerStyle}
               >
                 <Plus02 className='w-2.5 h-2.5 text-white' />
               </div>

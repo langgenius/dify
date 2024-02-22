@@ -2,13 +2,11 @@ import type {
   Dispatch,
   SetStateAction,
 } from 'react'
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
-import type { Edge } from 'reactflow'
+import type {
+  Edge,
+} from 'reactflow'
 import type {
   BlockEnum,
   Node,
@@ -20,16 +18,7 @@ export const useWorkflow = (
   edges: Edge[],
   setNodes: Dispatch<SetStateAction<Node[]>>,
   setEdges: Dispatch<SetStateAction<Edge[]>>,
-  initialSelectedNodeId?: string,
 ) => {
-  const [selectedNodeId, setSelectedNodeId] = useState(initialSelectedNodeId)
-
-  const handleSelectedNodeIdChange = useCallback((nodeId: string) => setSelectedNodeId(nodeId), [])
-
-  const selectedNode = useMemo(() => {
-    return nodes.find(node => node.id === selectedNodeId)
-  }, [nodes, selectedNodeId])
-
   const handleAddNextNode = useCallback((prevNode: Node, nextNodeType: BlockEnum) => {
     const nextNode = {
       id: `node-${Date.now()}`,
@@ -68,9 +57,6 @@ export const useWorkflow = (
   }, [setNodes])
 
   return {
-    selectedNodeId,
-    selectedNode,
-    handleSelectedNodeIdChange,
     handleAddNextNode,
     handleUpdateNodeData,
   }

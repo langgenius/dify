@@ -34,16 +34,19 @@ const initialNodes = [
 const initialEdges = [
   {
     id: '0',
+    type: 'custom',
     source: '1',
     target: '2',
   },
   {
     id: '1',
+    type: 'custom',
     source: '2',
     target: '3',
   },
   {
     id: '2',
+    type: 'custom',
     source: '2',
     target: '4',
   },
