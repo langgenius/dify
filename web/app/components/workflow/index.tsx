@@ -23,7 +23,6 @@ import DebugAndPreview from './debug-and-preview'
 import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import type { Node } from './types'
-import { BlockSelectorContextProvider } from './block-selector/context'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -97,9 +96,7 @@ const WorkflowWrap: FC<WorkflowWrapProps> = ({
       handleAddNextNode,
       handleUpdateNodeData,
     }}>
-      <BlockSelectorContextProvider>
-        <Workflow />
-      </BlockSelectorContextProvider>
+      <Workflow />
     </WorkflowContext.Provider>
   )
 }

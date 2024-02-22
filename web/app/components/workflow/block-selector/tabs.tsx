@@ -4,7 +4,7 @@ import {
   useState,
 } from 'react'
 import BlockIcon from '../block-icon'
-import type { OnSelect } from './types'
+import type { BlockEnum } from '../types'
 import {
   BLOCK_CLASSIFICATIONS,
   BLOCK_GROUP_BY_CLASSIFICATION,
@@ -12,7 +12,7 @@ import {
 } from './constants'
 
 export type TabsProps = {
-  onSelect: OnSelect
+  onSelect: (type: BlockEnum) => void
 }
 const Tabs: FC<TabsProps> = ({
   onSelect,

@@ -5,16 +5,13 @@ import type {
 import {
   cloneElement,
   memo,
-  useCallback,
   useMemo,
 } from 'react'
 import type { NodeProps } from 'reactflow'
-import { getOutgoers } from 'reactflow'
 import { useWorkflowContext } from '../../context'
-import { BlockEnum } from '../../types'
 import NodeControl from '../../node-control'
 import BlockIcon from '../../block-icon'
-import AddNode from './components/add-node/index'
+import BlockSelector from '../../block-selector'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -27,34 +24,12 @@ const BaseNode: FC<BaseNodeProps> = ({
 }) => {
   const {
     nodes,
-    edges,
     selectedNodeId,
     handleSelectedNodeIdChange,
-    handleAddNextNode,
   } = useWorkflowContext()
   const currentNode = useMemo(() => {
     return nodes.find(node => node.id === nodeId)
   }, [nodeId, nodes])
-  const outgoers = useMemo(() => {
-    return getOutgoers(currentNode!, nodes, edges)
-  }, [currentNode, nodes, edges])
-  const handleSelectBlock = useCallback((type: BlockEnum) => {
-    handleAddNextNode(currentNode!, type)
-  }, [currentNode, handleAddNextNode])
-  const branches = useMemo(() => {
-    if (data.type === BlockEnum.IfElse) {
-      return [
-        {
-          id: '1',
-          name: 'Is True',
-        },
-        {
-          id: '2',
-          name: 'Is False',
-        },
-      ]
-    }
-  }, [data])
 
   return (
     <div
@@ -80,10 +55,9 @@ const BaseNode: FC<BaseNodeProps> = ({
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
         Define the initial parameters for launching a workflow
       </div>
-      <AddNode
-        outgoers={outgoers}
-        branches={branches}
-        onAddNextNode={handleSelectBlock}
+      <BlockSelector
+        onSelect={() => {}}
+        asChild
       />
     </div>
   )
