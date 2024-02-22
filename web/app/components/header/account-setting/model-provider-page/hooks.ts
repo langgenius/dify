@@ -58,7 +58,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 
 export const useLanguage = () => {
   const { locale } = useContext(I18n)
-  return locale
+  return locale.replace('-', '_')
 }
 
 export const useProviderCrenditialsFormSchemasValue = (
