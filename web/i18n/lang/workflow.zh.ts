@@ -6,6 +6,16 @@ const translation = {
     },
     start: {
       required: '必填',
+      builtInVar: '内置变量',
+      outputVars: {
+        query: '用户输入',
+        memories: {
+          des: '会话历史',
+          type: '消息类型',
+          content: '消息内容',
+        },
+        files: '文件列表',
+      },
     },
     end: {
       outputs: '输出',

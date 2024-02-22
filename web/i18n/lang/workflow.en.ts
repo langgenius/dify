@@ -6,6 +6,16 @@ const translation = {
     },
     start: {
       required: 'required',
+      builtInVar: 'Built-in Variables',
+      outputVars: {
+        query: 'User input',
+        memories: {
+          des: 'Conversation history',
+          type: 'message type',
+          content: 'message content',
+        },
+        files: 'File list',
+      },
     },
     end: {
       outputs: 'Outputs',
