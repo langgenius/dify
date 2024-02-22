@@ -3,6 +3,8 @@ from typing import List, Iterator, Optional, Dict
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
+from core.rag.extractor.helpers import detect_file_encodings
+import csv
 
 
 class CSVExtractor(BaseExtractor):
