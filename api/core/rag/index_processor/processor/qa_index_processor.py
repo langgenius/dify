@@ -12,7 +12,7 @@ from werkzeug.datastructures import FileStorage
 
 from core.generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
-from core.rag.datasource.keyword.keyword_init import Keyword
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.extractor.entity.extract_setting import ExtractSetting

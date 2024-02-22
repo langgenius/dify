@@ -1,5 +1,5 @@
 from typing import List, Optional
-from core.rag.datasource.keyword.keyword_init import Keyword
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from models.dataset import Dataset, DocumentSegment

@@ -14,7 +14,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.rag.datasource.keyword.keyword_init import Keyword
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
