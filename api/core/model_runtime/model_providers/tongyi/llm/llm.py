@@ -12,8 +12,8 @@ from dashscope.common.error import (
     UnsupportedModel,
 )
 from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
-from core.model_runtime.callbacks.base_callback import Callback
 
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
