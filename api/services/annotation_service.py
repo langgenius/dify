@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
@@ -284,6 +285,12 @@ class AppAnnotationService:
                 result.append(content)
             if len(result) == 0:
                 raise ValueError("The CSV file is empty.")
+            # check annotation limit
+            features = FeatureService.get_features(current_user.current_tenant_id)
+            if features.billing.enabled:
+                annotation_quota_limit = features.annotation_quota_limit
+                if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
+                    raise ValueError("The number of annotations exceeds the limit of your subscription.")
             # async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = 'app_annotation_batch_import_{}'.format(str(job_id))
