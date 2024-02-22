@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
 
 from core.entities.application_entities import ModelConfigEntity
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from models.model import AppMode
+from models.model import AppMode, Conversation
 
 
 def test_get_common_chat_app_prompt_template_with_pcqm():
@@ -141,7 +143,16 @@ def test__get_chat_model_prompt_messages():
     model_config_mock.provider = 'openai'
     model_config_mock.model = 'gpt-4'
 
+    memory_mock = MagicMock(spec=TokenBufferMemory)
+    history_prompt_messages = [
+        UserPromptMessage(content="Hi"),
+        AssistantPromptMessage(content="Hello")
+    ]
+    memory_mock.get_history_prompt_messages.return_value = history_prompt_messages
+
     prompt_transform = SimplePromptTransform()
+    prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
+
     pre_prompt = "You are a helpful assistant {{name}}."
     inputs = {
         "name": "John"
@@ -154,7 +165,7 @@ def test__get_chat_model_prompt_messages():
         query=query,
         files=[],
         context=context,
-        memory=None,
+        memory=memory_mock,
         model_config=model_config_mock
     )
 
@@ -171,9 +182,11 @@ def test__get_chat_model_prompt_messages():
     full_inputs = {**inputs, '#context#': context}
     real_system_prompt = prompt_template['prompt_template'].format(full_inputs)
 
-    assert len(prompt_messages) == 2
+    assert len(prompt_messages) == 4
     assert prompt_messages[0].content == real_system_prompt
-    assert prompt_messages[1].content == query
+    assert prompt_messages[1].content == history_prompt_messages[0].content
+    assert prompt_messages[2].content == history_prompt_messages[1].content
+    assert prompt_messages[3].content == query
 
 
 def test__get_completion_model_prompt_messages():
@@ -181,7 +194,19 @@ def test__get_completion_model_prompt_messages():
     model_config_mock.provider = 'openai'
     model_config_mock.model = 'gpt-3.5-turbo-instruct'
 
+    memory = TokenBufferMemory(
+        conversation=Conversation(),
+        model_instance=model_config_mock
+    )
+
+    history_prompt_messages = [
+        UserPromptMessage(content="Hi"),
+        AssistantPromptMessage(content="Hello")
+    ]
+    memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
+
     prompt_transform = SimplePromptTransform()
+    prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
     pre_prompt = "You are a helpful assistant {{name}}."
     inputs = {
         "name": "John"
@@ -194,7 +219,7 @@ def test__get_completion_model_prompt_messages():
         query=query,
         files=[],
         context=context,
-        memory=None,
+        memory=memory,
         model_config=model_config_mock
     )
 
@@ -205,12 +230,17 @@ def test__get_completion_model_prompt_messages():
         pre_prompt=pre_prompt,
         has_context=True,
         query_in_prompt=True,
-        with_memory_prompt=False,
+        with_memory_prompt=True,
     )
 
-    full_inputs = {**inputs, '#context#': context, '#query#': query}
+    prompt_rules = prompt_template['prompt_rules']
+    full_inputs = {**inputs, '#context#': context, '#query#': query, '#histories#': memory.get_history_prompt_text(
+        max_token_limit=2000,
+        ai_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
+        human_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
+    )}
     real_prompt = prompt_template['prompt_template'].format(full_inputs)
 
     assert len(prompt_messages) == 1
-    assert stops == prompt_template['prompt_rules'].get('stops')
+    assert stops == prompt_rules.get('stops')
     assert prompt_messages[0].content == real_prompt

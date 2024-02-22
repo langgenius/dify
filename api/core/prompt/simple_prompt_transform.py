@@ -177,7 +177,7 @@ class SimplePromptTransform(PromptTransform):
         if prompt:
             prompt_messages.append(SystemPromptMessage(content=prompt))
 
-        self._append_chat_histories(
+        prompt_messages = self._append_chat_histories(
             memory=memory,
             prompt_messages=prompt_messages,
             model_config=model_config

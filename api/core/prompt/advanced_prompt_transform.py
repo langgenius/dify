@@ -20,7 +20,7 @@ from core.prompt.prompt_transform import PromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 
 
-class AdvancePromptTransform(PromptTransform):
+class AdvancedPromptTransform(PromptTransform):
     """
     Advanced Prompt Transform for Workflow LLM Node.
     """
@@ -74,10 +74,10 @@ class AdvancePromptTransform(PromptTransform):
         prompt_template = PromptTemplateParser(template=raw_prompt)
         prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
-        self._set_context_variable(context, prompt_template, prompt_inputs)
+        prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
 
         role_prefix = prompt_template_entity.advanced_completion_prompt_template.role_prefix
-        self._set_histories_variable(
+        prompt_inputs = self._set_histories_variable(
             memory=memory,
             raw_prompt=raw_prompt,
             role_prefix=role_prefix,
@@ -104,7 +104,7 @@ class AdvancePromptTransform(PromptTransform):
     def _get_chat_model_prompt_messages(self,
                                         prompt_template_entity: PromptTemplateEntity,
                                         inputs: dict,
-                                        query: str,
+                                        query: Optional[str],
                                         files: list[FileObj],
                                         context: Optional[str],
                                         memory: Optional[TokenBufferMemory],
@@ -122,7 +122,7 @@ class AdvancePromptTransform(PromptTransform):
             prompt_template = PromptTemplateParser(template=raw_prompt)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
-            self._set_context_variable(context, prompt_template, prompt_inputs)
+            prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
 
             prompt = prompt_template.format(
                 prompt_inputs
@@ -136,7 +136,7 @@ class AdvancePromptTransform(PromptTransform):
                 prompt_messages.append(AssistantPromptMessage(content=prompt))
 
         if memory:
-            self._append_chat_histories(memory, prompt_messages, model_config)
+            prompt_messages = self._append_chat_histories(memory, prompt_messages, model_config)
 
             if files:
                 prompt_message_contents = [TextPromptMessageContent(data=query)]
@@ -157,7 +157,7 @@ class AdvancePromptTransform(PromptTransform):
 
                 last_message.content = prompt_message_contents
             else:
-                prompt_message_contents = [TextPromptMessageContent(data=query)]
+                prompt_message_contents = [TextPromptMessageContent(data='')]  # not for query
                 for file in files:
                     prompt_message_contents.append(file.prompt_message_content)
 
@@ -165,26 +165,30 @@ class AdvancePromptTransform(PromptTransform):
 
         return prompt_messages
 
-    def _set_context_variable(self, context: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> None:
+    def _set_context_variable(self, context: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> dict:
         if '#context#' in prompt_template.variable_keys:
             if context:
                 prompt_inputs['#context#'] = context
             else:
                 prompt_inputs['#context#'] = ''
 
-    def _set_query_variable(self, query: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> None:
+        return prompt_inputs
+
+    def _set_query_variable(self, query: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> dict:
         if '#query#' in prompt_template.variable_keys:
             if query:
                 prompt_inputs['#query#'] = query
             else:
                 prompt_inputs['#query#'] = ''
 
+        return prompt_inputs
+
     def _set_histories_variable(self, memory: TokenBufferMemory,
                                 raw_prompt: str,
                                 role_prefix: AdvancedCompletionPromptTemplateEntity.RolePrefixEntity,
                                 prompt_template: PromptTemplateParser,
                                 prompt_inputs: dict,
-                                model_config: ModelConfigEntity) -> None:
+                                model_config: ModelConfigEntity) -> dict:
         if '#histories#' in prompt_template.variable_keys:
             if memory:
                 inputs = {'#histories#': '', **prompt_inputs}
@@ -205,3 +209,5 @@ class AdvancePromptTransform(PromptTransform):
                 prompt_inputs['#histories#'] = histories
             else:
                 prompt_inputs['#histories#'] = ''
+
+            return prompt_inputs
