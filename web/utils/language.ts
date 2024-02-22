@@ -1,6 +1,7 @@
 export type Item = {
   value: number | string
   name: string
+  example: string
 }
 
 export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH', 'id-ID', 'uk-UA']
@@ -10,54 +11,67 @@ export const languages = [
   {
     value: 'en-US',
     name: 'English(United States)',
+    example: 'Hello, Dify!',
   },
   {
     value: 'zh-Hans',
     name: '简体中文',
+    example: '你好，Dify！',
   },
   {
     value: 'pt-BR',
     name: 'Português(Brasil)',
+    example: 'Olá, Dify!',
   },
   {
     value: 'es-ES',
     name: 'Español(España)',
+    example: 'Saluton, Dify!',
   },
   {
     value: 'fr-FR',
     name: 'Français(France)',
+    example: 'Bonjour, Dify!',
   },
   {
     value: 'de-DE',
     name: 'Deutsch(Deutschland)',
+    example: 'Hallo, Dify!',
   },
   {
     value: 'ja-JP',
     name: '日本語(日本)',
+    example: 'こんにちは、Dify!',
   },
   {
     value: 'ko-KR',
     name: '한국어(대한민국)',
+    example: '안녕, Dify!',
   },
   {
     value: 'ru-RU',
     name: 'Русский(Россия)',
+    example: ' Привет, Dify!',
   },
   {
     value: 'it-IT',
     name: 'Italiano(Italia)',
+    example: 'Ciao, Dify!',
   },
   {
     value: 'th-TH',
     name: 'ไทย(ประเทศไทย)',
+    example: 'สวัสดี Dify!',
   },
   {
     value: 'id-ID',
     name: 'Bahasa Indonesia',
+    example: 'Saluto, Dify!',
   },
   {
     value: 'uk-UA',
     name: 'Українська(Україна)',
+    example: 'Привет, Dify!',
   },
 ]
 
