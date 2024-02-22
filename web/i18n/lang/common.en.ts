@@ -53,6 +53,7 @@ const translation = {
       koKR: 'Korean',
       ptBR: 'Portuguese',
       ruRU: 'Russian',
+      ukUA: 'Ukrainian',
     },
   },
   unit: {

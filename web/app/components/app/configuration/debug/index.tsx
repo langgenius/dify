@@ -149,7 +149,7 @@ const Debug: FC<IDebug> = ({
     }
     let hasEmptyInput = ''
     const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
-      if (type === 'api')
+      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
         return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res

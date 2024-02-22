@@ -16,7 +16,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         return ['string', item['text-input']]
 
       if (item.external_data_tool)
-        return ['api', item.external_data_tool]
+        return [item.external_data_tool.type, item.external_data_tool]
 
       return ['select', item.select]
     })()
@@ -33,7 +33,17 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         is_context_var,
       })
     }
-    else if (type === 'api') {
+    else if (type === 'select') {
+      promptVariables.push({
+        key: content.variable,
+        name: content.label,
+        required: content.required,
+        type: 'select',
+        options: content.options,
+        is_context_var,
+      })
+    }
+    else {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -43,16 +53,6 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         config: content.config,
         icon: content.icon,
         icon_background: content.icon_background,
-        is_context_var,
-      })
-    }
-    else {
-      promptVariables.push({
-        key: content.variable,
-        name: content.label,
-        required: content.required,
-        type: 'select',
-        options: content.options,
         is_context_var,
       })
     }
@@ -79,7 +79,18 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
         },
       } as any)
     }
-    else if (item.type === 'api') {
+    else if (item.type === 'select') {
+      userInputs.push({
+        select: {
+          label: item.name,
+          variable: item.key,
+          required: item.required !== false, // default true
+          options: item.options,
+          default: '',
+        },
+      } as any)
+    }
+    else {
       userInputs.push({
         external_data_tool: {
           label: item.name,
@@ -90,17 +101,6 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           required: item.required,
           icon: item.icon,
           icon_background: item.icon_background,
-        },
-      } as any)
-    }
-    else {
-      userInputs.push({
-        select: {
-          label: item.name,
-          variable: item.key,
-          required: item.required !== false, // default true
-          options: item.options,
-          default: '',
         },
       } as any)
     }

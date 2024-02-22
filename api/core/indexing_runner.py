@@ -31,6 +31,7 @@ from libs import helper
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
+from services.feature_service import FeatureService
 
 
 class IndexingRunner:
@@ -212,6 +213,14 @@ class IndexingRunner:
         """
         Estimate the indexing for the document.
         """
+        # check document limit
+        features = FeatureService.get_features(tenant_id)
+        if features.billing.enabled:
+            count = len(extract_settings)
+            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            if count > batch_upload_limit:
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
         embedding_model_instance = None
         if dataset_id:
             dataset = Dataset.query.filter_by(
