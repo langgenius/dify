@@ -80,8 +80,6 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
         """
         Transform json prompts to model prompts
         """
-        if "```\n" not in stop:
-            stop.append("```\n")
 
         # check if there is a system message
         if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
@@ -101,11 +99,11 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
 
         if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
             # add ```JSON\n to the last message
-            prompt_messages[-1].content += "\n```JSON\n"
+            prompt_messages[-1].content += "\n```JSON\n{\n"
         else:
             # append a user message
             prompt_messages.append(UserPromptMessage(
-                content="```JSON\n"
+                content="```JSON\n{\n"
             ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],

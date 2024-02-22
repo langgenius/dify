@@ -220,12 +220,24 @@ if you are not sure about the structure.
         )
 
         if isinstance(response, Generator):
-            return self._code_block_mode_stream_processor(
-                model=model,
-                prompt_messages=prompt_messages,
-                input_generator=response
-            )
-        
+            first_chunk = next(response)
+            def new_generator():
+                yield first_chunk
+                yield from response
+
+            if first_chunk.delta.message.content and first_chunk.delta.message.content.startswith("`"):
+                return self._code_block_mode_stream_processor_with_backtick(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    input_generator=new_generator()
+                )
+            else:
+                return self._code_block_mode_stream_processor(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    input_generator=new_generator()
+                )
+            
         return response
 
     def _code_block_mode_stream_processor(self, model: str, prompt_messages: list[PromptMessage], 
@@ -284,7 +296,81 @@ if you are not sure about the structure.
                         ),
                     )
                 )
-        
+
+    def _code_block_mode_stream_processor_with_backtick(self, model: str, prompt_messages: list, 
+                                        input_generator:  Generator[LLMResultChunk, None, None]) \
+                                    ->  Generator[LLMResultChunk, None, None]:
+        """
+        Code block mode stream processor, ensure the response is a code block with output markdown quote.
+        This version skips the language identifier that follows the opening triple backticks.
+
+        :param model: model name
+        :param prompt_messages: prompt messages
+        :param input_generator: input generator
+        :return: output generator
+        """
+        state = "search_start"
+        backtick_count = 0
+
+        for piece in input_generator:
+            if piece.delta.message.content:
+                content = piece.delta.message.content
+                # Reset content to ensure we're only processing and yielding the relevant parts
+                piece.delta.message.content = ""
+                # Yield a piece with cleared content before processing it to maintain the generator structure
+                yield piece
+                piece = content
+            else:
+                # Yield pieces without content directly
+                yield piece
+                continue
+
+            if state == "done":
+                continue
+
+            new_piece = ""
+            for char in piece:
+                if state == "search_start":
+                    if char == "`":
+                        backtick_count += 1
+                        if backtick_count == 3:
+                            state = "skip_language"
+                            backtick_count = 0
+                    else:
+                        backtick_count = 0
+                elif state == "skip_language":
+                    # Skip everything until the first newline, marking the end of the language identifier
+                    if char == "\n":
+                        state = "in_code_block"
+                elif state == "in_code_block":
+                    if char == "`":
+                        backtick_count += 1
+                        if backtick_count == 3:
+                            state = "done"
+                            break
+                    else:
+                        if backtick_count > 0:
+                            # If backticks were counted but we're still collecting content, it was a false start
+                            new_piece += "`" * backtick_count
+                            backtick_count = 0
+                        new_piece += char
+
+                elif state == "done":
+                    break
+
+            if new_piece:
+                # Only yield content collected within the code block
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=new_piece,
+                            tool_calls=[]
+                        ),
+                    )
+                )
 
     def _invoke_result_generator(self, model: str, result: Generator, credentials: dict,
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
