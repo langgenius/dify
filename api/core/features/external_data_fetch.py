@@ -1,5 +1,4 @@
 import concurrent
-import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
@@ -28,12 +27,6 @@ class ExternalDataFetchFeature:
         :param query: the query
         :return: the filled inputs
         """
-        # Group tools by type and config
-        grouped_tools = {}
-        for tool in external_data_tools:
-            tool_key = (tool.type, json.dumps(tool.config, sort_keys=True))
-            grouped_tools.setdefault(tool_key, []).append(tool)
-
         results = {}
         with ThreadPoolExecutor() as executor:
             futures = {}

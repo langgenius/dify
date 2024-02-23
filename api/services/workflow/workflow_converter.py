@@ -11,6 +11,7 @@ from core.entities.application_entities import (
     PromptTemplateEntity,
     VariableEntity,
 )
+from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils import helper
 from core.prompt.simple_prompt_transform import SimplePromptTransform
@@ -18,6 +19,7 @@ from core.workflow.entities.NodeEntities import NodeType
 from core.workflow.nodes.end.entities import EndNodeOutputType
 from extensions.ext_database import db
 from models.account import Account
+from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, ChatbotAppEngine
 from models.workflow import Workflow, WorkflowType
 
@@ -49,7 +51,7 @@ class WorkflowConverter:
 
         # convert app model config
         application_manager = ApplicationManager()
-        application_manager.convert_from_app_model_config_dict(
+        app_orchestration_config_entity = application_manager.convert_from_app_model_config_dict(
             tenant_id=app_model.tenant_id,
             app_model_config_dict=app_model_config.to_dict()
         )
@@ -71,24 +73,27 @@ class WorkflowConverter:
 
         # convert to start node
         start_node = self._convert_to_start_node(
-            variables=app_model_config.variables
+            variables=app_orchestration_config_entity.variables
         )
 
         graph['nodes'].append(start_node)
 
         # convert to http request node
-        if app_model_config.external_data_variables:
-            http_request_node = self._convert_to_http_request_node(
-                external_data_variables=app_model_config.external_data_variables
+        if app_orchestration_config_entity.external_data_variables:
+            http_request_nodes = self._convert_to_http_request_node(
+                app_model=app_model,
+                variables=app_orchestration_config_entity.variables,
+                external_data_variables=app_orchestration_config_entity.external_data_variables
             )
 
-            graph = self._append_node(graph, http_request_node)
+            for http_request_node in http_request_nodes:
+                graph = self._append_node(graph, http_request_node)
 
         # convert to knowledge retrieval node
-        if app_model_config.dataset:
+        if app_orchestration_config_entity.dataset:
             knowledge_retrieval_node = self._convert_to_knowledge_retrieval_node(
                 new_app_mode=new_app_mode,
-                dataset_config=app_model_config.dataset
+                dataset_config=app_orchestration_config_entity.dataset
             )
 
             if knowledge_retrieval_node:
@@ -98,9 +103,9 @@ class WorkflowConverter:
         llm_node = self._convert_to_llm_node(
             new_app_mode=new_app_mode,
             graph=graph,
-            model_config=app_model_config.model_config,
-            prompt_template=app_model_config.prompt_template,
-            file_upload=app_model_config.file_upload
+            model_config=app_orchestration_config_entity.model_config,
+            prompt_template=app_orchestration_config_entity.prompt_template,
+            file_upload=app_orchestration_config_entity.file_upload
         )
 
         graph = self._append_node(graph, llm_node)
@@ -160,14 +165,130 @@ class WorkflowConverter:
             }
         }
 
-    def _convert_to_http_request_node(self, external_data_variables: list[ExternalDataVariableEntity]) -> dict:
+    def _convert_to_http_request_node(self, app_model: App,
+                                      variables: list[VariableEntity],
+                                      external_data_variables: list[ExternalDataVariableEntity]) -> list[dict]:
         """
         Convert API Based Extension to HTTP Request Node
+        :param app_model: App instance
+        :param variables: list of variables
         :param external_data_variables: list of external data variables
         :return:
         """
-        # TODO: implement
-        pass
+        index = 1
+        nodes = []
+        tenant_id = app_model.tenant_id
+        for external_data_variable in external_data_variables:
+            tool_type = external_data_variable.type
+            if tool_type != "api":
+                continue
+
+            tool_variable = external_data_variable.variable
+            tool_config = external_data_variable.config
+
+            # get params from config
+            api_based_extension_id = tool_config.get("api_based_extension_id")
+
+            # get api_based_extension
+            api_based_extension = db.session.query(APIBasedExtension).filter(
+                APIBasedExtension.tenant_id == tenant_id,
+                APIBasedExtension.id == api_based_extension_id
+            ).first()
+
+            if not api_based_extension:
+                raise ValueError("[External data tool] API query failed, variable: {}, "
+                                 "error: api_based_extension_id is invalid"
+                                 .format(tool_variable))
+
+            # decrypt api_key
+            api_key = encrypter.decrypt_token(
+                tenant_id=tenant_id,
+                token=api_based_extension.api_key
+            )
+
+            http_request_variables = []
+            inputs = {}
+            for v in variables:
+                http_request_variables.append({
+                    "variable": v.variable,
+                    "value_selector": ["start", v.variable]
+                })
+
+                inputs[v.variable] = '{{' + v.variable + '}}'
+
+            if app_model.mode == AppMode.CHAT.value:
+                http_request_variables.append({
+                    "variable": "_query",
+                    "value_selector": ["start", "sys.query"]
+                })
+
+            request_body = {
+                'point': APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value,
+                'params': {
+                    'app_id': app_model.id,
+                    'tool_variable': tool_variable,
+                    'inputs': inputs,
+                    'query': '{{_query}}' if app_model.mode == AppMode.CHAT.value else ''
+                }
+            }
+
+            request_body_json = json.dumps(request_body)
+            request_body_json = request_body_json.replace('\{\{', '{{').replace('\}\}', '}}')
+
+            http_request_node = {
+                "id": f"http-request-{index}",
+                "position": None,
+                "data": {
+                    "title": f"HTTP REQUEST {api_based_extension.name}",
+                    "type": NodeType.HTTP_REQUEST.value,
+                    "variables": http_request_variables,
+                    "method": "post",
+                    "url": api_based_extension.api_endpoint,
+                    "authorization": {
+                        "type": "api-key",
+                        "config": {
+                            "type": "bearer",
+                            "api_key": api_key
+                        }
+                    },
+                    "headers": "",
+                    "params": "",
+                    "body": {
+                        "type": "json",
+                        "data": request_body_json
+                    }
+                }
+            }
+            index += 1
+
+            nodes.append(http_request_node)
+
+            # append code node for response body parsing
+            code_node = {
+                "id": f"code-{index}",
+                "position": None,
+                "data": {
+                    "title": f"Parse {api_based_extension.name} response",
+                    "type": NodeType.CODE.value,
+                    "variables": [{
+                        "variable": "response_json",
+                        "value_selector": [http_request_node['id'], "body"]
+                    }],
+                    "code_language": "python3",
+                    "code": "import json\n\ndef main(response_json: str) -> str:\n    response_body = json.loads("
+                            "response_json)\n    return {\n        \"result\": response_body[\"result\"]\n    }",
+                    "outputs": [
+                        {
+                            "variable": "result",
+                            "variable_type": "string"
+                        }
+                    ]
+                }
+            }
+
+            nodes.append(code_node)
+
+        return nodes
 
     def _convert_to_knowledge_retrieval_node(self, new_app_mode: AppMode, dataset_config: DatasetEntity) \
             -> Optional[dict]:
