@@ -13,7 +13,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import { languages } from '@/utils/language'
+import { languages } from '@/i18n/language'
 const VoiceParamConfig: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()

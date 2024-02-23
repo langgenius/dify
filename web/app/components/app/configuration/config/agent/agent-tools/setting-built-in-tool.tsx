@@ -13,7 +13,7 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
-import { getModelRuntimeSupported } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
 type Props = {
   collection: Collection
   toolName: string
@@ -32,7 +32,7 @@ const SettingBuiltInTool: FC<Props> = ({
   onSave,
 }) => {
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+  const language = getLanguage(locale)
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)

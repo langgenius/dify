@@ -12,7 +12,7 @@ import { upload } from '@/service/base'
 import { fetchFileUploadConfig } from '@/service/common'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 const FILES_NUMBER_LIMIT = 20
 
@@ -36,7 +36,6 @@ const FileUploader = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -77,7 +76,7 @@ const FileUploader = ({
     res = res.map(item => item.toLowerCase())
     res = res.filter((item, index, self) => self.indexOf(item) === index)
 
-    return res.map(item => item.toUpperCase()).join(language !== LanguagesSupportedUnderscore[1] ? ', ' : '、 ')
+    return res.map(item => item.toUpperCase()).join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   })()
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {

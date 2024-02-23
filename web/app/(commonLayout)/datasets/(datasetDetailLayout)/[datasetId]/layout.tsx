@@ -25,7 +25,7 @@ import Link from 'next/link'
 import s from './style.module.css'
 import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
 import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
-import { getLocaleOnClient } from '@/i18n/client'
+import { getLocaleOnClient } from '@/i18n'
 import AppSideBar from '@/app/components/app-sidebar'
 import Divider from '@/app/components/base/divider'
 import Indicator from '@/app/components/header/indicator'
@@ -35,7 +35,7 @@ import FloatPopoverContainer from '@/app/components/base/float-popover-container
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -72,7 +72,7 @@ const LikedItem = ({
 
 const TargetIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <g clip-path="url(#clip0_4610_6951)">
+    <g clipPath="url(#clip0_4610_6951)">
       <path d="M10.6666 5.33325V3.33325L12.6666 1.33325L13.3332 2.66659L14.6666 3.33325L12.6666 5.33325H10.6666ZM10.6666 5.33325L7.9999 7.99988M14.6666 7.99992C14.6666 11.6818 11.6818 14.6666 7.99992 14.6666C4.31802 14.6666 1.33325 11.6818 1.33325 7.99992C1.33325 4.31802 4.31802 1.33325 7.99992 1.33325M11.3333 7.99992C11.3333 9.84087 9.84087 11.3333 7.99992 11.3333C6.15897 11.3333 4.66659 9.84087 4.66659 7.99992C4.66659 6.15897 6.15897 4.66659 7.99992 4.66659" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     </g>
     <defs>
@@ -105,7 +105,6 @@ type IExtraInfoProps = {
 
 const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
   const locale = getLocaleOnClient()
-  const language = getModelRuntimeSupported(locale)
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
 
@@ -150,7 +149,7 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
           <a
             className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
             href={
-              language === LanguagesSupported[1]
+              locale === LanguagesSupported[1]
                 ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
                 : 'https://docs.dify.ai/user-guide/creating-dify-apps/prompt-engineering'
             }
