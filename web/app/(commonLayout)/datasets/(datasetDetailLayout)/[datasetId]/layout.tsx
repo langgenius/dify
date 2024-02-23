@@ -35,7 +35,7 @@ import FloatPopoverContainer from '@/app/components/base/float-popover-container
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode

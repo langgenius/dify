@@ -12,7 +12,7 @@ import { upload } from '@/service/base'
 import { fetchFileUploadConfig } from '@/service/common'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 const FILES_NUMBER_LIMIT = 20
 

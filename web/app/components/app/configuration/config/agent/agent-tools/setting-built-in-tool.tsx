@@ -13,7 +13,7 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
-import { getLanguage } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
 type Props = {
   collection: Collection
   toolName: string

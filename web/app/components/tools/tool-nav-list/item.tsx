@@ -6,7 +6,7 @@ import cn from 'classnames'
 import AppIcon from '../../base/app-icon'
 import type { Collection } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
 
 type Props = {
   isCurrent: boolean

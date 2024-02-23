@@ -7,7 +7,7 @@ import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 type Props = {
   showWarning: boolean

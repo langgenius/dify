@@ -13,7 +13,7 @@ import type { AppDetailResponse } from '@/models/app'
 import type { Language } from '@/types/app'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 
-import { languages } from '@/utils/language'
+import { languages } from '@/i18n/language'
 
 export type ISettingsModalProps = {
   appInfo: AppDetailResponse

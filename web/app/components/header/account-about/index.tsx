@@ -9,7 +9,7 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import LogoSite from '@/app/components/base/logo/logo-site'
 
 type IAccountSettingProps = {

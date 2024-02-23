@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 type Props = {
   onReturnToSimpleMode: () => void
 }

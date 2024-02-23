@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { Speaker } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import ConfigContext from '@/context/debug-configuration'
-import { languages } from '@/utils/language'
+import { languages } from '@/i18n/language'
 import { fetchAppVoices } from '@/service/apps'
 import AudioBtn from '@/app/components/base/audio-btn'
 

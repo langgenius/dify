@@ -12,7 +12,7 @@ import { PlanRange } from './select-plan-range'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import I18n from '@/context/i18n'
 
 type Props = {

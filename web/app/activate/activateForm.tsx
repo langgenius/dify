@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/utils/language'
+import { LanguagesSupported, languages } from '@/i18n/language'
 import { activateMember, invitationCheck } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'

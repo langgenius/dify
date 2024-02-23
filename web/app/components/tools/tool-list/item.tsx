@@ -10,7 +10,7 @@ import { CollectionType } from '../types'
 import TooltipPlus from '../../base/tooltip-plus'
 import I18n from '@/context/i18n'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { getLanguage } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
 type Props = {
   collection: Collection
   icon: JSX.Element

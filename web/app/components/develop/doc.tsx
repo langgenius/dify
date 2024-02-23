@@ -5,7 +5,7 @@ import TemplateZh from './template/template.zh.mdx'
 import TemplateChatEn from './template/template_chat.en.mdx'
 import TemplateChatZh from './template/template_chat.zh.mdx'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 type IDocProps = {
   appDetail: any

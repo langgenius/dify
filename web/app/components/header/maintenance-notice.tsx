@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
-import { NOTICE_I18N } from '@/utils/language'
+import { NOTICE_I18N } from '@/i18n/language'
 
 const MaintenanceNotice = () => {
   const { locale } = useContext(I18n)

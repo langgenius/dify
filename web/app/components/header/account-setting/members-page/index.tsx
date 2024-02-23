@@ -20,7 +20,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {

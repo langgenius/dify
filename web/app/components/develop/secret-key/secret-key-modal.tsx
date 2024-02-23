@@ -27,7 +27,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { useAppContext } from '@/context/app-context'
 
 type ISecretKeyModalProps = {

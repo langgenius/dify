@@ -10,7 +10,7 @@ import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import I18n from '@/context/i18n'
 import { testAPIAvailable } from '@/service/tools'
-import { getLanguage } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
 
 type Props = {
   customCollection: CustomCollectionBackend
