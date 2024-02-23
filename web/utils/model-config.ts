@@ -33,6 +33,15 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         is_context_var,
       })
     }
+    else if (type === 'number') {
+      promptVariables.push({
+        key: content.variable,
+        name: content.label,
+        required: content.required,
+        type,
+        options: [],
+      })
+    }
     else if (type === 'select') {
       promptVariables.push({
         key: content.variable,
@@ -75,6 +84,16 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           variable: item.key,
           required: item.required !== false, // default true
           max_length: item.max_length,
+          default: '',
+        },
+      } as any)
+    }
+    if (item.type === 'number') {
+      userInputs.push({
+        number: {
+          label: item.name,
+          variable: item.key,
+          required: item.required !== false, // default true
           default: '',
         },
       } as any)
