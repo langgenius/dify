@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Optional, cast
 
-from langchain.text_splitter import (
+from core.model_manager import ModelInstance
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from core.splitter.text_splitter import (
     TS,
     AbstractSet,
     Collection,
@@ -13,10 +16,6 @@ from langchain.text_splitter import (
     Type,
     Union,
 )
-
-from core.model_manager import ModelInstance
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):

@@ -1,5 +1,4 @@
-
-from langchain.schema import Document
+from core.rag.models.document import Document
 
 
 class ReorderRunner:
