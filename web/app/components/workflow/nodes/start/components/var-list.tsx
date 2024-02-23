@@ -2,8 +2,10 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
+import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
 import type { InputVar } from '@/app/components/workflow/types'
+
 type Props = {
   readonly: boolean
   list: InputVar[]
@@ -15,6 +17,8 @@ const VarList: FC<Props> = ({
   list,
   onChange,
 }) => {
+  const { t } = useTranslation()
+
   const handleVarNameChange = useCallback((index: number) => {
     return (payload: InputVar) => {
       const newList = produce(list, (draft) => {
@@ -32,6 +36,14 @@ const VarList: FC<Props> = ({
       onChange(newList)
     }
   }, [list, onChange])
+
+  if (list.length === 0) {
+    return (
+      <div className='flex rounded-md bg-gray-50 items-center h-[42px] justify-center leading-[18px] text-xs font-normal text-gray-500'>
+        {t('workflow.nodes.start.noVarTip')}
+      </div>
+    )
+  }
 
   return (
     <div className='space-y-1'>

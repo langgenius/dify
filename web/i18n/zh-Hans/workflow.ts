@@ -16,6 +16,7 @@ const translation = {
         },
         files: '文件列表',
       },
+      noVarTip: '设置的输入可在工作流程中使用',
     },
     end: {
       outputs: '输出',

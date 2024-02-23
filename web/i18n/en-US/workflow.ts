@@ -17,6 +17,7 @@ const translation = {
         },
         files: 'File list',
       },
+      noVarTip: 'Set inputs that can be used in the Workflow',
     },
     end: {
       outputs: 'Outputs',
