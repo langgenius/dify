@@ -23,7 +23,7 @@ const Filed: FC<Props> = ({
     <div className={cn(inline && 'flex justify-between items-center')}>
       <div className='flex justify-between items-center'>
         <div className='flex items-center'>
-          <div className=' h-[18px] text-xs font-medium text-gray-500 uppercase'>{title}</div>
+          <div className='h-6 text-xs font-medium text-gray-500 uppercase'>{title}</div>
           {tooltip && (
             <TooltipPlus popupContent='tooltip'>
               <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />

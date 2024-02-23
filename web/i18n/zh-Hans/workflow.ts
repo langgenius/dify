@@ -20,6 +20,10 @@ const translation = {
     },
     end: {
       outputs: '输出',
+      output: {
+        type: '输出类型',
+        variable: '输出变量',
+      },
       type: {
         'none': '无',
         'plain-text': '纯文本',

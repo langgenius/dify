@@ -21,6 +21,10 @@ const translation = {
     },
     end: {
       outputs: 'Outputs',
+      output: {
+        type: 'output type',
+        variable: 'output variable',
+      },
       type: {
         'none': 'None',
         'plain-text': 'Plain Text',
