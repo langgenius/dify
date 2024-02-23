@@ -1,6 +1,10 @@
-import type { FC } from 'react'
+import type {
+  FC,
+  MouseEventHandler,
+} from 'react'
 import {
   memo,
+  useCallback,
   useState,
 } from 'react'
 import type {
@@ -25,6 +29,7 @@ type NodeSelectorProps = {
   placement?: Placement
   offset?: OffsetOptions
   triggerStyle?: React.CSSProperties
+  triggerClassName?: string
   popupClassName?: string
   asChild?: boolean
 }
@@ -33,11 +38,17 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   trigger,
   placement = 'right',
   offset = 6,
+  triggerClassName,
   triggerStyle,
   popupClassName,
   asChild,
 }) => {
   const [open, setOpen] = useState(false)
+  const handleTrigger = useCallback<MouseEventHandler<HTMLDivElement>>((e) => {
+    e.stopPropagation()
+    setOpen(v => !v)
+  }, [])
+
   return (
     <PortalToFollowElem
       placement={placement}
@@ -45,7 +56,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger asChild={asChild} onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger
+        asChild={asChild}
+        onClick={handleTrigger}
+      >
         {
           trigger
             ? trigger(open)
@@ -54,6 +68,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                 className={`
                   flex items-center justify-center 
                   w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
+                  ${triggerClassName}
                 `}
                 style={triggerStyle}
               >
