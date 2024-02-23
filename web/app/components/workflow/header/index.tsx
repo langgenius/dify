@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import { useWorkflowContext } from '../context'
+import { useStore } from '../store'
 import RunAndHistory from './run-and-history'
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const Header: FC = () => {
-  const { mode } = useWorkflowContext()
+  const mode = useStore(state => state.mode)
 
   return (
     <div

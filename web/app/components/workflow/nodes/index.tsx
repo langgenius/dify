@@ -14,11 +14,9 @@ import {
 import BaseNode from './_base/node'
 import BasePanel from './_base/panel'
 
-const CustomNode = ({
-  id,
-  data,
-}: NodeProps) => {
-  const NodeComponent = NodeComponentMap[data.type]
+const CustomNode = (props: NodeProps) => {
+  const nodeData = props.data
+  const NodeComponent = NodeComponentMap[nodeData.type]
 
   return (
     <>
@@ -28,14 +26,11 @@ const CustomNode = ({
         className={`
           !top-[17px] !left-0 !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
           after:absolute after:w-0.5 after:h-2 after:-left-0.5 after:top-1 after:bg-primary-500
-          ${data.type === BlockEnum.Start && 'opacity-0'}
+          ${nodeData.type === BlockEnum.Start && 'opacity-0'}
         `}
-        isConnectable={data.type !== BlockEnum.Start}
+        isConnectable={nodeData.type !== BlockEnum.Start}
       />
-      <BaseNode
-        id={id}
-        data={data}
-      >
+      <BaseNode { ...props }>
         <NodeComponent />
       </BaseNode>
       <Handle

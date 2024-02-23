@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { EdgeMouseHandler } from 'reactflow'
 
 type State = {
+  mode: string
   selectedNodeId: string
   hoveringEdgeId: string
 }
@@ -13,6 +14,7 @@ type Action = {
 }
 
 export const useStore = create<State & Action>(set => ({
+  mode: 'workflow',
   selectedNodeId: '',
   handleSelectedNodeId: selectedNodeId => set(() => ({ selectedNodeId })),
   hoveringEdgeId: '',

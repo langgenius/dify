@@ -6,6 +6,7 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import type {
   Edge,
+  EdgeMouseHandler,
 } from 'reactflow'
 import type {
   BlockEnum,
@@ -55,9 +56,29 @@ export const useWorkflow = (
       })
     })
   }, [setNodes])
+  const handleEnterEdge = useCallback<EdgeMouseHandler>((_, edge) => {
+    setEdges((oldEdges) => {
+      return produce(oldEdges, (draft) => {
+        const currentEdge = draft.find(e => e.id === edge.id)
+        if (currentEdge)
+          currentEdge.data = { ...currentEdge.data, hovering: true }
+      })
+    })
+  }, [setEdges])
+  const handleLeaveEdge = useCallback<EdgeMouseHandler>((_, edge) => {
+    setEdges((oldEdges) => {
+      return produce(oldEdges, (draft) => {
+        const currentEdge = draft.find(e => e.id === edge.id)
+        if (currentEdge)
+          currentEdge.data = { ...currentEdge.data, hovering: false }
+      })
+    })
+  }, [setEdges])
 
   return {
     handleAddNextNode,
     handleUpdateNodeData,
+    handleEnterEdge,
+    handleLeaveEdge,
   }
 }

@@ -17,11 +17,12 @@ import NodeControl from './components/node-control'
 
 type BaseNodeProps = {
   children: ReactElement
-} & Pick<NodeProps, 'id' | 'data'>
+} & NodeProps
 
 const BaseNode: FC<BaseNodeProps> = ({
   id: nodeId,
   data,
+  selected,
   children,
 }) => {
   const nodes = useNodes<NodeData>()

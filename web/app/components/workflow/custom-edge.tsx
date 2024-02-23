@@ -7,17 +7,17 @@ import {
   getSimpleBezierPath,
 } from 'reactflow'
 import BlockSelector from './block-selector'
-import { useStore } from './store'
 
 const CustomEdge = ({
   id,
+  data,
   sourceX,
   sourceY,
   targetX,
   targetY,
   selected,
 }: EdgeProps) => {
-  const hoveringEdgeId = useStore(state => state.hoveringEdgeId)
+  console.log()
   const [
     edgePath,
     labelX,
@@ -43,7 +43,7 @@ const CustomEdge = ({
       />
       <EdgeLabelRenderer>
         {
-          hoveringEdgeId === id && (
+          data?.hovering && (
             <div
               className='nopan nodrag'
               style={{
