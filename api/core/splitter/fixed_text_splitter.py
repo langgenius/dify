@@ -8,12 +8,11 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.splitter.text_splitter import (
     TS,
-    AbstractSet,
     Collection,
     Literal,
     RecursiveCharacterTextSplitter,
+    Set,
     TokenTextSplitter,
-    Type,
     Union,
 )
 
@@ -25,9 +24,9 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
 
     @classmethod
     def from_encoder(
-            cls: Type[TS],
+            cls: type[TS],
             embedding_model_instance: Optional[ModelInstance],
-            allowed_special: Union[Literal[all], AbstractSet[str]] = set(),
+            allowed_special: Union[Literal[all], Set[str]] = set(),
             disallowed_special: Union[Literal[all], Collection[str]] = "all",
             **kwargs: Any,
     ):
