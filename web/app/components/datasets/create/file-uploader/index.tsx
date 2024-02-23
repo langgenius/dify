@@ -23,6 +23,7 @@ type IFileUploaderProps = {
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
+  notSupportBatchUpload?: boolean
 }
 
 const FileUploader = ({
@@ -32,6 +33,7 @@ const FileUploader = ({
   onFileUpdate,
   onFileListUpdate,
   onPreview,
+  notSupportBatchUpload,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -258,7 +260,7 @@ const FileUploader = ({
         id="fileUploader"
         style={{ display: 'none' }}
         type="file"
-        multiple
+        multiple={!notSupportBatchUpload}
         accept={ACCEPTS.join(',')}
         onChange={fileChangeHandle}
       />
