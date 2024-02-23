@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional, Union, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from core.tools.entities.common_entities import I18nObject
 
@@ -113,7 +113,7 @@ class ToolParameter(BaseModel):
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
     required: Optional[bool] = False
-    default: Optional[Union[bool, str, int]] = None
+    default: Optional[Union[int, str]] = None
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
     options: Optional[list[ToolParameterOption]] = None
