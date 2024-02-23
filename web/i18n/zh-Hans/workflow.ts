@@ -88,6 +88,14 @@ const translation = {
     },
     variableAssigner: {
       title: '变量赋值',
+      outputType: '输出类型',
+      varNotSet: '未设置变量',
+      type: {
+        string: 'String',
+        number: 'Number',
+        object: 'Object',
+        arrayObject: 'Array[Object]',
+      },
     },
   },
 }

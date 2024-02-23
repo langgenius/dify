@@ -89,6 +89,14 @@ const translation = {
     },
     variableAssigner: {
       title: 'Assign variables',
+      outputType: 'Output Type',
+      varNotSet: 'Variable not set',
+      type: {
+        string: 'String',
+        number: 'Number',
+        object: 'Object',
+        arrayObject: 'Array[Object]',
+      },
     },
   },
 }

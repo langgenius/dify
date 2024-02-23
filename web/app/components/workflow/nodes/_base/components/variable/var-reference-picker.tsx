@@ -30,7 +30,7 @@ type Props = {
 // }
 
 // TODO: get data from context
-const getNodeInfoById = (id: string) => {
+export const getNodeInfoById = (id: string) => {
   return mockNodesData[id]
 }
 
