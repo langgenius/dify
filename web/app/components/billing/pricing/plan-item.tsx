@@ -130,6 +130,9 @@ const PlanItem: FC<Props> = ({
               <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
+              <div>+ {t('billing.plansCommon.supportItems.bulkUpload')}</div>
+            </div>
+            <div className='mt-3.5 flex items-center space-x-1'>
               <div className='flex items-center'>
                 +
                 <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
@@ -263,6 +266,10 @@ const PlanItem: FC<Props> = ({
           label={t('billing.plansCommon.vectorSpace')}
           value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.vectorSpace >= 1000 ? `${planInfo.vectorSpace / 1000}G` : `${planInfo.vectorSpace}MB`)}
           tooltip={t('billing.plansCommon.vectorSpaceBillingTooltip') as string}
+        />
+        <KeyValue
+          label={t('billing.plansCommon.documentsUploadQuota')}
+          value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : planInfo.documentsUploadQuota}
         />
         <KeyValue
           label={t('billing.plansCommon.documentProcessingPriority')}
