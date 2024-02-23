@@ -20,7 +20,7 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
@@ -40,7 +40,6 @@ const HeaderOptions: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
 
@@ -56,7 +55,7 @@ const HeaderOptions: FC<Props> = ({
     const content = listTransformer(list).join('\n')
     const file = new Blob([content], { type: 'application/jsonl' })
     a.href = URL.createObjectURL(file)
-    a.download = `annotations-${language}.jsonl`
+    a.download = `annotations-${locale}.jsonl`
     a.click()
   }
 
@@ -110,10 +109,10 @@ const HeaderOptions: FC<Props> = ({
             >
               <CSVDownloader
                 type={Type.Link}
-                filename={`annotations-${language}`}
+                filename={`annotations-${locale}`}
                 bom={true}
                 data={[
-                  language !== LanguagesSupportedUnderscore[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+                  locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >

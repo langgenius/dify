@@ -1,8 +1,7 @@
 import React from 'react'
 import ChartView from './chartView'
 import CardView from './cardView'
-import { getLocaleOnServer } from '@/i18n/server'
-import { useTranslation as translate } from '@/i18n/i18next-serverside-config'
+import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
 
 export type IDevelopProps = {

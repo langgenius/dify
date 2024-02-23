@@ -12,7 +12,7 @@ import { PlanRange } from './select-plan-range'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import I18n from '@/context/i18n'
 
 type Props = {
@@ -73,8 +73,8 @@ const PlanItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
-  const isZh = language === LanguagesSupportedUnderscore[1]
+
+  const isZh = locale === LanguagesSupported[1]
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox

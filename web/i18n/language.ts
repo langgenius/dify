@@ -4,97 +4,6 @@ export type Item = {
   example: string
 }
 
-export const LanguagesSupported = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH', 'id-ID', 'uk-UA']
-export const LanguagesSupportedUnderscore = ['en_US', 'zh_Hans', 'pt_BR', 'es_ES', 'fr_FR', 'de_DE', 'ja_JP', 'ko_KR', 'ru_RU', 'it_IT', 'th_TH', 'id_ID', 'uk_UA']
-
-export const languages = [
-  {
-    value: 'en-US',
-    name: 'English(United States)',
-    example: 'Hello, Dify!',
-  },
-  {
-    value: 'zh-Hans',
-    name: '简体中文',
-    example: '你好，Dify！',
-  },
-  {
-    value: 'pt-BR',
-    name: 'Português(Brasil)',
-    example: 'Olá, Dify!',
-  },
-  {
-    value: 'es-ES',
-    name: 'Español(España)',
-    example: 'Saluton, Dify!',
-  },
-  {
-    value: 'fr-FR',
-    name: 'Français(France)',
-    example: 'Bonjour, Dify!',
-  },
-  {
-    value: 'de-DE',
-    name: 'Deutsch(Deutschland)',
-    example: 'Hallo, Dify!',
-  },
-  {
-    value: 'ja-JP',
-    name: '日本語(日本)',
-    example: 'こんにちは、Dify!',
-  },
-  {
-    value: 'ko-KR',
-    name: '한국어(대한민국)',
-    example: '안녕, Dify!',
-  },
-  {
-    value: 'ru-RU',
-    name: 'Русский(Россия)',
-    example: ' Привет, Dify!',
-  },
-  {
-    value: 'it-IT',
-    name: 'Italiano(Italia)',
-    example: 'Ciao, Dify!',
-  },
-  {
-    value: 'th-TH',
-    name: 'ไทย(ประเทศไทย)',
-    example: 'สวัสดี Dify!',
-  },
-  {
-    value: 'id-ID',
-    name: 'Bahasa Indonesia',
-    example: 'Saluto, Dify!',
-  },
-  {
-    value: 'uk-UA',
-    name: 'Українська(Україна)',
-    example: 'Привет, Dify!',
-  },
-]
-
-export const getModelRuntimeSupported = (locale: string) => {
-  if (locale === 'zh-Hans')
-    return locale.replace('-', '_')
-
-  return LanguagesSupported[0].replace('-', '_')
-}
-export const languageMaps = {
-  'en-US': 'en-US',
-  'zh-Hans': 'zh-Hans',
-  'pt-BR': 'pt-BR',
-  'es-ES': 'es-ES',
-  'fr-FR': 'fr-FR',
-  'de-DE': 'de-DE',
-  'ja-JP': 'ja-JP',
-  'ko-KR': 'ko-KR',
-  'ru-RU': 'ru-RU',
-  'it-IT': 'it-IT',
-  'uk-UA': 'uk-UA',
-}
-
 export type I18nText = {
   'en-US': string
   'zh-Hans': string
@@ -107,6 +16,96 @@ export type I18nText = {
   'ru-RU': string
   'it-IT': string
   'uk-UA': string
+}
+
+export const languages = [
+  {
+    value: 'en-US',
+    name: 'English(United States)',
+    example: 'Hello, Dify!',
+    supported: true,
+  },
+  {
+    value: 'zh-Hans',
+    name: '简体中文',
+    example: '你好，Dify！',
+    supported: true,
+  },
+  {
+    value: 'pt-BR',
+    name: 'Português(Brasil)',
+    example: 'Olá, Dify!',
+    supported: true,
+  },
+  {
+    value: 'es-ES',
+    name: 'Español(España)',
+    example: 'Saluton, Dify!',
+    supported: false,
+  },
+  {
+    value: 'fr-FR',
+    name: 'Français(France)',
+    example: 'Bonjour, Dify!',
+    supported: false,
+  },
+  {
+    value: 'de-DE',
+    name: 'Deutsch(Deutschland)',
+    example: 'Hallo, Dify!',
+    supported: false,
+  },
+  {
+    value: 'ja-JP',
+    name: '日本語(日本)',
+    example: 'こんにちは、Dify!',
+    supported: false,
+  },
+  {
+    value: 'ko-KR',
+    name: '한국어(대한민국)',
+    example: '안녕, Dify!',
+    supported: false,
+  },
+  {
+    value: 'ru-RU',
+    name: 'Русский(Россия)',
+    example: ' Привет, Dify!',
+    supported: false,
+  },
+  {
+    value: 'it-IT',
+    name: 'Italiano(Italia)',
+    example: 'Ciao, Dify!',
+    supported: false,
+  },
+  {
+    value: 'th-TH',
+    name: 'ไทย(ประเทศไทย)',
+    example: 'สวัสดี Dify!',
+    supported: false,
+  },
+  {
+    value: 'id-ID',
+    name: 'Bahasa Indonesia',
+    example: 'Saluto, Dify!',
+    supported: false,
+  },
+  {
+    value: 'uk-UA',
+    name: 'Українська(Україна)',
+    example: 'Привет, Dify!',
+    supported: true,
+  },
+]
+
+export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
+
+export const getLanguage = (locale: string) => {
+  if (locale === 'zh-Hans')
+    return locale.replace('-', '_')
+
+  return LanguagesSupported[0].replace('-', '_')
 }
 
 export const NOTICE_I18N = {

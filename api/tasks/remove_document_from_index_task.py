@@ -42,7 +42,10 @@ def remove_document_from_index_task(document_id: str):
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
         if index_node_ids:
-            index_processor.clean(dataset, index_node_ids)
+            try:
+                index_processor.clean(dataset, index_node_ids)
+            except Exception:
+                logging.exception(f"clean dataset {dataset.id} from index failed")
 
         end_at = time.perf_counter()
         logging.info(

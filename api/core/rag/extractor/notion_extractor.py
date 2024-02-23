@@ -5,9 +5,9 @@ from typing import Any, Optional
 import requests
 from flask import current_app
 from flask_login import current_user
-from langchain.schema import Document
 
 from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceBinding

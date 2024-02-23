@@ -10,8 +10,7 @@ import { CollectionType } from '../types'
 import TooltipPlus from '../../base/tooltip-plus'
 import I18n from '@/context/i18n'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { getModelRuntimeSupported } from '@/utils/language'
-
+import { getLanguage } from '@/i18n/language'
 type Props = {
   collection: Collection
   icon: JSX.Element
@@ -33,7 +32,8 @@ const Item: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+  const language = getLanguage(locale)
+
   const isBuiltIn = collection.type === CollectionType.builtIn
   const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
   const [showDetail, setShowDetail] = useState(false)

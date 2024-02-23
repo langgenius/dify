@@ -12,7 +12,7 @@ import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/educatio
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import { SimpleSelect } from '@/app/components/base/select'
 import I18n from '@/context/i18n'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
@@ -41,7 +41,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { data: codeBasedExtensionList } = useSWR(
@@ -157,7 +156,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     }
 
     if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? 'API Extension' : 'API 扩展' }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
@@ -166,7 +165,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
           notify({
             type: 'error',
-            message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
+            message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })
           return
         }

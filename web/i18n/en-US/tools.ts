@@ -54,6 +54,8 @@ const translation = {
       types: {
         none: 'None',
         api_key: 'API Key',
+        apiKeyPlaceholder: 'HTTP header name for API Key',
+        apiValuePlaceholder: 'Enter API Key',
       },
       key: 'Key',
       value: 'Value',

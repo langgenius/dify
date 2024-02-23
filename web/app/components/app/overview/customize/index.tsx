@@ -9,7 +9,7 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 
 type IShareLinkProps = {
   isShow: boolean
@@ -44,7 +44,6 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const isChatApp = mode === 'chat'
 
   return <Modal
@@ -102,7 +101,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         className='w-36 mt-2'
         onClick={() =>
           window.open(
-            `https://docs.dify.ai/${language !== LanguagesSupportedUnderscore[1]
+            `https://docs.dify.ai/${locale !== LanguagesSupported[1]
               ? 'user-guide/launching-dify-apps/developing-with-apis'
               : `v/${locale.toLowerCase()}/guides/application-publishing/developing-with-apis`
             }`,

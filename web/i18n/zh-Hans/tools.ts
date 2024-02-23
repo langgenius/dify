@@ -54,6 +54,8 @@ const translation = {
       types: {
         none: '无',
         api_key: 'API Key',
+        apiKeyPlaceholder: 'HTTP 头部名称，用于传递 API Key',
+        apiValuePlaceholder: '输入 API Key',
       },
       key: '键',
       value: '值',

@@ -10,7 +10,7 @@ import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import I18n from '@/context/i18n'
 import { testAPIAvailable } from '@/service/tools'
-import { getModelRuntimeSupported } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
 
 type Props = {
   customCollection: CustomCollectionBackend
@@ -27,7 +27,7 @@ const TestApi: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+  const language = getLanguage(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(customCollection.credentials)
   const [result, setResult] = useState<string>('')
