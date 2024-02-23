@@ -4,7 +4,7 @@ import copy
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence, Set
 from dataclasses import dataclass
 from enum import Enum
 from typing import (
@@ -15,7 +15,6 @@ from typing import (
     TypeVar,
     Union,
 )
-from collections.abc import Set
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
