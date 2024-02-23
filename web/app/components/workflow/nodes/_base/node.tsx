@@ -9,7 +9,6 @@ import {
 import type { NodeProps } from 'reactflow'
 import BlockIcon from '../../block-icon'
 import { useWorkflow } from '../../hooks'
-import BlockSelector from '../../block-selector'
 import NodeControl from './components/node-control'
 
 type BaseNodeProps = {
@@ -48,10 +47,6 @@ const BaseNode: FC<BaseNodeProps> = ({
       <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
         Define the initial parameters for launching a workflow
       </div>
-      <BlockSelector
-        onSelect={() => {}}
-        asChild
-      />
     </div>
   )
 }

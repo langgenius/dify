@@ -17,6 +17,7 @@ const NextStep = () => {
   const store = useStoreApi()
   const selectedNode = useStore(state => state.selectedNode)
   const outgoers: Node[] = getOutgoers(selectedNode as Node, store.getState().getNodes(), store.getState().edges)
+  const svgHeight = outgoers.length > 1 ? (outgoers.length + 1) * 36 + 12 * outgoers.length : 36
 
   const renderAddNextNodeTrigger = useCallback((open: boolean) => {
     return (
@@ -53,9 +54,9 @@ const NextStep = () => {
       <div className='shrink-0 relative flex items-center justify-center w-9 h-9 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
         <BlockIcon type={selectedNode!.data.type} />
       </div>
-      <svg className='shrink-0 w-6'>
+      <svg className='shrink-0 w-6' style={{ height: svgHeight }}>
         {
-          (!outgoers.length || outgoers.length === 1) && (
+          outgoers.length < 2 && (
             <g>
               <path
                 d='M0,18 L24,18'

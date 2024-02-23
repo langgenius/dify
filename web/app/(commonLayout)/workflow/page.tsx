@@ -29,6 +29,12 @@ const initialNodes = [
     position: { x: 738, y: 330 },
     data: { type: 'llm' },
   },
+  {
+    id: '5',
+    type: 'custom',
+    position: { x: 1100, y: 130 },
+    data: { type: 'llm' },
+  },
 ]
 
 const initialEdges = [
@@ -36,20 +42,23 @@ const initialEdges = [
     id: '0',
     type: 'custom',
     source: '1',
+    sourceHandle: 'source',
     target: '2',
   },
   {
     id: '1',
     type: 'custom',
     source: '2',
+    sourceHandle: 'condition1',
     target: '3',
   },
-  {
-    id: '2',
-    type: 'custom',
-    source: '2',
-    target: '4',
-  },
+  // {
+  //   id: '2',
+  //   type: 'custom',
+  //   source: '2',
+  //   sourceHandle: 'condition2',
+  //   target: '4',
+  // },
 ]
 
 const Page: FC = () => {

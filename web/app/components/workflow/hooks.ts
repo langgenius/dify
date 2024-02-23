@@ -17,9 +17,17 @@ export const useWorkflow = () => {
 
   const handleEnterNode = useCallback<NodeMouseHandler>((_, node) => {
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      const currentNode = draft.find(n => n.id === node.id)
+      if (currentNode)
+        currentNode.data = { ...currentNode.data, hovering: true }
+    })
+    setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       const connectedEdges = getConnectedEdges([node], edges)
 
@@ -33,9 +41,17 @@ export const useWorkflow = () => {
   }, [store])
   const handleLeaveNode = useCallback<NodeMouseHandler>((_, node) => {
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      const currentNode = draft.find(n => n.id === node.id)
+      if (currentNode)
+        currentNode.data = { ...currentNode.data, hovering: false }
+    })
+    setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       const connectedEdges = getConnectedEdges([node], edges)
 

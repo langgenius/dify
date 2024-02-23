@@ -1,5 +1,7 @@
-import type { FC } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { NodeProps } from 'reactflow'
+import { NodeSourceHandle } from '../_base/components/node-handle'
 import { mockData } from './mock'
 import { ComparisonOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
@@ -12,12 +14,21 @@ const notTranslateKey = [
   ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
 ]
 
-const Node: FC = () => {
+const Node = (props: Pick<NodeProps, 'id' | 'data'>) => {
   const { t } = useTranslation()
   const { conditions, logical_operator } = mockData
 
   return (
     <div className='px-3'>
+      <div className='flex items-center h-6 relative px-1'>
+        <div className='w-full text-right text-gray-700 text-xs font-semibold'>IF</div>
+        <NodeSourceHandle
+          {...props}
+          handleId='condition1'
+          handleClassName='!top-1 !-right-3'
+          nodeSelectorClassName='absolute top-1 -right-5'
+        />
+      </div>
       <div className='mb-0.5 leading-4 text-[10px] font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conditions`)}</div>
       <div className='space-y-0.5'>
         {conditions.map((condition, i) => (
@@ -34,8 +45,17 @@ const Node: FC = () => {
           </div>
         ))}
       </div>
+      <div className='flex items-center h-6 relative px-1'>
+        <div className='w-full text-right text-gray-700 text-xs font-semibold'>ELSE</div>
+        <NodeSourceHandle
+          {...props}
+          handleId='condition2'
+          handleClassName='!top-1 !-right-3'
+          nodeSelectorClassName='absolute top-1 -right-5'
+        />
+      </div>
     </div>
   )
 }
 
-export default Node
+export default memo(Node)
