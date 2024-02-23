@@ -8,11 +8,6 @@ import ReactFlow, {
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import './style.css'
-import {
-  WorkflowContext,
-  useWorkflowContext,
-} from './context'
 import { useWorkflow } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -20,7 +15,6 @@ import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import Panel from './panel'
 import type { Node } from './types'
-import { useStore } from './store'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -29,13 +23,33 @@ const edgeTypes = {
   custom: CustomEdge,
 }
 
-const Workflow = memo(() => {
+type WorkflowProps = {
+  selectedNodeId?: string
+  nodes: Node[]
+  edges: Edge[]
+}
+const Workflow: FC<WorkflowProps> = memo(({
+  nodes: initialNodes,
+  edges: initialEdges,
+  selectedNodeId: initialSelectedNodeId,
+}) => {
+  const [nodes] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+
   const {
-    nodes,
-    edges,
-  } = useWorkflowContext()
-  const handleEnterEdge = useStore(state => state.handleEnterEdge)
-  const handleLeaveEdge = useStore(state => state.handleLeaveEdge)
+    handleEnterEdge,
+    handleLeaveEdge,
+    handleSelectNode,
+  } = useWorkflow()
+
+  useEffect(() => {
+    if (initialSelectedNodeId) {
+      const initialSelectedNode = nodes.find(n => n.id === initialSelectedNodeId)
+
+      if (initialSelectedNode)
+        handleSelectNode({ id: initialSelectedNodeId, data: initialSelectedNode.data })
+    }
+  }, [initialSelectedNodeId])
 
   return (
     <div className='relative w-full h-full'>
@@ -47,8 +61,10 @@ const Workflow = memo(() => {
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        onEdgesChange={onEdgesChange}
         onEdgeMouseEnter={handleEnterEdge}
         onEdgeMouseLeave={handleLeaveEdge}
+        multiSelectionKeyCode={null}
       >
         <Background
           gap={[14, 14]}
@@ -58,74 +74,10 @@ const Workflow = memo(() => {
     </div>
   )
 })
+
 Workflow.displayName = 'Workflow'
 
-type WorkflowWrapProps = {
-  selectedNodeId?: string
-  nodes: Node[]
-  edges: Edge[]
-}
-const WorkflowWrap: FC<WorkflowWrapProps> = memo(({
-  nodes: initialNodes,
-  edges: initialEdges,
-  selectedNodeId: initialSelectedNodeId,
-}) => {
-  const [nodes, setNodes] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-
-  const {
-    handleAddNextNode,
-    handleUpdateNodeData,
-    handleEnterEdge,
-    handleLeaveEdge,
-  } = useWorkflow(
-    nodes,
-    edges,
-    setNodes,
-    setEdges,
-  )
-  const handleSelectedNodeId = useStore(state => state.handleSelectedNodeId)
-  useEffect(() => {
-    if (initialSelectedNodeId)
-      handleSelectedNodeId(initialSelectedNodeId)
-  }, [initialSelectedNodeId, handleSelectedNodeId])
-  // const handleEnterEdge = useStore(state => state.handleEnterEdge)
-  // const handleLeaveEdge = useStore(state => state.handleLeaveEdge)
-
-  return (
-    <WorkflowContext.Provider value={{
-      mode: 'workflow',
-      nodes,
-      edges,
-      handleAddNextNode,
-      handleUpdateNodeData,
-    }}>
-      <div className='relative w-full h-full'>
-        <Header />
-        <Panel />
-        <ZoomInOut />
-        <ReactFlow
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          nodes={nodes}
-          edges={edges}
-          onEdgesChange={onEdgesChange}
-          onEdgeMouseEnter={handleEnterEdge}
-          onEdgeMouseLeave={handleLeaveEdge}
-        >
-          <Background
-            gap={[14, 14]}
-            size={1}
-          />
-        </ReactFlow>
-      </div>
-    </WorkflowContext.Provider>
-  )
-})
-
-WorkflowWrap.displayName = 'WorkflowWrap'
-
-const WorkflowWrapWithReactFlowProvider: FC<WorkflowWrapProps> = ({
+const WorkflowWrap: FC<WorkflowProps> = ({
   selectedNodeId,
   nodes,
   edges,
@@ -133,7 +85,7 @@ const WorkflowWrapWithReactFlowProvider: FC<WorkflowWrapProps> = ({
   return (
     <ReactFlowProvider>
       {selectedNodeId}
-      <WorkflowWrap
+      <Workflow
         selectedNodeId={selectedNodeId}
         nodes={nodes}
         edges={edges}
@@ -142,4 +94,4 @@ const WorkflowWrapWithReactFlowProvider: FC<WorkflowWrapProps> = ({
   )
 }
 
-export default memo(WorkflowWrapWithReactFlowProvider)
+export default memo(WorkflowWrap)

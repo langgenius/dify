@@ -5,13 +5,10 @@ import type {
 import {
   cloneElement,
   memo,
-  useMemo,
 } from 'react'
 import type { NodeProps } from 'reactflow'
-import { useNodes } from 'reactflow'
-import { useStore } from '../../store'
-import type { NodeData } from '../../types'
 import BlockIcon from '../../block-icon'
+import { useWorkflow } from '../../hooks'
 import BlockSelector from '../../block-selector'
 import NodeControl from './components/node-control'
 
@@ -25,27 +22,22 @@ const BaseNode: FC<BaseNodeProps> = ({
   selected,
   children,
 }) => {
-  const nodes = useNodes<NodeData>()
-  const selectedNodeId = useStore(state => state.selectedNodeId)
-  const handleSelectedNodeId = useStore(state => state.handleSelectedNodeId)
-  const currentNode = useMemo(() => {
-    return nodes.find(node => node.id === nodeId)
-  }, [nodeId, nodes])
+  const { handleSelectNode } = useWorkflow()
 
   return (
     <div
       className={`
         group relative pb-2 w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
-        ${selectedNodeId === nodeId ? 'border-[2px] border-primary-600' : 'border border-white'}
+        ${(data.selected && selected) ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
-      onClick={() => handleSelectedNodeId(nodeId || '')}
+      onClick={() => handleSelectNode({ id: nodeId, data })}
     >
       <NodeControl />
       <div className='flex items-center px-3 pt-3 pb-2'>
         <BlockIcon
           className='mr-2'
-          type={currentNode!.data.type}
+          type={data.type}
           size='md'
         />
         <div className='text-[13px] font-semibold text-gray-700'>

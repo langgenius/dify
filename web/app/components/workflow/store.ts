@@ -1,23 +1,17 @@
 import { create } from 'zustand'
-import type { EdgeMouseHandler } from 'reactflow'
+import type { SelectedNode } from './types'
 
 type State = {
   mode: string
-  selectedNodeId: string
-  hoveringEdgeId: string
+  selectedNode: SelectedNode | null
 }
 
 type Action = {
-  handleSelectedNodeId: (selectedNodeId: State['selectedNodeId']) => void
-  handleEnterEdge: EdgeMouseHandler
-  handleLeaveEdge: EdgeMouseHandler
+  setSelectedNode: (node: SelectedNode | null) => void
 }
 
 export const useStore = create<State & Action>(set => ({
   mode: 'workflow',
-  selectedNodeId: '',
-  handleSelectedNodeId: selectedNodeId => set(() => ({ selectedNodeId })),
-  hoveringEdgeId: '',
-  handleEnterEdge: (_, edge) => set(() => ({ hoveringEdgeId: edge.id })),
-  handleLeaveEdge: () => set(() => ({ hoveringEdgeId: '' })),
+  selectedNode: null,
+  setSelectedNode: node => set(() => ({ selectedNode: node })),
 }))

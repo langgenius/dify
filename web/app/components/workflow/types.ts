@@ -15,19 +15,15 @@ export enum BlockEnum {
   Tool = 'tool',
 }
 
-export type NodeData = {
-  type: BlockEnum
-  name?: string
-  icon?: any
-  description?: string
-}
-export type Node = ReactFlowNode<NodeData>
-
 export type CommonNodeType = {
   title: string
   desc: string
-  type: string
+  type: BlockEnum
+  selected?: boolean
 }
+
+export type Node = ReactFlowNode<CommonNodeType>
+export type SelectedNode = Pick<Node, 'id' | 'data'>
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 

@@ -1,31 +1,18 @@
-import type { FC } from 'react'
 import {
   memo,
   useCallback,
-  useMemo,
 } from 'react'
-import { getOutgoers } from 'reactflow'
 import BlockIcon from '../../../block-icon'
 import type { Node } from '../../../types'
 import { BlockEnum } from '../../../types'
-import { useWorkflowContext } from '../../../context'
+import { useStore } from '../../../store'
 import BlockSelector from '../../../block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
 
-type NextStepProps = {
-  selectedNode: Node
-}
-const NextStep: FC<NextStepProps> = ({
-  selectedNode,
-}) => {
-  const {
-    nodes,
-    edges,
-  } = useWorkflowContext()
-  const outgoers = useMemo(() => {
-    return getOutgoers(selectedNode, nodes, edges)
-  }, [selectedNode, nodes, edges])
+const NextStep = () => {
+  const selectedNode = useStore(state => state.selectedNode)
+  const outgoers: Node[] = []
 
   const renderAddNextNodeTrigger = useCallback((open: boolean) => {
     return (
@@ -60,7 +47,7 @@ const NextStep: FC<NextStepProps> = ({
   return (
     <div className='flex py-1'>
       <div className='shrink-0 relative flex items-center justify-center w-9 h-9 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
-        <BlockIcon type={selectedNode.data.type} />
+        <BlockIcon type={selectedNode!.data.type} />
       </div>
       <div className='shrink-0 w-6'></div>
       <div className='grow'>
@@ -74,7 +61,7 @@ const NextStep: FC<NextStepProps> = ({
                 type={outgoer.data.type}
                 className='shrink-0 mr-1.5'
               />
-              <div className='grow'>{outgoer.data.name}</div>
+              <div className='grow'>{outgoer.data.title}</div>
               <BlockSelector
                 onSelect={() => {}}
                 placement='top-end'
@@ -89,7 +76,7 @@ const NextStep: FC<NextStepProps> = ({
           ))
         }
         {
-          (!outgoers.length || selectedNode.data.type === BlockEnum.IfElse) && (
+          (!outgoers.length || selectedNode!.data.type === BlockEnum.IfElse) && (
             <BlockSelector
               onSelect={() => {}}
               placement='top'

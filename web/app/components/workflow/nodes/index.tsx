@@ -1,11 +1,10 @@
-import type { FC } from 'react'
 import { memo } from 'react'
 import type { NodeProps } from 'reactflow'
 import {
   Handle,
   Position,
 } from 'reactflow'
-import type { Node } from '../types'
+import type { SelectedNode } from '../types'
 import { BlockEnum } from '../types'
 import {
   NodeComponentMap,
@@ -14,7 +13,7 @@ import {
 import BaseNode from './_base/node'
 import BasePanel from './_base/panel'
 
-const CustomNode = (props: NodeProps) => {
+const CustomNode = memo((props: NodeProps) => {
   const nodeData = props.data
   const NodeComponent = NodeComponentMap[nodeData.type]
 
@@ -43,21 +42,15 @@ const CustomNode = (props: NodeProps) => {
       />
     </>
   )
-}
+})
+CustomNode.displayName = 'CustomNode'
 
-type PanelProps = {
-  node: Node
-}
-export const Panel: FC<PanelProps> = memo(({
-  node,
-}) => {
-  const PanelComponent = PanelComponentMap[node.data.type]
+export const Panel = memo((props: SelectedNode) => {
+  const nodeData = props.data
+  const PanelComponent = PanelComponentMap[nodeData.type]
 
   return (
-    <BasePanel
-      id={node.id}
-      data={node.data}
-    >
+    <BasePanel {...props}>
       <PanelComponent />
     </BasePanel>
   )
