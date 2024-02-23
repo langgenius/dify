@@ -100,7 +100,6 @@ export const languages = [
 ]
 
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
-export const LanguagesSupportedUnderscore = languages.filter(item => item.supported).map(item => item.value.replace('-', '_'))
 
 export const getLanguage = (locale: string) => {
   if (locale === 'zh-Hans')
