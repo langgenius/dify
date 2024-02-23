@@ -94,6 +94,7 @@ class VariableEntity(BaseModel):
         TEXT_INPUT = 'text-input'
         SELECT = 'select'
         PARAGRAPH = 'paragraph'
+        NUMBER = 'number'
 
         @classmethod
         def value_of(cls, value: str) -> 'VariableEntity.Type':

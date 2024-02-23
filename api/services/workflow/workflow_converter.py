@@ -190,10 +190,10 @@ class WorkflowConverter:
             api_based_extension_id = tool_config.get("api_based_extension_id")
 
             # get api_based_extension
-            api_based_extension = db.session.query(APIBasedExtension).filter(
-                APIBasedExtension.tenant_id == tenant_id,
-                APIBasedExtension.id == api_based_extension_id
-            ).first()
+            api_based_extension = self._get_api_based_extension(
+                tenant_id=tenant_id,
+                api_based_extension_id=api_based_extension_id
+            )
 
             if not api_based_extension:
                 raise ValueError("[External data tool] API query failed, variable: {}, "
@@ -259,7 +259,6 @@ class WorkflowConverter:
                     }
                 }
             }
-            index += 1
 
             nodes.append(http_request_node)
 
@@ -268,7 +267,7 @@ class WorkflowConverter:
                 "id": f"code-{index}",
                 "position": None,
                 "data": {
-                    "title": f"Parse {api_based_extension.name} response",
+                    "title": f"Parse {api_based_extension.name} Response",
                     "type": NodeType.CODE.value,
                     "variables": [{
                         "variable": "response_json",
@@ -287,6 +286,7 @@ class WorkflowConverter:
             }
 
             nodes.append(code_node)
+            index += 1
 
         return nodes
 
@@ -513,3 +513,15 @@ class WorkflowConverter:
             return AppMode.WORKFLOW
         else:
             return AppMode.value_of(app_model.mode)
+
+    def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
+        """
+        Get API Based Extension
+        :param tenant_id: tenant id
+        :param api_based_extension_id: api based extension id
+        :return:
+        """
+        return db.session.query(APIBasedExtension).filter(
+                APIBasedExtension.tenant_id == tenant_id,
+                APIBasedExtension.id == api_based_extension_id
+            ).first()

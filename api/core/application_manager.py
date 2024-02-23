@@ -400,10 +400,14 @@ class ApplicationManager:
                         config=val['config']
                     )
                 )
-            elif typ in [VariableEntity.Type.TEXT_INPUT.value, VariableEntity.Type.PARAGRAPH.value]:
+            elif typ in [
+                VariableEntity.Type.TEXT_INPUT.value,
+                VariableEntity.Type.PARAGRAPH.value,
+                VariableEntity.Type.NUMBER.value,
+            ]:
                 properties['variables'].append(
                     VariableEntity(
-                        type=VariableEntity.Type.TEXT_INPUT,
+                        type=VariableEntity.Type.value_of(typ),
                         variable=variable[typ].get('variable'),
                         description=variable[typ].get('description'),
                         label=variable[typ].get('label'),
