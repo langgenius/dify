@@ -283,6 +283,13 @@ const translation = {
     'varName': 'Variable Name',
     'labelName': 'Label Name',
     'required': 'Required',
+    'errorMsg': {
+      varNameRequired: 'Variable name is required',
+      labelNameRequired: 'Label name is required',
+      varNameCanBeRepeat: 'Variable name can not be repeated',
+      atLeastOneOption: 'At least one option is required',
+      optionRepeat: 'Has repeat options',
+    },
   },
   vision: {
     name: 'Vision',

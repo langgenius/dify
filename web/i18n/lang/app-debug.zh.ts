@@ -248,9 +248,6 @@ const translation = {
     action: '操作',
     typeString: '文本',
     typeSelect: '下拉选项',
-    varName: '变量名称',
-    labelName: '显示名称',
-    required: '必填',
   },
   varKeyError: {
     canNoBeEmpty: '变量不能为空',
@@ -279,6 +276,16 @@ const translation = {
     'options': '选项',
     'addOption': '添加选项',
     'apiBasedVar': '基于 API 的变量',
+    'varName': '变量名称',
+    'labelName': '显示名称',
+    'required': '必填',
+    'errorMsg': {
+      varNameRequired: '变量名称必填',
+      labelNameRequired: '显示名称必填',
+      varNameCanBeRepeat: '变量名称不能重复',
+      atLeastOneOption: '至少需要一个选项',
+      optionRepeat: '选项不能重复',
+    },
   },
   vision: {
     name: '视觉',

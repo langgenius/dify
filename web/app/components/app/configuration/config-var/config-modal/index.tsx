@@ -19,10 +19,8 @@ import Switch from '@/app/components/base/switch'
 export type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
-  type?: string
   isShow: boolean
   onClose: () => void
-  // onConfirm: (newValue: { type: string; value: any }) => void
   onConfirm: (newValue: InputVar) => void
 }
 
@@ -54,13 +52,20 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }, [])
 
   const handleConfirm = () => {
+    if (!tempPayload.variable) {
+      Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.varNameRequired') })
+      return
+    }
+    if (!tempPayload.label) {
+      Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
+      return
+    }
     if (isStringInput) {
       onConfirm(tempPayload)
-      // onConfirm({ type: type, value: tempMaxLength })
     }
     else {
       if (options?.length === 0) {
-        Toast.notify({ type: 'error', message: 'At least one option requied' })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.atLeastOneOption') })
         return
       }
       const obj: Record<string, boolean> = {}
@@ -73,7 +78,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         obj[o] = true
       })
       if (hasRepeatedItem) {
-        Toast.notify({ type: 'error', message: 'Has repeat items' })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.optionRepeat') })
         return
       }
       onConfirm(tempPayload)
@@ -124,7 +129,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           )}
           {type === InputVarType.select && (
             <Field title={t('appDebug.variableConig.options')}>
-              <ConfigSelect options={options!} onChange={handlePayloadChange('options')} />
+              <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
             </Field>
           )}
 
