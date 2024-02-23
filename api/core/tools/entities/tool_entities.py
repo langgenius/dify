@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional, Union, cast
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from core.tools.entities.common_entities import I18nObject
 
