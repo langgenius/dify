@@ -38,7 +38,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
-  // const { type, name, key, options, max_length } = tempPayload; name => label; variable => key
   const { type, label, variable, options, max_length } = tempPayload
 
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph

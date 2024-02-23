@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import type { Timeout } from 'ahooks/lib/useRequest/src/types'
 import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
 import IconTypeIcon from './input-type-icon'
@@ -71,23 +72,35 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
     onPromptVariablesChange?.(newPromptVariables)
   }
+  const [currIndex, setCurrIndex] = useState<number>(-1)
+  const currItem = currIndex !== -1 ? promptVariables[currIndex] : null
+  const currItemToEdit: InputVar | null = (() => {
+    if (!currItem)
+      return null
 
-  const batchUpdatePromptVariable = (key: string, updateKeys: string[], newValues: any[], isParagraph?: boolean) => {
-    console.log(key)
-    const newPromptVariables = promptVariables.map((item) => {
-      if (item.key === key) {
-        const newItem: any = { ...item }
-        updateKeys.forEach((updateKey, i) => {
-          newItem[updateKey] = newValues[i]
-        })
-        if (isParagraph) {
-          delete newItem.max_length
-          delete newItem.options
-        }
-        return newItem
+    return {
+      ...currItem,
+      label: currItem.name,
+      variable: currItem.key,
+      type: currItem.type === 'string' ? InputVarType.textInput : currItem.type,
+    } as InputVar
+  })()
+  const updatePromptVariableItem = (payload: InputVar) => {
+    console.log(payload)
+    const newPromptVariables = produce(promptVariables, (draft) => {
+      const { variable, label, type, ...rest } = payload
+      draft[currIndex] = {
+        ...rest,
+        type: type === InputVarType.textInput ? 'string' : type,
+        key: variable,
+        name: label,
       }
 
-      return item
+      if (payload.type === InputVarType.textInput)
+        draft[currIndex].max_length = draft[currIndex].max_length || DEFAULT_VALUE_MAX_LEN
+
+      if (payload.type !== InputVarType.select)
+        delete draft[currIndex].options
     })
 
     onPromptVariablesChange?.(newPromptVariables)
@@ -243,23 +256,12 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     didRemoveVar(index)
   }
 
-  const [currKey, setCurrKey] = useState<string | null>(null)
-  const currItem = currKey ? promptVariables.find(item => item.key === currKey) : null
-  const currItemToEdit: InputVar | null = (() => {
-    if (!currItem)
-      return null
-
-    return {
-      ...currItem,
-      label: currItem.name,
-      variable: currItem.key,
-      type: currItem.type === 'string' ? InputVarType.textInput : currItem.type,
-    } as InputVar
-  })()
+  // const [currKey, setCurrKey] = useState<string | null>(null)
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
   const handleConfig = ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
-    setCurrKey(key)
+    // setCurrKey(key)
+    setCurrIndex(index)
     if (type !== 'string' && type !== 'paragraph' && type !== 'select') {
       handleOpenExternalDataToolModal({ key, type, index, name, config, icon, icon_background }, promptVariables)
       return
@@ -311,7 +313,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                 <tr key={index} className="h-9 leading-9">
                   <td className="w-[160px] border-b border-gray-100 pl-3">
                     <div className='flex items-center space-x-1'>
-                      {type}
                       <IconTypeIcon type={type as IInputTypeIconProps['type']} className='text-gray-400' />
                       {!readonly
                         ? (
@@ -377,14 +378,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           isShow={isShowEditModal}
           onClose={hideEditModal}
           onConfirm={(item) => {
-            const { type, max_length, options } = item
-            if (type === InputVarType.textInput)
-              batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], ['string', max_length || DEFAULT_VALUE_MAX_LEN])
-            if (type === InputVarType.paragraph)
-              batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], [InputVarType.paragraph, max_length || DEFAULT_VALUE_MAX_LEN], true)
-            else
-              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, options || []], false)
-
+            updatePromptVariableItem(item)
             hideEditModal()
           }}
         />
