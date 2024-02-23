@@ -8,7 +8,6 @@ from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import (
-    AbstractSet,
     Any,
     Literal,
     Optional,
@@ -16,6 +15,7 @@ from typing import (
     TypeVar,
     Union,
 )
+from collections.abc import Set
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
@@ -179,7 +179,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             cls: type[TS],
             encoding_name: str = "gpt2",
             model_name: Optional[str] = None,
-            allowed_special: Union[Literal["all"], AbstractSet[str]] = set(),
+            allowed_special: Union[Literal["all"], Set[str]] = set(),
             disallowed_special: Union[Literal["all"], Collection[str]] = "all",
             **kwargs: Any,
     ) -> TS:
@@ -437,7 +437,7 @@ class TokenTextSplitter(TextSplitter):
             self,
             encoding_name: str = "gpt2",
             model_name: Optional[str] = None,
-            allowed_special: Union[Literal["all"], AbstractSet[str]] = set(),
+            allowed_special: Union[Literal["all"], Set[str]] = set(),
             disallowed_special: Union[Literal["all"], Collection[str]] = "all",
             **kwargs: Any,
     ) -> None:
