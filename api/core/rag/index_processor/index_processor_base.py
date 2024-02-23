@@ -1,6 +1,7 @@
 """Abstract interface for document loader implementations."""
 from abc import ABC, abstractmethod
 from typing import Optional
+
 from core.model_manager import ModelInstance
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.models.document import Document

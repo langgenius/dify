@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Sequence, Any
+from collections.abc import Sequence
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 

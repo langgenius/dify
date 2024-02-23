@@ -5,6 +5,7 @@ from typing import Any, Optional
 import requests
 from flask import current_app
 from flask_login import current_user
+
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db

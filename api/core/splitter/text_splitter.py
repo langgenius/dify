@@ -4,28 +4,20 @@ import copy
 import logging
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import (
     AbstractSet,
     Any,
-    Callable,
-    Collection,
-    Dict,
-    Iterable,
-    List,
     Literal,
     Optional,
-    Sequence,
-    Tuple,
-    Type,
     TypedDict,
     TypeVar,
     Union,
-    cast,
 )
 
-from core.rag.models.document import Document, BaseDocumentTransformer
+from core.rag.models.document import BaseDocumentTransformer, Document
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +26,7 @@ TS = TypeVar("TS", bound="TextSplitter")
 
 def _split_text_with_regex(
         text: str, separator: str, keep_separator: bool
-) -> List[str]:
+) -> list[str]:
     # Now that we have the separator, split the text
     if separator:
         if keep_separator:
@@ -83,12 +75,12 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         self._add_start_index = add_start_index
 
     @abstractmethod
-    def split_text(self, text: str) -> List[str]:
+    def split_text(self, text: str) -> list[str]:
         """Split text into multiple components."""
 
     def create_documents(
-            self, texts: List[str], metadatas: Optional[List[dict]] = None
-    ) -> List[Document]:
+            self, texts: list[str], metadatas: Optional[list[dict]] = None
+    ) -> list[Document]:
         """Create documents from a list of texts."""
         _metadatas = metadatas or [{}] * len(texts)
         documents = []
@@ -103,7 +95,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
                 documents.append(new_doc)
         return documents
 
-    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+    def split_documents(self, documents: Iterable[Document]) -> list[Document]:
         """Split documents."""
         texts, metadatas = [], []
         for doc in documents:
@@ -111,7 +103,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             metadatas.append(doc.metadata)
         return self.create_documents(texts, metadatas=metadatas)
 
-    def _join_docs(self, docs: List[str], separator: str) -> Optional[str]:
+    def _join_docs(self, docs: list[str], separator: str) -> Optional[str]:
         text = separator.join(docs)
         text = text.strip()
         if text == "":
@@ -119,13 +111,13 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         else:
             return text
 
-    def _merge_splits(self, splits: Iterable[str], separator: str) -> List[str]:
+    def _merge_splits(self, splits: Iterable[str], separator: str) -> list[str]:
         # We now want to combine these smaller pieces into medium size
         # chunks to send to the LLM.
         separator_len = self._length_function(separator)
 
         docs = []
-        current_doc: List[str] = []
+        current_doc: list[str] = []
         total = 0
         for d in splits:
             _len = self._length_function(d)
@@ -184,7 +176,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
 
     @classmethod
     def from_tiktoken_encoder(
-            cls: Type[TS],
+            cls: type[TS],
             encoding_name: str = "gpt2",
             model_name: Optional[str] = None,
             allowed_special: Union[Literal["all"], AbstractSet[str]] = set(),
@@ -247,7 +239,7 @@ class CharacterTextSplitter(TextSplitter):
         super().__init__(**kwargs)
         self._separator = separator
 
-    def split_text(self, text: str) -> List[str]:
+    def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         # First we naively split the large input into a bunch of smaller ones.
         splits = _split_text_with_regex(text, self._separator, self._keep_separator)
@@ -258,7 +250,7 @@ class CharacterTextSplitter(TextSplitter):
 class LineType(TypedDict):
     """Line type as typed dict."""
 
-    metadata: Dict[str, str]
+    metadata: dict[str, str]
     content: str
 
 
@@ -274,7 +266,7 @@ class MarkdownHeaderTextSplitter:
     """Splitting markdown files based on specified headers."""
 
     def __init__(
-            self, headers_to_split_on: List[Tuple[str, str]], return_each_line: bool = False
+            self, headers_to_split_on: list[tuple[str, str]], return_each_line: bool = False
     ):
         """Create a new MarkdownHeaderTextSplitter.
 
@@ -290,12 +282,12 @@ class MarkdownHeaderTextSplitter:
             headers_to_split_on, key=lambda split: len(split[0]), reverse=True
         )
 
-    def aggregate_lines_to_chunks(self, lines: List[LineType]) -> List[Document]:
+    def aggregate_lines_to_chunks(self, lines: list[LineType]) -> list[Document]:
         """Combine lines with common metadata into chunks
         Args:
             lines: Line of text / associated header metadata
         """
-        aggregated_chunks: List[LineType] = []
+        aggregated_chunks: list[LineType] = []
 
         for line in lines:
             if (
@@ -315,7 +307,7 @@ class MarkdownHeaderTextSplitter:
             for chunk in aggregated_chunks
         ]
 
-    def split_text(self, text: str) -> List[Document]:
+    def split_text(self, text: str) -> list[Document]:
         """Split markdown file
         Args:
             text: Markdown file"""
@@ -323,14 +315,14 @@ class MarkdownHeaderTextSplitter:
         # Split the input text by newline character ("\n").
         lines = text.split("\n")
         # Final output
-        lines_with_metadata: List[LineType] = []
+        lines_with_metadata: list[LineType] = []
         # Content and metadata of the chunk currently being processed
-        current_content: List[str] = []
-        current_metadata: Dict[str, str] = {}
+        current_content: list[str] = []
+        current_metadata: dict[str, str] = {}
         # Keep track of the nested header structure
         # header_stack: List[Dict[str, Union[int, str]]] = []
-        header_stack: List[HeaderType] = []
-        initial_metadata: Dict[str, str] = {}
+        header_stack: list[HeaderType] = []
+        initial_metadata: dict[str, str] = {}
 
         for line in lines:
             stripped_line = line.strip()
@@ -420,12 +412,12 @@ class Tokenizer:
     chunk_overlap: int
     tokens_per_chunk: int
     decode: Callable[[list[int]], str]
-    encode: Callable[[str], List[int]]
+    encode: Callable[[str], list[int]]
 
 
-def split_text_on_tokens(*, text: str, tokenizer: Tokenizer) -> List[str]:
+def split_text_on_tokens(*, text: str, tokenizer: Tokenizer) -> list[str]:
     """Split incoming text and return chunks using tokenizer."""
-    splits: List[str] = []
+    splits: list[str] = []
     input_ids = tokenizer.encode(text)
     start_idx = 0
     cur_idx = min(start_idx + tokenizer.tokens_per_chunk, len(input_ids))
@@ -468,8 +460,8 @@ class TokenTextSplitter(TextSplitter):
         self._allowed_special = allowed_special
         self._disallowed_special = disallowed_special
 
-    def split_text(self, text: str) -> List[str]:
-        def _encode(_text: str) -> List[int]:
+    def split_text(self, text: str) -> list[str]:
+        def _encode(_text: str) -> list[int]:
             return self._tokenizer.encode(
                 _text,
                 allowed_special=self._allowed_special,
@@ -516,7 +508,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
 
     def __init__(
             self,
-            separators: Optional[List[str]] = None,
+            separators: Optional[list[str]] = None,
             keep_separator: bool = True,
             **kwargs: Any,
     ) -> None:
@@ -524,7 +516,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         super().__init__(keep_separator=keep_separator, **kwargs)
         self._separators = separators or ["\n\n", "\n", " ", ""]
 
-    def _split_text(self, text: str, separators: List[str]) -> List[str]:
+    def _split_text(self, text: str, separators: list[str]) -> list[str]:
         """Split incoming text and return chunks."""
         final_chunks = []
         # Get appropriate separator to use
@@ -561,7 +553,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
             final_chunks.extend(merged_text)
         return final_chunks
 
-    def split_text(self, text: str) -> List[str]:
+    def split_text(self, text: str) -> list[str]:
         return self._split_text(text, self._separators)
 
     @classmethod
@@ -572,7 +564,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         return cls(separators=separators, **kwargs)
 
     @staticmethod
-    def get_separators_for_language(language: Language) -> List[str]:
+    def get_separators_for_language(language: Language) -> list[str]:
         if language == Language.CPP:
             return [
                 # Split along class definitions
