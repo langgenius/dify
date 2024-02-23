@@ -69,7 +69,7 @@ class DatasetRetrieverTool(BaseTool):
         retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
         if dataset.indexing_technique == "economy":
             # use keyword table query
-            documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
+            documents = RetrievalService.retrieve(retrival_method='keyword_search',
                                                   dataset_id=dataset.id,
                                                   query=query,
                                                   top_k=self.top_k

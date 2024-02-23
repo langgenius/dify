@@ -365,7 +365,7 @@ class IndexingRunner:
                 notion_info={
                     "notion_workspace_id": data_source_info['notion_workspace_id'],
                     "notion_obj_id": data_source_info['notion_page_id'],
-                    "notion_page_type": data_source_info['notion_page_type'],
+                    "notion_page_type": data_source_info['type'],
                     "document": dataset_document
                 },
                 document_model=dataset_document.doc_form
