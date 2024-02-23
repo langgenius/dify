@@ -15,7 +15,7 @@ const initialNodes = [
     id: '2',
     type: 'custom',
     position: { x: 434, y: 130 },
-    data: { type: 'code' },
+    data: { type: 'if-else' },
   },
   {
     id: '3',

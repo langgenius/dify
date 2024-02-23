@@ -17,7 +17,6 @@ const CustomEdge = ({
   targetY,
   selected,
 }: EdgeProps) => {
-  console.log()
   const [
     edgePath,
     labelX,
@@ -37,7 +36,7 @@ const CustomEdge = ({
         id={id}
         path={edgePath}
         style={{
-          stroke: selected ? '#2970FF' : '#D0D5DD',
+          stroke: (selected || data?.connectedNodeIsHovering) ? '#2970FF' : '#D0D5DD',
           strokeWidth: 2,
         }}
       />

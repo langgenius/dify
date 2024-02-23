@@ -2,23 +2,27 @@ import {
   memo,
   useCallback,
 } from 'react'
+import {
+  getOutgoers,
+  useStoreApi,
+} from 'reactflow'
 import BlockIcon from '../../../block-icon'
 import type { Node } from '../../../types'
-import { BlockEnum } from '../../../types'
 import { useStore } from '../../../store'
 import BlockSelector from '../../../block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
 
 const NextStep = () => {
+  const store = useStoreApi()
   const selectedNode = useStore(state => state.selectedNode)
-  const outgoers: Node[] = []
+  const outgoers: Node[] = getOutgoers(selectedNode as Node, store.getState().getNodes(), store.getState().edges)
 
   const renderAddNextNodeTrigger = useCallback((open: boolean) => {
     return (
       <div
         className={`
-          flex items-center px-2 w-[328px] h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
+          relative flex items-center px-2 w-[328px] h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
           hover:bg-gray-100 text-xs text-gray-500 cursor-pointer
           ${open && '!bg-gray-100'}
         `}
@@ -49,7 +53,80 @@ const NextStep = () => {
       <div className='shrink-0 relative flex items-center justify-center w-9 h-9 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
         <BlockIcon type={selectedNode!.data.type} />
       </div>
-      <div className='shrink-0 w-6'></div>
+      <svg className='shrink-0 w-6'>
+        {
+          (!outgoers.length || outgoers.length === 1) && (
+            <g>
+              <path
+                d='M0,18 L24,18'
+                strokeWidth={1}
+                stroke='#D0D5DD'
+                fill='none'
+              />
+              <rect
+                x={0}
+                y={16}
+                width={1}
+                height={4}
+                fill='#98A2B3'
+              />
+              <rect
+                x={23}
+                y={16}
+                width={1}
+                height={4}
+                fill='#98A2B3'
+              />
+            </g>
+          )
+        }
+        {
+          outgoers.length > 1 && (
+            <g>
+              {
+                Array(outgoers.length + 1).fill(0).map((_, index) => (
+                  <g key={index}>
+                    {
+                      index === 0 && (
+                        <path
+                          d='M0,18 L24,18'
+                          strokeWidth={1}
+                          stroke='#D0D5DD'
+                          fill='none'
+                        />
+                      )
+                    }
+                    {
+                      index > 0 && (
+                        <path
+                          d={`M0,18 Q12,18 12,28 L12,${index * 48 + 18 - 10} Q12,${index * 48 + 18} 24,${index * 48 + 18}`}
+                          strokeWidth={1}
+                          stroke='#D0D5DD'
+                          fill='none'
+                        />
+                      )
+                    }
+                    <rect
+                      x={23}
+                      y={index * 48 + 18 - 2}
+                      width={1}
+                      height={4}
+                      fill='#98A2B3'
+                    />
+                  </g>
+                ))
+              }
+              <rect
+                x={0}
+                y={16}
+                width={1}
+                height={4}
+                fill='#98A2B3'
+              />
+            </g>
+          )
+        }
+      </svg>
       <div className='grow'>
         {
           !!outgoers.length && outgoers.map(outgoer => (
@@ -76,7 +153,7 @@ const NextStep = () => {
           ))
         }
         {
-          (!outgoers.length || selectedNode!.data.type === BlockEnum.IfElse) && (
+          (!outgoers.length || outgoers.length > 1) && (
             <BlockSelector
               onSelect={() => {}}
               placement='top'
