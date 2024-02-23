@@ -13,7 +13,6 @@ import requests
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
 from langchain.chains import RefineDocumentsChain
 from langchain.chains.summarize import refine_prompts
-from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.tools.base import BaseTool
 from newspaper import Article
@@ -24,6 +23,7 @@ from core.chain.llm_chain import LLMChain
 from core.entities.application_entities import ModelConfigEntity
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
+from core.rag.models.document import Document
 
 FULL_TEMPLATE = """
 TITLE: {title}

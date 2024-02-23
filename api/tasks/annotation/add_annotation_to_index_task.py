@@ -3,9 +3,9 @@ import time
 
 import click
 from celery import shared_task
-from langchain.schema import Document
 
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 

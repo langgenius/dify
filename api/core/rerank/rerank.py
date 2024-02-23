@@ -1,8 +1,7 @@
 from typing import Optional
 
-from langchain.schema import Document
-
 from core.model_manager import ModelInstance
+from core.rag.models.document import Document
 
 
 class RerankRunner:

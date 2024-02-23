@@ -1,8 +1,7 @@
 
-from langchain.schema import Document
-
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import InvokeFrom
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import DatasetQuery, DocumentSegment
 from models.model import DatasetRetrieverResource

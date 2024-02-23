@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, cast
 
-from langchain.text_splitter import (
+from core.splitter.text_splitter import (
     TS,
     AbstractSet,
     Collection,
