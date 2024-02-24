@@ -9,7 +9,7 @@ import { flatten } from 'lodash-es'
 import Nav from '../nav'
 import { Robot, RobotActive } from '../../base/icons/src/public/header-nav/studio'
 import { fetchAppDetail, fetchAppList } from '@/service/apps'
-import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
+import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import type { AppListResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 
@@ -54,7 +54,11 @@ const AppNav = () => {
         onCreate={() => setShowNewAppDialog(true)}
         onLoadmore={handleLoadmore}
       />
-      <NewAppDialog show={showNewAppDialog} onClose={() => setShowNewAppDialog(false)} />
+      <CreateAppDialog
+        show={showNewAppDialog}
+        onClose={() => setShowNewAppDialog(false)}
+        onSuccess={() => {}}
+      />
     </>
   )
 }

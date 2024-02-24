@@ -1,6 +1,7 @@
 'use client'
-import type { FC } from 'react'
+
 import React, { useEffect } from 'react'
+import cn from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -19,7 +20,18 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { type AppMode } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 
-const Apps: FC = () => {
+type AppsProps = {
+  pageType?: PageType
+}
+
+export enum PageType {
+  EXPLORE = 'explore',
+  CREATE = 'create',
+}
+
+const Apps = ({
+  pageType = PageType.EXPLORE,
+}: AppsProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
@@ -81,23 +93,36 @@ const Apps: FC = () => {
   }
 
   return (
-    <div className='h-full flex flex-col border-l border-gray-200'>
-      <div className='shrink-0 pt-6 px-12'>
-        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
-      </div>
+    <div className={cn(
+      'flex flex-col border-l border-gray-200',
+      pageType === PageType.EXPLORE ? 'h-full' : 'h-[calc(100%-76px)]',
+    )}>
+      {pageType === PageType.EXPLORE && (
+        <div className='shrink-0 pt-6 px-12'>
+          <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
+          <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
+        </div>
+      )}
       <Category
-        className='mt-6 px-12'
+        className={cn(pageType === PageType.EXPLORE ? 'mt-6 px-12' : 'px-8 py-2')}
         list={categories}
         value={currCategory}
         onChange={setCurrCategory}
       />
-      <div className='relative flex flex-1 mt-6 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'>
+      <div className={cn(
+        'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
+        pageType === PageType.EXPLORE ? 'mt-6' : 'mt-0 pt-2',
+      )}>
         <nav
-          className={`${s.appList} grid content-start gap-4 px-6 sm:px-12 shrink-0`}>
+          className={cn(
+            s.appList,
+            'grid content-start shrink-0',
+            pageType === PageType.EXPLORE ? 'gap-4 px-6 sm:px-12' : 'gap-3 px-8',
+          )}>
           {currList.map(app => (
             <AppCard
               key={app.app_id}
+              isExplore={pageType === PageType.EXPLORE}
               app={app}
               canCreate={hasEditPermission}
               onCreate={() => {
@@ -108,7 +133,6 @@ const Apps: FC = () => {
           ))}
         </nav>
       </div>
-
       {isShowCreateModal && (
         <CreateAppModal
           appName={currApp?.app.name || ''}

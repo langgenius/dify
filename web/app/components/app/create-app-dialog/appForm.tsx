@@ -74,7 +74,7 @@ const AppForm = ({
   }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onConfirm, onHide, mutateApps, router, isCurrentWorkspaceManager])
 
   return (
-    <>
+    <div className='overflow-y-auto'>
       {/* app type */}
       <div className='pt-2 px-8'>
         <div className='py-2 text-sm leading-[20px] font-medium text-gray-900'>{t('app.newApp.captionAppType')}</div>
@@ -162,7 +162,7 @@ const AppForm = ({
         <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onHide}>{t('app.newApp.Cancel')}</Button>
         <Button className='text-sm font-medium' disabled={isAppsFull || !name} type="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
       </div>
-    </>
+    </div>
 
   )
 }

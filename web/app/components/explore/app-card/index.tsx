@@ -12,15 +12,17 @@ export type AppCardProps = {
   app: App
   canCreate: boolean
   onCreate: () => void
+  isExplore: boolean
 }
 
 const AppCard = ({
   app,
   canCreate,
   onCreate,
+  isExplore,
 }: AppCardProps) => {
   const { t } = useTranslation()
-  const { app: appBasicInfo, is_agent } = app
+  const { app: appBasicInfo } = app
   return (
     <div className={cn(s.wrap, 'col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg')}>
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
@@ -32,18 +34,24 @@ const AppCard = ({
       <div className='mb-3 px-[14px] h-9 text-xs leading-normal text-gray-500 line-clamp-2'>{app.description}</div>
       <div className='flex items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px]'>
         <div className={s.mode}>
-          <AppModeLabel mode={appBasicInfo.mode} isAgent={is_agent} />
+          <AppModeLabel mode={appBasicInfo.mode} />
         </div>
-        {
-          canCreate && (
-            <div className={cn(s.opWrap, 'flex items-center w-full space-x-2')}>
-              <Button type='primary' className='grow flex items-center !h-7' onClick={() => onCreate()}>
-                <PlusIcon className='w-4 h-4 mr-1' />
-                <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
-              </Button>
-            </div>
-          )
-        }
+        {isExplore && canCreate && (
+          <div className={cn(s.opWrap, 'flex items-center w-full space-x-2')}>
+            <Button type='primary' className='grow flex items-center !h-7' onClick={() => onCreate()}>
+              <PlusIcon className='w-4 h-4 mr-1' />
+              <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
+            </Button>
+          </div>
+        )}
+        {!isExplore && (
+          <div className={cn(s.opWrap, 'flex items-center w-full space-x-2')}>
+            <Button type='primary' className='grow flex items-center !h-7' onClick={() => onCreate()}>
+              <PlusIcon className='w-4 h-4 mr-1' />
+              <span className='text-xs'>{t('app.newApp.useTemplate')}</span>
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

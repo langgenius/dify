@@ -54,6 +54,7 @@ const CreateAppModal = ({
       <Modal
         isShow={show}
         onClose={() => { }}
+        wrapperClassName='z-40'
         className={cn(s.modal, '!max-w-[480px]', 'px-8')}
       >
         <span className={s.close} onClick={onHide} />

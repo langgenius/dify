@@ -30,6 +30,7 @@ const translation = {
     appNamePlaceholder: '给你的应用起个名字',
     captionDescription: '描述',
     appDescriptionPlaceholder: '输入应用的描述',
+    useTemplate: '使用该模板',
     previewDemo: '预览 Demo',
     chatApp: '助手',
     chatAppIntro:

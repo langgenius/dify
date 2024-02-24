@@ -30,6 +30,7 @@ const translation = {
     appNamePlaceholder: 'Give your app a name',
     captionDescription: 'Description',
     appDescriptionPlaceholder: 'Enter the description of the app',
+    useTemplate: 'Use this template',
     previewDemo: 'Preview demo',
     chatApp: 'Assistant',
     chatAppIntro:
