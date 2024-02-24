@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Button from '../base/button'
 import { Plus } from '../base/icons/src/vender/line/general'
 import Toast from '../base/toast'
@@ -68,7 +69,9 @@ const Tools: FC<Props> = ({
   })()
 
   const [query, setQuery] = useState('')
-  const [collectionType, setCollectionType] = useState<CollectionType>(collectionTypeOptions[0].value)
+  const [collectionType, setCollectionType] = useTabSearchParams({
+    defaultTab: collectionTypeOptions[0].value
+  })
 
   const showCollectionList = (() => {
     let typeFilteredList: Collection[] = []
