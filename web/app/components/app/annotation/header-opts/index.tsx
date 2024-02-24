@@ -42,6 +42,7 @@ const HeaderOptions: FC<Props> = ({
   const { locale } = useContext(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
+  const annotationUnavailable = list.length === 0
 
   const listTransformer = (list: AnnotationItemBasic[]) => list.map(
     (item: AnnotationItemBasic) => {
@@ -116,11 +117,11 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button className={s.actionItem}>
+                <button disabled={annotationUnavailable} className={s.actionItem}>
                   <span className={s.actionName}>CSV</span>
                 </button>
               </CSVDownloader>
-              <button className={cn(s.actionItem, '!border-0')} onClick={JSONLOutput}>
+              <button disabled={annotationUnavailable} className={cn(s.actionItem, '!border-0')} onClick={JSONLOutput}>
                 <span className={s.actionName}>JSONL</span>
               </button>
             </Menu.Items>
