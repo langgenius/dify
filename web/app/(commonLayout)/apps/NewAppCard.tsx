@@ -2,7 +2,7 @@
 
 import { forwardRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import NewAppDialog from './NewAppDialog'
+import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
 import { useProviderContext } from '@/context/provider-context'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
@@ -17,7 +17,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
 
-  const [showNewAppDialog, setShowNewAppDialog] = useState(false)
+  const [showNewAppDialog, setShowNewAppDialog] = useState(true)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   return (
     <a
@@ -50,12 +50,15 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
             onSuccess()
         }}
       />
-      <NewAppDialog show={showNewAppDialog} onSuccess={
-        () => {
+      <CreateAppDialog
+        show={showNewAppDialog}
+        onClose={() => setShowNewAppDialog(false)}
+        onSuccess={() => {
           onPlanInfoChanged()
           if (onSuccess)
             onSuccess()
-        }} onClose={() => setShowNewAppDialog(false)} />
+        }}
+      />
     </a>
   )
 })

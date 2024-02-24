@@ -139,7 +139,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
       isShow={show}
       onClose={() => {}}
     >
-      <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>Create from DSL file</div>
+      <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>{t('app.createFromConfigFile')}</div>
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
         <XClose className='w-4 h-4 text-gray-500' />
       </div>
@@ -186,7 +186,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
           </div>
         )}
       </div>
-      {isAppsFull && <AppsFull loc='app-create' />}
+      {isAppsFull && <AppsFull loc='app-create-dsl' />}
       <div className='pt-6 flex justify-end'>
         <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
         <Button className='text-sm font-medium' disabled={isAppsFull || !currentFile} type="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>

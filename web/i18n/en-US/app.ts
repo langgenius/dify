@@ -6,10 +6,6 @@ const translation = {
     agent: 'Agent',
     workflow: 'Workflow',
   },
-  modes: {
-    completion: 'Text Generator',
-    chat: 'Basic Assistant',
-  },
   duplicate: 'Duplicate',
   duplicateTitle: 'Duplicate App',
   export: 'Export DSL',
@@ -23,11 +19,17 @@ const translation = {
   communityIntro:
     'Discuss with team members, contributors and developers on different channels.',
   roadmap: 'See our roadmap',
-  appNamePlaceholder: 'Please enter the name of the app',
   newApp: {
-    startToCreate: 'Let\'s start with your new app',
-    captionName: 'App icon & name',
+    startFromBlank: 'Start from a blank app',
+    startFromTemplate: 'Start from a template',
     captionAppType: 'What type of app do you want to create?',
+    chatbotDescription: 'Build a chat-based assistant using a Large Language Model',
+    agentDescription: 'Build an intelligent Agent which can autonomously choose tools to complete the tasks',
+    workflowDescription: 'Description text here',
+    captionName: 'App icon & name',
+    appNamePlaceholder: 'Give your app a name',
+    captionDescription: 'Description',
+    appDescriptionPlaceholder: 'Enter the description of the app',
     previewDemo: 'Preview demo',
     chatApp: 'Assistant',
     chatAppIntro:
