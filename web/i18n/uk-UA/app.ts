@@ -6,10 +6,6 @@ const translation = { // Add the Ukrainian translation object
     agent: 'Агент',
     workflow: 'Робочий Процес',
   },
-  modes: {
-    completion: 'Генератор тексту',
-    chat: 'Базовий асистент',
-  },
   duplicate: 'Дублювати',
   duplicateTitle: 'Дублювати додаток',
   export: 'Експортувати DSL',
@@ -23,11 +19,18 @@ const translation = { // Add the Ukrainian translation object
   communityIntro:
       'Обговорюйте різні питання з членами команди, учасниками та розробниками на різних каналах.',
   roadmap: 'Ознайомтеся з нашою дорожньою картою',
-  appNamePlaceholder: 'Будь ласка, введіть назву додатка',
   newApp: {
-    startToCreate: 'Давайте створимо Ваш новий додаток',
-    captionName: 'Значок та назва додатка',
+    startFromBlank: 'Розпочати з порожнього додатку',
+    startFromTemplate: 'Розпочати з шаблону',
     captionAppType: 'Який тип додатка Ви бажаєте створити?',
+    chatbotDescription: 'Побудувати чат-асистента, використовуючи Модель Великої Мови',
+    agentDescription: 'Побудувати розумного Агента, який може автономно обирати інструменти для виконання завдань',
+    workflowDescription: 'Description text here',
+    captionName: 'Значок та назва додатка',
+    appNamePlaceholder: 'Назвіть свій додаток',
+    captionDescription: 'Опис',
+    appDescriptionPlaceholder: 'Введіть опис додатку',
+    useTemplate: 'Використати цей шаблон',
     previewDemo: 'Попередній перегляд демо',
     chatApp: 'Асистент',
     chatAppIntro:

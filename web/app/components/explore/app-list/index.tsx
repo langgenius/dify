@@ -60,7 +60,7 @@ const Apps = ({
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+  const onCreate: CreateAppModalProps['onConfirm'] = async ({ name, icon, icon_background, description }) => {
     const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
 
     try {
@@ -69,6 +69,7 @@ const Apps = ({
         icon,
         icon_background,
         mode: currApp?.app.mode as AppMode,
+        description,
         config: model_config,
       })
       setIsShowCreateModal(false)

@@ -18,7 +18,6 @@ const translation = {
   join: '参与社区',
   communityIntro: '与团队成员、贡献者和开发者在不同频道中交流',
   roadmap: '产品路线图',
-  appNamePlaceholder: '请输入应用名称',
   newApp: {
     startFromBlank: '开始创建新应用',
     startFromTemplate: '从应用模版创建',
