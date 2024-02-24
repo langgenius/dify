@@ -37,7 +37,7 @@ const Apps = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'all'
+    defaultTab: 'all',
   })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')

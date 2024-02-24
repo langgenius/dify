@@ -1,15 +1,15 @@
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 type UseTabSearchParamsOptions = {
-  defaultTab: string;
-  routingBehavior?: 'push' | 'replace';
-  searchParamName?: string;
-};
+  defaultTab: string
+  routingBehavior?: 'push' | 'replace'
+  searchParamName?: string
+}
 
 /**
  * Custom hook to manage tab state via URL search parameters in a Next.js application.
  * This hook allows for syncing the active tab with the browser's URL, enabling bookmarking and sharing of URLs with a specific tab activated.
- * 
+ *
  * @param {UseTabSearchParamsOptions} options Configuration options for the hook:
  * - `defaultTab`: The tab to default to when no tab is specified in the URL.
  * - `routingBehavior`: Optional. Determines how changes to the active tab update the browser's history ('push' or 'replace'). Default is 'push'.
@@ -21,14 +21,14 @@ export const useTabSearchParams = ({
   routingBehavior = 'push',
   searchParamName = 'category',
 }: UseTabSearchParamsOptions) => {
-  const router = useRouter();
+  const router = useRouter()
   const pathName = usePathname()
-  const searchParams = useSearchParams();
-  const activeTab = searchParams.get(searchParamName) || defaultTab;
+  const searchParams = useSearchParams()
+  const activeTab = searchParams.get(searchParamName) || defaultTab
 
   const setActiveTab = (newActiveTab: string) => {
-    router[routingBehavior](`${pathName}?${searchParamName}=${newActiveTab}`);
-  };
+    router[routingBehavior](`${pathName}?${searchParamName}=${newActiveTab}`)
+  }
 
-  return [activeTab, setActiveTab] as const;
-};
+  return [activeTab, setActiveTab] as const
+}

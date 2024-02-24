@@ -26,7 +26,7 @@ const Apps: FC = () => {
   const router = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
   const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: ''
+    defaultTab: '',
   })
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)

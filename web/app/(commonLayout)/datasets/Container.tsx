@@ -1,7 +1,7 @@
 'use client'
 
 // Libraries
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 
@@ -27,7 +27,7 @@ const Container = () => {
   ]
 
   const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'dataset'
+    defaultTab: 'dataset',
   })
   const containerRef = useRef<HTMLDivElement>(null)
   const { data } = useSWR(activeTab === 'dataset' ? null : '/datasets/api-base-info', fetchDatasetApiBaseUrl)
