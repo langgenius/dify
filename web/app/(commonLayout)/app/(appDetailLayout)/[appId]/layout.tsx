@@ -4,22 +4,12 @@ import React, { useEffect, useMemo } from 'react'
 import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import {
-  ChartBarSquareIcon,
-  Cog8ToothIcon,
-  CommandLineIcon,
-  DocumentTextIcon,
-} from '@heroicons/react/24/outline'
-import {
-  ChartBarSquareIcon as ChartBarSquareSolidIcon,
-  Cog8ToothIcon as Cog8ToothSolidIcon,
-  CommandLineIcon as CommandLineSolidIcon,
-  DocumentTextIcon as DocumentTextSolidIcon,
-} from '@heroicons/react/24/solid'
 import s from './style.module.css'
 import AppSideBar from '@/app/components/app-sidebar'
 import { fetchAppDetail } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
+import { BarChartSquare02, FileHeart02, PromptEngineering, TerminalSquare } from '@/app/components/base/icons/src/vender/line/development'
+import { BarChartSquare02 as BarChartSquare02Solid, FileHeart02 as FileHeart02Solid, PromptEngineering as PromptEngineeringSolid, TerminalSquare as TerminalSquareSolid } from '@/app/components/base/icons/src/vender/solid/development'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -36,26 +26,26 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const detailParams = { url: '/apps', id: appId }
   const { data: response } = useSWR(detailParams, fetchAppDetail)
 
+  const appModeName = (() => {
+    if (response?.mode === 'chat')
+      return t('app.types.chatbot')
+
+    if (response?.mode === 'agent')
+      return t('app.types.agent')
+
+    return t('app.types.workflow')
+  })()
+
   const navigation = useMemo(() => {
     const navs = [
-      ...(isCurrentWorkspaceManager ? [{ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon }] : []),
-      { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: ChartBarSquareIcon, selectedIcon: ChartBarSquareSolidIcon },
-      { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
-      { name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
+      ...(isCurrentWorkspaceManager ? [{ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: PromptEngineering, selectedIcon: PromptEngineeringSolid }] : []),
+      { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: TerminalSquare, selectedIcon: TerminalSquareSolid },
+      ...(appModeName !== 'workflow' ? [{ name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: FileHeart02, selectedIcon: FileHeart02Solid }] : [{ name: t('common.appMenus.logs'), href: `/app/${appId}/logs`, icon: FileHeart02, selectedIcon: FileHeart02Solid }]),
+      { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: BarChartSquare02, selectedIcon: BarChartSquare02Solid },
     ]
     return navs
-  }, [appId, isCurrentWorkspaceManager, t])
+  }, [appId, appModeName, isCurrentWorkspaceManager, t])
 
-  const appModeName = (() => {
-    if (response?.mode?.toUpperCase() === 'COMPLETION')
-      return t('app.newApp.completeApp')
-
-    const isAgent = !!response?.is_agent
-    if (isAgent)
-      return t('appDebug.assistantType.agentAssistant.name')
-
-    return t('appDebug.assistantType.chatAssistant.name')
-  })()
   useEffect(() => {
     if (response?.name)
       document.title = `${(response.name || 'App')} - Dify`

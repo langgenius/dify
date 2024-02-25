@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',
+    logs: 'Logs',
   },
   environment: {
     testing: 'TESTING',

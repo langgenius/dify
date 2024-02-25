@@ -400,6 +400,7 @@ const translation = {
     promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',
+    logs: '日志',
   },
   environment: {
     testing: '测试环境',
