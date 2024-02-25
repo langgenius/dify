@@ -37,7 +37,7 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
@@ -90,7 +90,7 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model, task_id):
         account = flask_login.current_user
 

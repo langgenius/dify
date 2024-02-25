@@ -29,7 +29,7 @@ class CompletionConversationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
     def get(self, app_model):
         parser = reqparse.RequestParser()
@@ -102,7 +102,7 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
     def get(self, app_model, conversation_id):
         conversation_id = str(conversation_id)
