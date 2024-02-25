@@ -24,7 +24,7 @@ from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from models.model import App, Message, MessageAnnotation, AppMode
+from models.model import App, AppMode, Message, MessageAnnotation
 
 
 class AppRunner:
