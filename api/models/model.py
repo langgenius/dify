@@ -28,6 +28,7 @@ class DifySetup(db.Model):
 
 
 class AppMode(Enum):
+    COMPLETION = 'completion'
     WORKFLOW = 'workflow'
     CHAT = 'chat'
     AGENT = 'agent'
