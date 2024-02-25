@@ -7,6 +7,27 @@ from extensions.ext_database import db
 from models.account import Account
 
 
+class CreatedByRole(Enum):
+    """
+    Created By Role Enum
+    """
+    ACCOUNT = 'account'
+    END_USER = 'end_user'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'CreatedByRole':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid created by role value {value}')
+
+
 class WorkflowType(Enum):
     """
     Workflow Type Enum
@@ -99,6 +120,49 @@ class Workflow(db.Model):
         return Account.query.get(self.updated_by)
 
 
+class WorkflowRunTriggeredFrom(Enum):
+    """
+    Workflow Run Triggered From Enum
+    """
+    DEBUGGING = 'debugging'
+    APP_RUN = 'app-run'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'WorkflowRunTriggeredFrom':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid workflow run triggered from value {value}')
+
+
+class WorkflowRunStatus(Enum):
+    """
+    Workflow Run Status Enum
+    """
+    RUNNING = 'running'
+    SUCCEEDED = 'succeeded'
+    FAILED = 'failed'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'WorkflowRunStatus':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid workflow run status value {value}')
+
+
 class WorkflowRun(db.Model):
     """
     Workflow Run
@@ -128,6 +192,12 @@ class WorkflowRun(db.Model):
     - total_price (decimal) `optional` Total cost
     - currency (string) `optional` Currency, such as USD / RMB
     - total_steps (int) Total steps (redundant), default 0
+    - created_by_role (string) Creator role
+
+        - `account` Console account
+
+        - `end_user` End user
+
     - created_by (uuid) Runner ID
     - created_at (timestamp) Run time
     - finished_at (timestamp) End time
@@ -157,6 +227,7 @@ class WorkflowRun(db.Model):
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255))
     total_steps = db.Column(db.Integer, server_default=db.text('0'))
+    created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     finished_at = db.Column(db.DateTime)
@@ -208,6 +279,12 @@ class WorkflowNodeExecution(db.Model):
         - currency (string) `optional` Currency, such as USD / RMB
 
     - created_at (timestamp) Run time
+    - created_by_role (string) Creator role
+
+        - `account` Console account
+
+        - `end_user` End user
+
     - created_by (uuid) Runner ID
     - finished_at (timestamp) End time
     """
@@ -240,6 +317,7 @@ class WorkflowNodeExecution(db.Model):
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text('0'))
     execution_metadata = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
     finished_at = db.Column(db.DateTime)
 

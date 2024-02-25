@@ -3,7 +3,7 @@ from datetime import datetime
 
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, ChatbotAppEngine
+from models.model import App, ChatbotAppEngine, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.workflow.defaults import default_block_configs
 from services.workflow.workflow_converter import WorkflowConverter
@@ -65,20 +65,29 @@ class WorkflowService:
         # return default block config
         return default_block_configs
 
-    def chatbot_convert_to_workflow(self, app_model: App, account: Account) -> Workflow:
+    def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """
-        basic mode of chatbot app to workflow
+        Basic mode of chatbot app(expert mode) to workflow
+        Completion App to Workflow App
 
         :param app_model: App instance
         :param account: Account instance
         :return:
         """
-        # check if chatbot app is in basic mode
-        if app_model.app_model_config.chatbot_app_engine != ChatbotAppEngine.NORMAL:
-            raise ValueError('Chatbot app already in workflow mode')
-
-        # convert to workflow mode
+        # chatbot convert to workflow mode
         workflow_converter = WorkflowConverter()
-        workflow = workflow_converter.convert_to_workflow(app_model=app_model, account_id=account.id)
 
-        return workflow
+        if app_model.mode == AppMode.CHAT.value:
+            # check if chatbot app is in basic mode
+            if app_model.app_model_config.chatbot_app_engine != ChatbotAppEngine.NORMAL:
+                raise ValueError('Chatbot app already in workflow mode')
+        elif app_model.mode != AppMode.COMPLETION.value:
+            raise ValueError(f'Current App mode: {app_model.mode} is not supported convert to workflow.')
+
+        # convert to workflow
+        new_app = workflow_converter.convert_to_workflow(
+            app_model=app_model,
+            account=account
+        )
+
+        return new_app

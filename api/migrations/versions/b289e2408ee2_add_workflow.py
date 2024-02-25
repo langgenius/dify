@@ -53,6 +53,7 @@ def upgrade():
     sa.Column('elapsed_time', sa.Float(), server_default=sa.text('0'), nullable=False),
     sa.Column('execution_metadata', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
+    sa.Column('created_by_role', sa.String(length=255), nullable=False),
     sa.Column('created_by', postgresql.UUID(), nullable=False),
     sa.Column('finished_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id', name='workflow_node_execution_pkey')
@@ -80,6 +81,7 @@ def upgrade():
     sa.Column('total_price', sa.Numeric(precision=10, scale=7), nullable=True),
     sa.Column('currency', sa.String(length=255), nullable=True),
     sa.Column('total_steps', sa.Integer(), server_default=sa.text('0'), nullable=True),
+    sa.Column('created_by_role', sa.String(length=255), nullable=False),
     sa.Column('created_by', postgresql.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.Column('finished_at', sa.DateTime(), nullable=True),

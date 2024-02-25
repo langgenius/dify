@@ -17,9 +17,11 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.workflow.entities.NodeEntities import NodeType
 from core.workflow.nodes.end.entities import EndNodeOutputType
+from events.app_event import app_was_created
 from extensions.ext_database import db
+from models.account import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.model import App, AppMode, ChatbotAppEngine
+from models.model import App, AppMode, ChatbotAppEngine, AppModelConfig, Site
 from models.workflow import Workflow, WorkflowType
 
 
@@ -28,25 +30,98 @@ class WorkflowConverter:
     App Convert to Workflow Mode
     """
 
-    def convert_to_workflow(self, app_model: App, account_id: str) -> Workflow:
+    def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """
-        Convert to workflow mode
+        Convert app to workflow
 
         - basic mode of chatbot app
 
-        - advanced mode of assistant app (for migration)
+        - advanced mode of assistant app
 
-        - completion app (for migration)
+        - completion app
 
         :param app_model: App instance
+        :param account: Account
+        :return: new App instance
+        """
+        # get original app config
+        app_model_config = app_model.app_model_config
+
+        # convert app model config
+        workflow = self.convert_app_model_config_to_workflow(
+            app_model=app_model,
+            app_model_config=app_model_config,
+            account_id=account.id
+        )
+
+        # create new app
+        new_app = App()
+        new_app.tenant_id = app_model.tenant_id
+        new_app.name = app_model.name + '(workflow)'
+        new_app.mode = AppMode.CHAT.value \
+            if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.icon = app_model.icon
+        new_app.icon_background = app_model.icon_background
+        new_app.enable_site = app_model.enable_site
+        new_app.enable_api = app_model.enable_api
+        new_app.api_rpm = app_model.api_rpm
+        new_app.api_rph = app_model.api_rph
+        new_app.is_demo = False
+        new_app.is_public = app_model.is_public
+        db.session.add(new_app)
+        db.session.flush()
+
+        # create new app model config record
+        new_app_model_config = app_model_config.copy()
+        new_app_model_config.id = None
+        new_app_model_config.app_id = new_app.id
+        new_app_model_config.external_data_tools = ''
+        new_app_model_config.model = ''
+        new_app_model_config.user_input_form = ''
+        new_app_model_config.dataset_query_variable = None
+        new_app_model_config.pre_prompt = None
+        new_app_model_config.agent_mode = ''
+        new_app_model_config.prompt_type = 'simple'
+        new_app_model_config.chat_prompt_config = ''
+        new_app_model_config.completion_prompt_config = ''
+        new_app_model_config.dataset_configs = ''
+        new_app_model_config.chatbot_app_engine = ChatbotAppEngine.WORKFLOW.value \
+            if app_model.mode == AppMode.CHAT.value else ChatbotAppEngine.NORMAL.value
+        new_app_model_config.workflow_id = workflow.id
+
+        db.session.add(new_app_model_config)
+        db.session.flush()
+
+        new_app.app_model_config_id = new_app_model_config.id
+        db.session.commit()
+
+        site = Site(
+            app_id=new_app.id,
+            title=new_app.name,
+            default_language=account.interface_language,
+            customize_token_strategy='not_allow',
+            code=Site.generate_code(16)
+        )
+
+        db.session.add(site)
+        db.session.commit()
+
+        app_was_created.send(new_app)
+
+        return new_app
+
+    def convert_app_model_config_to_workflow(self, app_model: App,
+                                             app_model_config: AppModelConfig,
+                                             account_id: str) -> Workflow:
+        """
+        Convert app model config to workflow mode
+        :param app_model: App instance
+        :param app_model_config: AppModelConfig instance
         :param account_id: Account ID
-        :return: workflow instance
+        :return:
         """
         # get new app mode
         new_app_mode = self._get_new_app_mode(app_model)
-
-        # get original app config
-        app_model_config = app_model.app_model_config
 
         # convert app model config
         application_manager = ApplicationManager()
@@ -122,33 +197,11 @@ class WorkflowConverter:
             type=WorkflowType.from_app_mode(new_app_mode).value,
             version='draft',
             graph=json.dumps(graph),
-            created_by=account_id
+            created_by=account_id,
+            created_at=app_model_config.created_at
         )
 
         db.session.add(workflow)
-        db.session.flush()
-
-        # create new app model config record
-        new_app_model_config = app_model_config.copy()
-        new_app_model_config.id = None
-        new_app_model_config.external_data_tools = ''
-        new_app_model_config.model = ''
-        new_app_model_config.user_input_form = ''
-        new_app_model_config.dataset_query_variable = None
-        new_app_model_config.pre_prompt = None
-        new_app_model_config.agent_mode = ''
-        new_app_model_config.prompt_type = 'simple'
-        new_app_model_config.chat_prompt_config = ''
-        new_app_model_config.completion_prompt_config = ''
-        new_app_model_config.dataset_configs = ''
-        new_app_model_config.chatbot_app_engine = ChatbotAppEngine.WORKFLOW.value \
-            if new_app_mode == AppMode.CHAT else ChatbotAppEngine.NORMAL.value
-        new_app_model_config.workflow_id = workflow.id
-
-        db.session.add(new_app_model_config)
-        db.session.commit()
-
-        app_model.app_model_config_id = new_app_model_config.id
         db.session.commit()
 
         return workflow
@@ -469,7 +522,7 @@ class WorkflowConverter:
                     "type": NodeType.END.value,
                 }
             }
-        elif app_model.mode == "completion":
+        elif app_model.mode == AppMode.COMPLETION.value:
             # for original completion app
             return {
                 "id": "end",
@@ -516,7 +569,7 @@ class WorkflowConverter:
         :param app_model: App instance
         :return: AppMode
         """
-        if app_model.mode == "completion":
+        if app_model.mode == AppMode.COMPLETION.value:
             return AppMode.WORKFLOW
         else:
             return AppMode.value_of(app_model.mode)

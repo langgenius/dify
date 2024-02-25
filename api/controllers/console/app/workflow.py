@@ -69,15 +69,15 @@ class ConvertToWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.CHAT)
-    @marshal_with(workflow_fields)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model: App):
         """
-        Convert basic mode of chatbot app to workflow
+        Convert basic mode of chatbot app(expert mode) to workflow mode
+        Convert Completion App to Workflow App
         """
         # convert to workflow mode
         workflow_service = WorkflowService()
-        workflow = workflow_service.chatbot_convert_to_workflow(
+        workflow = workflow_service.convert_to_workflow(
             app_model=app_model,
             account=current_user
         )
