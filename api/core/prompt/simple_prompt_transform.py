@@ -47,6 +47,7 @@ class SimplePromptTransform(PromptTransform):
     """
 
     def get_prompt(self,
+                   app_mode: AppMode,
                    prompt_template_entity: PromptTemplateEntity,
                    inputs: dict,
                    query: str,
@@ -58,6 +59,7 @@ class SimplePromptTransform(PromptTransform):
         model_mode = ModelMode.value_of(model_config.mode)
         if model_mode == ModelMode.CHAT:
             prompt_messages, stops = self._get_chat_model_prompt_messages(
+                app_mode=app_mode,
                 pre_prompt=prompt_template_entity.simple_prompt_template,
                 inputs=inputs,
                 query=query,
@@ -68,6 +70,7 @@ class SimplePromptTransform(PromptTransform):
             )
         else:
             prompt_messages, stops = self._get_completion_model_prompt_messages(
+                app_mode=app_mode,
                 pre_prompt=prompt_template_entity.simple_prompt_template,
                 inputs=inputs,
                 query=query,
@@ -154,7 +157,8 @@ class SimplePromptTransform(PromptTransform):
             "prompt_rules": prompt_rules
         }
 
-    def _get_chat_model_prompt_messages(self, pre_prompt: str,
+    def _get_chat_model_prompt_messages(self, app_mode: AppMode,
+                                        pre_prompt: str,
                                         inputs: dict,
                                         query: str,
                                         context: Optional[str],
@@ -166,7 +170,7 @@ class SimplePromptTransform(PromptTransform):
 
         # get prompt
         prompt, _ = self.get_prompt_str_and_rules(
-            app_mode=AppMode.CHAT,
+            app_mode=app_mode,
             model_config=model_config,
             pre_prompt=pre_prompt,
             inputs=inputs,
@@ -175,19 +179,25 @@ class SimplePromptTransform(PromptTransform):
         )
 
         if prompt:
-            prompt_messages.append(SystemPromptMessage(content=prompt))
+            if query:
+                prompt_messages.append(SystemPromptMessage(content=prompt))
+            else:
+                prompt_messages.append(UserPromptMessage(content=prompt))
 
-        prompt_messages = self._append_chat_histories(
-            memory=memory,
-            prompt_messages=prompt_messages,
-            model_config=model_config
-        )
+        if memory:
+            prompt_messages = self._append_chat_histories(
+                memory=memory,
+                prompt_messages=prompt_messages,
+                model_config=model_config
+            )
 
-        prompt_messages.append(self.get_last_user_message(query, files))
+        if query:
+            prompt_messages.append(self.get_last_user_message(query, files))
 
         return prompt_messages, None
 
-    def _get_completion_model_prompt_messages(self, pre_prompt: str,
+    def _get_completion_model_prompt_messages(self, app_mode: AppMode,
+                                              pre_prompt: str,
                                               inputs: dict,
                                               query: str,
                                               context: Optional[str],
@@ -197,7 +207,7 @@ class SimplePromptTransform(PromptTransform):
             -> tuple[list[PromptMessage], Optional[list[str]]]:
         # get prompt
         prompt, prompt_rules = self.get_prompt_str_and_rules(
-            app_mode=AppMode.CHAT,
+            app_mode=app_mode,
             model_config=model_config,
             pre_prompt=pre_prompt,
             inputs=inputs,
@@ -220,7 +230,7 @@ class SimplePromptTransform(PromptTransform):
 
             # get prompt
             prompt, prompt_rules = self.get_prompt_str_and_rules(
-                app_mode=AppMode.CHAT,
+                app_mode=app_mode,
                 model_config=model_config,
                 pre_prompt=pre_prompt,
                 inputs=inputs,
@@ -289,13 +299,13 @@ class SimplePromptTransform(PromptTransform):
                 is_baichuan = True
 
         if is_baichuan:
-            if app_mode == AppMode.WORKFLOW:
+            if app_mode == AppMode.COMPLETION:
                 return 'baichuan_completion'
             else:
                 return 'baichuan_chat'
 
         # common
-        if app_mode == AppMode.WORKFLOW:
+        if app_mode == AppMode.COMPLETION:
             return 'common_completion'
         else:
             return 'common_chat'

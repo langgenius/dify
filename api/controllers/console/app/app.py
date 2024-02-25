@@ -80,7 +80,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
-        parser.add_argument('mode', type=str, choices=[mode.value for mode in AppMode], location='json')
+        parser.add_argument('mode', type=str, choices=['chat', 'agent', 'workflow'], location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         parser.add_argument('model_config', type=dict, location='json')

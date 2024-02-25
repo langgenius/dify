@@ -11,6 +11,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 import services
 from controllers.web import api
 from controllers.web.error import (
+    AppMoreLikeThisDisabledError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
     CompletionRequestError,
     NotChatAppError,
@@ -20,11 +21,14 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.wraps import WebApiResource
+from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields
 from libs.helper import TimestampField, uuid_value
+from services.completion_service import CompletionService
+from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
@@ -109,6 +113,48 @@ class MessageFeedbackApi(WebApiResource):
         return {'result': 'success'}
 
 
+class MessageMoreLikeThisApi(WebApiResource):
+    def get(self, app_model, end_user, message_id):
+        if app_model.mode != 'completion':
+            raise NotCompletionAppError()
+
+        message_id = str(message_id)
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('response_mode', type=str, required=True, choices=['blocking', 'streaming'], location='args')
+        args = parser.parse_args()
+
+        streaming = args['response_mode'] == 'streaming'
+
+        try:
+            response = CompletionService.generate_more_like_this(
+                app_model=app_model,
+                user=end_user,
+                message_id=message_id,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming
+            )
+
+            return compact_response(response)
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+        except MoreLikeThisDisabledError:
+            raise AppMoreLikeThisDisabledError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except ValueError as e:
+            raise e
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+
 def compact_response(response: Union[dict, Generator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
@@ -156,4 +202,5 @@ class MessageSuggestedQuestionApi(WebApiResource):
 
 api.add_resource(MessageListApi, '/messages')
 api.add_resource(MessageFeedbackApi, '/messages/<uuid:message_id>/feedbacks')
+api.add_resource(MessageMoreLikeThisApi, '/messages/<uuid:message_id>/more-like-this')
 api.add_resource(MessageSuggestedQuestionApi, '/messages/<uuid:message_id>/suggested-questions')

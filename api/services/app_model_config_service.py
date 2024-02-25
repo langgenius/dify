@@ -316,6 +316,9 @@ class AppModelConfigService:
                 if "tool_parameters" not in tool:
                     raise ValueError("tool_parameters is required in agent_mode.tools")
 
+        # dataset_query_variable
+        cls.is_dataset_query_variable_valid(config, app_mode)
+
         # advanced prompt validation
         cls.is_advanced_prompt_valid(config, app_mode)
 
@@ -440,6 +443,21 @@ class AppModelConfigService:
                 tenant_id=tenant_id,
                 config=config
             )
+
+    @classmethod
+    def is_dataset_query_variable_valid(cls, config: dict, mode: str) -> None:
+        # Only check when mode is completion
+        if mode != 'completion':
+            return
+
+        agent_mode = config.get("agent_mode", {})
+        tools = agent_mode.get("tools", [])
+        dataset_exists = "dataset" in str(tools)
+
+        dataset_query_variable = config.get("dataset_query_variable")
+
+        if dataset_exists and not dataset_query_variable:
+            raise ValueError("Dataset query variable is required when dataset is exist")
 
     @classmethod
     def is_advanced_prompt_valid(cls, config: dict, app_mode: str) -> None:

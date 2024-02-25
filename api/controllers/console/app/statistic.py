@@ -330,7 +330,7 @@ class AverageResponseTimeStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @get_app_model(mode=AppMode.COMPLETION)
     def get(self, app_model):
         account = current_user
 

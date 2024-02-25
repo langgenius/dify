@@ -160,6 +160,7 @@ def test__get_chat_model_prompt_messages():
     context = "yes or no."
     query = "How are you?"
     prompt_messages, _ = prompt_transform._get_chat_model_prompt_messages(
+        app_mode=AppMode.CHAT,
         pre_prompt=pre_prompt,
         inputs=inputs,
         query=query,
@@ -214,6 +215,7 @@ def test__get_completion_model_prompt_messages():
     context = "yes or no."
     query = "How are you?"
     prompt_messages, stops = prompt_transform._get_completion_model_prompt_messages(
+        app_mode=AppMode.CHAT,
         pre_prompt=pre_prompt,
         inputs=inputs,
         query=query,
