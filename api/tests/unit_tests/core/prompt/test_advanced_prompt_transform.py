@@ -50,6 +50,7 @@ def test__get_completion_model_prompt_messages():
     prompt_messages = prompt_transform._get_completion_model_prompt_messages(
         prompt_template_entity=prompt_template_entity,
         inputs=inputs,
+        query=None,
         files=files,
         context=context,
         memory=memory,
