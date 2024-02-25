@@ -21,7 +21,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.model import App, AppMode, ChatbotAppEngine, AppModelConfig, Site
+from models.model import App, AppMode, AppModelConfig, ChatbotAppEngine, Site
 from models.workflow import Workflow, WorkflowType
 
 
