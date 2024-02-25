@@ -41,6 +41,8 @@ def test__convert_to_start_node(default_variables):
     result = WorkflowConverter()._convert_to_start_node(default_variables)
 
     # assert
+    assert isinstance(result["data"]["variables"][0]["type"], str)
+    assert result["data"]["variables"][0]["type"] == "text-input"
     assert result["data"]["variables"][0]["variable"] == "text-input"
     assert result["data"]["variables"][1]["variable"] == "paragraph"
     assert result["data"]["variables"][2]["variable"] == "select"

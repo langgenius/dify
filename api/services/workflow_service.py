@@ -79,6 +79,6 @@ class WorkflowService:
 
         # convert to workflow mode
         workflow_converter = WorkflowConverter()
-        workflow = workflow_converter.convert_to_workflow(app_model=app_model, account=account)
+        workflow = workflow_converter.convert_to_workflow(app_model=app_model, account_id=account.id)
 
         return workflow

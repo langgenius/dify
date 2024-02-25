@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import secrets
 
 import click
@@ -12,11 +13,12 @@ from extensions.ext_database import db
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
-from models.account import Tenant
+from models.account import Tenant, TenantAccountJoin
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppMode, AppModelConfig, AppAnnotationSetting, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
+from services.workflow.workflow_converter import WorkflowConverter
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -422,9 +424,77 @@ and am.agent_mode like '{"enabled": true%' ORDER BY a.created_at DESC LIMIT 1000
     click.echo(click.style('Congratulations! Converted {} agent apps.'.format(len(proceeded_app_ids)), fg='green'))
 
 
+@click.command('convert-to-workflow-chatbot-apps', help='Convert Basic Export Assistant to Chatbot Workflow App.')
+def convert_to_workflow_chatbot_apps():
+    """
+    Convert Basic Export Assistant to Chatbot Workflow App.
+    """
+    click.echo(click.style('Start convert to workflow chatbot apps.', fg='green'))
+
+    proceeded_app_ids = []
+    workflow_converter = WorkflowConverter()
+
+    while True:
+        # fetch first 1000 apps
+        sql_query = """SELECT a.id FROM apps a
+LEFT JOIN app_model_configs am ON a.app_model_config_id=am.id
+WHERE a.mode = 'chat' AND am.prompt_type='advanced' ORDER BY a.created_at DESC LIMIT 1000"""
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query))
+
+            apps = []
+            for i in rs:
+                app_id = str(i.id)
+                print(app_id)
+                if app_id not in proceeded_app_ids:
+                    proceeded_app_ids.append(app_id)
+                    app = db.session.query(App).filter(App.id == app_id).first()
+                    apps.append(app)
+
+            if len(apps) == 0:
+                break
+
+        for app in apps:
+            click.echo('Converting app: {}'.format(app.id))
+
+            try:
+                # get workspace of app
+                tenant = db.session.query(Tenant).filter(Tenant.id == app.tenant_id).first()
+                if not tenant:
+                    click.echo(click.style('Tenant not found: {}'.format(app.tenant_id), fg='red'))
+                    continue
+
+                # get workspace owner
+                tenant_account_join = db.session.query(TenantAccountJoin).filter(
+                    TenantAccountJoin.tenant_id == tenant.id,
+                    TenantAccountJoin.role == 'owner'
+                ).first()
+
+                if not tenant_account_join:
+                    click.echo(click.style('Tenant owner not found: {}'.format(tenant.id), fg='red'))
+                    continue
+
+                # convert to workflow
+                workflow_converter.convert_to_workflow(
+                    app_model=app,
+                    account_id=tenant_account_join.account_id
+                )
+
+                click.echo(click.style('Converted app: {}'.format(app.id), fg='green'))
+            except Exception as e:
+                logging.exception('Convert app error: {}'.format(app.id))
+                click.echo(
+                    click.style('Convert app error: {} {}'.format(e.__class__.__name__,
+                                                                  str(e)), fg='red'))
+
+    click.echo(click.style('Congratulations! Converted {} workflow chatbot apps.'.format(len(proceeded_app_ids)), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(reset_encrypt_key_pair)
     app.cli.add_command(vdb_migrate)
     app.cli.add_command(convert_to_agent_apps)
+    app.cli.add_command(convert_to_workflow_chatbot_apps)

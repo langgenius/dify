@@ -13,12 +13,11 @@ from core.entities.application_entities import (
 )
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.utils import helper
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.workflow.entities.NodeEntities import NodeType
 from core.workflow.nodes.end.entities import EndNodeOutputType
 from extensions.ext_database import db
-from models.account import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, ChatbotAppEngine
 from models.workflow import Workflow, WorkflowType
@@ -29,7 +28,7 @@ class WorkflowConverter:
     App Convert to Workflow Mode
     """
 
-    def convert_to_workflow(self, app_model: App, account: Account) -> Workflow:
+    def convert_to_workflow(self, app_model: App, account_id: str) -> Workflow:
         """
         Convert to workflow mode
 
@@ -40,7 +39,7 @@ class WorkflowConverter:
         - completion app (for migration)
 
         :param app_model: App instance
-        :param account: Account instance
+        :param account_id: Account ID
         :return: workflow instance
         """
         # get new app mode
@@ -53,7 +52,8 @@ class WorkflowConverter:
         application_manager = ApplicationManager()
         app_orchestration_config_entity = application_manager.convert_from_app_model_config_dict(
             tenant_id=app_model.tenant_id,
-            app_model_config_dict=app_model_config.to_dict()
+            app_model_config_dict=app_model_config.to_dict(),
+            skip_check=True
         )
 
         # init workflow graph
@@ -122,7 +122,7 @@ class WorkflowConverter:
             type=WorkflowType.from_app_mode(new_app_mode).value,
             version='draft',
             graph=json.dumps(graph),
-            created_by=account.id
+            created_by=account_id
         )
 
         db.session.add(workflow)
@@ -130,6 +130,7 @@ class WorkflowConverter:
 
         # create new app model config record
         new_app_model_config = app_model_config.copy()
+        new_app_model_config.id = None
         new_app_model_config.external_data_tools = ''
         new_app_model_config.model = ''
         new_app_model_config.user_input_form = ''
@@ -147,6 +148,9 @@ class WorkflowConverter:
         db.session.add(new_app_model_config)
         db.session.commit()
 
+        app_model.app_model_config_id = new_app_model_config.id
+        db.session.commit()
+
         return workflow
 
     def _convert_to_start_node(self, variables: list[VariableEntity]) -> dict:
@@ -161,7 +165,7 @@ class WorkflowConverter:
             "data": {
                 "title": "START",
                 "type": NodeType.START.value,
-                "variables": [helper.dump_model(v) for v in variables]
+                "variables": [jsonable_encoder(v) for v in variables]
             }
         }
 
@@ -369,7 +373,10 @@ class WorkflowConverter:
                 ]
             else:
                 advanced_chat_prompt_template = prompt_template.advanced_chat_prompt_template
-                prompts = [helper.dump_model(m) for m in advanced_chat_prompt_template.messages] \
+                prompts = [{
+                    "role": m.role.value,
+                    "text": m.text
+                } for m in advanced_chat_prompt_template.messages] \
                     if advanced_chat_prompt_template else []
         # Completion Model
         else:

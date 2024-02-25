@@ -235,12 +235,15 @@ class ApplicationManager:
                 logger.exception(e)
                 raise e
 
-    def convert_from_app_model_config_dict(self, tenant_id: str, app_model_config_dict: dict) \
+    def convert_from_app_model_config_dict(self, tenant_id: str,
+                                           app_model_config_dict: dict,
+                                           skip_check: bool = False) \
             -> AppOrchestrationConfigEntity:
         """
         Convert app model config dict to entity.
         :param tenant_id: tenant ID
         :param app_model_config_dict: app model config dict
+        :param skip_check: skip check
         :raises ProviderTokenNotInitError: provider token not init error
         :return: app orchestration config entity
         """
@@ -268,24 +271,28 @@ class ApplicationManager:
         )
 
         if model_credentials is None:
-            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+            if not skip_check:
+                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+            else:
+                model_credentials = {}
 
-        # check model
-        provider_model = provider_model_bundle.configuration.get_provider_model(
-            model=copy_app_model_config_dict['model']['name'],
-            model_type=ModelType.LLM
-        )
+        if not skip_check:
+            # check model
+            provider_model = provider_model_bundle.configuration.get_provider_model(
+                model=copy_app_model_config_dict['model']['name'],
+                model_type=ModelType.LLM
+            )
 
-        if provider_model is None:
-            model_name = copy_app_model_config_dict['model']['name']
-            raise ValueError(f"Model {model_name} not exist.")
+            if provider_model is None:
+                model_name = copy_app_model_config_dict['model']['name']
+                raise ValueError(f"Model {model_name} not exist.")
 
-        if provider_model.status == ModelStatus.NO_CONFIGURE:
-            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
-        elif provider_model.status == ModelStatus.NO_PERMISSION:
-            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
-        elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
-            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
+            if provider_model.status == ModelStatus.NO_CONFIGURE:
+                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+            elif provider_model.status == ModelStatus.NO_PERMISSION:
+                raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
+            elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
+                raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
 
         # model config
         completion_params = copy_app_model_config_dict['model'].get('completion_params')
@@ -309,7 +316,7 @@ class ApplicationManager:
             model_credentials
         )
 
-        if not model_schema:
+        if not skip_check and not model_schema:
             raise ValueError(f"Model {model_name} not exist.")
 
         properties['model_config'] = ModelConfigEntity(
