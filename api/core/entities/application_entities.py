@@ -15,7 +15,7 @@ class ModelConfigEntity(BaseModel):
     """
     provider: str
     model: str
-    model_schema: AIModelEntity
+    model_schema: Optional[AIModelEntity] = None
     mode: str
     provider_model_bundle: ProviderModelBundle
     credentials: dict[str, Any] = {}
