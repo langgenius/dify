@@ -65,11 +65,12 @@ class WorkflowService:
         # return default block config
         return default_block_configs
 
-    def chatbot_convert_to_workflow(self, app_model: App) -> Workflow:
+    def chatbot_convert_to_workflow(self, app_model: App, account: Account) -> Workflow:
         """
         basic mode of chatbot app to workflow
 
         :param app_model: App instance
+        :param account: Account instance
         :return:
         """
         # check if chatbot app is in basic mode
@@ -78,6 +79,6 @@ class WorkflowService:
 
         # convert to workflow mode
         workflow_converter = WorkflowConverter()
-        workflow = workflow_converter.convert_to_workflow(app_model=app_model)
+        workflow = workflow_converter.convert_to_workflow(app_model=app_model, account=account)
 
         return workflow

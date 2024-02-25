@@ -77,7 +77,10 @@ class ConvertToWorkflowApi(Resource):
         """
         # convert to workflow mode
         workflow_service = WorkflowService()
-        workflow = workflow_service.chatbot_convert_to_workflow(app_model=app_model)
+        workflow = workflow_service.chatbot_convert_to_workflow(
+            app_model=app_model,
+            account=current_user
+        )
 
         # return workflow
         return workflow
