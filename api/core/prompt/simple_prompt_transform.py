@@ -178,11 +178,8 @@ class SimplePromptTransform(PromptTransform):
             context=context
         )
 
-        if prompt:
-            if query:
-                prompt_messages.append(SystemPromptMessage(content=prompt))
-            else:
-                prompt_messages.append(UserPromptMessage(content=prompt))
+        if prompt and query:
+            prompt_messages.append(SystemPromptMessage(content=prompt))
 
         if memory:
             prompt_messages = self._append_chat_histories(
@@ -193,6 +190,8 @@ class SimplePromptTransform(PromptTransform):
 
         if query:
             prompt_messages.append(self.get_last_user_message(query, files))
+        else:
+            prompt_messages.append(self.get_last_user_message(prompt, files))
 
         return prompt_messages, None
 
