@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import useVarList from './use-var-list'
+import useVarList from './components/var-list/use-var-list'
 import type { VariableAssignerNodeType } from './types'
 
 const useConfig = (initInputs: VariableAssignerNodeType) => {

@@ -9,7 +9,7 @@ import AddButton from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import TypeSelector from '@/app/components/workflow/nodes/_base/components/editor/type-selector'
+import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 const i18nPrefix = 'workflow.nodes.code'
 
 const codeLanguages = [
@@ -54,7 +54,7 @@ const Panel: FC = () => {
         <CodeEditor
           title={
             <TypeSelector
-              list={codeLanguages}
+              options={codeLanguages}
               value={inputs.code_language}
               onChange={handleCodeLanguageChange}
             />

@@ -71,8 +71,8 @@ const translation = {
     },
     ifElse: {
       conditions: '条件',
-      and: '且',
-      or: '或',
+      and: 'and',
+      or: 'or',
       comparisonOperator: {
         'contains': '包含',
         'not contains': '不包含',
@@ -89,12 +89,13 @@ const translation = {
     variableAssigner: {
       title: '变量赋值',
       outputType: '输出类型',
+      outputVarType: '输出变量类型',
       varNotSet: '未设置变量',
       type: {
         string: 'String',
         number: 'Number',
         object: 'Object',
-        arrayObject: 'Array[Object]',
+        array: 'Array',
       },
     },
   },

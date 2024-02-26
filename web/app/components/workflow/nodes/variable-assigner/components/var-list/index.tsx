@@ -1,0 +1,60 @@
+'use client'
+import type { FC } from 'react'
+import React, { useCallback } from 'react'
+import produce from 'immer'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import type { ValueSelector } from '@/app/components/workflow/types'
+import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+
+type Props = {
+  readonly: boolean
+  list: ValueSelector[]
+  onChange: (list: ValueSelector[]) => void
+}
+
+const VarList: FC<Props> = ({
+  readonly,
+  list,
+  onChange,
+}) => {
+  const handleVarReferenceChange = useCallback((index: number) => {
+    return (value: ValueSelector) => {
+      const newList = produce(list, (draft) => {
+        draft[index] = value
+      })
+      onChange(newList)
+    }
+  }, [list, onChange])
+
+  const handleVarRemove = useCallback((index: number) => {
+    return () => {
+      const newList = produce(list, (draft) => {
+        draft.splice(index, 1)
+      })
+      onChange(newList)
+    }
+  }, [list, onChange])
+
+  return (
+    <div className='space-y-2'>
+      {list.map((item, index) => (
+        <div className='flex items-center space-x-1' key={index}>
+          <VarReferencePicker
+            readonly={readonly}
+            isShowNodeName
+            className='grow'
+            value={item}
+            onChange={handleVarReferenceChange(index)}
+          />
+          <div
+            className='p-2 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer'
+            onClick={handleVarRemove(index)}
+          >
+            <Trash03 className='w-4 h-4 text-gray-500' />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+export default React.memo(VarList)

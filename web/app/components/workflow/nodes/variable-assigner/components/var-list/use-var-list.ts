@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import produce from 'immer'
-import type { VariableAssignerNodeType } from './types'
-import type { Variable } from '@/app/components/workflow/types'
+import type { VariableAssignerNodeType } from '../../types'
+import type { ValueSelector } from '@/app/components/workflow/types'
 
 type Params = {
   inputs: VariableAssignerNodeType
@@ -11,15 +11,15 @@ function useVarList({
   inputs,
   setInputs,
 }: Params) {
-  const handleVarListChange = useCallback((newList: Variable[]) => {
-    const newInputs = produce(inputs, (draft: any) => {
+  const handleVarListChange = useCallback((newList: ValueSelector[]) => {
+    const newInputs = produce(inputs, (draft) => {
       draft.variables = newList
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
 
   const handleAddVariable = useCallback(() => {
-    const newInputs = produce(inputs, (draft: any) => {
+    const newInputs = produce(inputs, (draft) => {
       draft.variables.push([])
     })
     setInputs(newInputs)
