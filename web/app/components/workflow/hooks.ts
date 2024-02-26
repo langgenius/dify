@@ -9,8 +9,10 @@ import {
   useStoreApi,
 } from 'reactflow'
 import type {
+  BlockEnum,
   SelectedNode,
 } from './types'
+import { NodeInitialData } from './constants'
 import { useStore } from './store'
 
 export const useWorkflow = () => {
@@ -128,6 +130,36 @@ export const useWorkflow = () => {
     setNodes(newNodes)
     setSelectedNode({ id, data })
   }, [store, setSelectedNode])
+  const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum) => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === currentNodeId)!
+    const nextNode = {
+      id: `${Date.now()}`,
+      data: NodeInitialData[nodeType],
+      position: {
+        x: currentNode.position.x + 304,
+        y: currentNode.position.y,
+      },
+    }
+    const newNodes = produce(nodes, (draft) => {
+      draft.push(nextNode)
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      draft.push({
+        id: `${currentNode.id}-${nextNode.id}`,
+        source: currentNode.id,
+        target: nextNode.id,
+      })
+    })
+    setEdges(newEdges)
+  }, [store])
 
   return {
     handleEnterNode,
@@ -136,5 +168,6 @@ export const useWorkflow = () => {
     handleLeaveEdge,
     handleSelectNode,
     handleUpdateNodeData,
+    handleAddNextNode,
   }
 }

@@ -1,6 +1,8 @@
 import { useStore } from '../store'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import {
+  CheckCircle,
+  XClose,
+} from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
 const RunHistory = () => {
