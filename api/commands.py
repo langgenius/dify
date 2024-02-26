@@ -132,7 +132,7 @@ def vdb_migrate():
     """
     click.echo(click.style('Start migrate vector db.', fg='green'))
     create_count = 0
-    config = cast(dict, current_app.config)
+    config = current_app.config
     vector_type = config.get('VECTOR_STORE')
     page = 1
     while True:

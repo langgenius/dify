@@ -23,7 +23,7 @@ class Vector:
         self._vector_processor = self._init_vector()
 
     def _init_vector(self) -> BaseVector:
-        config = cast(dict, current_app.config)
+        config = current_app.config
         vector_type = config.get('VECTOR_STORE')
 
         if self._dataset.index_struct_dict:
