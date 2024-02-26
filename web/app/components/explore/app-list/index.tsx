@@ -12,6 +12,7 @@ import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { createApp } from '@/service/apps'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
@@ -24,7 +25,9 @@ const Apps: FC = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
-  const [currCategory, setCurrCategory] = React.useState<AppCategory | ''>('')
+  const [currCategory, setCurrCategory] = useTabSearchParams({
+    defaultTab: '',
+  })
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
 
