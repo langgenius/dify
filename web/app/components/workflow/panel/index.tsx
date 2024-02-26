@@ -7,10 +7,12 @@ import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
+import RunHistory from './run-history'
 
 const Panel: FC = () => {
   const mode = useStore(state => state.mode)
   const selectedNode = useStore(state => state.selectedNode)
+  const showRunHistory = useStore(state => state.showRunHistory)
   const {
     showWorkflowInfoPanel,
     showNodePanel,
@@ -38,6 +40,11 @@ const Panel: FC = () => {
       {
         showDebugAndPreviewPanel && (
           <DebugAndPreview />
+        )
+      }
+      {
+        showRunHistory && (
+          <RunHistory />
         )
       }
     </div>

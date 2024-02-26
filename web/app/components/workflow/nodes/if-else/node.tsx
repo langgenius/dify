@@ -25,7 +25,7 @@ const Node = (props: Pick<NodeProps, 'id' | 'data'>) => {
         <NodeSourceHandle
           {...props}
           handleId='condition1'
-          handleClassName='!top-1 !-right-5'
+          handleClassName='!top-1 !-right-[21px]'
         />
       </div>
       <div className='mb-0.5 leading-4 text-[10px] font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conditions`)}</div>
@@ -49,7 +49,7 @@ const Node = (props: Pick<NodeProps, 'id' | 'data'>) => {
         <NodeSourceHandle
           {...props}
           handleId='condition2'
-          handleClassName='!top-1 !-right-5'
+          handleClassName='!top-1 !-right-[21px]'
         />
       </div>
     </div>
