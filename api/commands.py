@@ -1,7 +1,6 @@
 import base64
 import json
 import secrets
-from typing import cast
 
 import click
 from flask import current_app
