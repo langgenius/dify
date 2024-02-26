@@ -22,10 +22,10 @@ const CustomEdge = ({
     labelX,
     labelY,
   ] = getSimpleBezierPath({
-    sourceX,
+    sourceX: sourceX - 8,
     sourceY,
     sourcePosition: Position.Right,
-    targetX,
+    targetX: targetX + 8,
     targetY,
     targetPosition: Position.Left,
   })

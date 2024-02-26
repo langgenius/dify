@@ -24,6 +24,8 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 
 type NodeSelectorProps = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onSelect: (type: BlockEnum) => void
   trigger?: (open: boolean) => React.ReactNode
   placement?: Placement
@@ -34,6 +36,8 @@ type NodeSelectorProps = {
   asChild?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
+  open: openFromProps,
+  onOpenChange,
   onSelect,
   trigger,
   placement = 'right',
@@ -43,18 +47,25 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   popupClassName,
   asChild,
 }) => {
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = openFromProps === undefined ? localOpen : openFromProps
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    setLocalOpen(newOpen)
+
+    if (onOpenChange)
+      onOpenChange(newOpen)
+  }, [onOpenChange])
   const handleTrigger = useCallback<MouseEventHandler<HTMLDivElement>>((e) => {
     e.stopPropagation()
-    setOpen(v => !v)
-  }, [])
+    handleOpenChange(!open)
+  }, [open, handleOpenChange])
 
   return (
     <PortalToFollowElem
       placement={placement}
       offset={offset}
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
     >
       <PortalToFollowElemTrigger
         asChild={asChild}
@@ -67,7 +78,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               <div
                 className={`
                   flex items-center justify-center 
-                  w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10 group-hover:flex
+                  w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10
                   ${triggerClassName?.(open)}
                 `}
                 style={triggerStyle}

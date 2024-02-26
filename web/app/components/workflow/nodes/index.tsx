@@ -26,8 +26,7 @@ const CustomNode = memo((props: NodeProps) => {
         nodeData.type !== BlockEnum.IfElse && (
           <NodeSourceHandle
             { ...props }
-            handleClassName='!top-[17px] !right-0'
-            nodeSelectorClassName='absolute -right-2 top-4'
+            handleClassName='!top-[17px] !-right-2'
             handleId='source'
           />
         )

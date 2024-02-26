@@ -13,6 +13,7 @@ import Header from './header'
 import CustomNode from './nodes'
 import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
+import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import type { Node } from './types'
 
@@ -69,6 +70,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEnterEdge}
         onEdgeMouseLeave={handleLeaveEdge}
         multiSelectionKeyCode={null}
+        connectionLineComponent={CustomConnectionLine}
       >
         <Background
           gap={[14, 14]}
