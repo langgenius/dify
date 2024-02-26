@@ -8,7 +8,9 @@ import {
   getConnectedEdges,
   useStoreApi,
 } from 'reactflow'
-import type { SelectedNode } from './types'
+import type {
+  SelectedNode,
+} from './types'
 import { useStore } from './store'
 
 export const useWorkflow = () => {
@@ -113,6 +115,19 @@ export const useWorkflow = () => {
       setNodes(newNodes)
     }
   }, [setSelectedNode, store])
+  const handleUpdateNodeData = useCallback(({ id, data }: SelectedNode) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      const currentNode = draft.find(n => n.id === id)
+      if (currentNode)
+        currentNode.data = { ...currentNode.data, ...data }
+    })
+    setNodes(newNodes)
+    setSelectedNode({ id, data })
+  }, [store, setSelectedNode])
 
   return {
     handleEnterNode,
@@ -120,5 +135,6 @@ export const useWorkflow = () => {
     handleEnterEdge,
     handleLeaveEdge,
     handleSelectNode,
+    handleUpdateNodeData,
   }
 }

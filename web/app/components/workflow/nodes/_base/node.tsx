@@ -26,7 +26,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   return (
     <div
       className={`
-        group relative pb-2 w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
+        group relative w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
         ${(data.selected && selected) ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
@@ -35,17 +35,26 @@ const BaseNode: FC<BaseNodeProps> = ({
       <NodeControl />
       <div className='flex items-center px-3 pt-3 pb-2'>
         <BlockIcon
-          className='mr-2'
+          className='shrink-0 mr-2'
           type={data.type}
           size='md'
         />
-        <div className='text-[13px] font-semibold text-gray-700'>
+        <div
+          title={data.title}
+          className='text-[13px] font-semibold text-gray-700 truncate'
+        >
           {data.title}
         </div>
       </div>
       {cloneElement(children, { id: nodeId, data })}
-      <div className='px-3 pt-1 pb-1 text-xs text-gray-500'>
-        Define the initial parameters for launching a workflow
+      <div className='mt-1 pb-1'>
+        {
+          data.desc && (
+            <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
+              {data.desc}
+            </div>
+          )
+        }
       </div>
     </div>
   )
