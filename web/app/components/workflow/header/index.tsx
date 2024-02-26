@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { useStore } from '../store'
 import RunAndHistory from './run-and-history'
+import Publish from './publish'
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
@@ -47,12 +48,7 @@ const Header: FC = () => {
             </Button>
           )
         }
-        <Button
-          type='primary'
-          className='px-3 py-0 h-8 text-[13px] font-medium'
-        >
-          publish
-        </Button>
+        <Publish />
       </div>
     </div>
   )

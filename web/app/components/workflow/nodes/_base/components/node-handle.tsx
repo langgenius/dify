@@ -14,10 +14,19 @@ import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
 
+type NodeHandleProps = {
+  handleId?: string
+  handleClassName?: string
+  nodeSelectorClassName?: string
+} & Pick<NodeProps, 'id' | 'data'>
+
 export const NodeTargetHandle = ({
   id,
   data,
-}: NodeProps) => {
+  handleId,
+  handleClassName,
+  nodeSelectorClassName,
+}: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
   const store = useStoreApi()
   const incomers = getIncomers({ id } as Node, store.getState().getNodes(), store.getState().edges)
@@ -32,13 +41,15 @@ export const NodeTargetHandle = ({
   return (
     <>
       <Handle
+        id={handleId}
         type='target'
         position={Position.Left}
         className={`
-          !top-[17px] !-left-2 !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
+          !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
           after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-primary-500
           ${!incomers.length && 'after:opacity-0'}
           ${data.type === BlockEnum.Start && 'opacity-0'}
+          ${handleClassName}
         `}
         isConnectable={data.type !== BlockEnum.Start}
         onClick={handleHandleClick}
@@ -53,6 +64,7 @@ export const NodeTargetHandle = ({
               placement='left'
               triggerClassName={open => `
                 hidden absolute left-0 top-0 pointer-events-none
+                ${nodeSelectorClassName}
                 ${data.hovering && '!flex'}
                 ${open && '!flex'}
               `}
@@ -64,18 +76,13 @@ export const NodeTargetHandle = ({
   )
 }
 
-type NodeSourceHandleProps = {
-  handleId?: string
-  handleClassName?: string
-  nodeSelectorClassName?: string
-} & Pick<NodeProps, 'id' | 'data'>
 export const NodeSourceHandle = ({
   id,
   data,
   handleId,
   handleClassName,
   nodeSelectorClassName,
-}: NodeSourceHandleProps) => {
+}: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
   const store = useStoreApi()
   const connectedEdges = getConnectedEdges([{ id } as Node], store.getState().edges)

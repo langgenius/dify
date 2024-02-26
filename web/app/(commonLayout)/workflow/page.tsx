@@ -52,13 +52,13 @@ const initialEdges = [
     sourceHandle: 'condition1',
     target: '3',
   },
-  // {
-  //   id: '2',
-  //   type: 'custom',
-  //   source: '2',
-  //   sourceHandle: 'condition2',
-  //   target: '4',
-  // },
+  {
+    id: '2',
+    type: 'custom',
+    source: '2',
+    sourceHandle: 'condition2',
+    target: '4',
+  },
 ]
 
 const Page: FC = () => {

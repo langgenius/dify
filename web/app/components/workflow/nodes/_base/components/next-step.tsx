@@ -133,8 +133,11 @@ const NextStep = () => {
           !!outgoers.length && outgoers.map(outgoer => (
             <div
               key={outgoer.id}
-              className='group flex items-center mb-3 last-of-type:mb-0 px-2 h-9 rounded-lg border-[0.5px] border-gray-200 bg-white hover:bg-gray-50 shadow-xs text-xs text-gray-700 cursor-pointer'
+              className='relative group flex items-center mb-3 last-of-type:mb-0 px-2 h-9 rounded-lg border-[0.5px] border-gray-200 bg-white hover:bg-gray-50 shadow-xs text-xs text-gray-700 cursor-pointer'
             >
+              <div className='absolute left-1 -top-[7.5px] flex items-center px-0.5 h-3 bg-white text-[10px] text-gray-500 font-semibold rounded-[5px]'>
+                IS TRUE
+              </div>
               <BlockIcon
                 type={outgoer.data.type}
                 className='shrink-0 mr-1.5'

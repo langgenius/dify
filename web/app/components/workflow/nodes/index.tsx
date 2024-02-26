@@ -18,7 +18,15 @@ const CustomNode = memo((props: NodeProps) => {
 
   return (
     <>
-      <NodeTargetHandle { ...props } />
+      {
+        nodeData.type !== BlockEnum.VariableAssigner && (
+          <NodeTargetHandle
+            { ...props }
+            handleClassName='!top-[17px] !-left-2'
+            handleId='target'
+          />
+        )
+      }
       <BaseNode { ...props }>
         <NodeComponent />
       </BaseNode>

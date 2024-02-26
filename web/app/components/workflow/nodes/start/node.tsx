@@ -8,6 +8,7 @@ const i18nPrefix = 'workflow.nodes.start'
 const Node: FC = () => {
   const { t } = useTranslation()
   const { variables } = mockData
+
   return (
     <div className='px-3'>
       <div className='space-y-0.5'>

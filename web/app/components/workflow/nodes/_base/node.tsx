@@ -46,8 +46,14 @@ const BaseNode: FC<BaseNodeProps> = ({
           {data.title}
         </div>
       </div>
-      {cloneElement(children, { id: nodeId, data })}
-      <div className='mt-1 pb-1'>
+      {
+        children && (
+          <div className='mb-1'>
+            {cloneElement(children, { id: nodeId, data })}
+          </div>
+        )
+      }
+      <div className='pb-1'>
         {
           data.desc && (
             <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>

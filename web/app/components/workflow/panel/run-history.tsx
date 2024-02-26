@@ -4,6 +4,7 @@ import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/genera
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
 const RunHistory = () => {
+  const mode = useStore(state => state.mode)
   const setShowRunHistory = useStore(state => state.setShowRunHistory)
 
   return (
@@ -18,15 +19,19 @@ const RunHistory = () => {
         </div>
       </div>
       <div className='p-2'>
-        <div className='flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer'>
-          <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
-          <div>
-            <div className='flex items-center text-[13px] font-medium text-primary-600 leading-[18px]'>Test Run#7</div>
-            <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
-              Evan · 2 min ago
+        {
+          mode === 'workflow' && (
+            <div className='flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer'>
+              <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
+              <div>
+                <div className='flex items-center text-[13px] font-medium text-primary-600 leading-[18px]'>Test Run#7</div>
+                <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
+                  Evan · 2 min ago
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          )
+        }
         <div className='flex px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer'>
           <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
           <div>

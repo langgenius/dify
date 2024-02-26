@@ -21,7 +21,7 @@ export const TitleInput = memo(({
       className={`
         grow mr-2 px-1 h-6 text-base text-gray-900 font-semibold rounded-lg border border-transparent appearance-none outline-none
         hover:bg-gray-50 
-        focus:border-gray-300 focus:shadow-xs focus:bg-white
+        focus:border-gray-300 focus:shadow-xs focus:bg-white caret-[#295EFF]
       `}
       placeholder='Add title...'
     />
@@ -58,7 +58,7 @@ export const DescriptionInput = memo(({
         className={`
           w-full text-xs text-gray-900 leading-[18px] bg-transparent
           appearance-none outline-none resize-none
-          placeholder:text-gray-400
+          placeholder:text-gray-400 caret-[#295EFF]
         `}
         placeholder='Add description...'
         autoSize
