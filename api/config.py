@@ -206,12 +206,6 @@ class Config:
         self.WEAVIATE_BATCH_SIZE = int(get_env('WEAVIATE_BATCH_SIZE'))
 
         # ------------------------
-        # Keyword Store Configurations.
-        # Currently, only support: jieba
-        # ------------------------
-        self.KEYWORD_STORE = get_env('KEYWORD_STORE')
-
-        # ------------------------
         # Mail Configurations.
         # ------------------------
         self.MAIL_TYPE = get_env('MAIL_TYPE')
