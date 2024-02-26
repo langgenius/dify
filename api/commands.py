@@ -17,7 +17,7 @@ from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models.account import Tenant
-from models.dataset import Dataset, Document as DatasetDocument, DocumentSegment
+from models.dataset import Dataset, Document as DatasetDocument, DocumentSegment, DatasetCollectionBinding
 from models.model import Account
 from models.provider import Provider, ProviderModel
 
@@ -146,69 +146,99 @@ def vdb_migrate():
 
         page += 1
         for dataset in datasets:
-            if dataset.index_struct_dict:
-                if dataset.index_struct_dict['type'] != vector_type:
-                    try:
-                        click.echo('Create dataset vdb index: {}'.format(dataset.id))
-
-                        index_struct = {
-                            "type": vector_type,
-                            "vector_store": {
-                                "class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
-                        }
-
-                        dataset.index_struct = json.dumps(index_struct)
-                        vector = Vector(dataset)
-                        vector.create()
-                        click.echo(f"vdb_migrate {dataset.id}")
-
-                        try:
-                            vector.delete()
-                        except Exception as e:
-                            raise e
-
-                        dataset_documents = db.session.query(DatasetDocument).filter(
-                            DatasetDocument.dataset_id == dataset.id,
-                            DatasetDocument.indexing_status == 'completed',
-                            DatasetDocument.enabled == True,
-                            DatasetDocument.archived == False,
-                        ).all()
-
-                        documents = []
-                        for dataset_document in dataset_documents:
-                            segments = db.session.query(DocumentSegment).filter(
-                                DocumentSegment.document_id == dataset_document.id,
-                                DocumentSegment.status == 'completed',
-                                DocumentSegment.enabled == True
-                            ).all()
-
-                            for segment in segments:
-                                document = Document(
-                                    page_content=segment.content,
-                                    metadata={
-                                        "doc_id": segment.index_node_id,
-                                        "doc_hash": segment.index_node_hash,
-                                        "document_id": segment.document_id,
-                                        "dataset_id": segment.dataset_id,
-                                    }
-                                )
-
-                                documents.append(document)
-
-                        if documents:
-                            try:
-                                vector.create(documents)
-                            except Exception as e:
-                                raise e
-                        click.echo(f"Dataset {dataset.id} recreate successfully.")
-                        db.session.add(dataset)
-                        db.session.commit()
-                        create_count += 1
-                    except Exception as e:
-                        click.echo(
-                            click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
-                                        fg='red'))
+            try:
+                click.echo('Create dataset vdb index: {}'.format(dataset.id))
+                if dataset.index_struct_dict:
+                    if dataset.index_struct_dict['type'] == vector_type:
                         continue
+                if vector_type == "weaviate":
+                    dataset_id = dataset.id
+                    collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    index_struct_dict = {
+                        "type": 'weaviate',
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == "qdrant":
+                    if dataset.collection_binding_id:
+                        dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
+                            filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
+                            one_or_none()
+                        if dataset_collection_binding:
+                            collection_name = dataset_collection_binding.collection_name
+                        else:
+                            raise ValueError('Dataset Collection Bindings is not exist!')
+                    else:
+                        dataset_id = dataset.id
+                        collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    index_struct_dict = {
+                        "type": 'qdrant',
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+
+                elif vector_type == "milvus":
+                    dataset_id = dataset.id
+                    collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    index_struct_dict = {
+                        "type": 'milvus',
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                else:
+                    raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+
+                vector = Vector(dataset)
+                click.echo(f"vdb_migrate {dataset.id}")
+
+                try:
+                    vector.delete()
+                except Exception as e:
+                    raise e
+
+                dataset_documents = db.session.query(DatasetDocument).filter(
+                    DatasetDocument.dataset_id == dataset.id,
+                    DatasetDocument.indexing_status == 'completed',
+                    DatasetDocument.enabled == True,
+                    DatasetDocument.archived == False,
+                ).all()
+
+                documents = []
+                for dataset_document in dataset_documents:
+                    segments = db.session.query(DocumentSegment).filter(
+                        DocumentSegment.document_id == dataset_document.id,
+                        DocumentSegment.status == 'completed',
+                        DocumentSegment.enabled == True
+                    ).all()
+
+                    for segment in segments:
+                        document = Document(
+                            page_content=segment.content,
+                            metadata={
+                                "doc_id": segment.index_node_id,
+                                "doc_hash": segment.index_node_hash,
+                                "document_id": segment.document_id,
+                                "dataset_id": segment.dataset_id,
+                            }
+                        )
+
+                        documents.append(document)
+
+                if documents:
+                    try:
+                        vector.create(documents)
+                    except Exception as e:
+                        raise e
+                click.echo(f"Dataset {dataset.id} create successfully.")
+                db.session.add(dataset)
+                db.session.commit()
+                create_count += 1
+            except Exception as e:
+                db.session.rollback()
+                click.echo(
+                    click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
+                                fg='red'))
+                continue
 
     click.echo(click.style('Congratulations! Create {} dataset indexes.'.format(create_count), fg='green'))
 

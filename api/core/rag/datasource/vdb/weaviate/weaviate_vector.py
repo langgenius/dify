@@ -127,7 +127,10 @@ class WeaviateVector(BaseVector):
         )
 
     def delete(self):
-        self._client.schema.delete_class(self._collection_name)
+        # check whether the index already exists
+        schema = self._default_schema(self._collection_name)
+        if self._client.schema.contains(schema):
+            self._client.schema.delete_class(self._collection_name)
 
     def text_exists(self, id: str) -> bool:
         collection_name = self._collection_name
