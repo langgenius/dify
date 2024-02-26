@@ -1,6 +1,7 @@
 import base64
 import json
 import secrets
+from typing import cast
 
 import click
 from flask import current_app
@@ -9,12 +10,14 @@ from werkzeug.exceptions import NotFound
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models.account import Tenant
-from models.dataset import Dataset
+from models.dataset import Dataset, Document as DatasetDocument, DocumentSegment
 from models.model import Account
 from models.provider import Provider, ProviderModel
 
@@ -124,14 +127,15 @@ def reset_encrypt_key_pair():
                            'the asymmetric key pair of workspace {} has been reset.'.format(tenant.id), fg='green'))
 
 
-@click.command('create-qdrant-indexes', help='Create qdrant indexes.')
-def create_qdrant_indexes():
+@click.command('vdb-migrate', help='migrate vector db.')
+def vdb_migrate():
     """
-    Migrate other vector database datas to Qdrant.
+    Migrate vector database datas to target vector database .
     """
-    click.echo(click.style('Start create qdrant indexes.', fg='green'))
+    click.echo(click.style('Start migrate vector db.', fg='green'))
     create_count = 0
-
+    config = cast(dict, current_app.config)
+    vector_type = config.get('VECTOR_STORE')
     page = 1
     while True:
         try:
@@ -140,49 +144,66 @@ def create_qdrant_indexes():
         except NotFound:
             break
 
-        model_manager = ModelManager()
-
         page += 1
         for dataset in datasets:
             if dataset.index_struct_dict:
-                if dataset.index_struct_dict['type'] != 'qdrant':
+                if dataset.index_struct_dict['type'] != vector_type:
                     try:
-                        click.echo('Create dataset qdrant index: {}'.format(dataset.id))
+                        click.echo('Create dataset vdb index: {}'.format(dataset.id))
+
+                        index_struct = {
+                            "type": vector_type,
+                            "vector_store": {
+                                "class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
+                        }
+
+                        dataset.index_struct = json.dumps(index_struct)
+                        vector = Vector(dataset)
+                        vector.create()
+                        click.echo(f"vdb_migrate {dataset.id}")
+
                         try:
-                            embedding_model = model_manager.get_model_instance(
-                                tenant_id=dataset.tenant_id,
-                                provider=dataset.embedding_model_provider,
-                                model_type=ModelType.TEXT_EMBEDDING,
-                                model=dataset.embedding_model
+                            vector.delete()
+                        except Exception as e:
+                            raise e
 
-                            )
-                        except Exception:
-                            continue
-                        embeddings = CacheEmbedding(embedding_model)
+                        dataset_documents = db.session.query(DatasetDocument).filter(
+                            DatasetDocument.dataset_id == dataset.id,
+                            DatasetDocument.indexing_status == 'completed',
+                            DatasetDocument.enabled == True,
+                            DatasetDocument.archived == False,
+                        ).all()
 
-                        from core.index.vector_index.qdrant_vector_index import QdrantConfig, QdrantVectorIndex
+                        documents = []
+                        for dataset_document in dataset_documents:
+                            segments = db.session.query(DocumentSegment).filter(
+                                DocumentSegment.document_id == dataset_document.id,
+                                DocumentSegment.status == 'completed',
+                                DocumentSegment.enabled == True
+                            ).all()
 
-                        index = QdrantVectorIndex(
-                            dataset=dataset,
-                            config=QdrantConfig(
-                                endpoint=current_app.config.get('QDRANT_URL'),
-                                api_key=current_app.config.get('QDRANT_API_KEY'),
-                                root_path=current_app.root_path
-                            ),
-                            embeddings=embeddings
-                        )
-                        if index:
-                            index.create_qdrant_dataset(dataset)
-                            index_struct = {
-                                "type": 'qdrant',
-                                "vector_store": {
-                                    "class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
-                            }
-                            dataset.index_struct = json.dumps(index_struct)
-                            db.session.commit()
-                            create_count += 1
-                        else:
-                            click.echo('passed.')
+                            for segment in segments:
+                                document = Document(
+                                    page_content=segment.content,
+                                    metadata={
+                                        "doc_id": segment.index_node_id,
+                                        "doc_hash": segment.index_node_hash,
+                                        "document_id": segment.document_id,
+                                        "dataset_id": segment.dataset_id,
+                                    }
+                                )
+
+                                documents.append(document)
+
+                        if documents:
+                            try:
+                                vector.create(documents)
+                            except Exception as e:
+                                raise e
+                        click.echo(f"Dataset {dataset.id} recreate successfully.")
+                        db.session.add(dataset)
+                        db.session.commit()
+                        create_count += 1
                     except Exception as e:
                         click.echo(
                             click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
@@ -196,4 +217,4 @@ def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(reset_encrypt_key_pair)
-    app.cli.add_command(create_qdrant_indexes)
+    app.cli.add_command(vdb_migrate)
