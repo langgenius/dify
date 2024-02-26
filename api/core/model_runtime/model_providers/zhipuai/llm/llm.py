@@ -19,6 +19,17 @@ from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_comp
 from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion_chunk import ChatCompletionChunk
 from core.model_runtime.utils import helper
 
+GLM_JSON_MODE_PROMPT = """You should always follow the instructions and output a valid JSON object.
+The structure of the JSON object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+And you should always end the block with a "```" to indicate the end of the JSON object.
+
+<instructions>
+{{instructions}}
+</instructions>
+
+```JSON"""
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
@@ -44,7 +55,41 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
         # invoke model
+        # stop = stop or []
+        # self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
         return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, tools, stop, stream, user)
+
+    # def _transform_json_prompts(self, model: str, credentials: dict, 
+    #                             prompt_messages: list[PromptMessage], model_parameters: dict, 
+    #                             tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    #                             stream: bool = True, user: str | None = None) \
+    #                         -> None:
+    #     """
+    #     Transform json prompts to model prompts
+    #     """
+    #     if "}\n\n" not in stop:
+    #         stop.append("}\n\n")
+
+    #     # check if there is a system message
+    #     if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+    #         # override the system message
+    #         prompt_messages[0] = SystemPromptMessage(
+    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content)
+    #         )
+    #     else:
+    #         # insert the system message
+    #         prompt_messages.insert(0, SystemPromptMessage(
+    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
+    #         ))
+    #     # check if the last message is a user message
+    #     if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+    #         # add ```JSON\n to the last message
+    #         prompt_messages[-1].content += "\n```JSON\n"
+    #     else:
+    #         # append a user message
+    #         prompt_messages.append(UserPromptMessage(
+    #             content="```JSON\n"
+    #         ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -106,7 +151,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         """
         extra_model_kwargs = {}
         if stop:
-            extra_model_kwargs['stop_sequences'] = stop
+            extra_model_kwargs['stop'] = stop
 
         client = ZhipuAI(
             api_key=credentials_kwargs['api_key']
@@ -256,10 +301,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             ]
 
         if stream:
-            response = client.chat.completions.create(stream=stream, **params)
+            response = client.chat.completions.create(stream=stream, **params, **extra_model_kwargs)
             return self._handle_generate_stream_response(model, credentials_kwargs, tools, response, prompt_messages)
 
-        response = client.chat.completions.create(**params)
+        response = client.chat.completions.create(**params, **extra_model_kwargs)
         return self._handle_generate_response(model, credentials_kwargs, tools, response, prompt_messages)
         
     def _handle_generate_response(self, model: str, 
