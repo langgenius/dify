@@ -25,7 +25,7 @@ class Keyword:
                 dataset=self._dataset
             )
         else:
-            raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+            raise ValueError(f"Keyword store {keyword_type} is not supported.")
 
     def create(self, texts: list[Document], **kwargs):
         self._keyword_processor.create(texts, **kwargs)
