@@ -664,6 +664,7 @@ class IndexingRunner:
                 )
             # load index
             index_processor.load(dataset, chunk_documents)
+            db.session.add(dataset)
 
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(
