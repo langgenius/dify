@@ -7,9 +7,6 @@ import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
-from core.embedding.cached_embedding import CacheEmbedding
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -17,7 +14,8 @@ from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models.account import Tenant
-from models.dataset import Dataset, Document as DatasetDocument, DocumentSegment, DatasetCollectionBinding
+from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
+from models.dataset import Document as DatasetDocument
 from models.model import Account
 from models.provider import Provider, ProviderModel
 
