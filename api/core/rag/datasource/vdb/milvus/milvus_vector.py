@@ -124,7 +124,12 @@ class MilvusVector(BaseVector):
 
     def delete_by_ids(self, doc_ids: list[str]) -> None:
 
-        self._client.delete(collection_name=self._collection_name, pks=doc_ids)
+        result = self._client.query(collection_name=self._collection_name,
+                                    filter=f'metadata["doc_id"] in {doc_ids}',
+                                    output_fields=["id"])
+        if result:
+            ids = [item["id"] for item in result]
+            self._client.delete(collection_name=self._collection_name, pks=ids)
 
     def delete(self) -> None:
         alias = uuid4().hex
