@@ -155,10 +155,9 @@ class AppService:
         db.session.commit()
 
         if workflow_graph:
+            # init draft workflow
             workflow_service = WorkflowService()
-            draft_workflow = workflow_service.sync_draft_workflow(app, workflow_graph, account)
-            published_workflow = workflow_service.publish_draft_workflow(app, account, draft_workflow)
-            model_config_data['workflow_id'] = published_workflow.id
+            workflow_service.sync_draft_workflow(app, workflow_graph, account)
 
         app_model_config = AppModelConfig()
         app_model_config = app_model_config.from_model_config_dict(model_config_data)
@@ -282,5 +281,3 @@ class AppService:
         # conversations, pinned_conversations, messages BY app
         # message_feedbacks, message_annotations, message_chains BY message
         # message_agent_thoughts, message_files, saved_messages BY message
-
-
