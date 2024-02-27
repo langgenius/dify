@@ -1,6 +1,3 @@
-import json
-
-import yaml
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
 
@@ -9,7 +6,7 @@ from controllers.console import api
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from models.model import App, RecommendedApp
-from services.workflow_service import WorkflowService
+from services.app_service import AppService
 
 app_fields = {
     'id': fields.String,
@@ -103,25 +100,8 @@ class RecommendedAppApi(Resource):
         if not app_model or not app_model.is_public:
             raise AppNotFoundError
 
-        app_model_config = app_model.app_model_config
-
-        export_data = {
-            "app": {
-                "name": app_model.name,
-                "mode": app_model.mode,
-                "icon": app_model.icon,
-                "icon_background": app_model.icon_background
-            },
-            "model_config": app_model_config.to_dict(),
-        }
-
-        if app_model_config.workflow_id:
-            export_data['workflow_graph'] = json.loads(app_model_config.workflow.graph)
-        else:
-            # get draft workflow
-            workflow_service = WorkflowService()
-            workflow = workflow_service.get_draft_workflow(app_model)
-            export_data['workflow_graph'] = json.loads(workflow.graph)
+        app_service = AppService()
+        export_str = app_service.export_app(app_model)
 
         return {
             'id': app_model.id,
@@ -129,7 +109,7 @@ class RecommendedAppApi(Resource):
             'icon': app_model.icon,
             'icon_background': app_model.icon_background,
             'mode': app_model.mode,
-            'export_data': yaml.dump(export_data)
+            'export_data': export_str
         }
 
 
