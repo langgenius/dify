@@ -101,3 +101,9 @@ export type Block = {
   title: string
   description?: string
 }
+
+export type NodeDefault<T> = {
+  defaultValue: Partial<T>
+  getAvailablePrevNodes: () => BlockEnum[]
+  getAvailableNextNodes: () => BlockEnum[]
+}

@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
 import { NodeSourceHandle } from '../_base/components/node-handle'
@@ -14,7 +14,7 @@ const notTranslateKey = [
   ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
 ]
 
-const Node = (props: Pick<NodeProps, 'id' | 'data'>) => {
+const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
   const { t } = useTranslation()
   const { conditions, logical_operator } = mockData
 
@@ -56,4 +56,4 @@ const Node = (props: Pick<NodeProps, 'id' | 'data'>) => {
   )
 }
 
-export default memo(Node)
+export default IfElseNode

@@ -25,7 +25,7 @@ import ToolPanel from './tool/panel'
 import VariableAssignerNode from './variable-assigner/node'
 import VariableAssignerPanel from './variable-assigner/panel'
 
-export const NodeComponentMap: Record<string, ComponentType> = {
+export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
   [BlockEnum.End]: EndNode,
   [BlockEnum.DirectAnswer]: DirectAnswerNode,
