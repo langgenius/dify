@@ -147,8 +147,7 @@ const FileUploader = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        console.log(e)
-        notify({ type: 'error', message: e.code === 'forbidden' ? e.message : t('datasetCreation.stepOne.uploader.failed') })
+        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
         onFileUpdate(fileItem, -2, fileListCopy)
         return Promise.resolve({ ...fileItem })
       })
