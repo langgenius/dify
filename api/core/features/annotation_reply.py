@@ -59,7 +59,7 @@ class AnnotationReplyFeature:
 
             documents = vector.search_by_vector(
                 query=query,
-                k=1,
+                top_k=1,
                 score_threshold=score_threshold,
                 filter={
                     'group_id': [dataset.id]
