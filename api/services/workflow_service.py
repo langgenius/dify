@@ -59,11 +59,11 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def publish_draft_workflow(self, app_model: App,
-                               account: Account,
-                               draft_workflow: Optional[Workflow] = None) -> Workflow:
+    def publish_workflow(self, app_model: App,
+                         account: Account,
+                         draft_workflow: Optional[Workflow] = None) -> Workflow:
         """
-        Publish draft workflow
+        Publish workflow from draft
 
         :param app_model: App instance
         :param account: Account instance
@@ -75,6 +75,8 @@ class WorkflowService:
 
         if not draft_workflow:
             raise ValueError('No valid workflow found.')
+
+        # TODO check if the workflow is valid
 
         # create new workflow
         workflow = Workflow(
@@ -88,6 +90,30 @@ class WorkflowService:
 
         # commit db session changes
         db.session.add(workflow)
+        db.session.commit()
+
+        app_model_config = app_model.app_model_config
+
+        # create new app model config record
+        new_app_model_config = app_model_config.copy()
+        new_app_model_config.id = None
+        new_app_model_config.app_id = app_model.id
+        new_app_model_config.external_data_tools = ''
+        new_app_model_config.model = ''
+        new_app_model_config.user_input_form = ''
+        new_app_model_config.dataset_query_variable = None
+        new_app_model_config.pre_prompt = None
+        new_app_model_config.agent_mode = ''
+        new_app_model_config.prompt_type = 'simple'
+        new_app_model_config.chat_prompt_config = ''
+        new_app_model_config.completion_prompt_config = ''
+        new_app_model_config.dataset_configs = ''
+        new_app_model_config.workflow_id = workflow.id
+
+        db.session.add(new_app_model_config)
+        db.session.flush()
+
+        app_model.app_model_config_id = new_app_model_config.id
         db.session.commit()
 
         # return new workflow
