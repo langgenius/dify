@@ -5,7 +5,6 @@ from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_run_fields
 from libs.helper import TimestampField
 
-
 workflow_app_log_partial_fields = {
     "id": fields.String,
     "workflow_run": fields.Nested(workflow_run_fields, attribute='workflow_run', allow_null=True),
