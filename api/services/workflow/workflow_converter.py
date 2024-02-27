@@ -93,18 +93,7 @@ class WorkflowConverter:
         new_app.app_model_config_id = new_app_model_config.id
         db.session.commit()
 
-        site = Site(
-            app_id=new_app.id,
-            title=new_app.name,
-            default_language=account.interface_language,
-            customize_token_strategy='not_allow',
-            code=Site.generate_code(16)
-        )
-
-        db.session.add(site)
-        db.session.commit()
-
-        app_was_created.send(new_app)
+        app_was_created.send(new_app, account=account)
 
         return new_app
 
