@@ -51,6 +51,62 @@ class DraftWorkflowApi(Resource):
         }
 
 
+class DraftWorkflowRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Run draft workflow
+        """
+        # TODO
+        workflow_service = WorkflowService()
+        workflow_service.run_draft_workflow(app_model=app_model, account=current_user)
+
+        # TODO
+        return {
+            "result": "success"
+        }
+
+
+class WorkflowTaskStopApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App, task_id: str):
+        """
+        Stop workflow task
+        """
+        # TODO
+        workflow_service = WorkflowService()
+        workflow_service.stop_workflow_task(app_model=app_model, task_id=task_id, account=current_user)
+
+        return {
+            "result": "success"
+        }
+
+
+class DraftWorkflowNodeRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        """
+        Run draft workflow node
+        """
+        # TODO
+        workflow_service = WorkflowService()
+        workflow_service.run_draft_workflow_node(app_model=app_model, node_id=node_id, account=current_user)
+
+        # TODO
+        return {
+            "result": "success"
+        }
+
+
 class PublishedWorkflowApi(Resource):
 
     @setup_required
@@ -83,7 +139,6 @@ class PublishedWorkflowApi(Resource):
         return {
             "result": "success"
         }
-
 
 
 class DefaultBlockConfigApi(Resource):
@@ -123,6 +178,9 @@ class ConvertToWorkflowApi(Resource):
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')
+api.add_resource(DraftWorkflowRunApi, '/apps/<uuid:app_id>/workflows/draft/run')
+api.add_resource(WorkflowTaskStopApi, '/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop')
+api.add_resource(DraftWorkflowNodeRunApi, '/apps/<uuid:app_id>/workflows/draft/nodes/<uuid:node_id>/run')
 api.add_resource(PublishedWorkflowApi, '/apps/<uuid:app_id>/workflows/published')
 api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
 api.add_resource(ConvertToWorkflowApi, '/apps/<uuid:app_id>/convert-to-workflow')

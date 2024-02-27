@@ -66,6 +66,7 @@ message_detail_fields = {
     'from_end_user_id': fields.String,
     'from_account_id': fields.String,
     'feedbacks': fields.List(fields.Nested(feedback_fields)),
+    'workflow_run_id': fields.String,
     'annotation': fields.Nested(annotation_fields, allow_null=True),
     'annotation_hit_history': fields.Nested(annotation_hit_history_fields, allow_null=True),
     'created_at': TimestampField,
