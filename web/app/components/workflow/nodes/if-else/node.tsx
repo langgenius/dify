@@ -28,7 +28,7 @@ const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
             <div className='flex items-center h-6 bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
               <Variable02 className='w-3.5 h-3.5 text-primary-500' />
               <span>{condition.variable_selector.slice(-1)[0]}</span>
-              <span className='text-gray-500'>{isComparisonOperatorNeedTranslate(condition.comparison_operator) ? condition.comparison_operator : t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`)}</span>
+              <span className='text-gray-500'>{isComparisonOperatorNeedTranslate(condition.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`) : condition.comparison_operator}</span>
               {!isEmptyRelatedOperator(condition.comparison_operator) && <span>{condition.value}</span>}
             </div>
             {i !== conditions.length - 1 && (
