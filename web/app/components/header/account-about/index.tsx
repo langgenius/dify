@@ -42,17 +42,7 @@ export default function AccountAbout({
           <LogoSite className='mx-auto mb-2' />
           <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='mb-4 text-center text-xs font-normal text-gray-700'>
-            <div>© 2023 LangGenius, Inc., Contributors.</div>
-            <div className='text-[#1C64F2]'>
-              {
-                IS_CE_EDITION
-                  ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
-                  : <>
-                    <Link href={locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,
-                    <Link href={locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/user-agreement/terms-of-service'} target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
-                  </>
-              }
-            </div>
+            <div>© 2024 AiConec, Inc., Contributors.</div>
           </div>
         </div>
         <div className='mb-4 -mx-8 h-[0.5px] bg-gray-200' />
@@ -65,13 +55,6 @@ export default function AccountAbout({
             }
           </div>
           <div className='flex items-center'>
-            <Link
-              className={classNames(buttonClassName, 'mr-2')}
-              href={'https://github.com/langgenius/dify/releases'}
-              target='_blank' rel='noopener noreferrer'
-            >
-              {t('common.about.changeLog')}
-            </Link>
             {
               !isLatest && !IS_CE_EDITION && (
                 <Link

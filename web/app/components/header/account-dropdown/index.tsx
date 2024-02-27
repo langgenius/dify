@@ -100,7 +100,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>
-                    <Menu.Item>
+                    {/* <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href='https://feedback.dify.ai/'
@@ -108,8 +108,8 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.roadmapAndFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
-                    </Menu.Item>
-                    <Menu.Item>
+                    </Menu.Item> */}
+                    {/* <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href='https://discord.gg/5AEfbxcd9k'
@@ -117,8 +117,8 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.community')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
-                    </Menu.Item>
-                    <Menu.Item>
+                    </Menu.Item> */}
+                    {/* <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href={
@@ -128,8 +128,8 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.helpCenter')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
-                    </Menu.Item>
-                    {
+                    </Menu.Item> */}
+                    {/* {
                       document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
                         <Menu.Item>
                           <div className={classNames(itemClassName, 'justify-between')} onClick={() => setAboutVisible(true)}>
@@ -141,7 +141,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                           </div>
                         </Menu.Item>
                       )
-                    }
+                    } */}
                   </div>
                   <Menu.Item>
                     <div className='p-1' onClick={() => handleLogout()}>
