@@ -208,7 +208,7 @@ class WorkflowRun(db.Model):
     __tablename__ = 'workflow_runs'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='workflow_run_pkey'),
-        db.Index('workflow_run_triggerd_from_idx', 'tenant_id', 'app_id', 'workflow_id', 'triggered_from'),
+        db.Index('workflow_run_triggerd_from_idx', 'tenant_id', 'app_id', 'triggered_from'),
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
@@ -236,11 +236,36 @@ class WorkflowRun(db.Model):
 
     @property
     def created_by_account(self):
-        return Account.query.get(self.created_by)
+        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        return Account.query.get(self.created_by) \
+            if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
-    def updated_by_account(self):
-        return Account.query.get(self.updated_by)
+    def created_by_end_user(self):
+        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        return EndUser.query.get(self.created_by) \
+            if created_by_role == CreatedByRole.END_USER else None
+
+
+class WorkflowNodeExecutionTriggeredFrom(Enum):
+    """
+    Workflow Node Execution Triggered From Enum
+    """
+    SINGLE_STEP = 'single-step'
+    WORKFLOW_RUN = 'workflow-run'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'WorkflowNodeExecutionTriggeredFrom':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid workflow node execution triggered from value {value}')
 
 
 class WorkflowNodeExecution(db.Model):
@@ -322,6 +347,18 @@ class WorkflowNodeExecution(db.Model):
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
     finished_at = db.Column(db.DateTime)
+
+    @property
+    def created_by_account(self):
+        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        return Account.query.get(self.created_by) \
+            if created_by_role == CreatedByRole.ACCOUNT else None
+
+    @property
+    def created_by_end_user(self):
+        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        return EndUser.query.get(self.created_by) \
+            if created_by_role == CreatedByRole.END_USER else None
 
 
 class WorkflowAppLog(db.Model):

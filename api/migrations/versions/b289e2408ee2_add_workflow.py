@@ -88,7 +88,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id', name='workflow_run_pkey')
     )
     with op.batch_alter_table('workflow_runs', schema=None) as batch_op:
-        batch_op.create_index('workflow_run_triggerd_from_idx', ['tenant_id', 'app_id', 'workflow_id', 'triggered_from'], unique=False)
+        batch_op.create_index('workflow_run_triggerd_from_idx', ['tenant_id', 'app_id', 'triggered_from'], unique=False)
 
     op.create_table('workflows',
     sa.Column('id', postgresql.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
