@@ -86,6 +86,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflow()
 
   useEffect(() => {
+    console.log(nodesInitialized, '2')
     if (nodesInitialized && initialData.needUpdatePosition)
       handleInitialLayoutNodes()
   }, [nodesInitialized])

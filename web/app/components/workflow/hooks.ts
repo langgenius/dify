@@ -28,9 +28,9 @@ export const useWorkflow = () => {
       setEdges,
     } = store.getState()
     const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(n => n.id === node.id)
-      if (currentNode)
-        currentNode.data = { ...currentNode.data, hovering: true }
+      const currentNode = draft.find(n => n.id === node.id)!
+
+      currentNode.data.hovering = true
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
@@ -53,9 +53,9 @@ export const useWorkflow = () => {
       setEdges,
     } = store.getState()
     const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(n => n.id === node.id)
-      if (currentNode)
-        currentNode.data = { ...currentNode.data, hovering: false }
+      const currentNode = draft.find(n => n.id === node.id)!
+
+      currentNode.data.hovering = false
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
@@ -105,7 +105,7 @@ export const useWorkflow = () => {
       setSelectedNode(null)
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((item) => {
-          item.data = { ...item.data, selected: false }
+          item.data.selected = false
         })
       })
       setNodes(newNodes)
@@ -114,7 +114,10 @@ export const useWorkflow = () => {
       setSelectedNode(selectNode)
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((item) => {
-          item.data = { ...item.data, selected: item.id === selectNode.id }
+          if (item.id === selectNode.id)
+            item.data.selected = true
+          else
+            item.data.selected = false
         })
       })
       setNodes(newNodes)
@@ -126,9 +129,9 @@ export const useWorkflow = () => {
       setNodes,
     } = store.getState()
     const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(n => n.id === id)
-      if (currentNode)
-        currentNode.data = { ...currentNode.data, ...data }
+      const currentNode = draft.find(n => n.id === id)!
+
+      currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
     setSelectedNode({ id, data })
