@@ -1,3 +1,6 @@
+import json
+
+import yaml
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
 
@@ -6,6 +9,7 @@ from controllers.console import api
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from models.model import App, RecommendedApp
+from services.workflow_service import WorkflowService
 
 app_fields = {
     'id': fields.String,
@@ -23,8 +27,7 @@ recommended_app_fields = {
     'privacy_policy': fields.String,
     'category': fields.String,
     'position': fields.Integer,
-    'is_listed': fields.Boolean,
-    'is_agent': fields.Boolean
+    'is_listed': fields.Boolean
 }
 
 recommended_app_list_fields = {
@@ -73,8 +76,7 @@ class RecommendedAppListApi(Resource):
                 'privacy_policy': site.privacy_policy,
                 'category': recommended_app.category,
                 'position': recommended_app.position,
-                'is_listed': recommended_app.is_listed,
-                "is_agent": app.is_agent
+                'is_listed': recommended_app.is_listed
             }
             recommended_apps_result.append(recommended_app_result)
 
@@ -84,27 +86,6 @@ class RecommendedAppListApi(Resource):
 
 
 class RecommendedAppApi(Resource):
-    model_config_fields = {
-        'opening_statement': fields.String,
-        'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
-        'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
-        'more_like_this': fields.Raw(attribute='more_like_this_dict'),
-        'model': fields.Raw(attribute='model_dict'),
-        'user_input_form': fields.Raw(attribute='user_input_form_list'),
-        'pre_prompt': fields.String,
-        'agent_mode': fields.Raw(attribute='agent_mode_dict'),
-    }
-
-    app_simple_detail_fields = {
-        'id': fields.String,
-        'name': fields.String,
-        'icon': fields.String,
-        'icon_background': fields.String,
-        'mode': fields.String,
-        'app_model_config': fields.Nested(model_config_fields),
-    }
-
-    @marshal_with(app_simple_detail_fields)
     def get(self, app_id):
         app_id = str(app_id)
 
@@ -118,11 +99,38 @@ class RecommendedAppApi(Resource):
             raise AppNotFoundError
 
         # get app detail
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app or not app.is_public:
+        app_model = db.session.query(App).filter(App.id == app_id).first()
+        if not app_model or not app_model.is_public:
             raise AppNotFoundError
 
-        return app
+        app_model_config = app_model.app_model_config
+
+        export_data = {
+            "app": {
+                "name": app_model.name,
+                "mode": app_model.mode,
+                "icon": app_model.icon,
+                "icon_background": app_model.icon_background
+            },
+            "model_config": app_model_config.to_dict(),
+        }
+
+        if app_model_config.workflow_id:
+            export_data['workflow_graph'] = json.loads(app_model_config.workflow.graph)
+        else:
+            # get draft workflow
+            workflow_service = WorkflowService()
+            workflow = workflow_service.get_draft_workflow(app_model)
+            export_data['workflow_graph'] = json.loads(workflow.graph)
+
+        return {
+            'id': app_model.id,
+            'name': app_model.name,
+            'icon': app_model.icon,
+            'icon_background': app_model.icon_background,
+            'mode': app_model.mode,
+            'export_data': yaml.dump(export_data)
+        }
 
 
 api.add_resource(RecommendedAppListApi, '/explore/apps')

@@ -107,7 +107,6 @@ def upgrade():
         batch_op.create_index('workflow_version_idx', ['tenant_id', 'app_id', 'version'], unique=False)
 
     with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('chatbot_app_engine', sa.String(length=255), server_default=sa.text("'normal'::character varying"), nullable=False))
         batch_op.add_column(sa.Column('workflow_id', postgresql.UUID(), nullable=True))
 
     with op.batch_alter_table('messages', schema=None) as batch_op:
@@ -123,7 +122,6 @@ def downgrade():
 
     with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
         batch_op.drop_column('workflow_id')
-        batch_op.drop_column('chatbot_app_engine')
 
     with op.batch_alter_table('workflows', schema=None) as batch_op:
         batch_op.drop_index('workflow_version_idx')

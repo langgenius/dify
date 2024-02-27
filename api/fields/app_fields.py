@@ -42,14 +42,10 @@ app_detail_fields = {
     'id': fields.String,
     'name': fields.String,
     'mode': fields.String,
-    'is_agent': fields.Boolean,
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
-    'api_rpm': fields.Integer,
-    'api_rph': fields.Integer,
-    'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
     'created_at': TimestampField
 }
@@ -67,12 +63,8 @@ app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
     'mode': fields.String,
-    'is_agent': fields.Boolean,
     'icon': fields.String,
     'icon_background': fields.String,
-    'enable_site': fields.Boolean,
-    'enable_api': fields.Boolean,
-    'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config'),
     'created_at': TimestampField
 }
@@ -122,10 +114,6 @@ app_detail_fields_with_site = {
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
-    'api_rpm': fields.Integer,
-    'api_rph': fields.Integer,
-    'is_agent': fields.Boolean,
-    'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
     'site': fields.Nested(site_fields),
     'api_base_url': fields.String,

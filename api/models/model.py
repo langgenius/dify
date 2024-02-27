@@ -31,7 +31,9 @@ class AppMode(Enum):
     COMPLETION = 'completion'
     WORKFLOW = 'workflow'
     CHAT = 'chat'
-    AGENT = 'agent'
+    ADVANCED_CHAT = 'advanced-chat'
+    AGENT_CHAT = 'agent-chat'
+    CHANNEL = 'channel'
 
     @classmethod
     def value_of(cls, value: str) -> 'AppMode':
@@ -64,8 +66,8 @@ class App(db.Model):
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     enable_site = db.Column(db.Boolean, nullable=False)
     enable_api = db.Column(db.Boolean, nullable=False)
-    api_rpm = db.Column(db.Integer, nullable=False)
-    api_rph = db.Column(db.Integer, nullable=False)
+    api_rpm = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
+    api_rph = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     is_demo = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
@@ -92,19 +94,7 @@ class App(db.Model):
     def tenant(self):
         tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
         return tenant
-    
-    @property
-    def is_agent(self) -> bool:
-        app_model_config = self.app_model_config
-        if not app_model_config:
-            return False
-        if not app_model_config.agent_mode:
-            return False
-        if self.app_model_config.agent_mode_dict.get('enabled', False) \
-            and self.app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
-            return True
-        return False
-    
+
     @property
     def deleted_tools(self) -> list:
         # get agent mode tools
@@ -153,11 +143,6 @@ class App(db.Model):
         return deleted_tools
 
 
-class ChatbotAppEngine(Enum):
-    NORMAL = 'normal'
-    WORKFLOW = 'workflow'
-
-
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'
     __table_args__ = (
@@ -167,9 +152,9 @@ class AppModelConfig(db.Model):
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=False)
-    provider = db.Column(db.String(255), nullable=False)
-    model_id = db.Column(db.String(255), nullable=False)
-    configs = db.Column(db.JSON, nullable=False)
+    provider = db.Column(db.String(255), nullable=True)
+    model_id = db.Column(db.String(255), nullable=True)
+    configs = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     opening_statement = db.Column(db.Text)
@@ -191,7 +176,6 @@ class AppModelConfig(db.Model):
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
     file_upload = db.Column(db.Text)
-    chatbot_app_engine = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     workflow_id = db.Column(UUID)
 
     @property
@@ -301,9 +285,6 @@ class AppModelConfig(db.Model):
 
     def to_dict(self) -> dict:
         return {
-            "provider": "",
-            "model_id": "",
-            "configs": {},
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
@@ -327,9 +308,6 @@ class AppModelConfig(db.Model):
         }
 
     def from_model_config_dict(self, model_config: dict):
-        self.provider = ""
-        self.model_id = ""
-        self.configs = {}
         self.opening_statement = model_config['opening_statement']
         self.suggested_questions = json.dumps(model_config['suggested_questions'])
         self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer'])
@@ -358,15 +336,13 @@ class AppModelConfig(db.Model):
             if model_config.get('dataset_configs') else None
         self.file_upload = json.dumps(model_config.get('file_upload')) \
             if model_config.get('file_upload') else None
+        self.workflow_id = model_config.get('workflow_id')
         return self
 
     def copy(self):
         new_app_model_config = AppModelConfig(
             id=self.id,
             app_id=self.app_id,
-            provider="",
-            model_id="",
-            configs={},
             opening_statement=self.opening_statement,
             suggested_questions=self.suggested_questions,
             suggested_questions_after_answer=self.suggested_questions_after_answer,
@@ -385,7 +361,8 @@ class AppModelConfig(db.Model):
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,
             dataset_configs=self.dataset_configs,
-            file_upload=self.file_upload
+            file_upload=self.file_upload,
+            workflow_id=self.workflow_id
         )
 
         return new_app_model_config
@@ -446,12 +423,6 @@ class InstalledApp(db.Model):
         tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
         return tenant
 
-    @property
-    def is_agent(self) -> bool:
-        app = self.app
-        if not app:
-            return False
-        return app.is_agent
 
 class Conversation(db.Model):
     __tablename__ = 'conversations'
