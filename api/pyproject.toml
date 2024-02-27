@@ -28,3 +28,6 @@ ignore = [
 "app.py" = [
     "F401" # unused-import
 ]
+"__init__.py" = [
+    "F401" # unused-import
+]
