@@ -2,7 +2,10 @@ version: '3.1'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.5.6
+    # image: langgenius/dify-api:0.5.6
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -129,8 +132,8 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     # uncomment to expose dify-api port to host
-    # ports:
-    #   - "5001:5001"
+    ports:
+      - "5001:5001"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -206,7 +209,10 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.5.6
+    # image: docker-composeanggenius/dify-web:0.5.6
+    build:
+      context: ../web
+      dockerfile: Dockerfile
     restart: always
     environment:
       EDITION: SELF_HOSTED
@@ -221,8 +227,8 @@ services:
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
     # uncomment to expose dify-web port to host
-    # ports:
-    #   - "3000:3000"
+    ports:
+      - "3000:3000"
 
   # The postgres database.
   db:
