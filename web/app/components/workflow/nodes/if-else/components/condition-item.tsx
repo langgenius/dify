@@ -85,6 +85,7 @@ const Item: FC<ItemProps> = ({
   onLogicalOperatorToggle,
 }) => {
   const { t } = useTranslation()
+  const isValueReadOnly = [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(payload.comparison_operator)
 
   const handleVarReferenceChange = useCallback((value: ValueSelector) => {
     onChange({
@@ -140,8 +141,9 @@ const Item: FC<ItemProps> = ({
 
         <Selector
           popupClassName='top-[34px]'
+          itemClassName='capitalize'
           trigger={
-            <div className='shrink-0 whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize'>
+            <div className='shrink-0 w-[100px] whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize cursor-pointer'>
               <div className='text-[13px] font-normal text-gray-900'>{isComparisonOperatorNeedTranslate(payload.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${payload.comparison_operator}`) : payload.comparison_operator}</div>
             </div>
           }
@@ -157,11 +159,11 @@ const Item: FC<ItemProps> = ({
         />
 
         <input
-          readOnly={readonly}
-          value={payload.value}
+          readOnly={readonly || isValueReadOnly}
+          value={!isValueReadOnly ? payload.value : ''}
           onChange={handleValueChange}
-          placeholder={t(`${i18nPrefix}.enterValue`)!}
-          className='max-w-[144px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+          placeholder={!isValueReadOnly ? t(`${i18nPrefix}.enterValue`)! : ''}
+          className='w-[80px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
           type='text'
         />
 

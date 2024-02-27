@@ -16,6 +16,7 @@ type Props = {
   onChange: (value: any) => void
   uppercase?: boolean
   popupClassName?: string
+  itemClassName?: string
   readonly?: boolean
   showChecked?: boolean
 }
@@ -27,6 +28,7 @@ const TypeSelector: FC<Props> = ({
   onChange,
   uppercase,
   popupClassName,
+  itemClassName,
   readonly,
   showChecked,
 }) => {
@@ -64,7 +66,7 @@ const TypeSelector: FC<Props> = ({
                 setHide()
                 onChange(item.value)
               }}
-              className={cn(uppercase && 'uppercase', 'flex items-center h-[30px] justify-between min-w-[44px] px-3 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 hover:bg-gray-50')}
+              className={cn(itemClassName, uppercase && 'uppercase', 'flex items-center h-[30px] justify-between min-w-[44px] px-3 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 hover:bg-gray-50')}
             >
               <div>{item.label}</div>
               {showChecked && item.value === value && <Check className='text-primary-600 w-4 h-4' />}
