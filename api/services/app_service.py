@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import cast
 
 import yaml
+from flask_sqlalchemy.pagination import Pagination
 
 from constants.model_template import default_app_templates
 from core.errors.error import ProviderTokenNotInitError
@@ -17,7 +18,7 @@ from services.workflow_service import WorkflowService
 
 
 class AppService:
-    def get_paginate_apps(self, tenant_id: str, args: dict) -> list[App]:
+    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination:
         """
         Get app list with pagination
         :param tenant_id: tenant id
