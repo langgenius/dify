@@ -3,13 +3,16 @@ import React from 'react'
 import Spinner from '../spinner'
 
 export type IButtonProps = {
-  type?: string
+  /**
+   * The style of the button
+   */
+  type?: 'primary' | 'warning' | (string & {})
   className?: string
   disabled?: boolean
   loading?: boolean
   tabIndex?: number
   children: React.ReactNode
-  onClick?: MouseEventHandler<HTMLDivElement>
+  onClick?: MouseEventHandler<HTMLButtonElement>
 }
 
 const Button: FC<IButtonProps> = ({
@@ -35,15 +38,16 @@ const Button: FC<IButtonProps> = ({
   }
 
   return (
-    <div
+    <button
       className={`btn ${style} ${className && className}`}
       tabIndex={tabIndex}
-      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      onClick={onClick}
     >
       {children}
       {/* Spinner is hidden when loading is false */}
       <Spinner loading={loading} className='!text-white !h-3 !w-3 !border-2 !ml-1' />
-    </div>
+    </button>
   )
 }
 

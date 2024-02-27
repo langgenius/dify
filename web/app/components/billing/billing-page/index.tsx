@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import useSWR from 'swr'
 import PlanComp from '../plan'
 import { ReceiptList } from '../../base/icons/src/vender/line/financeAndECommerce'
 import { LinkExternal01 } from '../../base/icons/src/vender/line/general'
@@ -12,17 +13,11 @@ import { useProviderContext } from '@/context/provider-context'
 const Billing: FC = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [billingUrl, setBillingUrl] = React.useState('')
   const { enableBilling } = useProviderContext()
-
-  useEffect(() => {
-    if (!enableBilling || !isCurrentWorkspaceManager)
-      return
-    (async () => {
-      const { url } = await fetchBillingUrl()
-      setBillingUrl(url)
-    })()
-  }, [isCurrentWorkspaceManager])
+  const { data: billingUrl } = useSWR(
+    (!enableBilling || !isCurrentWorkspaceManager) ? null : ['/billing/invoices'],
+    () => fetchBillingUrl().then(data => data.url),
+  )
 
   return (
     <div>
@@ -39,4 +34,5 @@ const Billing: FC = () => {
     </div>
   )
 }
+
 export default React.memo(Billing)
