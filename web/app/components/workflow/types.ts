@@ -1,4 +1,7 @@
-import type { Node as ReactFlowNode } from 'reactflow'
+import type {
+  Edge as ReactFlowEdge,
+  Node as ReactFlowNode,
+} from 'reactflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -15,15 +18,29 @@ export enum BlockEnum {
   Tool = 'tool',
 }
 
+export type Branch = {
+  id: string
+  name: string
+}
+
 export type CommonNodeType = {
+  hidden?: boolean
+  position?: {
+    x: number
+    y: number
+  }
+  sortIndexInBranches?: number
+  selected?: boolean
+  hovering?: boolean
+  branches?: Branch[]
   title: string
   desc: string
   type: BlockEnum
-  selected?: boolean
 }
 
 export type Node = ReactFlowNode<CommonNodeType>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
+export type Edge = ReactFlowEdge
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 

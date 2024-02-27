@@ -59,6 +59,10 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     e.stopPropagation()
     handleOpenChange(!open)
   }, [open, handleOpenChange])
+  const handleSelect = useCallback((type: BlockEnum) => {
+    handleOpenChange(false)
+    onSelect(type)
+  }, [handleOpenChange, onSelect])
 
   return (
     <PortalToFollowElem
@@ -99,7 +103,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               />
             </div>
           </div>
-          <Tabs onSelect={onSelect} />
+          <Tabs onSelect={handleSelect} />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

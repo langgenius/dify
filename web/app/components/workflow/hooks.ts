@@ -14,6 +14,7 @@ import type {
 } from './types'
 import { NodeInitialData } from './constants'
 import { useStore } from './store'
+import { initialNodesPosition } from './utils'
 
 export const useWorkflow = () => {
   const store = useStoreApi()
@@ -43,6 +44,7 @@ export const useWorkflow = () => {
     })
     setEdges(newEdges)
   }, [store])
+
   const handleLeaveNode = useCallback<NodeMouseHandler>((_, node) => {
     const {
       getNodes,
@@ -67,6 +69,7 @@ export const useWorkflow = () => {
     })
     setEdges(newEdges)
   }, [store])
+
   const handleEnterEdge = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
       edges,
@@ -79,6 +82,7 @@ export const useWorkflow = () => {
     })
     setEdges(newEdges)
   }, [store])
+
   const handleLeaveEdge = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
       edges,
@@ -91,6 +95,7 @@ export const useWorkflow = () => {
     })
     setEdges(newEdges)
   }, [store])
+
   const handleSelectNode = useCallback((selectNode: SelectedNode, cancelSelection?: boolean) => {
     const {
       getNodes,
@@ -99,20 +104,18 @@ export const useWorkflow = () => {
     if (cancelSelection) {
       setSelectedNode(null)
       const newNodes = produce(getNodes(), (draft) => {
-        const currentNode = draft.find(n => n.id === selectNode.id)
-
-        if (currentNode)
-          currentNode.data = { ...currentNode.data, selected: false }
+        draft.forEach((item) => {
+          item.data = { ...item.data, selected: false }
+        })
       })
       setNodes(newNodes)
     }
     else {
       setSelectedNode(selectNode)
       const newNodes = produce(getNodes(), (draft) => {
-        const currentNode = draft.find(n => n.id === selectNode.id)
-
-        if (currentNode)
-          currentNode.data = { ...currentNode.data, selected: true }
+        draft.forEach((item) => {
+          item.data = { ...item.data, selected: item.id === selectNode.id }
+        })
       })
       setNodes(newNodes)
     }
@@ -130,7 +133,8 @@ export const useWorkflow = () => {
     setNodes(newNodes)
     setSelectedNode({ id, data })
   }, [store, setSelectedNode])
-  const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum) => {
+
+  const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum, branchId?: string) => {
     const {
       getNodes,
       setNodes,
@@ -141,24 +145,47 @@ export const useWorkflow = () => {
     const currentNode = nodes.find(node => node.id === currentNodeId)!
     const nextNode = {
       id: `${Date.now()}`,
-      data: NodeInitialData[nodeType],
+      type: 'custom',
+      data: { ...NodeInitialData[nodeType], selected: true },
       position: {
         x: currentNode.position.x + 304,
         y: currentNode.position.y,
       },
     }
     const newNodes = produce(nodes, (draft) => {
+      draft.forEach((item) => {
+        item.data = { ...item.data, selected: false }
+      })
       draft.push(nextNode)
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.push({
         id: `${currentNode.id}-${nextNode.id}`,
+        type: 'custom',
         source: currentNode.id,
+        sourceHandle: branchId || 'source',
         target: nextNode.id,
+        targetHandle: 'target',
       })
     })
     setEdges(newEdges)
+    setSelectedNode(nextNode)
+  }, [store, setSelectedNode])
+  const handleInitialLayoutNodes = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+
+    setNodes(initialNodesPosition(getNodes(), edges))
+    setEdges(produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        edge.hidden = false
+      })
+    }))
   }, [store])
 
   return {
@@ -169,5 +196,6 @@ export const useWorkflow = () => {
     handleSelectNode,
     handleUpdateNodeData,
     handleAddNextNode,
+    handleInitialLayoutNodes,
   }
 }

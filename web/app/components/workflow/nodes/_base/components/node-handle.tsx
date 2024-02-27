@@ -7,12 +7,12 @@ import {
   Handle,
   Position,
   getConnectedEdges,
-  getIncomers,
   useStoreApi,
 } from 'reactflow'
 import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
+import { useWorkflow } from '../../../hooks'
 
 type NodeHandleProps = {
   handleId?: string
@@ -29,12 +29,13 @@ export const NodeTargetHandle = ({
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
   const store = useStoreApi()
-  const incomers = getIncomers({ id } as Node, store.getState().getNodes(), store.getState().edges)
+  const connectedEdges = getConnectedEdges([{ id } as Node], store.getState().edges)
+  const connected = connectedEdges.find(edge => edge.targetHandle === handleId && edge.target === id)
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
   const handleHandleClick = () => {
-    if (incomers.length === 0 && data.type !== BlockEnum.Start)
+    if (!connected)
       handleOpenChange(!open)
   }
 
@@ -47,7 +48,7 @@ export const NodeTargetHandle = ({
         className={`
           !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
           after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-primary-500
-          ${!incomers.length && 'after:opacity-0'}
+          ${!connected && 'after:opacity-0'}
           ${data.type === BlockEnum.Start && 'opacity-0'}
           ${handleClassName}
         `}
@@ -55,7 +56,7 @@ export const NodeTargetHandle = ({
         onClick={handleHandleClick}
       >
         {
-          incomers.length === 0 && data.type !== BlockEnum.Start && (
+          !connected && data.type !== BlockEnum.Start && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -84,9 +85,10 @@ export const NodeSourceHandle = ({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
+  const { handleAddNextNode } = useWorkflow()
   const store = useStoreApi()
   const connectedEdges = getConnectedEdges([{ id } as Node], store.getState().edges)
-  const connected = connectedEdges.find(edge => edge.sourceHandle === handleId)
+  const connected = connectedEdges.find(edge => edge.sourceHandle === handleId && edge.source === id)
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
@@ -94,6 +96,9 @@ export const NodeSourceHandle = ({
     if (!connected)
       handleOpenChange(!open)
   }
+  const handleSelect = useCallback((type: BlockEnum) => {
+    handleAddNextNode(id, type)
+  }, [handleAddNextNode, id])
 
   return (
     <>
@@ -114,7 +119,7 @@ export const NodeSourceHandle = ({
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
-              onSelect={() => {}}
+              onSelect={handleSelect}
               asChild
               triggerClassName={open => `
                 hidden absolute top-0 left-0 pointer-events-none

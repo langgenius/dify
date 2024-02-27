@@ -8,7 +8,7 @@ const initialNodes = [
   {
     id: '1',
     type: 'custom',
-    position: { x: 130, y: 130 },
+    // position: { x: 130, y: 130 },
     data: { type: 'start' },
   },
   {
@@ -21,20 +21,20 @@ const initialNodes = [
     id: '3',
     type: 'custom',
     position: { x: 738, y: 130 },
-    data: { type: 'llm' },
+    data: { type: 'llm', sortIndexInBranches: 0 },
   },
   {
     id: '4',
     type: 'custom',
     position: { x: 738, y: 330 },
-    data: { type: 'llm' },
+    data: { type: 'llm', sortIndexInBranches: 1 },
   },
-  {
-    id: '5',
-    type: 'custom',
-    position: { x: 1100, y: 130 },
-    data: { type: 'llm' },
-  },
+  // {
+  //   id: '5',
+  //   type: 'custom',
+  //   position: { x: 1100, y: 130 },
+  //   data: { type: 'llm' },
+  // },
 ]
 
 const initialEdges = [
@@ -44,6 +44,7 @@ const initialEdges = [
     source: '1',
     sourceHandle: 'source',
     target: '2',
+    targetHandle: 'target',
   },
   {
     id: '1',
@@ -51,6 +52,7 @@ const initialEdges = [
     source: '2',
     sourceHandle: 'condition1',
     target: '3',
+    targetHandle: 'target',
   },
   {
     id: '2',
@@ -58,6 +60,7 @@ const initialEdges = [
     source: '2',
     sourceHandle: 'condition2',
     target: '4',
+    targetHandle: 'target',
   },
 ]
 

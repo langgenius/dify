@@ -1,10 +1,16 @@
 import type { FC } from 'react'
-import { memo, useEffect } from 'react'
+import {
+  memo,
+  useEffect,
+  useMemo,
+} from 'react'
+import produce from 'immer'
 import type { Edge } from 'reactflow'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -15,7 +21,7 @@ import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
-import type { Node } from './types'
+import { BlockEnum, type Node } from './types'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -34,8 +40,41 @@ const Workflow: FC<WorkflowProps> = memo(({
   edges: initialEdges,
   selectedNodeId: initialSelectedNodeId,
 }) => {
-  const [nodes] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const initialData: {
+    nodes: Node[]
+    edges: Edge[]
+    needUpdatePosition: boolean
+  } = useMemo(() => {
+    const start = initialNodes.find(node => node.data.type === BlockEnum.Start)
+
+    if (start?.position) {
+      return {
+        nodes: initialNodes,
+        edges: initialEdges,
+        needUpdatePosition: false,
+      }
+    }
+
+    return {
+      nodes: produce(initialNodes, (draft) => {
+        draft.forEach((node) => {
+          node.position = { x: 0, y: 0 }
+          node.data = { ...node.data, hidden: true }
+        })
+      }),
+      edges: produce(initialEdges, (draft) => {
+        draft.forEach((edge) => {
+          edge.hidden = true
+        })
+      }),
+      needUpdatePosition: true,
+    }
+  }, [initialNodes, initialEdges])
+  const nodesInitialized = useNodesInitialized({
+    includeHiddenNodes: true,
+  })
+  const [nodes] = useNodesState(initialData.nodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges)
 
   const {
     handleEnterNode,
@@ -43,7 +82,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEnterEdge,
     handleLeaveEdge,
     handleSelectNode,
+    handleInitialLayoutNodes,
   } = useWorkflow()
+
+  useEffect(() => {
+    if (nodesInitialized && initialData.needUpdatePosition)
+      handleInitialLayoutNodes()
+  }, [nodesInitialized])
 
   useEffect(() => {
     if (initialSelectedNodeId) {

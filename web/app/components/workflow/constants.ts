@@ -34,6 +34,16 @@ export const NodeInitialData = {
     retrieval_mode: 'single',
   },
   [BlockEnum.IfElse]: {
+    branches: [
+      {
+        id: 'if-true',
+        name: 'IS TRUE',
+      },
+      {
+        id: 'if-false',
+        name: 'IS FALSE',
+      },
+    ],
     type: BlockEnum.IfElse,
     title: '',
     desc: '',
