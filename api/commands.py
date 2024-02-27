@@ -405,12 +405,12 @@ def convert_to_agent_apps():
             click.echo('Converting app: {}'.format(app.id))
 
             try:
-                app.mode = AppMode.AGENT.value
+                app.mode = AppMode.AGENT_CHAT.value
                 db.session.commit()
 
                 # update conversation mode to agent
                 db.session.query(Conversation).filter(Conversation.app_id == app.id).update(
-                    {Conversation.mode: AppMode.AGENT.value}
+                    {Conversation.mode: AppMode.AGENT_CHAT.value}
                 )
 
                 db.session.commit()
