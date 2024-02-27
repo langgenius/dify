@@ -200,7 +200,7 @@ class ApiTool(Tool):
         
         # replace path parameters
         for name, value in path_params.items():
-            url = url.replace(f'{{{name}}}', value)
+            url = url.replace(f'{{{name}}}', f'{value}')
 
         # parse http body data if needed, for GET/HEAD/OPTIONS/TRACE, the body is ignored
         if 'Content-Type' in headers:

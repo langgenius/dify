@@ -46,7 +46,7 @@ class ApiBasedToolSchemaParser:
             parameters = []
             if 'parameters' in interface['operation']:
                 for parameter in interface['operation']['parameters']:
-                    parameters.append(ToolParameter(
+                    tool_parameter = ToolParameter(
                         name=parameter['name'],
                         label=I18nObject(
                             en_US=parameter['name'],
@@ -61,7 +61,25 @@ class ApiBasedToolSchemaParser:
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get('description'),
                         default=parameter['schema']['default'] if 'schema' in parameter and 'default' in parameter['schema'] else None,
-                    ))
+                    )
+                    if 'type' in parameter:
+                        typ = parameter['type']
+                        if typ == 'integer' or typ == 'number':
+                            tool_parameter.type = ToolParameter.ToolParameterType.NUMBER
+                        elif typ == 'boolean':
+                            tool_parameter.type = ToolParameter.ToolParameterType.BOOLEAN
+                        elif typ == 'string':
+                            tool_parameter.type = ToolParameter.ToolParameterType.STRING
+                    elif 'type' in parameter['schema']:
+                        typ = parameter['schema']['type']
+                        if typ == 'integer' or typ == 'number':
+                            tool_parameter.type = ToolParameter.ToolParameterType.NUMBER
+                        elif typ == 'boolean':
+                            tool_parameter.type = ToolParameter.ToolParameterType.BOOLEAN
+                        elif typ == 'string':
+                            tool_parameter.type = ToolParameter.ToolParameterType.STRING
+
+                    parameters.append(tool_parameter)
             # create tool bundle
             # check if there is a request body
             if 'requestBody' in interface['operation']:
@@ -86,7 +104,7 @@ class ApiBasedToolSchemaParser:
                         required = body_schema['required'] if 'required' in body_schema else []
                         properties = body_schema['properties'] if 'properties' in body_schema else {}
                         for name, property in properties.items():
-                            parameters.append(ToolParameter(
+                            tool = ToolParameter(
                                 name=name,
                                 label=I18nObject(
                                     en_US=name,
@@ -101,7 +119,25 @@ class ApiBasedToolSchemaParser:
                                 form=ToolParameter.ToolParameterForm.LLM,
                                 llm_description=property['description'] if 'description' in property else '',
                                 default=property['default'] if 'default' in property else None,
-                            ))
+                            )
+                            if 'type' in property:
+                                typ = property['type']
+                                if typ == 'integer' or typ == 'number':
+                                    tool.type = ToolParameter.ToolParameterType.NUMBER
+                                elif typ == 'boolean':
+                                    tool.type = ToolParameter.ToolParameterType.BOOLEAN
+                                elif typ == 'string':
+                                    tool.type = ToolParameter.ToolParameterType.STRING
+                            elif 'type' in property['schema']:
+                                typ = property['schema']['type']
+                                if typ == 'integer' or typ == 'number':
+                                    tool.type = ToolParameter.ToolParameterType.NUMBER
+                                elif typ == 'boolean':
+                                    tool.type = ToolParameter.ToolParameterType.BOOLEAN
+                                elif typ == 'string':
+                                    tool.type = ToolParameter.ToolParameterType.STRING
+
+                            parameters.append(tool)
 
             # check if parameters is duplicated
             parameters_count = {}
