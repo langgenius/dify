@@ -3,7 +3,6 @@ requires-python = ">=3.10"
 
 [tool.ruff]
 exclude = [
-    "__init__.py",
     "tests/",
 ]
 line-length = 120
@@ -27,8 +26,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "app.py" = [
-    "F401" # unused-import
+    "F401", # unused-import
 ]
 "__init__.py" = [
-    "F401" # unused-import
+    "F401", # unused-import
+    "F811", # redefined-while-unused
 ]
