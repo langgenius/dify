@@ -85,6 +85,7 @@ const translation = {
         'null': '空',
         'not null': '不为空',
       },
+      enterValue: '输入值',
     },
     variableAssigner: {
       title: '变量赋值',

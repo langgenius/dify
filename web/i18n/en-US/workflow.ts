@@ -86,6 +86,7 @@ const translation = {
         'null': 'is null',
         'not null': 'is not null',
       },
+      enterValue: 'Enter value',
     },
     variableAssigner: {
       title: 'Assign variables',
