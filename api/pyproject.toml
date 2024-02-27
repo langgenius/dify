@@ -27,6 +27,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "app.py" = [
     "F401", # unused-import
+    "F811", # redefined-while-unused
 ]
 "__init__.py" = [
     "F401", # unused-import
