@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
 import { mockData } from './mock'
+import ApiInput from './components/api-input'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-
 const i18nPrefix = 'workflow.nodes.http'
 
 const Panel: FC = () => {
@@ -18,6 +18,8 @@ const Panel: FC = () => {
     inputs,
     handleVarListChange,
     handleAddVariable,
+    handleMethodChange,
+    handleUrlChange,
   } = useConfig(mockData)
 
   return (
@@ -38,7 +40,13 @@ const Panel: FC = () => {
         <Field
           title={t(`${i18nPrefix}.api`)}
         >
-          API
+          <ApiInput
+            readonly={readOnly}
+            method={inputs.method}
+            onMethodChange={handleMethodChange}
+            url={inputs.url}
+            onUrlChange={handleUrlChange}
+          />
         </Field>
         <Field
           title={t(`${i18nPrefix}.headers`)}
