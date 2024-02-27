@@ -40,9 +40,9 @@ class AppListApi(Resource):
 
         # get app list
         app_service = AppService()
-        app_models = app_service.get_paginate_apps(current_user.current_tenant_id, args)
+        app_pagination = app_service.get_paginate_apps(current_user.current_tenant_id, args)
 
-        return app_models
+        return app_pagination
 
     @setup_required
     @login_required

@@ -51,6 +51,41 @@ class DraftWorkflowApi(Resource):
         }
 
 
+class PublishedWorkflowApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_fields)
+    def get(self, app_model: App):
+        """
+        Get published workflow
+        """
+        # fetch published workflow by app_model
+        workflow_service = WorkflowService()
+        workflow = workflow_service.get_published_workflow(app_model=app_model)
+
+        # return workflow, if not found, return None
+        return workflow
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Publish workflow
+        """
+        workflow_service = WorkflowService()
+        workflow_service.publish_workflow(app_model=app_model, account=current_user)
+
+        return {
+            "result": "success"
+        }
+
+
+
 class DefaultBlockConfigApi(Resource):
     @setup_required
     @login_required
@@ -88,5 +123,6 @@ class ConvertToWorkflowApi(Resource):
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')
+api.add_resource(PublishedWorkflowApi, '/apps/<uuid:app_id>/workflows/published')
 api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
 api.add_resource(ConvertToWorkflowApi, '/apps/<uuid:app_id>/convert-to-workflow')

@@ -13,3 +13,16 @@ workflow_fields = {
     'updated_by': fields.Nested(simple_account_fields, attribute='updated_by_account', allow_null=True),
     'updated_at': TimestampField
 }
+
+workflow_run_fields = {
+    "id": fields.String,
+    "version": fields.String,
+    "status": fields.String,
+    "error": fields.String,
+    "elapsed_time": fields.Float,
+    "total_tokens": fields.Integer,
+    "total_price": fields.Float,
+    "currency": fields.String,
+    "total_steps": fields.Integer,
+    "finished_at": TimestampField
+}

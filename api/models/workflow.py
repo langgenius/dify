@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
 from models.account import Account
+from models.model import EndUser
 
 
 class CreatedByRole(Enum):
@@ -148,6 +149,7 @@ class WorkflowRunStatus(Enum):
     RUNNING = 'running'
     SUCCEEDED = 'succeeded'
     FAILED = 'failed'
+    STOPPED = 'stopped'
 
     @classmethod
     def value_of(cls, value: str) -> 'WorkflowRunStatus':
@@ -184,7 +186,7 @@ class WorkflowRun(db.Model):
     - version (string) Version
     - graph (text) Workflow canvas configuration (JSON)
     - inputs (text) Input parameters
-    - status (string) Execution status, `running` / `succeeded` / `failed`
+    - status (string) Execution status, `running` / `succeeded` / `failed` / `stopped`
     - outputs (text) `optional` Output content
     - error (string) `optional` Error reason
     - elapsed_time (float) `optional` Time consumption (s)
@@ -366,3 +368,19 @@ class WorkflowAppLog(db.Model):
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def workflow_run(self):
+        return WorkflowRun.query.get(self.workflow_run_id)
+
+    @property
+    def created_by_account(self):
+        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        return Account.query.get(self.created_by) \
+            if created_by_role == CreatedByRole.ACCOUNT else None
+
+    @property
+    def created_by_end_user(self):
+        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        return EndUser.query.get(self.created_by) \
+            if created_by_role == CreatedByRole.END_USER else None

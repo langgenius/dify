@@ -15,7 +15,7 @@ class WorkflowService:
     Workflow Service
     """
 
-    def get_draft_workflow(self, app_model: App) -> Workflow:
+    def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
         """
         Get draft workflow
         """
@@ -28,6 +28,26 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
+
+    def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
+        """
+        Get published workflow
+        """
+        app_model_config = app_model.app_model_config
+
+        if not app_model_config.workflow_id:
+            return None
+
+        # fetch published workflow by workflow_id
+        workflow = db.session.query(Workflow).filter(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.id == app_model_config.workflow_id
+        ).first()
+
+        # return published workflow
+        return workflow
+
 
     def sync_draft_workflow(self, app_model: App, graph: dict, account: Account) -> Workflow:
         """
@@ -115,6 +135,8 @@ class WorkflowService:
 
         app_model.app_model_config_id = new_app_model_config.id
         db.session.commit()
+
+        # TODO update app related datasets
 
         # return new workflow
         return workflow
