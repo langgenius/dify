@@ -6,7 +6,7 @@ export type IButtonProps = {
   /**
    * The style of the button
    */
-  type?: 'primary' |'warning' | (string & {})
+  type?: 'primary' | 'warning' | (string & {});
   className?: string
   disabled?: boolean
   loading?: boolean
