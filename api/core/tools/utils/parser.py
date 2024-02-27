@@ -153,20 +153,18 @@ class ApiBasedToolSchemaParser:
     @staticmethod
     def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType:
         parameter = parameter or {}
+        typ = None
         if 'type' in parameter:
-            if parameter['type'] == 'integer' or parameter['type'] == 'number':
-                return ToolParameter.ToolParameterType.NUMBER
-            elif parameter['type'] == 'boolean':
-                return ToolParameter.ToolParameterType.BOOLEAN
-            elif parameter['type'] == 'string':
-                return ToolParameter.ToolParameterType.STRING
+            typ = parameter['type']
         elif 'schema' in parameter and 'type' in parameter['schema']:
-            if parameter['schema']['type'] == 'integer' or parameter['schema']['type'] == 'number':
-                return ToolParameter.ToolParameterType.NUMBER
-            elif parameter['schema']['type'] == 'boolean':
-                return ToolParameter.ToolParameterType.BOOLEAN
-            elif parameter['schema']['type'] == 'string':
-                return ToolParameter.ToolParameterType.STRING
+            typ = parameter['schema']['type']
+        
+        if typ == 'integer' or typ == 'number':
+            return ToolParameter.ToolParameterType.NUMBER
+        elif typ == 'boolean':
+            return ToolParameter.ToolParameterType.BOOLEAN
+        elif typ == 'string':
+            return ToolParameter.ToolParameterType.STRING
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
