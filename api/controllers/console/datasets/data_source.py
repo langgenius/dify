@@ -178,7 +178,8 @@ class DataSourceNotionApi(Resource):
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
             notion_page_type=page_type,
-            notion_access_token=data_source_binding.access_token
+            notion_access_token=data_source_binding.access_token,
+            tenant_id=current_user.current_tenant_id
         )
 
         text_docs = extractor.extract()
@@ -208,7 +209,8 @@ class DataSourceNotionApi(Resource):
                     notion_info={
                         "notion_workspace_id": workspace_id,
                         "notion_obj_id": page['page_id'],
-                        "notion_page_type": page['type']
+                        "notion_page_type": page['type'],
+                        "tenant_id": current_user.current_tenant_id
                     },
                     document_model=args['doc_form']
                 )

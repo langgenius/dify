@@ -39,7 +39,8 @@ class RetrievalService:
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
                 'query': query,
-                'top_k': top_k
+                'top_k': top_k,
+                'all_documents': all_documents
             })
             threads.append(keyword_thread)
             keyword_thread.start()

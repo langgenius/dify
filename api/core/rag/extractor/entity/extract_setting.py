@@ -12,6 +12,7 @@ class NotionInfo(BaseModel):
     notion_obj_id: str
     notion_page_type: str
     document: Document = None
+    tenant_id: str
 
     class Config:
         arbitrary_types_allowed = True

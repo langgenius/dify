@@ -132,7 +132,8 @@ class ExtractProcessor:
                 notion_workspace_id=extract_setting.notion_info.notion_workspace_id,
                 notion_obj_id=extract_setting.notion_info.notion_obj_id,
                 notion_page_type=extract_setting.notion_info.notion_page_type,
-                document_model=extract_setting.notion_info.document
+                document_model=extract_setting.notion_info.document,
+                tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
         else:

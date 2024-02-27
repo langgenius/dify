@@ -1,6 +1,6 @@
 """Abstract interface for document loader implementations."""
 from typing import Optional
-
+import csv
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
 from core.rag.models.document import Document
