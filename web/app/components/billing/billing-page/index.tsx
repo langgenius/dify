@@ -10,15 +10,14 @@ import { fetchBillingUrl } from '@/service/billing'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 
-
 const Billing: FC = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const { enableBilling } = useProviderContext()
   const { data: billingUrl } = useSWR(
-    !enableBilling || !isCurrentWorkspaceManager ? null : ['/billing/invoices'],
-    () => fetchBillingUrl().then(data => data.url)
-  );
+    (!enableBilling || !isCurrentWorkspaceManager) ? null : ['/billing/invoices'],
+    () => fetchBillingUrl().then(data => data.url),
+  )
 
   return (
     <div>
