@@ -101,7 +101,7 @@ class RetrievalService:
 
             documents = keyword.search(
                 query,
-                k=top_k
+                top_k=top_k
             )
             all_documents.extend(documents)
 
@@ -121,7 +121,7 @@ class RetrievalService:
             documents = vector.search_by_vector(
                 query,
                 search_type='similarity_score_threshold',
-                k=top_k,
+                top_k=top_k,
                 score_threshold=score_threshold,
                 filter={
                     'group_id': [dataset.id]
