@@ -8,7 +8,7 @@ const translation = {
   },
   contribute: {
     line1: 'Estou interessado em ',
-    line2: 'contribuir com ferramentas para o Dify.',
+    line2: 'contribuir com ferramentas para o AiConec Studio.',
     viewGuide: 'Ver o guia',
   },
   author: 'Por',

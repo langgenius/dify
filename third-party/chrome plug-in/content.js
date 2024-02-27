@@ -10,7 +10,7 @@ document.body.onload = embedChatbot;
 async function embedChatbot() {
   const difyChatbotConfig = window.difyChatbotConfig;
   if (!difyChatbotConfig) {
-    console.warn('Dify Chatbot Url is empty or is not provided');
+    console.warn('AiConec Studio Chatbot Url is empty or is not provided');
     return;
   }
   const openIcon = `<svg

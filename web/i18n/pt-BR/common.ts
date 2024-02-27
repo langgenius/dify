@@ -48,7 +48,7 @@ const translation = {
       openaiHosted: 'OpenAI Hospedado',
       onTrial: 'EM TESTE',
       exhausted: 'COTA ESGOTADA',
-      desc: 'O serviço de hospedagem OpenAI fornecido pela Dify permite que você use modelos como o GPT-3.5. Antes que sua cota de teste seja esgotada, você precisa configurar outros provedores de modelo.',
+      desc: 'O serviço de hospedagem OpenAI fornecido pela AiConec Studio permite que você use modelos como o GPT-3.5. Antes que sua cota de teste seja esgotada, você precisa configurar outros provedores de modelo.',
       callTimes: 'Número de chamadas',
       usedUp: 'Cota de teste esgotada. Adicione seu próprio provedor de modelo.',
       useYourModel: 'Atualmente usando seu próprio provedor de modelo.',
@@ -201,7 +201,7 @@ const translation = {
     },
   },
   apiBasedExtension: {
-    title: 'As extensões de API fornecem gerenciamento centralizado de API, simplificando a configuração para uso fácil em aplicativos da Dify.',
+    title: 'As extensões de API fornecem gerenciamento centralizado de API, simplificando a configuração para uso fácil em aplicativos da AiConec Studio.',
     link: 'Saiba como desenvolver sua própria Extensão de API.',
     linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'Adicionar Extensão de API',
@@ -232,8 +232,8 @@ const translation = {
   about: {
     changeLog: 'Registro de alterações',
     updateNow: 'Atualizar agora',
-    nowAvailable: 'Dify {{version}} está disponível agora.',
-    latestAvailable: 'Dify {{version}} é a versão mais recente disponível.',
+    nowAvailable: 'AiConec Studio {{version}} está disponível agora.',
+    latestAvailable: 'AiConec Studio {{version}} é a versão mais recente disponível.',
   },
   appMenus: {
     overview: 'Visão geral',

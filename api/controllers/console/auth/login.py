@@ -69,16 +69,16 @@ class ResetPasswordApi(Resource):
         # mailchimp = MailchimpTransactional(MAILCHIMP_API_KEY)
 
         message = {
-            'from_email': 'noreply@example.com',
+            'from_email': 'noreply@aiconec.com',
             'to': [{'email': account.email}],
-            'subject': 'Reset your Dify password',
+            'subject': 'Reset your AiConec Studio password',
             'html': """
                 <p>Dear User,</p>
-                <p>The Dify team has generated a new password for you, details as follows:</p> 
+                <p>The AiConec Studio team has generated a new password for you, details as follows:</p> 
                 <p><strong>{new_password}</strong></p>
                 <p>Please change your password to log in as soon as possible.</p>
                 <p>Regards,</p>
-                <p>The Dify Team</p> 
+                <p>The AiConec Studio Team</p> 
             """
         }
 

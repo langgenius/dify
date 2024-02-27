@@ -1,4 +1,4 @@
-# Dify Frontend
+# AiConec Studio Frontend
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -68,4 +68,4 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 Visit https://docs.dify.ai/getting-started/readme to view the full documentation.
 
 ## Community
-The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.
+The AiConec Studio community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.

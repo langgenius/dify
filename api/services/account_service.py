@@ -483,7 +483,7 @@ class RegisterService:
             language=account.interface_language,
             to=email,
             token=token,
-            inviter_name=inviter.name if inviter else 'Dify',
+            inviter_name=inviter.name if inviter else 'AiConec Studio',
             workspace_name=tenant.name,
         )
 

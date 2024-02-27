@@ -1,13 +1,13 @@
 {
   "name": "dify-client",
   "version": "2.2.1",
-  "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
+  "description": "This is the Node.js SDK for the AiConec Studio.AI API, which allows you to easily integrate AiConec Studio.AI into your Node.js applications.",
   "main": "index.js",
   "type": "module",
   "types":"index.d.ts",
   "keywords": [
-    "Dify",
-    "Dify.AI",
+    "AiConec Studio",
+    "AiConec Studio.AI",
     "LLM"
   ],
   "author": "Joel",

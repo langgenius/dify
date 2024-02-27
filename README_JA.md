@@ -10,7 +10,7 @@
 
 <p align="center">
     <a href="https://dify.ai" target="_blank">
-        <img alt="Static Badge" src="https://img.shields.io/badge/AI-Dify?logo=AI&logoColor=%20%23f5f5f5&label=Dify&labelColor=%20%23155EEF&color=%23EAECF0"></a>
+        <img alt="Static Badge" src="https://img.shields.io/badge/AI-AiConec Studio?logo=AI&logoColor=%20%23f5f5f5&label=AiConec Studio&labelColor=%20%23155EEF&color=%23EAECF0"></a>
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord"
             alt="chat on Discord"></a>
@@ -23,7 +23,7 @@
 
 <p align="center">
    <a href="https://dify.ai/blog/dify-ai-unveils-ai-agent-creating-gpts-and-assistants-with-various-llms" target="_blank">
-   Dify.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
+   AiConec Studio.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
   </a>
 </p>
 
@@ -36,13 +36,13 @@ Please note that translating complex technical terms can sometimes result in sli
 
 ## クラウドサービスの利用
 
-[Dify.AI Cloud](https://dify.ai) を使用すると、オープンソース版の全機能を利用でき、さらに200GPTのトライアルクレジットが無料で提供されます。
+[AiConec Studio.AI Cloud](https://dify.ai) を使用すると、オープンソース版の全機能を利用でき、さらに200GPTのトライアルクレジットが無料で提供されます。
 
 ## Difyの利点
 
 Difyはモデルニュートラルであり、LangChainのようなハードコードされた開発ライブラリと比較して、完全にエンジニアリングされた技術スタックを特徴としています。OpenAIのAssistants APIとは異なり、Difyではサービスの完全なローカルデプロイメントが可能です。
 
-| 機能 | Dify.AI | Assistants API | LangChain |
+| 機能 | AiConec Studio.AI | Assistants API | LangChain |
 |---------|---------|----------------|-----------|
 | **プログラミングアプローチ** | API指向 | API指向 | Pythonコード指向 |
 | **エコシステム戦略** | オープンソース | 閉鎖的かつ商業的 | オープンソース |
@@ -115,11 +115,11 @@ docker compose up -d
 
 Difyに貢献していただき、コードの提出、問題の報告、新しいアイデアの提供、またはDifyを基に作成した興味深く有用なAIアプリケーションの共有により、Difyをより良いものにするお手伝いを歓迎します。同時に、さまざまなイベント、会議、ソーシャルメディアでDifyを共有することも歓迎します。
 
-- [GitHub Issues](https://github.com/langgenius/dify/issues)。最適な使用法：Dify.AIの使用中に遭遇するバグやエラー、[貢献ガイド](CONTRIBUTING.md)を参照。
-- [Email サポート](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。最適な使用法：Dify.AIの使用に関する質問。
+- [GitHub Issues](https://github.com/langgenius/dify/issues)。最適な使用法：AiConec Studio.AIの使用中に遭遇するバグやエラー、[貢献ガイド](CONTRIBUTING.md)を参照。
+- [Email サポート](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。最適な使用法：AiConec Studio.AIの使用に関する質問。
 - [Discord](https://discord.gg/FngNHpbcY7)。最適な使用法：アプリケーションの共有とコミュニティとの交流。
 - [Twitter](https://twitter.com/dify_ai)。最適な使用法：アプリケーションの共有とコミュニティとの交流。
-- [ビジネスライセンス](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。最適な使用法：Dify.AIを商業利用するためのビジネス関連の問い合わせ。
+- [ビジネスライセンス](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。最適な使用法：AiConec Studio.AIを商業利用するためのビジネス関連の問い合わせ。
 
 ## セキュリティ
 

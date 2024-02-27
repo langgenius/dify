@@ -25,7 +25,7 @@ const translation = {
     callTimes: 'Кількість викликів', // Call times
     usedToken: 'Використано токенів', // Used token
     setAPIBtn: 'Перейти до налаштування постачальника моделі', // Go to setup model provider
-    tryCloud: 'Або спробуйте хмарну версію Dify з безкоштовною квотою', // Or try the cloud version ...
+    tryCloud: 'Або спробуйте хмарну версію AiConec Studio з безкоштовною квотою', // Or try the cloud version ...
   },
   overview: {
     title: 'Огляд', // Overview
@@ -49,7 +49,7 @@ const translation = {
           copyRightPlaceholder: 'Введіть ім’я автора або організації',
           privacyPolicy: 'Політика конфіденційності', // Privacy Policy
           privacyPolicyPlaceholder: 'Введіть посилання на політику конфіденційності',
-          privacyPolicyTip: 'Допомагає відвідувачам зрозуміти, які дані збирає програма. Дивіться <privacyPolicyLink>Політику конфіденційності</privacyPolicyLink> Dify.',
+          privacyPolicyTip: 'Допомагає відвідувачам зрозуміти, які дані збирає програма. Дивіться <privacyPolicyLink>Політику конфіденційності</privacyPolicyLink> AiConec Studio.',
         },
       },
       embedded: {
@@ -58,7 +58,7 @@ const translation = {
         explanation: 'Виберіть спосіб вбудувати чат-програму на свій веб-сайт',
         iframe: 'Щоб додати чат-програму будь-де на своєму веб-сайті, додайте цей iframe у свій код html.',
         scripts: 'Щоб додати програму чату у правий нижній кут свого веб-сайту, додайте цей код до свого html.',
-        chromePlugin: 'Встановити розширення Dify Chatbot для Chrome',
+        chromePlugin: 'Встановити розширення AiConec Studio Chatbot для Chrome',
         copied: 'Скопійовано', // Copied
         copy: 'Копіювати', // Copy
       },
@@ -76,7 +76,7 @@ const translation = {
           name: 'Розгалужити код клієнта, змінити його та розгорнути у Vercel (рекомендовано)',
           step1: 'Розгалужити код клієнта та модифікувати його',
           step1Tip: 'Натисніть тут, щоб розгалужити вихідний код у свій обліковий запис GitHub і змінити код',
-          step1Operation: 'Dify-WebClient',
+          step1Operation: 'AiConec Studio-WebClient',
           step2: 'Розгорнути у Vercel',
           step2Tip: 'Натисніть тут, щоб імпортувати репозиторій до Vercel та виконати розгортання',
           step2Operation: 'Імпортувати репозиторій',

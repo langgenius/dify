@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: "\U0001F4DA Dify user documentation"
+  - name: "\U0001F4DA AiConec Studio user documentation"
     url: https://docs.dify.ai/getting-started/readme
-    about: Documentation for users of Dify
-  - name: "\U0001F4DA Dify dev documentation"
+    about: Documentation for users of AiConec Studio
+  - name: "\U0001F4DA AiConec Studio dev documentation"
     url: https://docs.dify.ai/getting-started/install-self-hosted
-    about: Documentation for people interested in developing and contributing for Dify
+    about: Documentation for people interested in developing and contributing for AiConec Studio

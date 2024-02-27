@@ -114,7 +114,7 @@ class GenerateTaskPipeline:
                         'id': annotation.id,
                         'account': {
                             'id': annotation.account_id,
-                            'name': account.name if account else 'Dify user'
+                            'name': account.name if account else 'AiConec Studio user'
                         }
                     }
 
@@ -291,7 +291,7 @@ class GenerateTaskPipeline:
                         'id': annotation.id,
                         'account': {
                             'id': annotation.account_id,
-                            'name': account.name if account else 'Dify user'
+                            'name': account.name if account else 'AiConec Studio user'
                         }
                     }
 
@@ -483,7 +483,7 @@ class GenerateTaskPipeline:
             ProviderTokenNotInitError: {'code': 'provider_not_initialize', 'status': 400},
             QuotaExceededError: {
                 'code': 'provider_quota_exceeded',
-                'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
+                'message': "Your quota for AiConec Studio Hosted Model Provider has been exhausted. "
                        "Please go to Settings -> Model Provider to complete your own provider credentials.",
                 'status': 400
             },

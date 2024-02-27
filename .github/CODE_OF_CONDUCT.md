@@ -1,4 +1,4 @@
-# Dify Code of Conduct
+# AiConec Studio Code of Conduct
 
 ## Our Pledge
 

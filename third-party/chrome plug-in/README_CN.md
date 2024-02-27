@@ -1,4 +1,4 @@
-## Chrome Dify ChatBot插件
+## Chrome AiConec Studio ChatBot插件
 
 ### 方式1：Chrome插件商店 * [点击访问](https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf/related?hl=zh-CN&authuser=0) *
  

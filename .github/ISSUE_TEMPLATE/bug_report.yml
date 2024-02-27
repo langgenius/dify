@@ -17,16 +17,16 @@ body:
 
   - type: input
     attributes:
-      label: Dify version
+      label: AiConec Studio version
       placeholder: 0.3.21
-      description: See about section in Dify console
+      description: See about section in AiConec Studio console
     validations:
       required: true
 
   - type: dropdown
     attributes:
       label: Cloud or Self Hosted
-      description: How / Where was Dify installed from?
+      description: How / Where was AiConec Studio installed from?
       multiple: true
       options:
         - Cloud

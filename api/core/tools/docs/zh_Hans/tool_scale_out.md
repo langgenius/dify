@@ -15,7 +15,7 @@
 
 ```yaml
 identity: # 工具供应商的基本信息
-  author: Dify # 作者
+  author: AiConec Studio # 作者
   name: google # 名称，唯一，不允许和其他供应商重名
   label: # 标签，用于前端展示
     en_US: Google # 英文标签
@@ -36,7 +36,7 @@ Google作为一个第三方工具，使用了SerpApi提供的API，而SerpApi需
 配置好凭据字段后效果如下：
 ```yaml
 identity:
-  author: Dify
+  author: AiConec Studio
   name: google
   label:
     en_US: Google
@@ -72,7 +72,7 @@ credentials_for_provider: # 凭据字段
 ```yaml
 identity: # 工具的基本信息
   name: google_search # 工具名称，唯一，不允许和其他工具重名
-  author: Dify # 作者
+  author: AiConec Studio # 作者
   label: # 标签，用于前端展示
     en_US: GoogleSearch # 英文标签
     zh_Hans: 谷歌搜索 # 中文标签

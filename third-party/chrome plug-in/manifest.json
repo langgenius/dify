@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Dify Chatbot",
+  "name": "AiConec Studio Chatbot",
   "version": "1.5",
   "description": "This is a chrome extension to inject a dify chatbot on any pages",
   "content_scripts": [

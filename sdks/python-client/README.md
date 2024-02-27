@@ -1,6 +1,6 @@
 # dify-client
 
-A Dify App Service-API Client, using for build a webapp by request Service-API
+A AiConec Studio App Service-API Client, using for build a webapp by request Service-API
 
 ## Usage
 

@@ -10,7 +10,7 @@
 
 <p align="center">
     <a href="https://dify.ai" target="_blank">
-        <img alt="Static Badge" src="https://img.shields.io/badge/AI-Dify?logo=AI&logoColor=%20%23f5f5f5&label=Dify&labelColor=%20%23155EEF&color=%23EAECF0"></a>
+        <img alt="Static Badge" src="https://img.shields.io/badge/AI-AiConec Studio?logo=AI&logoColor=%20%23f5f5f5&label=AiConec Studio&labelColor=%20%23155EEF&color=%23EAECF0"></a>
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord"
             alt="chat on Discord"></a>
@@ -23,23 +23,23 @@
 
 <p align="center">
    <a href="https://mp.weixin.qq.com/s/TnyfIuH-tPi9o1KNjwVArw" target="_blank">
-   Dify 发布 AI Agent 能力：基于不同的大型语言模型构建 GPTs 和 Assistants
+   AiConec Studio 发布 AI Agent 能力：基于不同的大型语言模型构建 GPTs 和 Assistants
   </a>
 </p>
 
-Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
+AiConec Studio 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 AiConec Studio.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 AiConec Studio，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
 
 ![](./images/demo.png)
 
 ## 使用云端服务
 
-使用 [Dify.AI Cloud](https://dify.ai) 提供开源版本的所有功能,并包含 200 次 GPT 试用额度。
+使用 [AiConec Studio.AI Cloud](https://dify.ai) 提供开源版本的所有功能,并包含 200 次 GPT 试用额度。
 
-## 为什么选择 Dify
+## 为什么选择 AiConec Studio
 
-Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
+AiConec Studio 具有模型中立性，相较 LangChain 等硬编码开发库 AiConec Studio 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
 
-| 功能 | Dify.AI | Assistants API | LangChain |
+| 功能 | AiConec Studio.AI | Assistants API | LangChain |
 | --- | --- | --- | --- |
 | 编程方式 | 面向 API | 面向 API | 面向 Python 代码 |
 | 生态策略 | 开源 | 封闭且商用 | 开源 |
@@ -55,11 +55,11 @@ Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一�
 
 **1. LLM支持**：与 OpenAI 的 GPT 系列模型集成,或者与开源的 Llama2 系列模型集成。事实上，Dify支持主流的商业模型和开源模型(本地部署或基于 MaaS)。
 
-**2. Prompt IDE**：和团队一起在 Dify 协作，通过可视化的 Prompt 和应用编排工具开发 AI 应用。 支持无缝切换多种大型语言模型。
+**2. Prompt IDE**：和团队一起在 AiConec Studio 协作，通过可视化的 Prompt 和应用编排工具开发 AI 应用。 支持无缝切换多种大型语言模型。
 
 **3. RAG引擎**：包括各种基于全文索引或向量数据库嵌入的 RAG 能力，允许直接上传 PDF、TXT 等各种文本格式。
 
-**4. AI Agent**：基于 Function Calling 和 ReAct 的 Agent 推理框架，允许用户自定义工具，所见即所得。Dify 提供了十多种内置工具调用能力，如谷歌搜索、DELL·E、Stable Diffusion、WolframAlpha 等。
+**4. AI Agent**：基于 Function Calling 和 ReAct 的 Agent 推理框架，允许用户自定义工具，所见即所得。AiConec Studio 提供了十多种内置工具调用能力，如谷歌搜索、DELL·E、Stable Diffusion、WolframAlpha 等。
 
 **5. 持续运营**：监控和分析应用日志和性能，使用生产数据持续改进 Prompt、数据集或模型。
 
@@ -78,25 +78,25 @@ Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一�
 
 ### 系统要求
 
-在安装 Dify 之前，请确保您的机器满足以下最低系统要求：
+在安装 AiConec Studio 之前，请确保您的机器满足以下最低系统要求：
 
 - CPU >= 2 Core
 - RAM >= 4GB
 
 ### 快速启动
 
-启动 Dify 服务器的最简单方法是运行我们的 [docker-compose.yml](docker/docker-compose.yaml) 文件。在运行安装命令之前，请确保您的机器上安装了 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)：
+启动 AiConec Studio 服务器的最简单方法是运行我们的 [docker-compose.yml](docker/docker-compose.yaml) 文件。在运行安装命令之前，请确保您的机器上安装了 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)：
 
 ```bash
 cd docker
 docker compose up -d
 ```
 
-运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
+运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 AiConec Studio 控制台并开始初始化安装操作。
 
 ### Helm Chart
 
-非常感谢 @BorisPolonsky 为我们提供了一个 [Helm Chart](https://helm.sh/) 版本，可以在 Kubernetes 上部署 Dify。
+非常感谢 @BorisPolonsky 为我们提供了一个 [Helm Chart](https://helm.sh/) 版本，可以在 Kubernetes 上部署 AiConec Studio。
 您可以前往 https://github.com/BorisPolonsky/dify-helm 来获取部署信息。
 
 ### 配置
@@ -110,14 +110,14 @@ docker compose up -d
 
 ## 社区与支持
 
-我们欢迎您为 Dify 做出贡献，以帮助改善 Dify。包括：提交代码、问题、新想法，或分享您基于 Dify 创建的有趣且有用的 AI 应用程序。同时，我们也欢迎您在不同的活动、会议和社交媒体上分享 Dify。
+我们欢迎您为 AiConec Studio 做出贡献，以帮助改善 AiConec Studio。包括：提交代码、问题、新想法，或分享您基于 AiConec Studio 创建的有趣且有用的 AI 应用程序。同时，我们也欢迎您在不同的活动、会议和社交媒体上分享 AiConec Studio。
 
-- [GitHub Issues](https://github.com/langgenius/dify/issues)。👉：使用 Dify.AI 时遇到的错误和问题，请参阅[贡献指南](CONTRIBUTING.md)。
-- [电子邮件支持](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。👉：关于使用 Dify.AI 的问题。
+- [GitHub Issues](https://github.com/langgenius/dify/issues)。👉：使用 AiConec Studio.AI 时遇到的错误和问题，请参阅[贡献指南](CONTRIBUTING.md)。
+- [电子邮件支持](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。👉：关于使用 AiConec Studio.AI 的问题。
 - [Discord](https://discord.gg/FngNHpbcY7)。👉：分享您的应用程序并与社区交流。
 - [Twitter](https://twitter.com/dify_ai)。👉：分享您的应用程序并与社区交流。
-- [商业许可](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。👉：有关商业用途许可 Dify.AI 的商业咨询。
- - [微信]() 👉：扫描下方二维码，添加微信好友，备注 Dify，我们将邀请您加入 Dify 社区。  
+- [商业许可](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。👉：有关商业用途许可 AiConec Studio.AI 的商业咨询。
+ - [微信]() 👉：扫描下方二维码，添加微信好友，备注 AiConec Studio，我们将邀请您加入 AiConec Studio 社区。  
 <img src="./images/wechat.png" alt="wechat" width="100"/>
 
 ## 安全问题
@@ -126,4 +126,4 @@ docker compose up -d
 
 ## License
 
-本仓库遵循 [Dify Open Source License](LICENSE) 开源协议，该许可证本质上是 Apache 2.0，但有一些额外的限制。
+本仓库遵循 [AiConec Studio Open Source License](LICENSE) 开源协议，该许可证本质上是 Apache 2.0，但有一些额外的限制。

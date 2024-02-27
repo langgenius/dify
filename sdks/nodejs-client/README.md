@@ -1,5 +1,5 @@
-# Dify Node.js SDK
-This is the Node.js SDK for the Dify API, which allows you to easily integrate Dify into your Node.js applications.
+# AiConec Studio Node.js SDK
+This is the Node.js SDK for the AiConec Studio API, which allows you to easily integrate AiConec Studio into your Node.js applications.
 
 ## Install
 ```bash
@@ -57,7 +57,7 @@ client.messageFeedback(messageId, rating, user)
 
 ```
 
-Replace 'your-api-key-here' with your actual Dify API key.Replace 'your-app-id-here' with your actual Dify APP ID.
+Replace 'your-api-key-here' with your actual AiConec Studio API key.Replace 'your-app-id-here' with your actual AiConec Studio APP ID.
 
 ## License
 This SDK is released under the MIT License.

@@ -1,4 +1,4 @@
-## Chrome Dify ChatBot插件
+## Chrome AiConec Studio ChatBot插件
 
 1、初始化设置Dify 应用配置，分别输入Dify根域名和应用Token，Token可以在Dify应用嵌入中获取；
 2、点击保存，确认提示配置成功即可；
