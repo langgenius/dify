@@ -134,7 +134,7 @@ const FileUploader = ({
       xhr: new XMLHttpRequest(),
       data: formData,
       onprogress: onProgress,
-    })
+    }, false, undefined, '?source=datasets')
       .then((res: File) => {
         const completeFile = {
           fileID: fileItem.fileID,
@@ -146,8 +146,9 @@ const FileUploader = ({
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
       })
-      .catch(() => {
-        notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.failed') })
+      .catch((e) => {
+        console.log(e)
+        notify({ type: 'error', message: e.code === 'forbidden' ? e.message : t('datasetCreation.stepOne.uploader.failed') })
         onFileUpdate(fileItem, -2, fileListCopy)
         return Promise.resolve({ ...fileItem })
       })
