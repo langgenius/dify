@@ -91,6 +91,7 @@ const translation = {
       outputType: '输出类型',
       outputVarType: '输出变量类型',
       varNotSet: '未设置变量',
+      noVarTip: '添加需要赋值的变量',
       type: {
         string: 'String',
         number: 'Number',

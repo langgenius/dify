@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -17,6 +18,7 @@ const VarList: FC<Props> = ({
   list,
   onChange,
 }) => {
+  const { t } = useTranslation()
   const handleVarReferenceChange = useCallback((index: number) => {
     return (value: ValueSelector) => {
       const newList = produce(list, (draft) => {
@@ -34,6 +36,14 @@ const VarList: FC<Props> = ({
       onChange(newList)
     }
   }, [list, onChange])
+
+  if (list.length === 0) {
+    return (
+      <div className='flex rounded-md bg-gray-50 items-center h-[42px] justify-center leading-[18px] text-xs font-normal text-gray-500'>
+        {t('workflow.nodes.variableAssigner.noVarTip')}
+      </div>
+    )
+  }
 
   return (
     <div className='space-y-2'>
