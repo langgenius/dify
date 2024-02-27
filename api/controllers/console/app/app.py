@@ -1,29 +1,18 @@
-import json
-from datetime import datetime
-from typing import cast
-
-import yaml
 from flask_login import current_user
 from flask_restful import Resource, abort, inputs, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, BadRequest
 
-from constants.model_template import default_app_templates
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.errors.error import ProviderTokenNotInitError
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType, ModelPropertyKey
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from events.app_event import app_was_created, app_was_deleted
-from extensions.ext_database import db
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
 )
 from libs.login import login_required
+from services.app_service import AppService
 from models.model import App, AppModelConfig, AppMode
 from services.workflow_service import WorkflowService
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -49,32 +38,9 @@ class AppListApi(Resource):
         parser.add_argument('name', type=str, location='args', required=False)
         args = parser.parse_args()
 
-        filters = [
-            App.tenant_id == current_user.current_tenant_id,
-            App.is_universal == False
-        ]
-
-        if args['mode'] == 'workflow':
-            filters.append(App.mode.in_([AppMode.WORKFLOW.value, AppMode.COMPLETION.value]))
-        elif args['mode'] == 'chat':
-            filters.append(App.mode.in_([AppMode.CHAT.value, AppMode.ADVANCED_CHAT.value]))
-        elif args['mode'] == 'agent':
-            filters.append(App.mode == AppMode.AGENT_CHAT.value)
-        elif args['mode'] == 'channel':
-            filters.append(App.mode == AppMode.CHANNEL.value)
-        else:
-            pass
-
-        if 'name' in args and args['name']:
-            name = args['name'][:30]
-            filters.append(App.name.ilike(f'%{name}%'))
-
-        app_models = db.paginate(
-            db.select(App).where(*filters).order_by(App.created_at.desc()),
-            page=args['page'],
-            per_page=args['limit'],
-            error_out=False
-        )
+        # get app list
+        app_service = AppService()
+        app_models = app_service.get_paginate_apps(current_user.current_tenant_id, args)
 
         return app_models
 
@@ -97,63 +63,10 @@ class AppListApi(Resource):
             raise Forbidden()
 
         if 'mode' not in args or args['mode'] is None:
-            abort(400, message="mode is required")
+            raise BadRequest("mode is required")
 
-        app_mode = AppMode.value_of(args['mode'])
-
-        app_template = default_app_templates[app_mode]
-
-        # get model config
-        default_model_config = app_template['model_config']
-        if 'model' in default_model_config:
-            # get model provider
-            model_manager = ModelManager()
-
-            # get default model instance
-            try:
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=current_user.current_tenant_id,
-                    model_type=ModelType.LLM
-                )
-            except ProviderTokenNotInitError:
-                model_instance = None
-
-            if model_instance:
-                if model_instance.model == default_model_config['model']['name']:
-                    default_model_dict = default_model_config['model']
-                else:
-                    llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-
-                    default_model_dict = {
-                        'provider': model_instance.provider,
-                        'name': model_instance.model,
-                        'mode': model_schema.model_properties.get(ModelPropertyKey.MODE),
-                        'completion_params': {}
-                    }
-            else:
-                default_model_dict = default_model_config['model']
-
-            default_model_config['model'] = json.dumps(default_model_dict)
-
-        app = App(**app_template['app'])
-        app.name = args['name']
-        app.mode = args['mode']
-        app.icon = args['icon']
-        app.icon_background = args['icon_background']
-        app.tenant_id = current_user.current_tenant_id
-
-        db.session.add(app)
-        db.session.flush()
-
-        app_model_config = AppModelConfig(**default_model_config)
-        app_model_config.app_id = app.id
-        db.session.add(app_model_config)
-        db.session.flush()
-
-        app.app_model_config_id = app_model_config.id
-
-        app_was_created.send(app, account=current_user)
+        app_service = AppService()
+        app = app_service.create_app(current_user.current_tenant_id, args, current_user)
 
         return app, 201
 
@@ -177,54 +90,8 @@ class AppImportApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        try:
-            import_data = yaml.safe_load(args['data'])
-        except yaml.YAMLError as e:
-            raise ValueError("Invalid YAML format in data argument.")
-
-        app_data = import_data.get('app')
-        model_config_data = import_data.get('model_config')
-        workflow_graph = import_data.get('workflow_graph')
-
-        if not app_data or not model_config_data:
-            raise ValueError("Missing app or model_config in data argument")
-
-        app_mode = AppMode.value_of(app_data.get('mode'))
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            if not workflow_graph:
-                raise ValueError("Missing workflow_graph in data argument "
-                                 "when mode is advanced-chat or workflow")
-
-        app = App(
-            tenant_id=current_user.current_tenant_id,
-            mode=app_data.get('mode'),
-            name=args.get("name") if args.get("name") else app_data.get('name'),
-            icon=args.get("icon") if args.get("icon") else app_data.get('icon'),
-            icon_background=args.get("icon_background") if args.get("icon_background") \
-                else app_data.get('icon_background'),
-            enable_site=True,
-            enable_api=True
-        )
-
-        db.session.add(app)
-        db.session.commit()
-
-        if workflow_graph:
-            workflow_service = WorkflowService()
-            draft_workflow = workflow_service.sync_draft_workflow(app, workflow_graph, current_user)
-            published_workflow = workflow_service.publish_draft_workflow(app, current_user, draft_workflow)
-            model_config_data['workflow_id'] = published_workflow.id
-
-        app_model_config = AppModelConfig()
-        app_model_config = app_model_config.from_model_config_dict(model_config_data)
-        app_model_config.app_id = app.id
-
-        db.session.add(app_model_config)
-        db.session.commit()
-
-        app.app_model_config_id = app_model_config.id
-
-        app_was_created.send(app, account=current_user)
+        app_service = AppService()
+        app = app_service.import_app(current_user.current_tenant_id, args, current_user)
 
         return app, 201
 
@@ -281,13 +148,8 @@ class AppApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        db.session.delete(app_model)
-        db.session.commit()
-
-        # todo delete related data??
-        # model_config, site, api_token, conversation, message, message_feedback, message_annotation
-
-        app_was_deleted.send(app_model)
+        app_service = AppService()
+        app_service.delete_app(app_model)
 
         return {'result': 'success'}, 204
 
@@ -299,28 +161,10 @@ class AppExportApi(Resource):
     @get_app_model
     def get(self, app_model):
         """Export app"""
-        app_model_config = app_model.app_model_config
-
-        export_data = {
-            "app": {
-                "name": app_model.name,
-                "mode": app_model.mode,
-                "icon": app_model.icon,
-                "icon_background": app_model.icon_background
-            },
-            "model_config": app_model_config.to_dict(),
-        }
-
-        if app_model_config.workflow_id:
-            export_data['workflow_graph'] = json.loads(app_model_config.workflow.graph)
-        else:
-            # get draft workflow
-            workflow_service = WorkflowService()
-            workflow = workflow_service.get_draft_workflow(app_model)
-            export_data['workflow_graph'] = json.loads(workflow.graph)
+        app_service = AppService()
 
         return {
-            "data": yaml.dump(export_data)
+            "data": app_service.export_app(app_model)
         }
 
 
@@ -335,9 +179,9 @@ class AppNameApi(Resource):
         parser.add_argument('name', type=str, required=True, location='json')
         args = parser.parse_args()
 
-        app_model.name = args.get('name')
-        app_model.updated_at = datetime.utcnow()
-        db.session.commit()
+        app_service = AppService()
+        app_model = app_service.update_app_name(app_model, args.get('name'))
+
         return app_model
 
 
@@ -353,10 +197,8 @@ class AppIconApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        app_model.icon = args.get('icon')
-        app_model.icon_background = args.get('icon_background')
-        app_model.updated_at = datetime.utcnow()
-        db.session.commit()
+        app_service = AppService()
+        app_model = app_service.update_app_icon(app_model, args.get('icon'), args.get('icon_background'))
 
         return app_model
 
@@ -372,12 +214,9 @@ class AppSiteStatus(Resource):
         parser.add_argument('enable_site', type=bool, required=True, location='json')
         args = parser.parse_args()
 
-        if args.get('enable_site') == app_model.enable_site:
-            return app_model
+        app_service = AppService()
+        app_model = app_service.update_app_site_status(app_model, args.get('enable_site'))
 
-        app_model.enable_site = args.get('enable_site')
-        app_model.updated_at = datetime.utcnow()
-        db.session.commit()
         return app_model
 
 
@@ -392,12 +231,9 @@ class AppApiStatus(Resource):
         parser.add_argument('enable_api', type=bool, required=True, location='json')
         args = parser.parse_args()
 
-        if args.get('enable_api') == app_model.enable_api:
-            return app_model
+        app_service = AppService()
+        app_model = app_service.update_app_api_status(app_model, args.get('enable_api'))
 
-        app_model.enable_api = args.get('enable_api')
-        app_model.updated_at = datetime.utcnow()
-        db.session.commit()
         return app_model
 
 
