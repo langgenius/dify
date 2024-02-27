@@ -42,9 +42,6 @@ from libs.passport import PassportService
 from models import account, dataset, model, source, task, tool, tools, web
 from services.account_service import AccountService
 
-# DO NOT REMOVE ABOVE
-
-
 warnings.simplefilter("ignore", ResourceWarning)
 
 # fix windows platform
