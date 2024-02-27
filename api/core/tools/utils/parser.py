@@ -1,7 +1,6 @@
 
 import re
 import uuid
-
 from json import loads as json_loads
 
 from requests import get
