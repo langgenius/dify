@@ -9,7 +9,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from events.app_event import app_was_created, app_was_deleted, app_model_config_was_updated
+from events.app_event import app_model_config_was_updated, app_was_created, app_was_deleted
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
