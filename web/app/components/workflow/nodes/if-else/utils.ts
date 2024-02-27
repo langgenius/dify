@@ -8,3 +8,13 @@ export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
 export const checkNodeValid = (payload: IfElseNodeType) => {
   return true
 }
+
+const notTranslateKey = [
+  ComparisonOperator.equal, ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
+]
+
+export const isComparisonOperatorNeedTranslate = (operator: ComparisonOperator) => {
+  return !notTranslateKey.includes(operator)
+}

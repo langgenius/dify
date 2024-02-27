@@ -3,16 +3,9 @@ import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
 import { NodeSourceHandle } from '../_base/components/node-handle'
 import { mockData } from './mock'
-import { ComparisonOperator } from './types'
-import { isEmptyRelatedOperator } from './utils'
+import { isComparisonOperatorNeedTranslate, isEmptyRelatedOperator } from './utils'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const i18nPrefix = 'workflow.nodes.ifElse'
-
-const notTranslateKey = [
-  ComparisonOperator.equal, ComparisonOperator.notEqual,
-  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
-  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
-]
 
 const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
   const { t } = useTranslation()
@@ -35,7 +28,7 @@ const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
             <div className='flex items-center h-6 bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
               <Variable02 className='w-3.5 h-3.5 text-primary-500' />
               <span>{condition.variable_selector.slice(-1)[0]}</span>
-              <span className='text-gray-500'>{notTranslateKey.includes(condition.comparison_operator) ? condition.comparison_operator : t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`)}</span>
+              <span className='text-gray-500'>{isComparisonOperatorNeedTranslate(condition.comparison_operator) ? condition.comparison_operator : t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`)}</span>
               {!isEmptyRelatedOperator(condition.comparison_operator) && <span>{condition.value}</span>}
             </div>
             {i !== conditions.length - 1 && (

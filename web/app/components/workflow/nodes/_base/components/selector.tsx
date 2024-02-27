@@ -37,7 +37,7 @@ const TypeSelector: FC<Props> = ({
     setHide()
   }, ref)
   return (
-    <div className='relative left-[-8px]' ref={ref}>
+    <div className={cn(!trigger && 'left-[-8px]', 'relative')} ref={ref}>
       {trigger
         ? (
           <div

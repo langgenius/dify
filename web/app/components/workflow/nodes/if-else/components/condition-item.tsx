@@ -4,11 +4,13 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
+import { isComparisonOperatorNeedTranslate } from '../utils'
 import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
-import { LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
+import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
+import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const Line = (
@@ -22,6 +24,44 @@ const Line = (
     </defs>
   </svg>
 )
+
+const getOperators = (type: string) => {
+  switch (type) {
+    case 'string':
+      return [
+        ComparisonOperator.contains,
+        ComparisonOperator.notContains,
+        ComparisonOperator.startWith,
+        ComparisonOperator.endWith,
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    case 'number':
+      return [
+        ComparisonOperator.equal,
+        ComparisonOperator.notEqual,
+        ComparisonOperator.largerThan,
+        ComparisonOperator.lessThan,
+        ComparisonOperator.largerThanOrEqual,
+        ComparisonOperator.lessThanOrEqual,
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    case 'array':
+      return [
+        ComparisonOperator.is,
+        ComparisonOperator.isNot,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    default:
+      return []
+  }
+}
 
 type ItemProps = {
   readonly: boolean
@@ -51,12 +91,20 @@ const Item: FC<ItemProps> = ({
       ...payload,
       variable_selector: value,
     })
+    // TODO: handle value type change will effect the comparisonOperators
   }, [onChange, payload])
 
   const handleValueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({
       ...payload,
       value: e.target.value,
+    })
+  }, [onChange, payload])
+
+  const handleComparisonOperatorChange = useCallback((v: ComparisonOperator) => {
+    onChange({
+      ...payload,
+      comparison_operator: v,
     })
   }, [onChange, payload])
 
@@ -90,12 +138,30 @@ const Item: FC<ItemProps> = ({
           onChange={handleVarReferenceChange}
         />
 
+        <Selector
+          popupClassName='top-[34px]'
+          trigger={
+            <div className='shrink-0 whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize'>
+              <div className='text-[13px] font-normal text-gray-900'>{isComparisonOperatorNeedTranslate(payload.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${payload.comparison_operator}`) : payload.comparison_operator}</div>
+            </div>
+          }
+          readonly={readonly}
+          value={payload.comparison_operator}
+          options={getOperators('string').map((o) => {
+            return {
+              label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
+              value: o,
+            }
+          })}
+          onChange={handleComparisonOperatorChange}
+        />
+
         <input
           readOnly={readonly}
           value={payload.value}
           onChange={handleValueChange}
           placeholder={t(`${i18nPrefix}.enterValue`)!}
-          className='w-[144px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+          className='max-w-[144px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
           type='text'
         />
 
