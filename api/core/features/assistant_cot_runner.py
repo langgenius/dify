@@ -154,7 +154,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 thought='',
                 action_str='',
                 observation='',
-                action=None
+                action=None,
             )
 
             # publish agent thought if it's first iteration
@@ -469,7 +469,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     thought=message.content,
                     action_str='',
                     action=None,
-                    observation=None
+                    observation=None,
                 )
                 if message.tool_calls:
                     try:
@@ -484,7 +484,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
                     current_scratchpad.observation = message.content
-
+        
         return agent_scratchpad
 
     def _check_cot_prompt_messages(self, mode: Literal["completion", "chat"], 
@@ -607,6 +607,13 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     prompt_message.content = system_message
                     overridden = True
                     break
+            
+            # convert tool prompt messages to user prompt messages
+            for idx, prompt_message in enumerate(prompt_messages):
+                if isinstance(prompt_message, ToolPromptMessage):
+                    prompt_messages[idx] = UserPromptMessage(
+                        content=prompt_message.content
+                    )
 
             if not overridden:
                 prompt_messages.insert(0, SystemPromptMessage(
