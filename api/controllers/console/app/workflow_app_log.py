@@ -7,7 +7,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs.login import login_required
-from models.model import AppMode, App
+from models.model import App, AppMode
 from services.workflow_app_service import WorkflowAppService
 
 

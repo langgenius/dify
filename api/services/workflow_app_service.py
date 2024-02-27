@@ -1,10 +1,10 @@
 from flask_sqlalchemy.pagination import Pagination
-from sqlalchemy import or_, and_
+from sqlalchemy import and_, or_
 
 from extensions.ext_database import db
 from models import CreatedByRole
 from models.model import App, EndUser
-from models.workflow import WorkflowAppLog, WorkflowRunStatus, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowRun, WorkflowRunStatus
 
 
 class WorkflowAppService:
