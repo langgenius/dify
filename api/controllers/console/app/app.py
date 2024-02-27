@@ -1,5 +1,4 @@
 import json
-import logging
 from datetime import datetime
 from typing import cast
 
@@ -8,29 +7,24 @@ from flask_login import current_user
 from flask_restful import Resource, abort, inputs, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from constants.languages import languages
 from constants.model_template import default_app_templates
 from controllers.console import api
-from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.provider_manager import ProviderManager
 from events.app_event import app_was_created, app_was_deleted
 from extensions.ext_database import db
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
-    template_list_fields,
 )
 from libs.login import login_required
-from models.model import App, AppModelConfig, Site, AppMode
-from services.app_model_config_service import AppModelConfigService
+from models.model import App, AppModelConfig, AppMode
 from services.workflow_service import WorkflowService
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.tool_manager import ToolManager
@@ -102,95 +96,47 @@ class AppListApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        # TODO: MOVE TO IMPORT API
-        if args['model_config'] is not None:
-            # validate config
-            model_config_dict = args['model_config']
+        if 'mode' not in args or args['mode'] is None:
+            abort(400, message="mode is required")
 
-            # Get provider configurations
-            provider_manager = ProviderManager()
-            provider_configurations = provider_manager.get_configurations(current_user.current_tenant_id)
+        app_mode = AppMode.value_of(args['mode'])
 
-            # get available models from provider_configurations
-            available_models = provider_configurations.get_models(
-                model_type=ModelType.LLM,
-                only_active=True
-            )
+        app_template = default_app_templates[app_mode]
 
-            # check if model is available
-            available_models_names = [f'{model.provider.provider}.{model.model}' for model in available_models]
-            provider_model = f"{model_config_dict['model']['provider']}.{model_config_dict['model']['name']}"
-            if provider_model not in available_models_names:
-                if not default_model_entity:
-                    raise ProviderNotInitializeError(
-                        "No Default System Reasoning Model available. Please configure "
-                        "in the Settings -> Model Provider.")
-                else:
-                    model_config_dict["model"]["provider"] = default_model_entity.provider.provider
-                    model_config_dict["model"]["name"] = default_model_entity.model
+        # get model config
+        default_model_config = app_template['model_config']
+        if 'model' in default_model_config:
+            # get model provider
+            model_manager = ModelManager()
 
-            model_configuration = AppModelConfigService.validate_configuration(
-                tenant_id=current_user.current_tenant_id,
-                account=current_user,
-                config=model_config_dict,
-                app_mode=args['mode']
-            )
+            # get default model instance
+            try:
+                model_instance = model_manager.get_default_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    model_type=ModelType.LLM
+                )
+            except ProviderTokenNotInitError:
+                model_instance = None
 
-            app = App(
-                enable_site=True,
-                enable_api=True,
-                is_demo=False,
-                api_rpm=0,
-                api_rph=0,
-                status='normal'
-            )
-
-            app_model_config = AppModelConfig()
-            app_model_config = app_model_config.from_model_config_dict(model_configuration)
-        else:
-            if 'mode' not in args or args['mode'] is None:
-                abort(400, message="mode is required")
-
-            app_mode = AppMode.value_of(args['mode'])
-
-            app_template = default_app_templates[app_mode]
-
-            # get model config
-            default_model_config = app_template['model_config']
-            if 'model' in default_model_config:
-                # get model provider
-                model_manager = ModelManager()
-
-                # get default model instance
-                try:
-                    model_instance = model_manager.get_default_model_instance(
-                        tenant_id=current_user.current_tenant_id,
-                        model_type=ModelType.LLM
-                    )
-                except ProviderTokenNotInitError:
-                    model_instance = None
-
-                if model_instance:
-                    if model_instance.model == default_model_config['model']['name']:
-                        default_model_dict = default_model_config['model']
-                    else:
-                        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                        model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-
-                        default_model_dict = {
-                            'provider': model_instance.provider,
-                            'name': model_instance.model,
-                            'mode': model_schema.model_properties.get(ModelPropertyKey.MODE),
-                            'completion_params': {}
-                        }
-                else:
+            if model_instance:
+                if model_instance.model == default_model_config['model']['name']:
                     default_model_dict = default_model_config['model']
+                else:
+                    llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
-                default_model_config['model'] = json.dumps(default_model_dict)
+                    default_model_dict = {
+                        'provider': model_instance.provider,
+                        'name': model_instance.model,
+                        'mode': model_schema.model_properties.get(ModelPropertyKey.MODE),
+                        'completion_params': {}
+                    }
+            else:
+                default_model_dict = default_model_config['model']
 
-            app = App(**app_template['app'])
-            app_model_config = AppModelConfig(**default_model_config)
+            default_model_config['model'] = json.dumps(default_model_dict)
 
+        app = App(**app_template['app'])
         app.name = args['name']
         app.mode = args['mode']
         app.icon = args['icon']
@@ -200,26 +146,14 @@ class AppListApi(Resource):
         db.session.add(app)
         db.session.flush()
 
+        app_model_config = AppModelConfig(**default_model_config)
         app_model_config.app_id = app.id
         db.session.add(app_model_config)
         db.session.flush()
 
         app.app_model_config_id = app_model_config.id
 
-        account = current_user
-
-        site = Site(
-            app_id=app.id,
-            title=app.name,
-            default_language=account.interface_language,
-            customize_token_strategy='not_allow',
-            code=Site.generate_code(16)
-        )
-
-        db.session.add(site)
-        db.session.commit()
-
-        app_was_created.send(app)
+        app_was_created.send(app, account=current_user)
 
         return app, 201
 
@@ -262,20 +196,15 @@ class AppImportApi(Resource):
                                  "when mode is advanced-chat or workflow")
 
         app = App(
+            tenant_id=current_user.current_tenant_id,
+            mode=app_data.get('mode'),
+            name=args.get("name") if args.get("name") else app_data.get('name'),
+            icon=args.get("icon") if args.get("icon") else app_data.get('icon'),
+            icon_background=args.get("icon_background") if args.get("icon_background") \
+                else app_data.get('icon_background'),
             enable_site=True,
-            enable_api=True,
-            is_demo=False,
-            api_rpm=0,
-            api_rph=0,
-            status='normal'
+            enable_api=True
         )
-
-        app.tenant_id = current_user.current_tenant_id
-        app.mode = app_data.get('mode')
-        app.name = args.get("name") if args.get("name") else app_data.get('name')
-        app.icon = args.get("icon") if args.get("icon") else app_data.get('icon')
-        app.icon_background = args.get("icon_background") if args.get("icon_background") \
-            else app_data.get('icon_background')
 
         db.session.add(app)
         db.session.commit()
@@ -295,20 +224,7 @@ class AppImportApi(Resource):
 
         app.app_model_config_id = app_model_config.id
 
-        account = current_user
-
-        site = Site(
-            app_id=app.id,
-            title=app.name,
-            default_language=account.interface_language,
-            customize_token_strategy='not_allow',
-            code=Site.generate_code(16)
-        )
-
-        db.session.add(site)
-        db.session.commit()
-
-        app_was_created.send(app)
+        app_was_created.send(app, account=current_user)
 
         return app, 201
 

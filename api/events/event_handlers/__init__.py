@@ -2,6 +2,7 @@ from .clean_when_dataset_deleted import handle
 from .clean_when_document_deleted import handle
 from .create_document_index import handle
 from .create_installed_app_when_app_created import handle
+from .create_site_record_when_app_created import handle
 from .deduct_quota_when_messaeg_created import handle
 from .delete_installed_app_when_app_deleted import handle
 from .generate_conversation_name_when_first_message_created import handle
