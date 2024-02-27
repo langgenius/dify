@@ -62,22 +62,11 @@ class ApiBasedToolSchemaParser:
                         llm_description=parameter.get('description'),
                         default=parameter['schema']['default'] if 'schema' in parameter and 'default' in parameter['schema'] else None,
                     )
-                    if 'type' in parameter:
-                        typ = parameter['type']
-                        if typ == 'integer' or typ == 'number':
-                            tool_parameter.type = ToolParameter.ToolParameterType.NUMBER
-                        elif typ == 'boolean':
-                            tool_parameter.type = ToolParameter.ToolParameterType.BOOLEAN
-                        elif typ == 'string':
-                            tool_parameter.type = ToolParameter.ToolParameterType.STRING
-                    elif 'type' in parameter['schema']:
-                        typ = parameter['schema']['type']
-                        if typ == 'integer' or typ == 'number':
-                            tool_parameter.type = ToolParameter.ToolParameterType.NUMBER
-                        elif typ == 'boolean':
-                            tool_parameter.type = ToolParameter.ToolParameterType.BOOLEAN
-                        elif typ == 'string':
-                            tool_parameter.type = ToolParameter.ToolParameterType.STRING
+                   
+                    # check if there is a type
+                    typ = ApiBasedToolSchemaParser._get_tool_parameter_type(parameter)
+                    if typ:
+                        tool_parameter.type = typ
 
                     parameters.append(tool_parameter)
             # create tool bundle
@@ -98,6 +87,7 @@ class ApiBasedToolSchemaParser:
                                 root = root[ref]
                             # overwrite the content
                             interface['operation']['requestBody']['content'][content_type]['schema'] = root
+
                     # parse body parameters
                     if 'schema' in interface['operation']['requestBody']['content'][content_type]:
                         body_schema = interface['operation']['requestBody']['content'][content_type]['schema']
@@ -120,22 +110,11 @@ class ApiBasedToolSchemaParser:
                                 llm_description=property['description'] if 'description' in property else '',
                                 default=property['default'] if 'default' in property else None,
                             )
-                            if 'type' in property:
-                                typ = property['type']
-                                if typ == 'integer' or typ == 'number':
-                                    tool.type = ToolParameter.ToolParameterType.NUMBER
-                                elif typ == 'boolean':
-                                    tool.type = ToolParameter.ToolParameterType.BOOLEAN
-                                elif typ == 'string':
-                                    tool.type = ToolParameter.ToolParameterType.STRING
-                            elif 'type' in property['schema']:
-                                typ = property['schema']['type']
-                                if typ == 'integer' or typ == 'number':
-                                    tool.type = ToolParameter.ToolParameterType.NUMBER
-                                elif typ == 'boolean':
-                                    tool.type = ToolParameter.ToolParameterType.BOOLEAN
-                                elif typ == 'string':
-                                    tool.type = ToolParameter.ToolParameterType.STRING
+
+                            # check if there is a type
+                            typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
+                            if typ:
+                                tool.type = typ
 
                             parameters.append(tool)
 
@@ -170,7 +149,25 @@ class ApiBasedToolSchemaParser:
             ))
 
         return bundles
-        
+    
+    @staticmethod
+    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType:
+        parameter = parameter or {}
+        if 'type' in parameter:
+            if parameter['type'] == 'integer' or parameter['type'] == 'number':
+                return ToolParameter.ToolParameterType.NUMBER
+            elif parameter['type'] == 'boolean':
+                return ToolParameter.ToolParameterType.BOOLEAN
+            elif parameter['type'] == 'string':
+                return ToolParameter.ToolParameterType.STRING
+        elif 'schema' in parameter and 'type' in parameter['schema']:
+            if parameter['schema']['type'] == 'integer' or parameter['schema']['type'] == 'number':
+                return ToolParameter.ToolParameterType.NUMBER
+            elif parameter['schema']['type'] == 'boolean':
+                return ToolParameter.ToolParameterType.BOOLEAN
+            elif parameter['schema']['type'] == 'string':
+                return ToolParameter.ToolParameterType.STRING
+
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
