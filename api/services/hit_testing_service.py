@@ -131,11 +131,21 @@ class HitTestingService:
 
     @classmethod
     def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: list[Document]):
-        text_embeddings = [
-            embeddings.embed_query(query)
-        ]
+        # 嵌入查询文本
+        query_embedding = embeddings.embed_query(query)
+        text_embeddings = [query_embedding]
 
-        text_embeddings.extend(embeddings.embed_documents([document.page_content for document in documents]))
+        # 嵌入文档内容
+        document_embeddings = embeddings.embed_documents([document.page_content for document in documents])
+
+        # 检查并对相同的嵌入向量引入随机微小波动
+        for i, document_embedding in enumerate(document_embeddings):
+            if np.array_equal(query_embedding, document_embedding):
+                # 对于相同的向量，引入微小的随机扰动
+                perturbation = np.random.normal(0, 1e-4, len(document_embedding))
+                document_embeddings[i] += perturbation
+
+        text_embeddings.extend(document_embeddings)
 
         tsne_position_data = cls.get_tsne_positions_from_embeddings(text_embeddings)
 
