@@ -1,9 +1,10 @@
 import json
 from datetime import datetime
+from typing import Optional
 
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode, ChatbotAppEngine
+from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.workflow.defaults import default_block_configs
 from services.workflow.workflow_converter import WorkflowConverter
@@ -58,6 +59,40 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
+    def publish_draft_workflow(self, app_model: App,
+                               account: Account,
+                               draft_workflow: Optional[Workflow] = None) -> Workflow:
+        """
+        Publish draft workflow
+
+        :param app_model: App instance
+        :param account: Account instance
+        :param draft_workflow: Workflow instance
+        """
+        if not draft_workflow:
+            # fetch draft workflow by app_model
+            draft_workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not draft_workflow:
+            raise ValueError('No valid workflow found.')
+
+        # create new workflow
+        workflow = Workflow(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type=draft_workflow.type,
+            version=str(datetime.utcnow()),
+            graph=draft_workflow.graph,
+            created_by=account.id
+        )
+
+        # commit db session changes
+        db.session.add(workflow)
+        db.session.commit()
+
+        # return new workflow
+        return workflow
+
     def get_default_block_configs(self) -> dict:
         """
         Get default block configs
@@ -77,11 +112,7 @@ class WorkflowService:
         # chatbot convert to workflow mode
         workflow_converter = WorkflowConverter()
 
-        if app_model.mode == AppMode.CHAT.value:
-            # check if chatbot app is in basic mode
-            if app_model.app_model_config.chatbot_app_engine != ChatbotAppEngine.NORMAL:
-                raise ValueError('Chatbot app already in workflow mode')
-        elif app_model.mode != AppMode.COMPLETION.value:
+        if app_model.mode not in [AppMode.CHAT.value, AppMode.COMPLETION.value]:
             raise ValueError(f'Current App mode: {app_model.mode} is not supported convert to workflow.')
 
         # convert to workflow

@@ -5,12 +5,11 @@ from typing import Optional, Union
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
-from models.model import App, AppMode, ChatbotAppEngine
+from models.model import App, AppMode
 
 
 def get_app_model(view: Optional[Callable] = None, *,
-                  mode: Union[AppMode, list[AppMode]] = None,
-                  app_engine: ChatbotAppEngine = None):
+                  mode: Union[AppMode, list[AppMode]] = None):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):
@@ -32,6 +31,9 @@ def get_app_model(view: Optional[Callable] = None, *,
                 raise AppNotFoundError()
 
             app_mode = AppMode.value_of(app_model.mode)
+            if app_mode == AppMode.CHANNEL:
+                raise AppNotFoundError()
+
             if mode is not None:
                 if isinstance(mode, list):
                     modes = mode
@@ -41,16 +43,6 @@ def get_app_model(view: Optional[Callable] = None, *,
                 if app_mode not in modes:
                     mode_values = {m.value for m in modes}
                     raise AppNotFoundError(f"App mode is not in the supported list: {mode_values}")
-
-            if app_engine is not None:
-                if app_mode not in [AppMode.CHAT, AppMode.WORKFLOW]:
-                    raise AppNotFoundError(f"App mode is not supported for {app_engine.value} app engine.")
-
-                if app_mode == AppMode.CHAT:
-                    # fetch current app model config
-                    app_model_config = app_model.app_model_config
-                    if not app_model_config or app_model_config.chatbot_app_engine != app_engine.value:
-                        raise AppNotFoundError(f"{app_engine.value} app engine is not supported.")
 
             kwargs['app_model'] = app_model
 

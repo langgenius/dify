@@ -7,7 +7,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from fields.workflow_fields import workflow_fields
 from libs.login import current_user, login_required
-from models.model import App, AppMode, ChatbotAppEngine
+from models.model import App, AppMode
 from services.workflow_service import WorkflowService
 
 
@@ -15,7 +15,7 @@ class DraftWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.WORKFLOW], app_engine=ChatbotAppEngine.WORKFLOW)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_fields)
     def get(self, app_model: App):
         """
@@ -34,7 +34,7 @@ class DraftWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.WORKFLOW], app_engine=ChatbotAppEngine.WORKFLOW)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, app_model: App):
         """
         Sync draft workflow
@@ -55,7 +55,7 @@ class DefaultBlockConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.WORKFLOW], app_engine=ChatbotAppEngine.WORKFLOW)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
         Get default block config
@@ -72,7 +72,8 @@ class ConvertToWorkflowApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model: App):
         """
-        Convert basic mode of chatbot app(expert mode) to workflow mode
+        Convert basic mode of chatbot app to workflow mode
+        Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
         # convert to workflow mode
