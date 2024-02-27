@@ -9,7 +9,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from events.app_event import app_was_created, app_was_deleted
+from events.app_event import app_was_created, app_was_deleted, app_model_config_was_updated
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
@@ -170,6 +170,11 @@ class AppService:
         app.app_model_config_id = app_model_config.id
 
         app_was_created.send(app, account=account)
+
+        app_model_config_was_updated.send(
+            app,
+            app_model_config=app_model_config
+        )
 
         return app
 
