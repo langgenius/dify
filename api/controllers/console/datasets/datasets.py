@@ -298,7 +298,8 @@ class DatasetIndexingEstimateApi(Resource):
                         notion_info={
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page['page_id'],
-                            "notion_page_type": page['type']
+                            "notion_page_type": page['type'],
+                            "tenant_id": current_user.current_tenant_id
                         },
                         document_model=args['doc_form']
                     )

@@ -455,7 +455,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     notion_info={
                         "notion_workspace_id": data_source_info['notion_workspace_id'],
                         "notion_obj_id": data_source_info['notion_page_id'],
-                        "notion_page_type": data_source_info['type']
+                        "notion_page_type": data_source_info['type'],
+                        "tenant_id": current_user.current_tenant_id
                     },
                     document_model=document.doc_form
                 )

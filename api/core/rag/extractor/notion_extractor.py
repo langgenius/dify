@@ -30,8 +30,10 @@ class NotionExtractor(BaseExtractor):
             notion_workspace_id: str,
             notion_obj_id: str,
             notion_page_type: str,
+            tenant_id: str,
             document_model: Optional[DocumentModel] = None,
-            notion_access_token: Optional[str] = None
+            notion_access_token: Optional[str] = None,
+
     ):
         self._notion_access_token = None
         self._document_model = document_model
