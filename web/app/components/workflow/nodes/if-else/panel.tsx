@@ -1,5 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import Split from '../_base/components/split'
+import AddButton from '../_base/components/add-button'
 import useConfig from './use-config'
 import { mockData } from './mock'
 import ConditionList from './components/condition-list'
@@ -14,18 +16,35 @@ const Panel: FC = () => {
     inputs,
     handleConditionsChange,
     handleAddCondition,
+    handleLogicalOperatorToggle,
   } = useConfig(mockData)
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
         <Field
-          title={t(`${i18nPrefix}.conditions`)}
+          title={t(`${i18nPrefix}.if`)}
         >
-          <ConditionList
-            readonly={readOnly}
-            list={inputs.conditions}
-            onChange={handleConditionsChange}
-          />
+          <>
+            <ConditionList
+              className='mt-2'
+              readonly={readOnly}
+              list={inputs.conditions}
+              onChange={handleConditionsChange}
+              logicalOperator={inputs.logical_operator}
+              onLogicalOperatorToggle={handleLogicalOperatorToggle}
+            />
+            <AddButton
+              className='mt-3'
+              text={t(`${i18nPrefix}.addCondition`)}
+              onClick={handleAddCondition}
+            />
+          </>
+        </Field>
+        <Split />
+        <Field
+          title={t(`${i18nPrefix}.else`)}
+        >
+          <div className='leading-[18px] text-xs font-normal text-gray-400'>{t(`${i18nPrefix}.elseDescription`)}</div>
         </Field>
       </div>
     </div>

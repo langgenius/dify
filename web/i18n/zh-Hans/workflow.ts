@@ -71,6 +71,9 @@ const translation = {
     },
     ifElse: {
       conditions: '条件',
+      if: 'If',
+      else: 'Else',
+      elseDescription: '用于定义当 if 条件不满足时应执行的逻辑。',
       and: 'and',
       or: 'or',
       comparisonOperator: {
@@ -86,6 +89,7 @@ const translation = {
         'not null': '不为空',
       },
       enterValue: '输入值',
+      addCondition: '添加条件',
     },
     variableAssigner: {
       title: '变量赋值',

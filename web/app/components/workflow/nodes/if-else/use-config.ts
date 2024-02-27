@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { Condition, IfElseNodeType, LogicalOperator } from './types'
+import { ComparisonOperator, LogicalOperator } from './types'
+import type { Condition, IfElseNodeType } from './types'
 
 const useConfig = (initInputs: IfElseNodeType) => {
   const [inputs, setInputs] = useState<IfElseNodeType>(initInputs)
@@ -14,16 +15,21 @@ const useConfig = (initInputs: IfElseNodeType) => {
     })
   }, [])
 
-  const handleAddCondition = useCallback((condition: Condition) => {
+  const handleAddCondition = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
-      draft.conditions.push(condition)
+      draft.conditions.push({
+        id: `${Date.now()}`,
+        variable_selector: [],
+        comparison_operator: ComparisonOperator.equal,
+        value: '',
+      })
     })
     setInputs(newInputs)
   }, [inputs])
 
-  const handleLogicalOperatorChange = useCallback((newOperator: LogicalOperator) => {
+  const handleLogicalOperatorToggle = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
-      draft.logical_operator = newOperator
+      draft.logical_operator = draft.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
     })
     setInputs(newInputs)
   }, [inputs])
@@ -32,7 +38,7 @@ const useConfig = (initInputs: IfElseNodeType) => {
     inputs,
     handleConditionsChange,
     handleAddCondition,
-    handleLogicalOperatorChange,
+    handleLogicalOperatorToggle,
   }
 }
 

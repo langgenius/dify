@@ -72,6 +72,9 @@ const translation = {
     },
     ifElse: {
       conditions: 'Conditions',
+      if: 'If',
+      else: 'Else',
+      elseDescription: 'Used to define the logic that should be executed when the if condition is not met.',
       and: 'and',
       or: 'or',
       comparisonOperator: {
@@ -87,6 +90,7 @@ const translation = {
         'not null': 'is not null',
       },
       enterValue: 'Enter value',
+      addCondition: 'Add Condition',
     },
     variableAssigner: {
       title: 'Assign variables',
