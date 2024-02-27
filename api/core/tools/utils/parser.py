@@ -1,4 +1,7 @@
 
+import re
+import uuid
+
 from json import loads as json_loads
 
 from requests import get
@@ -134,7 +137,11 @@ class ApiBasedToolSchemaParser:
                 path = interface['path']
                 if interface['path'].startswith('/'):
                     path = interface['path'][1:]
-                path = path.replace('/', '_')
+                # remove special characters like / to ensure the operation id is valid ^[a-zA-Z0-9_-]{1,64}$
+                path = re.sub(r'[^a-zA-Z0-9_-]', '', path)
+                if not path:
+                    path = str(uuid.uuid4())
+                    
                 interface['operation']['operationId'] = f'{path}_{interface["method"]}'
 
             bundles.append(ApiBasedToolBundle(
