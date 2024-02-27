@@ -23,7 +23,6 @@ from flask_cors import CORS
 
 from commands import register_commands
 from config import CloudEditionConfig, Config
-
 from events import event_handlers
 from extensions import (
     ext_celery,
