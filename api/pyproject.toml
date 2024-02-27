@@ -3,7 +3,6 @@ requires-python = ">=3.10"
 
 [tool.ruff]
 exclude = [
-#    "tests/",
 ]
 line-length = 120
 
