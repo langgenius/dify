@@ -1,18 +1,17 @@
 import os
+from collections.abc import Generator
 from time import sleep
-from typing import Any, Generator, List, Literal, Union
+from typing import Any, Literal, Union
 
 import anthropic
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from anthropic import Anthropic
-from anthropic._types import NOT_GIVEN, Body, Headers, NotGiven, Query
 from anthropic.resources.completions import Completions
-from anthropic.types import Completion, completion_create_params
+from anthropic.types import Completion
 
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
 
-class MockAnthropicClass(object):
+class MockAnthropicClass:
     @staticmethod
     def mocked_anthropic_chat_create_sync(model: str) -> Completion:
         return Completion(
