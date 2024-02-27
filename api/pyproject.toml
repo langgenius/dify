@@ -3,7 +3,7 @@ requires-python = ">=3.10"
 
 [tool.ruff]
 exclude = [
-    "tests/",
+#    "tests/",
 ]
 line-length = 120
 
@@ -30,6 +30,10 @@ ignore = [
     "F811", # redefined-while-unused
 ]
 "__init__.py" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+"tests/*" = [
     "F401", # unused-import
     "F811", # redefined-while-unused
 ]
