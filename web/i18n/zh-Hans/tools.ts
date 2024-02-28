@@ -51,6 +51,7 @@ const translation = {
     authMethod: {
       title: '鉴权方法',
       type: '鉴权类型',
+      keyTooltip: 'HTTP 头部名称，如果你不知道是什么，可以将其保留为 Authorization 或设置为自定义值',
       types: {
         none: '无',
         api_key: 'API Key',
@@ -59,6 +60,14 @@ const translation = {
       },
       key: '键',
       value: '值',
+    },
+    authHeaderPrefix: {
+      title: '鉴权头部前缀',
+      types: {
+        basic: 'Basic',
+        bearer: 'Bearer',
+        custom: 'Custom',
+      },
     },
     privacyPolicy: '隐私协议',
     privacyPolicyPlaceholder: '请输入隐私协议',
