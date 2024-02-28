@@ -97,10 +97,11 @@ class AppService:
 
         app = App(**app_template['app'])
         app.name = args['name']
+        app.description = args.get('description', '')
         app.mode = args['mode']
         app.icon = args['icon']
         app.icon_background = args['icon_background']
-        app.tenant_id = account.current_tenant_id
+        app.tenant_id = tenant_id
 
         db.session.add(app)
         db.session.flush()
@@ -145,6 +146,7 @@ class AppService:
             tenant_id=tenant_id,
             mode=app_data.get('mode'),
             name=args.get("name") if args.get("name") else app_data.get('name'),
+            description=args.get("description") if args.get("description") else app_data.get('description', ''),
             icon=args.get("icon") if args.get("icon") else app_data.get('icon'),
             icon_background=args.get("icon_background") if args.get("icon_background") \
                 else app_data.get('icon_background'),
@@ -204,6 +206,22 @@ class AppService:
             export_data['workflow_graph'] = json.loads(workflow.graph)
 
         return yaml.dump(export_data)
+
+    def update_app(self, app: App, args: dict) -> App:
+        """
+        Update app
+        :param app: App instance
+        :param args: request args
+        :return: App instance
+        """
+        app.name = args.get('name')
+        app.description = args.get('description', '')
+        app.icon = args.get('icon')
+        app.icon_background = args.get('icon_background')
+        app.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return app
 
     def update_app_name(self, app: App, name: str) -> App:
         """

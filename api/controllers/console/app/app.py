@@ -1,5 +1,5 @@
 from flask_login import current_user
-from flask_restful import Resource, abort, inputs, marshal_with, reqparse
+from flask_restful import Resource, inputs, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, BadRequest
 
 from controllers.console import api
@@ -53,6 +53,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
+        parser.add_argument('description', type=str, location='json')
         parser.add_argument('mode', type=str, choices=ALLOW_CREATE_APP_MODES, location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
@@ -86,6 +87,7 @@ class AppImportApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('data', type=str, required=True, nullable=False, location='json')
         parser.add_argument('name', type=str, location='json')
+        parser.add_argument('description', type=str, location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
@@ -141,6 +143,25 @@ class AppApi(Resource):
 
         # override agent mode
         model_config.agent_mode = json.dumps(agent_mode)
+
+        return app_model
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    @marshal_with(app_detail_fields_with_site)
+    def put(self, app_model):
+        """Update app"""
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('description', type=str, location='json')
+        parser.add_argument('icon', type=str, location='json')
+        parser.add_argument('icon_background', type=str, location='json')
+        args = parser.parse_args()
+
+        app_service = AppService()
+        app_model = app_service.update_app(app_model, args)
 
         return app_model
 

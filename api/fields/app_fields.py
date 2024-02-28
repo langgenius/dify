@@ -5,6 +5,7 @@ from libs.helper import TimestampField
 app_detail_kernel_fields = {
     'id': fields.String,
     'name': fields.String,
+    'description': fields.String,
     'mode': fields.String,
     'icon': fields.String,
     'icon_background': fields.String,
@@ -41,6 +42,7 @@ model_config_fields = {
 app_detail_fields = {
     'id': fields.String,
     'name': fields.String,
+    'description': fields.String,
     'mode': fields.String,
     'icon': fields.String,
     'icon_background': fields.String,
@@ -62,6 +64,7 @@ model_config_partial_fields = {
 app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
+    'description': fields.String,
     'mode': fields.String,
     'icon': fields.String,
     'icon_background': fields.String,
@@ -109,6 +112,7 @@ site_fields = {
 app_detail_fields_with_site = {
     'id': fields.String,
     'name': fields.String,
+    'description': fields.String,
     'mode': fields.String,
     'icon': fields.String,
     'icon_background': fields.String,

@@ -14,7 +14,6 @@ from extensions.ext_database import db
 from libs.helper import generate_string
 
 from .account import Account, Tenant
-from .workflow import Workflow, WorkflowRun
 
 
 class DifySetup(db.Model):
@@ -59,6 +58,7 @@ class App(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(UUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     mode = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
@@ -279,6 +279,7 @@ class AppModelConfig(db.Model):
     @property
     def workflow(self):
         if self.workflow_id:
+            from api.models.workflow import Workflow
             return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
 
         return None
@@ -692,6 +693,7 @@ class Message(db.Model):
     @property
     def workflow_run(self):
         if self.workflow_run_id:
+            from api.models.workflow import WorkflowRun
             return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
 
         return None
