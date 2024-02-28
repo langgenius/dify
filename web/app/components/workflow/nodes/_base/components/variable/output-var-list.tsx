@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import type { OutputVar } from '../../../code/types'
+import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   readonly: boolean
@@ -59,12 +59,10 @@ const OutputVarList: FC<Props> = ({
             value={item.variable_type}
             onChange={handleVarChange(index)}
           />
-          <div
-            className='p-2 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer'
+          <RemoveButton
+            className='!p-2 !bg-gray-100 hover:!bg-gray-200'
             onClick={handleVarRemove(index)}
-          >
-            <Trash03 className='w-4 h-4 text-gray-500' />
-          </div>
+          />
         </div>
       ))}
     </div>

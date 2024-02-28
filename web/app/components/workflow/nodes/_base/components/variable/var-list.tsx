@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
+import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
 import type { ValueSelector, Variable } from '@/app/components/workflow/types'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   readonly: boolean
@@ -63,12 +63,10 @@ const VarList: FC<Props> = ({
             value={item.value_selector}
             onChange={handleVarReferenceChange(index)}
           />
-          <div
-            className='p-2 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer'
+          <RemoveButton
+            className='!p-2 !bg-gray-100 hover:!bg-gray-200'
             onClick={handleVarRemove(index)}
-          >
-            <Trash03 className='w-4 h-4 text-gray-500' />
-          </div>
+          />
         </div>
       ))}
     </div>

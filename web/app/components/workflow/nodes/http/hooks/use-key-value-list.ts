@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useBoolean } from 'ahooks'
 import type { KeyValue } from '../types'
 
 const strToKeyValueList = (value: string) => {
@@ -13,10 +14,15 @@ const useKeyValueList = (value: string) => {
   const addItem = useCallback(() => {
     setList(prev => [...prev, { key: '', value: '' }])
   }, [])
+  const [isKeyValueEdit, {
+    toggle: toggleIsKeyValueEdit,
+  }] = useBoolean(true)
   return {
-    list,
+    list: list.length === 0 ? [{ key: '', value: '' }] : list, // no item can not add new item
     setList,
     addItem,
+    isKeyValueEdit,
+    toggleIsKeyValueEdit,
   }
 }
 
