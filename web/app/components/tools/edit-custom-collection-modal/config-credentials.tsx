@@ -79,7 +79,9 @@ const ConfigCredential: FC<Props> = ({
                   <input
                     value={tempCredential.api_key_header}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
+                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+                    placeholder={t('tools.createTool.authMethod.types.apiKeyPlaceholder')!}
+                  />
                 </div>
 
                 <div>
@@ -87,7 +89,9 @@ const ConfigCredential: FC<Props> = ({
                   <input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
+                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+                    placeholder={t('tools.createTool.authMethod.types.apiValuePlaceholder')!}
+                  />
                 </div>
               </>)}
 

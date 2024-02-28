@@ -57,7 +57,7 @@ export const addDefaultValue = (value: Record<string, any>, formSchemas: { varia
   const newValues = { ...value }
   formSchemas.forEach((formSchema) => {
     const itemValue = value[formSchema.variable]
-    if (formSchema.default && (value === undefined || itemValue === null || itemValue === ''))
+    if ((formSchema.default !== undefined) && (value === undefined || itemValue === null || itemValue === '' || itemValue === undefined))
       newValues[formSchema.variable] = formSchema.default
   })
   return newValues

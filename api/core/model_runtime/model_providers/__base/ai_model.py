@@ -262,23 +262,23 @@ class AIModel(ABC):
                 try:
                     default_parameter_name = DefaultParameterName.value_of(parameter_rule.use_template)
                     default_parameter_rule = self._get_default_parameter_rule_variable_map(default_parameter_name)
-                    if not parameter_rule.max:
+                    if not parameter_rule.max and 'max' in default_parameter_rule:
                         parameter_rule.max = default_parameter_rule['max']
-                    if not parameter_rule.min:
+                    if not parameter_rule.min and 'min' in default_parameter_rule:
                         parameter_rule.min = default_parameter_rule['min']
-                    if not parameter_rule.precision:
+                    if not parameter_rule.default and 'default' in default_parameter_rule:
                         parameter_rule.default = default_parameter_rule['default']
-                    if not parameter_rule.precision:
+                    if not parameter_rule.precision and 'precision' in default_parameter_rule:
                         parameter_rule.precision = default_parameter_rule['precision']
-                    if not parameter_rule.required:
+                    if not parameter_rule.required and 'required' in default_parameter_rule:
                         parameter_rule.required = default_parameter_rule['required']
-                    if not parameter_rule.help:
+                    if not parameter_rule.help and 'help' in default_parameter_rule:
                         parameter_rule.help = I18nObject(
                             en_US=default_parameter_rule['help']['en_US'],
                         )
-                    if not parameter_rule.help.en_US:
+                    if not parameter_rule.help.en_US and ('help' in default_parameter_rule and 'en_US' in default_parameter_rule['help']):
                         parameter_rule.help.en_US = default_parameter_rule['help']['en_US']
-                    if not parameter_rule.help.zh_Hans:
+                    if not parameter_rule.help.zh_Hans and ('help' in default_parameter_rule and 'zh_Hans' in default_parameter_rule['help']):
                         parameter_rule.help.zh_Hans = default_parameter_rule['help'].get('zh_Hans', default_parameter_rule['help']['en_US'])
                 except ValueError:
                     pass
