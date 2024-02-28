@@ -48,6 +48,10 @@ const translation = {
     http: {
       inputVars: '输入变量',
       api: 'API',
+      key: '键',
+      value: '值',
+      bulkEdit: '批量编辑',
+      keyValueEdit: '键值编辑',
       headers: '响应头',
       params: '参数',
       body: '响应内容',

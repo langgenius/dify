@@ -49,6 +49,10 @@ const translation = {
     http: {
       inputVars: 'Input Variables',
       api: 'API',
+      key: 'Key',
+      value: 'Value',
+      bulkEdit: 'Bulk Edit',
+      keyValueEdit: 'Key-Value Edit',
       headers: 'Headers',
       params: 'Params',
       body: 'Body',

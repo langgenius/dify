@@ -24,7 +24,13 @@ const useConfig = (initInputs: HttpNodeType) => {
     }))
   }, [])
 
-  const { list: headers, setList: setHeaders, addItem: addHeader } = useKeyValueList(inputs.headers)
+  const {
+    list: headers,
+    setList: setHeaders,
+    addItem: addHeader,
+    isKeyValueEdit: isHeaderKeyValueEdit,
+    toggleIsKeyValueEdit: toggleIsHeaderKeyValueEdit,
+  } = useKeyValueList(inputs.headers)
 
   return {
     inputs,
@@ -35,6 +41,8 @@ const useConfig = (initInputs: HttpNodeType) => {
     headers,
     setHeaders,
     addHeader,
+    isHeaderKeyValueEdit,
+    toggleIsHeaderKeyValueEdit,
   }
 }
 

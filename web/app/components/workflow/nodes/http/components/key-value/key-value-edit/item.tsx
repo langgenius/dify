@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import produce from 'immer'
-import type { KeyValue } from '../../types'
+import type { KeyValue } from '../../../types'
 import InputItem from './input-item'
+
+const i18nPrefix = 'workflow.nodes.http'
 
 type Props = {
   className?: string
@@ -27,6 +30,8 @@ const KeyValueItem: FC<Props> = ({
   isLastItem,
   onAdd,
 }) => {
+  const { t } = useTranslation()
+
   const handleChange = useCallback((key: string) => {
     return (value: string) => {
       const newPayload = produce(payload, (draft: any) => {
@@ -46,7 +51,9 @@ const KeyValueItem: FC<Props> = ({
           className='pr-2.5'
           value={payload.key}
           onChange={handleChange('key')}
-          hasRemove={false} />
+          hasRemove={false}
+          placeholder={t(`${i18nPrefix}.key`)!}
+        />
       </div>
       <div className='w-1/2  h-full'>
         <InputItem
@@ -55,6 +62,7 @@ const KeyValueItem: FC<Props> = ({
           onChange={handleChange('value')}
           hasRemove={!readonly && canRemove}
           onRemove={onRemove}
+          placeholder={t(`${i18nPrefix}.value`)!}
         />
       </div>
     </div>

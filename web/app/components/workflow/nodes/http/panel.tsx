@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
 import { mockData } from './mock'
 import ApiInput from './components/api-input'
-import KeyValueList from './components/key-value/list'
+import KeyValue from './components/key-value'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
@@ -25,6 +25,8 @@ const Panel: FC = () => {
     headers,
     setHeaders,
     addHeader,
+    isHeaderKeyValueEdit,
+    toggleIsHeaderKeyValueEdit,
   } = useConfig(mockData)
 
   return (
@@ -56,11 +58,13 @@ const Panel: FC = () => {
         <Field
           title={t(`${i18nPrefix}.headers`)}
         >
-          <KeyValueList
+          <KeyValue
             list={headers}
             onChange={setHeaders}
             onAdd={addHeader}
             readonly={readOnly}
+            isKeyValueEdit={isHeaderKeyValueEdit}
+            toggleKeyValueEdit={toggleIsHeaderKeyValueEdit}
           />
         </Field>
         <Field

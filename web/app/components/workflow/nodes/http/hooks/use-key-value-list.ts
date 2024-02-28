@@ -16,7 +16,7 @@ const useKeyValueList = (value: string) => {
   }, [])
   const [isKeyValueEdit, {
     toggle: toggleIsKeyValueEdit,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
   return {
     list: list.length === 0 ? [{ key: '', value: '' }] : list, // no item can not add new item
     setList,
