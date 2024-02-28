@@ -43,7 +43,7 @@ class NotionExtractor(BaseExtractor):
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            self._notion_access_token = self._get_access_token(current_user.current_tenant_id,
+            self._notion_access_token = self._get_access_token(tenant_id,
                                                                self._notion_workspace_id)
             if not self._notion_access_token:
                 integration_token = current_app.config.get('NOTION_INTEGRATION_TOKEN')
