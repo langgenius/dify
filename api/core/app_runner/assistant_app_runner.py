@@ -173,11 +173,6 @@ class AssistantApplicationRunner(AppRunner):
 
         # convert db variables to tool variables
         tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
-        
-        message_chain = self._init_message_chain(
-            message=message,
-            query=query
-        )
 
         # init model instance
         model_instance = ModelInstance(
@@ -289,38 +284,6 @@ class AssistantApplicationRunner(AppRunner):
             'tenant_id': db_variables.tenant_id,
             'pool': db_variables.variables
         })
-
-    def _init_message_chain(self, message: Message, query: str) -> MessageChain:
-        """
-        Init MessageChain
-        :param message: message
-        :param query: query
-        :return:
-        """
-        message_chain = MessageChain(
-            message_id=message.id,
-            type="AgentExecutor",
-            input=json.dumps({
-                "input": query
-            })
-        )
-
-        db.session.add(message_chain)
-        db.session.commit()
-
-        return message_chain
-
-    def _save_message_chain(self, message_chain: MessageChain, output_text: str) -> None:
-        """
-        Save MessageChain
-        :param message_chain: message chain
-        :param output_text: output text
-        :return:
-        """
-        message_chain.output = json.dumps({
-            "output": output_text
-        })
-        db.session.commit()
 
     def _get_usage_of_all_agent_thoughts(self, model_config: ModelConfigEntity,
                                          message: Message) -> LLMUsage:

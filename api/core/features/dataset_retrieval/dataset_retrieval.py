@@ -2,7 +2,8 @@ from typing import Optional, cast
 
 from langchain.tools import BaseTool
 
-from core.agent.agent_executor import AgentConfiguration, AgentExecutor, PlanningStrategy
+from core.entities.agent_entities import PlanningStrategy
+from core.features.dataset_retrieval.agent_based_dataset_executor import AgentConfiguration, AgentExecutor
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import DatasetEntity, DatasetRetrieveConfigEntity, InvokeFrom, ModelConfigEntity
 from core.memory.token_buffer_memory import TokenBufferMemory

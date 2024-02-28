@@ -1,7 +1,7 @@
 import re
 import uuid
 
-from core.agent.agent_executor import PlanningStrategy
+from core.entities.agent_entities import PlanningStrategy
 from core.external_data_tool.factory import ExternalDataToolFactory
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
