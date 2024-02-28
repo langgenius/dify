@@ -4,8 +4,9 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import Workflow from '@/app/components/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
+
 const nodes = [
-  BlockEnum.Tool/* 10 */, BlockEnum.VariableAssigner/* 11 */, BlockEnum.Start/* 1 */, BlockEnum.DirectAnswer/* 2 */, BlockEnum.LLM/* 3 */, BlockEnum.KnowledgeRetrieval/* 4 */, BlockEnum.QuestionClassifier/* 5 */,
+  BlockEnum.QuestionClassifier/* 5 */, BlockEnum.Tool/* 10 */, BlockEnum.VariableAssigner/* 11 */, BlockEnum.Start/* 1 */, BlockEnum.DirectAnswer/* 2 */, BlockEnum.LLM/* 3 */, BlockEnum.KnowledgeRetrieval/* 4 */,
   BlockEnum.IfElse/* 6 */, BlockEnum.Code/* 7 */, BlockEnum.TemplateTransform/* 8 */, BlockEnum.HttpRequest/* 9 */,
   BlockEnum.End/* 12 */,
 ].map((item, i) => ({
@@ -13,6 +14,7 @@ const nodes = [
   type: 'custom',
   position: { x: 330, y: 30 + i * 300 },
   data: { type: item, name: item },
+  selected: i === 0, // for test: always select the first node
 }))
 const initialNodes = nodes
 

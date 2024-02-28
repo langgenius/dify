@@ -124,6 +124,12 @@ const translation = {
       toAuthorize: '授权',
       inputVars: '输入变量',
     },
+    questionClassifiers: {
+      model: '模型',
+      inputVars: '输入变量',
+      class: '类别',
+      advancedSetting: '高级设置',
+    },
   },
 }
 

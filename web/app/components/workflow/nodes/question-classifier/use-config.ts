@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
+import type { ValueSelector } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 
 const useConfig = (initInputs: QuestionClassifierNodeType) => {
@@ -22,10 +23,26 @@ const useConfig = (initInputs: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleQueryVarChange = useCallback((newVar: ValueSelector) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.query_variable_selector = newVar
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleTopicsChange = useCallback((newTopics: any) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.topics = newTopics
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleModelChanged,
     handleCompletionParamsChange,
+    handleQueryVarChange,
+    handleTopicsChange,
   }
 }
 

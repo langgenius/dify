@@ -125,6 +125,12 @@ const translation = {
       toAuthorize: 'To authorize',
       inputVars: 'Input Variables',
     },
+    questionClassifiers: {
+      model: 'model',
+      inputVars: 'Input Variables',
+      class: 'Class',
+      advancedSetting: 'Advanced Setting',
+    },
   },
 }
 
