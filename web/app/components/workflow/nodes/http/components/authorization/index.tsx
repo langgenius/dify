@@ -18,10 +18,13 @@ type Props = {
   onHide: () => void
 }
 
-const Field = ({ title, children }: { title: string; children: JSX.Element }) => {
+const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: JSX.Element }) => {
   return (
     <div>
-      <div className='leading-8 text-[13px] font-medium text-gray-700'>{title}</div>
+      <div className='leading-8 text-[13px] font-medium text-gray-700'>
+        {title}
+        {isRequired && <span className='ml-0.5 text-[#D92D20]'>*</span>}
+      </div>
       <div>{children}</div>
     </div>
   )
@@ -115,7 +118,7 @@ const Authorization: FC<Props> = ({
                 />
               </Field>
               {tempPayload.config?.type === APIType.custom && (
-                <Field title={t(`${i18nPrefix}.header`)}>
+                <Field title={t(`${i18nPrefix}.header`)} isRequired>
                   <input
                     type='text'
                     className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
@@ -125,7 +128,7 @@ const Authorization: FC<Props> = ({
                 </Field>
               )}
 
-              <Field title={t(`${i18nPrefix}.api-key-title`)}>
+              <Field title={t(`${i18nPrefix}.api-key-title`)} isRequired>
                 <input
                   type='text'
                   className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'

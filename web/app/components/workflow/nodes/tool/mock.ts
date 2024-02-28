@@ -1,10 +1,11 @@
+import { BlockEnum } from '../../types'
 import type { ToolNodeType } from './types'
 import { VarType } from './types'
 
 export const mockData: ToolNodeType = {
   title: 'Test',
   desc: 'Test',
-  type: 'Test',
+  type: BlockEnum.Tool,
   provider_id: 'test',
   provider_type: 'builtin',
   provider_name: 'test',
