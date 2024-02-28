@@ -7,7 +7,7 @@ import yaml
 from flask_sqlalchemy.pagination import Pagination
 
 from constants.model_template import default_app_templates
-from core.errors.error import ProviderTokenNotInitError, LLMBadRequestError
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
