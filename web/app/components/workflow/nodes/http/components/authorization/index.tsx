@@ -83,7 +83,7 @@ const Authorization: FC<Props> = ({
   }, [tempPayload, onChange, onHide])
   return (
     <Modal
-      title='Authorization'
+      title={t(`${i18nPrefix}.authorization`)}
       wrapperClassName='z-50 w-400'
       isShow={isShow}
       onClose={onHide}

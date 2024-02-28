@@ -53,7 +53,7 @@ const useConfig = (initInputs: HttpNodeType) => {
   const [isShowAuthorization, {
     setTrue: showAuthorization,
     setFalse: hideAuthorization,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
 
   const setAuthorization = useCallback((authorization: Authorization) => {
     const newInputs = produce(inputs, (draft: HttpNodeType) => {
