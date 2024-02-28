@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from typing import cast
 
@@ -6,7 +7,7 @@ import yaml
 from flask_sqlalchemy.pagination import Pagination
 
 from constants.model_template import default_app_templates
-from core.errors.error import ProviderTokenNotInitError
+from core.errors.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -74,7 +75,10 @@ class AppService:
                     tenant_id=account.current_tenant_id,
                     model_type=ModelType.LLM
                 )
-            except ProviderTokenNotInitError:
+            except (ProviderTokenNotInitError, LLMBadRequestError):
+                model_instance = None
+            except Exception as e:
+                logging.exception(e)
                 model_instance = None
 
             if model_instance:
