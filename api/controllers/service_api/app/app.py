@@ -43,7 +43,7 @@ class AppParameterApi(AppApiResource):
     }
 
     @marshal_with(parameters_fields)
-    def get(self, app_model: App, end_user):
+    def get(self, app_model: App):
         """Retrieve app parameters."""
         app_model_config = app_model.app_model_config
 
@@ -65,7 +65,7 @@ class AppParameterApi(AppApiResource):
         }
 
 class AppMetaApi(AppApiResource):
-    def get(self, app_model: App, end_user):
+    def get(self, app_model: App):
         """Get app meta"""
         app_model_config: AppModelConfig = app_model.app_model_config
 

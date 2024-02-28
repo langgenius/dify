@@ -29,7 +29,7 @@ from services.completion_service import CompletionService
 
 
 class CompletionApi(AppApiResource):
-    def post(self, app_model, end_user):
+    def post(self, app_model):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
@@ -45,8 +45,7 @@ class CompletionApi(AppApiResource):
 
         streaming = args['response_mode'] == 'streaming'
 
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
 
         args['auto_generate_name'] = False
 
@@ -83,20 +82,15 @@ class CompletionApi(AppApiResource):
 
 
 class CompletionStopApi(AppApiResource):
-    def post(self, app_model, end_user, task_id):
+    def post(self, app_model, task_id):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        if end_user is None:
-            parser = reqparse.RequestParser()
-            parser.add_argument('user', required=True, nullable=False, type=str, location='json')
-            args = parser.parse_args()
+        parser = reqparse.RequestParser()
+        parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+        args = parser.parse_args()
 
-            user = args.get('user')
-            if user is not None:
-                end_user = create_or_update_end_user_for_user_id(app_model, user)
-            else:
-                raise ValueError("arg user muse be input.")
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
 
         ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
@@ -104,7 +98,7 @@ class CompletionStopApi(AppApiResource):
 
 
 class ChatApi(AppApiResource):
-    def post(self, app_model, end_user):
+    def post(self, app_model):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -122,8 +116,7 @@ class ChatApi(AppApiResource):
 
         streaming = args['response_mode'] == 'streaming'
 
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
 
         try:
             response = CompletionService.completion(
@@ -158,20 +151,15 @@ class ChatApi(AppApiResource):
 
 
 class ChatStopApi(AppApiResource):
-    def post(self, app_model, end_user, task_id):
+    def post(self, app_model, task_id):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        if end_user is None:
-            parser = reqparse.RequestParser()
-            parser.add_argument('user', required=True, nullable=False, type=str, location='json')
-            args = parser.parse_args()
+        parser = reqparse.RequestParser()
+        parser.add_argument('user', required=True, nullable=False, type=str, location='json')
+        args = parser.parse_args()
 
-            user = args.get('user')
-            if user is not None:
-                end_user = create_or_update_end_user_for_user_id(app_model, user)
-            else:
-                raise ValueError("arg user muse be input.")
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
 
         ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 

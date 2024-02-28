@@ -18,13 +18,12 @@ from services.file_service import FileService
 class FileApi(AppApiResource):
 
     @marshal_with(file_fields)
-    def post(self, app_model, end_user):
+    def post(self, app_model):
 
         file = request.files['file']
-        user_args = request.form.get('user')
+        user_id = request.form.get('user')
 
-        if end_user is None and user_args is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, user_args)
+        end_user = create_or_update_end_user_for_user_id(app_model, user_id)
 
         # check file
         if 'file' not in request.files:

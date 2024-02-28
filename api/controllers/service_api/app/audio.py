@@ -6,6 +6,7 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.service_api import api
+from controllers.service_api.app import create_or_update_end_user_for_user_id
 from controllers.service_api.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -31,13 +32,16 @@ from services.errors.audio import (
 
 
 class AudioApi(AppApiResource):
-    def post(self, app_model: App, end_user):
+    def post(self, app_model: App):
         app_model_config: AppModelConfig = app_model.app_model_config
 
         if not app_model_config.speech_to_text_dict['enabled']:
             raise AppUnavailableError()
 
         file = request.files['file']
+        user_id = request.form.get('user')
+
+        end_user = create_or_update_end_user_for_user_id(app_model, user_id)
 
         try:
             response = AudioService.transcript_asr(
@@ -74,18 +78,20 @@ class AudioApi(AppApiResource):
 
 
 class TextApi(AppApiResource):
-    def post(self, app_model: App, end_user):
+    def post(self, app_model: App):
         parser = reqparse.RequestParser()
         parser.add_argument('text', type=str, required=True, nullable=False, location='json')
         parser.add_argument('user', type=str, required=True, nullable=False, location='json')
         parser.add_argument('streaming', type=bool, required=False, nullable=False, location='json')
         args = parser.parse_args()
 
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
+
         try:
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=args['text'],
-                end_user=args['user'],
+                end_user=end_user,
                 voice=app_model.app_model_config.text_to_speech_dict.get('voice'),
                 streaming=args['streaming']
             )

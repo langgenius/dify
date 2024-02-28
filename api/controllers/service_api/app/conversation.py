@@ -16,7 +16,7 @@ from services.conversation_service import ConversationService
 class ConversationApi(AppApiResource):
 
     @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, app_model, end_user):
+    def get(self, app_model):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -26,8 +26,7 @@ class ConversationApi(AppApiResource):
         parser.add_argument('user', type=str, location='args')
         args = parser.parse_args()
 
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
 
         try:
             return ConversationService.pagination_by_last_id(app_model, end_user, args['last_id'], args['limit'])
@@ -36,7 +35,7 @@ class ConversationApi(AppApiResource):
 
 class ConversationDetailApi(AppApiResource):
     @marshal_with(simple_conversation_fields)
-    def delete(self, app_model, end_user, c_id):
+    def delete(self, app_model, c_id):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -44,8 +43,7 @@ class ConversationDetailApi(AppApiResource):
 
         user = request.get_json().get('user')
 
-        if end_user is None and user is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, user)
+        end_user = create_or_update_end_user_for_user_id(app_model, user)
 
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
@@ -57,7 +55,7 @@ class ConversationDetailApi(AppApiResource):
 class ConversationRenameApi(AppApiResource):
 
     @marshal_with(simple_conversation_fields)
-    def post(self, app_model, end_user, c_id):
+    def post(self, app_model, c_id):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -69,8 +67,7 @@ class ConversationRenameApi(AppApiResource):
         parser.add_argument('auto_generate', type=bool, required=False, default=False, location='json')
         args = parser.parse_args()
 
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
+        end_user = create_or_update_end_user_for_user_id(app_model, args.get('user'))
 
         try:
             return ConversationService.rename(

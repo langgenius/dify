@@ -29,7 +29,7 @@ def validate_app_token(view=None):
             if not app_model.enable_api:
                 raise NotFound()
 
-            return view(app_model, None, *args, **kwargs)
+            return view(app_model, *args, **kwargs)
         return decorated
 
     if view:
