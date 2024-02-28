@@ -9,7 +9,7 @@ from core.apps.config_validators.model import ModelValidator
 from core.entities.application_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from extensions.ext_database import db
-from models.model import Account, App, AppModelConfig, Conversation, EndUser, Message, AppMode
+from models.model import Account, App, AppMode, AppModelConfig, Conversation, EndUser, Message
 from services.app_model_config_service import AppModelConfigService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError

@@ -1,4 +1,3 @@
-from typing import Tuple
 
 from core.entities.application_entities import PromptTemplateEntity
 from core.prompt.simple_prompt_transform import ModelMode
@@ -7,7 +6,7 @@ from models.model import AppMode
 
 class PromptValidator:
     @classmethod
-    def validate_and_set_defaults(cls, app_mode: AppMode, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
         """
         Validate pre_prompt and set defaults for prompt feature
         depending on the config['model']

@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 
 from core.moderation.factory import ModerationFactory
 
@@ -8,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class ModerationValidator:
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id, config: dict) -> tuple[dict, list[str]]:
         if not config.get("sensitive_word_avoidance"):
             config["sensitive_word_avoidance"] = {
                 "enabled": False

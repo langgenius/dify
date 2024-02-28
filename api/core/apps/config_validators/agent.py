@@ -1,5 +1,4 @@
 import uuid
-from typing import Tuple
 
 from core.agent.agent_executor import PlanningStrategy
 from core.apps.config_validators.dataset import DatasetValidator
@@ -9,7 +8,7 @@ OLD_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_dat
 
 class AgentValidator:
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for agent feature
 

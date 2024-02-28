@@ -1,9 +1,8 @@
-from typing import Tuple
 
 
 class FileUploadValidator:
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for file upload feature
 

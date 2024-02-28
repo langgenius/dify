@@ -1,11 +1,10 @@
-from typing import Tuple
 
 from core.external_data_tool.factory import ExternalDataToolFactory
 
 
 class ExternalDataToolsValidator:
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for external data fetch feature
 

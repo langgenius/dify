@@ -1,5 +1,4 @@
 import uuid
-from typing import Tuple
 
 from core.agent.agent_executor import PlanningStrategy
 from models.model import AppMode
@@ -8,7 +7,7 @@ from services.dataset_service import DatasetService
 
 class DatasetValidator:
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, app_mode: AppMode, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for dataset feature
 
