@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import { MethodEnum } from '../types'
+import { Method } from '../types'
 import Selector from '../../_base/components/selector'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const MethodOptions = [
-  { label: 'GET', value: MethodEnum.get },
-  { label: 'POST', value: MethodEnum.post },
-  { label: 'HEAD', value: MethodEnum.head },
-  { label: 'PATCH', value: MethodEnum.patch },
-  { label: 'PUT', value: MethodEnum.put },
-  { label: 'DELETE', value: MethodEnum.delete },
+  { label: 'GET', value: Method.get },
+  { label: 'POST', value: Method.post },
+  { label: 'HEAD', value: Method.head },
+  { label: 'PATCH', value: Method.patch },
+  { label: 'PUT', value: Method.put },
+  { label: 'DELETE', value: Method.delete },
 ]
 type Props = {
   readonly: boolean
-  method: MethodEnum
-  onMethodChange: (method: MethodEnum) => void
+  method: Method
+  onMethodChange: (method: Method) => void
   url: string
   onUrlChange: (url: string) => void
 }

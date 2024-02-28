@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
+import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
-import type { HttpNodeType, MethodEnum } from './types'
+import type { Body, HttpNodeType, Method } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
 const useConfig = (initInputs: HttpNodeType) => {
   const [inputs, setInputs] = useState<HttpNodeType>(initInputs)
@@ -10,7 +11,7 @@ const useConfig = (initInputs: HttpNodeType) => {
     setInputs,
   })
 
-  const handleMethodChange = useCallback((method: MethodEnum) => {
+  const handleMethodChange = useCallback((method: Method) => {
     setInputs(prev => ({
       ...prev,
       method,
@@ -32,17 +33,41 @@ const useConfig = (initInputs: HttpNodeType) => {
     toggleIsKeyValueEdit: toggleIsHeaderKeyValueEdit,
   } = useKeyValueList(inputs.headers)
 
+  const {
+    list: params,
+    setList: setParams,
+    addItem: addParam,
+    isKeyValueEdit: isParamKeyValueEdit,
+    toggleIsKeyValueEdit: toggleIsParamKeyValueEdit,
+  } = useKeyValueList(inputs.params)
+
+  const setBody = useCallback((data: Body) => {
+    const newInputs = produce(inputs, (draft: HttpNodeType) => {
+      draft.body = data
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleVarListChange,
     handleAddVariable,
     handleMethodChange,
     handleUrlChange,
+    // headers
     headers,
     setHeaders,
     addHeader,
     isHeaderKeyValueEdit,
     toggleIsHeaderKeyValueEdit,
+    // params
+    params,
+    setParams,
+    addParam,
+    isParamKeyValueEdit,
+    toggleIsParamKeyValueEdit,
+    // body
+    setBody,
   }
 }
 

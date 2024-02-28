@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Editor from '@/app/components/workflow/nodes/_base/components/editor/base'
+import TextEditor from '@/app/components/workflow/nodes/_base/components/editor/text-editor'
 import { LayoutGrid02 } from '@/app/components/base/icons/src/vender/line/layout'
 
 const i18nPrefix = 'workflow.nodes.http'
@@ -21,11 +21,13 @@ const BulkEdit: FC<Props> = ({
   const { t } = useTranslation()
   const [tempValue, setTempValue] = React.useState(value)
 
-  const [isFocus, setIsFocus] = React.useState(false)
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setTempValue(e.target.value)
+  const handleChange = useCallback((value: string) => {
+    setTempValue(value)
   }, [])
+
+  const handleBlur = useCallback(() => {
+    onChange(tempValue)
+  }, [tempValue, onChange])
 
   const handleSwitchToKeyValueEdit = useCallback(() => {
     onChange(tempValue)
@@ -34,9 +36,11 @@ const BulkEdit: FC<Props> = ({
 
   return (
     <div>
-      <Editor
+      <TextEditor
         title={<div className='uppercase'>{t(`${i18nPrefix}.bulkEdit`)}</div>}
-        value={value}
+        value={tempValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
         headerRight={
           <div className='flex items-center h-[18px]'>
             <div
@@ -49,17 +53,8 @@ const BulkEdit: FC<Props> = ({
             <div className='ml-3 mr-1.5 w-px h-3 bg-gray-200'></div>
           </div>
         }
-        isFocus={isFocus}
         minHeight={150}
-      >
-        <textarea
-          value={tempValue}
-          onChange={handleChange}
-          onFocus={() => setIsFocus(true)}
-          onBlur={() => setIsFocus(false)}
-          className='w-full h-full p-3 resize-none bg-transparent'
-        />
-      </Editor>
+      />
     </div>
   )
 }

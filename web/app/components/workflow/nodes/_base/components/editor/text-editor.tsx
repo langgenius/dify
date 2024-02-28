@@ -1,23 +1,35 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
+import { useBoolean } from 'ahooks'
 import Base from './base'
 
 type Props = {
   value: string
   onChange: (value: string) => void
   title: JSX.Element
-  language?: string
   headerRight?: JSX.Element
+  minHeight?: number
+  onBlur?: () => void
 }
 
-const CodeEditor: FC<Props> = ({
+const TextEditor: FC<Props> = ({
   value,
   onChange,
   title,
   headerRight,
+  minHeight,
+  onBlur,
 }) => {
-  const [isFocus, setIsFocus] = React.useState(false)
+  const [isFocus, {
+    setTrue: setIsFocus,
+    setFalse: setIsNotFocus,
+  }] = useBoolean(false)
+
+  const handleBlur = useCallback(() => {
+    setIsNotFocus()
+    onBlur?.()
+  }, [setIsNotFocus, onBlur])
 
   return (
     <div>
@@ -26,17 +38,17 @@ const CodeEditor: FC<Props> = ({
         value={value}
         headerRight={headerRight}
         isFocus={isFocus}
-        minHeight={86}
+        minHeight={minHeight}
       >
         <textarea
           value={value}
           onChange={e => onChange(e.target.value)}
-          onFocus={() => setIsFocus(true)}
-          onBlur={() => setIsFocus(false)}
+          onFocus={setIsFocus}
+          onBlur={handleBlur}
           className='w-full h-full p-3 resize-none bg-transparent'
         />
       </Base>
     </div>
   )
 }
-export default React.memo(CodeEditor)
+export default React.memo(TextEditor)

@@ -5,18 +5,21 @@ import type { KeyValue } from '../types'
 const strToKeyValueList = (value: string) => {
   return value.split('\n').map((item) => {
     const [key, value] = item.split(':')
-    return { key: key.trim(), value: value.trim() }
+    return { key: key.trim(), value: value?.trim() }
   })
 }
 
 const useKeyValueList = (value: string) => {
   const [list, setList] = useState<KeyValue[]>(value ? strToKeyValueList(value) : [])
+
   const addItem = useCallback(() => {
     setList(prev => [...prev, { key: '', value: '' }])
   }, [])
+
   const [isKeyValueEdit, {
     toggle: toggleIsKeyValueEdit,
-  }] = useBoolean(false)
+  }] = useBoolean(true)
+
   return {
     list: list.length === 0 ? [{ key: '', value: '' }] : list, // no item can not add new item
     setList,

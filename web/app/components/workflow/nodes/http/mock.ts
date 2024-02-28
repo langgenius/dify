@@ -1,5 +1,5 @@
 import { BlockEnum } from '../../types'
-import { MethodEnum } from './types'
+import { BodyType, Method } from './types'
 import type { HttpNodeType } from './types'
 
 export const mockData: HttpNodeType = {
@@ -16,12 +16,12 @@ export const mockData: HttpNodeType = {
       value_selector: ['bbb', 'b', 'c'],
     },
   ],
-  method: MethodEnum.get,
+  method: Method.get,
   url: 'https://api.dify.com/xx',
   headers: 'Content-Type: application/json\nAccept: */*',
   params: '',
   body: {
-    type: 'json',
+    type: BodyType.none,
     data: '',
   },
 }
