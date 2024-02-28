@@ -1,11 +1,11 @@
-from flask_restful import fields, marshal_with, reqparse, Resource
+from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import NotFound
 
 import services
 from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import WhereisUserArg, FetchUserArg, validate_app_token
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField, uuid_value
 from models.model import App, EndUser

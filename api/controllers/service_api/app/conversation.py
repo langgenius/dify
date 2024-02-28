@@ -1,11 +1,11 @@
-from flask_restful import marshal_with, reqparse, Resource
+from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import NotFound
 
 import services
 from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import FetchUserArg, validate_app_token, WhereisUserArg
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
 from models.model import App, EndUser

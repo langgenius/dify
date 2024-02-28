@@ -1,7 +1,8 @@
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
 from functools import wraps
-from typing import Optional, Callable
+from typing import Optional
 
 from flask import current_app, request
 from flask_login import user_logged_in

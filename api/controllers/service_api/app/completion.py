@@ -4,7 +4,7 @@ from collections.abc import Generator
 from typing import Union
 
 from flask import Response, stream_with_context
-from flask_restful import reqparse, Resource
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -18,7 +18,7 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api.wraps import validate_app_token, FetchUserArg, WhereisUserArg
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
