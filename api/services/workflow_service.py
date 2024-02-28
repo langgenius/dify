@@ -96,7 +96,7 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError('No valid workflow found.')
 
-        # TODO check if the workflow is valid
+        # TODO check if the workflow is valid, basic check
 
         # create new workflow
         workflow = Workflow(
