@@ -19,6 +19,7 @@ import ZoomInOut from './zoom-in-out'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
+import Features from './features'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -54,6 +55,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       <Header />
       <Panel />
       <ZoomInOut />
+      <Features />
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
