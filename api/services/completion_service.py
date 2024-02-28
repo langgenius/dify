@@ -5,10 +5,11 @@ from typing import Any, Union
 from sqlalchemy import and_
 
 from core.application_manager import ApplicationManager
+from core.apps.config_validators.model import ModelValidator
 from core.entities.application_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from extensions.ext_database import db
-from models.model import Account, App, AppModelConfig, Conversation, EndUser, Message
+from models.model import Account, App, AppModelConfig, Conversation, EndUser, Message, AppMode
 from services.app_model_config_service import AppModelConfigService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -88,9 +89,8 @@ class CompletionService:
                 if 'completion_params' not in args['model_config']['model']:
                     raise ValueError('model_config.model.completion_params is required')
 
-                completion_params = AppModelConfigService.validate_model_completion_params(
-                    cp=args['model_config']['model']['completion_params'],
-                    model_name=app_model_config.model_dict["name"]
+                completion_params = ModelValidator.validate_model_completion_params(
+                    cp=args['model_config']['model']['completion_params']
                 )
 
                 app_model_config_model = app_model_config.model_dict
@@ -115,9 +115,8 @@ class CompletionService:
                 # validate config
                 model_config = AppModelConfigService.validate_configuration(
                     tenant_id=app_model.tenant_id,
-                    account=user,
                     config=args['model_config'],
-                    app_mode=app_model.mode
+                    app_mode=AppMode.value_of(app_model.mode)
                 )
 
                 app_model_config = AppModelConfig(
