@@ -5,6 +5,7 @@ import { mockData } from './mock'
 import ApiInput from './components/api-input'
 import KeyValue from './components/key-value'
 import EditBody from './components/edit-body'
+import AuthorizationModal from './components/authorization'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
@@ -33,6 +34,10 @@ const Panel: FC = () => {
     isParamKeyValueEdit,
     toggleIsParamKeyValueEdit,
     setBody,
+    isShowAuthorization,
+    showAuthorization,
+    hideAuthorization,
+    setAuthorization,
   } = useConfig(mockData)
 
   return (
@@ -52,6 +57,14 @@ const Panel: FC = () => {
         </Field>
         <Field
           title={t(`${i18nPrefix}.api`)}
+          operations={
+            <div
+              onClick={showAuthorization}
+              className='flex '
+            >
+              API-KEY
+            </div>
+          }
         >
           <ApiInput
             readonly={readOnly}
@@ -95,6 +108,14 @@ const Panel: FC = () => {
           />
         </Field>
       </div>
+      {isShowAuthorization && (
+        <AuthorizationModal
+          isShow
+          onHide={hideAuthorization}
+          payload={inputs.authorization}
+          onChange={setAuthorization}
+        />
+      )}
       <Split />
       <div className='px-4 pt-4 pb-2'>
         <OutputVars>

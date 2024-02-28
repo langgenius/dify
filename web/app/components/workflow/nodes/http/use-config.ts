@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
+import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
-import type { Body, HttpNodeType, Method } from './types'
+import type { Authorization, Body, HttpNodeType, Method } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
 const useConfig = (initInputs: HttpNodeType) => {
   const [inputs, setInputs] = useState<HttpNodeType>(initInputs)
@@ -48,6 +49,19 @@ const useConfig = (initInputs: HttpNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // authorization
+  const [isShowAuthorization, {
+    setTrue: showAuthorization,
+    setFalse: hideAuthorization,
+  }] = useBoolean(true)
+
+  const setAuthorization = useCallback((authorization: Authorization) => {
+    const newInputs = produce(inputs, (draft: HttpNodeType) => {
+      draft.authorization = authorization
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleVarListChange,
@@ -68,6 +82,11 @@ const useConfig = (initInputs: HttpNodeType) => {
     toggleIsParamKeyValueEdit,
     // body
     setBody,
+    // authorization
+    isShowAuthorization,
+    showAuthorization,
+    hideAuthorization,
+    setAuthorization,
   }
 }
 

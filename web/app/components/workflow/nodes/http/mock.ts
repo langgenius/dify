@@ -1,5 +1,5 @@
 import { BlockEnum } from '../../types'
-import { BodyType, Method } from './types'
+import { APIType, AuthorizationType, BodyType, Method } from './types'
 import type { HttpNodeType } from './types'
 
 export const mockData: HttpNodeType = {
@@ -23,5 +23,13 @@ export const mockData: HttpNodeType = {
   body: {
     type: BodyType.none,
     data: '',
+  },
+  authorization: {
+    type: AuthorizationType.apiKey,
+    config: {
+      type: APIType.custom,
+      api_key: 'abc',
+      header: 'x-Authorization',
+    },
   },
 }
