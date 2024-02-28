@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import InfoPanel from '../_base/components/info-panel'
 import { mockData } from './mock'
 import {
@@ -8,7 +9,8 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 
 const Node: FC = () => {
   const { provider, name: modelId } = mockData.model
-  const topics = mockData.topics
+  const tempTopics = mockData.topics
+  const [topics, setTopics] = useState(tempTopics)
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()
@@ -27,6 +29,17 @@ const Node: FC = () => {
             content={topic.topic}
           />
         ))}
+        {/* For test */}
+        <div
+          className='mt-1 flex items-center h-6 justify-center bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'
+          onClick={() => {
+            setTopics([...topics, {
+              id: `${Date.now()}`,
+              name: `Topic${topics.length}`,
+              topic: `Topic${topics.length}`,
+            }])
+          }}
+        >Add</div>
       </div>
     </div>
   )

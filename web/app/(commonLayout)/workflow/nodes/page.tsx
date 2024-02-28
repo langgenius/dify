@@ -5,7 +5,7 @@ import { memo } from 'react'
 import Workflow from '@/app/components/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 const nodes = [
-  BlockEnum.HttpRequest/* 9 */, BlockEnum.Tool/* 10 */, BlockEnum.VariableAssigner/* 11 */, BlockEnum.Start/* 1 */, BlockEnum.DirectAnswer/* 2 */, BlockEnum.LLM/* 3 */, BlockEnum.KnowledgeRetrieval/* 4 */, BlockEnum.QuestionClassifier/* 5 */,
+  BlockEnum.QuestionClassifier/* 5 */, BlockEnum.HttpRequest/* 9 */, BlockEnum.Tool/* 10 */, BlockEnum.VariableAssigner/* 11 */, BlockEnum.Start/* 1 */, BlockEnum.DirectAnswer/* 2 */, BlockEnum.LLM/* 3 */, BlockEnum.KnowledgeRetrieval/* 4 */,
   BlockEnum.IfElse/* 6 */, BlockEnum.Code/* 7 */, BlockEnum.TemplateTransform/* 8 */,
   BlockEnum.End/* 12 */,
 ].map((item, i) => ({
