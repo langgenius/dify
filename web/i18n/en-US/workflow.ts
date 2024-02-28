@@ -61,6 +61,18 @@ const translation = {
         statusCode: 'Response Status Code',
         headers: 'Response Header List JSON',
       },
+      authorization: {
+        'authorization': 'Authorization',
+        'authorizationType': 'Authorization Type',
+        'no-auth': 'None',
+        'api-key': 'API-Key',
+        'auth-type': 'Auth Type',
+        'basic': 'Basic',
+        'bearer': 'Bearer',
+        'custom': 'Custom',
+        'api-key-title': 'API Key',
+        'header': 'Header',
+      },
     },
     code: {
       inputVars: 'Input Variables',

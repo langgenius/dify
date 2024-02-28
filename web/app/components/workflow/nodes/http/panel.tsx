@@ -11,6 +11,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 const i18nPrefix = 'workflow.nodes.http'
 
 const Panel: FC = () => {
@@ -60,9 +61,13 @@ const Panel: FC = () => {
           operations={
             <div
               onClick={showAuthorization}
-              className='flex '
+              className='flex items-center h-6 space-x-1 cursor-pointer'
             >
-              API-KEY
+              <Settings01 className='w-3 h-3 text-gray-500' />
+              <div className='text-xs font-medium text-gray-500'>
+                {t(`${i18nPrefix}.authorization.authorization`)}
+                <span className='ml-1 text-gray-700'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
+              </div>
             </div>
           }
         >

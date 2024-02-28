@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
@@ -7,6 +8,9 @@ import { APIType, AuthorizationType } from '../../types'
 import RadioGroup from './radio-group'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+
+const i18nPrefix = 'workflow.nodes.http.authorization'
+
 type Props = {
   payload: AuthorizationPayloadType
   onChange: (newPayload: AuthorizationPayloadType) => void
@@ -29,6 +33,8 @@ const Authorization: FC<Props> = ({
   isShow,
   onHide,
 }) => {
+  const { t } = useTranslation()
+
   const [tempPayload, setTempPayload] = React.useState<AuthorizationPayloadType>(payload)
   const handleAuthTypeChange = useCallback((type: string) => {
     const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
@@ -84,11 +90,11 @@ const Authorization: FC<Props> = ({
     >
       <div>
         <div className='space-y-2'>
-          <Field title='Type'>
+          <Field title={t(`${i18nPrefix}.authorizationType`)}>
             <RadioGroup
               options={[
-                { value: AuthorizationType.none, label: 'Basic' },
-                { value: AuthorizationType.apiKey, label: 'Bearer' },
+                { value: AuthorizationType.none, label: t(`${i18nPrefix}.no-auth`) },
+                { value: AuthorizationType.apiKey, label: t(`${i18nPrefix}.api-key`) },
               ]}
               value={tempPayload.type}
               onChange={handleAuthTypeChange}
@@ -97,19 +103,19 @@ const Authorization: FC<Props> = ({
 
           {tempPayload.type === AuthorizationType.apiKey && (
             <>
-              <Field title='Auth type'>
+              <Field title={t(`${i18nPrefix}.auth-type`)}>
                 <RadioGroup
                   options={[
-                    { value: APIType.basic, label: 'Basic' },
-                    { value: APIType.bearer, label: 'Bearer' },
-                    { value: APIType.custom, label: 'Custom' },
+                    { value: APIType.basic, label: t(`${i18nPrefix}.basic`) },
+                    { value: APIType.bearer, label: t(`${i18nPrefix}.bearer`) },
+                    { value: APIType.custom, label: t(`${i18nPrefix}.custom`) },
                   ]}
                   value={tempPayload.config?.type || APIType.basic}
                   onChange={handleAuthAPITypeChange}
                 />
               </Field>
               {tempPayload.config?.type === APIType.custom && (
-                <Field title='header'>
+                <Field title={t(`${i18nPrefix}.header`)}>
                   <input
                     type='text'
                     className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
@@ -119,7 +125,7 @@ const Authorization: FC<Props> = ({
                 </Field>
               )}
 
-              <Field title='API Key'>
+              <Field title={t(`${i18nPrefix}.api-key-title`)}>
                 <input
                   type='text'
                   className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
@@ -131,8 +137,8 @@ const Authorization: FC<Props> = ({
           )}
         </div>
         <div className='mt-6 flex justify-end space-x-2'>
-          <Button onClick={onHide} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>Cancel</Button>
-          <Button type='primary' onClick={handleConfirm} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>Confirm</Button>
+          <Button onClick={onHide} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>{t('common.operation.cancel')}</Button>
+          <Button type='primary' onClick={handleConfirm} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>{t('common.operation.save')}</Button>
         </div>
       </div>
     </Modal>

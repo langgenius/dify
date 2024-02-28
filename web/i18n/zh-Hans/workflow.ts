@@ -60,6 +60,18 @@ const translation = {
         statusCode: '响应状态码',
         headers: '响应头列表 JSON',
       },
+      authorization: {
+        'authorization': '鉴权',
+        'authorizationType': '鉴权类型',
+        'no-auth': '无',
+        'api-key': 'API-Key',
+        'auth-type': 'API 鉴权类型',
+        'basic': '基础',
+        'bearer': 'Bearer',
+        'custom': '自定义',
+        'api-key-title': 'API Key',
+        'header': 'Header',
+      },
     },
     code: {
       inputVars: '输入变量',
