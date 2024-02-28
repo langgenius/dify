@@ -26,13 +26,12 @@ const Apps: FC = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
-  const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+  const allCategoriesEn = t('explore.apps.allCategories')
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
   })
   const {
     data: { categories, allList },
-    isLoading,
   } = useSWR(
     ['/explore/apps'],
     () =>
@@ -90,7 +89,7 @@ const Apps: FC = () => {
     }
   }
 
-  if (!isLoading) {
+  if (!categories) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
