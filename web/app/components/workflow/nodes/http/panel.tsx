@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
 import { mockData } from './mock'
 import ApiInput from './components/api-input'
+import KeyValueList from './components/key-value/list'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+
 const i18nPrefix = 'workflow.nodes.http'
 
 const Panel: FC = () => {
@@ -20,6 +22,9 @@ const Panel: FC = () => {
     handleAddVariable,
     handleMethodChange,
     handleUrlChange,
+    headers,
+    setHeaders,
+    addHeader,
   } = useConfig(mockData)
 
   return (
@@ -51,7 +56,12 @@ const Panel: FC = () => {
         <Field
           title={t(`${i18nPrefix}.headers`)}
         >
-          headers
+          <KeyValueList
+            list={headers}
+            onChange={setHeaders}
+            onAdd={addHeader}
+            readonly={readOnly}
+          />
         </Field>
         <Field
           title={t(`${i18nPrefix}.params`)}
