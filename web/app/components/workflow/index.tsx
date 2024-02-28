@@ -10,7 +10,7 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   useEdgesState,
-  useNodesInitialized,
+  // useNodesInitialized,
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -70,10 +70,10 @@ const Workflow: FC<WorkflowProps> = memo(({
       needUpdatePosition: true,
     }
   }, [initialNodes, initialEdges])
-  const nodesInitialized = useNodesInitialized({
-    includeHiddenNodes: true,
-  })
-  const [nodes] = useNodesState(initialData.nodes)
+  // const nodesInitialized = useNodesInitialized({
+  //   includeHiddenNodes: true,
+  // })
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialData.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData.edges)
 
   const {
@@ -85,11 +85,10 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleInitialLayoutNodes,
   } = useWorkflow()
 
-  useEffect(() => {
-    console.log(nodesInitialized, '2')
-    if (nodesInitialized && initialData.needUpdatePosition)
-      handleInitialLayoutNodes()
-  }, [nodesInitialized])
+  // useEffect(() => {
+  //   if (nodesInitialized)
+  //     handleInitialLayoutNodes()
+  // }, [nodesInitialized])
 
   useEffect(() => {
     if (initialSelectedNodeId) {

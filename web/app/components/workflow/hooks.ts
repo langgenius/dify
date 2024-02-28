@@ -10,6 +10,7 @@ import {
 } from 'reactflow'
 import type {
   BlockEnum,
+  Node,
   SelectedNode,
 } from './types'
 import { NodeInitialData } from './constants'
@@ -123,13 +124,14 @@ export const useWorkflow = () => {
       setNodes(newNodes)
     }
   }, [setSelectedNode, store])
+
   const handleUpdateNodeData = useCallback(({ id, data }: SelectedNode) => {
     const {
       getNodes,
       setNodes,
     } = store.getState()
     const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(n => n.id === id)!
+      const currentNode = draft.find(node => node.id === id)!
 
       currentNode.data = { ...currentNode.data, ...data }
     })
@@ -137,7 +139,7 @@ export const useWorkflow = () => {
     setSelectedNode({ id, data })
   }, [store, setSelectedNode])
 
-  const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum, branchId?: string) => {
+  const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
     const {
       getNodes,
       setNodes,
@@ -146,35 +148,85 @@ export const useWorkflow = () => {
     } = store.getState()
     const nodes = getNodes()
     const currentNode = nodes.find(node => node.id === currentNodeId)!
-    const nextNode = {
+    const nextNode: Node = {
       id: `${Date.now()}`,
       type: 'custom',
-      data: { ...NodeInitialData[nodeType], selected: true },
+      data: {
+        ...NodeInitialData[nodeType],
+        selected: true,
+      },
       position: {
         x: currentNode.position.x + 304,
         y: currentNode.position.y,
       },
     }
+    const newEdge = {
+      id: `${currentNode.id}-${nextNode.id}`,
+      type: 'custom',
+      source: currentNode.id,
+      sourceHandle,
+      target: nextNode.id,
+      targetHandle: 'target',
+    }
     const newNodes = produce(nodes, (draft) => {
-      draft.forEach((item) => {
-        item.data = { ...item.data, selected: false }
+      draft.forEach((node) => {
+        node.data = { ...node.data, selected: false }
       })
       draft.push(nextNode)
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
-      draft.push({
-        id: `${currentNode.id}-${nextNode.id}`,
-        type: 'custom',
-        source: currentNode.id,
-        sourceHandle: branchId || 'source',
-        target: nextNode.id,
-        targetHandle: 'target',
-      })
+      draft.push(newEdge)
     })
     setEdges(newEdges)
     setSelectedNode(nextNode)
   }, [store, setSelectedNode])
+
+  const handleChangeCurrentNode = useCallback((parentNodeId: string, currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === currentNodeId)!
+    const connectedEdges = getConnectedEdges([currentNode], edges)
+    const newCurrentNode: Node = {
+      id: `${Date.now()}`,
+      type: 'custom',
+      data: {
+        ...NodeInitialData[nodeType],
+        selected: true,
+      },
+      position: {
+        x: currentNode.position.x,
+        y: currentNode.position.y,
+      },
+    }
+    const newEdge = {
+      id: `${parentNodeId}-${newCurrentNode.id}`,
+      type: 'custom',
+      source: parentNodeId,
+      sourceHandle,
+      target: newCurrentNode.id,
+      targetHandle: 'target',
+    }
+    const newNodes = produce(nodes, (draft) => {
+      const index = draft.findIndex(node => node.id === currentNodeId)
+
+      draft.splice(index, 1, newCurrentNode)
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      const filtered = draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
+      filtered.push(newEdge)
+
+      return filtered
+    })
+    setEdges(newEdges)
+  }, [store])
+
   const handleInitialLayoutNodes = useCallback(() => {
     const {
       getNodes,
@@ -191,6 +243,43 @@ export const useWorkflow = () => {
     }))
   }, [store])
 
+  const handleUpdateNodesPosition = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const groups = nodes.reduce((acc, cur) => {
+      const x = cur.data.position.x
+
+      if (!acc[x])
+        acc[x] = [cur]
+      else
+        acc[x].push(cur)
+
+      return acc
+    }, {} as Record<string, Node[]>)
+    const heightMap: Record<string, number> = {}
+
+    Object.keys(groups).forEach((key) => {
+      let baseHeight = 0
+      groups[key].sort((a, b) => a.data.position!.y - b.data.position!.y).forEach((node) => {
+        heightMap[node.id] = baseHeight
+        baseHeight = node.height! + 39
+      })
+    })
+    setNodes(produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        node.position = {
+          ...node.position,
+          x: node.data.position.x * (220 + 64),
+          y: heightMap[node.id],
+        }
+      })
+    }))
+  }, [store])
+
   return {
     handleEnterNode,
     handleLeaveNode,
@@ -199,6 +288,8 @@ export const useWorkflow = () => {
     handleSelectNode,
     handleUpdateNodeData,
     handleAddNextNode,
+    handleChangeCurrentNode,
     handleInitialLayoutNodes,
+    handleUpdateNodesPosition,
   }
 }

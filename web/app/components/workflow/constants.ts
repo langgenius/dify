@@ -92,3 +92,7 @@ export const NodeInitialData = {
     desc: '',
   },
 }
+
+export const NODE_WIDTH = 220
+export const X_OFFSET = 64
+export const Y_OFFSET = 39

@@ -8,14 +8,26 @@ const initialNodes = [
   {
     id: '1',
     type: 'custom',
-    // position: { x: 130, y: 130 },
+    position: { x: 130, y: 130 },
     data: { type: 'start' },
   },
   {
     id: '2',
     type: 'custom',
     position: { x: 434, y: 130 },
-    data: { type: 'if-else' },
+    data: {
+      type: 'if-else',
+      branches: [
+        {
+          id: 'if-true',
+          name: 'IS TRUE',
+        },
+        {
+          id: 'if-false',
+          name: 'IS FALSE',
+        },
+      ],
+    },
   },
   {
     id: '3',
@@ -50,7 +62,7 @@ const initialEdges = [
     id: '1',
     type: 'custom',
     source: '2',
-    sourceHandle: 'condition1',
+    sourceHandle: 'if-true',
     target: '3',
     targetHandle: 'target',
   },
@@ -58,7 +70,7 @@ const initialEdges = [
     id: '2',
     type: 'custom',
     source: '2',
-    sourceHandle: 'condition2',
+    sourceHandle: 'if-false',
     target: '4',
     targetHandle: 'target',
   },

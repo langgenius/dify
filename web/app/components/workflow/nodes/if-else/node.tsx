@@ -17,7 +17,7 @@ const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
         <div className='w-full text-right text-gray-700 text-xs font-semibold'>IF</div>
         <NodeSourceHandle
           {...props}
-          handleId='condition1'
+          handleId='if-true'
           handleClassName='!top-1 !-right-[21px]'
         />
       </div>
@@ -41,7 +41,7 @@ const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
         <div className='w-full text-right text-gray-700 text-xs font-semibold'>ELSE</div>
         <NodeSourceHandle
           {...props}
-          handleId='condition2'
+          handleId='if-false'
           handleClassName='!top-1 !-right-[21px]'
         />
       </div>
