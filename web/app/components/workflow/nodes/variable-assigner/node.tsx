@@ -57,6 +57,7 @@ const Node: FC = () => {
 
             )}
           </div>
+          {/* For test */}
           <div
             className='mt-1 flex items-center h-6 justify-center bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'
             onClick={() => {

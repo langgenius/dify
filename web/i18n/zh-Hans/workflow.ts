@@ -120,6 +120,10 @@ const translation = {
         array: 'Array',
       },
     },
+    tool: {
+      toAuthorize: '授权',
+      inputVars: '输入变量',
+    },
   },
 }
 

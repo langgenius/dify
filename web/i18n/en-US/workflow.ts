@@ -121,6 +121,10 @@ const translation = {
         array: 'Array',
       },
     },
+    tool: {
+      toAuthorize: 'To authorize',
+      inputVars: 'Input Variables',
+    },
   },
 }
 
