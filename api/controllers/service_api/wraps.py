@@ -49,10 +49,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
             kwargs['app_model'] = app_model
 
-            if not fetch_user_arg:
-                # use default-user
-                user_id = None
-            else:
+            if fetch_user_arg:
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get('user')
                 elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
@@ -66,7 +63,10 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 if not user_id and fetch_user_arg.required:
                     raise ValueError("Arg user must be provided.")
 
-            kwargs['end_user'] = create_or_update_end_user_for_user_id(app_model, user_id)
+                if user_id:
+                    user_id = str(user_id)
+
+                kwargs['end_user'] = create_or_update_end_user_for_user_id(app_model, user_id)
 
             return view_func(*args, **kwargs)
         return decorated_view
