@@ -16,8 +16,9 @@ type BaseNodeProps = {
 } & NodeProps
 
 const BaseNode: FC<BaseNodeProps> = ({
-  id: nodeId,
+  id,
   data,
+  selected,
   children,
 }) => {
   const { handleSelectNode } = useWorkflow()
@@ -27,10 +28,9 @@ const BaseNode: FC<BaseNodeProps> = ({
       className={`
         group relative w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
-        ${data.hidden && 'opacity-0'}
-        ${data.selected ? 'border-[2px] border-primary-600' : 'border border-white'}
+        ${selected ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
-      onClick={() => handleSelectNode({ id: nodeId, data })}
+      onClick={() => handleSelectNode(id)}
     >
       <NodeControl />
       <div className='flex items-center px-3 pt-3 pb-2'>
@@ -49,7 +49,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       {
         children && (
           <div className='mb-1'>
-            {cloneElement(children, { id: nodeId, data })}
+            {cloneElement(children, { id, data })}
           </div>
         )
       }

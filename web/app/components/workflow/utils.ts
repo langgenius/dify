@@ -12,7 +12,6 @@ export const initialNodesPosition = (oldNodes: Node[], edges: Edge[]) => {
   const nodes = cloneDeep(oldNodes)
   const start = nodes.find(node => node.data.type === BlockEnum.Start)!
 
-  start.data.hidden = false
   start.position.x = 0
   start.position.y = 0
   start.data.position = {
@@ -38,7 +37,6 @@ export const initialNodesPosition = (oldNodes: Node[], edges: Edge[]) => {
 
     if (outgoers.length) {
       queue.push(...outgoers.map((outgoer) => {
-        outgoer.data.hidden = false
         outgoer.data.position = {
           x: depth + 1,
           y: breadth,

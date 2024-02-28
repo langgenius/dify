@@ -24,13 +24,11 @@ export type Branch = {
 }
 
 export type CommonNodeType = {
-  hidden?: boolean
   position?: {
     x: number
     y: number
   }
   sortIndexInBranches?: number
-  selected?: boolean
   hovering?: boolean
   branches?: Branch[]
   title: string

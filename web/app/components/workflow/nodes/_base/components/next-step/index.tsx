@@ -7,14 +7,17 @@ import {
 } from 'reactflow'
 import BlockIcon from '../../../../block-icon'
 import type { Node } from '../../../../types'
-import { useStore } from '../../../../store'
 import Add from './add'
 import Item from './item'
 import Line from './line'
 
-const NextStep = () => {
+type NextStepProps = {
+  selectedNode: Node
+}
+const NextStep = ({
+  selectedNode,
+}: NextStepProps) => {
   const store = useStoreApi()
-  const selectedNode = useStore(state => state.selectedNode)
   const branches = selectedNode?.data.branches
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)

@@ -57,6 +57,7 @@ const initialEdges = [
     sourceHandle: 'source',
     target: '2',
     targetHandle: 'target',
+    deletable: false,
   },
   {
     id: '1',

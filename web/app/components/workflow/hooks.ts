@@ -14,12 +14,10 @@ import type {
   SelectedNode,
 } from './types'
 import { NodeInitialData } from './constants'
-import { useStore } from './store'
 import { initialNodesPosition } from './utils'
 
 export const useWorkflow = () => {
   const store = useStoreApi()
-  const setSelectedNode = useStore(state => state.setSelectedNode)
 
   const handleEnterNode = useCallback<NodeMouseHandler>((_, node) => {
     const {
@@ -71,6 +69,25 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleSelectNode = useCallback((nodeId: string, cancelSelection?: boolean) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const newNodes = produce(getNodes(), (draft) => {
+      const selectedNode = draft.find(node => node.id === nodeId)
+
+      if (selectedNode) {
+        if (cancelSelection)
+          selectedNode.selected = false
+        else
+          selectedNode.selected = true
+      }
+    })
+    setNodes(newNodes)
+  }, [store])
+
   const handleEnterEdge = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
       edges,
@@ -97,33 +114,19 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleSelectNode = useCallback((selectNode: SelectedNode, cancelSelection?: boolean) => {
+  const handleDeleteEdge = useCallback(() => {
     const {
-      getNodes,
-      setNodes,
+      edges,
+      setEdges,
     } = store.getState()
-    if (cancelSelection) {
-      setSelectedNode(null)
-      const newNodes = produce(getNodes(), (draft) => {
-        draft.forEach((item) => {
-          item.data.selected = false
-        })
-      })
-      setNodes(newNodes)
-    }
-    else {
-      setSelectedNode(selectNode)
-      const newNodes = produce(getNodes(), (draft) => {
-        draft.forEach((item) => {
-          if (item.id === selectNode.id)
-            item.data.selected = true
-          else
-            item.data.selected = false
-        })
-      })
-      setNodes(newNodes)
-    }
-  }, [setSelectedNode, store])
+    const newEdges = produce(edges, (draft) => {
+      const index = draft.findIndex(edge => edge.selected)
+
+      if (index > -1)
+        draft.splice(index, 1)
+    })
+    setEdges(newEdges)
+  }, [store])
 
   const handleUpdateNodeData = useCallback(({ id, data }: SelectedNode) => {
     const {
@@ -136,8 +139,7 @@ export const useWorkflow = () => {
       currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
-    setSelectedNode({ id, data })
-  }, [store, setSelectedNode])
+  }, [store])
 
   const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
     const {
@@ -151,10 +153,7 @@ export const useWorkflow = () => {
     const nextNode: Node = {
       id: `${Date.now()}`,
       type: 'custom',
-      data: {
-        ...NodeInitialData[nodeType],
-        selected: true,
-      },
+      data: NodeInitialData[nodeType],
       position: {
         x: currentNode.position.x + 304,
         y: currentNode.position.y,
@@ -179,8 +178,7 @@ export const useWorkflow = () => {
       draft.push(newEdge)
     })
     setEdges(newEdges)
-    setSelectedNode(nextNode)
-  }, [store, setSelectedNode])
+  }, [store])
 
   const handleChangeCurrentNode = useCallback((parentNodeId: string, currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
     const {
@@ -195,10 +193,7 @@ export const useWorkflow = () => {
     const newCurrentNode: Node = {
       id: `${Date.now()}`,
       type: 'custom',
-      data: {
-        ...NodeInitialData[nodeType],
-        selected: true,
-      },
+      data: NodeInitialData[nodeType],
       position: {
         x: currentNode.position.x,
         y: currentNode.position.y,
@@ -223,6 +218,28 @@ export const useWorkflow = () => {
       filtered.push(newEdge)
 
       return filtered
+    })
+    setEdges(newEdges)
+  }, [store])
+
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+
+    const newNodes = produce(getNodes(), (draft) => {
+      const index = draft.findIndex(node => node.id === nodeId)
+
+      if (index > -1)
+        draft.splice(index, 1)
+    })
+    setNodes(newNodes)
+    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
+    const newEdges = produce(edges, (draft) => {
+      return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
     })
     setEdges(newEdges)
   }, [store])
@@ -283,12 +300,14 @@ export const useWorkflow = () => {
   return {
     handleEnterNode,
     handleLeaveNode,
+    handleSelectNode,
     handleEnterEdge,
     handleLeaveEdge,
-    handleSelectNode,
+    handleDeleteEdge,
     handleUpdateNodeData,
     handleAddNextNode,
     handleChangeCurrentNode,
+    handleDeleteNode,
     handleInitialLayoutNodes,
     handleUpdateNodesPosition,
   }

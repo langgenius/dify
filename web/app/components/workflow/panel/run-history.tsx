@@ -10,7 +10,7 @@ const RunHistory = () => {
   const setShowRunHistory = useStore(state => state.setShowRunHistory)
 
   return (
-    <div className='w-[200px] h-full bg-white border-[0.5px] border-gray-200 shadow-xl rounded-l-2xl z-10'>
+    <div className='w-[200px] h-full bg-white border-[0.5px] border-gray-200 shadow-xl rounded-l-2xl'>
       <div className='flex items-center justify-between px-4 pt-3 text-base font-semibold text-gray-900'>
         Run History
         <div

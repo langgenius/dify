@@ -3,6 +3,8 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { useNodes } from 'reactflow'
+import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import WorkflowInfo from './workflow-info'
@@ -11,7 +13,8 @@ import RunHistory from './run-history'
 
 const Panel: FC = () => {
   const mode = useStore(state => state.mode)
-  const selectedNode = useStore(state => state.selectedNode)
+  const nodes = useNodes<CommonNodeType>()
+  const selectedNode = nodes.find(node => node.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const {
     showWorkflowInfoPanel,
@@ -26,7 +29,7 @@ const Panel: FC = () => {
   }, [mode, selectedNode])
 
   return (
-    <div className='absolute top-14 right-0 bottom-2 flex'>
+    <div className='absolute top-14 right-0 bottom-2 flex z-10'>
       {
         showNodePanel && (
           <NodePanel {...selectedNode!} />

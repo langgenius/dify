@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import type { NodeProps } from 'reactflow'
-import { BlockEnum, type SelectedNode } from '../types'
+import type { Node } from '../types'
+import { BlockEnum } from '../types'
 import {
   NodeComponentMap,
   PanelComponentMap,
@@ -44,7 +45,7 @@ const CustomNode = memo((props: NodeProps) => {
 })
 CustomNode.displayName = 'CustomNode'
 
-export const Panel = memo((props: SelectedNode) => {
+export const Panel = memo((props: Node) => {
   const nodeData = props.data
   const PanelComponent = PanelComponentMap[nodeData.type]
 
