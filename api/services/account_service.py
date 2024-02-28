@@ -282,9 +282,9 @@ class TenantService:
         else: 
             TenantAccountJoin.query.filter(TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
             tenant_account_join.current = True
-            db.session.commit()
             # Set the current tenant for the account
             account.current_tenant_id = tenant_account_join.tenant_id
+            db.session.commit()
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> list[Account]:

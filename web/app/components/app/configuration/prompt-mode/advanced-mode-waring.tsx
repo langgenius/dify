@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
-import { LanguagesSupported, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 type Props = {
   onReturnToSimpleMode: () => void
 }
@@ -15,7 +15,6 @@ const AdvancedModeWarning: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const [show, setShow] = React.useState(true)
   if (!show)
     return null
@@ -27,7 +26,7 @@ const AdvancedModeWarning: FC<Props> = ({
           <span className='text-gray-700'>{t('appDebug.promptMode.advancedWarning.description')}</span>
           <a
             className='font-medium text-[#155EEF]'
-            href={`https://docs.dify.ai/${language === LanguagesSupported[1] ? 'v/zh-hans/guides/application-design/prompt-engineering' : 'features/prompt-engineering'}`}
+            href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/guides/application-design/prompt-engineering' : 'features/prompt-engineering'}`}
             target='_blank' rel='noopener noreferrer'
           >
             {t('appDebug.promptMode.advancedWarning.learnMore')}

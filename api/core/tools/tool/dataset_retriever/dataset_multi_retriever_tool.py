@@ -6,15 +6,12 @@ from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.embedding.cached_embedding import CacheEmbedding
-from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.index.keyword_table_index.keyword_table_index import KeywordTableConfig, KeywordTableIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.rag.datasource.retrieval_service import RetrievalService
 from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
-from services.retrieval_service import RetrievalService
 
 default_retrieval_model = {
     'search_method': 'semantic_search',
@@ -174,76 +171,24 @@ class DatasetMultiRetrieverTool(BaseTool):
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
-                kw_table_index = KeywordTableIndex(
-                    dataset=dataset,
-                    config=KeywordTableConfig(
-                        max_keywords_per_chunk=5
-                    )
-                )
-
-                documents = kw_table_index.search(query, search_kwargs={'k': self.top_k})
+                documents = RetrievalService.retrieve(retrival_method='keyword_search',
+                                                      dataset_id=dataset.id,
+                                                      query=query,
+                                                      top_k=self.top_k
+                                                      )
                 if documents:
                     all_documents.extend(documents)
             else:
-
-                try:
-                    model_manager = ModelManager()
-                    embedding_model = model_manager.get_model_instance(
-                        tenant_id=dataset.tenant_id,
-                        provider=dataset.embedding_model_provider,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                        model=dataset.embedding_model
-                    )
-                except LLMBadRequestError:
-                    return []
-                except ProviderTokenNotInitError:
-                    return []
-
-                embeddings = CacheEmbedding(embedding_model)
-
-                documents = []
-                threads = []
                 if self.top_k > 0:
-                    # retrieval_model source with semantic
-                    if retrieval_model['search_method'] == 'semantic_search' or retrieval_model[
-                        'search_method'] == 'hybrid_search':
-                        embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
-                            'flask_app': current_app._get_current_object(),
-                            'dataset_id': str(dataset.id),
-                            'query': query,
-                            'top_k': self.top_k,
-                            'score_threshold': self.score_threshold,
-                            'reranking_model': None,
-                            'all_documents': documents,
-                            'search_method': 'hybrid_search',
-                            'embeddings': embeddings
-                        })
-                        threads.append(embedding_thread)
-                        embedding_thread.start()
-
-                    # retrieval_model source with full text
-                    if retrieval_model['search_method'] == 'full_text_search' or retrieval_model[
-                        'search_method'] == 'hybrid_search':
-                        full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search,
-                                                                  kwargs={
-                                                                      'flask_app': current_app._get_current_object(),
-                                                                      'dataset_id': str(dataset.id),
-                                                                      'query': query,
-                                                                      'search_method': 'hybrid_search',
-                                                                      'embeddings': embeddings,
-                                                                      'score_threshold': retrieval_model[
-                                                                          'score_threshold'] if retrieval_model[
-                                                                          'score_threshold_enabled'] else None,
-                                                                      'top_k': self.top_k,
-                                                                      'reranking_model': retrieval_model[
-                                                                          'reranking_model'] if retrieval_model[
-                                                                          'reranking_enable'] else None,
-                                                                      'all_documents': documents
-                                                                  })
-                        threads.append(full_text_index_thread)
-                        full_text_index_thread.start()
-
-                    for thread in threads:
-                        thread.join()
+                    # retrieval source
+                    documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
+                                                          dataset_id=dataset.id,
+                                                          query=query,
+                                                          top_k=self.top_k,
+                                                          score_threshold=retrieval_model['score_threshold']
+                                                          if retrieval_model['score_threshold_enabled'] else None,
+                                                          reranking_model=retrieval_model['reranking_model']
+                                                          if retrieval_model['reranking_enable'] else None
+                                                          )
 
                     all_documents.extend(documents)
