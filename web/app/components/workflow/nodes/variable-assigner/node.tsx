@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { mockData } from './mock'
 import { getNodeInfoById } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -9,7 +10,9 @@ const i18nPrefix = 'workflow.nodes.variableAssigner'
 
 const Node: FC = () => {
   const { t } = useTranslation()
-  const { variables, output_type } = mockData
+  const { variables: tempVar, output_type } = mockData
+  const [variables, setVariables] = useState(tempVar)
+
   // TODO: get var type through node and  value
   const getVarType = () => {
     return 'string'
@@ -54,6 +57,12 @@ const Node: FC = () => {
 
             )}
           </div>
+          <div
+            className='mt-1 flex items-center h-6 justify-center bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'
+            onClick={() => {
+              setVariables([...variables, []])
+            }}
+          >Add</div>
           <div className='mt-2 flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
             <div className='text-xs font-medium text-gray-500 uppercase'>
               {t(`${i18nPrefix}.outputType`)}
