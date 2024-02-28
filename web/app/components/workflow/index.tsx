@@ -41,6 +41,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   const {
     handleEnterNode,
     handleLeaveNode,
+    handleConnectNode,
     handleEnterEdge,
     handleLeaveEdge,
     handleDeleteEdge,
@@ -58,6 +59,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        onConnect={handleConnectNode}
         onNodeMouseEnter={handleEnterNode}
         onNodeMouseLeave={handleLeaveNode}
         onEdgeMouseEnter={handleEnterEdge}

@@ -33,9 +33,7 @@ const NextStep = ({
         {
           !branches && !!outgoers.length && (
             <Item
-              parentNodeId={selectedNode!.id}
               nodeId={outgoers[0].id}
-              sourceHandle='source'
               data={outgoers[0].data}
             />
           )
@@ -63,7 +61,6 @@ const NextStep = ({
                     connected && (
                       <Item
                         data={target!.data!}
-                        parentNodeId={selectedNode!.id}
                         nodeId={target!.id}
                         sourceHandle={branch.id}
                         branchName={branch.name}

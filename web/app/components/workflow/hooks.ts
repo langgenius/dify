@@ -3,9 +3,11 @@ import produce from 'immer'
 import type {
   EdgeMouseHandler,
   NodeMouseHandler,
+  OnConnect,
 } from 'reactflow'
 import {
   getConnectedEdges,
+  getIncomers,
   useStoreApi,
 } from 'reactflow'
 import type {
@@ -88,6 +90,33 @@ export const useWorkflow = () => {
     setNodes(newNodes)
   }, [store])
 
+  const handleConnectNode = useCallback<OnConnect>(({
+    source,
+    sourceHandle,
+    target,
+    targetHandle,
+  }) => {
+    const {
+      edges,
+      setEdges,
+    } = store.getState()
+
+    const newEdges = produce(edges, (draft) => {
+      const filtered = draft.filter(edge => edge.source !== source && edge.target !== target)
+
+      filtered.push({
+        id: `${source}-${target}`,
+        source: source!,
+        target: target!,
+        sourceHandle,
+        targetHandle,
+      })
+
+      return filtered
+    })
+    setEdges(newEdges)
+  }, [store])
+
   const handleEnterEdge = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
       edges,
@@ -158,6 +187,7 @@ export const useWorkflow = () => {
         x: currentNode.position.x + 304,
         y: currentNode.position.y,
       },
+      selected: true,
     }
     const newEdge = {
       id: `${currentNode.id}-${nextNode.id}`,
@@ -169,7 +199,7 @@ export const useWorkflow = () => {
     }
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        node.data = { ...node.data, selected: false }
+        node.selected = false
       })
       draft.push(nextNode)
     })
@@ -180,7 +210,7 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleChangeCurrentNode = useCallback((parentNodeId: string, currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
+  const handleChangeCurrentNode = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle?: string) => {
     const {
       getNodes,
       setNodes,
@@ -189,6 +219,7 @@ export const useWorkflow = () => {
     } = store.getState()
     const nodes = getNodes()
     const currentNode = nodes.find(node => node.id === currentNodeId)!
+    const incomers = getIncomers(currentNode, nodes, edges)
     const connectedEdges = getConnectedEdges([currentNode], edges)
     const newCurrentNode: Node = {
       id: `${Date.now()}`,
@@ -199,27 +230,32 @@ export const useWorkflow = () => {
         y: currentNode.position.y,
       },
     }
-    const newEdge = {
-      id: `${parentNodeId}-${newCurrentNode.id}`,
-      type: 'custom',
-      source: parentNodeId,
-      sourceHandle,
-      target: newCurrentNode.id,
-      targetHandle: 'target',
-    }
     const newNodes = produce(nodes, (draft) => {
       const index = draft.findIndex(node => node.id === currentNodeId)
 
       draft.splice(index, 1, newCurrentNode)
     })
     setNodes(newNodes)
-    const newEdges = produce(edges, (draft) => {
-      const filtered = draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
-      filtered.push(newEdge)
+    if (incomers.length === 1) {
+      const parentNodeId = incomers[0].id
 
-      return filtered
-    })
-    setEdges(newEdges)
+      const newEdge = {
+        id: `${parentNodeId}-${newCurrentNode.id}`,
+        type: 'custom',
+        source: parentNodeId,
+        sourceHandle: sourceHandle || 'source',
+        target: newCurrentNode.id,
+        targetHandle: 'target',
+      }
+
+      const newEdges = produce(edges, (draft) => {
+        const filtered = draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
+        filtered.push(newEdge)
+
+        return filtered
+      })
+      setEdges(newEdges)
+    }
   }, [store])
 
   const handleDeleteNode = useCallback((nodeId: string) => {
@@ -303,6 +339,7 @@ export const useWorkflow = () => {
     handleSelectNode,
     handleEnterEdge,
     handleLeaveEdge,
+    handleConnectNode,
     handleDeleteEdge,
     handleUpdateNodeData,
     handleAddNextNode,

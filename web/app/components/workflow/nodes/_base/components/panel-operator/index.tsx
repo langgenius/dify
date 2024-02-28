@@ -2,7 +2,8 @@ import {
   memo,
   useState,
 } from 'react'
-import { useWorkflow } from '../../../hooks'
+import { useWorkflow } from '../../../../hooks'
+import ChangeBlock from './change-block'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
@@ -43,7 +44,7 @@ const PanelOperator = ({
       <PortalToFollowElemContent className='z-[11]'>
         <div className='w-[240px] border-[0.5px] border-gray-200 rounded-2xl shadow-xl bg-white'>
           <div className='p-1'>
-            <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>Change Block</div>
+            <ChangeBlock nodeId={nodeId} />
             <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>Help Link</div>
           </div>
           <div className='h-[1px] bg-gray-100'></div>

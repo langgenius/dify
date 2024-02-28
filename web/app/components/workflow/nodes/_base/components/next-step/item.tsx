@@ -12,14 +12,12 @@ import { useWorkflow } from '../../../../hooks'
 import Button from '@/app/components/base/button'
 
 type ItemProps = {
-  parentNodeId: string
   nodeId: string
-  sourceHandle: string
+  sourceHandle?: string
   branchName?: string
   data: CommonNodeType
 }
 const Item = ({
-  parentNodeId,
   nodeId,
   sourceHandle,
   branchName,
@@ -27,8 +25,8 @@ const Item = ({
 }: ItemProps) => {
   const { handleChangeCurrentNode } = useWorkflow()
   const handleSelect = useCallback((type: BlockEnum) => {
-    handleChangeCurrentNode(parentNodeId, nodeId, type, sourceHandle)
-  }, [parentNodeId, nodeId, sourceHandle, handleChangeCurrentNode])
+    handleChangeCurrentNode(nodeId, type, sourceHandle)
+  }, [nodeId, sourceHandle, handleChangeCurrentNode])
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <Button
