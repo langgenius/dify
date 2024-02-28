@@ -106,6 +106,7 @@ export const useWorkflow = () => {
 
       filtered.push({
         id: `${source}-${target}`,
+        type: 'custom',
         source: source!,
         target: target!,
         sourceHandle,

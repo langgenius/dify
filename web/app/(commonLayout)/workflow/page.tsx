@@ -33,13 +33,13 @@ const initialNodes = [
     id: '3',
     type: 'custom',
     position: { x: 738, y: 130 },
-    data: { type: 'llm', sortIndexInBranches: 0 },
+    data: { type: 'question-classifier', sortIndexInBranches: 0 },
   },
   {
     id: '4',
     type: 'custom',
     position: { x: 738, y: 330 },
-    data: { type: 'llm', sortIndexInBranches: 1 },
+    data: { type: 'variable-assigner', sortIndexInBranches: 1 },
   },
   // {
   //   id: '5',

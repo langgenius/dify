@@ -1,6 +1,8 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
+import { NodeTargetHandle } from '../_base/components/node-handle'
 import { mockData } from './mock'
 import { getNodeInfoById } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -8,7 +10,7 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 
-const Node: FC = () => {
+const Node: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
   const { t } = useTranslation()
   const { variables: tempVar, output_type } = mockData
   const [variables, setVariables] = useState(tempVar)
@@ -35,7 +37,12 @@ const Node: FC = () => {
               const node = getNodeInfoById(item[0])
               const varName = item[item.length - 1]
               return (
-                <div key={index} className='flex items-center h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700' >
+                <div key={index} className='relative flex items-center h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700' >
+                  <NodeTargetHandle
+                    {...props}
+                    handleId={varName}
+                    handleClassName='!top-1 !-left-[21px]'
+                  />
                   <div className='flex items-center'>
                     <div className='p-[1px]'>
                       <VarBlockIcon

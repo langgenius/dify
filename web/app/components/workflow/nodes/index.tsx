@@ -32,7 +32,7 @@ const CustomNode = memo((props: NodeProps) => {
         <NodeComponent />
       </BaseNode>
       {
-        nodeData.type !== BlockEnum.IfElse && (
+        nodeData.type !== BlockEnum.IfElse && nodeData.type !== BlockEnum.QuestionClassifier && (
           <NodeSourceHandle
             { ...props }
             handleClassName='!top-[17px] !-right-2'
