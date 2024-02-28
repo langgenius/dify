@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { CollectionType, LOC } from '../types'
+import { AuthHeaderPrefix, AuthType, CollectionType, LOC } from '../types'
 import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Loading from '../../base/loading'
 import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
@@ -53,6 +53,10 @@ const ToolList: FC<Props> = ({
     (async () => {
       if (collection.type === CollectionType.custom) {
         const res = await fetchCustomCollection(collection.name)
+        if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+          if (res.credentials.api_key_value)
+            res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+        }
         setCustomCollection({
           ...res,
           provider: collection.name,

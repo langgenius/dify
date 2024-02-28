@@ -58,6 +58,13 @@ const translation = {
       key: 'Chave',
       value: 'Valor',
     },
+    authHeaderPrefix: {
+      types: {
+        basic: 'Basic',
+        bearer: 'Bearer',
+        custom: 'Custom',
+      },
+    },
     privacyPolicy: 'Política de Privacidade',
     privacyPolicyPlaceholder: 'Digite a política de privacidade',
   },
