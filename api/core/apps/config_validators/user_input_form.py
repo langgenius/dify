@@ -1,10 +1,9 @@
 import re
-from typing import Tuple
 
 
 class UserInputFormValidator:
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for user input form
 

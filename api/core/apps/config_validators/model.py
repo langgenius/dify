@@ -1,13 +1,12 @@
-from typing import Tuple
 
-from core.model_runtime.entities.model_entities import ModelType, ModelPropertyKey
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from core.provider_manager import ProviderManager
 
 
 class ModelValidator:
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> Tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for model config
 
