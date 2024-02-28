@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import cast
 
@@ -15,7 +14,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
-from models.model import App, Conversation, Message, MessageAgentThought, MessageChain
+from models.model import App, Conversation, Message, MessageAgentThought
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
