@@ -62,6 +62,17 @@ class ApiTool(Tool):
             
             if 'api_key_value' not in credentials:
                 raise ToolProviderCredentialValidationError('Missing api_key_value')
+            elif not isinstance(credentials['api_key_value'], str):
+                raise ToolProviderCredentialValidationError('api_key_value must be a string')
+            
+            if 'api_key_header_prefix' in credentials:
+                api_key_header_prefix = credentials['api_key_header_prefix']
+                if api_key_header_prefix == 'basic':
+                    credentials['api_key_value'] = f'Basic {credentials["api_key_value"]}'
+                elif api_key_header_prefix == 'bearer':
+                    credentials['api_key_value'] = f'Bearer {credentials["api_key_value"]}'
+                elif api_key_header_prefix == 'custom':
+                    pass
             
             headers[api_key_header] = credentials['api_key_value']
 
