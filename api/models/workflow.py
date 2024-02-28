@@ -5,7 +5,6 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
 from models.account import Account
-from models.model import EndUser
 
 
 class CreatedByRole(Enum):
@@ -242,6 +241,7 @@ class WorkflowRun(db.Model):
 
     @property
     def created_by_end_user(self):
+        from models.model import EndUser
         created_by_role = CreatedByRole.value_of(self.created_by_role)
         return EndUser.query.get(self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
@@ -356,6 +356,7 @@ class WorkflowNodeExecution(db.Model):
 
     @property
     def created_by_end_user(self):
+        from models.model import EndUser
         created_by_role = CreatedByRole.value_of(self.created_by_role)
         return EndUser.query.get(self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
@@ -418,6 +419,7 @@ class WorkflowAppLog(db.Model):
 
     @property
     def created_by_end_user(self):
+        from models.model import EndUser
         created_by_role = CreatedByRole.value_of(self.created_by_role)
         return EndUser.query.get(self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
