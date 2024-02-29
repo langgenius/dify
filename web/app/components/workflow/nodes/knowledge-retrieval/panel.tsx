@@ -5,9 +5,11 @@ import useConfig from './use-config'
 import { mockData } from './mock'
 import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
+import DatasetList from './components/dataset-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
 const Panel: FC = () => {
@@ -19,6 +21,7 @@ const Panel: FC = () => {
     handleQueryVarChange,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
+    selectedDatasets,
     handleOnDatasetsChange,
   } = useConfig(mockData)
 
@@ -56,7 +59,10 @@ const Panel: FC = () => {
             </div>
           }
         >
-          list
+          <DatasetList
+            list={selectedDatasets}
+            onChange={handleOnDatasetsChange}
+          />
         </Field>
       </div>
 

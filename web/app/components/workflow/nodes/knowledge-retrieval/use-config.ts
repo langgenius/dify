@@ -1,13 +1,13 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
 import type { ValueSelector } from '../../types'
 import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
+import { fetchDatasets } from '@/service/datasets'
 
 const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
   const [inputs, setInputs] = useState<KnowledgeRetrievalNodeType>(initInputs)
-  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const handleQueryVarChange = useCallback((newVar: ValueSelector) => {
     const newInputs = produce(inputs, (draft) => {
       draft.query_variable_selector = newVar
@@ -29,6 +29,19 @@ const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // datasets
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
+  useEffect(() => {
+    (async () => {
+      const datasetIds = inputs.dataset_ids
+      if (datasetIds?.length > 0) {
+        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
+        setSelectedDatasets(dataSetsWithDetail)
+        console.log(dataSetsWithDetail)
+      }
+    })()
+  }, [])
+
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
@@ -42,6 +55,7 @@ const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
     handleQueryVarChange,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
+    selectedDatasets,
     handleOnDatasetsChange,
   }
 }
