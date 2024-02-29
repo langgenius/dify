@@ -1,0 +1,28 @@
+identity:
+  name: wecom_group_bot
+  author: Bowen Liang
+  label:
+    en_US: Wecom group bot
+    zh_Hans: 微信群机器人
+    pt_BR: Wecom group bot
+  icon: icon.svg
+description:
+  human:
+    en_US: Wecom group bot
+    zh_Hans: 微信群机器人
+    pt_BR: Wecom group bot
+  llm: A tool to send messages to a Wecom group.
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: text
+      zh_Hans: 消息文本
+      pt_BR: text
+    human_description:
+      en_US: Text to sent to the group.
+      zh_Hans: 群消息文本
+      pt_BR: Text to sent to the group.
+    llm_description: Text to sent in the message.
+    form: llm
