@@ -127,8 +127,11 @@ const translation = {
     questionClassifiers: {
       model: '模型',
       inputVars: '输入变量',
-      class: '类别',
+      class: '分类',
+      classNamePlaceholder: '输入你的分类名称',
       advancedSetting: '高级设置',
+      topicPlaceholder: '在这里输入你的主题内容',
+      addClass: '添加分类',
     },
   },
 }

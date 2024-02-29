@@ -2,9 +2,13 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
-import TextEditor from '../../_base/components/editor/text-editor'
+import { useTranslation } from 'react-i18next'
 import AddButton from '../../_base/components/add-button'
+import Item from './class-item'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
+
+const i18nPrefix = 'workflow.nodes.questionClassifiers'
+
 type Props = {
   list: Topic[]
   onChange: (list: Topic[]) => void
@@ -14,20 +18,31 @@ const ClassList: FC<Props> = ({
   list,
   onChange,
 }) => {
-  const handleTopicChange = useCallback((index: number) => {
-    return (value: string) => {
+  const { t } = useTranslation()
+
+  const handleClassChange = useCallback((index: number) => {
+    return (value: Topic) => {
       const newList = produce(list, (draft) => {
-        draft[index].topic = value
+        draft[index] = value
       })
       onChange(newList)
     }
   }, [list, onChange])
 
-  const handleAddTopic = useCallback(() => {
+  const handleAddClass = useCallback(() => {
     const newList = produce(list, (draft) => {
-      draft.push({ id: '', name: 'topic aaa', topic: 'aaa' })
+      draft.push({ id: '', name: t(`${i18nPrefix}.class`) + (list.length + 1), topic: '' })
     })
     onChange(newList)
+  }, [list, onChange])
+
+  const handleRemoveClass = useCallback((index: number) => {
+    return () => {
+      const newList = produce(list, (draft) => {
+        draft.splice(index, 1)
+      })
+      onChange(newList)
+    }
   }, [list, onChange])
 
   // Todo Remove; edit topic name
@@ -36,21 +51,18 @@ const ClassList: FC<Props> = ({
       {
         list.map((item, index) => {
           return (
-            <TextEditor
-              title={<div>
-                {/* can edit */}
-                <div>{item.name}</div>
-              </div>}
+            <Item
               key={index}
-              value={item.topic}
-              onChange={handleTopicChange(index)}
+              payload={item}
+              onChange={handleClassChange(index)}
+              onRemove={handleRemoveClass(index)}
             />
           )
         })
       }
       <AddButton
-        onClick={handleAddTopic}
-        text='Add Class'
+        onClick={handleAddClass}
+        text={t(`${i18nPrefix}.addClass`)}
       />
     </div>
   )

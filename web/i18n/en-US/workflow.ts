@@ -129,7 +129,10 @@ const translation = {
       model: 'model',
       inputVars: 'Input Variables',
       class: 'Class',
+      classNamePlaceholder: 'Write your class name',
       advancedSetting: 'Advanced Setting',
+      topicPlaceholder: 'Write your topic name',
+      addClass: 'Add Class',
     },
   },
 }

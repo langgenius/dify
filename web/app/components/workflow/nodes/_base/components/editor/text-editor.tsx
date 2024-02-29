@@ -11,6 +11,7 @@ type Props = {
   headerRight?: JSX.Element
   minHeight?: number
   onBlur?: () => void
+  placeholder?: string
 }
 
 const TextEditor: FC<Props> = ({
@@ -20,6 +21,7 @@ const TextEditor: FC<Props> = ({
   headerRight,
   minHeight,
   onBlur,
+  placeholder,
 }) => {
   const [isFocus, {
     setTrue: setIsFocus,
@@ -45,7 +47,8 @@ const TextEditor: FC<Props> = ({
           onChange={e => onChange(e.target.value)}
           onFocus={setIsFocus}
           onBlur={handleBlur}
-          className='w-full h-full p-3 resize-none bg-transparent'
+          className='w-full h-full px-3 resize-none bg-transparent border-none focus:outline-none leading-[18px] text-[13px] font-normal text-gray-900 placeholder:text-gray-300'
+          placeholder={placeholder}
         />
       </Base>
     </div>
