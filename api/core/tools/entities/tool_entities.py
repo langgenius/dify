@@ -1,8 +1,10 @@
-from pydantic import BaseModel, Field
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union, cast
+from typing import Any, Optional, Union, cast
+
+from pydantic import BaseModel, Field
 
 from core.tools.entities.common_entities import I18nObject
+
 
 class ToolProviderType(Enum):
     """
@@ -80,7 +82,7 @@ class ToolInvokeMessage(BaseModel):
         plain text, image url or link url
     """
     message: Union[str, bytes] = None
-    meta: Dict[str, Any] = None
+    meta: dict[str, Any] = None
     save_as: str = ''
 
 class ToolInvokeMessageBinary(BaseModel):
@@ -111,15 +113,15 @@ class ToolParameter(BaseModel):
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
     required: Optional[bool] = False
-    default: Optional[str] = None
+    default: Optional[Union[int, str]] = None
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
-    options: Optional[List[ToolParameterOption]] = None
+    options: Optional[list[ToolParameterOption]] = None
 
     @classmethod
     def get_simple_instance(cls, 
                        name: str, llm_description: str, type: ToolParameterType, 
-                       required: bool, options: Optional[List[str]] = None) -> 'ToolParameter':
+                       required: bool, options: Optional[list[str]] = None) -> 'ToolParameter':
         """
             get a simple tool parameter
 
@@ -190,7 +192,7 @@ class ToolProviderCredentials(BaseModel):
     type: CredentialsType = Field(..., description="The type of the credentials")
     required: bool = False
     default: Optional[str] = None
-    options: Optional[List[ToolCredentialsOption]] = None
+    options: Optional[list[ToolCredentialsOption]] = None
     label: Optional[I18nObject] = None
     help: Optional[I18nObject] = None
     url: Optional[str] = None
@@ -230,7 +232,7 @@ class ToolRuntimeVariablePool(BaseModel):
     user_id: str = Field(..., description="The user id")
     tenant_id: str = Field(..., description="The tenant id of assistant")
 
-    pool: List[ToolRuntimeVariable] = Field(..., description="The pool of variables")
+    pool: list[ToolRuntimeVariable] = Field(..., description="The pool of variables")
 
     def __init__(self, **data: Any):
         pool = data.get('pool', [])

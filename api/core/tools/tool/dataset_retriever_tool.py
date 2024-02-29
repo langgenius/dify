@@ -1,24 +1,26 @@
-from typing import Any, Dict, List, Union
-from core.features.dataset_retrieval import DatasetRetrievalFeature
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolIdentity, ToolDescription
-from core.tools.tool.tool import Tool
-from core.tools.entities.common_entities import I18nObject
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
+from typing import Any
 
 from langchain.tools import BaseTool
+
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
+from core.features.dataset_retrieval.dataset_retrieval import DatasetRetrievalFeature
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
+from core.tools.tool.tool import Tool
+
 
 class DatasetRetrieverTool(Tool):
     langchain_tool: BaseTool
 
     @staticmethod
     def get_dataset_tools(tenant_id: str,
-                         dataset_ids: list[str],
-                         retrieve_config: DatasetRetrieveConfigEntity,
-                         return_resource: bool,
-                         invoke_from: InvokeFrom,
-                         hit_callback: DatasetIndexToolCallbackHandler
-    ) -> List['DatasetRetrieverTool']:
+                          dataset_ids: list[str],
+                          retrieve_config: DatasetRetrieveConfigEntity,
+                          return_resource: bool,
+                          invoke_from: InvokeFrom,
+                          hit_callback: DatasetIndexToolCallbackHandler
+                          ) -> list['DatasetRetrieverTool']:
         """
         get dataset tool
         """
@@ -44,7 +46,7 @@ class DatasetRetrieverTool(Tool):
         )
         # restore retrieve strategy
         retrieve_config.retrieve_strategy = original_retriever_mode
-        
+
         # convert langchain tools to Tools
         tools = []
         for langchain_tool in langchain_tools:
@@ -58,37 +60,37 @@ class DatasetRetrieverTool(Tool):
                     llm=langchain_tool.description),
                 runtime=DatasetRetrieverTool.Runtime()
             )
-            
+
             tools.append(tool)
 
         return tools
 
-    def get_runtime_parameters(self) -> List[ToolParameter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         return [
             ToolParameter(name='query',
-                         label=I18nObject(en_US='', zh_Hans=''),
-                         human_description=I18nObject(en_US='', zh_Hans=''),
-                         type=ToolParameter.ToolParameterType.STRING,
-                         form=ToolParameter.ToolParameterForm.LLM,
-                         llm_description='Query for the dataset to be used to retrieve the dataset.',
-                         required=True,
-                         default=''),
+                          label=I18nObject(en_US='', zh_Hans=''),
+                          human_description=I18nObject(en_US='', zh_Hans=''),
+                          type=ToolParameter.ToolParameterType.STRING,
+                          form=ToolParameter.ToolParameterForm.LLM,
+                          llm_description='Query for the dataset to be used to retrieve the dataset.',
+                          required=True,
+                          default=''),
         ]
 
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         invoke dataset retriever tool
         """
         query = tool_parameters.get('query', None)
         if not query:
             return self.create_text_message(text='please input query')
-        
+
         # invoke dataset retriever tool
         result = self.langchain_tool._run(query=query)
 
         return self.create_text_message(text=result)
 
-    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
         """
         validate the credentials for dataset retriever tool
         """

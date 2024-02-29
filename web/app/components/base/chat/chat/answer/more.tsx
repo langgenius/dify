@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem } from '../../types'
 import { formatNumber } from '@/utils/format'
@@ -42,4 +43,4 @@ const More: FC<MoreProps> = ({
   )
 }
 
-export default More
+export default memo(More)

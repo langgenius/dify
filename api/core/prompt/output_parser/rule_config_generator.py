@@ -1,7 +1,8 @@
 from typing import Any
 
-from core.prompt.prompts import RULE_CONFIG_GENERATE_TEMPLATE
 from langchain.schema import BaseOutputParser, OutputParserException
+
+from core.prompt.prompts import RULE_CONFIG_GENERATE_TEMPLATE
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 
@@ -18,11 +19,11 @@ class RuleConfigGeneratorOutputParser(BaseOutputParser):
                 raise ValueError("Expected 'prompt' to be a string.")
             if not isinstance(parsed["variables"], list):
                 raise ValueError(
-                    f"Expected 'variables' to be a list."
+                    "Expected 'variables' to be a list."
                 )
             if not isinstance(parsed["opening_statement"], str):
                 raise ValueError(
-                    f"Expected 'opening_statement' to be a str."
+                    "Expected 'opening_statement' to be a str."
                 )
             return parsed
         except Exception as e:

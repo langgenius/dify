@@ -1,12 +1,14 @@
-from typing import Any, Dict, Optional, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, Optional, cast
+
+from sqlalchemy import func
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.models.document import Document
 from extensions.ext_database import db
-from langchain.schema import Document
 from models.dataset import Dataset, DocumentSegment
-from sqlalchemy import func
 
 
 class DatasetDocumentStore:
@@ -21,10 +23,10 @@ class DatasetDocumentStore:
         self._document_id = document_id
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatasetDocumentStore":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "DatasetDocumentStore":
         return cls(**config_dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "dataset_id": self._dataset.id,
@@ -39,7 +41,7 @@ class DatasetDocumentStore:
         return self._user_id
 
     @property
-    def docs(self) -> Dict[str, Document]:
+    def docs(self) -> dict[str, Document]:
         document_segments = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == self._dataset.id
         ).all()

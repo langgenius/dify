@@ -1,14 +1,19 @@
-from typing import Any, Dict, List
-from core.tools.entities.tool_entities import ToolProviderType, ApiProviderAuthType, ToolProviderCredentials, ToolCredentialsOption
+from typing import Any
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.tool.tool import Tool
-from core.tools.tool.api_tool import ApiTool
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ToolCredentialsOption,
+    ToolProviderCredentials,
+    ToolProviderType,
+)
 from core.tools.provider.tool_provider import ToolProviderController
-
+from core.tools.tool.api_tool import ApiTool
+from core.tools.tool.tool import Tool
 from extensions.ext_database import db
-
 from models.tools import ApiToolProvider
+
 
 class ApiBasedToolProviderController(ToolProviderController):
     @staticmethod
@@ -50,6 +55,21 @@ class ApiBasedToolProviderController(ToolProviderController):
                         en_US='The api key',
                         zh_Hans='api key的值'
                     )
+                ),
+                'api_key_header_prefix': ToolProviderCredentials(
+                    name='api_key_header_prefix',
+                    required=False,
+                    default='basic',
+                    type=ToolProviderCredentials.CredentialsType.SELECT,
+                    help=I18nObject(
+                        en_US='The prefix of the api key header',
+                        zh_Hans='api key header 的前缀'
+                    ),
+                    options=[
+                        ToolCredentialsOption(value='basic', label=I18nObject(en_US='Basic', zh_Hans='Basic')),
+                        ToolCredentialsOption(value='bearer', label=I18nObject(en_US='Bearer', zh_Hans='Bearer')),
+                        ToolCredentialsOption(value='custom', label=I18nObject(en_US='Custom', zh_Hans='Custom'))
+                    ]
                 )
             }
         elif auth_type == ApiProviderAuthType.NONE:
@@ -78,10 +98,10 @@ class ApiBasedToolProviderController(ToolProviderController):
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.API_BASED
     
-    def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
         pass
 
-    def validate_parameters(self, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
+    def validate_parameters(self, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         pass
 
     def _parse_tool_bundle(self, tool_bundle: ApiBasedToolBundle) -> ApiTool:
@@ -112,7 +132,7 @@ class ApiBasedToolProviderController(ToolProviderController):
             'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
         })
 
-    def load_bundled_tools(self, tools: List[ApiBasedToolBundle]) -> List[ApiTool]:
+    def load_bundled_tools(self, tools: list[ApiBasedToolBundle]) -> list[ApiTool]:
         """
             load bundled tools
 
@@ -123,7 +143,7 @@ class ApiBasedToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tools(self, user_id: str, tenant_id: str) -> List[ApiTool]:
+    def get_tools(self, user_id: str, tenant_id: str) -> list[ApiTool]:
         """
             fetch tools from database
 
@@ -134,10 +154,10 @@ class ApiBasedToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
         
-        tools: List[Tool] = []
+        tools: list[Tool] = []
 
         # get tenant api providers
-        db_providers: List[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
+        db_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
             ApiToolProvider.tenant_id == tenant_id,
             ApiToolProvider.name == self.identity.name
         ).all()

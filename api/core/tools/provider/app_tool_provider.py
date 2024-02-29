@@ -1,14 +1,13 @@
-from typing import Any, Dict, List
-from core.tools.entities.tool_entities import ToolProviderType, ToolParameter, ToolParameterOption
-from core.tools.tool.tool import Tool
-from core.tools.entities.common_entities import I18nObject
-from core.tools.provider.tool_provider import ToolProviderController
-
-from extensions.ext_database import db
-from models.tools import PublishedAppTool
-from models.model import App, AppModelConfig
-
 import logging
+from typing import Any
+
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolParameter, ToolParameterOption, ToolProviderType
+from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.tool.tool import Tool
+from extensions.ext_database import db
+from models.model import App, AppModelConfig
+from models.tools import PublishedAppTool
 
 logger = logging.getLogger(__name__)
 
@@ -17,21 +16,21 @@ class AppBasedToolProviderEntity(ToolProviderController):
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.APP_BASED
     
-    def _validate_credentials(self, tool_name: str, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
         pass
 
-    def validate_parameters(self, tool_name: str, tool_parameters: Dict[str, Any]) -> None:
+    def validate_parameters(self, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         pass
 
-    def get_tools(self, user_id: str) -> List[Tool]:
-        db_tools: List[PublishedAppTool] = db.session.query(PublishedAppTool).filter(
+    def get_tools(self, user_id: str) -> list[Tool]:
+        db_tools: list[PublishedAppTool] = db.session.query(PublishedAppTool).filter(
             PublishedAppTool.user_id == user_id,
         ).all()
 
         if not db_tools or len(db_tools) == 0:
             return []
 
-        tools: List[Tool] = []
+        tools: list[Tool] = []
 
         for db_tool in db_tools:
             tool = {

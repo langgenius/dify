@@ -4,12 +4,13 @@ import time
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
+from werkzeug.exceptions import NotFound
+
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from langchain.schema import Document
 from models.dataset import DocumentSegment
-from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')
@@ -59,15 +60,9 @@ def enable_segment_to_index_task(segment_id: str):
             logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
             return
 
+        index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
         # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.add_texts([document], duplicate_check=True)
-
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
-            index.add_texts([document])
+        index_processor.load(dataset, [document])
 
         end_at = time.perf_counter()
         logging.info(click.style('Segment enabled to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))

@@ -1,10 +1,11 @@
-from controllers.files import api
 from flask import Response
 from flask_restful import Resource, reqparse
-from libs.exception import BaseHTTPException
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.files import api
 from core.tools.tool_file_manager import ToolFileManager
+from libs.exception import BaseHTTPException
+
 
 class ToolFilePreviewApi(Resource):
     def get(self, file_id, extension):
@@ -31,7 +32,7 @@ class ToolFilePreviewApi(Resource):
             )
 
             if not result:
-                raise NotFound(f'file is not found')
+                raise NotFound('file is not found')
             
             generator, mimetype = result
         except Exception:

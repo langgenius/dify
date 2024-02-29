@@ -1,30 +1,45 @@
 import json
 import logging
 import time
-from typing import Generator, Optional, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
+
+from pydantic import BaseModel
 
 from core.app_runner.moderation_handler import ModerationRule, OutputModerationHandler
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
-from core.entities.queue_entities import (AnnotationReplyEvent, QueueAgentThoughtEvent, QueueErrorEvent,
-                                          QueueMessageEndEvent, QueueMessageEvent, QueueMessageReplaceEvent,
-                                          QueuePingEvent, QueueRetrieverResourcesEvent, QueueStopEvent,
-                                          QueueMessageFileEvent, QueueAgentMessageEvent)
-from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.entities.queue_entities import (
+    AnnotationReplyEvent,
+    QueueAgentMessageEvent,
+    QueueAgentThoughtEvent,
+    QueueErrorEvent,
+    QueueMessageEndEvent,
+    QueueMessageEvent,
+    QueueMessageFileEvent,
+    QueueMessageReplaceEvent,
+    QueuePingEvent,
+    QueueRetrieverResourcesEvent,
+    QueueStopEvent,
+)
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
-                                                          PromptMessage, PromptMessageContentType, PromptMessageRole,
-                                                          TextPromptMessageContent)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentType,
+    PromptMessageRole,
+    TextPromptMessageContent,
+)
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool_manager import ToolManager
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.prompt_template import PromptTemplateParser
+from core.tools.tool_file_manager import ToolFileManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
-from pydantic import BaseModel
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -104,7 +119,7 @@ class GenerateTaskPipeline:
                     }
 
                     self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
@@ -160,7 +175,7 @@ class GenerateTaskPipeline:
                     'id': self._message.id,
                     'message_id': self._message.id,
                     'mode': self._conversation.mode,
-                    'answer': event.llm_result.message.content,
+                    'answer': self._task_state.llm_result.message.content,
                     'metadata': {},
                     'created_at': int(self._message.created_at.timestamp())
                 }
@@ -187,7 +202,7 @@ class GenerateTaskPipeline:
                 data = self._error_to_stream_response_data(self._handle_error(event))
                 yield self._yield_response(data)
                 break
-            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
@@ -339,7 +354,7 @@ class GenerateTaskPipeline:
 
                     yield self._yield_response(response)
 
-            elif isinstance(event, (QueueMessageEvent, QueueAgentMessageEvent)):
+            elif isinstance(event, QueueMessageEvent | QueueAgentMessageEvent):
                 chunk = event.chunk
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
@@ -463,44 +478,34 @@ class GenerateTaskPipeline:
         :param e: exception
         :return:
         """
-        if isinstance(e, ValueError):
-            data = {
-                'code': 'invalid_param',
-                'message': str(e),
-                'status': 400
-            }
-        elif isinstance(e, ProviderTokenNotInitError):
-            data = {
-                'code': 'provider_not_initialize',
-                'message': e.description,
-                'status': 400
-            }
-        elif isinstance(e, QuotaExceededError):
-            data = {
+        error_responses = {
+            ValueError: {'code': 'invalid_param', 'status': 400},
+            ProviderTokenNotInitError: {'code': 'provider_not_initialize', 'status': 400},
+            QuotaExceededError: {
                 'code': 'provider_quota_exceeded',
                 'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
-                           "Please go to Settings -> Model Provider to complete your own provider credentials.",
+                       "Please go to Settings -> Model Provider to complete your own provider credentials.",
                 'status': 400
-            }
-        elif isinstance(e, ModelCurrentlyNotSupportError):
-            data = {
-                'code': 'model_currently_not_support',
-                'message': e.description,
-                'status': 400
-            }
-        elif isinstance(e, InvokeError):
-            data = {
-                'code': 'completion_request_error',
-                'message': e.description,
-                'status': 400
-            }
+            },
+            ModelCurrentlyNotSupportError: {'code': 'model_currently_not_support', 'status': 400},
+            InvokeError: {'code': 'completion_request_error', 'status': 400}
+        }
+
+        # Determine the response based on the type of exception
+        data = None
+        for k, v in error_responses.items():
+            if isinstance(e, k):
+                data = v
+
+        if data:
+            data.setdefault('message', getattr(e, 'description', str(e)))
         else:
             logging.error(e)
             data = {
-                'code': 'internal_server_error',
+                'code': 'internal_server_error', 
                 'message': 'Internal Server Error, please contact support.',
                 'status': 500
-            }
+                }
 
         return {
             'event': 'error',

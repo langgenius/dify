@@ -11,6 +11,7 @@ import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSlider from '@/app/components/base/tab-slider'
 import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -35,7 +36,9 @@ const getKey = (
 const Apps = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: 'all',
+  })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
 
@@ -53,7 +56,7 @@ const Apps = () => {
   ]
 
   useEffect(() => {
-    document.title = `${t('app.title')} -  Dify`
+    document.title = `${t('common.menus.apps')} -  Dify`
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()

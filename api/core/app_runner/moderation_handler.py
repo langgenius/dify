@@ -1,20 +1,21 @@
 import logging
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+
+from flask import Flask, current_app
+from pydantic import BaseModel
 
 from core.application_queue_manager import PublishFrom
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
-from flask import Flask, current_app
-from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 
 class ModerationRule(BaseModel):
     type: str
-    config: Dict[str, Any]
+    config: dict[str, Any]
 
 
 class OutputModerationHandler(BaseModel):

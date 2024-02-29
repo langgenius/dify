@@ -4,11 +4,12 @@ import time
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
+from werkzeug.exceptions import NotFound
+
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
-from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')
@@ -41,19 +42,14 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         if not dataset:
             raise Exception('Dataset not found')
 
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-        kw_index = IndexBuilder.get_index(dataset, 'economy')
+        index_type = document.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
 
         # delete from vector index
-        if vector_index:
-            vector_index.delete_by_ids(index_node_ids)
-
-        # delete from keyword index
-        if index_node_ids:
-            kw_index.delete_by_ids(index_node_ids)
+        index_processor.clean(dataset, index_node_ids)
 
         for segment in segments:
             db.session.delete(segment)

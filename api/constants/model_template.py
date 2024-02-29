@@ -1,7 +1,5 @@
 import json
 
-from models.model import App, AppModelConfig
-
 model_templates = {
     # completion default mode
     'completion_default': {
@@ -15,30 +13,14 @@ model_templates = {
             'status': 'normal'
         },
         'model_config': {
-            'provider': 'openai',
-            'model_id': 'gpt-3.5-turbo-instruct',
-            'configs': {
-                'prompt_template': '',
-                'prompt_variables': [],
-                'completion_params': {
-                    'max_token': 512,
-                    'temperature': 1,
-                    'top_p': 1,
-                    'presence_penalty': 0,
-                    'frequency_penalty': 0,
-                }
-            },
+            'provider': '',
+            'model_id': '',
+            'configs': {},
             'model': json.dumps({
                 "provider": "openai",
                 "name": "gpt-3.5-turbo-instruct",
                 "mode": "completion",
-                "completion_params": {
-                    "max_tokens": 512,
-                    "temperature": 1,
-                    "top_p": 1,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 0
-                }
+                "completion_params": {}
             }),
             'user_input_form': json.dumps([
                 {
@@ -66,30 +48,14 @@ model_templates = {
             'status': 'normal'
         },
         'model_config': {
-            'provider': 'openai',
-            'model_id': 'gpt-3.5-turbo',
-            'configs': {
-                'prompt_template': '',
-                'prompt_variables': [],
-                'completion_params': {
-                    'max_token': 512,
-                    'temperature': 1,
-                    'top_p': 1,
-                    'presence_penalty': 0,
-                    'frequency_penalty': 0,
-                }
-            },
+            'provider': '',
+            'model_id': '',
+            'configs': {},
             'model': json.dumps({
                 "provider": "openai",
                 "name": "gpt-3.5-turbo",
                 "mode": "chat",
-                "completion_params": {
-                    "max_tokens": 512,
-                    "temperature": 1,
-                    "top_p": 1,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 0
-                }
+                "completion_params": {}
             })
         }
     },

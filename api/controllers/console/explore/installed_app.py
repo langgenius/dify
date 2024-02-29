@@ -1,18 +1,18 @@
-# -*- coding:utf-8 -*-
 from datetime import datetime
+
+from flask_login import current_user
+from flask_restful import Resource, inputs, marshal_with, reqparse
+from sqlalchemy import and_
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
-from flask_login import current_user
-from flask_restful import Resource, inputs, marshal_with, reqparse
 from libs.login import login_required
 from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
-from sqlalchemy import and_
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 
 class InstalledAppsListApi(Resource):

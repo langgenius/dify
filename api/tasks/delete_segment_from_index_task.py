@@ -3,11 +3,11 @@ import time
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
+
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, Document, DocumentSegment
-from werkzeug.exceptions import NotFound
+from models.dataset import Dataset, Document
 
 
 @shared_task(queue='dataset')
@@ -39,15 +39,9 @@ def delete_segment_from_index_task(segment_id: str, index_node_id: str, dataset_
             logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment_id), fg='cyan'))
             return
 
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-        kw_index = IndexBuilder.get_index(dataset, 'economy')
-
-        # delete from vector index
-        if vector_index:
-            vector_index.delete_by_ids([index_node_id])
-
-        # delete from keyword index
-        kw_index.delete_by_ids([index_node_id])
+        index_type = dataset_document.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_processor.clean(dataset, [index_node_id])
 
         end_at = time.perf_counter()
         logging.info(click.style('Segment deleted from index: {} latency: {}'.format(segment_id, end_at - start_at), fg='green'))

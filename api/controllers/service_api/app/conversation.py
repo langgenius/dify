@@ -1,51 +1,43 @@
-# -*- coding:utf-8 -*-
-import services
-from controllers.service_api import api
-from controllers.service_api.app import create_or_update_end_user_for_user_id
-from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import AppApiResource
-from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
-from flask import request
-from flask_restful import fields, marshal_with, reqparse
+from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from libs.helper import TimestampField, uuid_value
-from services.conversation_service import ConversationService
 from werkzeug.exceptions import NotFound
 
+import services
+from controllers.service_api import api
+from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
+from libs.helper import uuid_value
+from models.model import App, EndUser
+from services.conversation_service import ConversationService
 
-class ConversationApi(AppApiResource):
 
+class ConversationApi(Resource):
+
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, app_model, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
         parser.add_argument('last_id', type=uuid_value, location='args')
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
-        parser.add_argument('user', type=str, location='args')
         args = parser.parse_args()
-
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
 
         try:
             return ConversationService.pagination_by_last_id(app_model, end_user, args['last_id'], args['limit'])
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
-class ConversationDetailApi(AppApiResource):
+class ConversationDetailApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(simple_conversation_fields)
-    def delete(self, app_model, end_user, c_id):
+    def delete(self, app_model: App, end_user: EndUser, c_id):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-
-        user = request.get_json().get('user')
-
-        if end_user is None and user is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, user)
 
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
@@ -54,10 +46,11 @@ class ConversationDetailApi(AppApiResource):
         return {"result": "success"}, 204
 
 
-class ConversationRenameApi(AppApiResource):
+class ConversationRenameApi(Resource):
 
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(simple_conversation_fields)
-    def post(self, app_model, end_user, c_id):
+    def post(self, app_model: App, end_user: EndUser, c_id):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -65,12 +58,8 @@ class ConversationRenameApi(AppApiResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=False, location='json')
-        parser.add_argument('user', type=str, location='json')
         parser.add_argument('auto_generate', type=bool, required=False, default=False, location='json')
         args = parser.parse_args()
-
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
 
         try:
             return ConversationService.rename(

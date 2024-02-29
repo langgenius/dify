@@ -1,19 +1,12 @@
-import threading
-from typing import List, Optional, Type
+from typing import Optional
+
+from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.embedding.cached_embedding import CacheEmbedding
-from core.index.keyword_table_index.keyword_table_index import KeywordTableConfig, KeywordTableIndex
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
-from core.rerank.rerank import RerankRunner
+from core.rag.datasource.retrieval_service import RetrievalService
 from extensions.ext_database import db
-from flask import current_app
-from langchain.tools import BaseTool
 from models.dataset import Dataset, Document, DocumentSegment
-from pydantic import BaseModel, Field
-from services.retrieval_service import RetrievalService
 
 default_retrieval_model = {
     'search_method': 'semantic_search',
@@ -34,14 +27,14 @@ class DatasetRetrieverToolInput(BaseModel):
 class DatasetRetrieverTool(BaseTool):
     """Tool for querying a Dataset."""
     name: str = "dataset"
-    args_schema: Type[BaseModel] = DatasetRetrieverToolInput
+    args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
 
     tenant_id: str
     dataset_id: str
     top_k: int = 2
     score_threshold: Optional[float] = None
-    hit_callbacks: List[DatasetIndexToolCallbackHandler] = []
+    hit_callbacks: list[DatasetIndexToolCallbackHandler] = []
     return_resource: bool
     retriever_from: str
 
@@ -76,94 +69,24 @@ class DatasetRetrieverTool(BaseTool):
         retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
         if dataset.indexing_technique == "economy":
             # use keyword table query
-            kw_table_index = KeywordTableIndex(
-                dataset=dataset,
-                config=KeywordTableConfig(
-                    max_keywords_per_chunk=5
-                )
-            )
-
-            documents = kw_table_index.search(query, search_kwargs={'k': self.top_k})
+            documents = RetrievalService.retrieve(retrival_method='keyword_search',
+                                                  dataset_id=dataset.id,
+                                                  query=query,
+                                                  top_k=self.top_k
+                                                  )
             return str("\n".join([document.page_content for document in documents]))
         else:
-            # get embedding model instance
-            try:
-                model_manager = ModelManager()
-                embedding_model = model_manager.get_model_instance(
-                    tenant_id=dataset.tenant_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model
-                )
-            except InvokeAuthorizationError:
-                return ''
-
-            embeddings = CacheEmbedding(embedding_model)
-
-            documents = []
-            threads = []
             if self.top_k > 0:
-                # retrieval source with semantic
-                if retrieval_model['search_method'] == 'semantic_search' or retrieval_model['search_method'] == 'hybrid_search':
-                    embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
-                        'flask_app': current_app._get_current_object(),
-                        'dataset_id': str(dataset.id),
-                        'query': query,
-                        'top_k': self.top_k,
-                        'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
-                            'score_threshold_enabled'] else None,
-                        'reranking_model': retrieval_model['reranking_model'] if retrieval_model[
-                            'reranking_enable'] else None,
-                        'all_documents': documents,
-                        'search_method': retrieval_model['search_method'],
-                        'embeddings': embeddings
-                    })
-                    threads.append(embedding_thread)
-                    embedding_thread.start()
-
-                # retrieval_model source with full text
-                if retrieval_model['search_method'] == 'full_text_search' or retrieval_model['search_method'] == 'hybrid_search':
-                    full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
-                        'flask_app': current_app._get_current_object(),
-                        'dataset_id': str(dataset.id),
-                        'query': query,
-                        'search_method': retrieval_model['search_method'],
-                        'embeddings': embeddings,
-                        'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
-                            'score_threshold_enabled'] else None,
-                        'top_k': self.top_k,
-                        'reranking_model': retrieval_model['reranking_model'] if retrieval_model[
-                            'reranking_enable'] else None,
-                        'all_documents': documents
-                    })
-                    threads.append(full_text_index_thread)
-                    full_text_index_thread.start()
-
-                for thread in threads:
-                    thread.join()
-
-                # hybrid search: rerank after all documents have been searched
-                if retrieval_model['search_method'] == 'hybrid_search':
-                    # get rerank model instance
-                    try:
-                        model_manager = ModelManager()
-                        rerank_model_instance = model_manager.get_model_instance(
-                            tenant_id=dataset.tenant_id,
-                            provider=retrieval_model['reranking_model']['reranking_provider_name'],
-                            model_type=ModelType.RERANK,
-                            model=retrieval_model['reranking_model']['reranking_model_name']
-                        )
-                    except InvokeAuthorizationError:
-                        return ''
-
-                    rerank_runner = RerankRunner(rerank_model_instance)
-                    documents = rerank_runner.run(
-                        query=query,
-                        documents=documents,
-                        score_threshold=retrieval_model['score_threshold'] if retrieval_model[
-                            'score_threshold_enabled'] else None,
-                        top_n=self.top_k
-                    )
+                # retrieval source
+                documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
+                                                      dataset_id=dataset.id,
+                                                      query=query,
+                                                      top_k=self.top_k,
+                                                      score_threshold=retrieval_model['score_threshold']
+                                                      if retrieval_model['score_threshold_enabled'] else None,
+                                                      reranking_model=retrieval_model['reranking_model']
+                                                      if retrieval_model['reranking_enable'] else None
+                                                      )
             else:
                 documents = []
 

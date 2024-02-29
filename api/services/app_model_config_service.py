@@ -1,7 +1,7 @@
 import re
 import uuid
 
-from core.agent.agent_executor import PlanningStrategy
+from core.entities.agent_entities import PlanningStrategy
 from core.external_data_tool.factory import ExternalDataToolFactory
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
@@ -98,7 +98,9 @@ class AppModelConfigService:
         # text_to_speech
         if 'text_to_speech' not in config or not config["text_to_speech"]:
             config["text_to_speech"] = {
-                "enabled": False
+                "enabled": False,
+                "voice": "",
+                "language": ""
             }
 
         if not isinstance(config["text_to_speech"], dict):
@@ -106,6 +108,8 @@ class AppModelConfigService:
 
         if "enabled" not in config["text_to_speech"] or not config["text_to_speech"]["enabled"]:
             config["text_to_speech"]["enabled"] = False
+            config["text_to_speech"]["voice"] = ""
+            config["text_to_speech"]["language"] = ""
 
         if not isinstance(config["text_to_speech"]["enabled"], bool):
             raise ValueError("enabled in text_to_speech must be of boolean type")

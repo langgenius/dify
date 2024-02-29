@@ -1,16 +1,16 @@
-# -*- coding:utf-8 -*-
 from datetime import datetime
 from decimal import Decimal
 
 import pytz
+from flask import jsonify
+from flask_login import current_user
+from flask_restful import Resource, reqparse
+
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from flask import jsonify
-from flask_login import current_user
-from flask_restful import Resource, reqparse
 from libs.helper import datetime_string
 from libs.login import login_required
 

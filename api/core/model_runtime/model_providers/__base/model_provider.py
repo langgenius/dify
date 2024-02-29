@@ -1,9 +1,9 @@
 import importlib
 import os
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
 
 import yaml
+
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -11,7 +11,7 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 class ModelProvider(ABC):
     provider_schema: ProviderEntity = None
-    model_instance_map: Dict[str, AIModel] = {}
+    model_instance_map: dict[str, AIModel] = {}
 
     @abstractmethod
     def validate_provider_credentials(self, credentials: dict) -> None:
@@ -46,7 +46,7 @@ class ModelProvider(ABC):
         yaml_path = os.path.join(current_path, f'{provider_name}.yaml')
         yaml_data = {}
         if os.path.exists(yaml_path):
-            with open(yaml_path, 'r', encoding='utf-8') as f:
+            with open(yaml_path, encoding='utf-8') as f:
                 yaml_data = yaml.safe_load(f)
 
         try:

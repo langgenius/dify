@@ -1,0 +1,32 @@
+provider: moonshot
+label:
+  zh_Hans: 月之暗面
+  en_US: Moonshot
+description:
+  en_US: Models provided by Moonshot, such as moonshot-v1-8k, moonshot-v1-32k, and moonshot-v1-128k.
+  zh_Hans: Moonshot 提供的模型，例如 moonshot-v1-8k、moonshot-v1-32k 和 moonshot-v1-128k。
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+background: "#FFFFFF"
+help:
+  title:
+    en_US: Get your API Key from Moonshot
+    zh_Hans: 从 Moonshot 获取 API Key
+  url:
+    en_US: https://platform.moonshot.cn/console/api-keys
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

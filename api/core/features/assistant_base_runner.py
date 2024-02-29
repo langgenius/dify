@@ -1,37 +1,50 @@
-import logging
 import json
-
-from typing import Optional, List, Tuple, Union, cast
+import logging
+import uuid
 from datetime import datetime
 from mimetypes import guess_extension
+from typing import Optional, Union, cast
 
 from core.app_runner.app_runner import AppRunner
-from extensions.ext_database import db
-
-from models.model import MessageAgentThought, Message, MessageFile
-from models.tools import ToolConversationVariables
-
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, \
-    ToolRuntimeVariablePool, ToolParameter
-from core.tools.tool.tool import Tool
-from core.tools.tool_manager import ToolManager
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
-from core.app_runner.app_runner import AppRunner
+from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import ModelConfigEntity, AgentEntity, AgentToolEntity
-from core.application_queue_manager import ApplicationQueueManager
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.entities.application_entities import ModelConfigEntity, \
-    AgentEntity, AppOrchestrationConfigEntity, ApplicationGenerateEntity, InvokeFrom
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelFeature
-from core.model_runtime.utils.encoders import jsonable_encoder
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_manager import ModelInstance
+from core.entities.application_entities import (
+    AgentEntity,
+    AgentToolEntity,
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+)
 from core.file.message_file_parser import FileTransferMethod
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.entities.model_entities import ModelFeature
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.entities.tool_entities import (
+    ToolInvokeMessage,
+    ToolInvokeMessageBinary,
+    ToolParameter,
+    ToolRuntimeVariablePool,
+)
+from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
+from core.tools.tool.tool import Tool
+from core.tools.tool_file_manager import ToolFileManager
+from core.tools.tool_manager import ToolManager
+from extensions.ext_database import db
+from models.model import Message, MessageAgentThought, MessageFile
+from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +58,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                  message: Message,
                  user_id: str,
                  memory: Optional[TokenBufferMemory] = None,
-                 prompt_messages: Optional[List[PromptMessage]] = None,
+                 prompt_messages: Optional[list[PromptMessage]] = None,
                  variables_pool: Optional[ToolRuntimeVariablePool] = None,
                  db_variables: Optional[ToolConversationVariables] = None,
                  model_instance: ModelInstance = None
@@ -72,7 +85,9 @@ class BaseAssistantApplicationRunner(AppRunner):
         self.message = message
         self.user_id = user_id
         self.memory = memory
-        self.history_prompt_messages = prompt_messages
+        self.history_prompt_messages = self.organize_agent_history(
+            prompt_messages=prompt_messages or []
+        )
         self.variables_pool = variables_pool
         self.db_variables_pool = db_variables
         self.model_instance = model_instance
@@ -117,7 +132,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return app_orchestration_config
 
-    def _convert_tool_response_to_str(self, tool_response: List[ToolInvokeMessage]) -> str:
+    def _convert_tool_response_to_str(self, tool_response: list[ToolInvokeMessage]) -> str:
         """
         Handle tool response
         """
@@ -129,13 +144,13 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += f"image has been created and sent to user already, you should tell user to check it now."
+                result += "image has been created and sent to user already, you should tell user to check it now."
             else:
                 result += f"tool response: {response.message}."
 
         return result
     
-    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> Tuple[PromptMessageTool, Tool]:
+    def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
         """
             convert tool to prompt message tool
         """
@@ -320,7 +335,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return prompt_tool
     
-    def extract_tool_response_binary(self, tool_response: List[ToolInvokeMessage]) -> List[ToolInvokeMessageBinary]:
+    def extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[ToolInvokeMessageBinary]:
         """
         Extract tool response binary
         """
@@ -351,7 +366,7 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return result
     
-    def create_message_files(self, messages: List[ToolInvokeMessageBinary]) -> List[Tuple[MessageFile, bool]]:
+    def create_message_files(self, messages: list[ToolInvokeMessageBinary]) -> list[tuple[MessageFile, bool]]:
         """
         Create message file
 
@@ -399,7 +414,7 @@ class BaseAssistantApplicationRunner(AppRunner):
         return result
         
     def create_agent_thought(self, message_id: str, message: str, 
-                             tool_name: str, tool_input: str, messages_ids: List[str]
+                             tool_name: str, tool_input: str, messages_ids: list[str]
                              ) -> MessageAgentThought:
         """
         Create agent thought
@@ -444,7 +459,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                            thought: str, 
                            observation: str, 
                            answer: str,
-                           messages_ids: List[str],
+                           messages_ids: list[str],
                            llm_usage: LLMUsage = None) -> MessageAgentThought:
         """
         Save agent thought
@@ -499,19 +514,8 @@ class BaseAssistantApplicationRunner(AppRunner):
         agent_thought.tool_labels_str = json.dumps(labels)
 
         db.session.commit()
-
-    def get_history_prompt_messages(self) -> List[PromptMessage]:
-        """
-        Get history prompt messages
-        """
-        if self.history_prompt_messages is None:
-            self.history_prompt_messages = db.session.query(PromptMessage).filter(
-                PromptMessage.message_id == self.message.id,
-            ).order_by(PromptMessage.position.asc()).all()
-
-        return self.history_prompt_messages
     
-    def transform_tool_invoke_messages(self, messages: List[ToolInvokeMessage]) -> List[ToolInvokeMessage]:
+    def transform_tool_invoke_messages(self, messages: list[ToolInvokeMessage]) -> list[ToolInvokeMessage]:
         """
         Transform tool message into agent thought
         """
@@ -585,3 +589,59 @@ class BaseAssistantApplicationRunner(AppRunner):
         db_variables.updated_at = datetime.utcnow()
         db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
         db.session.commit()
+
+    def organize_agent_history(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+        """
+        Organize agent history
+        """
+        result = []
+        # check if there is a system message in the beginning of the conversation
+        if prompt_messages and isinstance(prompt_messages[0], SystemPromptMessage):
+            result.append(prompt_messages[0])
+
+        messages: list[Message] = db.session.query(Message).filter(
+            Message.conversation_id == self.message.conversation_id,
+        ).order_by(Message.created_at.asc()).all()
+
+        for message in messages:
+            result.append(UserPromptMessage(content=message.query))
+            agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
+            if agent_thoughts:
+                for agent_thought in agent_thoughts:
+                    tools = agent_thought.tool
+                    if tools:
+                        tools = tools.split(';')
+                        tool_calls: list[AssistantPromptMessage.ToolCall] = []
+                        tool_call_response: list[ToolPromptMessage] = []
+                        tool_inputs = json.loads(agent_thought.tool_input)
+                        for tool in tools:
+                            # generate a uuid for tool call
+                            tool_call_id = str(uuid.uuid4())
+                            tool_calls.append(AssistantPromptMessage.ToolCall(
+                                id=tool_call_id,
+                                type='function',
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=tool,
+                                    arguments=json.dumps(tool_inputs.get(tool, {})),
+                                )
+                            ))
+                            tool_call_response.append(ToolPromptMessage(
+                                content=agent_thought.observation,
+                                name=tool,
+                                tool_call_id=tool_call_id,
+                            ))
+
+                        result.extend([
+                            AssistantPromptMessage(
+                                content=agent_thought.thought,
+                                tool_calls=tool_calls,
+                            ),
+                            *tool_call_response
+                        ])
+                    if not tools:
+                        result.append(AssistantPromptMessage(content=agent_thought.thought))
+            else:
+                if message.answer:
+                    result.append(AssistantPromptMessage(content=message.answer))
+
+        return result

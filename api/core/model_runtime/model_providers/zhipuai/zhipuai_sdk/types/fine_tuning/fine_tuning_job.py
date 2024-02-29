@@ -1,5 +1,4 @@
-from typing import List, Union, Optional
-from typing_extensions import Literal
+from typing import Optional, Union
 
 from pydantic import BaseModel
 
@@ -35,7 +34,7 @@ class FineTuningJob(BaseModel):
 
     object: Optional[str] = None
 
-    result_files: List[str]
+    result_files: list[str]
 
     status: str
 
@@ -48,5 +47,5 @@ class FineTuningJob(BaseModel):
 
 class ListOfFineTuningJob(BaseModel):
     object: Optional[str] = None
-    data: List[FineTuningJob]
+    data: list[FineTuningJob]
     has_more: Optional[bool] = None

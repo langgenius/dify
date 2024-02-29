@@ -55,7 +55,7 @@ const APIKeyInfoPanel: FC = () => {
         <a
           className='mt-2 flex items-center h-[26px] text-xs  font-medium text-[#155EEF] p-1 space-x-1'
           href='https://cloud.dify.ai/apps'
-          target='_blank'
+          target='_blank' rel='noopener noreferrer'
         >
           <div>{t('appOverview.apiKeyInfo.tryCloud')}</div>
           <LinkExternal02 className='w-3 h-3' />

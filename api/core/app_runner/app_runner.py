@@ -1,9 +1,20 @@
 import time
-from typing import Generator, List, Optional, Tuple, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.application_entities import AppOrchestrationConfigEntity, ModelConfigEntity, \
-    PromptTemplateEntity, ExternalDataVariableEntity, ApplicationGenerateEntity, InvokeFrom
+from core.entities.application_entities import (
+    ApplicationGenerateEntity,
+    AppOrchestrationConfigEntity,
+    ExternalDataVariableEntity,
+    InvokeFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
+from core.features.annotation_reply import AnnotationReplyFeature
+from core.features.external_data_fetch import ExternalDataFetchFeature
+from core.features.hosting_moderation import HostingModerationFeature
+from core.features.moderation import ModerationFeature
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -11,12 +22,9 @@ from core.model_runtime.entities.message_entities import AssistantPromptMessage,
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.features.hosting_moderation import HostingModerationFeature
-from core.features.moderation import ModerationFeature
-from core.features.external_data_fetch import ExternalDataFetchFeature
-from core.features.annotation_reply import AnnotationReplyFeature
 from core.prompt.prompt_transform import PromptTransform
-from models.model import App, MessageAnnotation, Message
+from models.model import App, Message, MessageAnnotation
+
 
 class AppRunner:
     def get_pre_calculate_rest_tokens(self, app_record: App,
@@ -77,7 +85,7 @@ class AppRunner:
         return rest_tokens
 
     def recale_llm_max_tokens(self, model_config: ModelConfigEntity,
-                              prompt_messages: List[PromptMessage]):
+                              prompt_messages: list[PromptMessage]):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
         model_type_instance = model_config.provider_model_bundle.model_type_instance
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
@@ -119,7 +127,7 @@ class AppRunner:
                                  query: Optional[str] = None,
                                  context: Optional[str] = None,
                                  memory: Optional[TokenBufferMemory] = None) \
-            -> Tuple[List[PromptMessage], Optional[List[str]]]:
+            -> tuple[list[PromptMessage], Optional[list[str]]]:
         """
         Organize prompt messages
         :param context:
@@ -288,7 +296,7 @@ class AppRunner:
                               tenant_id: str,
                               app_orchestration_config_entity: AppOrchestrationConfigEntity,
                               inputs: dict,
-                              query: str) -> Tuple[bool, dict, str]:
+                              query: str) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id

@@ -1,15 +1,15 @@
-from typing import List, Optional
+from typing import Optional
 
 from core.model_manager import ModelInstance
-from langchain.schema import Document
+from core.rag.models.document import Document
 
 
 class RerankRunner:
     def __init__(self, rerank_model_instance: ModelInstance) -> None:
         self.rerank_model_instance = rerank_model_instance
 
-    def run(self, query: str, documents: List[Document], score_threshold: Optional[float] = None,
-            top_n: Optional[int] = None, user: Optional[str] = None) -> List[Document]:
+    def run(self, query: str, documents: list[Document], score_threshold: Optional[float] = None,
+            top_n: Optional[int] = None, user: Optional[str] = None) -> list[Document]:
         """
         Run rerank model
         :param query: search query

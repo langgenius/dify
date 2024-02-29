@@ -1,34 +1,117 @@
-from typing import Generator, List, Optional, Union, cast
+from collections.abc import Generator
+from typing import Optional, Union, cast
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, UserPromptMessage)
-from core.model_runtime.errors.invoke import (InvokeAuthorizationError, InvokeBadRequestError, InvokeConnectionError,
-                                              InvokeError, InvokeRateLimitError, InvokeServerUnavailableError)
+from core.model_runtime.callbacks.base_callback import Callback
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.wenxin.llm.ernie_bot import BaiduAccessToken, ErnieBotModel, ErnieMessage
-from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (BadRequestError, InsufficientAccountBalance,
-                                                                            InternalServerError, InvalidAPIKeyError,
-                                                                            InvalidAuthenticationError,
-                                                                            RateLimitReachedError)
+from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (
+    BadRequestError,
+    InsufficientAccountBalance,
+    InternalServerError,
+    InvalidAPIKeyError,
+    InvalidAuthenticationError,
+    RateLimitReachedError,
+)
 
+ERNIE_BOT_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
 
-class ErnieBotLarguageModel(LargeLanguageModel):
+<instructions>
+{{instructions}}
+</instructions>
+
+You should also complete the text started with ``` but not tell ``` directly.
+"""
+
+class ErnieBotLargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, 
                 prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: List[str] | None = None, 
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                 model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
+
+    def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                           model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
+                           stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
+                           callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+        """
+        Code block mode wrapper for invoking large language model
+        """
+        if 'response_format' in model_parameters and model_parameters['response_format'] in ['JSON', 'XML']:
+            response_format = model_parameters['response_format']
+            stop = stop or []
+            self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user, response_format)
+            model_parameters.pop('response_format')
+            if stream:
+                return self._code_block_mode_stream_processor(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    input_generator=self._invoke(model=model, credentials=credentials, prompt_messages=prompt_messages,
+                                                    model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
+                )
+            
+        return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+
+    def _transform_json_prompts(self, model: str, credentials: dict, 
+                                prompt_messages: list[PromptMessage], model_parameters: dict, 
+                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+                                stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
+                            -> None:
+        """
+        Transform json prompts to model prompts
+        """
+
+        # check if there is a system message
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+            # override the system message
+            prompt_messages[0] = SystemPromptMessage(
+                content=ERNIE_BOT_BLOCK_MODE_PROMPT
+                    .replace("{{instructions}}", prompt_messages[0].content)
+                    .replace("{{block}}", response_format)
+            )
+        else:
+            # insert the system message
+            prompt_messages.insert(0, SystemPromptMessage(
+                content=ERNIE_BOT_BLOCK_MODE_PROMPT
+                    .replace("{{instructions}}", f"Please output a valid {response_format} object.")
+                    .replace("{{block}}", response_format)
+            ))
+
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+            # add ```JSON\n to the last message
+            prompt_messages[-1].content += "\n```JSON\n{\n"
+        else:
+            # append a user message
+            prompt_messages.append(UserPromptMessage(
+                content="```JSON\n{\n"
+            ))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
         # tools is not supported yet
         return self._num_tokens_from_messages(prompt_messages)
 
-    def _num_tokens_from_messages(self, messages: List[PromptMessage],) -> int:
+    def _num_tokens_from_messages(self, messages: list[PromptMessage],) -> int:
         """Calculate num tokens for baichuan model"""
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
@@ -63,7 +146,7 @@ class ErnieBotLarguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                  model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
-                 stop: List[str] | None = None, stream: bool = True, user: str | None = None) \
+                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         instance = ErnieBotModel(
             api_key=credentials['api_key'],

@@ -1,14 +1,14 @@
-# -*- coding:utf-8 -*-
 import json
+
+from flask import current_app
+from flask_restful import fields, marshal_with
 
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
-from flask import current_app
-from flask_restful import fields, marshal_with
-from models.model import InstalledApp, AppModelConfig
+from extensions.ext_database import db
+from models.model import AppModelConfig, InstalledApp
 from models.tools import ApiToolProvider
 
-from extensions.ext_database import db
 
 class AppParameterApi(InstalledAppResource):
     """Resource for app variables."""
@@ -77,7 +77,7 @@ class ExploreAppMetaApi(InstalledAppResource):
         # get all tools
         tools = agent_config.get('tools', [])
         url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                  + f"/console/api/workspaces/current/tool-provider/builtin/")
+                  + "/console/api/workspaces/current/tool-provider/builtin/")
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:

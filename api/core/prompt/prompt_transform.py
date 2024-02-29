@@ -2,15 +2,23 @@ import enum
 import json
 import os
 import re
-from typing import List, Optional, Tuple, cast
+from typing import Optional, cast
 
-from core.entities.application_entities import (AdvancedCompletionPromptTemplateEntity, ModelConfigEntity,
-                                                PromptTemplateEntity)
+from core.entities.application_entities import (
+    AdvancedCompletionPromptTemplateEntity,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessage, PromptMessageRole,
-                                                          SystemPromptMessage, TextPromptMessageContent,
-                                                          UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageRole,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_builder import PromptBuilder
@@ -59,11 +67,11 @@ class PromptTransform:
                    prompt_template_entity: PromptTemplateEntity,
                    inputs: dict,
                    query: str,
-                   files: List[FileObj],
+                   files: list[FileObj],
                    context: Optional[str],
                    memory: Optional[TokenBufferMemory],
                    model_config: ModelConfigEntity) -> \
-            Tuple[List[PromptMessage], Optional[List[str]]]:
+            tuple[list[PromptMessage], Optional[list[str]]]:
         app_mode = AppMode.value_of(app_mode)
         model_mode = ModelMode.value_of(model_config.mode)
 
@@ -107,10 +115,10 @@ class PromptTransform:
                             prompt_template_entity: PromptTemplateEntity,
                             inputs: dict,
                             query: str,
-                            files: List[FileObj],
+                            files: list[FileObj],
                             context: Optional[str],
                             memory: Optional[TokenBufferMemory],
-                            model_config: ModelConfigEntity) -> List[PromptMessage]:
+                            model_config: ModelConfigEntity) -> list[PromptMessage]:
         app_mode = AppMode.value_of(app_mode)
         model_mode = ModelMode.value_of(model_config.mode)
 
@@ -174,7 +182,7 @@ class PromptTransform:
         )
 
     def _get_history_messages_list_from_memory(self, memory: TokenBufferMemory,
-                                               max_token_limit: int) -> List[PromptMessage]:
+                                               max_token_limit: int) -> list[PromptMessage]:
         """Get memory messages."""
         return memory.get_history_prompt_messages(
             max_token_limit=max_token_limit
@@ -209,7 +217,7 @@ class PromptTransform:
 
         json_file_path = os.path.join(prompt_path, f'{prompt_name}.json')
         # Open the JSON file and read its content
-        with open(json_file_path, 'r', encoding='utf-8') as json_file:
+        with open(json_file_path, encoding='utf-8') as json_file:
             return json.load(json_file)
 
     def _get_simple_chat_app_chat_model_prompt_messages(self, prompt_rules: dict,
@@ -217,9 +225,9 @@ class PromptTransform:
                                                         inputs: dict,
                                                         query: str,
                                                         context: Optional[str],
-                                                        files: List[FileObj],
+                                                        files: list[FileObj],
                                                         memory: Optional[TokenBufferMemory],
-                                                        model_config: ModelConfigEntity) -> List[PromptMessage]:
+                                                        model_config: ModelConfigEntity) -> list[PromptMessage]:
         prompt_messages = []
 
         context_prompt_content = ''
@@ -272,8 +280,8 @@ class PromptTransform:
                                            query: str,
                                            context: Optional[str],
                                            memory: Optional[TokenBufferMemory],
-                                           files: List[FileObj],
-                                           model_config: ModelConfigEntity) -> List[PromptMessage]:
+                                           files: list[FileObj],
+                                           model_config: ModelConfigEntity) -> list[PromptMessage]:
         context_prompt_content = ''
         if context and 'context_prompt' in prompt_rules:
             prompt_template = PromptTemplateParser(template=prompt_rules['context_prompt'])
@@ -443,10 +451,10 @@ class PromptTransform:
                                                        prompt_template_entity: PromptTemplateEntity,
                                                        inputs: dict,
                                                        query: str,
-                                                       files: List[FileObj],
+                                                       files: list[FileObj],
                                                        context: Optional[str],
                                                        memory: Optional[TokenBufferMemory],
-                                                       model_config: ModelConfigEntity) -> List[PromptMessage]:
+                                                       model_config: ModelConfigEntity) -> list[PromptMessage]:
 
         raw_prompt = prompt_template_entity.advanced_completion_prompt_template.prompt
         role_prefix = prompt_template_entity.advanced_completion_prompt_template.role_prefix
@@ -486,10 +494,10 @@ class PromptTransform:
                                                  prompt_template_entity: PromptTemplateEntity,
                                                  inputs: dict,
                                                  query: str,
-                                                 files: List[FileObj],
+                                                 files: list[FileObj],
                                                  context: Optional[str],
                                                  memory: Optional[TokenBufferMemory],
-                                                 model_config: ModelConfigEntity) -> List[PromptMessage]:
+                                                 model_config: ModelConfigEntity) -> list[PromptMessage]:
         raw_prompt_list = prompt_template_entity.advanced_chat_prompt_template.messages
 
         prompt_messages = []
@@ -527,7 +535,7 @@ class PromptTransform:
     def _get_completion_app_completion_model_prompt_messages(self,
                                                              prompt_template_entity: PromptTemplateEntity,
                                                              inputs: dict,
-                                                             context: Optional[str]) -> List[PromptMessage]:
+                                                             context: Optional[str]) -> list[PromptMessage]:
         raw_prompt = prompt_template_entity.advanced_completion_prompt_template.prompt
 
         prompt_messages = []
@@ -546,8 +554,8 @@ class PromptTransform:
     def _get_completion_app_chat_model_prompt_messages(self,
                                                        prompt_template_entity: PromptTemplateEntity,
                                                        inputs: dict,
-                                                       files: List[FileObj],
-                                                       context: Optional[str]) -> List[PromptMessage]:
+                                                       files: list[FileObj],
+                                                       context: Optional[str]) -> list[PromptMessage]:
         raw_prompt_list = prompt_template_entity.advanced_chat_prompt_template.messages
 
         prompt_messages = []

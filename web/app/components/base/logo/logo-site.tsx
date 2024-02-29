@@ -1,15 +1,17 @@
 import type { FC } from 'react'
+import classNames from 'classnames'
 
 type LogoSiteProps = {
   className?: string
 }
+
 const LogoSite: FC<LogoSiteProps> = ({
   className,
 }) => {
   return (
     <img
       src='/logo/logo-site.png'
-      className={`block w-auto h-10 ${className}`}
+      className={classNames('block w-auto h-10', className)}
       alt='logo'
     />
   )

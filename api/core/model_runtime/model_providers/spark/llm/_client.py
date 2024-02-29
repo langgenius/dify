@@ -1,5 +1,4 @@
 import base64
-import datetime
 import hashlib
 import hmac
 import json
@@ -35,6 +34,10 @@ class SparkLLMClient:
             'spark-3': {
                 'version': 'v3.1',
                 'chat_domain': 'generalv3'
+            },
+            'spark-3.5': {
+                'version': 'v3.5',
+                'chat_domain': 'generalv3.5'
             }
         }
 

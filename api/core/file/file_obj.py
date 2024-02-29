@@ -1,11 +1,12 @@
 import enum
 from typing import Optional
 
+from pydantic import BaseModel
+
 from core.file.upload_file_parser import UploadFileParser
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
 from models.model import UploadFile
-from pydantic import BaseModel
 
 
 class FileType(enum.Enum):

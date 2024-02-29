@@ -17,6 +17,7 @@ import Input from './Input'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import Radio from '@/app/components/base/radio'
 type FormProps = {
   value: FormValue
   onChange: (val: FormValue) => void
@@ -28,6 +29,7 @@ type FormProps = {
   readonly?: boolean
   inputClassName?: string
   isShowDefaultValue?: boolean
+  fieldMoreInfo?: (payload: CredentialFormSchema) => JSX.Element | null
 }
 
 const Form: FC<FormProps> = ({
@@ -41,11 +43,12 @@ const Form: FC<FormProps> = ({
   readonly,
   inputClassName,
   isShowDefaultValue = false,
+  fieldMoreInfo,
 }) => {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
 
-  const handleFormChange = (key: string, val: string) => {
+  const handleFormChange = (key: string, val: string | boolean) => {
     if (isEditMode && (key === '__model_type' || key === '__model_name'))
       return
 
@@ -106,6 +109,7 @@ const Form: FC<FormProps> = ({
             type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
+          {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
       )
@@ -162,6 +166,7 @@ const Form: FC<FormProps> = ({
               ))
             }
           </div>
+          {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
       )
@@ -205,7 +210,39 @@ const Form: FC<FormProps> = ({
             onSelect={item => handleFormChange(variable, item.value as string)}
             placeholder={placeholder?.[language]}
           />
+          {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
+        </div>
+      )
+    }
+
+    if (formSchema.type === 'boolean') {
+      const {
+        variable,
+        label,
+        show_on,
+      } = formSchema as CredentialFormSchemaRadio
+
+      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+        return null
+
+      return (
+        <div key={variable} className='py-3'>
+          <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
+            <div className='flex items-center space-x-2'>
+              <span>{label[language]}</span>
+              {tooltipContent}
+            </div>
+            <Radio.Group
+              className='flex items-center'
+              value={value[variable] ? 1 : 0}
+              onChange={val => handleFormChange(variable, val === 1)}
+            >
+              <Radio value={1} className='!mr-1'>True</Radio>
+              <Radio value={0}>False</Radio>
+            </Radio.Group>
+          </div>
+          {fieldMoreInfo?.(formSchema)}
         </div>
       )
     }

@@ -1,8 +1,7 @@
 import classNames from 'classnames'
 import style from '../list.module.css'
 import Apps from './Apps'
-import { getLocaleOnServer } from '@/i18n/server'
-import { useTranslation as translate } from '@/i18n/i18next-serverside-config'
+import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 
 const AppList = async () => {
   const locale = getLocaleOnServer()
@@ -15,8 +14,8 @@ const AppList = async () => {
         <h3 className='text-xl font-semibold leading-tight text-gradient'>{t('join')}</h3>
         <p className='mt-1 text-sm font-normal leading-tight text-gray-700'>{t('communityIntro')}</p>
         <div className='flex items-center gap-2 mt-3'>
-          <a className={style.socialMediaLink} target='_blank' href='https://github.com/langgenius/dify'><span className={classNames(style.socialMediaIcon, style.githubIcon)} /></a>
-          <a className={style.socialMediaLink} target='_blank' href='https://discord.gg/FngNHpbcY7'><span className={classNames(style.socialMediaIcon, style.discordIcon)} /></a>
+          <a className={style.socialMediaLink} target='_blank' rel='noopener noreferrer' href='https://github.com/langgenius/dify'><span className={classNames(style.socialMediaIcon, style.githubIcon)} /></a>
+          <a className={style.socialMediaLink} target='_blank' rel='noopener noreferrer' href='https://discord.gg/FngNHpbcY7'><span className={classNames(style.socialMediaIcon, style.discordIcon)} /></a>
         </div>
       </footer>
     </div >

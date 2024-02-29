@@ -1,9 +1,8 @@
-from typing import List, Union
 
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.entities.application_entities import InvokeFrom
+from core.rag.models.document import Document
 from extensions.ext_database import db
-from langchain.schema import Document
 from models.dataset import DatasetQuery, DocumentSegment
 from models.model import DatasetRetrieverResource
 
@@ -39,22 +38,26 @@ class DatasetIndexToolCallbackHandler:
         db.session.add(dataset_query)
         db.session.commit()
 
-    def on_tool_end(self, documents: List[Document]) -> None:
+    def on_tool_end(self, documents: list[Document]) -> None:
         """Handle tool end."""
         for document in documents:
-            doc_id = document.metadata['doc_id']
+            query = db.session.query(DocumentSegment).filter(
+                DocumentSegment.index_node_id == document.metadata['doc_id']
+            )
+
+            # if 'dataset_id' in document.metadata:
+            if 'dataset_id' in document.metadata:
+                query = query.filter(DocumentSegment.dataset_id == document.metadata['dataset_id'])
 
             # add hit count to document segment
-            db.session.query(DocumentSegment).filter(
-                DocumentSegment.index_node_id == doc_id
-            ).update(
+            query.update(
                 {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
                 synchronize_session=False
             )
 
             db.session.commit()
 
-    def return_retriever_resource_info(self, resource: List):
+    def return_retriever_resource_info(self, resource: list):
         """Handle return_retriever_resource_info."""
         if resource and len(resource) > 0:
             for item in resource:

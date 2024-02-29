@@ -1,8 +1,13 @@
-import type { FC } from 'react'
+import type {
+  FC,
+  ReactNode,
+} from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ChatItem } from '../../types'
-import { useChatContext } from '../context'
-import { useCurrentAnswerIsResponsing } from '../hooks'
+import type {
+  ChatConfig,
+  ChatItem,
+} from '../../types'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -12,23 +17,27 @@ import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/gen
 import LoadingAnim from '@/app/components/app/chat/loading-anim'
 import Citation from '@/app/components/app/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
+import type { Emoji } from '@/app/components/tools/types'
 
 type AnswerProps = {
   item: ChatItem
   question: string
   index: number
+  config?: ChatConfig
+  answerIcon?: ReactNode
+  responsing?: boolean
+  allToolIcons?: Record<string, string | Emoji>
 }
 const Answer: FC<AnswerProps> = ({
   item,
   question,
   index,
+  config,
+  answerIcon,
+  responsing,
+  allToolIcons,
 }) => {
   const { t } = useTranslation()
-  const {
-    config,
-    answerIcon,
-  } = useChatContext()
-  const responsing = useCurrentAnswerIsResponsing(item.id)
   const {
     content,
     citation,
@@ -82,8 +91,12 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              hasAgentThoughts && !content && (
-                <AgentContent item={item} />
+              hasAgentThoughts && (
+                <AgentContent
+                  item={item}
+                  responsing={responsing}
+                  allToolIcons={allToolIcons}
+                />
               )
             }
             {
@@ -97,7 +110,7 @@ const Answer: FC<AnswerProps> = ({
             <SuggestedQuestions item={item} />
             {
               !!citation?.length && config?.retriever_resource?.enabled && !responsing && (
-                <Citation data={citation} showHitInfo />
+                <Citation data={citation} showHitInfo={config.supportCitationHitInfo} />
               )
             }
           </div>
@@ -108,4 +121,4 @@ const Answer: FC<AnswerProps> = ({
   )
 }
 
-export default Answer
+export default memo(Answer)

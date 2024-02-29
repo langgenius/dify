@@ -6,6 +6,7 @@
 - bedrock
 - togetherai
 - ollama
+- mistralai
 - replicate
 - huggingface_hub
 - zhipuai
@@ -14,6 +15,7 @@
 - minimax
 - tongyi
 - wenxin
+- moonshot
 - jina
 - chatglm
 - xinference

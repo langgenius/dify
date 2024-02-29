@@ -1,20 +1,18 @@
-# -*- coding:utf-8 -*-
-import services
-from controllers.service_api import api
-from controllers.service_api.app import create_or_update_end_user_for_user_id
-from controllers.service_api.app.error import NotChatAppError
-from controllers.service_api.wraps import AppApiResource
-from extensions.ext_database import db
-from fields.conversation_fields import message_file_fields
-from flask_restful import fields, marshal_with, reqparse
+from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from libs.helper import TimestampField, uuid_value
-from models.model import EndUser, Message
-from services.message_service import MessageService
 from werkzeug.exceptions import NotFound
 
+import services
+from controllers.service_api import api
+from controllers.service_api.app.error import NotChatAppError
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from fields.conversation_fields import message_file_fields
+from libs.helper import TimestampField, uuid_value
+from models.model import App, EndUser
+from services.message_service import MessageService
 
-class MessageListApi(AppApiResource):
+
+class MessageListApi(Resource):
     feedback_fields = {
         'rating': fields.String
     }
@@ -70,8 +68,9 @@ class MessageListApi(AppApiResource):
         'data': fields.List(fields.Nested(message_fields))
     }
 
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(message_infinite_scroll_pagination_fields)
-    def get(self, app_model, end_user):
+    def get(self, app_model: App, end_user: EndUser):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -79,11 +78,7 @@ class MessageListApi(AppApiResource):
         parser.add_argument('conversation_id', required=True, type=uuid_value, location='args')
         parser.add_argument('first_id', type=uuid_value, location='args')
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
-        parser.add_argument('user', type=str, location='args')
         args = parser.parse_args()
-
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
 
         try:
             return MessageService.pagination_by_first_id(app_model, end_user,
@@ -94,17 +89,14 @@ class MessageListApi(AppApiResource):
             raise NotFound("First Message Not Exists.")
 
 
-class MessageFeedbackApi(AppApiResource):
-    def post(self, app_model, end_user, message_id):
+class MessageFeedbackApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    def post(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('rating', type=str, choices=['like', 'dislike', None], location='json')
-        parser.add_argument('user', type=str, location='json')
         args = parser.parse_args()
-
-        if end_user is None and args['user'] is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
 
         try:
             MessageService.create_feedback(app_model, message_id, end_user, args['rating'])
@@ -114,29 +106,17 @@ class MessageFeedbackApi(AppApiResource):
         return {'result': 'success'}
 
 
-class MessageSuggestedApi(AppApiResource):
-    def get(self, app_model, end_user, message_id):
+class MessageSuggestedApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
         if app_model.mode != 'chat':
             raise NotChatAppError()
-        try:
-            message = db.session.query(Message).filter(
-                Message.id == message_id,
-                Message.app_id == app_model.id,
-            ).first()
 
-            if end_user is None and message.from_end_user_id is not None:
-                user = db.session.query(EndUser) \
-                    .filter(
-                        EndUser.tenant_id == app_model.tenant_id,
-                        EndUser.id == message.from_end_user_id,
-                        EndUser.type == 'service_api'
-                    ).first()
-            else:
-                user = end_user
+        try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
-                user=user,
+                user=end_user,
                 message_id=message_id,
                 check_enabled=False
             )

@@ -4,14 +4,15 @@ import time
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
+from werkzeug.exceptions import NotFound
+
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from langchain.schema import Document
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
 from services.dataset_service import DatasetCollectionBindingService
-from werkzeug.exceptions import NotFound
 
 
 @shared_task(queue='dataset')
@@ -80,15 +81,15 @@ def enable_annotation_reply_task(job_id: str, app_id: str, user_id: str, tenant_
                     }
                 )
                 documents.append(document)
-            index = IndexBuilder.get_index(dataset, 'high_quality')
-            if index:
-                try:
-                    index.delete_by_metadata_field('app_id', app_id)
-                except Exception as e:
-                    logging.info(
-                        click.style('Delete annotation index error: {}'.format(str(e)),
-                                    fg='red'))
-                index.add_texts(documents)
+
+            vector = Vector(dataset, attributes=['doc_id', 'annotation_id', 'app_id'])
+            try:
+                vector.delete_by_metadata_field('app_id', app_id)
+            except Exception as e:
+                logging.info(
+                    click.style('Delete annotation index error: {}'.format(str(e)),
+                                fg='red'))
+            vector.add_texts(documents)
         db.session.commit()
         redis_client.setex(enable_app_annotation_job_key, 600, 'completed')
         end_at = time.perf_counter()

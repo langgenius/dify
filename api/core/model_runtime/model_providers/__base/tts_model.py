@@ -1,13 +1,12 @@
-import uuid
 import hashlib
 import subprocess
+import uuid
 from abc import abstractmethod
 from typing import Optional
 
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.entities.model_entities import ModelPropertyKey
 
 
 class TTSModel(AIModel):
@@ -16,29 +15,37 @@ class TTSModel(AIModel):
     """
     model_type: ModelType = ModelType.TTS
 
-    def invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+    def invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool,
+               user: Optional[str] = None):
         """
         Invoke large language model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
         :param streaming: output is streaming
         :param user: unique user id
         :return: translated audio file
         """
         try:
-            return self._invoke(model=model, credentials=credentials, user=user, streaming=streaming, content_text=content_text)
+            self._is_ffmpeg_installed()
+            return self._invoke(model=model, credentials=credentials, user=user, streaming=streaming,
+                                content_text=content_text, voice=voice, tenant_id=tenant_id)
         except Exception as e:
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool,
+                user: Optional[str] = None):
         """
         Invoke large language model
 
         :param model: model name
+        :param tenant_id: user tenant id
         :param credentials: model credentials
+        :param voice: model timbre
         :param content_text: text content to be translated
         :param streaming: output is streaming
         :param user: unique user id
@@ -46,7 +53,25 @@ class TTSModel(AIModel):
         """
         raise NotImplementedError
 
-    def _get_model_voice(self, model: str, credentials: dict) -> any:
+    def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list:
+        """
+        Get voice for given tts model voices
+
+        :param language: tts language
+        :param model: model name
+        :param credentials: model credentials
+        :return: voices lists
+        """
+        model_schema = self.get_model_schema(model, credentials)
+
+        if model_schema and ModelPropertyKey.VOICES in model_schema.model_properties:
+            voices = model_schema.model_properties[ModelPropertyKey.VOICES]
+            if language:
+                return [{'name': d['name'], 'value': d['mode']} for d in voices if language and language in d.get('language')]
+            else:
+                return [{'name': d['name'], 'value': d['mode']} for d in voices]
+
+    def _get_model_default_voice(self, model: str, credentials: dict) -> any:
         """
         Get voice for given tts model
 

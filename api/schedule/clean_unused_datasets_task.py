@@ -1,14 +1,14 @@
 import datetime
-import logging
 import time
 
-import app
 import click
-from core.index.index import IndexBuilder
-from extensions.ext_database import db
 from flask import current_app
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetQuery, Document
 from werkzeug.exceptions import NotFound
+
+import app
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from extensions.ext_database import db
+from models.dataset import Dataset, DatasetQuery, Document
 
 
 @app.celery.task(queue='dataset')
@@ -41,18 +41,9 @@ def clean_unused_datasets_task():
                 if not documents or len(documents) == 0:
                     try:
                         # remove index
-                        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-                        kw_index = IndexBuilder.get_index(dataset, 'economy')
-                        # delete from vector index
-                        if vector_index:
-                            if dataset.collection_binding_id:
-                                vector_index.delete_by_group_id(dataset.id)
-                            else:
-                                if dataset.collection_binding_id:
-                                    vector_index.delete_by_group_id(dataset.id)
-                                else:
-                                    vector_index.delete()
-                        kw_index.delete()
+                        index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
+                        index_processor.clean(dataset, None)
+
                         # update document
                         update_params = {
                             Document.enabled: False

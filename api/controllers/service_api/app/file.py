@@ -1,25 +1,27 @@
+from flask import request
+from flask_restful import Resource, marshal_with
+
 import services
 from controllers.service_api import api
-from controllers.service_api.app import create_or_update_end_user_for_user_id
-from controllers.service_api.app.error import (FileTooLargeError, NoFileUploadedError, TooManyFilesError,
-                                               UnsupportedFileTypeError)
-from controllers.service_api.wraps import AppApiResource
+from controllers.service_api.app.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from fields.file_fields import file_fields
-from flask import request
-from flask_restful import marshal_with
+from models.model import App, EndUser
 from services.file_service import FileService
 
 
-class FileApi(AppApiResource):
+class FileApi(Resource):
 
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
     @marshal_with(file_fields)
-    def post(self, app_model, end_user):
+    def post(self, app_model: App, end_user: EndUser):
 
         file = request.files['file']
-        user_args = request.form.get('user')
-
-        if end_user is None and user_args is not None:
-            end_user = create_or_update_end_user_for_user_id(app_model, user_args)
 
         # check file
         if 'file' not in request.files:

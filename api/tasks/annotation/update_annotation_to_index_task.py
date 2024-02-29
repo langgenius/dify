@@ -3,8 +3,9 @@ import time
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
-from langchain.schema import Document
+
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -48,10 +49,9 @@ def update_annotation_to_index_task(annotation_id: str, question: str, tenant_id
                 "doc_id": annotation_id
             }
         )
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.delete_by_metadata_field('annotation_id', annotation_id)
-            index.add_texts([document])
+        vector = Vector(dataset, attributes=['doc_id', 'annotation_id', 'app_id'])
+        vector.delete_by_metadata_field('annotation_id', annotation_id)
+        vector.add_texts([document])
         end_at = time.perf_counter()
         logging.info(
             click.style(

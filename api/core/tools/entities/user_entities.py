@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import Optional
+
+from pydantic import BaseModel
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderCredentials
@@ -38,11 +39,11 @@ class UserToolProvider(BaseModel):
         }
 
 class UserToolProviderCredentials(BaseModel):
-    credentials: Dict[str, ToolProviderCredentials]
+    credentials: dict[str, ToolProviderCredentials]
 
 class UserTool(BaseModel):
     author: str
     name: str # identifier
     label: I18nObject # label
     description: I18nObject
-    parameters: Optional[List[ToolParameter]]
+    parameters: Optional[list[ToolParameter]]

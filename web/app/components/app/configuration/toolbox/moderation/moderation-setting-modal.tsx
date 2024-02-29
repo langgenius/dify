@@ -17,7 +17,7 @@ import {
 } from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -44,7 +44,6 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const { data: modelProviders, isLoading, mutate } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const { setShowAccountSettingModal } = useModalContext()
@@ -200,12 +199,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     }
 
     if (localeData.type === 'keywords' && !localeData.config.keywords) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? 'keywords' : '关键词' }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }) })
       return
     }
 
     if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? 'API Extension' : 'API 扩展' }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
@@ -214,7 +213,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
           notify({
             type: 'error',
-            message: t('appDebug.errorMessage.valueOfVarRequired', { key: language !== LanguagesSupportedUnderscore[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
+            message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })
           return
         }
@@ -237,7 +236,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => {}}
+      onClose={() => { }}
       className='!p-8 !pb-6 !mt-14 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-[#1D2939]'>
@@ -311,7 +310,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               <div className='text-sm font-medium text-gray-900'>{t('common.apiBasedExtension.selector.title')}</div>
               <a
                 href={t('common.apiBasedExtension.linkUrl') || '/'}
-                target='_blank'
+                target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs text-gray-500 hover:text-primary-600'
               >
                 <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />

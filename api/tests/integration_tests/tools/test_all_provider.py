@@ -1,5 +1,6 @@
 from core.tools.tool_manager import ToolManager
 
+
 def test_tool_providers():
     """
     Test that all tool providers can be loaded

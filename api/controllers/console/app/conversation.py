@@ -1,22 +1,27 @@
 from datetime import datetime
 
 import pytz
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful.inputs import int_range
+from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
+from werkzeug.exceptions import NotFound
+
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from fields.conversation_fields import (conversation_detail_fields, conversation_message_detail_fields,
-                                        conversation_pagination_fields, conversation_with_summary_pagination_fields)
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from fields.conversation_fields import (
+    conversation_detail_fields,
+    conversation_message_detail_fields,
+    conversation_pagination_fields,
+    conversation_with_summary_pagination_fields,
+)
 from libs.helper import datetime_string
 from libs.login import login_required
 from models.model import Conversation, Message, MessageAnnotation
-from sqlalchemy import func, or_
-from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import NotFound
 
 
 class CompletionConversationApi(Resource):

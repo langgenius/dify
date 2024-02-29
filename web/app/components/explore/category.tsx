@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import exploreI18n from '@/i18n/lang/explore.en'
+import exploreI18n from '@/i18n/en-US/explore'
 import type { AppCategory } from '@/models/explore'
 
 const categoryI18n = exploreI18n.category

@@ -1,0 +1,27 @@
+[project]
+requires-python = ">=3.10"
+
+[tool.ruff]
+exclude = [
+    "app.py",
+    "__init__.py",
+    "tests/",
+]
+line-length = 120
+
+[tool.ruff.lint]
+ignore-init-module-imports = true
+select = [
+    "F", # pyflakes rules
+    "I001", # unsorted-imports
+    "I002", # missing-required-import
+    "UP",   # pyupgrade rules
+]
+ignore = [
+    "F403", # undefined-local-with-import-star
+    "F405", # undefined-local-with-import-star-usage
+    "F821", # undefined-name
+    "F841", # unused-variable
+    "UP007", # non-pep604-annotation
+    "UP032", # f-string
+]

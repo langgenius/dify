@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
-from core.extension.extensible import Extensible, ExtensionModule
 from pydantic import BaseModel
+
+from core.extension.extensible import Extensible, ExtensionModule
 
 
 class ModerationAction(Enum):

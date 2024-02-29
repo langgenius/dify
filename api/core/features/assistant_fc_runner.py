@@ -1,20 +1,27 @@
 import json
 import logging
+from collections.abc import Generator
+from typing import Any, Union
 
-from typing import Union, Generator, Dict, Any, Tuple, List
-
-from core.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage,\
-      SystemPromptMessage, AssistantPromptMessage, ToolPromptMessage, PromptMessageTool
-from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult, LLMUsage, LLMResultChunkDelta
-from core.model_manager import ModelInstance
 from core.application_queue_manager import PublishFrom
-
-from core.tools.errors import ToolInvokeError, ToolNotFoundError, \
-    ToolNotSupportedError, ToolProviderNotFoundError, ToolParameterValidationError, \
-          ToolProviderCredentialValidationError
-
 from core.features.assistant_base_runner import BaseAssistantApplicationRunner
-
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from core.tools.errors import (
+    ToolInvokeError,
+    ToolNotFoundError,
+    ToolNotSupportedError,
+    ToolParameterValidationError,
+    ToolProviderCredentialValidationError,
+    ToolProviderNotFoundError,
+)
 from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -38,7 +45,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
         )
 
         # convert tools into ModelRuntime Tool format
-        prompt_messages_tools: List[PromptMessageTool] = []
+        prompt_messages_tools: list[PromptMessageTool] = []
         tool_instances = {}
         for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
             try:
@@ -64,13 +71,13 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        agent_thoughts: List[MessageAgentThought] = []
+        agent_thoughts: list[MessageAgentThought] = []
         llm_usage = {
             'usage': None
         }
         final_answer = ''
 
-        def increase_usage(final_llm_usage_dict: Dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
             else:
@@ -97,7 +104,6 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 tool_input='',
                 messages_ids=message_file_ids
             )
-            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
 
             # recale llm max tokens
             self.recale_llm_max_tokens(self.model_config, prompt_messages)
@@ -112,7 +118,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 callbacks=[],
             )
 
-            tool_calls: List[Tuple[str, str, Dict[str, Any]]] = []
+            tool_calls: list[tuple[str, str, dict[str, Any]]] = []
 
             # save full response
             response = ''
@@ -124,7 +130,11 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             current_llm_usage = None
 
             if self.stream_tool_call:
+                is_first_chunk = True
                 for chunk in chunks:
+                    if is_first_chunk:
+                        self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                        is_first_chunk = False
                     # check if there is any tool call
                     if self.check_tool_calls(chunk):
                         function_call_state = True
@@ -183,6 +193,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                 if not result.message.content:
                     result.message.content = ''
 
+                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                
                 yield LLMResultChunk(
                     model=model_instance.model,
                     prompt_messages=result.prompt_messages,
@@ -266,7 +278,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                             message_file_ids.append(message_file.id)
                             
                     except ToolProviderCredentialValidationError as e:
-                        error_response = f"Plese check your tool provider credentials"
+                        error_response = "Please check your tool provider credentials"
                     except (
                         ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
                     ) as e:
@@ -353,7 +365,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             return True
         return False
 
-    def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> Union[None, List[Tuple[str, str, Dict[str, Any]]]]:
+    def extract_tool_calls(self, llm_result_chunk: LLMResultChunk) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
         """
         Extract tool calls from llm result chunk
 
@@ -370,7 +382,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
         return tool_calls
     
-    def extract_blocking_tool_calls(self, llm_result: LLMResult) -> Union[None, List[Tuple[str, str, Dict[str, Any]]]]:
+    def extract_blocking_tool_calls(self, llm_result: LLMResult) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
         """
         Extract blocking tool calls from llm result
 

@@ -1,15 +1,15 @@
-import datetime
 import logging
 import time
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
+from werkzeug.exceptions import NotFound
+
+from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from models.model import App, AppAnnotationSetting, MessageAnnotation
-from werkzeug.exceptions import NotFound
+from models.model import App, AppAnnotationSetting
 
 
 @shared_task(queue='dataset')
@@ -48,12 +48,11 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             collection_binding_id=app_annotation_setting.collection_binding_id
         )
 
-        vector_index = IndexBuilder.get_default_high_quality_index(dataset)
-        if vector_index:
-            try:
-                vector_index.delete_by_metadata_field('app_id', app_id)
-            except Exception:
-                logging.exception("Delete doc index failed when dataset deleted.")
+        try:
+            vector = Vector(dataset, attributes=['doc_id', 'annotation_id', 'app_id'])
+            vector.delete_by_metadata_field('app_id', app_id)
+        except Exception:
+            logging.exception("Delete annotation index failed when annotation deleted.")
         redis_client.setex(disable_app_annotation_job_key, 600, 'completed')
 
         # delete annotation setting

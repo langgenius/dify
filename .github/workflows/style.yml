@@ -10,13 +10,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: ESLint and SuperLinter
+  python-style:
+    name: Python Style
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Python dependencies
+        run: pip install ruff
+
+      - name: Ruff check
+        run: ruff check ./api
+
+      - name: Lint hints
+        if: failure()
+        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
+
+  test:
+    name: ESLint and SuperLinter
+    runs-on: ubuntu-latest
+    needs: python-style
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
@@ -36,11 +62,10 @@ jobs:
           yarn run lint
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@v5
+        uses: super-linter/super-linter/slim@v6
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
-          ERROR_ON_MISSING_EXEC_BIT: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true

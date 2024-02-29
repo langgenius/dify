@@ -1,12 +1,9 @@
-from core.tools.tool.tool import Tool
-from core.tools.model.tool_model_manager import ToolModelManager
-from core.model_runtime.entities.message_entities import PromptMessage
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
-from core.tools.utils.web_reader_tool import get_url
 
-from typing import List
-from enum import Enum
+from core.model_runtime.entities.llm_entities import LLMResult
+from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from core.tools.model.tool_model_manager import ToolModelManager
+from core.tools.tool.tool import Tool
+from core.tools.utils.web_reader_tool import get_url
 
 _SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but 
@@ -24,7 +21,7 @@ class BuiltinTool(Tool):
     """
 
     def invoke_model(
-        self, user_id: str, prompt_messages: List[PromptMessage], stop: List[str]
+        self, user_id: str, prompt_messages: list[PromptMessage], stop: list[str]
     ) -> LLMResult:
         """
             invoke model
@@ -54,7 +51,7 @@ class BuiltinTool(Tool):
             tenant_id=self.runtime.tenant_id,
         )
 
-    def get_prompt_tokens(self, prompt_messages: List[PromptMessage]) -> int:
+    def get_prompt_tokens(self, prompt_messages: list[PromptMessage]) -> int:
         """
             get prompt tokens
 
@@ -106,7 +103,7 @@ class BuiltinTool(Tool):
                 new_lines.append(line)
 
         # merge lines into messages with max tokens
-        messages: List[str] = []
+        messages: list[str] = []
         for i in new_lines:
             if len(messages) == 0:
                 messages.append(i)

@@ -1,16 +1,16 @@
 import logging
 import time
-from typing import List
 
 import click
 from celery import shared_task
-from core.index.index import IndexBuilder
+
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 
 @shared_task(queue='dataset')
-def clean_notion_document_task(document_ids: List[str], dataset_id: str):
+def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     """
     Clean document when document deleted.
     :param document_ids: document ids
@@ -26,9 +26,8 @@ def clean_notion_document_task(document_ids: List[str], dataset_id: str):
 
         if not dataset:
             raise Exception('Document has no dataset')
-
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-        kw_index = IndexBuilder.get_index(dataset, 'economy')
+        index_type = dataset.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
         for document_id in document_ids:
             document = db.session.query(Document).filter(
                 Document.id == document_id
@@ -38,13 +37,7 @@ def clean_notion_document_task(document_ids: List[str], dataset_id: str):
             segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
             index_node_ids = [segment.index_node_id for segment in segments]
 
-            # delete from vector index
-            if vector_index:
-                vector_index.delete_by_document_id(document_id)
-
-            # delete from keyword index
-            if index_node_ids:
-                kw_index.delete_by_ids(index_node_ids)
+            index_processor.clean(dataset, index_node_ids)
 
             for segment in segments:
                 db.session.delete(segment)

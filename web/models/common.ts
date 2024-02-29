@@ -1,4 +1,4 @@
-import type { I18nText } from '@/utils/language'
+import type { I18nText } from '@/i18n/language'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
@@ -11,6 +11,10 @@ export type OauthResponse = {
 export type SetupStatusResponse = {
   step: 'finished' | 'not_started'
   setup_at?: Date
+}
+
+export type InitValidateStatusResponse = {
+  status: 'finished' | 'not_started'
 }
 
 export type UserProfileResponse = {

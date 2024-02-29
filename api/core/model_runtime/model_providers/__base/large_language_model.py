@@ -3,14 +3,26 @@ import os
 import re
 import time
 from abc import abstractmethod
-from typing import Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Optional, Union
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import (ModelPropertyKey, ModelType, ParameterRule, ParameterType,
-                                                        PriceType)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.entities.model_entities import (
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+    ParameterType,
+    PriceType,
+)
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 logger = logging.getLogger(__name__)
@@ -24,7 +36,7 @@ class LargeLanguageModel(AIModel):
 
     def invoke(self, model: str, credentials: dict,
                prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
-               tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+               tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                stream: bool = True, user: Optional[str] = None, callbacks: list[Callback] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -68,7 +80,20 @@ class LargeLanguageModel(AIModel):
         )
 
         try:
-            result = self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+            if "response_format" in model_parameters:
+                result = self._code_block_mode_wrapper(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    tools=tools,
+                    stop=stop,
+                    stream=stream,
+                    user=user,
+                    callbacks=callbacks
+                )
+            else:
+                result = self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
         except Exception as e:
             self._trigger_invoke_error_callbacks(
                 model=model,
@@ -114,10 +139,243 @@ class LargeLanguageModel(AIModel):
 
         return result
 
+    def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                           model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
+                           stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
+                           callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+        """
+        Code block mode wrapper, ensure the response is a code block with output markdown quote
+
+        :param model: model name
+        :param credentials: model credentials
+        :param prompt_messages: prompt messages
+        :param model_parameters: model parameters
+        :param tools: tools for tool calling
+        :param stop: stop words
+        :param stream: is stream response
+        :param user: unique user id
+        :param callbacks: callbacks
+        :return: full response or stream response chunk generator result
+        """
+
+        block_prompts = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+<instructions>
+{{instructions}}
+</instructions>
+"""
+
+        code_block = model_parameters.get("response_format", "")
+        if not code_block:
+            return self._invoke(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=stop,
+                stream=stream,
+                user=user
+            )
+        
+        model_parameters.pop("response_format")
+        stop = stop or []
+        stop.extend(["\n```", "```\n"])
+        block_prompts = block_prompts.replace("{{block}}", code_block)
+
+        # check if there is a system message
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+            # override the system message
+            prompt_messages[0] = SystemPromptMessage(
+                content=block_prompts
+                    .replace("{{instructions}}", prompt_messages[0].content)
+            )
+        else:
+            # insert the system message
+            prompt_messages.insert(0, SystemPromptMessage(
+                content=block_prompts
+                    .replace("{{instructions}}", f"Please output a valid {code_block} object.")
+            ))
+
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+            # add ```JSON\n to the last message
+            prompt_messages[-1].content += f"\n```{code_block}\n"
+        else:
+            # append a user message
+            prompt_messages.append(UserPromptMessage(
+                content=f"```{code_block}\n"
+            ))
+
+        response = self._invoke(
+            model=model,
+            credentials=credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            user=user
+        )
+
+        if isinstance(response, Generator):
+            first_chunk = next(response)
+            def new_generator():
+                yield first_chunk
+                yield from response
+
+            if first_chunk.delta.message.content and first_chunk.delta.message.content.startswith("`"):
+                return self._code_block_mode_stream_processor_with_backtick(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    input_generator=new_generator()
+                )
+            else:
+                return self._code_block_mode_stream_processor(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    input_generator=new_generator()
+                )
+            
+        return response
+
+    def _code_block_mode_stream_processor(self, model: str, prompt_messages: list[PromptMessage], 
+                                          input_generator: Generator[LLMResultChunk, None, None]
+                                        ) -> Generator[LLMResultChunk, None, None]:
+        """
+        Code block mode stream processor, ensure the response is a code block with output markdown quote
+
+        :param model: model name
+        :param prompt_messages: prompt messages
+        :param input_generator: input generator
+        :return: output generator
+        """
+        state = "normal"
+        backtick_count = 0
+        for piece in input_generator:
+            if piece.delta.message.content:
+                content = piece.delta.message.content
+                piece.delta.message.content = ""
+                yield piece
+                piece = content
+            else:
+                yield piece
+                continue
+            new_piece = ""
+            for char in piece:
+                if state == "normal":
+                    if char == "`":
+                        state = "in_backticks"
+                        backtick_count = 1
+                    else:
+                        new_piece += char
+                elif state == "in_backticks":
+                    if char == "`":
+                        backtick_count += 1
+                        if backtick_count == 3:
+                            state = "skip_content"
+                            backtick_count = 0
+                    else:
+                        new_piece += "`" * backtick_count + char
+                        state = "normal"
+                        backtick_count = 0
+                elif state == "skip_content":
+                    if char.isspace():
+                        state = "normal"
+
+            if new_piece:
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=new_piece,
+                            tool_calls=[]
+                        ),
+                    )
+                )
+
+    def _code_block_mode_stream_processor_with_backtick(self, model: str, prompt_messages: list, 
+                                        input_generator:  Generator[LLMResultChunk, None, None]) \
+                                    ->  Generator[LLMResultChunk, None, None]:
+        """
+        Code block mode stream processor, ensure the response is a code block with output markdown quote.
+        This version skips the language identifier that follows the opening triple backticks.
+
+        :param model: model name
+        :param prompt_messages: prompt messages
+        :param input_generator: input generator
+        :return: output generator
+        """
+        state = "search_start"
+        backtick_count = 0
+
+        for piece in input_generator:
+            if piece.delta.message.content:
+                content = piece.delta.message.content
+                # Reset content to ensure we're only processing and yielding the relevant parts
+                piece.delta.message.content = ""
+                # Yield a piece with cleared content before processing it to maintain the generator structure
+                yield piece
+                piece = content
+            else:
+                # Yield pieces without content directly
+                yield piece
+                continue
+
+            if state == "done":
+                continue
+
+            new_piece = ""
+            for char in piece:
+                if state == "search_start":
+                    if char == "`":
+                        backtick_count += 1
+                        if backtick_count == 3:
+                            state = "skip_language"
+                            backtick_count = 0
+                    else:
+                        backtick_count = 0
+                elif state == "skip_language":
+                    # Skip everything until the first newline, marking the end of the language identifier
+                    if char == "\n":
+                        state = "in_code_block"
+                elif state == "in_code_block":
+                    if char == "`":
+                        backtick_count += 1
+                        if backtick_count == 3:
+                            state = "done"
+                            break
+                    else:
+                        if backtick_count > 0:
+                            # If backticks were counted but we're still collecting content, it was a false start
+                            new_piece += "`" * backtick_count
+                            backtick_count = 0
+                        new_piece += char
+
+                elif state == "done":
+                    break
+
+            if new_piece:
+                # Only yield content collected within the code block
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=new_piece,
+                            tool_calls=[]
+                        ),
+                    )
+                )
+
     def _invoke_result_generator(self, model: str, result: Generator, credentials: dict,
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
                                  tools: Optional[list[PromptMessageTool]] = None,
-                                 stop: Optional[List[str]] = None, stream: bool = True,
+                                 stop: Optional[list[str]] = None, stream: bool = True,
                                  user: Optional[str] = None, callbacks: list[Callback] = None) -> Generator:
         """
         Invoke result generator
@@ -181,7 +439,7 @@ class LargeLanguageModel(AIModel):
     @abstractmethod
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
@@ -198,7 +456,7 @@ class LargeLanguageModel(AIModel):
         :return: full response or stream response chunk generator result
         """
         raise NotImplementedError
-
+    
     @abstractmethod
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -213,7 +471,7 @@ class LargeLanguageModel(AIModel):
         """
         raise NotImplementedError
 
-    def enforce_stop_tokens(self, text: str, stop: List[str]) -> str:
+    def enforce_stop_tokens(self, text: str, stop: list[str]) -> str:
         """Cut off the text as soon as any stop words occur."""
         return re.split("|".join(stop), text, maxsplit=1)[0]
 
@@ -324,7 +582,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_before_invoke_callbacks(self, model: str, credentials: dict,
                                          prompt_messages: list[PromptMessage], model_parameters: dict,
                                          tools: Optional[list[PromptMessageTool]] = None,
-                                         stop: Optional[List[str]] = None, stream: bool = True,
+                                         stop: Optional[list[str]] = None, stream: bool = True,
                                          user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger before invoke callbacks
@@ -362,7 +620,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_new_chunk_callbacks(self, chunk: LLMResultChunk, model: str, credentials: dict,
                                      prompt_messages: list[PromptMessage], model_parameters: dict,
                                      tools: Optional[list[PromptMessageTool]] = None,
-                                     stop: Optional[List[str]] = None, stream: bool = True,
+                                     stop: Optional[list[str]] = None, stream: bool = True,
                                      user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger new chunk callbacks
@@ -401,7 +659,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_after_invoke_callbacks(self, model: str, result: LLMResult, credentials: dict,
                                         prompt_messages: list[PromptMessage], model_parameters: dict,
                                         tools: Optional[list[PromptMessageTool]] = None,
-                                        stop: Optional[List[str]] = None, stream: bool = True,
+                                        stop: Optional[list[str]] = None, stream: bool = True,
                                         user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger after invoke callbacks
@@ -441,7 +699,7 @@ class LargeLanguageModel(AIModel):
     def _trigger_invoke_error_callbacks(self, model: str, ex: Exception, credentials: dict,
                                         prompt_messages: list[PromptMessage], model_parameters: dict,
                                         tools: Optional[list[PromptMessageTool]] = None,
-                                        stop: Optional[List[str]] = None, stream: bool = True,
+                                        stop: Optional[list[str]] = None, stream: bool = True,
                                         user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
         """
         Trigger invoke error callbacks
@@ -522,7 +780,7 @@ class LargeLanguageModel(AIModel):
                     raise ValueError(
                         f"Model Parameter {parameter_name} should be less than or equal to {parameter_rule.max}.")
             elif parameter_rule.type == ParameterType.FLOAT:
-                if not isinstance(parameter_value, (float, int)):
+                if not isinstance(parameter_value, float | int):
                     raise ValueError(f"Model Parameter {parameter_name} should be float.")
 
                 # validate parameter value precision
