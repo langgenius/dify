@@ -6,7 +6,6 @@ from typing import Optional, Union, cast
 
 from pydantic import BaseModel
 
-from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
 from core.entities.queue_entities import (
@@ -35,6 +34,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.tool_file_manager import ToolFileManager
 from events.message_event import message_was_created
