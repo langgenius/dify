@@ -5,11 +5,42 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import cn from 'classnames'
 import type { Memory } from '../../../types'
+import { MemoryRole } from '../../../types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 import Slider from '@/app/components/base/slider'
 
 const i18nPrefix = 'workflow.nodes.common.memory'
+const WINDOW_SIZE_MIN = 1
+const WINDOW_SIZE_MAX = 100
+const WINDOW_SIZE_DEFAULT = 50
+type RoleItemProps = {
+  readonly: boolean
+  title: string
+  value: string
+  onChange: (value: string) => void
+}
+const RoleItem: FC<RoleItemProps> = ({
+  readonly,
+  title,
+  value,
+  onChange,
+}) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value)
+  }, [onChange])
+  return (
+    <div className='flex items-center justify-between'>
+      <div className='text-[13px] font-normal text-gray-700'>{title}</div>
+      <input
+        readOnly={readonly}
+        value={value}
+        onChange={handleChange}
+        className='w-[200px] h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+        type='text' />
+    </div>
+  )
+}
 
 type Props = {
   className?: string
@@ -18,10 +49,6 @@ type Props = {
   onChange: (memory: Memory) => void
   canSetRoleName?: boolean
 }
-
-const WINDOW_SIZE_MIN = 1
-const WINDOW_SIZE_MAX = 100
-const WINDOW_SIZE_DEFAULT = 50
 
 const MemoryConfig: FC<Props> = ({
   className,
@@ -70,6 +97,21 @@ const MemoryConfig: FC<Props> = ({
     if (payload.window.size === '' || payload.window.size === null)
       handleWindowSizeChange(WINDOW_SIZE_DEFAULT)
   }, [handleWindowSizeChange, payload.window?.size])
+
+  const handleRolePrefixChange = useCallback((role: MemoryRole) => {
+    return (value: string) => {
+      const newPayload = produce(payload, (draft) => {
+        if (!draft.role_prefix) {
+          draft.role_prefix = {
+            user: '',
+            assistant: '',
+          }
+        }
+        draft.role_prefix[role] = value
+      })
+      onChange(newPayload)
+    }
+  }, [payload, onChange])
   return (
     <div className={cn(className)}>
       <Field
@@ -112,7 +154,24 @@ const MemoryConfig: FC<Props> = ({
             </div>
           </div>
           {canSetRoleName && (
-            <div>Role name</div>
+            <div className='mt-4'>
+              <div className='leading-6 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
+              <div className='mt-1 space-y-2'>
+                <RoleItem
+                  readonly={readonly}
+                  title={t(`${i18nPrefix}.user`)}
+                  value={payload.role_prefix?.user || ''}
+                  onChange={handleRolePrefixChange(MemoryRole.user)}
+                />
+                <RoleItem
+                  readonly={readonly}
+                  title={t(`${i18nPrefix}.assistant`)}
+                  value={payload.role_prefix?.assistant || ''}
+                  onChange={handleRolePrefixChange(MemoryRole.assistant)}
+                />
+              </div>
+            </div>
+
           )}
         </>
       </Field>

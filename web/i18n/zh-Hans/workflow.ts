@@ -7,6 +7,9 @@ const translation = {
         memory: '记忆',
         memoryTip: '聊天记忆设置',
         windowSize: '记忆窗口',
+        conversationRoleName: '对话角色名',
+        user: '用户前缀',
+        assistant: '助手前缀',
       },
     },
     start: {

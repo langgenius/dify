@@ -90,8 +90,13 @@ export enum MemoryRole {
   assistant = 'assistant',
 }
 
+export type RolePrefix = {
+  user: string
+  assistant: string
+}
+
 export type Memory = {
-  role_prefix?: MemoryRole
+  role_prefix?: RolePrefix
   window: {
     enabled: boolean
     size: number | string | null

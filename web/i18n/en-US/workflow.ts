@@ -7,6 +7,9 @@ const translation = {
         memory: 'Memory',
         memoryTip: 'Chat memory settings',
         windowSize: 'Window Size',
+        conversationRoleName: 'Conversation Role Name',
+        user: 'User prefix',
+        assistant: 'Assistant prefix',
       },
     },
     start: {

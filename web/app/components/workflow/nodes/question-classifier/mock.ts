@@ -1,10 +1,10 @@
-import { MemoryRole } from '../../types'
+import { BlockEnum } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 
 export const mockData: QuestionClassifierNodeType = {
   title: 'Test',
   desc: 'Test',
-  type: 'Test',
+  type: BlockEnum.QuestionClassifier,
   query_variable_selector: ['aaa', 'name'],
   model: {
     provider: 'openai',
@@ -28,7 +28,6 @@ export const mockData: QuestionClassifierNodeType = {
   ],
   instruction: 'You are an entity extraction model that accepts an input',
   memory: {
-    role_prefix: MemoryRole.assistant,
     window: {
       enabled: false,
       size: 0,
