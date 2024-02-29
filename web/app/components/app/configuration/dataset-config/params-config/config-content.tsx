@@ -37,9 +37,7 @@ const ConfigContent: FC<Props> = ({
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
-
   const rerankModel = (() => {
     if (datasetConfigs.reranking_model) {
       return {

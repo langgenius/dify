@@ -11,7 +11,7 @@ export const mockData: KnowledgeRetrievalNodeType = {
   retrieval_mode: RETRIEVE_TYPE.oneWay,
   multiple_retrieval_config: {
     top_k: 10,
-    score_threshold: 0.5,
+    score_threshold: null,
     reranking_model: {
       provider: '',
       model: '',

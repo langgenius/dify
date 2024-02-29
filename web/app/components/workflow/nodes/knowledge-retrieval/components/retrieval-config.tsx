@@ -11,6 +11,8 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
 import { RETRIEVE_TYPE } from '@/types/app'
+import { DATASET_DEFAULT } from '@/config'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 import type {
   DatasetConfigs,
@@ -35,6 +37,11 @@ const RetrievalConfig: FC<Props> = ({
 
   const [open, setOpen] = useState(false)
 
+  const {
+    defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelVaild,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+
   const { multiple_retrieval_config } = payload
   const handleChange = useCallback((configs: DatasetConfigs, isRetrievalModeChange?: boolean) => {
     if (isRetrievalModeChange) {
@@ -43,11 +50,18 @@ const RetrievalConfig: FC<Props> = ({
     }
     onMultipleRetrievalConfigChange({
       top_k: configs.top_k,
-      score_threshold: configs.score_threshold_enabled ? configs.score_threshold : null,
-      reranking_model: {
-        provider: configs.reranking_model?.reranking_provider_name,
-        model: configs.reranking_model?.reranking_model_name,
-      },
+      score_threshold: configs.score_threshold_enabled ? (configs.score_threshold || DATASET_DEFAULT.score_threshold) : null,
+      reranking_model: payload.retrieval_mode === RETRIEVE_TYPE.oneWay
+        ? undefined
+        : (!configs.reranking_model?.reranking_provider_name
+          ? {
+            provider: rerankDefaultModel?.provider?.provider || '',
+            model: rerankDefaultModel?.model || '',
+          }
+          : {
+            provider: configs.reranking_model?.reranking_provider_name,
+            model: configs.reranking_model?.reranking_model_name,
+          }),
     })
   }, [onRetrievalModeChange, onMultipleRetrievalConfigChange])
 
@@ -75,13 +89,18 @@ const RetrievalConfig: FC<Props> = ({
             datasetConfigs={
               {
                 retrieval_model: payload.retrieval_mode,
-                reranking_model: {
-                  reranking_provider_name: multiple_retrieval_config?.reranking_model?.provider || '',
-                  reranking_model_name: multiple_retrieval_config?.reranking_model?.model || '',
-                },
-                top_k: multiple_retrieval_config?.top_k || 5,
+                reranking_model: !multiple_retrieval_config?.reranking_model?.provider
+                  ? {
+                    reranking_provider_name: rerankDefaultModel?.provider?.provider || '',
+                    reranking_model_name: rerankDefaultModel?.model || '',
+                  }
+                  : {
+                    reranking_provider_name: multiple_retrieval_config?.reranking_model?.provider || '',
+                    reranking_model_name: multiple_retrieval_config?.reranking_model?.model || '',
+                  },
+                top_k: multiple_retrieval_config?.top_k || DATASET_DEFAULT.top_k,
                 score_threshold_enabled: !(multiple_retrieval_config?.score_threshold === undefined || multiple_retrieval_config?.score_threshold === null),
-                score_threshold: multiple_retrieval_config?.score_threshold || 0.5,
+                score_threshold: multiple_retrieval_config?.score_threshold,
                 datasets: {
                   datasets: [],
                 },

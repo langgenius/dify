@@ -67,21 +67,22 @@ const Panel: FC = () => {
                   type: 'string',
                   description: t(`${i18nPrefix}.outputVars.content`),
                 },
+                // url, title, link like bing search reference result: link, link page title, link page icon
                 {
                   name: 'title',
                   type: 'string',
                   description: t(`${i18nPrefix}.outputVars.title`),
                 },
-                // {
-                //   name: 'url',
-                //   type: 'string',
-                //   description: t(`${i18nPrefix}.outputVars.url`)
-                // },
-                // {
-                //   name: 'icon',
-                //   type: 'string',
-                //   description: t(`${i18nPrefix}.outputVars.icon`)
-                // },
+                {
+                  name: 'url',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.url`),
+                },
+                {
+                  name: 'icon',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.icon`),
+                },
                 {
                   name: 'metadata',
                   type: 'object',

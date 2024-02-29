@@ -61,6 +61,8 @@ const translation = {
         output: 'Retrieval segmented data',
         content: 'Segmented content',
         title: 'Segmented title',
+        icon: 'Segmented icon',
+        url: 'Segmented URL',
         metadata: 'Other metadata',
       },
     },

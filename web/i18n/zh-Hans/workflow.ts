@@ -60,6 +60,8 @@ const translation = {
         output: '召回的分段',
         content: '分段内容',
         title: '分段标题',
+        icon: '分段图标',
+        url: '分段链接',
         metadata: '其他元数据',
       },
     },
