@@ -23,13 +23,7 @@ default_app_templates = {
                 "provider": "openai",
                 "name": "gpt-4",
                 "mode": "chat",
-                "completion_params": {
-                    "max_tokens": 512,
-                    "temperature": 1,
-                    "top_p": 1,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 0
-                }
+                "completion_params": {}
             }
         }
     },
@@ -46,13 +40,7 @@ default_app_templates = {
                 "provider": "openai",
                 "name": "gpt-4",
                 "mode": "chat",
-                "completion_params": {
-                    "max_tokens": 512,
-                    "temperature": 1,
-                    "top_p": 1,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 0
-                }
+                "completion_params": {}
             }
         }
     },
@@ -69,16 +57,8 @@ default_app_templates = {
                 "provider": "openai",
                 "name": "gpt-4",
                 "mode": "chat",
-                "completion_params": {
-                    "max_tokens": 512,
-                    "temperature": 1,
-                    "top_p": 1,
-                    "presence_penalty": 0,
-                    "frequency_penalty": 0
-                }
+                "completion_params": {}
             }
         }
-    },
+    }
 }
-
-
