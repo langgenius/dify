@@ -19,6 +19,6 @@ export const useStore = create<State & Action>(set => ({
   setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
   showFeatures: false,
   setShowFeatures: showFeatures => set(() => ({ showFeatures })),
-  runStaus: 'finished',
+  runStaus: '',
   setRunStaus: runStaus => set(() => ({ runStaus })),
 }))
