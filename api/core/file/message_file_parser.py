@@ -96,16 +96,16 @@ class MessageFileParser:
         # return all file objs
         return new_files
 
-    def transform_message_files(self, files: list[MessageFile], app_model_config: Optional[AppModelConfig]) -> list[FileObj]:
+    def transform_message_files(self, files: list[MessageFile], file_upload_config: Optional[dict]) -> list[FileObj]:
         """
         transform message files
 
         :param files:
-        :param app_model_config:
+        :param file_upload_config:
         :return:
         """
         # transform files to file objs
-        type_file_objs = self._to_file_objs(files, app_model_config.file_upload_dict)
+        type_file_objs = self._to_file_objs(files, file_upload_config)
 
         # return all file objs
         return [file_obj for file_objs in type_file_objs.values() for file_obj in file_objs]

@@ -175,11 +175,16 @@ class AppService:
         if workflow:
             # init draft workflow
             workflow_service = WorkflowService()
-            workflow_service.sync_draft_workflow(
+            draft_workflow = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=workflow.get('graph'),
                 features=workflow.get('features'),
                 account=account
+            )
+            workflow_service.publish_workflow(
+                app_model=app,
+                account=account,
+                draft_workflow=draft_workflow
             )
 
         if model_config_data:

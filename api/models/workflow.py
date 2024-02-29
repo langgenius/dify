@@ -129,6 +129,22 @@ class Workflow(db.Model):
     def features_dict(self):
         return self.features if not self.features else json.loads(self.features)
 
+    def user_input_form(self):
+        # get start node from graph
+        if not self.graph:
+            return []
+
+        graph_dict = self.graph_dict
+        if 'nodes' not in graph_dict:
+            return []
+
+        start_node = next((node for node in graph_dict['nodes'] if node['type'] == 'start'), None)
+        if not start_node:
+            return []
+
+        # get user_input_form from start node
+        return start_node.get('variables', [])
+
 
 class WorkflowRunTriggeredFrom(Enum):
     """
