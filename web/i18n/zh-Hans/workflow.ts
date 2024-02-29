@@ -55,6 +55,12 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',
+      outputVars: {
+        output: '召回的分段',
+        content: '分段内容',
+        title: '分段标题',
+        metadata: '其他元数据',
+      },
     },
     http: {
       inputVars: '输入变量',

@@ -4,6 +4,8 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import useConfig from './use-config'
 import { mockData } from './mock'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
@@ -29,6 +31,47 @@ const Panel: FC = () => {
             onChange={handleQueryVarChange}
           />
         </Field>
+      </div>
+
+      <Split />
+      <div className='px-4 pt-4 pb-2'>
+        <OutputVars>
+          <>
+            <VarItem
+              name='output'
+              type='Array[Object]'
+              description={t(`${i18nPrefix}.outputVars.output`)}
+              subItems={[
+                {
+                  name: 'content',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.content`),
+                },
+                {
+                  name: 'title',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.title`),
+                },
+                // {
+                //   name: 'url',
+                //   type: 'string',
+                //   description: t(`${i18nPrefix}.outputVars.url`)
+                // },
+                // {
+                //   name: 'icon',
+                //   type: 'string',
+                //   description: t(`${i18nPrefix}.outputVars.icon`)
+                // },
+                {
+                  name: 'metadata',
+                  type: 'object',
+                  description: t(`${i18nPrefix}.outputVars.metadata`),
+                },
+              ]}
+            />
+
+          </>
+        </OutputVars>
       </div>
     </div>
   )
