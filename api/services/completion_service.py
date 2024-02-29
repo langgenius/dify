@@ -4,8 +4,8 @@ from typing import Any, Union
 
 from sqlalchemy import and_
 
-from core.application_manager import ApplicationManager
-from core.apps.config_validators.model import ModelValidator
+from core.app.app_manager import AppManager
+from core.app.validators.model_validator import ModelValidator
 from core.entities.application_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from extensions.ext_database import db
@@ -137,7 +137,7 @@ class CompletionService:
             user
         )
 
-        application_manager = ApplicationManager()
+        application_manager = AppManager()
         return application_manager.generate(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -193,7 +193,7 @@ class CompletionService:
             message.files, app_model_config
         )
 
-        application_manager = ApplicationManager()
+        application_manager = AppManager()
         return application_manager.generate(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,

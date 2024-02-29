@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from core.generator.llm_generator import LLMGenerator
+from core.llm_generator.llm_generator import LLMGenerator
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account

@@ -7,7 +7,7 @@ from langchain.agents import openai_functions_agent, openai_functions_multi_agen
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentAction, AgentFinish, BaseMessage, LLMResult
 
-from core.application_queue_manager import ApplicationQueueManager, PublishFrom
+from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.entities.application_entities import ModelConfigEntity
 from core.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
@@ -22,7 +22,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     raise_error: bool = True
 
     def __init__(self, model_config: ModelConfigEntity,
-                 queue_manager: ApplicationQueueManager,
+                 queue_manager: AppQueueManager,
                  message: Message,
                  message_chain: MessageChain) -> None:
         """Initialize callback handler."""

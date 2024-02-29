@@ -21,7 +21,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.application_queue_manager import ApplicationQueueManager
+from core.app.app_queue_manager import AppQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
@@ -94,7 +94,7 @@ class CompletionMessageStopApi(Resource):
     def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 
@@ -172,7 +172,7 @@ class ChatMessageStopApi(Resource):
     def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 

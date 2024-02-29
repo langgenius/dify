@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from core.application_manager import ApplicationManager
+from core.app.app_manager import AppManager
 from core.entities.application_entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
@@ -111,7 +111,7 @@ class WorkflowConverter:
         new_app_mode = self._get_new_app_mode(app_model)
 
         # convert app model config
-        application_manager = ApplicationManager()
+        application_manager = AppManager()
         app_orchestration_config_entity = application_manager.convert_from_app_model_config_dict(
             tenant_id=app_model.tenant_id,
             app_model_config_dict=app_model_config.to_dict(),

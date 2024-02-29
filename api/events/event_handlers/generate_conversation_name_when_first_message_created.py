@@ -1,4 +1,4 @@
-from core.generator.llm_generator import LLMGenerator
+from core.llm_generator.llm_generator import LLMGenerator
 from events.message_event import message_was_created
 from extensions.ext_database import db
 
