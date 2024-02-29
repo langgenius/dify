@@ -33,16 +33,11 @@ from services.errors.audio import (
 class AudioApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
     def post(self, app_model: App, end_user: EndUser):
-        app_model_config: AppModelConfig = app_model.app_model_config
-
-        if not app_model_config.speech_to_text_dict['enabled']:
-            raise AppUnavailableError()
-
         file = request.files['file']
 
         try:
             response = AudioService.transcript_asr(
-                tenant_id=app_model.tenant_id,
+                app_model=app_model,
                 file=file,
                 end_user=end_user
             )
@@ -79,15 +74,16 @@ class TextApi(Resource):
     def post(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
         parser.add_argument('text', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('voice', type=str, location='json')
         parser.add_argument('streaming', type=bool, required=False, nullable=False, location='json')
         args = parser.parse_args()
 
         try:
             response = AudioService.transcript_tts(
-                tenant_id=app_model.tenant_id,
+                app_model=app_model,
                 text=args['text'],
                 end_user=end_user,
-                voice=args['voice'] if args['voice'] else app_model.app_model_config.text_to_speech_dict.get('voice'),
+                voice=args.get('voice'),
                 streaming=args['streaming']
             )
 

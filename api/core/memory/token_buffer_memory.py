@@ -10,7 +10,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from extensions.ext_database import db
-from models.model import Conversation, Message
+from models.model import Conversation, Message, AppMode
 
 
 class TokenBufferMemory:
@@ -44,7 +44,10 @@ class TokenBufferMemory:
             files = message.message_files
             if files:
                 file_objs = message_file_parser.transform_message_files(
-                    files, message.app_model_config
+                    files,
+                    message.app_model_config.file_upload_dict
+                    if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
+                    else message.workflow_run.workflow.features_dict.get('file_upload', {})
                 )
 
                 if not file_objs:

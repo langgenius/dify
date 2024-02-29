@@ -82,9 +82,10 @@ class App(db.Model):
 
     @property
     def app_model_config(self) -> Optional['AppModelConfig']:
-        app_model_config = db.session.query(AppModelConfig).filter(
-            AppModelConfig.id == self.app_model_config_id).first()
-        return app_model_config
+        if self.app_model_config_id:
+            return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
+
+        return None
 
     @property
     def workflow(self):
