@@ -7,6 +7,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderCredentials
 from core.tools.tool.tool import ToolParameter
 
+
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):
         BUILTIN = "builtin"
