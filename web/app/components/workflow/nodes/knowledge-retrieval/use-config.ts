@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
 import type { ValueSelector } from '../../types'
-import type { KnowledgeRetrievalNodeType } from './types'
+import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
+import type { RETRIEVE_TYPE } from '@/types/app'
 
 const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
   const [inputs, setInputs] = useState<KnowledgeRetrievalNodeType>(initInputs)
@@ -13,9 +14,25 @@ const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleRetrievalModeChange = useCallback((newMode: RETRIEVE_TYPE) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.retrieval_mode = newMode
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.multiple_retrieval_config = newConfig
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleQueryVarChange,
+    handleRetrievalModeChange,
+    handleMultipleRetrievalConfigChange,
   }
 }
 

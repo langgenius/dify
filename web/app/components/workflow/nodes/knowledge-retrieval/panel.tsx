@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
 import { mockData } from './mock'
+import RetrievalConfig from './components/retrieval-config'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
 const Panel: FC = () => {
@@ -16,6 +16,8 @@ const Panel: FC = () => {
   const {
     inputs,
     handleQueryVarChange,
+    handleRetrievalModeChange,
+    handleMultipleRetrievalConfigChange,
   } = useConfig(mockData)
 
   return (
@@ -30,6 +32,24 @@ const Panel: FC = () => {
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
           />
+        </Field>
+
+        <Field
+          title={t(`${i18nPrefix}.knowledge`)}
+          operations={
+            <div className='flex'>
+              <RetrievalConfig
+                payload={{
+                  retrieval_mode: inputs.retrieval_mode,
+                  multiple_retrieval_config: inputs.multiple_retrieval_config,
+                }}
+                onRetrievalModeChange={handleRetrievalModeChange}
+                onMultipleRetrievalConfigChange={handleMultipleRetrievalConfigChange}
+              />
+            </div>
+          }
+        >
+
         </Field>
       </div>
 

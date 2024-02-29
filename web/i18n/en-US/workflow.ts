@@ -56,6 +56,7 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
+      knowledge: 'Knowledge',
       outputVars: {
         output: 'Retrieval segmented data',
         content: 'Segmented content',
