@@ -2,6 +2,8 @@ import json
 from datetime import datetime
 from typing import Optional
 
+from core.app.advanced_chat.config_validator import AdvancedChatAppConfigValidator
+from core.app.workflow.config_validator import WorkflowAppConfigValidator
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode
@@ -56,7 +58,11 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
 
-        # TODO validate features
+        # validate features structure
+        self.validate_features_structure(
+            app_model=app_model,
+            features=features
+        )
 
         # create draft workflow if not found
         if not workflow:
@@ -100,7 +106,7 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError('No valid workflow found.')
 
-        # TODO check if the workflow is valid, basic check
+        # TODO check if the workflow structure is valid
 
         # create new workflow
         workflow = Workflow(
@@ -153,3 +159,19 @@ class WorkflowService:
         )
 
         return new_app
+
+    def validate_features_structure(self, app_model: App, features: dict) -> dict:
+        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+            return AdvancedChatAppConfigValidator.config_validate(
+                tenant_id=app_model.tenant_id,
+                config=features,
+                only_structure_validate=True
+            )
+        elif app_model.mode == AppMode.WORKFLOW.value:
+            return WorkflowAppConfigValidator.config_validate(
+                tenant_id=app_model.tenant_id,
+                config=features,
+                only_structure_validate=True
+            )
+        else:
+            raise ValueError(f"Invalid app mode: {app_model.mode}")
