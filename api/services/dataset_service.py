@@ -1244,7 +1244,7 @@ class DatasetCollectionBindingService:
             dataset_collection_binding = DatasetCollectionBinding(
                 provider_name=provider_name,
                 model_name=model_name,
-                collection_name="Vector_index_" + str(uuid.uuid4()).replace("-", "_") + '_Node',
+                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
                 type=collection_type
             )
             db.session.add(dataset_collection_binding)

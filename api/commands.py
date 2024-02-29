@@ -150,7 +150,7 @@ def vdb_migrate():
                         continue
                 if vector_type == "weaviate":
                     dataset_id = dataset.id
-                    collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": 'weaviate',
                         "vector_store": {"class_prefix": collection_name}
@@ -167,7 +167,7 @@ def vdb_migrate():
                             raise ValueError('Dataset Collection Bindings is not exist!')
                     else:
                         dataset_id = dataset.id
-                        collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                        collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": 'qdrant',
                         "vector_store": {"class_prefix": collection_name}
@@ -176,7 +176,7 @@ def vdb_migrate():
 
                 elif vector_type == "milvus":
                     dataset_id = dataset.id
-                    collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": 'milvus',
                         "vector_store": {"class_prefix": collection_name}
