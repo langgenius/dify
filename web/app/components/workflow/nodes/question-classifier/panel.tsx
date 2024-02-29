@@ -61,6 +61,7 @@ const Panel: FC = () => {
       </Field>
       <Field
         title={t(`${i18nPrefix}.advancedSetting`)}
+        supportFold
       >
         <AdvancedSetting
           instruction={inputs.instruction}
