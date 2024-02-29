@@ -4,6 +4,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import useConfig from './use-config'
 import { mockData } from './mock'
 import RetrievalConfig from './components/retrieval-config'
+import AddKnowledge from './components/add-dataset'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -18,6 +19,7 @@ const Panel: FC = () => {
     handleQueryVarChange,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
+    handleOnDatasetsChange,
   } = useConfig(mockData)
 
   return (
@@ -37,7 +39,7 @@ const Panel: FC = () => {
         <Field
           title={t(`${i18nPrefix}.knowledge`)}
           operations={
-            <div className='flex'>
+            <div className='flex items-center space-x-1'>
               <RetrievalConfig
                 payload={{
                   retrieval_mode: inputs.retrieval_mode,
@@ -46,10 +48,15 @@ const Panel: FC = () => {
                 onRetrievalModeChange={handleRetrievalModeChange}
                 onMultipleRetrievalConfigChange={handleMultipleRetrievalConfigChange}
               />
+              <div className='w-px h-3 bg-gray-200'></div>
+              <AddKnowledge
+                selectedIds={inputs.dataset_ids}
+                onChange={handleOnDatasetsChange}
+              />
             </div>
           }
         >
-
+          list
         </Field>
       </div>
 

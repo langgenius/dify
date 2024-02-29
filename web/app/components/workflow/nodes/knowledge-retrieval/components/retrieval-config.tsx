@@ -39,7 +39,6 @@ const RetrievalConfig: FC<Props> = ({
 
   const {
     defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
 
   const { multiple_retrieval_config } = payload
