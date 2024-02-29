@@ -8,7 +8,7 @@ import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vende
 import { Expand04 } from '@/app/components/base/icons/src/vender/solid/arrows'
 type Props = {
   className?: string
-  title: JSX.Element
+  title: JSX.Element | string
   headerRight?: JSX.Element
   children: JSX.Element
   minHeight?: number

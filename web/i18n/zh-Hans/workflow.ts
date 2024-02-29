@@ -132,6 +132,8 @@ const translation = {
       advancedSetting: '高级设置',
       topicPlaceholder: '在这里输入你的主题内容',
       addClass: '添加分类',
+      instruction: '指令',
+      instructionPlaceholder: '在这里输入你的指令',
     },
   },
 }

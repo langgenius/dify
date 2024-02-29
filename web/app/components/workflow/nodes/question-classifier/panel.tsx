@@ -4,9 +4,9 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import useConfig from './use-config'
 import { mockData } from './mock'
 import ClassList from './components/class-list'
+import AdvancedSetting from './components/advanced-setting'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 const Panel: FC = () => {
@@ -19,6 +19,7 @@ const Panel: FC = () => {
     handleCompletionParamsChange,
     handleQueryVarChange,
     handleTopicsChange,
+    handleInstructionChange,
   } = useConfig(mockData)
   const model = inputs.model
 
@@ -60,7 +61,11 @@ const Panel: FC = () => {
       <Field
         title={t(`${i18nPrefix}.advancedSetting`)}
       >
-        advancedSetting
+        <AdvancedSetting
+          instruction={inputs.instruction}
+          onInstructionChange={handleInstructionChange}
+          memory={inputs.memory}
+        />
       </Field>
     </div>
   )

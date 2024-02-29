@@ -37,12 +37,20 @@ const useConfig = (initInputs: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleInstructionChange = useCallback((instruction: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.instruction = instruction
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleModelChanged,
     handleCompletionParamsChange,
     handleQueryVarChange,
     handleTopicsChange,
+    handleInstructionChange,
   }
 }
 

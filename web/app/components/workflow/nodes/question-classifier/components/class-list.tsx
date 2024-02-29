@@ -34,7 +34,7 @@ const ClassList: FC<Props> = ({
       draft.push({ id: '', name: t(`${i18nPrefix}.class`) + (list.length + 1), topic: '' })
     })
     onChange(newList)
-  }, [list, onChange])
+  }, [list, onChange, t])
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {

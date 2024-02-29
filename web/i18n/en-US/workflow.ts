@@ -133,6 +133,8 @@ const translation = {
       advancedSetting: 'Advanced Setting',
       topicPlaceholder: 'Write your topic name',
       addClass: 'Add Class',
+      instruction: 'Instruction',
+      instructionPlaceholder: 'Write your instruction',
     },
   },
 }

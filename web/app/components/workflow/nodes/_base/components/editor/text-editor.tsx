@@ -7,7 +7,7 @@ import Base from './base'
 type Props = {
   value: string
   onChange: (value: string) => void
-  title: JSX.Element
+  title: JSX.Element | string
   headerRight?: JSX.Element
   minHeight?: number
   onBlur?: () => void
