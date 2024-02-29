@@ -18,12 +18,3 @@ class AppModelConfigService:
             return CompletionAppConfigValidator.config_validate(tenant_id, config)
         else:
             raise ValueError(f"Invalid app mode: {app_mode}")
-
-    @classmethod
-    def validate_features(cls, tenant_id: str, config: dict, app_mode: AppMode) -> dict:
-        if app_mode == AppMode.ADVANCED_CHAT:
-            return AdvancedChatAppConfigValidator.config_validate(tenant_id, config)
-        elif app_mode == AppMode.WORKFLOW:
-            return WorkflowAppConfigValidator.config_validate(tenant_id, config)
-        else:
-            raise ValueError(f"Invalid app mode: {app_mode}")

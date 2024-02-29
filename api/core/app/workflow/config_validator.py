@@ -5,12 +5,13 @@ from core.app.validators.text_to_speech import TextToSpeechValidator
 
 class WorkflowAppConfigValidator:
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict) -> dict:
+    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False) -> dict:
         """
         Validate for workflow app model config
 
         :param tenant_id: tenant id
         :param config: app model config args
+        :param only_structure_validate: only validate the structure of the config
         """
         related_config_keys = []
 
@@ -23,7 +24,11 @@ class WorkflowAppConfigValidator:
         related_config_keys.extend(current_related_config_keys)
 
         # moderation validation
-        config, current_related_config_keys = ModerationValidator.validate_and_set_defaults(tenant_id, config)
+        config, current_related_config_keys = ModerationValidator.validate_and_set_defaults(
+            tenant_id=tenant_id,
+            config=config,
+            only_structure_validate=only_structure_validate
+        )
         related_config_keys.extend(current_related_config_keys)
 
         related_config_keys = list(set(related_config_keys))

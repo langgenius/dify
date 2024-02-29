@@ -2,7 +2,7 @@ import json
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -137,38 +137,4 @@ class ModelConfigResource(Resource):
         return {'result': 'success'}
 
 
-class FeaturesResource(Resource):
-
-        @setup_required
-        @login_required
-        @account_initialization_required
-        @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-        def put(self, app_model):
-            """Get app features"""
-            parser = reqparse.RequestParser()
-            parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
-            args = parser.parse_args()
-
-            model_configuration = AppModelConfigService.validate_features(
-                tenant_id=current_user.current_tenant_id,
-                config=args.get('features'),
-                app_mode=AppMode.value_of(app_model.mode)
-            )
-
-            # update config
-            app_model_config = app_model.app_model_config
-            app_model_config.from_model_config_dict(model_configuration)
-            db.session.commit()
-
-            app_model_config_was_updated.send(
-                app_model,
-                app_model_config=app_model_config
-            )
-
-            return {
-                'result': 'success'
-            }
-
-
 api.add_resource(ModelConfigResource, '/apps/<uuid:app_id>/model-config')
-api.add_resource(FeaturesResource, '/apps/<uuid:app_id>/features')

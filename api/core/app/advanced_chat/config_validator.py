@@ -9,12 +9,13 @@ from core.app.validators.text_to_speech import TextToSpeechValidator
 
 class AdvancedChatAppConfigValidator:
     @classmethod
-    def config_validate(cls, tenant_id: str, config: dict) -> dict:
+    def config_validate(cls, tenant_id: str, config: dict, only_structure_validate: bool = False) -> dict:
         """
         Validate for advanced chat app model config
 
         :param tenant_id: tenant id
         :param config: app model config args
+        :param only_structure_validate: if True, only structure validation will be performed
         """
         related_config_keys = []
 
@@ -43,7 +44,11 @@ class AdvancedChatAppConfigValidator:
         related_config_keys.extend(current_related_config_keys)
 
         # moderation validation
-        config, current_related_config_keys = ModerationValidator.validate_and_set_defaults(tenant_id, config)
+        config, current_related_config_keys = ModerationValidator.validate_and_set_defaults(
+            tenant_id=tenant_id,
+            config=config,
+            only_structure_validate=only_structure_validate
+        )
         related_config_keys.extend(current_related_config_keys)
 
         related_config_keys = list(set(related_config_keys))
