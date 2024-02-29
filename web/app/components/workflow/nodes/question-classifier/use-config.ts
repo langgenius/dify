@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { ValueSelector } from '../../types'
+import type { Memory, ValueSelector } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 
 const useConfig = (initInputs: QuestionClassifierNodeType) => {
@@ -44,6 +44,13 @@ const useConfig = (initInputs: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleMemoryChange = useCallback((memory: Memory) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.memory = memory
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleModelChanged,
@@ -51,6 +58,7 @@ const useConfig = (initInputs: QuestionClassifierNodeType) => {
     handleQueryVarChange,
     handleTopicsChange,
     handleInstructionChange,
+    handleMemoryChange,
   }
 }
 

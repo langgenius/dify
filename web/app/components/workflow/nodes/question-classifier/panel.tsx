@@ -20,6 +20,7 @@ const Panel: FC = () => {
     handleQueryVarChange,
     handleTopicsChange,
     handleInstructionChange,
+    handleMemoryChange,
   } = useConfig(mockData)
   const model = inputs.model
 
@@ -65,6 +66,7 @@ const Panel: FC = () => {
           instruction={inputs.instruction}
           onInstructionChange={handleInstructionChange}
           memory={inputs.memory}
+          onMemoryChange={handleMemoryChange}
         />
       </Field>
     </div>

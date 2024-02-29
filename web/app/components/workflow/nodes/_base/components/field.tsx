@@ -25,7 +25,7 @@ const Filed: FC<Props> = ({
         <div className='flex items-center h-6'>
           <div className='text-xs font-medium text-gray-700 uppercase'>{title}</div>
           {tooltip && (
-            <TooltipPlus popupContent='tooltip'>
+            <TooltipPlus popupContent={tooltip}>
               <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
             </TooltipPlus>
           )}

@@ -91,10 +91,10 @@ export enum MemoryRole {
 }
 
 export type Memory = {
-  role_prefix: MemoryRole
+  role_prefix?: MemoryRole
   window: {
     enabled: boolean
-    size: number
+    size: number | string | null
   }
 }
 

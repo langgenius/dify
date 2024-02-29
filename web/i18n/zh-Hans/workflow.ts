@@ -3,6 +3,11 @@ const translation = {
     common: {
       outputVars: '输出变量',
       insertVarTip: '插入变量',
+      memory: {
+        memory: '记忆',
+        memoryTip: '聊天记忆设置',
+        windowSize: '记忆窗口',
+      },
     },
     start: {
       required: '必填',

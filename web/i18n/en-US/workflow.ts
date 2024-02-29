@@ -3,6 +3,11 @@ const translation = {
     common: {
       outputVars: 'Output Variables',
       insertVarTip: 'Insert Variable',
+      memory: {
+        memory: 'Memory',
+        memoryTip: 'Chat memory settings',
+        windowSize: 'Window Size',
+      },
     },
     start: {
       required: 'required',
