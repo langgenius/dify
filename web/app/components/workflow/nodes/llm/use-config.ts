@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
+import type { Memory } from '../../types'
 import type { LLMNodeType } from './types'
 
 const useConfig = (initInputs: LLMNodeType) => {
@@ -37,6 +38,13 @@ const useConfig = (initInputs: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleMemoryChange = useCallback((newMemory: Memory) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.memory = newMemory
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleModelChanged,
@@ -44,6 +52,7 @@ const useConfig = (initInputs: LLMNodeType) => {
     handleVarListChange,
     handleAddVariable,
     toggleContextEnabled,
+    handleMemoryChange,
   }
 }
 

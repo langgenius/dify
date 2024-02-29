@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import MemoryConfig from '../_base/components/memory-config'
 import useConfig from './use-config'
 import { mockData } from './mock'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -23,10 +24,11 @@ const Panel: FC = () => {
     handleVarListChange,
     handleAddVariable,
     toggleContextEnabled,
+    handleMemoryChange,
   } = useConfig(mockData)
   const model = inputs.model
-  // const modelMode = inputs.model?.mode
-  // const isChatMode = modelMode === 'chat'
+  const modelMode = inputs.model?.mode
+  const isChatMode = modelMode === 'chat'
 
   return (
     <div className='mt-2'>
@@ -77,12 +79,28 @@ const Panel: FC = () => {
             )
             : null}
         </Field>
+
+        {/* Prompt */}
         <Field
           title={t(`${i18nPrefix}.prompt`)}
         >
           Prompt
         </Field>
-        <Split />
+
+        {/* Memory */}
+        {isChatMode && (
+          <>
+            <MemoryConfig
+              readonly={readOnly}
+              payload={inputs.memory}
+              onChange={handleMemoryChange}
+              canSetRoleName
+            />
+            <Split />
+          </>
+        )}
+
+        {/* Vision: GPT4-vision and so on */}
         <Field
           title={t(`${i18nPrefix}.vision`)}
           inline
