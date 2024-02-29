@@ -1,6 +1,5 @@
 import uuid
 
-from core.entities.agent_entities import PlanningStrategy
 from core.app.validators.dataset_retrieval import DatasetValidator
 from core.app.validators.external_data_fetch import ExternalDataFetchValidator
 from core.app.validators.file_upload import FileUploadValidator
@@ -13,8 +12,8 @@ from core.app.validators.speech_to_text import SpeechToTextValidator
 from core.app.validators.suggested_questions import SuggestedQuestionsValidator
 from core.app.validators.text_to_speech import TextToSpeechValidator
 from core.app.validators.user_input_form import UserInputFormValidator
+from core.entities.agent_entities import PlanningStrategy
 from models.model import AppMode
-
 
 OLD_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
 
