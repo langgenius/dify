@@ -118,6 +118,13 @@ const EditCustomCollectionModal: FC<Props> = ({
   const handleSave = () => {
     const postData = clone(customCollection)
     delete postData.tools
+
+    if (postData.credentials.auth_type === AuthType.none) {
+      delete postData.credentials.api_key_header
+      delete postData.credentials.api_key_header_prefix
+      delete postData.credentials.api_key_value
+    }
+
     if (isAdd) {
       onAdd?.(postData)
       return
