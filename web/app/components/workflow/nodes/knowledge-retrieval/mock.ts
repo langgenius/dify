@@ -1,8 +1,9 @@
+import { BlockEnum } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { RETRIEVE_TYPE } from '@/types/app'
 
 export const mockData: KnowledgeRetrievalNodeType = {
-  type: 'KnowledgeRetrieval',
+  type: BlockEnum.KnowledgeRetrieval,
   desc: 'xxx',
   title: 'KnowledgeRetrieval',
   query_variable_selector: ['aaa', 'name'],

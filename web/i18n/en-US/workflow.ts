@@ -54,6 +54,9 @@ const translation = {
         usage: 'Model Usage Information',
       },
     },
+    knowledgeRetrieval: {
+      queryVariable: 'Query Variable',
+    },
     http: {
       inputVars: 'Input Variables',
       api: 'API',

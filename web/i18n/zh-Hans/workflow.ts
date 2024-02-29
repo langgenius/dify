@@ -53,6 +53,9 @@ const translation = {
         usage: '模型用量信息',
       },
     },
+    knowledgeRetrieval: {
+      queryVariable: '查询变量',
+    },
     http: {
       inputVars: '输入变量',
       api: 'API',
