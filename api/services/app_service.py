@@ -64,8 +64,8 @@ class AppService:
         app_template = default_app_templates[app_mode]
 
         # get model config
-        default_model_config = app_template['model_config']
-        if 'model' in default_model_config:
+        default_model_config = app_template.get('model_config')
+        if default_model_config and 'model' in default_model_config:
             # get model provider
             model_manager = ModelManager()
 
@@ -110,12 +110,15 @@ class AppService:
         db.session.add(app)
         db.session.flush()
 
-        app_model_config = AppModelConfig(**default_model_config)
-        app_model_config.app_id = app.id
-        db.session.add(app_model_config)
-        db.session.flush()
+        if default_model_config:
+            app_model_config = AppModelConfig(**default_model_config)
+            app_model_config.app_id = app.id
+            db.session.add(app_model_config)
+            db.session.flush()
 
-        app.app_model_config_id = app_model_config.id
+            app.app_model_config_id = app_model_config.id
+
+        db.session.commit()
 
         app_was_created.send(app, account=account)
 
@@ -135,16 +138,22 @@ class AppService:
 
         app_data = import_data.get('app')
         model_config_data = import_data.get('model_config')
-        workflow_graph = import_data.get('workflow_graph')
+        workflow = import_data.get('workflow')
 
-        if not app_data or not model_config_data:
-            raise ValueError("Missing app or model_config in data argument")
+        if not app_data:
+            raise ValueError("Missing app in data argument")
 
         app_mode = AppMode.value_of(app_data.get('mode'))
         if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            if not workflow_graph:
-                raise ValueError("Missing workflow_graph in data argument "
-                                 "when mode is advanced-chat or workflow")
+            if not workflow:
+                raise ValueError("Missing workflow in data argument "
+                                 "when app mode is advanced-chat or workflow")
+        elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT]:
+            if not model_config_data:
+                raise ValueError("Missing model_config in data argument "
+                                 "when app mode is chat or agent-chat")
+        else:
+            raise ValueError("Invalid app mode")
 
         app = App(
             tenant_id=tenant_id,
@@ -161,26 +170,32 @@ class AppService:
         db.session.add(app)
         db.session.commit()
 
-        if workflow_graph:
-            # init draft workflow
-            workflow_service = WorkflowService()
-            workflow_service.sync_draft_workflow(app, workflow_graph, account)
-
-        app_model_config = AppModelConfig()
-        app_model_config = app_model_config.from_model_config_dict(model_config_data)
-        app_model_config.app_id = app.id
-
-        db.session.add(app_model_config)
-        db.session.commit()
-
-        app.app_model_config_id = app_model_config.id
-
         app_was_created.send(app, account=account)
 
-        app_model_config_was_updated.send(
-            app,
-            app_model_config=app_model_config
-        )
+        if workflow:
+            # init draft workflow
+            workflow_service = WorkflowService()
+            workflow_service.sync_draft_workflow(
+                app_model=app,
+                graph=workflow.get('graph'),
+                features=workflow.get('features'),
+                account=account
+            )
+
+        if model_config_data:
+            app_model_config = AppModelConfig()
+            app_model_config = app_model_config.from_model_config_dict(model_config_data)
+            app_model_config.app_id = app.id
+
+            db.session.add(app_model_config)
+            db.session.commit()
+
+            app.app_model_config_id = app_model_config.id
+
+            app_model_config_was_updated.send(
+                app,
+                app_model_config=app_model_config
+            )
 
         return app
 
@@ -190,7 +205,7 @@ class AppService:
         :param app: App instance
         :return:
         """
-        app_model_config = app.app_model_config
+        app_mode = AppMode.value_of(app.mode)
 
         export_data = {
             "app": {
@@ -198,16 +213,27 @@ class AppService:
                 "mode": app.mode,
                 "icon": app.icon,
                 "icon_background": app.icon_background
-            },
-            "model_config": app_model_config.to_dict(),
+            }
         }
 
-        if app_model_config.workflow_id:
-            export_data['workflow_graph'] = json.loads(app_model_config.workflow.graph)
+        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+            if app.workflow_id:
+                workflow = app.workflow
+                export_data['workflow'] = {
+                    "graph": workflow.graph_dict,
+                    "features": workflow.features_dict
+                }
+            else:
+                workflow_service = WorkflowService()
+                workflow = workflow_service.get_draft_workflow(app)
+                export_data['workflow'] = {
+                    "graph": workflow.graph_dict,
+                    "features": workflow.features_dict
+                }
         else:
-            workflow_service = WorkflowService()
-            workflow = workflow_service.get_draft_workflow(app)
-            export_data['workflow_graph'] = json.loads(workflow.graph)
+            app_model_config = app.app_model_config
+
+            export_data['model_config'] = app_model_config.to_dict()
 
         return yaml.dump(export_data)
 

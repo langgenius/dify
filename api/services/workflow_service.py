@@ -33,28 +33,30 @@ class WorkflowService:
         """
         Get published workflow
         """
-        app_model_config = app_model.app_model_config
-
-        if not app_model_config.workflow_id:
+        if not app_model.workflow_id:
             return None
 
         # fetch published workflow by workflow_id
         workflow = db.session.query(Workflow).filter(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
-            Workflow.id == app_model_config.workflow_id
+            Workflow.id == app_model.workflow_id
         ).first()
 
         # return published workflow
         return workflow
 
-
-    def sync_draft_workflow(self, app_model: App, graph: dict, account: Account) -> Workflow:
+    def sync_draft_workflow(self, app_model: App,
+                            graph: dict,
+                            features: dict,
+                            account: Account) -> Workflow:
         """
         Sync draft workflow
         """
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
+
+        # TODO validate features
 
         # create draft workflow if not found
         if not workflow:
@@ -64,12 +66,14 @@ class WorkflowService:
                 type=WorkflowType.from_app_mode(app_model.mode).value,
                 version='draft',
                 graph=json.dumps(graph),
+                features=json.dumps(features),
                 created_by=account.id
             )
             db.session.add(workflow)
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
+            workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = datetime.utcnow()
 
@@ -112,28 +116,7 @@ class WorkflowService:
         db.session.add(workflow)
         db.session.commit()
 
-        app_model_config = app_model.app_model_config
-
-        # create new app model config record
-        new_app_model_config = app_model_config.copy()
-        new_app_model_config.id = None
-        new_app_model_config.app_id = app_model.id
-        new_app_model_config.external_data_tools = ''
-        new_app_model_config.model = ''
-        new_app_model_config.user_input_form = ''
-        new_app_model_config.dataset_query_variable = None
-        new_app_model_config.pre_prompt = None
-        new_app_model_config.agent_mode = ''
-        new_app_model_config.prompt_type = 'simple'
-        new_app_model_config.chat_prompt_config = ''
-        new_app_model_config.completion_prompt_config = ''
-        new_app_model_config.dataset_configs = ''
-        new_app_model_config.workflow_id = workflow.id
-
-        db.session.add(new_app_model_config)
-        db.session.flush()
-
-        app_model.app_model_config_id = new_app_model_config.id
+        app_model.workflow_id = workflow.id
         db.session.commit()
 
         # TODO update app related datasets

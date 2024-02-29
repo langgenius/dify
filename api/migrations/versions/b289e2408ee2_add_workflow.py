@@ -97,6 +97,7 @@ def upgrade():
     sa.Column('type', sa.String(length=255), nullable=False),
     sa.Column('version', sa.String(length=255), nullable=False),
     sa.Column('graph', sa.Text(), nullable=True),
+    sa.Column('features', sa.Text(), nullable=True),
     sa.Column('created_by', postgresql.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.Column('updated_by', postgresql.UUID(), nullable=True),
@@ -106,7 +107,7 @@ def upgrade():
     with op.batch_alter_table('workflows', schema=None) as batch_op:
         batch_op.create_index('workflow_version_idx', ['tenant_id', 'app_id', 'version'], unique=False)
 
-    with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
+    with op.batch_alter_table('apps', schema=None) as batch_op:
         batch_op.add_column(sa.Column('workflow_id', postgresql.UUID(), nullable=True))
 
     with op.batch_alter_table('messages', schema=None) as batch_op:
@@ -120,7 +121,7 @@ def downgrade():
     with op.batch_alter_table('messages', schema=None) as batch_op:
         batch_op.drop_column('workflow_run_id')
 
-    with op.batch_alter_table('app_model_configs', schema=None) as batch_op:
+    with op.batch_alter_table('apps', schema=None) as batch_op:
         batch_op.drop_column('workflow_id')
 
     with op.batch_alter_table('workflows', schema=None) as batch_op:

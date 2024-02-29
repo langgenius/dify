@@ -63,6 +63,7 @@ class App(db.Model):
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     app_model_config_id = db.Column(UUID, nullable=True)
+    workflow_id = db.Column(UUID, nullable=True)
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     enable_site = db.Column(db.Boolean, nullable=False)
     enable_api = db.Column(db.Boolean, nullable=False)
@@ -84,6 +85,14 @@ class App(db.Model):
         app_model_config = db.session.query(AppModelConfig).filter(
             AppModelConfig.id == self.app_model_config_id).first()
         return app_model_config
+
+    @property
+    def workflow(self):
+        if self.workflow_id:
+            from api.models.workflow import Workflow
+            return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+
+        return None
 
     @property
     def api_base_url(self):
@@ -176,7 +185,6 @@ class AppModelConfig(db.Model):
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
     file_upload = db.Column(db.Text)
-    workflow_id = db.Column(UUID)
 
     @property
     def app(self):
@@ -276,14 +284,6 @@ class AppModelConfig(db.Model):
             "image": {"enabled": False, "number_limits": 3, "detail": "high",
                       "transfer_methods": ["remote_url", "local_file"]}}
 
-    @property
-    def workflow(self):
-        if self.workflow_id:
-            from api.models.workflow import Workflow
-            return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
-
-        return None
-
     def to_dict(self) -> dict:
         return {
             "opening_statement": self.opening_statement,
@@ -343,7 +343,6 @@ class AppModelConfig(db.Model):
             if model_config.get('dataset_configs') else None
         self.file_upload = json.dumps(model_config.get('file_upload')) \
             if model_config.get('file_upload') else None
-        self.workflow_id = model_config.get('workflow_id')
         return self
 
     def copy(self):
@@ -368,8 +367,7 @@ class AppModelConfig(db.Model):
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,
             dataset_configs=self.dataset_configs,
-            file_upload=self.file_upload,
-            workflow_id=self.workflow_id
+            file_upload=self.file_upload
         )
 
         return new_app_model_config

@@ -41,10 +41,16 @@ class DraftWorkflowApi(Resource):
         """
         parser = reqparse.RequestParser()
         parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
         workflow_service = WorkflowService()
-        workflow_service.sync_draft_workflow(app_model=app_model, graph=args.get('graph'), account=current_user)
+        workflow_service.sync_draft_workflow(
+            app_model=app_model,
+            graph=args.get('graph'),
+            features=args.get('features'),
+            account=current_user
+        )
 
         return {
             "result": "success"
