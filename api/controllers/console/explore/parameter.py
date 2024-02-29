@@ -7,7 +7,7 @@ from controllers.console import api
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.wraps import InstalledAppResource
 from extensions.ext_database import db
-from models.model import AppModelConfig, InstalledApp, AppMode
+from models.model import AppMode, AppModelConfig, InstalledApp
 from models.tools import ApiToolProvider
 
 

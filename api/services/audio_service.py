@@ -5,7 +5,7 @@ from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from models.model import AppModelConfig, App, AppMode
+from models.model import App, AppMode, AppModelConfig
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
