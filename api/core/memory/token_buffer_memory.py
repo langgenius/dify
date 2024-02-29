@@ -10,7 +10,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from extensions.ext_database import db
-from models.model import Conversation, Message, AppMode
+from models.model import AppMode, Conversation, Message
 
 
 class TokenBufferMemory:
