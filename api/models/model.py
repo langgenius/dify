@@ -310,22 +310,28 @@ class AppModelConfig(db.Model):
 
     def from_model_config_dict(self, model_config: dict):
         self.opening_statement = model_config['opening_statement']
-        self.suggested_questions = json.dumps(model_config['suggested_questions'])
-        self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer'])
+        self.suggested_questions = json.dumps(model_config['suggested_questions']) \
+            if model_config.get('suggested_questions') else None
+        self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer']) \
+            if model_config.get('suggested_questions_after_answer') else None
         self.speech_to_text = json.dumps(model_config['speech_to_text']) \
             if model_config.get('speech_to_text') else None
         self.text_to_speech = json.dumps(model_config['text_to_speech']) \
             if model_config.get('text_to_speech') else None
-        self.more_like_this = json.dumps(model_config['more_like_this'])
+        self.more_like_this = json.dumps(model_config['more_like_this']) \
+            if model_config.get('more_like_this') else None
         self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
             if model_config.get('sensitive_word_avoidance') else None
         self.external_data_tools = json.dumps(model_config['external_data_tools']) \
             if model_config.get('external_data_tools') else None
-        self.model = json.dumps(model_config['model'])
-        self.user_input_form = json.dumps(model_config['user_input_form'])
+        self.model = json.dumps(model_config['model']) \
+            if model_config.get('model') else None
+        self.user_input_form = json.dumps(model_config['user_input_form']) \
+            if model_config.get('user_input_form') else None
         self.dataset_query_variable = model_config.get('dataset_query_variable')
         self.pre_prompt = model_config['pre_prompt']
-        self.agent_mode = json.dumps(model_config['agent_mode'])
+        self.agent_mode = json.dumps(model_config['agent_mode']) \
+            if model_config.get('agent_mode') else None
         self.retriever_resource = json.dumps(model_config['retriever_resource']) \
             if model_config.get('retriever_resource') else None
         self.prompt_type = model_config.get('prompt_type', 'simple')

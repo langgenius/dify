@@ -15,7 +15,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.prompt.prompt_template import PromptTemplateParser
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
 from models.model import AppMode
 
@@ -275,7 +275,7 @@ class SimplePromptTransform(PromptTransform):
             return prompt_file_contents[prompt_file_name]
 
         # Get the absolute path of the subdirectory
-        prompt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'generate_prompts')
+        prompt_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'prompt_templates')
         json_file_path = os.path.join(prompt_path, f'{prompt_file_name}.json')
 
         # Open the JSON file and read its content

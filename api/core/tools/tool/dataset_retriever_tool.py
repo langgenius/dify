@@ -4,7 +4,7 @@ from langchain.tools import BaseTool
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
-from core.features.dataset_retrieval.dataset_retrieval import DatasetRetrievalFeature
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
 from core.tools.tool.tool import Tool
@@ -30,7 +30,7 @@ class DatasetRetrieverTool(Tool):
         if retrieve_config is None:
             return []
 
-        feature = DatasetRetrievalFeature()
+        feature = DatasetRetrieval()
 
         # save original retrieve strategy, and set retrieve strategy to SINGLE
         # Agent only support SINGLE mode

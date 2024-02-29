@@ -19,7 +19,7 @@ from controllers.service_api.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from core.application_queue_manager import ApplicationQueueManager
+from core.app.app_queue_manager import AppQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
@@ -85,7 +85,7 @@ class CompletionStopApi(Resource):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
@@ -147,7 +147,7 @@ class ChatStopApi(Resource):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 

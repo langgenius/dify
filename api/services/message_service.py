@@ -1,7 +1,7 @@
 import json
 from typing import Optional, Union
 
-from core.generator.llm_generator import LLMGenerator
+from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType

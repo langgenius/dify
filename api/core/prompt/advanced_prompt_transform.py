@@ -15,7 +15,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.prompt.prompt_template import PromptTemplateParser
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 

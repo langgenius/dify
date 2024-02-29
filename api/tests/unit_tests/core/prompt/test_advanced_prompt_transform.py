@@ -8,7 +8,7 @@ from core.file.file_obj import FileObj, FileType, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage, PromptMessageRole
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.prompt_template import PromptTemplateParser
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import Conversation
 
 
