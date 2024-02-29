@@ -5,6 +5,7 @@ import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
 import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
+import DOMPurify from 'dompurify'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { useState } from 'react'
@@ -55,18 +56,30 @@ export function Markdown(props: { content: string; className?: string }) {
           RehypeKatex,
           RehypeRaw as any,
         ]}
-        remarkRehypeOptions={{
-          allowDangerousHtml: true,
-        }}
         components={{
           iframe: ({ src, width, height, title, className }) => {
-            return (
-              <iframe src={src} width={width ?? 450} height={height ?? 700} title={title}
-                className={`max-w-full align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2 ${className}`}
-              />
-            )
+            if (!src || typeof src !== 'string')
+              return null
+
+            try {
+              const sanitizedSrc = DOMPurify.sanitize(src, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+              return (
+                <iframe
+                  src={sanitizedSrc}
+                  width={width ?? 450}
+                  height={height ?? 700}
+                  title={title}
+                  className={`max-w-full align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2 ${className}`}
+                  sandbox="allow-same-origin allow-forms"
+                />
+              )
+            }
+            catch (error) {
+              console.error('Error sanitizing iframe src:', error)
+              return null
+            }
           },
-          code({ node, inline, className, children, ...props }) {
+          code({ inline, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '')
             const language = match?.[1]
             const languageShowName = getCorrectCapitalizationLanguageName(language || '')
