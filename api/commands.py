@@ -238,14 +238,14 @@ def vdb_migrate():
 
                 if documents:
                     try:
-                        vector.create(documents)
                         click.echo(click.style(
-                            f'Successfully created vector index with {len(documents)} documents of {segments_count} segments for dataset {dataset.id}.',
+                            f'Start to created vector index with {len(documents)} documents of {segments_count} segments for dataset {dataset.id}.',
                             fg='green'))
+                        vector.create(documents)
+                        click.echo(
+                            click.style(f'Successfully created vector index for dataset {dataset.id}.', fg='green'))
                     except Exception as e:
-                        click.echo(click.style(
-                            f'Failed to created vector index with {len(documents)} documents of {segments_count} segments for dataset {dataset.id}.',
-                            fg='red'))
+                        click.echo(click.style(f'Failed to created vector index for dataset {dataset.id}.', fg='red'))
                         raise e
                 db.session.add(dataset)
                 db.session.commit()
