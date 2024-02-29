@@ -1,4 +1,5 @@
-from typing import Any, cast
+import json
+from typing import Any
 
 from flask import current_app
 
@@ -22,7 +23,7 @@ class Vector:
         self._vector_processor = self._init_vector()
 
     def _init_vector(self) -> BaseVector:
-        config = cast(dict, current_app.config)
+        config = current_app.config
         vector_type = config.get('VECTOR_STORE')
 
         if self._dataset.index_struct_dict:
@@ -39,6 +40,11 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                index_struct_dict = {
+                    "type": 'weaviate',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
             return WeaviateVector(
                 collection_name=collection_name,
                 config=WeaviateConfig(
@@ -66,6 +72,13 @@ class Vector:
                     dataset_id = self._dataset.id
                     collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
 
+            if not self._dataset.index_struct_dict:
+                index_struct_dict = {
+                    "type": 'qdrant',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+
             return QdrantVector(
                 collection_name=collection_name,
                 group_id=self._dataset.id,
@@ -84,6 +97,11 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                index_struct_dict = {
+                    "type": 'milvus',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
             return MilvusVector(
                 collection_name=collection_name,
                 config=MilvusConfig(

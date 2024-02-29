@@ -51,6 +51,7 @@ const translation = {
     authMethod: {
       title: 'Authorization method',
       type: 'Authorization type',
+      keyTooltip: 'Http Header Key, You can leave it with "Authorization" if you have no idea what it is or set it to a custom value',
       types: {
         none: 'None',
         api_key: 'API Key',
@@ -59,6 +60,14 @@ const translation = {
       },
       key: 'Key',
       value: 'Value',
+    },
+    authHeaderPrefix: {
+      title: 'Auth Type',
+      types: {
+        basic: 'Basic',
+        bearer: 'Bearer',
+        custom: 'Custom',
+      },
     },
     privacyPolicy: 'Privacy policy',
     privacyPolicyPlaceholder: 'Please enter privacy policy',

@@ -55,6 +55,21 @@ class ApiBasedToolProviderController(ToolProviderController):
                         en_US='The api key',
                         zh_Hans='api key的值'
                     )
+                ),
+                'api_key_header_prefix': ToolProviderCredentials(
+                    name='api_key_header_prefix',
+                    required=False,
+                    default='basic',
+                    type=ToolProviderCredentials.CredentialsType.SELECT,
+                    help=I18nObject(
+                        en_US='The prefix of the api key header',
+                        zh_Hans='api key header 的前缀'
+                    ),
+                    options=[
+                        ToolCredentialsOption(value='basic', label=I18nObject(en_US='Basic', zh_Hans='Basic')),
+                        ToolCredentialsOption(value='bearer', label=I18nObject(en_US='Bearer', zh_Hans='Bearer')),
+                        ToolCredentialsOption(value='custom', label=I18nObject(en_US='Custom', zh_Hans='Custom'))
+                    ]
                 )
             }
         elif auth_type == ApiProviderAuthType.NONE:

@@ -2,7 +2,6 @@ import threading
 from typing import Optional
 
 from flask import Flask, current_app
-from flask_login import current_user
 
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -27,6 +26,11 @@ class RetrievalService:
     @classmethod
     def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
                  top_k: int, score_threshold: Optional[float] = .0, reranking_model: Optional[dict] = None):
+        dataset = db.session.query(Dataset).filter(
+            Dataset.id == dataset_id
+        ).first()
+        if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
+            return []
         all_documents = []
         threads = []
         # retrieval_model source with keyword
@@ -35,7 +39,8 @@ class RetrievalService:
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
                 'query': query,
-                'top_k': top_k
+                'top_k': top_k,
+                'all_documents': all_documents
             })
             threads.append(keyword_thread)
             keyword_thread.start()
@@ -73,7 +78,7 @@ class RetrievalService:
             thread.join()
 
         if retrival_method == 'hybrid_search':
-            data_post_processor = DataPostProcessor(str(current_user.current_tenant_id), reranking_model, False)
+            data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
             all_documents = data_post_processor.invoke(
                 query=query,
                 documents=all_documents,
@@ -96,7 +101,7 @@ class RetrievalService:
 
             documents = keyword.search(
                 query,
-                k=top_k
+                top_k=top_k
             )
             all_documents.extend(documents)
 
@@ -116,7 +121,7 @@ class RetrievalService:
             documents = vector.search_by_vector(
                 query,
                 search_type='similarity_score_threshold',
-                k=top_k,
+                top_k=top_k,
                 score_threshold=score_threshold,
                 filter={
                     'group_id': [dataset.id]

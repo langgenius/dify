@@ -56,6 +56,8 @@ parameter_rules:
     help:
       zh_Hans: 用于控制模型生成时的重复度。提高repetition_penalty时可以降低模型生成的重复度。1.0表示不做惩罚。
       en_US: Used to control the repetition of model generation. Increasing the repetition_penalty can reduce the repetition of model generation. 1.0 means no punishment.
+  - name: response_format
+    use_template: response_format
 pricing:
   input: '0.02'
   output: '0.02'

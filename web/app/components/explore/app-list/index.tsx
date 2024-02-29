@@ -1,18 +1,20 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import cn from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import useSWR from 'swr'
 import Toast from '../../base/toast'
 import s from './style.module.css'
 import ExploreContext from '@/context/explore-context'
-import type { App, AppCategory } from '@/models/explore'
+import type { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { createApp } from '@/service/apps'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
@@ -36,32 +38,43 @@ const Apps = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
-  const [currCategory, setCurrCategory] = React.useState<AppCategory | ''>('')
-  const [allList, setAllList] = React.useState<App[]>([])
-  const [isLoaded, setIsLoaded] = React.useState(false)
+  const allCategoriesEn = t('explore.apps.allCategories')
+  const [currCategory, setCurrCategory] = useTabSearchParams({
+    defaultTab: allCategoriesEn,
+  })
+  const {
+    data: { categories, allList },
+  } = useSWR(
+    ['/explore/apps'],
+    () =>
+      fetchAppList().then(({ categories, recommended_apps }) => ({
+        categories,
+        allList: recommended_apps.sort((a, b) => a.position - b.position),
+      })),
+    {
+      fallbackData: {
+        categories: [],
+        allList: [],
+      },
+    },
+  )
 
   const currList = (() => {
-    if (currCategory === '')
+    if (currCategory === allCategoriesEn)
       return allList
     return allList.filter(item => item.category === currCategory)
   })()
 
-  const [categories, setCategories] = React.useState<AppCategory[]>([])
-  useEffect(() => {
-    (async () => {
-      const { categories, recommended_apps }: any = await fetchAppList()
-      const sortedRecommendedApps = [...recommended_apps]
-      sortedRecommendedApps.sort((a, b) => a.position - b.position) // position from small to big
-      setCategories(categories)
-      setAllList(sortedRecommendedApps)
-      setIsLoaded(true)
-    })()
-  }, [])
-
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({ name, icon, icon_background, description }) => {
-    const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
+  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+    name,
+    icon,
+    icon_background,
+  }) => {
+    const { app_model_config: model_config } = await fetchAppDetail(
+      currApp?.app.id as string,
+    )
 
     try {
       const app = await createApp({
@@ -78,17 +91,20 @@ const Apps = ({
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      router.push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
+      router.push(
+        `/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'
+        }`,
+      )
     }
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
 
-  if (!isLoaded) {
+  if (!categories) {
     return (
-      <div className='flex h-full items-center'>
-        <Loading type='area' />
+      <div className="flex h-full items-center">
+        <Loading type="area" />
       </div>
     )
   }

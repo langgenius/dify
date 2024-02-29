@@ -58,7 +58,8 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
             notion_page_type=page_type,
-            notion_access_token=data_source_binding.access_token
+            notion_access_token=data_source_binding.access_token,
+            tenant_id=document.tenant_id
         )
 
         last_edited_time = loader.get_notion_last_edited_time()

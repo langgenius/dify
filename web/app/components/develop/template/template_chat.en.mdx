@@ -344,9 +344,9 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
+  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \
+    curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \
     -H 'Authorization: Bearer {api_key}' \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -1025,9 +1025,9 @@ Chat applications support session persistence, allowing previous chat history to
         - (string) url of icon
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET 'https://cloud.dify.ai/v1/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X GET 'https://cloud.dify.ai/v1/meta?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \
     -H 'Authorization: Bearer {api_key}'
     ```
 

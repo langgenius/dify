@@ -40,7 +40,6 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
             indexing_technique=indexing_technique,
             index_struct=index_struct,
             collection_binding_id=collection_binding_id,
-            doc_form=doc_form
         )
         documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()

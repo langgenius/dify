@@ -22,6 +22,17 @@
 </p>
 
 <p align="center">
+  <a href="https://discord.com/events/1082486657678311454/1211724120996188220" target="_blank">
+   Dify.AI Upcoming Meetup Event [👉 Click to Join the Event Here 👈]
+  </a>
+   <ul align="center" style="text-decoration: none; list-style: none;">
+      <li> US EST: 09:00 (9:00 AM)</li>
+      <li> CET: 15:00 (3:00 PM)</li>
+      <li> CST:  22:00 (10:00 PM)</li>
+   </ul>
+</p>
+
+<p align="center">
    <a href="https://dify.ai/blog/dify-ai-unveils-ai-agent-creating-gpts-and-assistants-with-various-llms" target="_blank">
    Dify.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
   </a>

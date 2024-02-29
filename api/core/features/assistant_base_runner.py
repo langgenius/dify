@@ -606,36 +606,42 @@ class BaseAssistantApplicationRunner(AppRunner):
         for message in messages:
             result.append(UserPromptMessage(content=message.query))
             agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
-            for agent_thought in agent_thoughts:
-                tools = agent_thought.tool
-                if tools:
-                    tools = tools.split(';')
-                    tool_calls: list[AssistantPromptMessage.ToolCall] = []
-                    tool_call_response: list[ToolPromptMessage] = []
-                    tool_inputs = json.loads(agent_thought.tool_input)
-                    for tool in tools:
-                        # generate a uuid for tool call
-                        tool_call_id = str(uuid.uuid4())
-                        tool_calls.append(AssistantPromptMessage.ToolCall(
-                            id=tool_call_id,
-                            type='function',
-                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+            if agent_thoughts:
+                for agent_thought in agent_thoughts:
+                    tools = agent_thought.tool
+                    if tools:
+                        tools = tools.split(';')
+                        tool_calls: list[AssistantPromptMessage.ToolCall] = []
+                        tool_call_response: list[ToolPromptMessage] = []
+                        tool_inputs = json.loads(agent_thought.tool_input)
+                        for tool in tools:
+                            # generate a uuid for tool call
+                            tool_call_id = str(uuid.uuid4())
+                            tool_calls.append(AssistantPromptMessage.ToolCall(
+                                id=tool_call_id,
+                                type='function',
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=tool,
+                                    arguments=json.dumps(tool_inputs.get(tool, {})),
+                                )
+                            ))
+                            tool_call_response.append(ToolPromptMessage(
+                                content=agent_thought.observation,
                                 name=tool,
-                                arguments=json.dumps(tool_inputs.get(tool, {})),
-                            )
-                        ))
-                        tool_call_response.append(ToolPromptMessage(
-                            content=agent_thought.observation,
-                            name=tool,
-                            tool_call_id=tool_call_id,
-                        ))
+                                tool_call_id=tool_call_id,
+                            ))
 
-                    result.extend([
-                        AssistantPromptMessage(
-                            content=agent_thought.thought,
-                            tool_calls=tool_calls,
-                        ),
-                        *tool_call_response
-                    ])
+                        result.extend([
+                            AssistantPromptMessage(
+                                content=agent_thought.thought,
+                                tool_calls=tool_calls,
+                            ),
+                            *tool_call_response
+                        ])
+                    if not tools:
+                        result.append(AssistantPromptMessage(content=agent_thought.thought))
+            else:
+                if message.answer:
+                    result.append(AssistantPromptMessage(content=message.answer))
 
         return result

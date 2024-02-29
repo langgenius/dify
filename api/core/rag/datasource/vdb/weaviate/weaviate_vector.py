@@ -127,7 +127,10 @@ class WeaviateVector(BaseVector):
         )
 
     def delete(self):
-        self._client.schema.delete_class(self._collection_name)
+        # check whether the index already exists
+        schema = self._default_schema(self._collection_name)
+        if self._client.schema.contains(schema):
+            self._client.schema.delete_class(self._collection_name)
 
     def text_exists(self, id: str) -> bool:
         collection_name = self._collection_name
@@ -147,10 +150,11 @@ class WeaviateVector(BaseVector):
         return True
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        self._client.data_object.delete(
-            ids,
-            class_name=self._collection_name
-        )
+        for uuid in ids:
+            self._client.data_object.delete(
+                class_name=self._collection_name,
+                uuid=uuid,
+            )
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Look up similar documents by embedding vector in Weaviate."""

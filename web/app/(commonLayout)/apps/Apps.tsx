@@ -12,6 +12,7 @@ import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
@@ -35,7 +36,9 @@ const getKey = (
 const Apps = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: 'all',
+  })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
 

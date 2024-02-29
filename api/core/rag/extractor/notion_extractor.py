@@ -4,7 +4,6 @@ from typing import Any, Optional
 
 import requests
 from flask import current_app
-from flask_login import current_user
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -30,8 +29,10 @@ class NotionExtractor(BaseExtractor):
             notion_workspace_id: str,
             notion_obj_id: str,
             notion_page_type: str,
+            tenant_id: str,
             document_model: Optional[DocumentModel] = None,
-            notion_access_token: Optional[str] = None
+            notion_access_token: Optional[str] = None,
+
     ):
         self._notion_access_token = None
         self._document_model = document_model
@@ -41,7 +42,7 @@ class NotionExtractor(BaseExtractor):
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            self._notion_access_token = self._get_access_token(current_user.current_tenant_id,
+            self._notion_access_token = self._get_access_token(tenant_id,
                                                                self._notion_workspace_id)
             if not self._notion_access_token:
                 integration_token = current_app.config.get('NOTION_INTEGRATION_TOKEN')

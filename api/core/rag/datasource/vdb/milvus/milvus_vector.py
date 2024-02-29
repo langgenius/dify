@@ -124,12 +124,23 @@ class MilvusVector(BaseVector):
 
     def delete_by_ids(self, doc_ids: list[str]) -> None:
 
-        self._client.delete(collection_name=self._collection_name, pks=doc_ids)
+        result = self._client.query(collection_name=self._collection_name,
+                                    filter=f'metadata["doc_id"] in {doc_ids}',
+                                    output_fields=["id"])
+        if result:
+            ids = [item["id"] for item in result]
+            self._client.delete(collection_name=self._collection_name, pks=ids)
 
     def delete(self) -> None:
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
 
         from pymilvus import utility
-        utility.drop_collection(self._collection_name, None)
+        utility.drop_collection(self._collection_name, None, using=alias)
 
     def text_exists(self, id: str) -> bool:
 

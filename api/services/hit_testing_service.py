@@ -133,8 +133,9 @@ class HitTestingService:
         if embedding_length <= 1:
             return [{'x': 0, 'y': 0}]
 
-        concatenate_data = np.array(embeddings).reshape(embedding_length, -1)
-        # concatenate_data = np.concatenate(embeddings)
+        noise = np.random.normal(0, 1e-4, np.array(embeddings).shape)
+        concatenate_data = np.array(embeddings) + noise
+        concatenate_data = concatenate_data.reshape(embedding_length, -1)
 
         perplexity = embedding_length / 2 + 1
         if perplexity >= embedding_length:

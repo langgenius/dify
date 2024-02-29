@@ -58,6 +58,13 @@ const translation = {
       key: 'Ключ',
       value: 'Значення',
     },
+    authHeaderPrefix: {
+      types: {
+        basic: 'Basic',
+        bearer: 'Bearer',
+        custom: 'Custom',
+      },
+    },
     privacyPolicy: 'Політика конфіденційності',
     privacyPolicyPlaceholder: 'Введіть політику конфіденційності',
   },

@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any
 
 from flask import current_app
 
@@ -14,7 +14,7 @@ class Keyword:
         self._keyword_processor = self._init_keyword()
 
     def _init_keyword(self) -> BaseKeyword:
-        config = cast(dict, current_app.config)
+        config = current_app.config
         keyword_type = config.get('KEYWORD_STORE')
 
         if not keyword_type:
@@ -25,7 +25,7 @@ class Keyword:
                 dataset=self._dataset
             )
         else:
-            raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+            raise ValueError(f"Keyword store {keyword_type} is not supported.")
 
     def create(self, texts: list[Document], **kwargs):
         self._keyword_processor.create(texts, **kwargs)
