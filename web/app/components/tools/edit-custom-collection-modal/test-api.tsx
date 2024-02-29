@@ -43,7 +43,7 @@ const TestApi: FC<Props> = ({
     }
     const data = {
       tool_name: toolName,
-      credentials: tempCredential,
+      credentials,
       schema_type: customCollection.schema_type,
       schema: customCollection.schema,
       parameters: parametersValue,
