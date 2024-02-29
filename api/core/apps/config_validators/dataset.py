@@ -1,6 +1,6 @@
 import uuid
 
-from core.agent.agent_executor import PlanningStrategy
+from core.entities.agent_entities import PlanningStrategy
 from models.model import AppMode
 from services.dataset_service import DatasetService
 

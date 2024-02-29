@@ -1,7 +1,7 @@
 import uuid
 
-from core.agent.agent_executor import PlanningStrategy
 from core.apps.config_validators.dataset import DatasetValidator
+from core.entities.agent_entities import PlanningStrategy
 
 OLD_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
 
