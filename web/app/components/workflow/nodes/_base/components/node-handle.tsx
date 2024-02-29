@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import {
   useCallback,
   useState,
@@ -35,10 +36,11 @@ export const NodeTargetHandle = ({
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleHandleClick = () => {
+  const handleHandleClick = useCallback((e: MouseEvent) => {
+    e.stopPropagation()
     if (!connected)
-      handleOpenChange(!open)
-  }
+      setOpen(v => !v)
+  }, [connected])
 
   return (
     <>
@@ -93,10 +95,11 @@ export const NodeSourceHandle = ({
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleHandleClick = () => {
+  const handleHandleClick = useCallback((e: MouseEvent) => {
+    e.stopPropagation()
     if (!connected)
-      handleOpenChange(!open)
-  }
+      setOpen(v => !v)
+  }, [connected])
   const handleSelect = useCallback((type: BlockEnum) => {
     handleAddNextNode(id, type, handleId)
   }, [handleAddNextNode, id, handleId])

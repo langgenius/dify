@@ -24,13 +24,12 @@ export type Branch = {
 }
 
 export type CommonNodeType = {
-  position?: {
+  index?: {
     x: number
     y: number
   }
-  sortIndexInBranches?: number
   hovering?: boolean
-  branches?: Branch[]
+  targetBranches?: Branch[]
   title: string
   desc: string
   type: BlockEnum

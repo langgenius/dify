@@ -10,9 +10,11 @@ import { useStore } from '../store'
 import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
+import Record from './record'
 
 const Panel: FC = () => {
   const mode = useStore(state => state.mode)
+  const runStaus = useStore(state => state.runStaus)
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find(node => node.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
@@ -30,6 +32,11 @@ const Panel: FC = () => {
 
   return (
     <div className='absolute top-14 right-0 bottom-2 flex z-10'>
+      {
+        runStaus && (
+          <Record />
+        )
+      }
       {
         showNodePanel && (
           <NodePanel {...selectedNode!} />

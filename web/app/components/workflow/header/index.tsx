@@ -14,6 +14,8 @@ import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arr
 const Header: FC = () => {
   const mode = useStore(state => state.mode)
   const setShowFeatures = useStore(state => state.setShowFeatures)
+  const runStaus = useStore(state => state.runStaus)
+  const setRunStaus = useStore(state => state.setRunStaus)
 
   const handleShowFeatures = useCallback(() => {
     setShowFeatures(true)
@@ -36,13 +38,20 @@ const Header: FC = () => {
         </div>
       </div>
       <div className='flex items-center'>
-        <Button className={`
-          mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
-          border-[0.5px] border-gray-200 shadow-xs
-        `}>
-          <ArrowNarrowLeft className='mr-1 w-4 h-4' />
-          Go back to editor
-        </Button>
+        {
+          runStaus && (
+            <Button
+              className={`
+                mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
+                border-[0.5px] border-gray-200 shadow-xs
+              `}
+              onClick={() => setRunStaus('')}
+            >
+              <ArrowNarrowLeft className='mr-1 w-4 h-4' />
+              Go back to editor
+            </Button>
+          )
+        }
         <RunAndHistory />
         <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
         {

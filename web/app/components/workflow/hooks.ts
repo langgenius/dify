@@ -16,7 +16,6 @@ import type {
   SelectedNode,
 } from './types'
 import { NodeInitialData } from './constants'
-import { initialNodesPosition } from './utils'
 
 export const useWorkflow = () => {
   const store = useStoreApi()
@@ -78,14 +77,11 @@ export const useWorkflow = () => {
     } = store.getState()
 
     const newNodes = produce(getNodes(), (draft) => {
-      const selectedNode = draft.find(node => node.id === nodeId)
+      draft.forEach(node => node.selected = false)
+      const selectedNode = draft.find(node => node.id === nodeId)!
 
-      if (selectedNode) {
-        if (cancelSelection)
-          selectedNode.selected = false
-        else
-          selectedNode.selected = true
-      }
+      if (!cancelSelection)
+        selectedNode.selected = true
     })
     setNodes(newNodes)
   }, [store])
@@ -124,9 +120,9 @@ export const useWorkflow = () => {
       setEdges,
     } = store.getState()
     const newEdges = produce(edges, (draft) => {
-      const currentEdge = draft.find(e => e.id === edge.id)
-      if (currentEdge)
-        currentEdge.data = { ...currentEdge.data, hovering: true }
+      const currentEdge = draft.find(e => e.id === edge.id)!
+
+      currentEdge.data = { ...currentEdge.data, hovering: true }
     })
     setEdges(newEdges)
   }, [store])
@@ -137,9 +133,9 @@ export const useWorkflow = () => {
       setEdges,
     } = store.getState()
     const newEdges = produce(edges, (draft) => {
-      const currentEdge = draft.find(e => e.id === edge.id)
-      if (currentEdge)
-        currentEdge.data = { ...currentEdge.data, hovering: false }
+      const currentEdge = draft.find(e => e.id === edge.id)!
+
+      currentEdge.data = { ...currentEdge.data, hovering: false }
     })
     setEdges(newEdges)
   }, [store])
@@ -281,59 +277,6 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleInitialLayoutNodes = useCallback(() => {
-    const {
-      getNodes,
-      setNodes,
-      edges,
-      setEdges,
-    } = store.getState()
-
-    setNodes(initialNodesPosition(getNodes(), edges))
-    setEdges(produce(edges, (draft) => {
-      draft.forEach((edge) => {
-        edge.hidden = false
-      })
-    }))
-  }, [store])
-
-  const handleUpdateNodesPosition = useCallback(() => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
-    const nodes = getNodes()
-    const groups = nodes.reduce((acc, cur) => {
-      const x = cur.data.position.x
-
-      if (!acc[x])
-        acc[x] = [cur]
-      else
-        acc[x].push(cur)
-
-      return acc
-    }, {} as Record<string, Node[]>)
-    const heightMap: Record<string, number> = {}
-
-    Object.keys(groups).forEach((key) => {
-      let baseHeight = 0
-      groups[key].sort((a, b) => a.data.position!.y - b.data.position!.y).forEach((node) => {
-        heightMap[node.id] = baseHeight
-        baseHeight = node.height! + 39
-      })
-    })
-    setNodes(produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        node.position = {
-          ...node.position,
-          x: node.data.position.x * (220 + 64),
-          y: heightMap[node.id],
-        }
-      })
-    }))
-  }, [store])
-
   return {
     handleEnterNode,
     handleLeaveNode,
@@ -346,7 +289,5 @@ export const useWorkflow = () => {
     handleAddNextNode,
     handleChangeCurrentNode,
     handleDeleteNode,
-    handleInitialLayoutNodes,
-    handleUpdateNodesPosition,
   }
 }

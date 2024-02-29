@@ -57,8 +57,8 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   }, [onOpenChange])
   const handleTrigger = useCallback<MouseEventHandler<HTMLDivElement>>((e) => {
     e.stopPropagation()
-    handleOpenChange(!open)
-  }, [open, handleOpenChange])
+    setLocalOpen(v => !v)
+  }, [])
   const handleSelect = useCallback((type: BlockEnum) => {
     handleOpenChange(false)
     onSelect(type)

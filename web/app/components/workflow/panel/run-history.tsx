@@ -8,6 +8,7 @@ import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsA
 const RunHistory = () => {
   const mode = useStore(state => state.mode)
   const setShowRunHistory = useStore(state => state.setShowRunHistory)
+  const setRunStaus = useStore(state => state.setRunStaus)
 
   return (
     <div className='w-[200px] h-full bg-white border-[0.5px] border-gray-200 shadow-xl rounded-l-2xl'>
@@ -34,7 +35,10 @@ const RunHistory = () => {
             </div>
           )
         }
-        <div className='flex px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer'>
+        <div
+          className='flex px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer'
+          onClick={() => setRunStaus('finished')}
+        >
           <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
           <div>
             <div className='flex items-center text-[13px] font-medium text-primary-600 leading-[18px]'>Test Run#6</div>
