@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from os.path import join
+from urllib.parse import urljoin
 from typing import cast
 
 from httpx import Timeout
@@ -316,7 +316,7 @@ class LocalAILarguageModel(LargeLanguageModel):
         client_kwargs = {
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "api_key": "1",
-            "base_url": join(credentials['server_url'], 'v1'),
+            "base_url": urljoin(credentials['server_url'], 'v1'),
         }
 
         return client_kwargs
