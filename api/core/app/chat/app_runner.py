@@ -1,21 +1,17 @@
 import logging
-from typing import Optional
 
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.base_app_runner import AppRunner
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import (
     ApplicationGenerateEntity,
-    DatasetEntity,
-    InvokeFrom,
-    ModelConfigEntity,
 )
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationException
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
-from models.model import App, AppMode, Conversation, Message
+from models.model import App, Conversation, Message
 
 logger = logging.getLogger(__name__)
 
@@ -145,18 +141,23 @@ class ChatAppRunner(AppRunner):
         # get context from datasets
         context = None
         if app_orchestration_config.dataset and app_orchestration_config.dataset.dataset_ids:
-            context = self.retrieve_dataset_context(
+            hit_callback = DatasetIndexToolCallbackHandler(
+                queue_manager,
+                app_record.id,
+                message.id,
+                application_generate_entity.user_id,
+                application_generate_entity.invoke_from
+            )
+
+            dataset_retrieval = DatasetRetrieval()
+            context = dataset_retrieval.retrieve(
                 tenant_id=app_record.tenant_id,
-                app_record=app_record,
-                queue_manager=queue_manager,
                 model_config=app_orchestration_config.model_config,
-                show_retrieve_source=app_orchestration_config.show_retrieve_source,
-                dataset_config=app_orchestration_config.dataset,
-                message=message,
-                inputs=inputs,
+                config=app_orchestration_config.dataset,
                 query=query,
-                user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
+                show_retrieve_source=app_orchestration_config.show_retrieve_source,
+                hit_callback=hit_callback,
                 memory=memory
             )
 
@@ -212,57 +213,3 @@ class ChatAppRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream
         )
-
-    def retrieve_dataset_context(self, tenant_id: str,
-                                 app_record: App,
-                                 queue_manager: AppQueueManager,
-                                 model_config: ModelConfigEntity,
-                                 dataset_config: DatasetEntity,
-                                 show_retrieve_source: bool,
-                                 message: Message,
-                                 inputs: dict,
-                                 query: str,
-                                 user_id: str,
-                                 invoke_from: InvokeFrom,
-                                 memory: Optional[TokenBufferMemory] = None) -> Optional[str]:
-        """
-        Retrieve dataset context
-        :param tenant_id: tenant id
-        :param app_record: app record
-        :param queue_manager: queue manager
-        :param model_config: model config
-        :param dataset_config: dataset config
-        :param show_retrieve_source: show retrieve source
-        :param message: message
-        :param inputs: inputs
-        :param query: query
-        :param user_id: user id
-        :param invoke_from: invoke from
-        :param memory: memory
-        :return:
-        """
-        hit_callback = DatasetIndexToolCallbackHandler(
-            queue_manager,
-            app_record.id,
-            message.id,
-            user_id,
-            invoke_from
-        )
-
-        # TODO
-        if (app_record.mode == AppMode.COMPLETION.value and dataset_config
-                and dataset_config.retrieve_config.query_variable):
-            query = inputs.get(dataset_config.retrieve_config.query_variable, "")
-
-        dataset_retrieval = DatasetRetrieval()
-        return dataset_retrieval.retrieve(
-            tenant_id=tenant_id,
-            model_config=model_config,
-            config=dataset_config,
-            query=query,
-            invoke_from=invoke_from,
-            show_retrieve_source=show_retrieve_source,
-            hit_callback=hit_callback,
-            memory=memory
-        )
-    

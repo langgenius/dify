@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from typing import Union
 
@@ -106,6 +107,7 @@ class Workflow(db.Model):
     type = db.Column(db.String(255), nullable=False)
     version = db.Column(db.String(255), nullable=False)
     graph = db.Column(db.Text)
+    features = db.Column(db.Text)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_by = db.Column(UUID)
@@ -118,6 +120,14 @@ class Workflow(db.Model):
     @property
     def updated_by_account(self):
         return Account.query.get(self.updated_by)
+
+    @property
+    def graph_dict(self):
+        return self.graph if not self.graph else json.loads(self.graph)
+
+    @property
+    def features_dict(self):
+        return self.features if not self.features else json.loads(self.features)
 
 
 class WorkflowRunTriggeredFrom(Enum):

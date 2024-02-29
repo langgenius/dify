@@ -7,8 +7,7 @@ default_app_templates = {
             'mode': AppMode.WORKFLOW.value,
             'enable_site': True,
             'enable_api': True
-        },
-        'model_config': {}
+        }
     },
 
     # chat default mode
@@ -34,14 +33,6 @@ default_app_templates = {
             'mode': AppMode.ADVANCED_CHAT.value,
             'enable_site': True,
             'enable_api': True
-        },
-        'model_config': {
-            'model': {
-                "provider": "openai",
-                "name": "gpt-4",
-                "mode": "chat",
-                "completion_params": {}
-            }
         }
     },
 

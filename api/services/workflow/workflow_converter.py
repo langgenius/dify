@@ -44,13 +44,10 @@ class WorkflowConverter:
         :param account: Account
         :return: new App instance
         """
-        # get original app config
-        app_model_config = app_model.app_model_config
-
         # convert app model config
         workflow = self.convert_app_model_config_to_workflow(
             app_model=app_model,
-            app_model_config=app_model_config,
+            app_model_config=app_model.app_model_config,
             account_id=account.id
         )
 
@@ -58,8 +55,9 @@ class WorkflowConverter:
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
         new_app.name = app_model.name + '(workflow)'
-        new_app.mode = AppMode.CHAT.value \
+        new_app.mode = AppMode.ADVANCED_CHAT.value \
             if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.workflow_id = workflow.id
         new_app.icon = app_model.icon
         new_app.icon_background = app_model.icon_background
         new_app.enable_site = app_model.enable_site
@@ -69,28 +67,6 @@ class WorkflowConverter:
         new_app.is_demo = False
         new_app.is_public = app_model.is_public
         db.session.add(new_app)
-        db.session.flush()
-
-        # create new app model config record
-        new_app_model_config = app_model_config.copy()
-        new_app_model_config.id = None
-        new_app_model_config.app_id = new_app.id
-        new_app_model_config.external_data_tools = ''
-        new_app_model_config.model = ''
-        new_app_model_config.user_input_form = ''
-        new_app_model_config.dataset_query_variable = None
-        new_app_model_config.pre_prompt = None
-        new_app_model_config.agent_mode = ''
-        new_app_model_config.prompt_type = 'simple'
-        new_app_model_config.chat_prompt_config = ''
-        new_app_model_config.completion_prompt_config = ''
-        new_app_model_config.dataset_configs = ''
-        new_app_model_config.workflow_id = workflow.id
-
-        db.session.add(new_app_model_config)
-        db.session.flush()
-
-        new_app.app_model_config_id = new_app_model_config.id
         db.session.commit()
 
         app_was_created.send(new_app, account=account)
@@ -110,11 +86,13 @@ class WorkflowConverter:
         # get new app mode
         new_app_mode = self._get_new_app_mode(app_model)
 
+        app_model_config_dict = app_model_config.to_dict()
+
         # convert app model config
         application_manager = AppManager()
         app_orchestration_config_entity = application_manager.convert_from_app_model_config_dict(
             tenant_id=app_model.tenant_id,
-            app_model_config_dict=app_model_config.to_dict(),
+            app_model_config_dict=app_model_config_dict,
             skip_check=True
         )
 
@@ -177,6 +155,25 @@ class WorkflowConverter:
 
         graph = self._append_node(graph, end_node)
 
+        # features
+        if new_app_mode == AppMode.ADVANCED_CHAT:
+            features = {
+                "opening_statement": app_model_config_dict.get("opening_statement"),
+                "suggested_questions": app_model_config_dict.get("suggested_questions"),
+                "suggested_questions_after_answer": app_model_config_dict.get("suggested_questions_after_answer"),
+                "speech_to_text": app_model_config_dict.get("speech_to_text"),
+                "text_to_speech": app_model_config_dict.get("text_to_speech"),
+                "file_upload": app_model_config_dict.get("file_upload"),
+                "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
+                "retriever_resource": app_model_config_dict.get("retriever_resource"),
+            }
+        else:
+            features = {
+                "text_to_speech": app_model_config_dict.get("text_to_speech"),
+                "file_upload": app_model_config_dict.get("file_upload"),
+                "sensitive_word_avoidance": app_model_config_dict.get("sensitive_word_avoidance"),
+            }
+
         # create workflow record
         workflow = Workflow(
             tenant_id=app_model.tenant_id,
@@ -184,6 +181,7 @@ class WorkflowConverter:
             type=WorkflowType.from_app_mode(new_app_mode).value,
             version='draft',
             graph=json.dumps(graph),
+            features=json.dumps(features),
             created_by=account_id,
             created_at=app_model_config.created_at
         )
