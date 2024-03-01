@@ -13,13 +13,13 @@ import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arr
 
 const Header: FC = () => {
   const mode = useStore(state => state.mode)
-  const setShowFeatures = useStore(state => state.setShowFeatures)
+  const setShowFeaturesPanel = useStore(state => state.setShowFeaturesPanel)
   const runStaus = useStore(state => state.runStaus)
   const setRunStaus = useStore(state => state.setRunStaus)
 
   const handleShowFeatures = useCallback(() => {
-    setShowFeatures(true)
-  }, [setShowFeatures])
+    setShowFeaturesPanel(true)
+  }, [setShowFeaturesPanel])
 
   return (
     <div

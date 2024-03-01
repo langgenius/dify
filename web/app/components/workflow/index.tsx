@@ -22,6 +22,7 @@ import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import Features from './features'
+import { useStore } from './store'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -38,6 +39,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   nodes: initialNodes,
   edges: initialEdges,
 }) => {
+  const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const [nodes] = useNodesState(initialNodes)
   const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
   const nodesInitialized = useNodesInitialized()
@@ -64,7 +66,9 @@ const Workflow: FC<WorkflowProps> = memo(({
       <Header />
       <Panel />
       <ZoomInOut />
-      <Features />
+      {
+        showFeaturesPanel && <Features />
+      }
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
