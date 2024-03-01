@@ -1,10 +1,11 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useEffect } from 'react'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
   useEdgesState,
+  useNodesInitialized,
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -38,6 +39,12 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const [nodes] = useNodesState(initialNodes)
   const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
+  const nodesInitialized = useNodesInitialized()
+
+  useEffect(() => {
+    if (nodesInitialized)
+      console.log('initialed')
+  }, [nodesInitialized])
 
   const {
     handleEnterNode,
