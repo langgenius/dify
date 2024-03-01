@@ -2,17 +2,29 @@ identity:
   name: wecom_group_bot
   author: Bowen Liang
   label:
-    en_US: Wecom group bot
-    zh_Hans: 微信群机器人
-    pt_BR: Wecom group bot
+    en_US: Send message to Wecom group bot
+    zh_Hans: 发送消息到企业微信群机器人
+    pt_BR: Send message to Wecom group bot
   icon: icon.svg
 description:
   human:
-    en_US: Wecom group bot
-    zh_Hans: 微信群机器人
-    pt_BR: Wecom group bot
-  llm: A tool to send messages to a Wecom group.
+    en_US: Sending messages to a chat group on Wecom via webhook
+    zh_Hans: 通过企业微信群机器人webhook发送消息
+    pt_BR: Sending messages to a chat group on Wecom via webhook
+  llm: A tool for sending messages to a chat group on Wecom(企业微信) .
 parameters:
+  - name: hook_key
+    type: string
+    required: true
+    label:
+      en_US: Wecom Group bot webhook key
+      zh_Hans: 群机器人webhook的key
+      pt_BR: Wecom Group bot webhook key
+    human_description:
+      en_US: Wecom Group bot webhook key
+      zh_Hans: 群机器人webhook的key
+      pt_BR: Wecom Group bot webhook key
+    form: form
   - name: text
     type: string
     required: true

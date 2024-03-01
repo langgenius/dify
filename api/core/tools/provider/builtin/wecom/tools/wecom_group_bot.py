@@ -12,27 +12,35 @@ class WecomRepositoriesTool(BuiltinTool):
         """
             invoke tools
         """
-        text = tool_parameters.get('city', '')
+        text = tool_parameters.get('text', '')
         if not text:
             return self.create_text_message('Invalid parameter text')
 
-        try:
-            webhook_api_url = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send'
-            bot_key = ''
-            headers = {'Content-Type': 'application/json'}
-            url = "{url}?key={bot_key}".format(url=webhook_api_url, bot_key=bot_key)
-            payload = {
-                "msgtype": "text",
-                "text": {
-                    "content": "hello world"
-                }
+        hook_key = tool_parameters.get('hook_key', '')
+        if not hook_key:
+            return self.create_text_message('Invalid parameter hook_key')
+
+        msgtype = 'text'
+        api_url = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send'
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        params = {
+            'key': hook_key,
+        }
+        payload = {
+            "msgtype": msgtype,
+            "text": {
+                "content": text,
             }
-            response = httpx.post(url, headers=headers, json=payload)
-            if response.is_success:
+        }
+
+        try:
+            res = httpx.post(api_url, headers=headers, params=params, json=payload)
+            if res.is_success:
                 return self.create_text_message("Text message sent successfully")
             else:
                 return self.create_text_message(
-                    "Failed to send the text message, status code: {code}, response: {text}"
-                    .format(code=response.status_code, text=response.text))
+                    f"Failed to send the text message, status code: {res.status_code}, response: {res.text}")
         except Exception as e:
-            return self.create_text_message("Github API Key and Api Version is invalid. {}".format(e))
+            return self.create_text_message("Failed to send message to group chat bot. {}".format(e))
