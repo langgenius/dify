@@ -106,6 +106,18 @@ class App(db.Model):
         return tenant
 
     @property
+    def is_agent(self) -> bool:
+        app_model_config = self.app_model_config
+        if not app_model_config:
+            return False
+        if not app_model_config.agent_mode:
+            return False
+        if self.app_model_config.agent_mode_dict.get('enabled', False) \
+                and self.app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
+            return True
+        return False
+
+    @property
     def deleted_tools(self) -> list:
         # get agent mode tools
         app_model_config = self.app_model_config

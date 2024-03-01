@@ -2,8 +2,9 @@ from typing import Any
 
 from langchain.tools import BaseTool
 
+from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter

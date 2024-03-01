@@ -2,8 +2,8 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from core.app.advanced_chat.config_validator import AdvancedChatAppConfigValidator
-from core.app.workflow.config_validator import WorkflowAppConfigValidator
+from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode
@@ -162,13 +162,13 @@ class WorkflowService:
 
     def validate_features_structure(self, app_model: App, features: dict) -> dict:
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            return AdvancedChatAppConfigValidator.config_validate(
+            return AdvancedChatAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id,
                 config=features,
                 only_structure_validate=True
             )
         elif app_model.mode == AppMode.WORKFLOW.value:
-            return WorkflowAppConfigValidator.config_validate(
+            return WorkflowAppConfigManager.config_validate(
                 tenant_id=app_model.tenant_id,
                 config=features,
                 only_structure_validate=True

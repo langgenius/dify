@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.entities.application_entities import PromptTemplateEntity, AdvancedCompletionPromptTemplateEntity, \
-    ModelConfigEntity, AdvancedChatPromptTemplateEntity, AdvancedChatMessageEntity
+from core.app.app_config.entities import PromptTemplateEntity, AdvancedCompletionPromptTemplateEntity, \
+    ModelConfigEntity, AdvancedChatPromptTemplateEntity, AdvancedChatMessageEntity, FileUploadEntity
 from core.file.file_obj import FileObj, FileType, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage, PromptMessageRole
@@ -137,11 +137,11 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="https://example.com/image1.jpg",
-            file_config={
-                "image": {
+            file_upload_entity=FileUploadEntity(
+                image_config={
                     "detail": "high",
                 }
-            }
+            )
         )
     ]
 

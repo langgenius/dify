@@ -129,7 +129,7 @@ class Workflow(db.Model):
     def features_dict(self):
         return self.features if not self.features else json.loads(self.features)
 
-    def user_input_form(self):
+    def user_input_form(self) -> list:
         # get start node from graph
         if not self.graph:
             return []

@@ -1,6 +1,6 @@
 import logging
 
-from core.entities.application_entities import AppOrchestrationConfigEntity
+from core.app.app_config.entities import AppConfig
 from core.moderation.base import ModerationAction, ModerationException
 from core.moderation.factory import ModerationFactory
 
@@ -10,22 +10,22 @@ logger = logging.getLogger(__name__)
 class InputModeration:
     def check(self, app_id: str,
               tenant_id: str,
-              app_orchestration_config_entity: AppOrchestrationConfigEntity,
+              app_config: AppConfig,
               inputs: dict,
               query: str) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
         :param tenant_id: tenant id
-        :param app_orchestration_config_entity: app orchestration config entity
+        :param app_config: app config
         :param inputs: inputs
         :param query: query
         :return:
         """
-        if not app_orchestration_config_entity.sensitive_word_avoidance:
+        if not app_config.sensitive_word_avoidance:
             return False, inputs, query
 
-        sensitive_word_avoidance_config = app_orchestration_config_entity.sensitive_word_avoidance
+        sensitive_word_avoidance_config = app_config.sensitive_word_avoidance
         moderation_type = sensitive_word_avoidance_config.type
 
         moderation_factory = ModerationFactory(

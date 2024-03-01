@@ -5,7 +5,7 @@ from typing import Literal, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.app_queue_manager import PublishFrom
-from core.entities.application_entities import AgentPromptEntity, AgentScratchpadUnit
+from core.agent.entities import AgentPromptEntity, AgentScratchpadUnit
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -27,7 +27,7 @@ from core.tools.errors import (
 from models.model import Conversation, Message
 
 
-class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
+class CotAgentRunner(BaseAgentRunner):
     _is_first_iteration = True
     _ignore_observation_providers = ['wenxin']
 
@@ -39,30 +39,33 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         """
         Run Cot agent application
         """
-        app_orchestration_config = self.app_orchestration_config
-        self._repack_app_orchestration_config(app_orchestration_config)
+        app_generate_entity = self.application_generate_entity
+        self._repack_app_generate_entity(app_generate_entity)
 
         agent_scratchpad: list[AgentScratchpadUnit] = []
         self._init_agent_scratchpad(agent_scratchpad, self.history_prompt_messages)
 
-        if 'Observation' not in app_orchestration_config.model_config.stop:
-            if app_orchestration_config.model_config.provider not in self._ignore_observation_providers:
-                app_orchestration_config.model_config.stop.append('Observation')
+        # check model mode
+        if 'Observation' not in app_generate_entity.model_config.stop:
+            if app_generate_entity.model_config.provider not in self._ignore_observation_providers:
+                app_generate_entity.model_config.stop.append('Observation')
+
+        app_config = self.app_config
 
         # override inputs
         inputs = inputs or {}
-        instruction = self.app_orchestration_config.prompt_template.simple_prompt_template
+        instruction = app_config.prompt_template.simple_prompt_template
         instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
-        max_iteration_steps = min(self.app_orchestration_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
         prompt_messages = self.history_prompt_messages
 
         # convert tools into ModelRuntime Tool format
         prompt_messages_tools: list[PromptMessageTool] = []
         tool_instances = {}
-        for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
+        for tool in app_config.agent.tools if app_config.agent else []:
             try:
                 prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
             except Exception:
@@ -122,11 +125,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
             # update prompt messages
             prompt_messages = self._organize_cot_prompt_messages(
-                mode=app_orchestration_config.model_config.mode,
+                mode=app_generate_entity.model_config.mode,
                 prompt_messages=prompt_messages,
                 tools=prompt_messages_tools,
                 agent_scratchpad=agent_scratchpad,
-                agent_prompt_message=app_orchestration_config.agent.prompt,
+                agent_prompt_message=app_config.agent.prompt,
                 instruction=instruction,
                 input=query
             )
@@ -136,9 +139,9 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
-                model_parameters=app_orchestration_config.model_config.parameters,
+                model_parameters=app_generate_entity.model_config.parameters,
                 tools=[],
-                stop=app_orchestration_config.model_config.stop,
+                stop=app_generate_entity.model_config.stop,
                 stream=True,
                 user=self.user_id,
                 callbacks=[],
@@ -550,7 +553,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         """
             convert agent scratchpad list to str
         """
-        next_iteration = self.app_orchestration_config.agent.prompt.next_iteration
+        next_iteration = self.app_config.agent.prompt.next_iteration
 
         result = ''
         for scratchpad in agent_scratchpad:

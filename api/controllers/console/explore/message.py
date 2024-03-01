@@ -24,7 +24,7 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
-from core.entities.application_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields

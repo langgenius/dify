@@ -7,13 +7,12 @@ from langchain.callbacks.manager import Callbacks
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Extra
 
+from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
 from core.entities.agent_entities import PlanningStrategy
-from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import prompt_messages_to_lc_messages
 from core.helper import moderation
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.errors.invoke import InvokeError
-from core.rag.retrieval.agent.agent_llm_callback import AgentLLMCallback
 from core.rag.retrieval.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
 from core.rag.retrieval.agent.output_parser.structured_chat import StructuredChatOutputParser
 from core.rag.retrieval.agent.structed_multi_dataset_router_agent import StructuredMultiDatasetRouterAgent
@@ -23,15 +22,14 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 
 class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
-    model_config: ModelConfigEntity
+    model_config: EasyUIBasedModelConfigEntity
     tools: list[BaseTool]
-    summary_model_config: Optional[ModelConfigEntity] = None
+    summary_model_config: Optional[EasyUIBasedModelConfigEntity] = None
     memory: Optional[TokenBufferMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
     max_execution_time: Optional[float] = None
     early_stopping_method: str = "generate"
-    agent_llm_callback: Optional[AgentLLMCallback] = None
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
 
     class Config:

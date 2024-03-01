@@ -1,6 +1,6 @@
 
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.entities.application_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import DatasetQuery, DocumentSegment

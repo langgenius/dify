@@ -8,13 +8,18 @@ from typing import Any, Optional, Union, cast
 from flask import Flask, current_app
 from pydantic import ValidationError
 
-from core.app.agent_chat.app_runner import AgentChatAppRunner
-from core.app.app_orchestration_config_converter import AppOrchestrationConfigConverter
+from core.app.app_config.easy_ui_based_app.model_config.converter import EasyUIBasedModelConfigEntityConverter
+from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, EasyUIBasedAppConfig, VariableEntity
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
+from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
-from core.app.chat.app_runner import ChatAppRunner
+from core.app.apps.chat.app_config_manager import ChatAppConfigManager
+from core.app.apps.chat.app_runner import ChatAppRunner
+from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
+from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.app.generate_task_pipeline import GenerateTaskPipeline
-from core.entities.application_entities import (
-    ApplicationGenerateEntity,
+from core.app.entities.app_invoke_entities import (
+    EasyUIBasedAppGenerateEntity,
     InvokeFrom,
 )
 from core.file.file_obj import FileObj
@@ -23,24 +28,19 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, Conversation, EndUser, Message, MessageFile
+from models.model import App, Conversation, EndUser, Message, MessageFile, AppMode, AppModelConfig
 
 logger = logging.getLogger(__name__)
 
 
-class AppManager:
-    """
-    This class is responsible for managing application
-    """
+class EasyUIBasedAppManager:
 
-    def generate(self, tenant_id: str,
-                 app_id: str,
-                 app_model_config_id: str,
-                 app_model_config_dict: dict,
-                 app_model_config_override: bool,
+    def generate(self, app_model: App,
+                 app_model_config: AppModelConfig,
                  user: Union[Account, EndUser],
                  invoke_from: InvokeFrom,
                  inputs: dict[str, str],
+                 app_model_config_dict: Optional[dict] = None,
                  query: Optional[str] = None,
                  files: Optional[list[FileObj]] = None,
                  conversation: Optional[Conversation] = None,
@@ -50,14 +50,12 @@ class AppManager:
         """
         Generate App response.
 
-        :param tenant_id: workspace ID
-        :param app_id: app ID
-        :param app_model_config_id: app model config id
-        :param app_model_config_dict: app model config dict
-        :param app_model_config_override: app model config override
+        :param app_model: App
+        :param app_model_config: app model config
         :param user: account or end user
         :param invoke_from: invoke from source
         :param inputs: inputs
+        :param app_model_config_dict: app model config dict
         :param query: query
         :param files: file obj list
         :param conversation: conversation
@@ -67,20 +65,21 @@ class AppManager:
         # init task id
         task_id = str(uuid.uuid4())
 
-        # init application generate entity
-        application_generate_entity = ApplicationGenerateEntity(
-            task_id=task_id,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            app_model_config_id=app_model_config_id,
+        # convert to app config
+        app_config = self.convert_to_app_config(
+            app_model=app_model,
+            app_model_config=app_model_config,
             app_model_config_dict=app_model_config_dict,
-            app_orchestration_config_entity=AppOrchestrationConfigConverter.convert_from_app_model_config_dict(
-                tenant_id=tenant_id,
-                app_model_config_dict=app_model_config_dict
-            ),
-            app_model_config_override=app_model_config_override,
+            conversation=conversation
+        )
+
+        # init application generate entity
+        application_generate_entity = EasyUIBasedAppGenerateEntity(
+            task_id=task_id,
+            app_config=app_config,
+            model_config=EasyUIBasedModelConfigEntityConverter.convert(app_config),
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs if conversation else inputs,
+            inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
             query=query.replace('\x00', '') if query else None,
             files=files if files else [],
             user_id=user.id,
@@ -89,7 +88,7 @@ class AppManager:
             extras=extras
         )
 
-        if not stream and application_generate_entity.app_orchestration_config_entity.agent:
+        if not stream and application_generate_entity.app_config.app_mode == AppMode.AGENT_CHAT:
             raise ValueError("Agent app is not supported in blocking mode.")
 
         # init generate records
@@ -128,8 +127,85 @@ class AppManager:
             stream=stream
         )
 
+    def convert_to_app_config(self, app_model: App,
+                              app_model_config: AppModelConfig,
+                              app_model_config_dict: Optional[dict] = None,
+                              conversation: Optional[Conversation] = None) -> EasyUIBasedAppConfig:
+        if app_model_config_dict:
+            config_from = EasyUIBasedAppModelConfigFrom.ARGS
+        elif conversation:
+            config_from = EasyUIBasedAppModelConfigFrom.CONVERSATION_SPECIFIC_CONFIG
+        else:
+            config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
+
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode == AppMode.AGENT_CHAT or app_model.is_agent:
+            app_model.mode = AppMode.AGENT_CHAT.value
+            app_config = AgentChatAppConfigManager.config_convert(
+                app_model=app_model,
+                config_from=config_from,
+                app_model_config=app_model_config,
+                config_dict=app_model_config_dict
+            )
+        elif app_mode == AppMode.CHAT:
+            app_config = ChatAppConfigManager.config_convert(
+                app_model=app_model,
+                config_from=config_from,
+                app_model_config=app_model_config,
+                config_dict=app_model_config_dict
+            )
+        elif app_mode == AppMode.COMPLETION:
+            app_config = CompletionAppConfigManager.config_convert(
+                app_model=app_model,
+                config_from=config_from,
+                app_model_config=app_model_config,
+                config_dict=app_model_config_dict
+            )
+        else:
+            raise ValueError("Invalid app mode")
+
+        return app_config
+
+    def _get_cleaned_inputs(self, user_inputs: dict, app_config: EasyUIBasedAppConfig):
+        if user_inputs is None:
+            user_inputs = {}
+
+        filtered_inputs = {}
+
+        # Filter input variables from form configuration, handle required fields, default values, and option values
+        variables = app_config.variables
+        for variable_config in variables:
+            variable = variable_config.variable
+
+            if variable not in user_inputs or not user_inputs[variable]:
+                if variable_config.required:
+                    raise ValueError(f"{variable} is required in input form")
+                else:
+                    filtered_inputs[variable] = variable_config.default if variable_config.default is not None else ""
+                    continue
+
+            value = user_inputs[variable]
+
+            if value:
+                if not isinstance(value, str):
+                    raise ValueError(f"{variable} in input form must be a string")
+
+            if variable_config.type == VariableEntity.Type.SELECT:
+                options = variable_config.options if variable_config.options is not None else []
+                if value not in options:
+                    raise ValueError(f"{variable} in input form must be one of the following: {options}")
+            else:
+                if variable_config.max_length is not None:
+                    max_length = variable_config.max_length
+                    if len(value) > max_length:
+                        raise ValueError(f'{variable} in input form must be less than {max_length} characters')
+
+            filtered_inputs[variable] = value.replace('\x00', '') if value else None
+
+        return filtered_inputs
+
     def _generate_worker(self, flask_app: Flask,
-                         application_generate_entity: ApplicationGenerateEntity,
+                         application_generate_entity: EasyUIBasedAppGenerateEntity,
                          queue_manager: AppQueueManager,
                          conversation_id: str,
                          message_id: str) -> None:
@@ -148,7 +224,7 @@ class AppManager:
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
 
-                if application_generate_entity.app_orchestration_config_entity.agent:
+                if application_generate_entity.app_config.app_mode == AppMode.AGENT_CHAT:
                     # agent app
                     runner = AgentChatAppRunner()
                     runner.run(
@@ -157,8 +233,8 @@ class AppManager:
                         conversation=conversation,
                         message=message
                     )
-                else:
-                    # basic app
+                elif application_generate_entity.app_config.app_mode == AppMode.CHAT:
+                    # chatbot app
                     runner = ChatAppRunner()
                     runner.run(
                         application_generate_entity=application_generate_entity,
@@ -166,6 +242,16 @@ class AppManager:
                         conversation=conversation,
                         message=message
                     )
+                elif application_generate_entity.app_config.app_mode == AppMode.COMPLETION:
+                    # completion app
+                    runner = CompletionAppRunner()
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        message=message
+                    )
+                else:
+                    raise ValueError("Invalid app mode")
             except ConversationTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
@@ -184,7 +270,7 @@ class AppManager:
             finally:
                 db.session.remove()
 
-    def _handle_response(self, application_generate_entity: ApplicationGenerateEntity,
+    def _handle_response(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
                          queue_manager: AppQueueManager,
                          conversation: Conversation,
                          message: Message,
@@ -217,24 +303,24 @@ class AppManager:
         finally:
             db.session.remove()
 
-    def _init_generate_records(self, application_generate_entity: ApplicationGenerateEntity) \
+    def _init_generate_records(self, application_generate_entity: EasyUIBasedAppGenerateEntity) \
             -> tuple[Conversation, Message]:
         """
         Initialize generate records
         :param application_generate_entity: application generate entity
         :return:
         """
-        app_orchestration_config_entity = application_generate_entity.app_orchestration_config_entity
-
-        model_type_instance = app_orchestration_config_entity.model_config.provider_model_bundle.model_type_instance
+        model_type_instance = application_generate_entity.model_config.provider_model_bundle.model_type_instance
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
         model_schema = model_type_instance.get_model_schema(
-            model=app_orchestration_config_entity.model_config.model,
-            credentials=app_orchestration_config_entity.model_config.credentials
+            model=application_generate_entity.model_config.model,
+            credentials=application_generate_entity.model_config.credentials
         )
 
+        app_config = application_generate_entity.app_config
+
         app_record = (db.session.query(App)
-                      .filter(App.id == application_generate_entity.app_id).first())
+                      .filter(App.id == app_config.app_id).first())
 
         app_mode = app_record.mode
 
@@ -249,8 +335,8 @@ class AppManager:
             account_id = application_generate_entity.user_id
 
         override_model_configs = None
-        if application_generate_entity.app_model_config_override:
-            override_model_configs = application_generate_entity.app_model_config_dict
+        if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS:
+            override_model_configs = app_config.app_model_config_dict
 
         introduction = ''
         if app_mode == 'chat':
@@ -260,9 +346,9 @@ class AppManager:
         if not application_generate_entity.conversation_id:
             conversation = Conversation(
                 app_id=app_record.id,
-                app_model_config_id=application_generate_entity.app_model_config_id,
-                model_provider=app_orchestration_config_entity.model_config.provider,
-                model_id=app_orchestration_config_entity.model_config.model,
+                app_model_config_id=app_config.app_model_config_id,
+                model_provider=application_generate_entity.model_config.provider,
+                model_id=application_generate_entity.model_config.model,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_mode,
                 name='New conversation',
@@ -291,8 +377,8 @@ class AppManager:
 
         message = Message(
             app_id=app_record.id,
-            model_provider=app_orchestration_config_entity.model_config.provider,
-            model_id=app_orchestration_config_entity.model_config.model,
+            model_provider=application_generate_entity.model_config.provider,
+            model_id=application_generate_entity.model_config.model,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=conversation.id,
             inputs=application_generate_entity.inputs,
@@ -311,7 +397,7 @@ class AppManager:
             from_source=from_source,
             from_end_user_id=end_user_id,
             from_account_id=account_id,
-            agent_based=app_orchestration_config_entity.agent is not None
+            agent_based=app_config.app_mode == AppMode.AGENT_CHAT,
         )
 
         db.session.add(message)
@@ -333,14 +419,14 @@ class AppManager:
 
         return conversation, message
 
-    def _get_conversation_introduction(self, application_generate_entity: ApplicationGenerateEntity) -> str:
+    def _get_conversation_introduction(self, application_generate_entity: EasyUIBasedAppGenerateEntity) -> str:
         """
         Get conversation introduction
         :param application_generate_entity: application generate entity
         :return: conversation introduction
         """
-        app_orchestration_config_entity = application_generate_entity.app_orchestration_config_entity
-        introduction = app_orchestration_config_entity.opening_statement
+        app_config = application_generate_entity.app_config
+        introduction = app_config.additional_features.opening_statement
 
         if introduction:
             try:

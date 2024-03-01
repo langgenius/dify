@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from core.entities.application_entities import ModelConfigEntity
+from core.app.app_config.entities import ModelConfigEntity
 from core.entities.provider_configuration import ProviderModelBundle
 from core.model_runtime.entities.message_entities import UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey, AIModelEntity, ParameterRule
