@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
+import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
 import { mockData } from './mock'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -8,7 +9,6 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import Switch from '@/app/components/base/switch'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.llm'
@@ -23,7 +23,7 @@ const Panel: FC = () => {
     handleCompletionParamsChange,
     handleVarListChange,
     handleAddVariable,
-    toggleContextEnabled,
+    handleContextVarChange,
     handleMemoryChange,
   } = useConfig(mockData)
   const model = inputs.model
@@ -63,21 +63,18 @@ const Panel: FC = () => {
           />
         </Field>
 
+        {/* knowledge */}
         <Field
           title={t(`${i18nPrefix}.context`)}
-          operations={
-            <Switch
-              defaultValue={inputs.context.enabled}
-              onChange={toggleContextEnabled}
-              size='md'
-            />
-          }
+          tooltip={t(`${i18nPrefix}.contextTooltip`)!}
         >
-          {inputs.context.enabled
-            ? (
-              <div>Context</div>
-            )
-            : null}
+          <VarReferencePicker
+            readonly={readOnly}
+            isShowNodeName
+            value={inputs.context.variable_selector}
+            onChange={handleContextVarChange}
+          />
+
         </Field>
 
         {/* Prompt */}

@@ -34,7 +34,7 @@ export const mockData: LLMNodeType = {
   },
   context: {
     enabled: false,
-    size: 0,
+    variable_selector: ['aaa', 'name'],
   },
   vision: {
     enabled: false,

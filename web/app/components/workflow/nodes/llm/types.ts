@@ -8,7 +8,7 @@ export type LLMNodeType = CommonNodeType & {
   memory: Memory
   context: {
     enabled: boolean
-    size: number
+    variable_selector: ValueSelector
   }
   vision: {
     enabled: boolean

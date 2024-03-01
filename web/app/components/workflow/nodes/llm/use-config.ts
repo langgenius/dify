@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
-import type { Memory } from '../../types'
+import type { Memory, ValueSelector } from '../../types'
 import type { LLMNodeType } from './types'
 
 const useConfig = (initInputs: LLMNodeType) => {
@@ -31,9 +31,9 @@ const useConfig = (initInputs: LLMNodeType) => {
   })
 
   // context
-  const toggleContextEnabled = useCallback(() => {
+  const handleContextVarChange = useCallback((newVar: ValueSelector) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.context.enabled = !draft.context.enabled
+      draft.context.variable_selector = newVar
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -51,7 +51,7 @@ const useConfig = (initInputs: LLMNodeType) => {
     handleCompletionParamsChange,
     handleVarListChange,
     handleAddVariable,
-    toggleContextEnabled,
+    handleContextVarChange,
     handleMemoryChange,
   }
 }

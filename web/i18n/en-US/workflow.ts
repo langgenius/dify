@@ -47,6 +47,7 @@ const translation = {
       model: 'model',
       variables: 'variables',
       context: 'context',
+      contextTooltip: 'You can import Knowledge as context',
       prompt: 'prompt',
       vision: 'vision',
       outputVars: {
