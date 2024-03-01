@@ -25,16 +25,16 @@ parameters:
       zh_Hans: 群机器人webhook的key
       pt_BR: Wecom Group bot webhook key
     form: form
-  - name: text
+  - name: content
     type: string
     required: true
     label:
-      en_US: text
-      zh_Hans: 消息文本
-      pt_BR: text
+      en_US: content
+      zh_Hans: 消息内容
+      pt_BR: content
     human_description:
-      en_US: Text to sent to the group.
+      en_US: Content to sent to the group.
       zh_Hans: 群消息文本
-      pt_BR: Text to sent to the group.
-    llm_description: Text to sent in the message.
+      pt_BR: Content to sent to the group.
+    llm_description: Content of the message
     form: llm

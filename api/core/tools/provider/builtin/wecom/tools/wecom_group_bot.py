@@ -12,9 +12,9 @@ class WecomRepositoriesTool(BuiltinTool):
         """
             invoke tools
         """
-        text = tool_parameters.get('text', '')
-        if not text:
-            return self.create_text_message('Invalid parameter text')
+        content = tool_parameters.get('content', '')
+        if not content:
+            return self.create_text_message('Invalid parameter content')
 
         hook_key = tool_parameters.get('hook_key', '')
         if not hook_key:
@@ -31,7 +31,7 @@ class WecomRepositoriesTool(BuiltinTool):
         payload = {
             "msgtype": msgtype,
             "text": {
-                "content": text,
+                "content": content,
             }
         }
 
