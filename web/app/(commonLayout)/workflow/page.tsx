@@ -8,13 +8,13 @@ const initialNodes = [
   {
     id: '1',
     type: 'custom',
-    position: { x: 130, y: 130 },
+    position: { x: 0, y: 0 },
     data: { type: 'start' },
   },
   {
     id: '2',
     type: 'custom',
-    position: { x: 434, y: 130 },
+    position: { x: 0, y: 0 },
     data: {
       type: 'if-else',
       branches: [
@@ -32,21 +32,28 @@ const initialNodes = [
   {
     id: '3',
     type: 'custom',
-    position: { x: 738, y: 130 },
+    position: { x: 0, y: 0 },
     data: { type: 'question-classifier', sortIndexInBranches: 0 },
   },
   {
     id: '4',
     type: 'custom',
-    position: { x: 738, y: 330 },
-    data: { type: 'variable-assigner', sortIndexInBranches: 1 },
+    position: { x: 0, y: 0 },
+    data: {
+      type: 'if-else',
+      sortIndexInBranches: 1,
+      branches: [
+        {
+          id: 'if-true',
+          name: 'IS TRUE',
+        },
+        {
+          id: 'if-false',
+          name: 'IS FALSE',
+        },
+      ],
+    },
   },
-  // {
-  //   id: '5',
-  //   type: 'custom',
-  //   position: { x: 1100, y: 130 },
-  //   data: { type: 'llm' },
-  // },
 ]
 
 const initialEdges = [
@@ -57,7 +64,6 @@ const initialEdges = [
     sourceHandle: 'source',
     target: '2',
     targetHandle: 'target',
-    deletable: false,
   },
   {
     id: '1',

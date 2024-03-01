@@ -16,9 +16,31 @@ import type {
   SelectedNode,
 } from './types'
 import { NodeInitialData } from './constants'
+import { getLayoutByDagre } from './utils'
 
 export const useWorkflow = () => {
   const store = useStoreApi()
+
+  const handleLayout = useCallback(async () => {
+    const {
+      getNodes,
+      edges,
+      setNodes,
+    } = store.getState()
+
+    const layout = getLayoutByDagre(getNodes(), edges)
+
+    const newNodes = produce(getNodes(), (draft) => {
+      draft.forEach((node) => {
+        const nodeWithPosition = layout.node(node.id)
+        node.position = {
+          x: nodeWithPosition.x,
+          y: nodeWithPosition.y,
+        }
+      })
+    })
+    setNodes(newNodes)
+  }, [store])
 
   const handleEnterNode = useCallback<NodeMouseHandler>((_, node) => {
     const {
@@ -112,7 +134,8 @@ export const useWorkflow = () => {
       return filtered
     })
     setEdges(newEdges)
-  }, [store])
+    handleLayout()
+  }, [store, handleLayout])
 
   const handleEnterEdge = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
@@ -152,7 +175,8 @@ export const useWorkflow = () => {
         draft.splice(index, 1)
     })
     setEdges(newEdges)
-  }, [store])
+    handleLayout()
+  }, [store, handleLayout])
 
   const handleUpdateNodeData = useCallback(({ id, data }: SelectedNode) => {
     const {
@@ -182,7 +206,7 @@ export const useWorkflow = () => {
       data: NodeInitialData[nodeType],
       position: {
         x: currentNode.position.x + 304,
-        y: currentNode.position.y,
+        y: 0,
       },
       selected: true,
     }
@@ -289,5 +313,6 @@ export const useWorkflow = () => {
     handleAddNextNode,
     handleChangeCurrentNode,
     handleDeleteNode,
+    handleLayout,
   }
 }

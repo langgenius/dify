@@ -1,0 +1,3 @@
+.react-flow__node {
+  transition: transform 0.2s ease-in-out;
+}

@@ -9,6 +9,7 @@ import ReactFlow, {
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
+import './style.css'
 import type {
   Edge,
   Node,
@@ -41,11 +42,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
   const nodesInitialized = useNodesInitialized()
 
-  useEffect(() => {
-    if (nodesInitialized)
-      console.log('initialed')
-  }, [nodesInitialized])
-
   const {
     handleEnterNode,
     handleLeaveNode,
@@ -53,7 +49,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEnterEdge,
     handleLeaveEdge,
     handleDeleteEdge,
+    handleLayout,
   } = useWorkflow()
+
+  useEffect(() => {
+    if (nodesInitialized)
+      handleLayout()
+  }, [nodesInitialized, handleLayout])
 
   useKeyPress('Backspace', handleDeleteEdge)
 

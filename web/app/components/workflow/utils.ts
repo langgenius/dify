@@ -3,6 +3,7 @@ import {
   getConnectedEdges,
   getOutgoers,
 } from 'reactflow'
+import dagre from 'dagre'
 import type {
   Edge,
   Node,
@@ -117,4 +118,27 @@ export const getNodesPositionMap = (nodes: Node[], edges: Edge[]) => {
   }
 
   return positionMap
+}
+
+export const getLayoutByDagre = (nodes: Node[], edges: Edge[]) => {
+  const dagreGraph = new dagre.graphlib.Graph()
+  dagreGraph.setGraph({
+    rankdir: 'LR',
+    align: 'UL',
+    nodesep: 40,
+    ranksep: 64,
+  })
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: node.width, height: node.height })
+  })
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target, {
+      weight: edge?.data?.weight || 1,
+    })
+  })
+
+  dagre.layout(dagreGraph)
+
+  return dagreGraph
 }
