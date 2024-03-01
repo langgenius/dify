@@ -8,6 +8,7 @@
       "error",
       "type"
     ],
+    "@typescript-eslint/no-var-requires": "off",
     "no-console": "off",
     "indent": "off",
     "@typescript-eslint/indent": [

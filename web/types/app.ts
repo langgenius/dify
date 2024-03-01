@@ -1,6 +1,6 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/utils/language'
+import type { LanguagesSupported } from '@/i18n/language'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -155,6 +155,8 @@ export type ModelConfig = {
   }
   text_to_speech: {
     enabled: boolean
+    voice?: string
+    language?: string
   }
   retriever_resource: {
     enabled: boolean

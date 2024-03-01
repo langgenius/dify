@@ -153,18 +153,18 @@ const AgentTools: FC = () => {
                   )
                   : (
                     <div className='hidden group-hover:flex items-center'>
-                      {item.provider_type === CollectionType.builtIn && (
-                        <TooltipPlus
-                          popupContent={t('tools.setBuiltInTools.infoAndSetting')}
-                        >
-                          <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
-                            setCurrentTool(item)
-                            setIsShowSettingTool(true)
-                          }}>
-                            <InfoCircle className='w-4 h-4 text-gray-500' />
-                          </div>
-                        </TooltipPlus>
-                      )}
+                      {/* {item.provider_type === CollectionType.builtIn && ( */}
+                      <TooltipPlus
+                        popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                      >
+                        <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                          setCurrentTool(item)
+                          setIsShowSettingTool(true)
+                        }}>
+                          <InfoCircle className='w-4 h-4 text-gray-500' />
+                        </div>
+                      </TooltipPlus>
+                      {/* )} */}
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {
@@ -209,6 +209,7 @@ const AgentTools: FC = () => {
             toolName={currentTool?.tool_name as string}
             setting={currentTool?.tool_parameters as any}
             collection={currentTool?.collection as Collection}
+            isBuiltIn={currentTool?.collection?.type === CollectionType.builtIn}
             onSave={handleToolSettingChange}
             onHide={() => setIsShowSettingTool(false)}
           />)

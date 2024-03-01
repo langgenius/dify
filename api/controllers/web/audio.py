@@ -68,17 +68,23 @@ class AudioApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception(f"internal server error: {str(e)}")
             raise InternalServerError()
 
 
 class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
+        app_model_config: AppModelConfig = app_model.app_model_config
+
+        if not app_model_config.text_to_speech_dict['enabled']:
+            raise AppUnavailableError()
+
         try:
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=request.form['text'],
                 end_user=end_user.external_user_id,
+                voice=app_model.app_model_config.text_to_speech_dict.get('voice'),
                 streaming=False
             )
 
@@ -105,7 +111,7 @@ class TextApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception(f"internal server error: {str(e)}")
             raise InternalServerError()
 
 

@@ -1,0 +1,10 @@
+identity:
+  author: Yash Parmar
+  name: arxiv
+  label:
+    en_US: ArXiv
+    zh_Hans: ArXiv
+  description:
+    en_US: Access to a vast repository of scientific papers and articles in various fields of research.
+    zh_Hans: 访问各个研究领域大量科学论文和文章的存储库。
+  icon: icon.svg

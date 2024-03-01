@@ -113,6 +113,9 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
+            if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
+                raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
+            
             server_url = credentials['server_url']
             model_uid = credentials['model_uid']
             extra_args = XinferenceHelper.get_xinference_extra_parameter(server_url=server_url, model_uid=model_uid)

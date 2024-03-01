@@ -10,11 +10,13 @@ import { textToAudio } from '@/service/share'
 type AudioBtnProps = {
   value: string
   className?: string
+  isAudition?: boolean
 }
 
 const AudioBtn = ({
   value,
   className,
+  isAudition,
 }: AudioBtnProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -97,10 +99,10 @@ const AudioBtn = ({
         className='z-10'
       >
         <div
-          className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
-          style={{ boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)' }}
+          className={`box-border p-0.5 flex items-center justify-center cursor-pointer ${isAudition || 'rounded-md bg-white'}`}
+          style={{ boxShadow: !isAudition ? '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)' : '' }}
           onClick={togglePlayPause}>
-          <div className={`w-6 h-6 rounded-md hover:bg-gray-50 ${!isPause ? ((isPlaying && !hasEnded) ? s.playIcon : s.stopIcon) : s.pauseIcon}`}></div>
+          <div className={`w-6 h-6 rounded-md ${!isAudition ? 'hover:bg-gray-200' : 'hover:bg-gray-50'} ${!isPause ? ((isPlaying && !hasEnded) ? s.playIcon : s.stopIcon) : s.pauseIcon}`}></div>
         </div>
       </Tooltip>
     </div>

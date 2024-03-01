@@ -65,7 +65,7 @@ const FormGeneration: FC<FormGenerationProps> = ({
                     }
                   })}
                   onSelect={item => handleFormChange(form.variable, item.value as string)}
-                  popupClassName='w-[576px]'
+                  popupClassName='w-[576px] !z-[102]'
                 />
               )
             }

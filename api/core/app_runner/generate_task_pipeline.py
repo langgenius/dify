@@ -175,7 +175,7 @@ class GenerateTaskPipeline:
                     'id': self._message.id,
                     'message_id': self._message.id,
                     'mode': self._conversation.mode,
-                    'answer': event.llm_result.message.content,
+                    'answer': self._task_state.llm_result.message.content,
                     'metadata': {},
                     'created_at': int(self._message.created_at.timestamp())
                 }

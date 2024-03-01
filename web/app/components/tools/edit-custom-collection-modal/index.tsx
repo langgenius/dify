@@ -8,7 +8,7 @@ import { clone } from 'lodash-es'
 import cn from 'classnames'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
-import { AuthType } from '../types'
+import { AuthHeaderPrefix, AuthType } from '../types'
 import GetSchema from './get-schema'
 import ConfigCredentials from './config-credentials'
 import TestApi from './test-api'
@@ -37,6 +37,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const { t } = useTranslation()
   const isAdd = !payload
   const isEdit = !!payload
+
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
@@ -44,6 +45,8 @@ const EditCustomCollectionModal: FC<Props> = ({
       provider: '',
       credentials: {
         auth_type: AuthType.none,
+        api_key_header: 'Authorization',
+        api_key_header_prefix: AuthHeaderPrefix.basic,
       },
       icon: {
         content: '🕵️',
@@ -115,6 +118,13 @@ const EditCustomCollectionModal: FC<Props> = ({
   const handleSave = () => {
     const postData = clone(customCollection)
     delete postData.tools
+
+    if (postData.credentials.auth_type === AuthType.none) {
+      delete postData.credentials.api_key_header
+      delete postData.credentials.api_key_header_prefix
+      delete postData.credentials.api_key_value
+    }
+
     if (isAdd) {
       onAdd?.(postData)
       return

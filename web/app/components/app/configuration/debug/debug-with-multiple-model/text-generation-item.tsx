@@ -61,6 +61,11 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     sensitive_word_avoidance: moderationConfig,
     external_data_tools: externalDataToolsConfig,
     more_like_this: moreLikeThisConfig,
+    text_to_speech: {
+      enabled: false,
+      voice: '',
+      language: '',
+    },
     agent_mode: {
       enabled: false,
       tools: [],
