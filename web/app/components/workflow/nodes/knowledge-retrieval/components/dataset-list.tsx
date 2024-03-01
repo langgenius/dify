@@ -21,6 +21,15 @@ const DatasetList: FC<Props> = ({
       onChange(newList)
     }
   }, [])
+
+  const handleChange = useCallback((index: number) => {
+    return (value: DataSet) => {
+      const newList = produce(list, (draft) => {
+        draft[index] = value
+      })
+      onChange(newList)
+    }
+  }, [list, onChange])
   return (
     <div className='space-y-1'>
       {
@@ -30,6 +39,7 @@ const DatasetList: FC<Props> = ({
               key={index}
               payload={item}
               onRemove={handleRemove(index)}
+              onChange={handleChange(index)}
             />
           )
         })
