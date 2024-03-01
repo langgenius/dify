@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.app.app_config.entities import PromptTemplateEntity, AdvancedCompletionPromptTemplateEntity
+from core.app.app_config.entities import AdvancedCompletionPromptTemplateEntity, PromptTemplateEntity
 from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory

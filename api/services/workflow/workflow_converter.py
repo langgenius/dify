@@ -1,8 +1,15 @@
 import json
 from typing import Optional
 
-from core.app.app_config.entities import VariableEntity, ExternalDataVariableEntity, DatasetEntity, \
-    DatasetRetrieveConfigEntity, ModelConfigEntity, PromptTemplateEntity, FileUploadEntity
+from core.app.app_config.entities import (
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    ExternalDataVariableEntity,
+    FileUploadEntity,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+    VariableEntity,
+)
 from core.app.app_manager import EasyUIBasedAppManager
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode

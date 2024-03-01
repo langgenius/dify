@@ -9,26 +9,26 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import EasyUIBasedModelConfigEntityConverter
-from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, EasyUIBasedAppConfig, VariableEntity
+from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom, VariableEntity
+from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
-from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.app.apps.completion.app_runner import CompletionAppRunner
-from core.app.generate_task_pipeline import GenerateTaskPipeline
 from core.app.entities.app_invoke_entities import (
     EasyUIBasedAppGenerateEntity,
     InvokeFrom,
 )
+from core.app.generate_task_pipeline import GenerateTaskPipeline
 from core.file.file_obj import FileObj
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, Conversation, EndUser, Message, MessageFile, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 
 logger = logging.getLogger(__name__)
 
