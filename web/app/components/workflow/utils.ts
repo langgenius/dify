@@ -125,7 +125,7 @@ export const getLayoutByDagre = (nodes: Node[], edges: Edge[]) => {
   dagreGraph.setGraph({
     rankdir: 'LR',
     align: 'UL',
-    nodesep: 40,
+    nodesep: 64,
     ranksep: 64,
   })
   nodes.forEach((node) => {
@@ -141,4 +141,15 @@ export const getLayoutByDagre = (nodes: Node[], edges: Edge[]) => {
   dagre.layout(dagreGraph)
 
   return dagreGraph
+}
+
+export const canRunBySingle = (nodeType: BlockEnum) => {
+  return nodeType === BlockEnum.LLM
+    || nodeType === BlockEnum.KnowledgeRetrieval
+    || nodeType === BlockEnum.IfElse
+    || nodeType === BlockEnum.Code
+    || nodeType === BlockEnum.TemplateTransform
+    || nodeType === BlockEnum.QuestionClassifier
+    || nodeType === BlockEnum.HttpRequest
+    || nodeType === BlockEnum.Tool
 }

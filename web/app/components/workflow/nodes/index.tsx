@@ -2,6 +2,7 @@ import { memo } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { Node } from '../types'
 import { BlockEnum } from '../types'
+import { canRunBySingle } from '../utils'
 import {
   NodeComponentMap,
   PanelComponentMap,
@@ -12,6 +13,7 @@ import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from './_base/components/node-handle'
+import NodeControl from './_base/components/node-control'
 
 const CustomNode = memo((props: NodeProps) => {
   const nodeData = props.data
@@ -38,6 +40,13 @@ const CustomNode = memo((props: NodeProps) => {
             handleClassName='!top-[17px] !-right-2'
             handleId='source'
           />
+        )
+      }
+      {
+        nodeData.hovering
+        && canRunBySingle(nodeData.type)
+        && (
+          <NodeControl />
         )
       }
     </>

@@ -9,7 +9,6 @@ import {
 import type { NodeProps } from 'reactflow'
 import BlockIcon from '../../block-icon'
 import { useWorkflow } from '../../hooks'
-import NodeControl from './components/node-control'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -32,7 +31,6 @@ const BaseNode: FC<BaseNodeProps> = ({
       `}
       onClick={() => handleSelectNode(id)}
     >
-      <NodeControl />
       <div className='flex items-center px-3 pt-3 pb-2'>
         <BlockIcon
           className='shrink-0 mr-2'

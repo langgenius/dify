@@ -206,7 +206,7 @@ export const useWorkflow = () => {
       data: NodeInitialData[nodeType],
       position: {
         x: currentNode.position.x + 304,
-        y: 0,
+        y: currentNode.position.y,
       },
       selected: true,
     }
