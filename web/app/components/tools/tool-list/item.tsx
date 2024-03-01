@@ -63,7 +63,7 @@ const Item: FC<Props> = ({
           )}
         </div>
       </div>
-      {showDetail && isBuiltIn && (
+      {showDetail && (
         <SettingBuiltInTool
           collection={collection}
           toolName={payload.name}
@@ -71,6 +71,7 @@ const Item: FC<Props> = ({
           onHide={() => {
             setShowDetail(false)
           }}
+          isBuiltIn={isBuiltIn}
         />
       )}
     </>

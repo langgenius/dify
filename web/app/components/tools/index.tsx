@@ -69,9 +69,22 @@ const Tools: FC<Props> = ({
   })()
 
   const [query, setQuery] = useState('')
-  const [collectionType, setCollectionType] = useTabSearchParams({
+  const [toolPageCollectionType, setToolPageCollectionType] = useTabSearchParams({
     defaultTab: collectionTypeOptions[0].value,
   })
+  const [appPageCollectionType, setAppPageCollectionType] = useState(collectionTypeOptions[0].value)
+  const { collectionType, setCollectionType } = (() => {
+    if (isInToolsPage) {
+      return {
+        collectionType: toolPageCollectionType,
+        setCollectionType: setToolPageCollectionType,
+      }
+    }
+    return {
+      collectionType: appPageCollectionType,
+      setCollectionType: setAppPageCollectionType,
+    }
+  })()
 
   const showCollectionList = (() => {
     let typeFilteredList: Collection[] = []

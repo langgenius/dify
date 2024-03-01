@@ -8,14 +8,17 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import { fetchBuiltInToolList } from '@/service/tools'
+import { fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
 import { getLanguage } from '@/i18n/language'
+import AppIcon from '@/app/components/base/app-icon'
+
 type Props = {
   collection: Collection
+  isBuiltIn?: boolean
   toolName: string
   setting?: Record<string, any>
   readonly?: boolean
@@ -25,6 +28,7 @@ type Props = {
 
 const SettingBuiltInTool: FC<Props> = ({
   collection,
+  isBuiltIn = true,
   toolName,
   setting = {},
   readonly,
@@ -52,7 +56,7 @@ const SettingBuiltInTool: FC<Props> = ({
     (async () => {
       setIsLoading(true)
       try {
-        const list = await fetchBuiltInToolList(collection.name)
+        const list = isBuiltIn ? await fetchBuiltInToolList(collection.name) : await fetchCustomToolList(collection.name)
         setTools(list)
         const currTool = list.find(tool => tool.name === toolName)
         if (currTool) {
@@ -135,12 +139,24 @@ const SettingBuiltInTool: FC<Props> = ({
       onHide={onHide}
       title={(
         <div className='flex'>
-          <div
-            className='w-6 h-6 bg-cover bg-center rounded-md'
-            style={{
-              backgroundImage: `url(${collection.icon})`,
-            }}
-          ></div>
+          {collection.icon === 'string'
+            ? (
+              <div
+                className='w-6 h-6 bg-cover bg-center rounded-md'
+                style={{
+                  backgroundImage: `url(${collection.icon})`,
+                }}
+              ></div>
+            )
+            : (
+              <AppIcon
+                className='rounded-md'
+                size='tiny'
+                icon={(collection.icon as any)?.content}
+                background={(collection.icon as any)?.background}
+              />
+            )}
+
           <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{currTool?.label[language]}</div>
           {(hasSetting && !readonly) && (<>
             <DiagonalDividingLine className='mx-4' />
