@@ -13,6 +13,7 @@ from dashscope.common.error import (
 )
 from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
 
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -57,6 +58,88 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         """
         # invoke model
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
+    
+    def _code_block_mode_wrapper(self, model: str, credentials: dict, 
+                                 prompt_messages: list[PromptMessage], model_parameters: dict, 
+                                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+                                 stream: bool = True, user: str | None = None, callbacks: list[Callback] = None) \
+                            -> LLMResult | Generator:
+        """
+        Wrapper for code block mode
+        """
+        block_prompts = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+<instructions>
+{{instructions}}
+</instructions>
+"""
+
+        code_block = model_parameters.get("response_format", "")
+        if not code_block:
+            return self._invoke(
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                model_parameters=model_parameters,
+                tools=tools,
+                stop=stop,
+                stream=stream,
+                user=user
+            )
+        
+        model_parameters.pop("response_format")
+        stop = stop or []
+        stop.extend(["\n```", "```\n"])
+        block_prompts = block_prompts.replace("{{block}}", code_block)
+
+        # check if there is a system message
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+            # override the system message
+            prompt_messages[0] = SystemPromptMessage(
+                content=block_prompts
+                    .replace("{{instructions}}", prompt_messages[0].content)
+            )
+        else:
+            # insert the system message
+            prompt_messages.insert(0, SystemPromptMessage(
+                content=block_prompts
+                    .replace("{{instructions}}", f"Please output a valid {code_block} object.")
+            ))
+
+        mode = self.get_model_mode(model, credentials)
+        if mode == LLMMode.CHAT:
+            if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+                # add ```JSON\n to the last message
+                prompt_messages[-1].content += f"\n```{code_block}\n"
+            else:
+                # append a user message
+                prompt_messages.append(UserPromptMessage(
+                    content=f"```{code_block}\n"
+                ))
+        else:
+            prompt_messages.append(AssistantPromptMessage(content=f"```{code_block}\n"))
+
+        response = self._invoke(
+            model=model,
+            credentials=credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            user=user
+        )
+
+        if isinstance(response, Generator):
+            return self._code_block_mode_stream_processor_with_backtick(
+                model=model,
+                prompt_messages=prompt_messages,
+                input_generator=response
+            )
+        
+        return response
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -117,7 +200,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         """
         extra_model_kwargs = {}
         if stop:
-            extra_model_kwargs['stop_sequences'] = stop
+            extra_model_kwargs['stop'] = stop
 
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -131,7 +214,8 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         params = {
             'model': model,
             **model_parameters,
-            **credentials_kwargs
+            **credentials_kwargs,
+            **extra_model_kwargs,
         }
 
         mode = self.get_model_mode(model, credentials)

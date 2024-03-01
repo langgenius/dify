@@ -35,9 +35,6 @@ parameter_rules:
         the same result. Determinism is not guaranteed, and you should refer to the
         system_fingerprint response parameter to monitor changes in the backend.
     required: false
-    precision: 2
-    min: 0
-    max: 1
   - name: response_format
     label:
       zh_Hans: 回复格式

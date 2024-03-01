@@ -115,6 +115,11 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
   }
 
+  useEffect(() => {
+    if ((parameterRule.type === 'int' || parameterRule.type === 'float') && numberInputRef.current)
+      numberInputRef.current.value = `${renderValue}`
+  }, [value])
+
   const renderInput = () => {
     const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
     && !isNullOrUndefined(parameterRule.min)
@@ -206,11 +211,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
     return null
   }
-
-  useEffect(() => {
-    if (numberInputRef.current)
-      numberInputRef.current.value = `${renderValue}`
-  }, [])
 
   return (
     <div className={`flex items-center justify-between ${className}`}>

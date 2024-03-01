@@ -8,8 +8,7 @@ import type { Collection } from '../types'
 import { CollectionType, LOC } from '../types'
 import { Settings01 } from '../../base/icons/src/vender/line/general'
 import I18n from '@/context/i18n'
-import { getModelRuntimeSupported } from '@/utils/language'
-
+import { getLanguage } from '@/i18n/language'
 type Props = {
   icon: JSX.Element
   collection: Collection
@@ -26,7 +25,7 @@ const Header: FC<Props> = ({
   onShowEditCustomCollection,
 }) => {
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+  const language = getLanguage(locale)
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage

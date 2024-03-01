@@ -18,7 +18,7 @@ import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
 import { Plus, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
-const MAX_QUESTION_NUM = 3
+const MAX_QUESTION_NUM = 5
 
 export type IOpeningStatementProps = {
   value: string

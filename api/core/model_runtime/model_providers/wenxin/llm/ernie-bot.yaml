@@ -34,3 +34,5 @@ parameter_rules:
       zh_Hans: 禁用模型自行进行外部搜索。
       en_US: Disable the model to perform external search.
     required: false
+  - name: response_format
+    use_template: response_format

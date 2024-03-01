@@ -3,11 +3,13 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import Tooltip from '../../base/tooltip'
+import { HelpCircle } from '../../base/icons/src/vender/line/general'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Radio from '@/app/components/base/radio/ui'
-import { AuthType } from '@/app/components/tools/types'
+import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = {
   credential: Credential
@@ -18,9 +20,9 @@ const keyClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 
 type ItemProps = {
   text: string
-  value: AuthType
+  value: AuthType | AuthHeaderPrefix
   isChecked: boolean
-  onClick: (value: AuthType) => void
+  onClick: (value: AuthType | AuthHeaderPrefix) => void
 }
 
 const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
@@ -31,7 +33,6 @@ const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
     >
       <Radio isChecked={isChecked} />
       <div className='text-sm font-normal text-gray-900'>{text}</div>
-
     </div>
   )
 }
@@ -43,6 +44,7 @@ const ConfigCredential: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [tempCredential, setTempCredential] = React.useState<Credential>(credential)
+
   return (
     <Drawer
       isShow
@@ -62,32 +64,74 @@ const ConfigCredential: FC<Props> = ({
                   text={t('tools.createTool.authMethod.types.none')}
                   value={AuthType.none}
                   isChecked={tempCredential.auth_type === AuthType.none}
-                  onClick={value => setTempCredential({ ...tempCredential, auth_type: value })}
+                  onClick={value => setTempCredential({ ...tempCredential, auth_type: value as AuthType })}
                 />
                 <SelectItem
                   text={t('tools.createTool.authMethod.types.api_key')}
                   value={AuthType.apiKey}
                   isChecked={tempCredential.auth_type === AuthType.apiKey}
-                  onClick={value => setTempCredential({ ...tempCredential, auth_type: value })}
+                  onClick={value => setTempCredential({
+                    ...tempCredential,
+                    auth_type: value as AuthType,
+                    api_key_header: tempCredential.api_key_header || 'Authorization',
+                    api_key_value: tempCredential.api_key_value || '',
+                    api_key_header_prefix: tempCredential.api_key_header_prefix || AuthHeaderPrefix.custom,
+                  })}
                 />
               </div>
             </div>
             {tempCredential.auth_type === AuthType.apiKey && (
               <>
+                <div className={keyClassNames}>{t('tools.createTool.authHeaderPrefix.title')}</div>
+                <div className='flex space-x-3'>
+                  <SelectItem
+                    text={t('tools.createTool.authHeaderPrefix.types.basic')}
+                    value={AuthHeaderPrefix.basic}
+                    isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic}
+                    onClick={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value as AuthHeaderPrefix })}
+                  />
+                  <SelectItem
+                    text={t('tools.createTool.authHeaderPrefix.types.bearer')}
+                    value={AuthHeaderPrefix.bearer}
+                    isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer}
+                    onClick={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value as AuthHeaderPrefix })}
+                  />
+                  <SelectItem
+                    text={t('tools.createTool.authHeaderPrefix.types.custom')}
+                    value={AuthHeaderPrefix.custom}
+                    isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}
+                    onClick={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value as AuthHeaderPrefix })}
+                  />
+                </div>
                 <div>
-                  <div className={keyClassNames}>{t('tools.createTool.authMethod.key')}</div>
+                  <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
+                    {t('tools.createTool.authMethod.key')}
+                    <Tooltip
+                      selector='model-page-system-reasoning-model-tip'
+                      htmlContent={
+                        <div className='w-[261px] text-gray-500'>
+                          {t('tools.createTool.authMethod.keyTooltip')}
+                        </div>
+                      }
+                    >
+                      <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                    </Tooltip>
+                  </div>
                   <input
                     value={tempCredential.api_key_header}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
+                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+                    placeholder={t('tools.createTool.authMethod.types.apiKeyPlaceholder')!}
+                  />
                 </div>
-
                 <div>
                   <div className={keyClassNames}>{t('tools.createTool.authMethod.value')}</div>
                   <input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
+                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+                    placeholder={t('tools.createTool.authMethod.types.apiValuePlaceholder')!}
+                  />
                 </div>
               </>)}
 

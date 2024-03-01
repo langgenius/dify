@@ -92,6 +92,9 @@ class XinferenceRerankModel(RerankModel):
         :return:
         """
         try:
+            if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
+                raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
+            
             self.invoke(
                 model=model,
                 credentials=credentials,

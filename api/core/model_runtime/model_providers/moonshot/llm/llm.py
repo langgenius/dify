@@ -13,6 +13,7 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
+        user = user[:32] if user else None
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:

@@ -28,7 +28,7 @@ class BuiltinToolProviderController(ToolProviderController):
         provider = self.__class__.__module__.split('.')[-1]
         yaml_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.yaml')
         try:
-            with open(yaml_path) as f:
+            with open(yaml_path, 'rb') as f:
                 provider_yaml = load(f.read(), FullLoader)
         except:
             raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}')
@@ -58,7 +58,7 @@ class BuiltinToolProviderController(ToolProviderController):
         tool_files = list(filter(lambda x: x.endswith(".yaml") and not x.startswith("__"), listdir(tool_path)))
         tools = []
         for tool_file in tool_files:
-            with open(path.join(tool_path, tool_file)) as f:
+            with open(path.join(tool_path, tool_file), encoding='utf-8') as f:
                 # get tool name
                 tool_name = tool_file.split(".")[0]
                 tool = load(f.read(), FullLoader)

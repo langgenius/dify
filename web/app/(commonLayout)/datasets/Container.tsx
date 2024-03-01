@@ -1,7 +1,7 @@
 'use client'
 
 // Libraries
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 
@@ -15,6 +15,9 @@ import TabSlider from '@/app/components/base/tab-slider'
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
+// Hooks
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+
 const Container = () => {
   const { t } = useTranslation()
 
@@ -23,7 +26,9 @@ const Container = () => {
     { value: 'api', text: t('dataset.datasetsApi') },
   ]
 
-  const [activeTab, setActiveTab] = useState('dataset')
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: 'dataset',
+  })
   const containerRef = useRef<HTMLDivElement>(null)
   const { data } = useSWR(activeTab === 'dataset' ? null : '/datasets/api-base-info', fetchDatasetApiBaseUrl)
 

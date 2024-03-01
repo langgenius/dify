@@ -89,6 +89,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           onChosen={() => onChange({
             ...value,
             search_method: RETRIEVE_METHOD.hybrid,
+            reranking_enable: true,
           })}
           chosenConfig={
             <RetrievalParamConfig

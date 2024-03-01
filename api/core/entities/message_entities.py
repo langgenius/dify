@@ -41,7 +41,7 @@ class ImagePromptMessageFile(PromptMessageFile):
 
 
 class LCHumanMessageWithFiles(HumanMessage):
-    # content: Union[str, List[Union[str, Dict]]]
+    # content: Union[str, list[Union[str, Dict]]]
     content: str
     files: list[PromptMessageFile]
 
