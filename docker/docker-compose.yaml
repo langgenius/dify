@@ -314,4 +314,4 @@ services:
       - api
       - web
     ports:
-      - "80:80"
+      - "4000:80"
