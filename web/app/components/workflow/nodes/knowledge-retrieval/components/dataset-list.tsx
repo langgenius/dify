@@ -22,7 +22,7 @@ const DatasetList: FC<Props> = ({
     }
   }, [])
   return (
-    <div>
+    <div className='space-y-1'>
       {
         list.map((item, index) => {
           return (

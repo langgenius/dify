@@ -37,7 +37,6 @@ const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
       if (datasetIds?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
         setSelectedDatasets(dataSetsWithDetail)
-        console.log(dataSetsWithDetail)
       }
     })()
   }, [])
