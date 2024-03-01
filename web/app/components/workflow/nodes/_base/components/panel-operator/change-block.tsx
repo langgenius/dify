@@ -12,11 +12,11 @@ type ChangeBlockProps = {
 const ChangeBlock = ({
   nodeId,
 }: ChangeBlockProps) => {
-  const { handleChangeCurrentNode } = useWorkflow()
+  const { handleNodeChange } = useWorkflow()
 
   const handleSelect = useCallback((type: BlockEnum) => {
-    handleChangeCurrentNode(nodeId, type)
-  }, [handleChangeCurrentNode, nodeId])
+    handleNodeChange(nodeId, type)
+  }, [handleNodeChange, nodeId])
 
   const renderTrigger = useCallback(() => {
     return (

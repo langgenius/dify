@@ -1,15 +1,18 @@
 import type { FC } from 'react'
-import { memo, useEffect } from 'react'
+import {
+  memo,
+  // useEffect,
+} from 'react'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
   useEdgesState,
-  useNodesInitialized,
+  // useNodesInitialized,
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import './style.css'
+// import './style.css'
 import type {
   Edge,
   Node,
@@ -42,24 +45,32 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const [nodes] = useNodesState(initialNodes)
   const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
-  const nodesInitialized = useNodesInitialized()
+  // const nodesInitialized = useNodesInitialized()
+
+  console.log(nodes)
 
   const {
-    handleEnterNode,
-    handleLeaveNode,
-    handleConnectNode,
-    handleEnterEdge,
-    handleLeaveEdge,
-    handleDeleteEdge,
-    handleLayout,
+    // handleLayout,
+
+    handleNodeDragStart,
+    handleNodeDrag,
+    handleNodeDragStop,
+    handleNodeEnter,
+    handleNodeLeave,
+    handleNodeClick,
+    handleNodeConnect,
+
+    handleEdgeEnter,
+    handleEdgeLeave,
+    handleEdgeDelete,
   } = useWorkflow()
 
-  useEffect(() => {
-    if (nodesInitialized)
-      handleLayout()
-  }, [nodesInitialized, handleLayout])
+  // useEffect(() => {
+  //   if (nodesInitialized)
+  //     handleLayout()
+  // }, [nodesInitialized, handleLayout])
 
-  useKeyPress('Backspace', handleDeleteEdge)
+  useKeyPress('Backspace', handleEdgeDelete)
 
   return (
     <div className='relative w-full h-full'>
@@ -74,11 +85,15 @@ const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
-        onConnect={handleConnectNode}
-        onNodeMouseEnter={handleEnterNode}
-        onNodeMouseLeave={handleLeaveNode}
-        onEdgeMouseEnter={handleEnterEdge}
-        onEdgeMouseLeave={handleLeaveEdge}
+        onNodeDragStart={handleNodeDragStart}
+        onNodeDrag={handleNodeDrag}
+        onNodeDragStop={handleNodeDragStop}
+        onNodeMouseEnter={handleNodeEnter}
+        onNodeMouseLeave={handleNodeLeave}
+        onNodeClick={handleNodeClick}
+        onConnect={handleNodeConnect}
+        onEdgeMouseEnter={handleEdgeEnter}
+        onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={onEdgesChange}
         multiSelectionKeyCode={null}
         connectionLineComponent={CustomConnectionLine}

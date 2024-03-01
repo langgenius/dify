@@ -8,7 +8,6 @@ import {
 } from 'react'
 import type { NodeProps } from 'reactflow'
 import BlockIcon from '../../block-icon'
-import { useWorkflow } from '../../hooks'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -17,19 +16,15 @@ type BaseNodeProps = {
 const BaseNode: FC<BaseNodeProps> = ({
   id,
   data,
-  selected,
   children,
 }) => {
-  const { handleSelectNode } = useWorkflow()
-
   return (
     <div
       className={`
         group relative w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
-        ${selected ? 'border-[2px] border-primary-600' : 'border border-white'}
+        ${data.selected ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
-      onClick={() => handleSelectNode(id)}
     >
       <div className='flex items-center px-3 pt-3 pb-2'>
         <BlockIcon

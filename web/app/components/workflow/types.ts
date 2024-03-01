@@ -28,6 +28,7 @@ export type CommonNodeType = {
     x: number
     y: number
   }
+  selected?: boolean
   hovering?: boolean
   targetBranches?: Branch[]
   title: string

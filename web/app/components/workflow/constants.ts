@@ -34,7 +34,7 @@ export const NodeInitialData = {
     retrieval_mode: 'single',
   },
   [BlockEnum.IfElse]: {
-    branches: [
+    targetBranches: [
       {
         id: 'if-true',
         name: 'IS TRUE',

@@ -34,15 +34,15 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const {
-    handleSelectNode,
-    handleUpdateNodeData,
+    handleNodeSelect,
+    handleNodeDataUpdate,
   } = useWorkflow()
   const handleTitleChange = useCallback((title: string) => {
-    handleUpdateNodeData({ id, data: { ...data, title } })
-  }, [handleUpdateNodeData, id, data])
+    handleNodeDataUpdate({ id, data: { ...data, title } })
+  }, [handleNodeDataUpdate, id, data])
   const handleDescriptionChange = useCallback((desc: string) => {
-    handleUpdateNodeData({ id, data: { ...data, desc } })
-  }, [handleUpdateNodeData, id, data])
+    handleNodeDataUpdate({ id, data: { ...data, desc } })
+  }, [handleNodeDataUpdate, id, data])
 
   return (
     <div className='mr-2 w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'>
@@ -73,7 +73,7 @@ const BasePanel: FC<BasePanelProps> = ({
             <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
             <div
               className='flex items-center justify-center w-6 h-6 cursor-pointer'
-              onClick={() => handleSelectNode(id, true)}
+              onClick={() => handleNodeSelect(id, true)}
             >
               <XClose className='w-4 h-4' />
             </div>

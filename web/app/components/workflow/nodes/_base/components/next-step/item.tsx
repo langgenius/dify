@@ -23,10 +23,10 @@ const Item = ({
   branchName,
   data,
 }: ItemProps) => {
-  const { handleChangeCurrentNode } = useWorkflow()
+  const { handleNodeChange } = useWorkflow()
   const handleSelect = useCallback((type: BlockEnum) => {
-    handleChangeCurrentNode(nodeId, type, sourceHandle)
-  }, [nodeId, sourceHandle, handleChangeCurrentNode])
+    handleNodeChange(nodeId, type, sourceHandle)
+  }, [nodeId, sourceHandle, handleNodeChange])
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <Button

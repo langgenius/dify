@@ -88,7 +88,7 @@ export const NodeSourceHandle = ({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
-  const { handleAddNextNode } = useWorkflow()
+  const { handleNodeAddNext } = useWorkflow()
   const edges = useEdges()
   const connectedEdges = getConnectedEdges([{ id } as Node], edges)
   const connected = connectedEdges.find(edge => edge.sourceHandle === handleId && edge.source === id)
@@ -101,8 +101,8 @@ export const NodeSourceHandle = ({
       setOpen(v => !v)
   }, [connected])
   const handleSelect = useCallback((type: BlockEnum) => {
-    handleAddNextNode(id, type, handleId)
-  }, [handleAddNextNode, id, handleId])
+    handleNodeAddNext(id, type, handleId)
+  }, [handleNodeAddNext, id, handleId])
 
   return (
     <>

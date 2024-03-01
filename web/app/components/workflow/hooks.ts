@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import type {
   EdgeMouseHandler,
+  NodeDragHandler,
   NodeMouseHandler,
   OnConnect,
 } from 'reactflow'
@@ -17,6 +18,7 @@ import type {
 } from './types'
 import { NodeInitialData } from './constants'
 import { getLayoutByDagre } from './utils'
+import { useStore } from './store'
 
 export const useWorkflow = () => {
   const store = useStoreApi()
@@ -42,7 +44,30 @@ export const useWorkflow = () => {
     setNodes(newNodes)
   }, [store])
 
-  const handleEnterNode = useCallback<NodeMouseHandler>((_, node) => {
+  const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
+    useStore.getState().setIsDragging(true)
+  }, [])
+
+  const handleNodeDrag = useCallback<NodeDragHandler>((e, node: Node) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    e.stopPropagation()
+
+    const newNodes = produce(getNodes(), (draft) => {
+      const currentNode = draft.find(n => n.id === node.id)!
+
+      currentNode.position = node.position
+    })
+    setNodes(newNodes)
+  }, [store])
+
+  const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
+    useStore.getState().setIsDragging(false)
+  }, [])
+
+  const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
     const {
       getNodes,
       setNodes,
@@ -67,7 +92,7 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleLeaveNode = useCallback<NodeMouseHandler>((_, node) => {
+  const handleNodeLeave = useCallback<NodeMouseHandler>((_, node) => {
     const {
       getNodes,
       setNodes,
@@ -81,34 +106,37 @@ export const useWorkflow = () => {
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
-      const connectedEdges = getConnectedEdges([node], edges)
-
-      connectedEdges.forEach((edge) => {
-        const currentEdge = draft.find(e => e.id === edge.id)
-        if (currentEdge)
-          currentEdge.data = { ...currentEdge.data, connectedNodeIsHovering: false }
+      draft.forEach((edge) => {
+        edge.data = { ...edge.data, connectedNodeIsHovering: false }
       })
     })
     setEdges(newEdges)
   }, [store])
 
-  const handleSelectNode = useCallback((nodeId: string, cancelSelection?: boolean) => {
+  const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
     const {
       getNodes,
       setNodes,
     } = store.getState()
 
     const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach(node => node.selected = false)
+      draft.forEach(node => node.data.selected = false)
       const selectedNode = draft.find(node => node.id === nodeId)!
 
       if (!cancelSelection)
-        selectedNode.selected = true
+        selectedNode.data.selected = true
     })
     setNodes(newNodes)
   }, [store])
 
-  const handleConnectNode = useCallback<OnConnect>(({
+  const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
+    if (useStore.getState().isDragging)
+      return
+
+    handleNodeSelect(node.id)
+  }, [handleNodeSelect])
+
+  const handleNodeConnect = useCallback<OnConnect>(({
     source,
     sourceHandle,
     target,
@@ -134,51 +162,31 @@ export const useWorkflow = () => {
       return filtered
     })
     setEdges(newEdges)
-    handleLayout()
-  }, [store, handleLayout])
-
-  const handleEnterEdge = useCallback<EdgeMouseHandler>((_, edge) => {
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const currentEdge = draft.find(e => e.id === edge.id)!
-
-      currentEdge.data = { ...currentEdge.data, hovering: true }
-    })
-    setEdges(newEdges)
   }, [store])
 
-  const handleLeaveEdge = useCallback<EdgeMouseHandler>((_, edge) => {
+  const handleNodeDelete = useCallback((nodeId: string) => {
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const currentEdge = draft.find(e => e.id === edge.id)!
 
-      currentEdge.data = { ...currentEdge.data, hovering: false }
-    })
-    setEdges(newEdges)
-  }, [store])
-
-  const handleDeleteEdge = useCallback(() => {
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const index = draft.findIndex(edge => edge.selected)
+    const newNodes = produce(getNodes(), (draft) => {
+      const index = draft.findIndex(node => node.id === nodeId)
 
       if (index > -1)
         draft.splice(index, 1)
     })
+    setNodes(newNodes)
+    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
+    const newEdges = produce(edges, (draft) => {
+      return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
+    })
     setEdges(newEdges)
-    handleLayout()
-  }, [store, handleLayout])
+  }, [store])
 
-  const handleUpdateNodeData = useCallback(({ id, data }: SelectedNode) => {
+  const handleNodeDataUpdate = useCallback(({ id, data }: SelectedNode) => {
     const {
       getNodes,
       setNodes,
@@ -191,7 +199,7 @@ export const useWorkflow = () => {
     setNodes(newNodes)
   }, [store])
 
-  const handleAddNextNode = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
+  const handleNodeAddNext = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
     const {
       getNodes,
       setNodes,
@@ -203,12 +211,14 @@ export const useWorkflow = () => {
     const nextNode: Node = {
       id: `${Date.now()}`,
       type: 'custom',
-      data: NodeInitialData[nodeType],
+      data: {
+        ...NodeInitialData[nodeType],
+        selected: true,
+      },
       position: {
         x: currentNode.position.x + 304,
         y: currentNode.position.y,
       },
-      selected: true,
     }
     const newEdge = {
       id: `${currentNode.id}-${nextNode.id}`,
@@ -220,7 +230,7 @@ export const useWorkflow = () => {
     }
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        node.selected = false
+        node.data.selected = false
       })
       draft.push(nextNode)
     })
@@ -231,7 +241,7 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleChangeCurrentNode = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle?: string) => {
+  const handleNodeChange = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle?: string) => {
     const {
       getNodes,
       setNodes,
@@ -279,40 +289,64 @@ export const useWorkflow = () => {
     }
   }, [store])
 
-  const handleDeleteNode = useCallback((nodeId: string) => {
+  const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
-      getNodes,
-      setNodes,
       edges,
       setEdges,
     } = store.getState()
+    const newEdges = produce(edges, (draft) => {
+      const currentEdge = draft.find(e => e.id === edge.id)!
 
-    const newNodes = produce(getNodes(), (draft) => {
-      const index = draft.findIndex(node => node.id === nodeId)
+      currentEdge.data = { ...currentEdge.data, hovering: true }
+    })
+    setEdges(newEdges)
+  }, [store])
+
+  const handleEdgeLeave = useCallback<EdgeMouseHandler>((_, edge) => {
+    const {
+      edges,
+      setEdges,
+    } = store.getState()
+    const newEdges = produce(edges, (draft) => {
+      const currentEdge = draft.find(e => e.id === edge.id)!
+
+      currentEdge.data = { ...currentEdge.data, hovering: false }
+    })
+    setEdges(newEdges)
+  }, [store])
+
+  const handleEdgeDelete = useCallback(() => {
+    const {
+      edges,
+      setEdges,
+    } = store.getState()
+    const newEdges = produce(edges, (draft) => {
+      const index = draft.findIndex(edge => edge.selected)
 
       if (index > -1)
         draft.splice(index, 1)
-    })
-    setNodes(newNodes)
-    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
-    const newEdges = produce(edges, (draft) => {
-      return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
     })
     setEdges(newEdges)
   }, [store])
 
   return {
-    handleEnterNode,
-    handleLeaveNode,
-    handleSelectNode,
-    handleEnterEdge,
-    handleLeaveEdge,
-    handleConnectNode,
-    handleDeleteEdge,
-    handleUpdateNodeData,
-    handleAddNextNode,
-    handleChangeCurrentNode,
-    handleDeleteNode,
     handleLayout,
+
+    handleNodeDragStart,
+    handleNodeDrag,
+    handleNodeDragStop,
+    handleNodeEnter,
+    handleNodeLeave,
+    handleNodeSelect,
+    handleNodeClick,
+    handleNodeConnect,
+    handleNodeDelete,
+    handleNodeDataUpdate,
+    handleNodeAddNext,
+    handleNodeChange,
+
+    handleEdgeEnter,
+    handleEdgeLeave,
+    handleEdgeDelete,
   }
 }

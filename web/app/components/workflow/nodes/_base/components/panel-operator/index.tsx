@@ -17,7 +17,7 @@ type PanelOperatorProps = {
 const PanelOperator = ({
   nodeId,
 }: PanelOperatorProps) => {
-  const { handleDeleteNode } = useWorkflow()
+  const { handleNodeDelete } = useWorkflow()
   const [open, setOpen] = useState(false)
 
   return (
@@ -51,7 +51,7 @@ const PanelOperator = ({
           <div className='p-1'>
             <div
               className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-              onClick={() => handleDeleteNode(nodeId)}
+              onClick={() => handleNodeDelete(nodeId)}
             >
               Delete
             </div>

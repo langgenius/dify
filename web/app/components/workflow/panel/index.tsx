@@ -16,7 +16,7 @@ const Panel: FC = () => {
   const mode = useStore(state => state.mode)
   const runStaus = useStore(state => state.runStaus)
   const nodes = useNodes<CommonNodeType>()
-  const selectedNode = nodes.find(node => node.selected)
+  const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const {
     showWorkflowInfoPanel,

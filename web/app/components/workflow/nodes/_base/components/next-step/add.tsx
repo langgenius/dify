@@ -17,11 +17,11 @@ const Add = ({
   sourceHandle,
   branchName,
 }: AddProps) => {
-  const { handleAddNextNode } = useWorkflow()
+  const { handleNodeAddNext } = useWorkflow()
 
   const handleSelect = useCallback((type: BlockEnum) => {
-    handleAddNextNode(nodeId, type, sourceHandle)
-  }, [nodeId, sourceHandle, handleAddNextNode])
+    handleNodeAddNext(nodeId, type, sourceHandle)
+  }, [nodeId, sourceHandle, handleNodeAddNext])
 
   const renderTrigger = useCallback((open: boolean) => {
     return (
