@@ -4,11 +4,14 @@ import useVarList from '../_base/hooks/use-var-list'
 import type { Memory, ValueSelector } from '../../types'
 import type { LLMNodeType } from './types'
 import type { Resolution } from '@/types/app'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const useConfig = (initInputs: LLMNodeType) => {
   const [inputs, setInputs] = useState<LLMNodeType>(initInputs)
 
   // model
+  const model = inputs.model
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.provider = model.provider
@@ -24,6 +27,16 @@ const useConfig = (initInputs: LLMNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
+  const {
+    currentModel: currModel,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
+    {
+      provider: model.provider,
+      model: model.name,
+    },
+  )
+  const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
 
   // variables
   const { handleVarListChange, handleAddVariable } = useVarList<LLMNodeType>({
@@ -55,6 +68,7 @@ const useConfig = (initInputs: LLMNodeType) => {
 
   return {
     inputs,
+    isShowVisionConfig,
     handleModelChanged,
     handleCompletionParamsChange,
     handleVarListChange,

@@ -20,6 +20,7 @@ const Panel: FC = () => {
 
   const {
     inputs,
+    isShowVisionConfig,
     handleModelChanged,
     handleCompletionParamsChange,
     handleVarListChange,
@@ -88,8 +89,8 @@ const Panel: FC = () => {
           Prompt
         </Field>
 
-        {/*  */}
-        {isChatApp && isChatApp && (
+        {/* Memory examples */}
+        {isChatApp && isChatModel && (
           <div className='text-xs text-gray-300'>Memory examples(Designing)</div>
         )}
         {/* Memory */}
@@ -106,18 +107,19 @@ const Panel: FC = () => {
         )}
 
         {/* Vision: GPT4-vision and so on */}
-        <Field
-          title={t(`${i18nPrefix}.vision`)}
-          tooltip={t('appDebug.vision.description')!}
-          operations={
-            <ResolutionPicker
-              value={inputs.vision.configs.detail}
-              onChange={handleVisionResolutionChange}
-            />
-          }
-        />
+        {isShowVisionConfig && (
+          <Field
+            title={t(`${i18nPrefix}.vision`)}
+            tooltip={t('appDebug.vision.description')!}
+            operations={
+              <ResolutionPicker
+                value={inputs.vision.configs.detail}
+                onChange={handleVisionResolutionChange}
+              />
+            }
+          />
+        )}
       </div>
-      <Split />
       <div className='px-4 pt-4 pb-2'>
         <OutputVars>
           <>
