@@ -37,7 +37,7 @@ const Item: FC<Props> = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const canShowDetail = isInToolsPage
   const [showDetail, setShowDetail] = useState(false)
-  const addBtn = <Button className='shrink-0 flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={e => onAdd?.(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
+  const addBtn = <Button className='shrink-0 flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd?.(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
 
   return (
     <>
