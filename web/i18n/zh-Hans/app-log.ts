@@ -70,8 +70,12 @@ const translation = {
       not_annotated: '未标注',
     },
   },
-  workflowTitle: 'Workflow Logs',
-  workflowSubtitle: 'The log recorded the operation of Automate.',
+  workflowTitle: '日志',
+  workflowSubtitle: '日志记录了应用的执行情况',
+  runDetail: {
+    title: '对话日志',
+    workflowTitle: '日志详情',
+  },
 }
 
 export default translation

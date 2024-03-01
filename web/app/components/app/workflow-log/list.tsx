@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import dayjs from 'dayjs'
-import { createContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
+import DetailPanel from './detail'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
@@ -20,13 +20,6 @@ type ILogs = {
 }
 
 const defaultValue = 'N/A'
-
-type IDrawerContext = {
-  onClose: () => void
-  appDetail?: App
-}
-
-const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 
 const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
@@ -130,14 +123,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl border border-gray-200'
       >
-        <DrawerContext.Provider value={{
-          onClose: onCloseDrawer,
-          appDetail,
-        }}>
-          {<div>TODO</div>}
-        </DrawerContext.Provider>
+        <DetailPanel onClose={onCloseDrawer} appDetail={appDetail} />
       </Drawer>
     </div>
   )

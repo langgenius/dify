@@ -72,6 +72,12 @@ const translation = {
   },
   workflowTitle: 'Workflow Logs',
   workflowSubtitle: 'The log recorded the operation of Automate.',
+  runDetail: {
+    title: 'Conversation Log',
+    workflowTitle: 'Log Detail',
+    result: 'RESULT',
+    tracing: 'TRACING',
+  },
 }
 
 export default translation
