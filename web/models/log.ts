@@ -217,3 +217,50 @@ export type LogMessageAnnotationsResponse = LogMessageFeedbacksResponse
 export type AnnotationsCountResponse = {
   count: number
 }
+
+export type WorkflowRunDetail = {
+  id: string
+  version: string
+  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  error?: string
+  elapsed_time: number
+  total_tokens: number
+  total_price: number
+  currency: string
+  total_steps: number
+  finished_at: number
+}
+export type AccountInfo = {
+  id: string
+  name: string
+  email: string
+}
+export type EndUserInfo = {
+  id: string
+  type: 'browser' | 'service_api'
+  is_anonymous: boolean
+  session_id: string
+}
+export type WorkflowAppLogDetail = {
+  id: string
+  workflow_run: WorkflowRunDetail
+  created_from: 'service-api' | 'web-app' | 'explore'
+  created_by_role: 'account' | 'end_user'
+  created_by_account?: AccountInfo
+  created_by_end_user?: EndUserInfo
+  created_at: number
+  read_at?: number
+}
+export type WorkflowLogsResponse = {
+  data: Array<WorkflowAppLogDetail>
+  has_more: boolean
+  limit: number
+  total: number
+  page: number
+}
+export type WorkflowLogsRequest = {
+  keyword: string
+  status: string
+  page: number
+  limit: number // The default value is 20 and the range is 1-100
+}

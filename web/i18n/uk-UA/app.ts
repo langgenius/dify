@@ -5,6 +5,7 @@ const translation = { // Add the Ukrainian translation object
     chatbot: 'Чатбот',
     agent: 'Агент',
     workflow: 'Робочий Процес',
+    completion: 'Автодоповнення',
   },
   duplicate: 'Дублювати',
   duplicateTitle: 'Дублювати додаток',

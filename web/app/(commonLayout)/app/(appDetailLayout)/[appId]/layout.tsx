@@ -27,11 +27,14 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { data: response } = useSWR(detailParams, fetchAppDetail)
 
   const appModeName = (() => {
-    if (response?.mode === 'chat')
+    if (response?.mode === 'chat' || response?.mode === 'advanced-chat')
       return t('app.types.chatbot')
 
-    if (response?.mode === 'agent')
+    if (response?.mode === 'agent-chat')
       return t('app.types.agent')
+
+    if (response?.mode === 'completion')
+      return t('app.types.completion')
 
     return t('app.types.workflow')
   })()
@@ -55,7 +58,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
       <AppSideBar title={response.name} icon={response.icon} icon_background={response.icon_background} desc={appModeName} navigation={navigation} />
-      <div className="bg-white grow overflow-hidden">{children}</div>
+      <div className="bg-white grow overflow-hidden">
+        {React.cloneElement(children as React.ReactElement<any>, { appMode: response.mode })}
+      </div>
     </div>
   )
 }

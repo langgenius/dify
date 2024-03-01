@@ -5,6 +5,7 @@ const translation = {
     chatbot: 'Chatbot',
     agent: 'Agente',
     workflow: 'Fluxo de trabalho',
+    completion: 'Gerador de Texto',
   },
   duplicate: 'Duplicar',
   duplicateTitle: 'Duplicate aplicativo',

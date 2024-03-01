@@ -5,6 +5,7 @@ const translation = {
     chatbot: '聊天助手',
     agent: 'Agent',
     workflow: '工作流',
+    completion: '文本生成',
   },
   duplicate: '复制',
   duplicateTitle: '复制应用',

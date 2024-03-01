@@ -5,6 +5,7 @@ const translation = {
     chatbot: 'Chatbot',
     agent: 'Agent',
     workflow: 'Workflow',
+    completion: 'Completion',
   },
   duplicate: 'Duplicate',
   duplicateTitle: 'Duplicate App',
