@@ -26,9 +26,11 @@ const Panel: FC = () => {
     handleContextVarChange,
     handleMemoryChange,
   } = useConfig(mockData)
+  const isChatApp = true // TODO: get from app context
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatMode = modelMode === 'chat'
+  const isChatModel = modelMode === 'chat'
+  const isCompletionModel = !isChatModel
 
   return (
     <div className='mt-2'>
@@ -84,14 +86,18 @@ const Panel: FC = () => {
           Prompt
         </Field>
 
+        {/*  */}
+        {isChatApp && isChatApp && (
+          <div className='text-xs text-gray-300'>Memory examples(Designing)</div>
+        )}
         {/* Memory */}
-        {isChatMode && (
+        {isChatApp && (
           <>
             <MemoryConfig
               readonly={readOnly}
               payload={inputs.memory}
               onChange={handleMemoryChange}
-              canSetRoleName
+              canSetRoleName={isCompletionModel}
             />
             <Split />
           </>

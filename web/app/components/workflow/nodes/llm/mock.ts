@@ -1,11 +1,11 @@
-import { MemoryRole } from '../../types'
+import { BlockEnum } from '../../types'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 
 export const mockData: LLMNodeType = {
   title: 'Test',
   desc: 'Test',
-  type: 'Test',
+  type: BlockEnum.LLM,
   model: {
     provider: 'openai',
     name: 'gpt-4',
@@ -26,7 +26,10 @@ export const mockData: LLMNodeType = {
   ],
   prompt: [],
   memory: {
-    role_prefix: MemoryRole.assistant,
+    role_prefix: {
+      user: 'user: ',
+      assistant: 'assistant: ',
+    },
     window: {
       enabled: false,
       size: 0,
