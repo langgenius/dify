@@ -1,4 +1,3 @@
-from core.app.app_config.entities import FileUploadEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file.message_file_parser import MessageFileParser
 from core.model_manager import ModelInstance
