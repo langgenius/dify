@@ -112,7 +112,7 @@ class CompletionConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.CHAT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     def delete(self, app_model, conversation_id):
         conversation_id = str(conversation_id)
 
@@ -133,7 +133,7 @@ class ChatConversationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.CHAT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
     def get(self, app_model):
         parser = reqparse.RequestParser()
@@ -218,7 +218,7 @@ class ChatConversationDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.CHAT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @marshal_with(conversation_detail_fields)
     def get(self, app_model, conversation_id):
         conversation_id = str(conversation_id)
@@ -227,7 +227,7 @@ class ChatConversationDetailApi(Resource):
 
     @setup_required
     @login_required
-    @get_app_model(mode=AppMode.CHAT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @account_initialization_required
     def delete(self, app_model, conversation_id):
         conversation_id = str(conversation_id)

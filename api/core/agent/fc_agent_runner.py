@@ -34,9 +34,11 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         Run FunctionCall agent application
         """
-        app_orchestration_config = self.app_orchestration_config
+        app_generate_entity = self.application_generate_entity
 
-        prompt_template = self.app_orchestration_config.prompt_template.simple_prompt_template or ''
+        app_config = self.app_config
+
+        prompt_template = app_config.prompt_template.simple_prompt_template or ''
         prompt_messages = self.history_prompt_messages
         prompt_messages = self.organize_prompt_messages(
             prompt_template=prompt_template,
@@ -47,7 +49,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         # convert tools into ModelRuntime Tool format
         prompt_messages_tools: list[PromptMessageTool] = []
         tool_instances = {}
-        for tool in self.app_orchestration_config.agent.tools if self.app_orchestration_config.agent else []:
+        for tool in app_config.agent.tools if app_config.agent else []:
             try:
                 prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
             except Exception:
@@ -67,7 +69,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             tool_instances[dataset_tool.identity.name] = dataset_tool
 
         iteration_step = 1
-        max_iteration_steps = min(app_orchestration_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True
@@ -110,9 +112,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             # invoke model
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
-                model_parameters=app_orchestration_config.model_config.parameters,
+                model_parameters=app_generate_entity.model_config.parameters,
                 tools=prompt_messages_tools,
-                stop=app_orchestration_config.model_config.stop,
+                stop=app_generate_entity.model_config.stop,
                 stream=self.stream_tool_call,
                 user=self.user_id,
                 callbacks=[],

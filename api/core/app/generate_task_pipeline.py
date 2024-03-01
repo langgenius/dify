@@ -7,8 +7,8 @@ from typing import Optional, Union, cast
 from pydantic import BaseModel
 
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.entities.application_entities import ApplicationGenerateEntity, InvokeFrom
-from core.entities.queue_entities import (
+from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity, InvokeFrom
+from core.app.entities.queue_entities import (
     AnnotationReplyEvent,
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
@@ -58,7 +58,7 @@ class GenerateTaskPipeline:
     GenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
 
-    def __init__(self, application_generate_entity: ApplicationGenerateEntity,
+    def __init__(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
                  queue_manager: AppQueueManager,
                  conversation: Conversation,
                  message: Message) -> None:
@@ -75,7 +75,7 @@ class GenerateTaskPipeline:
         self._message = message
         self._task_state = TaskState(
             llm_result=LLMResult(
-                model=self._application_generate_entity.app_orchestration_config_entity.model_config.model,
+                model=self._application_generate_entity.model_config.model,
                 prompt_messages=[],
                 message=AssistantPromptMessage(content=""),
                 usage=LLMUsage.empty_usage()
@@ -127,7 +127,7 @@ class GenerateTaskPipeline:
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
-                    model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
+                    model_config = self._application_generate_entity.model_config
                     model = model_config.model
                     model_type_instance = model_config.provider_model_bundle.model_type_instance
                     model_type_instance = cast(LargeLanguageModel, model_type_instance)
@@ -210,7 +210,7 @@ class GenerateTaskPipeline:
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
                 else:
-                    model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
+                    model_config = self._application_generate_entity.model_config
                     model = model_config.model
                     model_type_instance = model_config.provider_model_bundle.model_type_instance
                     model_type_instance = cast(LargeLanguageModel, model_type_instance)
@@ -569,7 +569,7 @@ class GenerateTaskPipeline:
         :return:
         """
         prompts = []
-        if self._application_generate_entity.app_orchestration_config_entity.model_config.mode == 'chat':
+        if self._application_generate_entity.model_config.mode == 'chat':
             for prompt_message in prompt_messages:
                 if prompt_message.role == PromptMessageRole.USER:
                     role = 'user'
@@ -638,13 +638,13 @@ class GenerateTaskPipeline:
         Init output moderation.
         :return:
         """
-        app_orchestration_config_entity = self._application_generate_entity.app_orchestration_config_entity
-        sensitive_word_avoidance = app_orchestration_config_entity.sensitive_word_avoidance
+        app_config = self._application_generate_entity.app_config
+        sensitive_word_avoidance = app_config.sensitive_word_avoidance
 
         if sensitive_word_avoidance:
             return OutputModeration(
-                tenant_id=self._application_generate_entity.tenant_id,
-                app_id=self._application_generate_entity.app_id,
+                tenant_id=app_config.tenant_id,
+                app_id=app_config.app_id,
                 rule=ModerationRule(
                     type=sensitive_word_avoidance.type,
                     config=sensitive_word_avoidance.config

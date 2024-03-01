@@ -1,3 +1,5 @@
+from core.app.app_config.entities import FileUploadEntity
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file.message_file_parser import MessageFileParser
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import (
@@ -43,12 +45,18 @@ class TokenBufferMemory:
         for message in messages:
             files = message.message_files
             if files:
-                file_objs = message_file_parser.transform_message_files(
-                    files,
-                    message.app_model_config.file_upload_dict
-                    if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
-                    else message.workflow_run.workflow.features_dict.get('file_upload', {})
-                )
+                if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+                    file_upload_entity = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+                else:
+                    file_upload_entity = FileUploadConfigManager.convert(message.workflow_run.workflow.features_dict)
+
+                if file_upload_entity:
+                    file_objs = message_file_parser.transform_message_files(
+                        files,
+                        file_upload_entity
+                    )
+                else:
+                    file_objs = []
 
                 if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))

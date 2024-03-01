@@ -5,7 +5,7 @@ from typing import Optional
 
 from flask import Flask, current_app
 
-from core.entities.application_entities import ExternalDataVariableEntity
+from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
 
 logger = logging.getLogger(__name__)

@@ -3,6 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from core.app.app_config.entities import FileUploadEntity
 from core.file.upload_file_parser import UploadFileParser
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from extensions.ext_database import db
@@ -50,7 +51,7 @@ class FileObj(BaseModel):
     transfer_method: FileTransferMethod
     url: Optional[str]
     upload_file_id: Optional[str]
-    file_config: dict
+    file_upload_entity: FileUploadEntity
 
     @property
     def data(self) -> Optional[str]:
@@ -63,7 +64,7 @@ class FileObj(BaseModel):
     @property
     def prompt_message_content(self) -> ImagePromptMessageContent:
         if self.type == FileType.IMAGE:
-            image_config = self.file_config.get('image')
+            image_config = self.file_upload_entity.image_config
 
             return ImagePromptMessageContent(
                 data=self.data,

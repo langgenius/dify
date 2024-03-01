@@ -4,9 +4,9 @@ from typing import Any, Union
 
 from sqlalchemy import and_
 
-from core.app.app_manager import AppManager
-from core.app.validators.model_validator import ModelValidator
-from core.entities.application_entities import InvokeFrom
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.app_manager import EasyUIBasedAppManager
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from extensions.ext_database import db
 from models.model import Account, App, AppMode, AppModelConfig, Conversation, EndUser, Message
@@ -30,7 +30,7 @@ class CompletionService:
         auto_generate_name = args['auto_generate_name'] \
             if 'auto_generate_name' in args else True
 
-        if app_model.mode != 'completion':
+        if app_model.mode != AppMode.COMPLETION.value:
             if not query:
                 raise ValueError('query is required')
 
@@ -43,6 +43,7 @@ class CompletionService:
         conversation_id = args['conversation_id'] if 'conversation_id' in args else None
 
         conversation = None
+        app_model_config_dict = None
         if conversation_id:
             conversation_filter = [
                 Conversation.id == args['conversation_id'],
@@ -63,42 +64,13 @@ class CompletionService:
             if conversation.status != 'normal':
                 raise ConversationCompletedError()
 
-            if not conversation.override_model_configs:
-                app_model_config = db.session.query(AppModelConfig).filter(
-                    AppModelConfig.id == conversation.app_model_config_id,
-                    AppModelConfig.app_id == app_model.id
-                ).first()
+            app_model_config = db.session.query(AppModelConfig).filter(
+                AppModelConfig.id == conversation.app_model_config_id,
+                AppModelConfig.app_id == app_model.id
+            ).first()
 
-                if not app_model_config:
-                    raise AppModelConfigBrokenError()
-            else:
-                conversation_override_model_configs = json.loads(conversation.override_model_configs)
-
-                app_model_config = AppModelConfig(
-                    id=conversation.app_model_config_id,
-                    app_id=app_model.id,
-                )
-
-                app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
-
-            if is_model_config_override:
-                # build new app model config
-                if 'model' not in args['model_config']:
-                    raise ValueError('model_config.model is required')
-
-                if 'completion_params' not in args['model_config']['model']:
-                    raise ValueError('model_config.model.completion_params is required')
-
-                completion_params = ModelValidator.validate_model_completion_params(
-                    cp=args['model_config']['model']['completion_params']
-                )
-
-                app_model_config_model = app_model_config.model_dict
-                app_model_config_model['completion_params'] = completion_params
-                app_model_config.retriever_resource = json.dumps({'enabled': True})
-
-                app_model_config = app_model_config.copy()
-                app_model_config.model = json.dumps(app_model_config_model)
+            if not app_model_config:
+                raise AppModelConfigBrokenError()
         else:
             if app_model.app_model_config_id is None:
                 raise AppModelConfigBrokenError()
@@ -113,37 +85,29 @@ class CompletionService:
                     raise Exception("Only account can override model config")
 
                 # validate config
-                model_config = AppModelConfigService.validate_configuration(
+                app_model_config_dict = AppModelConfigService.validate_configuration(
                     tenant_id=app_model.tenant_id,
                     config=args['model_config'],
                     app_mode=AppMode.value_of(app_model.mode)
                 )
 
-                app_model_config = AppModelConfig(
-                    id=app_model_config.id,
-                    app_id=app_model.id,
-                )
-
-                app_model_config = app_model_config.from_model_config_dict(model_config)
-
-        # clean input by app_model_config form rules
-        inputs = cls.get_cleaned_inputs(inputs, app_model_config)
-
         # parse files
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
-        file_objs = message_file_parser.validate_and_transform_files_arg(
-            files,
-            app_model_config,
-            user
-        )
+        file_upload_entity = FileUploadConfigManager.convert(app_model_config_dict or app_model_config.to_dict())
+        if file_upload_entity:
+            file_objs = message_file_parser.validate_and_transform_files_arg(
+                files,
+                file_upload_entity,
+                user
+            )
+        else:
+            file_objs = []
 
-        application_manager = AppManager()
+        application_manager = EasyUIBasedAppManager()
         return application_manager.generate(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            app_model_config_id=app_model_config.id,
-            app_model_config_dict=app_model_config.to_dict(),
-            app_model_config_override=is_model_config_override,
+            app_model=app_model,
+            app_model_config=app_model_config,
+            app_model_config_dict=app_model_config_dict,
             user=user,
             invoke_from=invoke_from,
             inputs=inputs,
@@ -189,17 +153,19 @@ class CompletionService:
 
         # parse files
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
-        file_objs = message_file_parser.transform_message_files(
-            message.files, app_model_config
-        )
+        file_upload_entity = FileUploadConfigManager.convert(current_app_model_config.to_dict())
+        if file_upload_entity:
+            file_objs = message_file_parser.transform_message_files(
+                message.files, file_upload_entity
+            )
+        else:
+            file_objs = []
 
-        application_manager = AppManager()
+        application_manager = EasyUIBasedAppManager()
         return application_manager.generate(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            app_model_config_id=app_model_config.id,
+            app_model=app_model,
+            app_model_config=current_app_model_config,
             app_model_config_dict=app_model_config.to_dict(),
-            app_model_config_override=True,
             user=user,
             invoke_from=invoke_from,
             inputs=message.inputs,
@@ -212,46 +178,3 @@ class CompletionService:
             }
         )
 
-    @classmethod
-    def get_cleaned_inputs(cls, user_inputs: dict, app_model_config: AppModelConfig):
-        if user_inputs is None:
-            user_inputs = {}
-
-        filtered_inputs = {}
-
-        # Filter input variables from form configuration, handle required fields, default values, and option values
-        input_form_config = app_model_config.user_input_form_list
-        for config in input_form_config:
-            input_config = list(config.values())[0]
-            variable = input_config["variable"]
-
-            input_type = list(config.keys())[0]
-
-            if variable not in user_inputs or not user_inputs[variable]:
-                if input_type == "external_data_tool":
-                    continue
-                if "required" in input_config and input_config["required"]:
-                    raise ValueError(f"{variable} is required in input form")
-                else:
-                    filtered_inputs[variable] = input_config["default"] if "default" in input_config else ""
-                    continue
-
-            value = user_inputs[variable]
-
-            if value:
-                if not isinstance(value, str):
-                    raise ValueError(f"{variable} in input form must be a string")
-
-            if input_type == "select":
-                options = input_config["options"] if "options" in input_config else []
-                if value not in options:
-                    raise ValueError(f"{variable} in input form must be one of the following: {options}")
-            else:
-                if 'max_length' in input_config:
-                    max_length = input_config['max_length']
-                    if len(value) > max_length:
-                        raise ValueError(f'{variable} in input form must be less than {max_length} characters')
-
-            filtered_inputs[variable] = value.replace('\x00', '') if value else None
-
-        return filtered_inputs

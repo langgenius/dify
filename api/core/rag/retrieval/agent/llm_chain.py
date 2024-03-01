@@ -5,19 +5,17 @@ from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.schema import Generation, LLMResult
 from langchain.schema.language_model import BaseLanguageModel
 
-from core.entities.application_entities import ModelConfigEntity
+from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
 from core.model_manager import ModelInstance
-from core.rag.retrieval.agent.agent_llm_callback import AgentLLMCallback
 from core.rag.retrieval.agent.fake_llm import FakeLLM
 
 
 class LLMChain(LCLLMChain):
-    model_config: ModelConfigEntity
+    model_config: EasyUIBasedModelConfigEntity
     """The language model instance to use."""
     llm: BaseLanguageModel = FakeLLM(response="")
     parameters: dict[str, Any] = {}
-    agent_llm_callback: Optional[AgentLLMCallback] = None
 
     def generate(
         self,
@@ -38,7 +36,6 @@ class LLMChain(LCLLMChain):
             prompt_messages=prompt_messages,
             stream=False,
             stop=stop,
-            callbacks=[self.agent_llm_callback] if self.agent_llm_callback else None,
             model_parameters=self.parameters
         )
 

@@ -1,10 +1,7 @@
 from typing import Optional
 
-from core.entities.application_entities import (
-    AdvancedCompletionPromptTemplateEntity,
-    ModelConfigEntity,
-    PromptTemplateEntity,
-)
+from core.app.app_config.entities import PromptTemplateEntity, AdvancedCompletionPromptTemplateEntity
+from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
@@ -31,7 +28,7 @@ class AdvancedPromptTransform(PromptTransform):
                    files: list[FileObj],
                    context: Optional[str],
                    memory: Optional[TokenBufferMemory],
-                   model_config: ModelConfigEntity) -> list[PromptMessage]:
+                   model_config: EasyUIBasedModelConfigEntity) -> list[PromptMessage]:
         prompt_messages = []
 
         model_mode = ModelMode.value_of(model_config.mode)
@@ -65,7 +62,7 @@ class AdvancedPromptTransform(PromptTransform):
                                               files: list[FileObj],
                                               context: Optional[str],
                                               memory: Optional[TokenBufferMemory],
-                                              model_config: ModelConfigEntity) -> list[PromptMessage]:
+                                              model_config: EasyUIBasedModelConfigEntity) -> list[PromptMessage]:
         """
         Get completion model prompt messages.
         """
@@ -113,7 +110,7 @@ class AdvancedPromptTransform(PromptTransform):
                                         files: list[FileObj],
                                         context: Optional[str],
                                         memory: Optional[TokenBufferMemory],
-                                        model_config: ModelConfigEntity) -> list[PromptMessage]:
+                                        model_config: EasyUIBasedModelConfigEntity) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
         """
@@ -202,7 +199,7 @@ class AdvancedPromptTransform(PromptTransform):
                                 role_prefix: AdvancedCompletionPromptTemplateEntity.RolePrefixEntity,
                                 prompt_template: PromptTemplateParser,
                                 prompt_inputs: dict,
-                                model_config: ModelConfigEntity) -> dict:
+                                model_config: EasyUIBasedModelConfigEntity) -> dict:
         if '#histories#' in prompt_template.variable_keys:
             if memory:
                 inputs = {'#histories#': '', **prompt_inputs}

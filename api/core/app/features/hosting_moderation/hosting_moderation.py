@@ -1,6 +1,6 @@
 import logging
 
-from core.entities.application_entities import ApplicationGenerateEntity
+from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity
 from core.helper import moderation
 from core.model_runtime.entities.message_entities import PromptMessage
 
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class HostingModerationFeature:
-    def check(self, application_generate_entity: ApplicationGenerateEntity,
+    def check(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
               prompt_messages: list[PromptMessage]) -> bool:
         """
         Check hosting moderation
@@ -16,8 +16,7 @@ class HostingModerationFeature:
         :param prompt_messages: prompt messages
         :return:
         """
-        app_orchestration_config = application_generate_entity.app_orchestration_config_entity
-        model_config = app_orchestration_config.model_config
+        model_config = application_generate_entity.model_config
 
         text = ""
         for prompt_message in prompt_messages:

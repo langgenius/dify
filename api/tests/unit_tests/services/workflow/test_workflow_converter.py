@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.entities.application_entities import VariableEntity, ExternalDataVariableEntity, DatasetEntity, \
+from core.app.app_config.entities import VariableEntity, ExternalDataVariableEntity, DatasetEntity, \
     DatasetRetrieveConfigEntity, ModelConfigEntity, PromptTemplateEntity, AdvancedChatPromptTemplateEntity, \
     AdvancedChatMessageEntity, AdvancedCompletionPromptTemplateEntity
 from core.helper import encrypter

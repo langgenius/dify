@@ -20,7 +20,7 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.app_queue_manager import AppQueueManager
-from core.entities.application_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value

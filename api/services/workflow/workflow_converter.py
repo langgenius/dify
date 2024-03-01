@@ -1,16 +1,9 @@
 import json
 from typing import Optional
 
-from core.app.app_manager import AppManager
-from core.entities.application_entities import (
-    DatasetEntity,
-    DatasetRetrieveConfigEntity,
-    ExternalDataVariableEntity,
-    FileUploadEntity,
-    ModelConfigEntity,
-    PromptTemplateEntity,
-    VariableEntity,
-)
+from core.app.app_config.entities import VariableEntity, ExternalDataVariableEntity, DatasetEntity, \
+    DatasetRetrieveConfigEntity, ModelConfigEntity, PromptTemplateEntity, FileUploadEntity
+from core.app.app_manager import EasyUIBasedAppManager
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -36,7 +29,7 @@ class WorkflowConverter:
 
         - basic mode of chatbot app
 
-        - advanced mode of assistant app
+        - expert mode of chatbot app
 
         - completion app
 
@@ -86,14 +79,11 @@ class WorkflowConverter:
         # get new app mode
         new_app_mode = self._get_new_app_mode(app_model)
 
-        app_model_config_dict = app_model_config.to_dict()
-
         # convert app model config
-        application_manager = AppManager()
-        app_orchestration_config_entity = application_manager.convert_from_app_model_config_dict(
-            tenant_id=app_model.tenant_id,
-            app_model_config_dict=app_model_config_dict,
-            skip_check=True
+        application_manager = EasyUIBasedAppManager()
+        app_config = application_manager.convert_to_app_config(
+            app_model=app_model,
+            app_model_config=app_model_config
         )
 
         # init workflow graph
@@ -113,27 +103,27 @@ class WorkflowConverter:
 
         # convert to start node
         start_node = self._convert_to_start_node(
-            variables=app_orchestration_config_entity.variables
+            variables=app_config.variables
         )
 
         graph['nodes'].append(start_node)
 
         # convert to http request node
-        if app_orchestration_config_entity.external_data_variables:
+        if app_config.external_data_variables:
             http_request_nodes = self._convert_to_http_request_node(
                 app_model=app_model,
-                variables=app_orchestration_config_entity.variables,
-                external_data_variables=app_orchestration_config_entity.external_data_variables
+                variables=app_config.variables,
+                external_data_variables=app_config.external_data_variables
             )
 
             for http_request_node in http_request_nodes:
                 graph = self._append_node(graph, http_request_node)
 
         # convert to knowledge retrieval node
-        if app_orchestration_config_entity.dataset:
+        if app_config.dataset:
             knowledge_retrieval_node = self._convert_to_knowledge_retrieval_node(
                 new_app_mode=new_app_mode,
-                dataset_config=app_orchestration_config_entity.dataset
+                dataset_config=app_config.dataset
             )
 
             if knowledge_retrieval_node:
@@ -143,9 +133,9 @@ class WorkflowConverter:
         llm_node = self._convert_to_llm_node(
             new_app_mode=new_app_mode,
             graph=graph,
-            model_config=app_orchestration_config_entity.model_config,
-            prompt_template=app_orchestration_config_entity.prompt_template,
-            file_upload=app_orchestration_config_entity.file_upload
+            model_config=app_config.model,
+            prompt_template=app_config.prompt_template,
+            file_upload=app_config.additional_features.file_upload
         )
 
         graph = self._append_node(graph, llm_node)
@@ -154,6 +144,8 @@ class WorkflowConverter:
         end_node = self._convert_to_end_node(app_model=app_model)
 
         graph = self._append_node(graph, end_node)
+
+        app_model_config_dict = app_config.app_model_config_dict
 
         # features
         if new_app_mode == AppMode.ADVANCED_CHAT:

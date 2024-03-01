@@ -42,7 +42,7 @@ class ChatMessageListApi(Resource):
 
     @setup_required
     @login_required
-    @get_app_model(mode=AppMode.CHAT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model):
@@ -194,7 +194,7 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.CHAT)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     def get(self, app_model, message_id):
         message_id = str(message_id)
 

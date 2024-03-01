@@ -5,17 +5,15 @@ from datetime import datetime
 from mimetypes import guess_extension
 from typing import Optional, Union, cast
 
+from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_queue_manager import AppQueueManager
-from core.app.base_app_runner import AppRunner
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.base_app_runner import AppRunner
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import (
-    AgentEntity,
-    AgentToolEntity,
-    ApplicationGenerateEntity,
-    AppOrchestrationConfigEntity,
-    InvokeFrom,
-    ModelConfigEntity,
+from core.app.entities.app_invoke_entities import (
+    EasyUIBasedAppGenerateEntity,
+    InvokeFrom, EasyUIBasedModelConfigEntity,
 )
 from core.file.message_file_parser import FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -50,9 +48,9 @@ logger = logging.getLogger(__name__)
 
 class BaseAgentRunner(AppRunner):
     def __init__(self, tenant_id: str,
-                 application_generate_entity: ApplicationGenerateEntity,
-                 app_orchestration_config: AppOrchestrationConfigEntity,
-                 model_config: ModelConfigEntity,
+                 application_generate_entity: EasyUIBasedAppGenerateEntity,
+                 app_config: AgentChatAppConfig,
+                 model_config: EasyUIBasedModelConfigEntity,
                  config: AgentEntity,
                  queue_manager: AppQueueManager,
                  message: Message,
@@ -66,7 +64,7 @@ class BaseAgentRunner(AppRunner):
         """
         Agent runner
         :param tenant_id: tenant id
-        :param app_orchestration_config: app orchestration config
+        :param app_config: app generate entity
         :param model_config: model config
         :param config: dataset config
         :param queue_manager: queue manager
@@ -78,7 +76,7 @@ class BaseAgentRunner(AppRunner):
         """
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
-        self.app_orchestration_config = app_orchestration_config
+        self.app_config = app_config
         self.model_config = model_config
         self.config = config
         self.queue_manager = queue_manager
@@ -97,16 +95,16 @@ class BaseAgentRunner(AppRunner):
         # init dataset tools
         hit_callback = DatasetIndexToolCallbackHandler(
             queue_manager=queue_manager,
-            app_id=self.application_generate_entity.app_id,
+            app_id=self.app_config.app_id,
             message_id=message.id,
             user_id=user_id,
             invoke_from=self.application_generate_entity.invoke_from,
         )
         self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
             tenant_id=tenant_id,
-            dataset_ids=app_orchestration_config.dataset.dataset_ids if app_orchestration_config.dataset else [],
-            retrieve_config=app_orchestration_config.dataset.retrieve_config if app_orchestration_config.dataset else None,
-            return_resource=app_orchestration_config.show_retrieve_source,
+            dataset_ids=app_config.dataset.dataset_ids if app_config.dataset else [],
+            retrieve_config=app_config.dataset.retrieve_config if app_config.dataset else None,
+            return_resource=app_config.additional_features.show_retrieve_source,
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback
         )
@@ -124,14 +122,15 @@ class BaseAgentRunner(AppRunner):
         else:
             self.stream_tool_call = False
 
-    def _repack_app_orchestration_config(self, app_orchestration_config: AppOrchestrationConfigEntity) -> AppOrchestrationConfigEntity:
+    def _repack_app_generate_entity(self, app_generate_entity: EasyUIBasedAppGenerateEntity) \
+            -> EasyUIBasedAppGenerateEntity:
         """
-        Repack app orchestration config
+        Repack app generate entity
         """
-        if app_orchestration_config.prompt_template.simple_prompt_template is None:
-            app_orchestration_config.prompt_template.simple_prompt_template = ''
+        if app_generate_entity.app_config.prompt_template.simple_prompt_template is None:
+            app_generate_entity.app_config.prompt_template.simple_prompt_template = ''
 
-        return app_orchestration_config
+        return app_generate_entity
 
     def _convert_tool_response_to_str(self, tool_response: list[ToolInvokeMessage]) -> str:
         """
@@ -351,7 +350,7 @@ class BaseAgentRunner(AppRunner):
             ))
 
         db.session.close()
-            
+
         return result
         
     def create_agent_thought(self, message_id: str, message: str, 
@@ -462,7 +461,7 @@ class BaseAgentRunner(AppRunner):
 
         db.session.commit()
         db.session.close()
-    
+
     def transform_tool_invoke_messages(self, messages: list[ToolInvokeMessage]) -> list[ToolInvokeMessage]:
         """
         Transform tool message into agent thought

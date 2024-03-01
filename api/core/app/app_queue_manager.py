@@ -6,8 +6,8 @@ from typing import Any
 
 from sqlalchemy.orm import DeclarativeMeta
 
-from core.entities.application_entities import InvokeFrom
-from core.entities.queue_entities import (
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import (
     AnnotationReplyEvent,
     AppQueueEvent,
     QueueAgentMessageEvent,
