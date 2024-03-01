@@ -1,13 +1,12 @@
 import re
-from typing import Tuple
 
-from core.app.app_config.entities import VariableEntity, ExternalDataVariableEntity
+from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
 
 
 class BasicVariablesConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Tuple[list[VariableEntity], list[ExternalDataVariableEntity]]:
+    def convert(cls, config: dict) -> tuple[list[VariableEntity], list[ExternalDataVariableEntity]]:
         """
         Convert model config to model config
 

@@ -2,12 +2,12 @@ import logging
 from typing import cast
 
 from core.app.app_queue_manager import AppQueueManager
-from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.apps.base_app_runner import AppRunner
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.entities.app_invoke_entities import (
     EasyUIBasedAppGenerateEntity,
 )
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationException
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval

@@ -2,12 +2,12 @@ import logging
 from typing import cast
 
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.apps.base_app_runner import AppRunner
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.entities.app_invoke_entities import (
     EasyUIBasedAppGenerateEntity,
 )
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationException
