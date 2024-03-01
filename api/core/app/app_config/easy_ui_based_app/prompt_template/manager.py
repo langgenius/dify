@@ -1,5 +1,8 @@
-from core.app.app_config.entities import PromptTemplateEntity, \
-    AdvancedChatPromptTemplateEntity, AdvancedCompletionPromptTemplateEntity
+from core.app.app_config.entities import (
+    AdvancedChatPromptTemplateEntity,
+    AdvancedCompletionPromptTemplateEntity,
+    PromptTemplateEntity,
+)
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.prompt.simple_prompt_transform import ModelMode
 from models.model import AppMode

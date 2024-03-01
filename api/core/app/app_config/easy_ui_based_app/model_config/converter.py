@@ -2,7 +2,6 @@ from typing import cast
 
 from core.app.app_config.entities import EasyUIBasedAppConfig
 from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
-
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.entities.model_entities import ModelType

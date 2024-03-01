@@ -1,9 +1,8 @@
-from typing import Tuple
 
 
 class OpeningStatementConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Tuple[str, list]:
+    def convert(cls, config: dict) -> tuple[str, list]:
         """
         Convert model config to model config
 

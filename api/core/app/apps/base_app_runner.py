@@ -2,14 +2,15 @@ import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-from core.app.app_config.entities import PromptTemplateEntity, ExternalDataVariableEntity
+from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
-from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.app.entities.app_invoke_entities import (
     EasyUIBasedAppGenerateEntity,
-    InvokeFrom, EasyUIBasedModelConfigEntity,
+    EasyUIBasedModelConfigEntity,
+    InvokeFrom,
 )
+from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory

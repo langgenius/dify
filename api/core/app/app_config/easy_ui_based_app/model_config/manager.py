@@ -1,5 +1,5 @@
 from core.app.app_config.entities import ModelConfigEntity
-from core.model_runtime.entities.model_entities import ModelType, ModelPropertyKey
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from core.provider_manager import ProviderManager
 
