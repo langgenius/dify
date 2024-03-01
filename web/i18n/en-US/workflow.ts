@@ -50,6 +50,11 @@ const translation = {
       contextTooltip: 'You can import Knowledge as context',
       prompt: 'prompt',
       vision: 'vision',
+      resolution: {
+        name: 'Resolution',
+        high: 'High',
+        low: 'Low',
+      },
       outputVars: {
         output: 'Generate content',
         usage: 'Model Usage Information',

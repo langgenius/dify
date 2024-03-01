@@ -50,6 +50,11 @@ const translation = {
       contextTooltip: '您可以导入知识库作为上下文',
       prompt: '提示词',
       vision: '视觉',
+      resolution: {
+        name: '分辨率',
+        high: '高',
+        low: '低',
+      },
       outputVars: {
         output: '生成内容',
         usage: '模型用量信息',

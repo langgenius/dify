@@ -40,8 +40,7 @@ export const mockData: LLMNodeType = {
     variable_selector: ['aaa', 'name'],
   },
   vision: {
-    enabled: false,
-    variable_selector: [],
+    enabled: true,
     configs: {
       detail: Resolution.low,
     },

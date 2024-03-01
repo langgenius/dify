@@ -4,6 +4,7 @@ import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
 import { mockData } from './mock'
+import ResolutionPicker from './components/resolution-picker'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
@@ -25,6 +26,7 @@ const Panel: FC = () => {
     handleAddVariable,
     handleContextVarChange,
     handleMemoryChange,
+    handleVisionResolutionChange,
   } = useConfig(mockData)
   const isChatApp = true // TODO: get from app context
   const model = inputs.model
@@ -106,10 +108,14 @@ const Panel: FC = () => {
         {/* Vision: GPT4-vision and so on */}
         <Field
           title={t(`${i18nPrefix}.vision`)}
-          inline
-        >
-          Vision
-        </Field>
+          tooltip={t('appDebug.vision.description')!}
+          operations={
+            <ResolutionPicker
+              value={inputs.vision.configs.detail}
+              onChange={handleVisionResolutionChange}
+            />
+          }
+        />
       </div>
       <Split />
       <div className='px-4 pt-4 pb-2'>

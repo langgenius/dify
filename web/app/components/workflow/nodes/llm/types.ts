@@ -12,7 +12,6 @@ export type LLMNodeType = CommonNodeType & {
   }
   vision: {
     enabled: boolean
-    variable_selector: ValueSelector
     configs: {
       detail: Resolution
     }

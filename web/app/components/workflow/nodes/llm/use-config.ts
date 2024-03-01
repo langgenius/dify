@@ -3,6 +3,7 @@ import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import type { Memory, ValueSelector } from '../../types'
 import type { LLMNodeType } from './types'
+import type { Resolution } from '@/types/app'
 
 const useConfig = (initInputs: LLMNodeType) => {
   const [inputs, setInputs] = useState<LLMNodeType>(initInputs)
@@ -45,6 +46,13 @@ const useConfig = (initInputs: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleVisionResolutionChange = useCallback((newResolution: Resolution) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.vision.configs.detail = newResolution
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     inputs,
     handleModelChanged,
@@ -53,6 +61,7 @@ const useConfig = (initInputs: LLMNodeType) => {
     handleAddVariable,
     handleContextVarChange,
     handleMemoryChange,
+    handleVisionResolutionChange,
   }
 }
 
