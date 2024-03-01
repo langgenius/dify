@@ -1,6 +1,6 @@
 from collections.abc import Generator
-from urllib.parse import urljoin
 from typing import cast
+from urllib.parse import urljoin
 
 from httpx import Timeout
 from openai import (
@@ -313,6 +313,9 @@ class LocalAILarguageModel(LargeLanguageModel):
         :param credentials: credentials dict
         :return: client kwargs
         """
+        if not credentials['server_url'].endswith('/'):
+            credentials['server_url'] += '/'
+            
         client_kwargs = {
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "api_key": "1",
