@@ -10,7 +10,7 @@ from core.rag.models.document import Document
 
 
 class WordExtractor(BaseExtractor):
-    """Load pdf files.
+    """Load docx files.
 
 
     Args:
