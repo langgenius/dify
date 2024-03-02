@@ -124,15 +124,16 @@ class AppService:
 
         return app
 
-    def import_app(self, tenant_id: str, args: dict, account: Account) -> App:
+    def import_app(self, tenant_id: str, data: str, args: dict, account: Account) -> App:
         """
         Import app
         :param tenant_id: tenant id
+        :param data: import data
         :param args: request args
         :param account: Account instance
         """
         try:
-            import_data = yaml.safe_load(args['data'])
+            import_data = yaml.safe_load(data)
         except yaml.YAMLError as e:
             raise ValueError("Invalid YAML format in data argument.")
 
