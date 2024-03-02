@@ -93,7 +93,7 @@ class AppImportApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        app = app_service.import_app(current_user.current_tenant_id, args, current_user)
+        app = app_service.import_app(current_user.current_tenant_id, args['data'], args, current_user)
 
         return app, 201
 
@@ -178,6 +178,32 @@ class AppApi(Resource):
         app_service.delete_app(app_model)
 
         return {'result': 'success'}, 204
+
+
+class AppCopyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    @marshal_with(app_detail_fields_with_site)
+    def post(self, app_model):
+        """Copy app"""
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, location='json')
+        parser.add_argument('description', type=str, location='json')
+        parser.add_argument('icon', type=str, location='json')
+        parser.add_argument('icon_background', type=str, location='json')
+        args = parser.parse_args()
+
+        app_service = AppService()
+        data = app_service.export_app(app_model)
+        app = app_service.import_app(current_user.current_tenant_id, data, args, current_user)
+
+        return app, 201
 
 
 class AppExportApi(Resource):
@@ -266,6 +292,7 @@ class AppApiStatus(Resource):
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppImportApi, '/apps/import')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
+api.add_resource(AppCopyApi, '/apps/<uuid:app_id>/copy')
 api.add_resource(AppExportApi, '/apps/<uuid:app_id>/export')
 api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
 api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
