@@ -12,7 +12,7 @@ from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, Sy
 from langchain.schema import AgentAction, AgentFinish, OutputParserException
 from langchain.tools import BaseTool
 
-from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.rag.retrieval.agent.llm_chain import LLMChain
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
@@ -206,7 +206,7 @@ Thought: {agent_scratchpad}
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_config: EasyUIBasedModelConfigEntity,
+            model_config: ModelConfigWithCredentialsEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             output_parser: Optional[AgentOutputParser] = None,

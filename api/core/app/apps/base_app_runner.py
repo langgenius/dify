@@ -5,9 +5,8 @@ from typing import Optional, Union, cast
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
-    EasyUIBasedAppGenerateEntity,
-    EasyUIBasedModelConfigEntity,
-    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    InvokeFrom, AppGenerateEntity, EasyUIBasedAppGenerateEntity,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
@@ -27,7 +26,7 @@ from models.model import App, AppMode, Message, MessageAnnotation
 
 class AppRunner:
     def get_pre_calculate_rest_tokens(self, app_record: App,
-                                      model_config: EasyUIBasedModelConfigEntity,
+                                      model_config: ModelConfigWithCredentialsEntity,
                                       prompt_template_entity: PromptTemplateEntity,
                                       inputs: dict[str, str],
                                       files: list[FileObj],
@@ -83,7 +82,7 @@ class AppRunner:
 
         return rest_tokens
 
-    def recale_llm_max_tokens(self, model_config: EasyUIBasedModelConfigEntity,
+    def recale_llm_max_tokens(self, model_config: ModelConfigWithCredentialsEntity,
                               prompt_messages: list[PromptMessage]):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
         model_type_instance = model_config.provider_model_bundle.model_type_instance
@@ -119,7 +118,7 @@ class AppRunner:
                     model_config.parameters[parameter_rule.name] = max_tokens
 
     def organize_prompt_messages(self, app_record: App,
-                                 model_config: EasyUIBasedModelConfigEntity,
+                                 model_config: ModelConfigWithCredentialsEntity,
                                  prompt_template_entity: PromptTemplateEntity,
                                  inputs: dict[str, str],
                                  files: list[FileObj],
@@ -292,7 +291,7 @@ class AppRunner:
 
     def moderation_for_inputs(self, app_id: str,
                               tenant_id: str,
-                              app_generate_entity: EasyUIBasedAppGenerateEntity,
+                              app_generate_entity: AppGenerateEntity,
                               inputs: dict,
                               query: str) -> tuple[bool, dict, str]:
         """

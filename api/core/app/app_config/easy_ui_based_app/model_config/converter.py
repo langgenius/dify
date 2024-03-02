@@ -1,7 +1,7 @@
 from typing import cast
 
 from core.app.app_config.entities import EasyUIBasedAppConfig
-from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.entities.model_entities import ModelType
@@ -9,11 +9,11 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.provider_manager import ProviderManager
 
 
-class EasyUIBasedModelConfigEntityConverter:
+class ModelConfigConverter:
     @classmethod
     def convert(cls, app_config: EasyUIBasedAppConfig,
                 skip_check: bool = False) \
-            -> EasyUIBasedModelConfigEntity:
+            -> ModelConfigWithCredentialsEntity:
         """
         Convert app model config dict to entity.
         :param app_config: app config
@@ -91,7 +91,7 @@ class EasyUIBasedModelConfigEntityConverter:
         if not skip_check and not model_schema:
             raise ValueError(f"Model {model_name} not exist.")
 
-        return EasyUIBasedModelConfigEntity(
+        return ModelConfigWithCredentialsEntity(
             provider=model_config.provider,
             model=model_config.model,
             model_schema=model_schema,

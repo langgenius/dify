@@ -5,7 +5,7 @@ from core.app.app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.entities.app_invoke_entities import (
-    EasyUIBasedAppGenerateEntity,
+    CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
@@ -22,7 +22,7 @@ class CompletionAppRunner(AppRunner):
     Completion Application Runner
     """
 
-    def run(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
+    def run(self, application_generate_entity: CompletionAppGenerateEntity,
             queue_manager: AppQueueManager,
             message: Message) -> None:
         """

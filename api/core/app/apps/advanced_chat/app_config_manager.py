@@ -1,3 +1,5 @@
+from typing import Optional
+
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -10,7 +12,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
-from models.model import App, AppMode
+from models.model import App, AppMode, Conversation
 from models.workflow import Workflow
 
 
@@ -23,7 +25,9 @@ class AdvancedChatAppConfig(WorkflowUIBasedAppConfig):
 
 class AdvancedChatAppConfigManager(BaseAppConfigManager):
     @classmethod
-    def config_convert(cls, app_model: App, workflow: Workflow) -> AdvancedChatAppConfig:
+    def get_app_config(cls, app_model: App,
+                       workflow: Workflow,
+                       conversation: Optional[Conversation] = None) -> AdvancedChatAppConfig:
         features_dict = workflow.features_dict
 
         app_config = AdvancedChatAppConfig(

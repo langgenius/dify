@@ -10,7 +10,7 @@ from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppMod
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.app_config.features.more_like_this.manager import MoreLikeThisConfigManager
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, Conversation
 
 
 class CompletionAppConfig(EasyUIBasedAppConfig):
@@ -22,19 +22,26 @@ class CompletionAppConfig(EasyUIBasedAppConfig):
 
 class CompletionAppConfigManager(BaseAppConfigManager):
     @classmethod
-    def config_convert(cls, app_model: App,
-                       config_from: EasyUIBasedAppModelConfigFrom,
+    def get_app_config(cls, app_model: App,
                        app_model_config: AppModelConfig,
-                       config_dict: Optional[dict] = None) -> CompletionAppConfig:
+                       override_config_dict: Optional[dict] = None) -> CompletionAppConfig:
         """
         Convert app model config to completion app config
         :param app_model: app model
-        :param config_from: app model config from
         :param app_model_config: app model config
-        :param config_dict: app model config dict
+        :param override_config_dict: app model config dict
         :return:
         """
-        config_dict = cls.convert_to_config_dict(config_from, app_model_config, config_dict)
+        if override_config_dict:
+            config_from = EasyUIBasedAppModelConfigFrom.ARGS
+        else:
+            config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
+
+        if override_config_dict != EasyUIBasedAppModelConfigFrom.ARGS:
+            app_model_config_dict = app_model_config.to_dict()
+            config_dict = app_model_config_dict.copy()
+        else:
+            config_dict = override_config_dict
 
         app_config = CompletionAppConfig(
             tenant_id=app_model.tenant_id,

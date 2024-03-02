@@ -4,7 +4,7 @@ import os
 from typing import Optional
 
 from core.app.app_config.entities import PromptTemplateEntity
-from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
@@ -52,7 +52,7 @@ class SimplePromptTransform(PromptTransform):
                    files: list[FileObj],
                    context: Optional[str],
                    memory: Optional[TokenBufferMemory],
-                   model_config: EasyUIBasedModelConfigEntity) -> \
+                   model_config: ModelConfigWithCredentialsEntity) -> \
             tuple[list[PromptMessage], Optional[list[str]]]:
         model_mode = ModelMode.value_of(model_config.mode)
         if model_mode == ModelMode.CHAT:
@@ -81,7 +81,7 @@ class SimplePromptTransform(PromptTransform):
         return prompt_messages, stops
 
     def get_prompt_str_and_rules(self, app_mode: AppMode,
-                                 model_config: EasyUIBasedModelConfigEntity,
+                                 model_config: ModelConfigWithCredentialsEntity,
                                  pre_prompt: str,
                                  inputs: dict,
                                  query: Optional[str] = None,
@@ -162,7 +162,7 @@ class SimplePromptTransform(PromptTransform):
                                         context: Optional[str],
                                         files: list[FileObj],
                                         memory: Optional[TokenBufferMemory],
-                                        model_config: EasyUIBasedModelConfigEntity) \
+                                        model_config: ModelConfigWithCredentialsEntity) \
             -> tuple[list[PromptMessage], Optional[list[str]]]:
         prompt_messages = []
 
@@ -200,7 +200,7 @@ class SimplePromptTransform(PromptTransform):
                                               context: Optional[str],
                                               files: list[FileObj],
                                               memory: Optional[TokenBufferMemory],
-                                              model_config: EasyUIBasedModelConfigEntity) \
+                                              model_config: ModelConfigWithCredentialsEntity) \
             -> tuple[list[PromptMessage], Optional[list[str]]]:
         # get prompt
         prompt, prompt_rules = self.get_prompt_str_and_rules(

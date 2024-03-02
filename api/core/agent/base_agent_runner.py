@@ -10,9 +10,8 @@ from core.app.app_queue_manager import AppQueueManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
-    EasyUIBasedAppGenerateEntity,
-    EasyUIBasedModelConfigEntity,
-    InvokeFrom,
+    ModelConfigWithCredentialsEntity,
+    InvokeFrom, AgentChatAppGenerateEntity,
 )
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -49,9 +48,9 @@ logger = logging.getLogger(__name__)
 
 class BaseAgentRunner(AppRunner):
     def __init__(self, tenant_id: str,
-                 application_generate_entity: EasyUIBasedAppGenerateEntity,
+                 application_generate_entity: AgentChatAppGenerateEntity,
                  app_config: AgentChatAppConfig,
-                 model_config: EasyUIBasedModelConfigEntity,
+                 model_config: ModelConfigWithCredentialsEntity,
                  config: AgentEntity,
                  queue_manager: AppQueueManager,
                  message: Message,
@@ -123,8 +122,8 @@ class BaseAgentRunner(AppRunner):
         else:
             self.stream_tool_call = False
 
-    def _repack_app_generate_entity(self, app_generate_entity: EasyUIBasedAppGenerateEntity) \
-            -> EasyUIBasedAppGenerateEntity:
+    def _repack_app_generate_entity(self, app_generate_entity: AgentChatAppGenerateEntity) \
+            -> AgentChatAppGenerateEntity:
         """
         Repack app generate entity
         """
