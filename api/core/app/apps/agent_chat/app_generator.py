@@ -1,18 +1,19 @@
 import logging
 import threading
 import uuid
-from typing import Union, Any, Generator
+from collections.abc import Generator
+from typing import Any, Union
 
-from flask import current_app, Flask
+from flask import Flask, current_app
 from pydantic import ValidationError
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.app_queue_manager import ConversationTaskStoppedException, PublishFrom, AppQueueManager
+from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom, AgentChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db

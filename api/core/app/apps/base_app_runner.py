@@ -5,8 +5,10 @@ from typing import Optional, Union, cast
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
+    AppGenerateEntity,
+    EasyUIBasedAppGenerateEntity,
+    InvokeFrom,
     ModelConfigWithCredentialsEntity,
-    InvokeFrom, AppGenerateEntity, EasyUIBasedAppGenerateEntity,
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature

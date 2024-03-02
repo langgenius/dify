@@ -7,8 +7,12 @@ from typing import Optional, Union, cast
 from pydantic import BaseModel
 
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, CompletionAppGenerateEntity, \
-    AgentChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    ChatAppGenerateEntity,
+    CompletionAppGenerateEntity,
+    InvokeFrom,
+)
 from core.app.entities.queue_entities import (
     AnnotationReplyEvent,
     QueueAgentMessageEvent,
@@ -40,7 +44,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.tool_file_manager import ToolFileManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageAgentThought, MessageFile, AppMode
+from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)

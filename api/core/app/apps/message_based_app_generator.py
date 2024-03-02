@@ -1,21 +1,27 @@
 import json
 import logging
-from typing import Union, Generator, Optional
+from collections.abc import Generator
+from typing import Optional, Union
 
 from sqlalchemy import and_
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
-from core.app.app_queue_manager import ConversationTaskStoppedException, AppQueueManager
+from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom, ChatAppGenerateEntity, AppGenerateEntity, \
-    CompletionAppGenerateEntity, AgentChatAppGenerateEntity, AdvancedChatAppGenerateEntity
+from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    AppGenerateEntity,
+    ChatAppGenerateEntity,
+    CompletionAppGenerateEntity,
+    InvokeFrom,
+)
 from core.app.generate_task_pipeline import GenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from models.account import Account
-from models.model import Conversation, Message, AppMode, MessageFile, App, EndUser, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
-from services.errors.conversation import ConversationNotExistsError, ConversationCompletedError
+from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 
 logger = logging.getLogger(__name__)
 
