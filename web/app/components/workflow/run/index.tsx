@@ -25,14 +25,14 @@ const RunPanel: FC<RunProps> = ({ activeTab, appId }) => {
             currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
           )}
           onClick={() => setCurrentTab('RESULT')}
-        >{t('appLog.runDetail.result')}</div>
+        >{t('runLog.result')}</div>
         <div
           className={cn(
             'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
             currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
           )}
           onClick={() => setCurrentTab('TRACING')}
-        >{t('appLog.runDetail.tracing')}</div>
+        >{t('runLog.tracing')}</div>
       </div>
       {/* panel detal */}
       <div className={cn('grow bg-white overflow-y-auto', currentTab === 'TRACING' && '!bg-gray-50')}>

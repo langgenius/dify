@@ -75,8 +75,6 @@ const translation = {
   runDetail: {
     title: 'Conversation Log',
     workflowTitle: 'Log Detail',
-    result: 'RESULT',
-    tracing: 'TRACING',
   },
 }
 
