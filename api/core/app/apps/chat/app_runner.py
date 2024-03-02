@@ -5,7 +5,7 @@ from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.entities.app_invoke_entities import (
-    EasyUIBasedAppGenerateEntity,
+    ChatAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -23,7 +23,7 @@ class ChatAppRunner(AppRunner):
     Chat Application Runner
     """
 
-    def run(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
+    def run(self, application_generate_entity: ChatAppGenerateEntity,
             queue_manager: AppQueueManager,
             conversation: Conversation,
             message: Message) -> None:

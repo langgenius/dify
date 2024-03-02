@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
+from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig, AppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileObj
 from core.model_runtime.entities.model_entities import AIModelEntity
@@ -49,9 +49,9 @@ class InvokeFrom(Enum):
         return 'dev'
 
 
-class EasyUIBasedModelConfigEntity(BaseModel):
+class ModelConfigWithCredentialsEntity(BaseModel):
     """
-    Model Config Entity.
+    Model Config With Credentials Entity.
     """
     provider: str
     model: str
@@ -63,21 +63,19 @@ class EasyUIBasedModelConfigEntity(BaseModel):
     stop: list[str] = []
 
 
-class EasyUIBasedAppGenerateEntity(BaseModel):
+class AppGenerateEntity(BaseModel):
     """
-    EasyUI Based Application Generate Entity.
+    App Generate Entity.
     """
     task_id: str
 
     # app config
-    app_config: EasyUIBasedAppConfig
-    model_config: EasyUIBasedModelConfigEntity
+    app_config: AppConfig
 
-    conversation_id: Optional[str] = None
     inputs: dict[str, str]
-    query: Optional[str] = None
     files: list[FileObj] = []
     user_id: str
+
     # extras
     stream: bool
     invoke_from: InvokeFrom
@@ -86,26 +84,52 @@ class EasyUIBasedAppGenerateEntity(BaseModel):
     extras: dict[str, Any] = {}
 
 
-class WorkflowUIBasedAppGenerateEntity(BaseModel):
+class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
-    Workflow UI Based Application Generate Entity.
+    Chat Application Generate Entity.
     """
-    task_id: str
+    # app config
+    app_config: EasyUIBasedAppConfig
+    model_config: ModelConfigWithCredentialsEntity
 
+    query: Optional[str] = None
+
+
+class ChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
+    """
+    Chat Application Generate Entity.
+    """
+    conversation_id: Optional[str] = None
+
+
+class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
+    """
+    Completion Application Generate Entity.
+    """
+    pass
+
+
+class AgentChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
+    """
+    Agent Chat Application Generate Entity.
+    """
+    conversation_id: Optional[str] = None
+
+
+class AdvancedChatAppGenerateEntity(AppGenerateEntity):
+    """
+    Advanced Chat Application Generate Entity.
+    """
     # app config
     app_config: WorkflowUIBasedAppConfig
 
-    inputs: dict[str, str]
-    files: list[FileObj] = []
-    user_id: str
-    # extras
-    stream: bool
-    invoke_from: InvokeFrom
-
-    # extra parameters
-    extras: dict[str, Any] = {}
-
-
-class AdvancedChatAppGenerateEntity(WorkflowUIBasedAppGenerateEntity):
     conversation_id: Optional[str] = None
-    query: str
+    query: Optional[str] = None
+
+
+class WorkflowUIBasedAppGenerateEntity(AppGenerateEntity):
+    """
+    Workflow UI Based Application Generate Entity.
+    """
+    # app config
+    app_config: WorkflowUIBasedAppConfig

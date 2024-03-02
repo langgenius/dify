@@ -17,7 +17,7 @@ class WorkflowAppConfig(WorkflowUIBasedAppConfig):
 
 class WorkflowAppConfigManager(BaseAppConfigManager):
     @classmethod
-    def config_convert(cls, app_model: App, workflow: Workflow) -> WorkflowAppConfig:
+    def get_app_config(cls, app_model: App, workflow: Workflow) -> WorkflowAppConfig:
         features_dict = workflow.features_dict
 
         app_config = WorkflowAppConfig(

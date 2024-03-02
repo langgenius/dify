@@ -8,9 +8,11 @@ from core.app.app_config.entities import (
     FileUploadEntity,
     ModelConfigEntity,
     PromptTemplateEntity,
-    VariableEntity,
+    VariableEntity, EasyUIBasedAppConfig,
 )
-from core.app.app_manager import EasyUIBasedAppManager
+from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
+from core.app.apps.chat.app_config_manager import ChatAppConfigManager
+from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -87,8 +89,7 @@ class WorkflowConverter:
         new_app_mode = self._get_new_app_mode(app_model)
 
         # convert app model config
-        application_manager = EasyUIBasedAppManager()
-        app_config = application_manager.convert_to_app_config(
+        app_config = self._convert_to_app_config(
             app_model=app_model,
             app_model_config=app_model_config
         )
@@ -189,6 +190,30 @@ class WorkflowConverter:
         db.session.commit()
 
         return workflow
+
+    def _convert_to_app_config(self, app_model: App,
+                               app_model_config: AppModelConfig) -> EasyUIBasedAppConfig:
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode == AppMode.AGENT_CHAT or app_model.is_agent:
+            app_model.mode = AppMode.AGENT_CHAT.value
+            app_config = AgentChatAppConfigManager.get_app_config(
+                app_model=app_model,
+                app_model_config=app_model_config
+            )
+        elif app_mode == AppMode.CHAT:
+            app_config = ChatAppConfigManager.get_app_config(
+                app_model=app_model,
+                app_model_config=app_model_config
+            )
+        elif app_mode == AppMode.COMPLETION:
+            app_config = CompletionAppConfigManager.get_app_config(
+                app_model=app_model,
+                app_model_config=app_model_config
+            )
+        else:
+            raise ValueError("Invalid app mode")
+
+        return app_config
 
     def _convert_to_start_node(self, variables: list[VariableEntity]) -> dict:
         """
@@ -566,6 +591,6 @@ class WorkflowConverter:
         :return:
         """
         return db.session.query(APIBasedExtension).filter(
-                APIBasedExtension.tenant_id == tenant_id,
-                APIBasedExtension.id == api_based_extension_id
-            ).first()
+            APIBasedExtension.tenant_id == tenant_id,
+            APIBasedExtension.id == api_based_extension_id
+        ).first()

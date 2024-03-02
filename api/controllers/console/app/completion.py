@@ -59,8 +59,7 @@ class CompletionMessageApi(Resource):
                 user=account,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
-                streaming=streaming,
-                is_model_config_override=True
+                streaming=streaming
             )
 
             return compact_response(response)
@@ -126,8 +125,7 @@ class ChatMessageApi(Resource):
                 user=account,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
-                streaming=streaming,
-                is_model_config_override=True
+                streaming=streaming
             )
 
             return compact_response(response)

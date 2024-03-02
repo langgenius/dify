@@ -3,7 +3,7 @@ from typing import Optional, cast
 from langchain.tools import BaseTool
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity, InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.agent_entities import PlanningStrategy
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -18,7 +18,7 @@ from models.dataset import Dataset
 
 class DatasetRetrieval:
     def retrieve(self, tenant_id: str,
-                 model_config: EasyUIBasedModelConfigEntity,
+                 model_config: ModelConfigWithCredentialsEntity,
                  config: DatasetEntity,
                  query: str,
                  invoke_from: InvokeFrom,

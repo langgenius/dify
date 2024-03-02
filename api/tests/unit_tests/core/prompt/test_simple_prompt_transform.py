@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage
 from core.prompt.simple_prompt_transform import SimplePromptTransform
@@ -139,7 +139,7 @@ def test_get_common_chat_app_prompt_template_with_p():
 
 
 def test__get_chat_model_prompt_messages():
-    model_config_mock = MagicMock(spec=EasyUIBasedModelConfigEntity)
+    model_config_mock = MagicMock(spec=ModelConfigWithCredentialsEntity)
     model_config_mock.provider = 'openai'
     model_config_mock.model = 'gpt-4'
 
@@ -191,7 +191,7 @@ def test__get_chat_model_prompt_messages():
 
 
 def test__get_completion_model_prompt_messages():
-    model_config_mock = MagicMock(spec=EasyUIBasedModelConfigEntity)
+    model_config_mock = MagicMock(spec=ModelConfigWithCredentialsEntity)
     model_config_mock.provider = 'openai'
     model_config_mock.model = 'gpt-3.5-turbo-instruct'
 

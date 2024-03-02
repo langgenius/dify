@@ -15,7 +15,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
     SuggestedQuestionsAfterAnswerConfigManager,
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, Conversation
 
 
 class ChatAppConfig(EasyUIBasedAppConfig):
@@ -27,19 +27,30 @@ class ChatAppConfig(EasyUIBasedAppConfig):
 
 class ChatAppConfigManager(BaseAppConfigManager):
     @classmethod
-    def config_convert(cls, app_model: App,
-                       config_from: EasyUIBasedAppModelConfigFrom,
+    def get_app_config(cls, app_model: App,
                        app_model_config: AppModelConfig,
-                       config_dict: Optional[dict] = None) -> ChatAppConfig:
+                       conversation: Optional[Conversation] = None,
+                       override_config_dict: Optional[dict] = None) -> ChatAppConfig:
         """
         Convert app model config to chat app config
         :param app_model: app model
-        :param config_from: app model config from
         :param app_model_config: app model config
-        :param config_dict: app model config dict
+        :param conversation: conversation
+        :param override_config_dict: app model config dict
         :return:
         """
-        config_dict = cls.convert_to_config_dict(config_from, app_model_config, config_dict)
+        if override_config_dict:
+            config_from = EasyUIBasedAppModelConfigFrom.ARGS
+        elif conversation:
+            config_from = EasyUIBasedAppModelConfigFrom.CONVERSATION_SPECIFIC_CONFIG
+        else:
+            config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
+
+        if override_config_dict != EasyUIBasedAppModelConfigFrom.ARGS:
+            app_model_config_dict = app_model_config.to_dict()
+            config_dict = app_model_config_dict.copy()
+        else:
+            config_dict = override_config_dict
 
         app_config = ChatAppConfig(
             tenant_id=app_model.tenant_id,

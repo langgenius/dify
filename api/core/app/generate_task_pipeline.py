@@ -7,7 +7,8 @@ from typing import Optional, Union, cast
 from pydantic import BaseModel
 
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, CompletionAppGenerateEntity, \
+    AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import (
     AnnotationReplyEvent,
     QueueAgentMessageEvent,
@@ -39,7 +40,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.tool_file_manager import ToolFileManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageAgentThought, MessageFile
+from models.model import Conversation, Message, MessageAgentThought, MessageFile, AppMode
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,11 @@ class GenerateTaskPipeline:
     GenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
 
-    def __init__(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
+    def __init__(self, application_generate_entity: Union[
+                                   ChatAppGenerateEntity,
+                                   CompletionAppGenerateEntity,
+                                   AgentChatAppGenerateEntity
+                               ],
                  queue_manager: AppQueueManager,
                  conversation: Conversation,
                  message: Message) -> None:
@@ -433,6 +438,7 @@ class GenerateTaskPipeline:
         self._message.answer_price_unit = usage.completion_price_unit
         self._message.provider_response_latency = time.perf_counter() - self._start_at
         self._message.total_price = usage.total_price
+        self._message.currency = usage.currency
 
         db.session.commit()
 
@@ -440,7 +446,11 @@ class GenerateTaskPipeline:
             self._message,
             application_generate_entity=self._application_generate_entity,
             conversation=self._conversation,
-            is_first_message=self._application_generate_entity.conversation_id is None,
+            is_first_message=self._application_generate_entity.app_config.app_mode in [
+                AppMode.AGENT_CHAT,
+                AppMode.CHAT,
+                AppMode.ADVANCED_CHAT
+            ] and self._application_generate_entity.conversation_id is None,
             extras=self._application_generate_entity.extras
         )
 

@@ -7,7 +7,8 @@ from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_runner import AppRunner
-from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity, EasyUIBasedModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity, \
+    AgentChatAppGenerateEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -26,7 +27,7 @@ class AgentChatAppRunner(AppRunner):
     """
     Agent Application Runner
     """
-    def run(self, application_generate_entity: EasyUIBasedAppGenerateEntity,
+    def run(self, application_generate_entity: AgentChatAppGenerateEntity,
             queue_manager: AppQueueManager,
             conversation: Conversation,
             message: Message) -> None:
@@ -292,7 +293,7 @@ class AgentChatAppRunner(AppRunner):
             'pool': db_variables.variables
         })
 
-    def _get_usage_of_all_agent_thoughts(self, model_config: EasyUIBasedModelConfigEntity,
+    def _get_usage_of_all_agent_thoughts(self, model_config: ModelConfigWithCredentialsEntity,
                                          message: Message) -> LLMUsage:
         """
         Get usage of all agent thoughts

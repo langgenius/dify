@@ -1,6 +1,6 @@
 import logging
 
-from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, EasyUIBasedAppGenerateEntity
 from core.helper import moderation
 from core.model_runtime.entities.message_entities import PromptMessage
 

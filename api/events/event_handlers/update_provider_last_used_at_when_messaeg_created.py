@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from core.app.entities.app_invoke_entities import EasyUIBasedAppGenerateEntity
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.provider import Provider
@@ -9,7 +9,7 @@ from models.provider import Provider
 @message_was_created.connect
 def handle(sender, **kwargs):
     message = sender
-    application_generate_entity: EasyUIBasedAppGenerateEntity = kwargs.get('application_generate_entity')
+    application_generate_entity: ChatAppGenerateEntity = kwargs.get('application_generate_entity')
 
     db.session.query(Provider).filter(
         Provider.tenant_id == application_generate_entity.app_config.tenant_id,

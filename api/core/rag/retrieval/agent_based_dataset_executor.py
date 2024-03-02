@@ -7,7 +7,7 @@ from langchain.callbacks.manager import Callbacks
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Extra
 
-from core.app.entities.app_invoke_entities import EasyUIBasedModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.message_entities import prompt_messages_to_lc_messages
 from core.helper import moderation
@@ -22,9 +22,9 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 
 class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
-    model_config: EasyUIBasedModelConfigEntity
+    model_config: ModelConfigWithCredentialsEntity
     tools: list[BaseTool]
-    summary_model_config: Optional[EasyUIBasedModelConfigEntity] = None
+    summary_model_config: Optional[ModelConfigWithCredentialsEntity] = None
     memory: Optional[TokenBufferMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
