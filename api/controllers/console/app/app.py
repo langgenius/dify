@@ -76,7 +76,7 @@ class AppImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_detail_fields)
+    @marshal_with(app_detail_fields_with_site)
     @cloud_edition_billing_resource_check('apps')
     def post(self):
         """Import app"""
