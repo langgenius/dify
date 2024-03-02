@@ -71,11 +71,13 @@ const Apps = ({
     name,
     icon,
     icon_background,
+    description,
   }) => {
     const { app_model_config: model_config } = await fetchAppDetail(
       currApp?.app.id as string,
     )
-
+    // #TODO# need yaml config from app detail
+    // #TODO# use import api
     try {
       const app = await createApp({
         name,
@@ -91,10 +93,14 @@ const Apps = ({
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      router.push(
-        `/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'
-        }`,
-      )
+      if (!isCurrentWorkspaceManager) {
+        router.push(`/app/${app.id}/'overview'`)
+      }
+      else {
+        if (app.mode === 'workflow' || app.mode === 'advanced-chat')
+          router.push(`/app/${app.id}/'workflow'`)
+        router.push(`/app/${app.id}/'configuration'`)
+      }
     }
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -111,8 +117,8 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex flex-col border-l border-gray-200',
-      pageType === PageType.EXPLORE ? 'h-full' : 'h-[calc(100%-76px)]',
+      'flex flex-col',
+      pageType === PageType.EXPLORE ? 'h-full border-l border-gray-200' : 'h-[calc(100%-76px)]',
     )}>
       {pageType === PageType.EXPLORE && (
         <div className='shrink-0 pt-6 px-12'>

@@ -278,6 +278,8 @@ export type App = {
   id: string
   /** Name */
   name: string
+  /** Description */
+  description: string
 
   /** Icon */
   icon: string

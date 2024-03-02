@@ -12,6 +12,7 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 export type CreateAppModalProps = {
   appName: string
+  appDescription?: string
   show: boolean
   onConfirm: (info: {
     name: string
@@ -24,6 +25,7 @@ export type CreateAppModalProps = {
 
 const CreateAppModal = ({
   appName,
+  appDescription,
   show = false,
   onConfirm,
   onHide,
@@ -33,7 +35,7 @@ const CreateAppModal = ({
   const [name, setName] = React.useState(appName)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emoji, setEmoji] = useState({ icon: '🤖', icon_background: '#FFEAD5' })
-  const [description, setDescription] = useState('')
+  const [description, setDescription] = useState(appDescription || '')
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)

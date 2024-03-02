@@ -17,7 +17,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
 
-  const [showNewAppDialog, setShowNewAppDialog] = useState(false)
+  const [showNewAppDialog, setShowNewAppDialog] = useState(true)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   return (
     <a
