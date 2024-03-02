@@ -6,8 +6,8 @@ identity:
     zh_Hans: PubMed 搜索
 description:
   human:
-    en_US: Perform searches on PubMed and get results.
-    zh_Hans: 在 PubMed 上进行搜索并获取结果。
+    en_US: PubMed® comprises more than 35 million citations for biomedical literature from MEDLINE, life science journals, and online books. Citations may include links to full text content from PubMed Central and publisher web sites.
+    zh_Hans: PubMed® 包含来自 MEDLINE、生命科学期刊和在线书籍的超过 3500 万篇生物医学文献引用。引用可能包括来自 PubMed Central 和出版商网站的全文内容链接。
   llm: Perform searches on PubMed and get results.
 parameters:
   - name: query
