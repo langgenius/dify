@@ -46,14 +46,17 @@ class WordExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        import docx2txt
+        from docx import Document as docx_Document
 
-        return [
-            Document(
-                page_content=docx2txt.process(self.file_path),
+        document = docx_Document(self.file_path)
+        doc_texts = []
+        for paragraph in document.paragraphs:
+            doc_texts.append(Document(
+                page_content=paragraph.text,
                 metadata={"source": self.file_path},
-            )
-        ]
+            ))
+
+        return doc_texts
 
     @staticmethod
     def _is_valid_url(url: str) -> bool:
