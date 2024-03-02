@@ -6,6 +6,16 @@ const translation = {
     time: 'ELAPSED TIME',
     tokens: 'TOTAL TOKENS',
   },
+  meta: {
+    title: 'METADATA',
+    status: 'Status',
+    version: 'Version',
+    executor: 'Executor',
+    startTime: 'Start Time',
+    time: 'Elapsed Time',
+    tokens: 'Total Tokens',
+    steps: 'Run Steps',
+  },
 }
 
 export default translation
