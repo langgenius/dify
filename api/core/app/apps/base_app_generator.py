@@ -1,4 +1,4 @@
-from core.app.app_config.entities import VariableEntity, AppConfig
+from core.app.app_config.entities import AppConfig, VariableEntity
 
 
 class BaseAppGenerator:

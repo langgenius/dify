@@ -10,8 +10,9 @@ from core.app.app_queue_manager import AppQueueManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
+    AgentChatAppGenerateEntity,
+    InvokeFrom,
     ModelConfigWithCredentialsEntity,
-    InvokeFrom, AgentChatAppGenerateEntity,
 )
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler

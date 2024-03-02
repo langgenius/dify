@@ -3,7 +3,7 @@ from typing import Optional, cast
 from langchain.tools import BaseTool
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.agent_entities import PlanningStrategy
 from core.memory.token_buffer_memory import TokenBufferMemory

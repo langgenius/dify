@@ -4,11 +4,12 @@ from typing import Optional
 from core.app.app_config.entities import (
     DatasetEntity,
     DatasetRetrieveConfigEntity,
+    EasyUIBasedAppConfig,
     ExternalDataVariableEntity,
     FileUploadEntity,
     ModelConfigEntity,
     PromptTemplateEntity,
-    VariableEntity, EasyUIBasedAppConfig,
+    VariableEntity,
 )
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
