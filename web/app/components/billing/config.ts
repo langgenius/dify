@@ -16,7 +16,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     teamMembers: 1,
     buildApps: 10,
     vectorSpace: 5,
-    documentsUploadQuota: 20,
+    documentsUploadQuota: 50,
     documentProcessingPriority: Priority.standard,
     logHistory: 30,
     customTools: unAvailable,

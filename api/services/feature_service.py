@@ -25,7 +25,7 @@ class FeatureModel(BaseModel):
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
-    documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=20)
+    documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = 'standard'
     can_replace_logo: bool = False
 
