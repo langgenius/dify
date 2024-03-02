@@ -1,22 +1,34 @@
 'use client'
 import type { FC } from 'react'
-// import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 // import cn from 'classnames'
-// import Loading from '@/app/components/base/loading'
-// import Indicator from '@/app/components/header/indicator'
+import { BlockEnum } from '../types'
+import NodePanel from './node'
 
 type TracingProps = {
   appId: string
 }
 
+const nodeInfoFake = {
+  type: BlockEnum.Start,
+  title: 'START',
+  time: 67.349,
+  tokens: 2708,
+  status: 'succeeded',
+}
+
 const Tracing: FC<TracingProps> = ({ appId }) => {
   const { t } = useTranslation()
-  // const [currentTab, setCurrentTab] = useState<string>(activeTab)
+  const [nodeCollapsed, setCurrentTab] = useState<boolean>(false)
+
+  const collapseStateChange = () => {
+    setCurrentTab(!nodeCollapsed)
+  }
 
   return (
-    <div className='bg-gray-50'>
-      Tracing panel = TODO
+    <div className='bg-gray-50 py-2'>
+      <NodePanel nodeInfo={nodeInfoFake} collapsed={nodeCollapsed} collapseHandle={collapseStateChange} />
     </div>
   )
 }
