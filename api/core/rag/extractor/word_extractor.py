@@ -49,14 +49,13 @@ class WordExtractor(BaseExtractor):
         from docx import Document as docx_Document
 
         document = docx_Document(self.file_path)
-        doc_texts = []
-        for paragraph in document.paragraphs:
-            doc_texts.append(Document(
-                page_content=paragraph.text,
-                metadata={"source": self.file_path},
-            ))
+        doc_texts = [paragraph.text for paragraph in document.paragraphs]
+        content = '\n'.join(doc_texts)
 
-        return doc_texts
+        return [Document(
+            page_content=content,
+            metadata={"source": self.file_path},
+        )]
 
     @staticmethod
     def _is_valid_url(url: str) -> bool:
