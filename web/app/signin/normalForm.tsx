@@ -282,7 +282,7 @@ const NormalForm = () => {
             <Link
               className='text-primary-600'
               target='_blank' rel='noopener noreferrer'
-              href={locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/user-agreement/terms-of-service'}
+              href='https://dify.ai/terms'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
