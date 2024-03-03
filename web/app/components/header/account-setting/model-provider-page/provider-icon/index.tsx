@@ -16,7 +16,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
     return (
       <img
         alt='provider-icon'
-        src={`${provider.icon_large[language]}?_token=${localStorage.getItem('console_token')}`}
+        src={`${provider.icon_large[language] || provider.icon_large.en_US}?_token=${localStorage.getItem('console_token')}`}
         className={`w-auto h-6 ${className}`}
       />
     )
