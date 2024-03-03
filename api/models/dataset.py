@@ -116,6 +116,10 @@ class Dataset(db.Model):
         }
         return self.retrieval_model if self.retrieval_model else default_retrieval_model
 
+    @staticmethod
+    def gen_collection_name_by_id(dataset_id: str) -> str:
+        normalized_dataset_id = dataset_id.replace("-", "_")
+        return f'Vector_index_{normalized_dataset_id}_Node'
 
 class DatasetProcessRule(db.Model):
     __tablename__ = 'dataset_process_rules'

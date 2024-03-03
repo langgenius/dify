@@ -5,7 +5,7 @@ from core.app_runner.app_runner import AppRunner
 from core.application_queue_manager import ApplicationQueueManager, PublishFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, DatasetEntity, InvokeFrom, ModelConfigEntity
-from core.features.dataset_retrieval import DatasetRetrievalFeature
+from core.features.dataset_retrieval.dataset_retrieval import DatasetRetrievalFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationException

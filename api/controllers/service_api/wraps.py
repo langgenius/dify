@@ -89,12 +89,15 @@ def cloud_edition_billing_resource_check(resource: str,
                 members = features.members
                 apps = features.apps
                 vector_space = features.vector_space
+                documents_upload_quota = features.documents_upload_quota
 
                 if resource == 'members' and 0 < members.limit <= members.size:
                     raise Unauthorized(error_msg)
                 elif resource == 'apps' and 0 < apps.limit <= apps.size:
                     raise Unauthorized(error_msg)
                 elif resource == 'vector_space' and 0 < vector_space.limit <= vector_space.size:
+                    raise Unauthorized(error_msg)
+                elif resource == 'documents' and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     raise Unauthorized(error_msg)
                 else:
                     return view(*args, **kwargs)

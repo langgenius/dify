@@ -56,6 +56,7 @@ def cloud_edition_billing_resource_check(resource: str,
                 members = features.members
                 apps = features.apps
                 vector_space = features.vector_space
+                documents_upload_quota = features.documents_upload_quota
                 annotation_quota_limit = features.annotation_quota_limit
 
                 if resource == 'members' and 0 < members.limit <= members.size:
@@ -64,6 +65,13 @@ def cloud_edition_billing_resource_check(resource: str,
                     abort(403, error_msg)
                 elif resource == 'vector_space' and 0 < vector_space.limit <= vector_space.size:
                     abort(403, error_msg)
+                elif resource == 'documents' and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
+                    # The api of file upload is used in the multiple places, so we need to check the source of the request from datasets
+                    source = request.args.get('source')
+                    if source == 'datasets':
+                        abort(403, error_msg)
+                    else:
+                        return view(*args, **kwargs)
                 elif resource == 'workspace_custom' and not features.can_replace_logo:
                     abort(403, error_msg)
                 elif resource == 'annotation' and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:

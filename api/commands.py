@@ -131,6 +131,8 @@ def vdb_migrate():
     """
     click.echo(click.style('Start migrate vector db.', fg='green'))
     create_count = 0
+    skipped_count = 0
+    total_count = 0
     config = current_app.config
     vector_type = config.get('VECTOR_STORE')
     page = 1
@@ -143,14 +145,19 @@ def vdb_migrate():
 
         page += 1
         for dataset in datasets:
+            total_count = total_count + 1
+            click.echo(f'Processing the {total_count} dataset {dataset.id}. '
+                       + f'{create_count} created, ${skipped_count} skipped.')
             try:
                 click.echo('Create dataset vdb index: {}'.format(dataset.id))
                 if dataset.index_struct_dict:
                     if dataset.index_struct_dict['type'] == vector_type:
+                        skipped_count = skipped_count + 1
                         continue
+                collection_name = ''
                 if vector_type == "weaviate":
                     dataset_id = dataset.id
-                    collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": 'weaviate',
                         "vector_store": {"class_prefix": collection_name}
@@ -167,7 +174,7 @@ def vdb_migrate():
                             raise ValueError('Dataset Collection Bindings is not exist!')
                     else:
                         dataset_id = dataset.id
-                        collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                        collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": 'qdrant',
                         "vector_store": {"class_prefix": collection_name}
@@ -176,7 +183,7 @@ def vdb_migrate():
 
                 elif vector_type == "milvus":
                     dataset_id = dataset.id
-                    collection_name = "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": 'milvus',
                         "vector_store": {"class_prefix": collection_name}
@@ -186,11 +193,17 @@ def vdb_migrate():
                     raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 
                 vector = Vector(dataset)
-                click.echo(f"vdb_migrate {dataset.id}")
+                click.echo(f"Start to migrate dataset {dataset.id}.")
 
                 try:
                     vector.delete()
+                    click.echo(
+                        click.style(f'Successfully delete vector index {collection_name} for dataset {dataset.id}.',
+                                    fg='green'))
                 except Exception as e:
+                    click.echo(
+                        click.style(f'Failed to delete vector index {collection_name} for dataset {dataset.id}.',
+                                    fg='red'))
                     raise e
 
                 dataset_documents = db.session.query(DatasetDocument).filter(
@@ -201,6 +214,7 @@ def vdb_migrate():
                 ).all()
 
                 documents = []
+                segments_count = 0
                 for dataset_document in dataset_documents:
                     segments = db.session.query(DocumentSegment).filter(
                         DocumentSegment.document_id == dataset_document.id,
@@ -220,15 +234,22 @@ def vdb_migrate():
                         )
 
                         documents.append(document)
+                        segments_count = segments_count + 1
 
                 if documents:
                     try:
+                        click.echo(click.style(
+                            f'Start to created vector index with {len(documents)} documents of {segments_count} segments for dataset {dataset.id}.',
+                            fg='green'))
                         vector.create(documents)
+                        click.echo(
+                            click.style(f'Successfully created vector index for dataset {dataset.id}.', fg='green'))
                     except Exception as e:
+                        click.echo(click.style(f'Failed to created vector index for dataset {dataset.id}.', fg='red'))
                         raise e
-                click.echo(f"Dataset {dataset.id} create successfully.")
                 db.session.add(dataset)
                 db.session.commit()
+                click.echo(f'Successfully migrated dataset {dataset.id}.')
                 create_count += 1
             except Exception as e:
                 db.session.rollback()
@@ -237,7 +258,9 @@ def vdb_migrate():
                                 fg='red'))
                 continue
 
-    click.echo(click.style('Congratulations! Create {} dataset indexes.'.format(create_count), fg='green'))
+    click.echo(
+        click.style(f'Congratulations! Create {create_count} dataset indexes, and skipped {skipped_count} datasets.',
+                    fg='green'))
 
 
 def register_commands(app):

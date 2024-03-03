@@ -23,6 +23,7 @@ type IFileUploaderProps = {
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
+  notSupportBatchUpload?: boolean
 }
 
 const FileUploader = ({
@@ -32,6 +33,7 @@ const FileUploader = ({
   onFileUpdate,
   onFileListUpdate,
   onPreview,
+  notSupportBatchUpload,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -40,6 +42,7 @@ const FileUploader = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
+  const hideUpload = notSupportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
@@ -131,7 +134,7 @@ const FileUploader = ({
       xhr: new XMLHttpRequest(),
       data: formData,
       onprogress: onProgress,
-    })
+    }, false, undefined, '?source=datasets')
       .then((res: File) => {
         const completeFile = {
           fileID: fileItem.fileID,
@@ -143,8 +146,8 @@ const FileUploader = ({
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
       })
-      .catch(() => {
-        notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.failed') })
+      .catch((e) => {
+        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
         onFileUpdate(fileItem, -2, fileListCopy)
         return Promise.resolve({ ...fileItem })
       })
@@ -252,30 +255,36 @@ const FileUploader = ({
 
   return (
     <div className={s.fileUploader}>
-      <input
-        ref={fileUploader}
-        id="fileUploader"
-        style={{ display: 'none' }}
-        type="file"
-        multiple
-        accept={ACCEPTS.join(',')}
-        onChange={fileChangeHandle}
-      />
+      {!hideUpload && (
+        <input
+          ref={fileUploader}
+          id="fileUploader"
+          style={{ display: 'none' }}
+          type="file"
+          multiple={!notSupportBatchUpload}
+          accept={ACCEPTS.join(',')}
+          onChange={fileChangeHandle}
+        />
+      )}
+
       <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
-      <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
-        <div className='flex justify-center items-center min-h-6 mb-2'>
-          <span className={s.uploadIcon} />
-          <span>
-            {t('datasetCreation.stepOne.uploader.button')}
-            <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
-          </span>
+      {!hideUpload && (
+
+        <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
+          <div className='flex justify-center items-center min-h-6 mb-2'>
+            <span className={s.uploadIcon} />
+            <span>
+              {t('datasetCreation.stepOne.uploader.button')}
+              <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+            </span>
+          </div>
+          <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', {
+            size: fileUploadConfig.file_size_limit,
+            supportTypes: supportTypesShowNames,
+          })}</div>
+          {dragging && <div ref={dragRef} className={s.draggingCover} />}
         </div>
-        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', {
-          size: fileUploadConfig.file_size_limit,
-          supportTypes: supportTypesShowNames,
-        })}</div>
-        {dragging && <div ref={dragRef} className={s.draggingCover} />}
-      </div>
+      )}
       <div className={s.fileList}>
         {fileList.map((fileItem, index) => (
           <div

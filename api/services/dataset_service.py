@@ -37,7 +37,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
-from services.feature_service import FeatureService
+from services.feature_service import FeatureModel, FeatureService
 from services.vector_service import VectorService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
@@ -469,6 +469,9 @@ class DocumentService:
                 batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+                DocumentService.check_documents_upload_quota(count, features)
+
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -620,6 +623,12 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
+    def check_documents_upload_quota(count: int, features: FeatureModel):
+        can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size
+        if count > can_upload_size:
+            raise ValueError(f'You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded.')
+
+    @staticmethod
     def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
                        document_language: str, data_source_info: dict, created_from: str, position: int,
                        account: Account,
@@ -762,6 +771,8 @@ class DocumentService:
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+            DocumentService.check_documents_upload_quota(count, features)
 
         embedding_model = None
         dataset_collection_binding_id = None
@@ -1244,7 +1255,7 @@ class DatasetCollectionBindingService:
             dataset_collection_binding = DatasetCollectionBinding(
                 provider_name=provider_name,
                 model_name=model_name,
-                collection_name="Vector_index_" + str(uuid.uuid4()).replace("-", "_") + '_Node',
+                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
                 type=collection_type
             )
             db.session.add(dataset_collection_binding)
