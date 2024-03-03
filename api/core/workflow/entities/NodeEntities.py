@@ -19,14 +19,14 @@ class NodeType(Enum):
     VARIABLE_ASSIGNER = 'variable-assigner'
 
     @classmethod
-    def value_of(cls, value: str) -> 'BlockType':
+    def value_of(cls, value: str) -> 'NodeType':
         """
-        Get value of given block type.
+        Get value of given node type.
 
-        :param value: block type value
-        :return: block type
+        :param value: node type value
+        :return: node type
         """
-        for block_type in cls:
-            if block_type.value == value:
-                return block_type
-        raise ValueError(f'invalid block type value {value}')
+        for node_type in cls:
+            if node_type.value == value:
+                return node_type
+        raise ValueError(f'invalid node type value {value}')
