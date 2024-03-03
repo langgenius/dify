@@ -22,9 +22,9 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   return (
     <a
       ref={ref}
-      className='relative col-span-1 flex flex-col justify-between min-h-[160px] bg-gray-200 rounded-xl cursor-pointer duration-200 ease-in-out hover:bg-gray-50 hover:shadow-lg transition-colors'
+      className='relative col-span-1 flex flex-col justify-between min-h-[160px] bg-gray-200 rounded-xl cursor-pointer duration-200 ease-in-out hover:bg-gray-50 hover:shadow-lg transition-all'
     >
-      <div className='grow rounded-t-xl group hover:bg-white' onClick={() => setShowNewAppDialog(true)}>
+      <div className='grow rounded-t-xl group transition-all hover:bg-white' onClick={() => setShowNewAppDialog(true)}>
         <div className='flex pt-4 px-4 pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <span className='w-10 h-10 p-3 bg-gray-100 rounded-lg border border-gray-200 group-hover:bg-primary-50 group-hover:border-primary-100'>
             <Plus className='w-4 h-4 text-gray-500 group-hover:text-primary-600'/>
@@ -35,7 +35,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
         </div>
       </div>
       <div
-        className='flex items-center px-4 py-3 border-t-[0.5px] border-black/[.05] rounded-b-xl text-xs leading-[18px] text-gray-500 hover:bg-white hover:text-primary-600'
+        className='flex items-center px-4 py-3 border-t-[0.5px] border-black/[.05] rounded-b-xl text-xs leading-[18px] text-gray-500 transition-all hover:bg-white hover:text-primary-600'
         onClick={() => setShowCreateFromDSLModal(true)}
       >
         {t('app.createFromConfigFile')}
