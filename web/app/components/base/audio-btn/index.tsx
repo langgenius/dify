@@ -29,7 +29,9 @@ const AudioBtn = ({
   const pathname = usePathname()
   const removeCodeBlocks = (inputText: any) => {
     const codeBlockRegex = /```[\s\S]*?```/g
-    return inputText.replace(codeBlockRegex, '')
+    if (inputText)
+      return inputText.replace(codeBlockRegex, '')
+    return ''
   }
 
   const playAudio = async () => {
