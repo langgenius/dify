@@ -25,6 +25,7 @@ class FeatureModel(BaseModel):
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
+    documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = 'standard'
     can_replace_logo: bool = False
 
@@ -62,6 +63,9 @@ class FeatureService:
 
         features.vector_space.size = billing_info['vector_space']['size']
         features.vector_space.limit = billing_info['vector_space']['limit']
+
+        features.documents_upload_quota.size = billing_info['documents_upload_quota']['size']
+        features.documents_upload_quota.limit = billing_info['documents_upload_quota']['limit']
 
         features.annotation_quota_limit.size = billing_info['annotation_quota_limit']['size']
         features.annotation_quota_limit.limit = billing_info['annotation_quota_limit']['limit']

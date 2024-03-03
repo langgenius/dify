@@ -39,7 +39,7 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
 
   return (
     <div className={s.notionConnectionTip}>
-      <span className={s.notionIcon}/>
+      <span className={s.notionIcon} />
       <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
       <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
       <Button className='h-8' type='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
@@ -92,7 +92,7 @@ const StepOne = ({
   const hasNotin = notionPages.length > 0
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
-
+  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
@@ -169,6 +169,7 @@ const StepOne = ({
                 onFileListUpdate={updateFileList}
                 onFileUpdate={updateFile}
                 onPreview={updateCurrentFile}
+                notSupportBatchUpload={notSupportBatchUpload}
               />
               {isShowVectorSpaceFull && (
                 <div className='max-w-[640px] mb-4'>
