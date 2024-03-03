@@ -30,6 +30,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.entities.NodeEntities import NodeType
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageFile
@@ -111,7 +112,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueNodeFinishedEvent):
                 workflow_node_execution = self._get_workflow_node_execution(event.workflow_node_execution_id)
                 if workflow_node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED.value:
-                    if workflow_node_execution.node_type == 'llm':  # todo use enum
+                    if workflow_node_execution.node_type == NodeType.LLM.value:
                         outputs = workflow_node_execution.outputs_dict
                         usage_dict = outputs.get('usage', {})
                         self._task_state.metadata['usage'] = usage_dict
@@ -201,7 +202,7 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueNodeFinishedEvent):
                 workflow_node_execution = self._get_workflow_node_execution(event.workflow_node_execution_id)
                 if workflow_node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED.value:
-                    if workflow_node_execution.node_type == 'llm':  # todo use enum
+                    if workflow_node_execution.node_type == NodeType.LLM.value:
                         outputs = workflow_node_execution.outputs_dict
                         usage_dict = outputs.get('usage', {})
                         self._task_state.metadata['usage'] = usage_dict
