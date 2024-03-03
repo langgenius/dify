@@ -9,12 +9,14 @@ import { textToAudio } from '@/service/share'
 
 type AudioBtnProps = {
   value: string
+  voice?: string
   className?: string
   isAudition?: boolean
 }
 
 const AudioBtn = ({
   value,
+  voice,
   className,
   isAudition,
 }: AudioBtnProps) => {
@@ -34,6 +36,7 @@ const AudioBtn = ({
     const formData = new FormData()
     if (value !== '') {
       formData.append('text', removeCodeBlocks(value))
+      formData.append('voice', removeCodeBlocks(voice))
 
       let url = ''
       let isPublic = false
