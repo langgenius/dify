@@ -28,6 +28,10 @@ export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
   return post<{ data: string }>(`apps/${appID}/export`)
 }
 
+export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ name, description, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import', { body: { name, description, icon, icon_background } })
+}
+
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
   return del<CommonResponse>(`apps/${appID}`)
 }

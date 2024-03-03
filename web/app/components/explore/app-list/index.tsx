@@ -13,13 +13,12 @@ import type { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
-import { createApp } from '@/service/apps'
+import { importApp } from '@/service/apps'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { type AppMode } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 
 type AppsProps = {
@@ -73,19 +72,16 @@ const Apps = ({
     icon_background,
     description,
   }) => {
-    const { app_model_config: model_config } = await fetchAppDetail(
+    const { export_data } = await fetchAppDetail(
       currApp?.app.id as string,
     )
-    // #TODO# need yaml config from app detail
-    // #TODO# use import api
     try {
-      const app = await createApp({
+      const app = await importApp({
+        data: export_data,
         name,
         icon,
         icon_background,
-        mode: currApp?.app.mode as AppMode,
         description,
-        config: model_config,
       })
       setIsShowCreateModal(false)
       Toast.notify({
