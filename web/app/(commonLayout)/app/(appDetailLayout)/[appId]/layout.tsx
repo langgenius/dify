@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useMemo } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
@@ -22,9 +23,17 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     params: { appId }, // get appId in path
   } = props
   const { t } = useTranslation()
+  const router = useRouter()
+  const pathname = usePathname()
   const { isCurrentWorkspaceManager } = useAppContext()
   const detailParams = { url: '/apps', id: appId }
   const { data: response } = useSWR(detailParams, fetchAppDetail)
+
+  // redirection
+  if ((response?.mode === 'workflow' || response?.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
+    router.replace(`/app/${appId}/workflow`)
+  if ((response?.mode !== 'workflow' && response?.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
+    router.replace(`/app/${appId}/configuration`)
 
   const appModeName = (() => {
     if (response?.mode === 'chat' || response?.mode === 'advanced-chat')
@@ -41,13 +50,38 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const navigation = useMemo(() => {
     const navs = [
-      ...(isCurrentWorkspaceManager ? [{ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: PromptEngineering, selectedIcon: PromptEngineeringSolid }] : []),
-      { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: TerminalSquare, selectedIcon: TerminalSquareSolid },
-      ...(appModeName !== 'workflow' ? [{ name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: FileHeart02, selectedIcon: FileHeart02Solid }] : [{ name: t('common.appMenus.logs'), href: `/app/${appId}/logs`, icon: FileHeart02, selectedIcon: FileHeart02Solid }]),
-      { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: BarChartSquare02, selectedIcon: BarChartSquare02Solid },
+      ...(isCurrentWorkspaceManager
+        ? [{
+          name: t('common.appMenus.promptEng'),
+          href: `/app/${appId}/${(response?.mode === 'workflow' || response?.mode === 'advanced-chat') ? 'workflow' : 'configuration'}`,
+          icon: PromptEngineering,
+          selectedIcon: PromptEngineeringSolid,
+        }]
+        : []
+      ),
+      {
+        name: t('common.appMenus.apiAccess'),
+        href: `/app/${appId}/develop`,
+        icon: TerminalSquare,
+        selectedIcon: TerminalSquareSolid,
+      },
+      {
+        name: response?.mode !== 'workflow'
+          ? t('common.appMenus.logAndAnn')
+          : t('common.appMenus.logs'),
+        href: `/app/${appId}/logs`,
+        icon: FileHeart02,
+        selectedIcon: FileHeart02Solid,
+      },
+      {
+        name: t('common.appMenus.overview'),
+        href: `/app/${appId}/overview`,
+        icon: BarChartSquare02,
+        selectedIcon: BarChartSquare02Solid,
+      },
     ]
     return navs
-  }, [appId, appModeName, isCurrentWorkspaceManager, t])
+  }, [appId, isCurrentWorkspaceManager, response?.mode, t])
 
   useEffect(() => {
     if (response?.name)

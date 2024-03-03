@@ -13,7 +13,7 @@ const Logs = async ({
   appMode,
 }: IProps) => {
   return (
-    <Main appMode={'workflow'} pageType={PageType.log} appId={appId} />
+    <Main appMode={appMode} pageType={PageType.log} appId={appId} />
   )
 }
 
