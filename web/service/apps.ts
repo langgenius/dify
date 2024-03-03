@@ -19,6 +19,9 @@ export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> =
 export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string; icon_background: string; mode: AppMode; description?: string; config?: ModelConfig }> = ({ name, icon, icon_background, mode, description, config }) => {
   return post<AppDetailResponse>('apps', { body: { name, icon, icon_background, mode, description, model_config: config } })
 }
+export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; mode: AppMode; description?: string }> = ({ appID, name, icon, icon_background, mode, description }) => {
+  return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon, icon_background, mode, description } })
+}
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
   return del<CommonResponse>(`apps/${appID}`)

@@ -72,7 +72,6 @@ const DuplicateAppModal = ({
               className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
             />
           </div>
-          {/* TODO loc */}
           {isAppsFull && <AppsFull loc='app-duplicate-create' />}
         </div>
         <div className='flex flex-row-reverse'>

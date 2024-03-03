@@ -13,7 +13,7 @@ import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { createApp, deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
+import { copyApp, deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -106,16 +106,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     [app.id],
   )
 
-  const onCreate: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
-    const { app_model_config: model_config } = await fetchAppDetail({ url: '/apps', id: app.id })
-
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
     try {
-      const newApp = await createApp({
+      const newApp = await copyApp({
+        appID: app.id,
         name,
         icon,
         icon_background,
         mode: app.mode,
-        config: model_config,
       })
       setShowDuplicateModal(false)
       notify({
@@ -123,7 +121,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      push(`/app/${newApp.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
+      if (!isCurrentWorkspaceManager) {
+        push(`/app/${newApp.id}/'overview'`)
+      }
+      else {
+        if (newApp.mode === 'workflow' || newApp.mode === 'advanced-chat')
+          push(`/app/${newApp.id}/'workflow'`)
+        push(`/app/${newApp.id}/'configuration'`)
+      }
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -237,7 +242,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             icon={app.icon}
             icon_background={app.icon_background}
             show={showDuplicateModal}
-            onConfirm={onCreate}
+            onConfirm={onCopy}
             onHide={() => setShowDuplicateModal(false)}
           />
         )}
