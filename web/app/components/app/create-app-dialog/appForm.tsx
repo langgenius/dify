@@ -23,11 +23,13 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 export type AppFormProps = {
   onConfirm: () => void
   onHide: () => void
+  onTipChange: (tip: string) => void
 }
 
 const AppForm = ({
   onConfirm,
   onHide,
+  onTipChange,
 }: AppFormProps) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -89,7 +91,7 @@ const AppForm = ({
   return (
     <div className='overflow-y-auto'>
       {/* app type */}
-      <div className='pt-2 px-8 w-[480px]'>
+      <div className='py-2 px-8 w-[480px]'>
         <div className='py-2 text-sm leading-[20px] font-medium text-gray-900'>{t('app.newApp.captionAppType')}</div>
         <div className='flex gap-2'>
           <TooltipPlus
@@ -149,7 +151,7 @@ const AppForm = ({
         </div>
       </div>
       {showChatBotType && (
-        <div className='pt-2 px-8 w-[480px]'>
+        <div className='py-2 px-8 w-[480px]'>
           <div className='py-2 text-sm leading-[20px] font-medium text-gray-900'>{t('app.newApp.chatbotType')}</div>
           <div className='flex gap-2'>
             <div
@@ -162,7 +164,12 @@ const AppForm = ({
               }}
             >
               <div className='h-5 text-sm font-medium leading-5'>{t('app.newApp.basic')}</div>
-              <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
+              <div
+                onMouseEnter={() => onTipChange('BASIC')}
+                onMouseLeave={() => onTipChange('')}
+              >
+                <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
+              </div>
             </div>
             <div
               className={cn(
@@ -173,8 +180,13 @@ const AppForm = ({
                 setAppMode('advanced-chat')
               }}
             >
-              <div className='h-5 text-sm font-medium leading-5'>{t('app.newApp.workflow')}</div>
-              <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
+              <div className='h-5 text-sm font-medium leading-5'>{t('app.newApp.advanced')}</div>
+              <div
+                onMouseEnter={() => onTipChange('ADVANCED')}
+                onMouseLeave={() => onTipChange('')}
+              >
+                <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
+              </div>
             </div>
           </div>
         </div>
