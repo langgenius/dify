@@ -10,14 +10,19 @@ class QueueEvent(Enum):
     """
     QueueEvent enum
     """
-    MESSAGE = "message"
+    LLM_CHUNK = "llm_chunk"
+    TEXT_CHUNK = "text_chunk"
     AGENT_MESSAGE = "agent_message"
-    MESSAGE_REPLACE = "message-replace"
-    MESSAGE_END = "message-end"
-    RETRIEVER_RESOURCES = "retriever-resources"
-    ANNOTATION_REPLY = "annotation-reply"
-    AGENT_THOUGHT = "agent-thought"
-    MESSAGE_FILE = "message-file"
+    MESSAGE_REPLACE = "message_replace"
+    MESSAGE_END = "message_end"
+    WORKFLOW_STARTED = "workflow_started"
+    WORKFLOW_FINISHED = "workflow_finished"
+    NODE_STARTED = "node_started"
+    NODE_FINISHED = "node_finished"
+    RETRIEVER_RESOURCES = "retriever_resources"
+    ANNOTATION_REPLY = "annotation_reply"
+    AGENT_THOUGHT = "agent_thought"
+    MESSAGE_FILE = "message_file"
     ERROR = "error"
     PING = "ping"
     STOP = "stop"
@@ -30,12 +35,21 @@ class AppQueueEvent(BaseModel):
     event: QueueEvent
 
 
-class QueueMessageEvent(AppQueueEvent):
+class QueueLLMChunkEvent(AppQueueEvent):
     """
-    QueueMessageEvent entity
+    QueueLLMChunkEvent entity
     """
-    event = QueueEvent.MESSAGE
+    event = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
+
+
+class QueueTextChunkEvent(AppQueueEvent):
+    """
+    QueueTextChunkEvent entity
+    """
+    event = QueueEvent.TEXT_CHUNK
+    chunk_text: str
+
 
 class QueueAgentMessageEvent(AppQueueEvent):
     """
@@ -61,9 +75,9 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     retriever_resources: list[dict]
 
 
-class AnnotationReplyEvent(AppQueueEvent):
+class QueueAnnotationReplyEvent(AppQueueEvent):
     """
-    AnnotationReplyEvent entity
+    QueueAnnotationReplyEvent entity
     """
     event = QueueEvent.ANNOTATION_REPLY
     message_annotation_id: str
@@ -76,6 +90,38 @@ class QueueMessageEndEvent(AppQueueEvent):
     event = QueueEvent.MESSAGE_END
     llm_result: LLMResult
 
+
+class QueueWorkflowStartedEvent(AppQueueEvent):
+    """
+    QueueWorkflowStartedEvent entity
+    """
+    event = QueueEvent.WORKFLOW_STARTED
+    workflow_run_id: str
+
+
+class QueueWorkflowFinishedEvent(AppQueueEvent):
+    """
+    QueueWorkflowFinishedEvent entity
+    """
+    event = QueueEvent.WORKFLOW_FINISHED
+    workflow_run_id: str
+
+
+class QueueNodeStartedEvent(AppQueueEvent):
+    """
+    QueueNodeStartedEvent entity
+    """
+    event = QueueEvent.NODE_STARTED
+    workflow_node_execution_id: str
+
+
+class QueueNodeFinishedEvent(AppQueueEvent):
+    """
+    QueueNodeFinishedEvent entity
+    """
+    event = QueueEvent.NODE_FINISHED
+    workflow_node_execution_id: str
+
     
 class QueueAgentThoughtEvent(AppQueueEvent):
     """
@@ -84,13 +130,15 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     event = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
 
+
 class QueueMessageFileEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
     event = QueueEvent.MESSAGE_FILE
     message_file_id: str
-    
+
+
 class QueueErrorEvent(AppQueueEvent):
     """
     QueueErrorEvent entity

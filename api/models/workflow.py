@@ -272,6 +272,10 @@ class WorkflowRun(db.Model):
         return EndUser.query.get(self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
 
+    @property
+    def outputs_dict(self):
+        return self.outputs if not self.outputs else json.loads(self.outputs)
+
 
 class WorkflowNodeExecutionTriggeredFrom(Enum):
     """
@@ -292,6 +296,28 @@ class WorkflowNodeExecutionTriggeredFrom(Enum):
             if mode.value == value:
                 return mode
         raise ValueError(f'invalid workflow node execution triggered from value {value}')
+
+
+class WorkflowNodeExecutionStatus(Enum):
+    """
+    Workflow Node Execution Status Enum
+    """
+    RUNNING = 'running'
+    SUCCEEDED = 'succeeded'
+    FAILED = 'failed'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'WorkflowNodeExecutionStatus':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid workflow node execution status value {value}')
 
 
 class WorkflowNodeExecution(db.Model):
@@ -387,6 +413,21 @@ class WorkflowNodeExecution(db.Model):
         return EndUser.query.get(self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
 
+    @property
+    def inputs_dict(self):
+        return self.inputs if not self.inputs else json.loads(self.inputs)
+
+    @property
+    def outputs_dict(self):
+        return self.outputs if not self.outputs else json.loads(self.outputs)
+
+    @property
+    def process_data_dict(self):
+        return self.process_data if not self.process_data else json.loads(self.process_data)
+
+    @property
+    def execution_metadata_dict(self):
+        return self.execution_metadata if not self.execution_metadata else json.loads(self.execution_metadata)
 
 class WorkflowAppLog(db.Model):
     """

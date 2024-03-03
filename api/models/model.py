@@ -451,10 +451,10 @@ class Conversation(db.Model):
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=False)
-    app_model_config_id = db.Column(UUID, nullable=False)
-    model_provider = db.Column(db.String(255), nullable=False)
+    app_model_config_id = db.Column(UUID, nullable=True)
+    model_provider = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
-    model_id = db.Column(db.String(255), nullable=False)
+    model_id = db.Column(db.String(255), nullable=True)
     mode = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     summary = db.Column(db.Text)
