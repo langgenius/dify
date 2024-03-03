@@ -187,7 +187,7 @@ class AppRunner:
         if stream:
             index = 0
             for token in text:
-                queue_manager.publish_chunk_message(LLMResultChunk(
+                queue_manager.publish_llm_chunk(LLMResultChunk(
                     model=app_generate_entity.model_config.model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
@@ -261,7 +261,7 @@ class AppRunner:
         usage = None
         for result in invoke_result:
             if not agent:
-                queue_manager.publish_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
+                queue_manager.publish_llm_chunk(result, PublishFrom.APPLICATION_MANAGER)
             else:
                 queue_manager.publish_agent_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
 

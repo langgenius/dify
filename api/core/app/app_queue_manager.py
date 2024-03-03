@@ -8,19 +8,24 @@ from sqlalchemy.orm import DeclarativeMeta
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
-    AnnotationReplyEvent,
     AppQueueEvent,
     QueueAgentMessageEvent,
     QueueAgentThoughtEvent,
+    QueueAnnotationReplyEvent,
     QueueErrorEvent,
+    QueueLLMChunkEvent,
     QueueMessage,
     QueueMessageEndEvent,
-    QueueMessageEvent,
     QueueMessageFileEvent,
     QueueMessageReplaceEvent,
+    QueueNodeFinishedEvent,
+    QueueNodeStartedEvent,
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
+    QueueTextChunkEvent,
+    QueueWorkflowFinishedEvent,
+    QueueWorkflowStartedEvent,
 )
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from extensions.ext_redis import redis_client
@@ -97,16 +102,28 @@ class AppQueueManager:
         """
         self._q.put(None)
 
-    def publish_chunk_message(self, chunk: LLMResultChunk, pub_from: PublishFrom) -> None:
+    def publish_llm_chunk(self, chunk: LLMResultChunk, pub_from: PublishFrom) -> None:
         """
-        Publish chunk message to channel
+        Publish llm chunk to channel
 
-        :param chunk: chunk
+        :param chunk: llm chunk
         :param pub_from: publish from
         :return:
         """
-        self.publish(QueueMessageEvent(
+        self.publish(QueueLLMChunkEvent(
             chunk=chunk
+        ), pub_from)
+
+    def publish_text_chunk(self, text: str, pub_from: PublishFrom) -> None:
+        """
+        Publish text chunk to channel
+
+        :param text: text
+        :param pub_from: publish from
+        :return:
+        """
+        self.publish(QueueTextChunkEvent(
+            text=text
         ), pub_from)
 
     def publish_agent_chunk_message(self, chunk: LLMResultChunk, pub_from: PublishFrom) -> None:
@@ -146,7 +163,7 @@ class AppQueueManager:
         :param pub_from: publish from
         :return:
         """
-        self.publish(AnnotationReplyEvent(message_annotation_id=message_annotation_id), pub_from)
+        self.publish(QueueAnnotationReplyEvent(message_annotation_id=message_annotation_id), pub_from)
 
     def publish_message_end(self, llm_result: LLMResult, pub_from: PublishFrom) -> None:
         """
@@ -157,6 +174,42 @@ class AppQueueManager:
         """
         self.publish(QueueMessageEndEvent(llm_result=llm_result), pub_from)
         self.stop_listen()
+
+    def publish_workflow_started(self, workflow_run_id: str, pub_from: PublishFrom) -> None:
+        """
+        Publish workflow started
+        :param workflow_run_id: workflow run id
+        :param pub_from: publish from
+        :return:
+        """
+        self.publish(QueueWorkflowStartedEvent(workflow_run_id=workflow_run_id), pub_from)
+
+    def publish_workflow_finished(self, workflow_run_id: str, pub_from: PublishFrom) -> None:
+        """
+        Publish workflow finished
+        :param workflow_run_id: workflow run id
+        :param pub_from: publish from
+        :return:
+        """
+        self.publish(QueueWorkflowFinishedEvent(workflow_run_id=workflow_run_id), pub_from)
+
+    def publish_node_started(self, workflow_node_execution_id: str, pub_from: PublishFrom) -> None:
+        """
+        Publish node started
+        :param workflow_node_execution_id: workflow node execution id
+        :param pub_from: publish from
+        :return:
+        """
+        self.publish(QueueNodeStartedEvent(workflow_node_execution_id=workflow_node_execution_id), pub_from)
+
+    def publish_node_finished(self, workflow_node_execution_id: str, pub_from: PublishFrom) -> None:
+        """
+        Publish node finished
+        :param workflow_node_execution_id: workflow node execution id
+        :param pub_from: publish from
+        :return:
+        """
+        self.publish(QueueNodeFinishedEvent(workflow_node_execution_id=workflow_node_execution_id), pub_from)
 
     def publish_agent_thought(self, message_agent_thought: MessageAgentThought, pub_from: PublishFrom) -> None:
         """

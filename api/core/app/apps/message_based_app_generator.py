@@ -8,14 +8,15 @@ from sqlalchemy import and_
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
     AppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
     InvokeFrom,
 )
-from core.app.generate_task_pipeline import GenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from models.account import Account
@@ -31,7 +32,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
     def _handle_response(self, application_generate_entity: Union[
                                    ChatAppGenerateEntity,
                                    CompletionAppGenerateEntity,
-                                   AgentChatAppGenerateEntity
+                                   AgentChatAppGenerateEntity,
+                                   AdvancedChatAppGenerateEntity
                                ],
                          queue_manager: AppQueueManager,
                          conversation: Conversation,
@@ -47,7 +49,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :return:
         """
         # init generate task pipeline
-        generate_task_pipeline = GenerateTaskPipeline(
+        generate_task_pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation=conversation,
@@ -114,7 +116,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                                application_generate_entity: Union[
                                    ChatAppGenerateEntity,
                                    CompletionAppGenerateEntity,
-                                   AgentChatAppGenerateEntity
+                                   AgentChatAppGenerateEntity,
+                                   AdvancedChatAppGenerateEntity
                                ],
                                conversation: Optional[Conversation] = None) \
             -> tuple[Conversation, Message]:
@@ -135,10 +138,19 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             from_source = 'console'
             account_id = application_generate_entity.user_id
 
-        override_model_configs = None
-        if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS \
-                and app_config.app_mode in [AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION]:
-            override_model_configs = app_config.app_model_config_dict
+        if isinstance(application_generate_entity, AdvancedChatAppGenerateEntity):
+            app_model_config_id = None
+            override_model_configs = None
+            model_provider = None
+            model_id = None
+        else:
+            app_model_config_id = app_config.app_model_config_id
+            model_provider = application_generate_entity.model_config.provider
+            model_id = application_generate_entity.model_config.model
+            override_model_configs = None
+            if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS \
+                    and app_config.app_mode in [AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION]:
+                override_model_configs = app_config.app_model_config_dict
 
         # get conversation introduction
         introduction = self._get_conversation_introduction(application_generate_entity)
@@ -146,9 +158,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         if not conversation:
             conversation = Conversation(
                 app_id=app_config.app_id,
-                app_model_config_id=app_config.app_model_config_id,
-                model_provider=application_generate_entity.model_config.provider,
-                model_id=application_generate_entity.model_config.model,
+                app_model_config_id=app_model_config_id,
+                model_provider=model_provider,
+                model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_config.app_mode.value,
                 name='New conversation',
@@ -167,8 +179,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         message = Message(
             app_id=app_config.app_id,
-            model_provider=application_generate_entity.model_config.provider,
-            model_id=application_generate_entity.model_config.model,
+            model_provider=model_provider,
+            model_id=model_id,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=conversation.id,
             inputs=application_generate_entity.inputs,
