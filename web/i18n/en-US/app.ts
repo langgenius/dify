@@ -10,6 +10,7 @@ const translation = {
   duplicate: 'Duplicate',
   duplicateTitle: 'Duplicate App',
   export: 'Export DSL',
+  exportFailed: 'Export DSL failed.',
   createFromConfigFile: 'Create from DSL file',
   deleteAppConfirmTitle: 'Delete this app?',
   deleteAppConfirmContent:

@@ -13,7 +13,7 @@ import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { copyApp, deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -135,6 +135,20 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }
 
+  const onExport = async () => {
+    try {
+      const { data } = await exportAppConfig(app.id)
+      const a = document.createElement('a')
+      const file = new Blob([data], { type: 'application/yaml' })
+      a.href = URL.createObjectURL(file)
+      a.download = `${app.name}.yml`
+      a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.exportFailed') })
+    }
+  }
+
   const Operations = (props: HtmlContentProps) => {
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -153,7 +167,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      // TODO export
+      onExport()
     }
     const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()

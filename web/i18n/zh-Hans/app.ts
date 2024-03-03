@@ -10,6 +10,7 @@ const translation = {
   duplicate: '复制',
   duplicateTitle: '复制应用',
   export: '导出 DSL',
+  exportFailed: '导出 DSL 失败',
   createFromConfigFile: '通过 DSL 文件创建',
   deleteAppConfirmTitle: '确认删除应用?',
   deleteAppConfirmContent:
