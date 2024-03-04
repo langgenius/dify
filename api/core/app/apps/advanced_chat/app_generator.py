@@ -16,18 +16,19 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     def generate(self, app_model: App,
+                 workflow: Workflow,
                  user: Union[Account, EndUser],
-                 args: Any,
+                 args: dict,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
             -> Union[dict, Generator]:
@@ -35,6 +36,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         Generate App response.
 
         :param app_model: App
+        :param workflow: Workflow
         :param user: account or end user
         :param args: request args
         :param invoke_from: invoke from source
@@ -58,16 +60,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation = None
         if args.get('conversation_id'):
             conversation = self._get_conversation_by_user(app_model, args.get('conversation_id'), user)
-
-        # get workflow
-        workflow_engine_manager = WorkflowEngineManager()
-        if invoke_from == InvokeFrom.DEBUGGER:
-            workflow = workflow_engine_manager.get_draft_workflow(app_model=app_model)
-        else:
-            workflow = workflow_engine_manager.get_published_workflow(app_model=app_model)
-
-        if not workflow:
-            raise ValueError('Workflow not initialized')
 
         # parse files
         files = args['files'] if 'files' in args and args['files'] else []

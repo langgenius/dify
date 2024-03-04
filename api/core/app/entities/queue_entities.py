@@ -165,6 +165,7 @@ class QueueStopEvent(AppQueueEvent):
         USER_MANUAL = "user-manual"
         ANNOTATION_REPLY = "annotation-reply"
         OUTPUT_MODERATION = "output-moderation"
+        INPUT_MODERATION = "input-moderation"
 
     event = QueueEvent.STOP
     stopped_by: StopBy

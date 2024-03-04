@@ -30,3 +30,12 @@ class NodeType(Enum):
             if node_type.value == value:
                 return node_type
         raise ValueError(f'invalid node type value {value}')
+
+
+class SystemVariable(Enum):
+    """
+    System Variables.
+    """
+    QUERY = 'query'
+    FILES = 'files'
+    CONVERSATION = 'conversation'

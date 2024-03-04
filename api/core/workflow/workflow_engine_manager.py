@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, Union, Generator
 
+from core.memory.token_buffer_memory import TokenBufferMemory
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.direct_answer.direct_answer_node import DirectAnswerNode
@@ -14,7 +15,8 @@ from core.workflow.nodes.template_transform.template_transform_node import Templ
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_assigner.variable_assigner_node import VariableAssignerNode
 from extensions.ext_database import db
-from models.model import App
+from models.account import Account
+from models.model import App, EndUser, Conversation
 from models.workflow import Workflow
 
 node_classes = {
@@ -56,13 +58,20 @@ class WorkflowEngineManager:
             return None
 
         # fetch published workflow by workflow_id
+        return self.get_workflow(app_model, app_model.workflow_id)
+
+    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
+        """
+        Get workflow
+        """
+        # fetch workflow by workflow_id
         workflow = db.session.query(Workflow).filter(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
-            Workflow.id == app_model.workflow_id
+            Workflow.id == workflow_id
         ).first()
 
-        # return published workflow
+        # return workflow
         return workflow
 
     def get_default_configs(self) -> list[dict]:
@@ -96,3 +105,20 @@ class WorkflowEngineManager:
             return None
 
         return default_config
+
+    def run_workflow(self, app_model: App,
+                     workflow: Workflow,
+                     user: Union[Account, EndUser],
+                     user_inputs: dict,
+                     system_inputs: Optional[dict] = None) -> Generator:
+        """
+        Run workflow
+        :param app_model: App instance
+        :param workflow: Workflow instance
+        :param user: account or end user
+        :param user_inputs: user variables inputs
+        :param system_inputs: system inputs, like: query, files
+        :return:
+        """
+        # TODO
+        pass

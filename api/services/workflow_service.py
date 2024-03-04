@@ -1,14 +1,16 @@
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union, Any, Generator
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
+from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode
+from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -141,6 +143,39 @@ class WorkflowService:
         # return default block config
         workflow_engine_manager = WorkflowEngineManager()
         return workflow_engine_manager.get_default_config(node_type, filters)
+
+    def run_advanced_chat_draft_workflow(self, app_model: App,
+                                         user: Union[Account, EndUser],
+                                         args: dict,
+                                         invoke_from: InvokeFrom) -> Union[dict, Generator]:
+        """
+        Run advanced chatbot draft workflow
+        """
+        # fetch draft workflow by app_model
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not draft_workflow:
+            raise ValueError('Workflow not initialized')
+
+        # run draft workflow
+        app_generator = AdvancedChatAppGenerator()
+        response = app_generator.generate(
+            app_model=app_model,
+            workflow=draft_workflow,
+            user=user,
+            args=args,
+            invoke_from=invoke_from,
+            stream=True
+        )
+
+        return response
+
+    def run_draft_workflow(self, app_model: App,
+                           user: Union[Account, EndUser],
+                           args: dict,
+                           invoke_from: InvokeFrom) -> Union[dict, Generator]:
+        # TODO
+        pass
 
     def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """
