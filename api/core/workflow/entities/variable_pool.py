@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
 from core.workflow.entities.node_entities import SystemVariable
 
