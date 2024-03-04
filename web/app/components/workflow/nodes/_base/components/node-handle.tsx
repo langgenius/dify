@@ -69,7 +69,7 @@ export const NodeTargetHandle = ({
               triggerClassName={open => `
                 hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
-                ${data.hovering && '!flex'}
+                ${data._hovering && '!flex'}
                 ${open && '!flex'}
               `}
             />
@@ -128,7 +128,7 @@ export const NodeSourceHandle = ({
               triggerClassName={open => `
                 hidden absolute top-0 left-0 pointer-events-none
                 ${nodeSelectorClassName}
-                ${data.hovering && '!flex'}
+                ${data._hovering && '!flex'}
                 ${open && '!flex'}
               `}
             />

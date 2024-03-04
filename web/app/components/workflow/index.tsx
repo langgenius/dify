@@ -50,7 +50,7 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const [nodes] = useNodesState(initialNodes)
-  const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
+  const [edges] = useEdgesState(initialEdges)
 
   const {
     handleNodeDragStart,
@@ -64,6 +64,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgeDelete,
+    handleEdgesChange,
   } = useWorkflow()
 
   useKeyPress('Backspace', handleEdgeDelete)
@@ -90,7 +91,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onConnect={handleNodeConnect}
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange={handleEdgesChange}
         multiSelectionKeyCode={null}
         connectionLineComponent={CustomConnectionLine}
         deleteKeyCode={null}

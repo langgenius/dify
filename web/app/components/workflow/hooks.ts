@@ -5,6 +5,7 @@ import type {
   NodeDragHandler,
   NodeMouseHandler,
   OnConnect,
+  OnEdgesChange,
 } from 'reactflow'
 import {
   getConnectedEdges,
@@ -258,7 +259,10 @@ export const useWorkflow = () => {
     const newCurrentNode: Node = {
       id: `${Date.now()}`,
       type: 'custom',
-      data: NodeInitialData[nodeType],
+      data: {
+        ...NodeInitialData[nodeType],
+        _selected: currentNode.data._selected,
+      },
       position: {
         x: currentNode.position.x,
         y: currentNode.position.y,
@@ -332,6 +336,21 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleEdgesChange = useCallback<OnEdgesChange>((changes) => {
+    const {
+      edges,
+      setEdges,
+    } = store.getState()
+
+    const newEdges = produce(edges, (draft) => {
+      changes.forEach((change) => {
+        if (change.type === 'select')
+          draft.find(edge => edge.id === change.id)!.selected = change.selected
+      })
+    })
+    setEdges(newEdges)
+  }, [store])
+
   return {
     handleLayout,
 
@@ -351,5 +370,6 @@ export const useWorkflow = () => {
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgeDelete,
+    handleEdgesChange,
   }
 }

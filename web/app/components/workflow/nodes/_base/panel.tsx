@@ -7,7 +7,8 @@ import {
   memo,
   useCallback,
 } from 'react'
-import type { Node } from '../../types'
+import { type Node } from '../../types'
+import { BlockEnum } from '../../types'
 import BlockIcon from '../../block-icon'
 import { useWorkflow } from '../../hooks'
 import { canRunBySingle } from '../../utils'
@@ -86,19 +87,23 @@ const BasePanel: FC<BasePanelProps> = ({
           />
         </div>
       </div>
-      <div className='py-2 border-b-[0.5px] border-black/5'>
+      <div className='py-2'>
         {cloneElement(children, { id, data })}
       </div>
-      <div className='p-4'>
-        <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
-          <GitBranch01 className='mr-1 w-4 h-4' />
-          NEXT STEP
-        </div>
-        <div className='mb-2 text-xs text-gray-400'>
-          Add the next block in this workflow
-        </div>
-        <NextStep selectedNode={{ id, data } as Node} />
-      </div>
+      {
+        data.type !== BlockEnum.End && (
+          <div className='p-4 border-t-[0.5px] border-t-black/5'>
+            <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
+              <GitBranch01 className='mr-1 w-4 h-4' />
+              NEXT STEP
+            </div>
+            <div className='mb-2 text-xs text-gray-400'>
+              Add the next block in this workflow
+            </div>
+            <NextStep selectedNode={{ id, data } as Node} />
+          </div>
+        )
+      }
     </div>
   )
 }

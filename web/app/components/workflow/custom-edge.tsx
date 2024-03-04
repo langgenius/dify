@@ -42,7 +42,7 @@ const CustomEdge = ({
       />
       <EdgeLabelRenderer>
         {
-          data?.hovering && (
+          data?._hovering && (
             <div
               className='nopan nodrag'
               style={{
