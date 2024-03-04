@@ -9,8 +9,8 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
     ToolCredentialsOption,
+    ToolParameter,
     ToolProviderCredentials,
-    ToolParameter
 )
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
