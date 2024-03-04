@@ -259,6 +259,7 @@ class ToolApiProviderPreviousTestApi(Resource):
         parser = reqparse.RequestParser()
 
         parser.add_argument('tool_name', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('provider_name', type=str, required=False, nullable=False, location='json')
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('parameters', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
@@ -268,6 +269,7 @@ class ToolApiProviderPreviousTestApi(Resource):
 
         return ToolManageService.test_api_tool_preview(
             current_user.current_tenant_id,
+            args['provider_name'] if args['provider_name'] else '',
             args['tool_name'],
             args['credentials'],
             args['parameters'],
