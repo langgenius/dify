@@ -18,7 +18,7 @@ const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
   const store = useStoreApi()
-  const branches = selectedNode?.data.targetBranches
+  const branches = selectedNode?.data._targetBranches
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)

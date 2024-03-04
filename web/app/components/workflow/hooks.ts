@@ -80,7 +80,7 @@ export const useWorkflow = () => {
     const newNodes = produce(getNodes(), (draft) => {
       const currentNode = draft.find(n => n.id === node.id)!
 
-      currentNode.data.hovering = true
+      currentNode.data._hovering = true
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
@@ -89,7 +89,7 @@ export const useWorkflow = () => {
       connectedEdges.forEach((edge) => {
         const currentEdge = draft.find(e => e.id === edge.id)
         if (currentEdge)
-          currentEdge.data = { ...currentEdge.data, connectedNodeIsHovering: true }
+          currentEdge.data = { ...currentEdge.data, _connectedNodeIsHovering: true }
       })
     })
     setEdges(newEdges)
@@ -105,12 +105,12 @@ export const useWorkflow = () => {
     const newNodes = produce(getNodes(), (draft) => {
       const currentNode = draft.find(n => n.id === node.id)!
 
-      currentNode.data.hovering = false
+      currentNode.data._hovering = false
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
-        edge.data = { ...edge.data, connectedNodeIsHovering: false }
+        edge.data = { ...edge.data, _connectedNodeIsHovering: false }
       })
     })
     setEdges(newEdges)
@@ -123,11 +123,11 @@ export const useWorkflow = () => {
     } = store.getState()
 
     const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach(node => node.data.selected = false)
+      draft.forEach(node => node.data._selected = false)
       const selectedNode = draft.find(node => node.id === nodeId)!
 
       if (!cancelSelection)
-        selectedNode.data.selected = true
+        selectedNode.data._selected = true
     })
     setNodes(newNodes)
   }, [store])
@@ -216,7 +216,7 @@ export const useWorkflow = () => {
       type: 'custom',
       data: {
         ...NodeInitialData[nodeType],
-        selected: true,
+        _selected: true,
       },
       position: {
         x: currentNode.position.x + 304,
@@ -233,7 +233,7 @@ export const useWorkflow = () => {
     }
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        node.data.selected = false
+        node.data._selected = false
       })
       draft.push(nextNode)
     })
@@ -300,7 +300,7 @@ export const useWorkflow = () => {
     const newEdges = produce(edges, (draft) => {
       const currentEdge = draft.find(e => e.id === edge.id)!
 
-      currentEdge.data = { ...currentEdge.data, hovering: true }
+      currentEdge.data = { ...currentEdge.data, _hovering: true }
     })
     setEdges(newEdges)
   }, [store])
@@ -313,7 +313,7 @@ export const useWorkflow = () => {
     const newEdges = produce(edges, (draft) => {
       const currentEdge = draft.find(e => e.id === edge.id)!
 
-      currentEdge.data = { ...currentEdge.data, hovering: false }
+      currentEdge.data = { ...currentEdge.data, _hovering: false }
     })
     setEdges(newEdges)
   }, [store])

@@ -23,7 +23,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       className={`
         group relative w-[240px] bg-[#fcfdff] rounded-2xl shadow-xs
         hover:shadow-lg
-        ${data.selected ? 'border-[2px] border-primary-600' : 'border border-white'}
+        ${data._selected ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
     >
       <div className='flex items-center px-3 pt-3 pb-2'>

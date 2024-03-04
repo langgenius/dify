@@ -36,7 +36,7 @@ const CustomEdge = ({
         id={id}
         path={edgePath}
         style={{
-          stroke: (selected || data?.connectedNodeIsHovering) ? '#2970FF' : '#D0D5DD',
+          stroke: (selected || data?._connectedNodeIsHovering) ? '#2970FF' : '#D0D5DD',
           strokeWidth: 2,
         }}
       />

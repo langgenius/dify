@@ -24,22 +24,23 @@ export type Branch = {
 }
 
 export type CommonNodeType<T = {}> = {
-  index?: {
-    x: number
-    y: number
-  }
-  selected?: boolean
-  hovering?: boolean
-  targetBranches?: Branch[]
+  _selected?: boolean
+  _hovering?: boolean
+  _targetBranches?: Branch[]
   title: string
   desc: string
   type: BlockEnum
 } & T
 
+export type CommonEdgeType = {
+  _hovering: boolean
+  _connectedNodeIsHovering: boolean
+}
+
 export type Node = ReactFlowNode<CommonNodeType>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
 export type NodeProps<T> = { id: string; data: CommonNodeType<T> }
-export type Edge = ReactFlowEdge
+export type Edge = ReactFlowEdge<CommonEdgeType>
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 
