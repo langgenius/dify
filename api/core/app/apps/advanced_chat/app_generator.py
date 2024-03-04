@@ -2,7 +2,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError

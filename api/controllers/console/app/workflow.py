@@ -1,14 +1,14 @@
 import json
 import logging
-from typing import Generator
+from collections.abc import Generator
 
 from flask import Response, stream_with_context
 from flask_restful import Resource, marshal_with, reqparse
-from werkzeug.exceptions import NotFound, InternalServerError
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
-from controllers.console.app.error import DraftWorkflowNotExist, ConversationCompletedError
+from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
@@ -18,7 +18,6 @@ from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
 from services.workflow_service import WorkflowService
-
 
 logger = logging.getLogger(__name__)
 

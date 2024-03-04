@@ -6,7 +6,8 @@ from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity, InvokeFrom,
+    AdvancedChatAppGenerateEntity,
+    InvokeFrom,
 )
 from core.app.entities.queue_entities import QueueStopEvent
 from core.moderation.base import ModerationException
@@ -14,7 +15,7 @@ from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, Conversation, Message, EndUser
+from models.model import App, Conversation, EndUser, Message
 
 logger = logging.getLogger(__name__)
 
