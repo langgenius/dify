@@ -1,6 +1,8 @@
+import json
 from collections.abc import Generator
 from typing import Optional, Union
 
+from core.workflow.callbacks.base_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.direct_answer.direct_answer_node import DirectAnswerNode
@@ -17,7 +19,7 @@ from core.workflow.nodes.variable_assigner.variable_assigner_node import Variabl
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRunTriggeredFrom, WorkflowRun, WorkflowRunStatus, CreatedByRole
 
 node_classes = {
     NodeType.START: StartNode,
@@ -108,17 +110,103 @@ class WorkflowEngineManager:
 
     def run_workflow(self, app_model: App,
                      workflow: Workflow,
+                     triggered_from: WorkflowRunTriggeredFrom,
                      user: Union[Account, EndUser],
                      user_inputs: dict,
-                     system_inputs: Optional[dict] = None) -> Generator:
+                     system_inputs: Optional[dict] = None,
+                     callbacks: list[BaseWorkflowCallback] = None) -> Generator:
         """
         Run workflow
         :param app_model: App instance
         :param workflow: Workflow instance
+        :param triggered_from: triggered from
+        :param user: account or end user
+        :param user_inputs: user variables inputs
+        :param system_inputs: system inputs, like: query, files
+        :param callbacks: workflow callbacks
+        :return:
+        """
+        # fetch workflow graph
+        graph = workflow.graph_dict
+        if not graph:
+            raise ValueError('workflow graph not found')
+
+        # init workflow run
+        workflow_run = self._init_workflow_run(
+            workflow=workflow,
+            triggered_from=triggered_from,
+            user=user,
+            user_inputs=user_inputs,
+            system_inputs=system_inputs
+        )
+
+        if callbacks:
+            for callback in callbacks:
+                callback.on_workflow_run_started(workflow_run)
+
+        pass
+
+    def _init_workflow_run(self, workflow: Workflow,
+                           triggered_from: WorkflowRunTriggeredFrom,
+                           user: Union[Account, EndUser],
+                           user_inputs: dict,
+                           system_inputs: Optional[dict] = None) -> WorkflowRun:
+        """
+        Init workflow run
+        :param workflow: Workflow instance
+        :param triggered_from: triggered from
         :param user: account or end user
         :param user_inputs: user variables inputs
         :param system_inputs: system inputs, like: query, files
         :return:
         """
-        # TODO
-        pass
+        try:
+            db.session.begin()
+
+            max_sequence = db.session.query(db.func.max(WorkflowRun.sequence_number)) \
+                               .filter(WorkflowRun.tenant_id == workflow.tenant_id) \
+                               .filter(WorkflowRun.app_id == workflow.app_id) \
+                               .for_update() \
+                               .scalar() or 0
+            new_sequence_number = max_sequence + 1
+
+            # init workflow run
+            workflow_run = WorkflowRun(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                sequence_number=new_sequence_number,
+                workflow_id=workflow.id,
+                type=workflow.type,
+                triggered_from=triggered_from.value,
+                version=workflow.version,
+                graph=workflow.graph,
+                inputs=json.dumps({**user_inputs, **system_inputs}),
+                status=WorkflowRunStatus.RUNNING.value,
+                created_by_role=(CreatedByRole.ACCOUNT.value
+                                 if isinstance(user, Account) else CreatedByRole.END_USER.value),
+                created_by_id=user.id
+            )
+
+            db.session.add(workflow_run)
+            db.session.commit()
+        except:
+            db.session.rollback()
+            raise
+
+        return workflow_run
+
+    def _get_entry_node(self, graph: dict) -> Optional[StartNode]:
+        """
+        Get entry node
+        :param graph: workflow graph
+        :return:
+        """
+        nodes = graph.get('nodes')
+        if not nodes:
+            return None
+
+        for node_config in nodes.items():
+            if node_config.get('type') == NodeType.START.value:
+                return StartNode(config=node_config)
+
+        return None
