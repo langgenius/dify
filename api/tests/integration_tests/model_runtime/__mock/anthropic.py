@@ -42,7 +42,7 @@ class MockAnthropicClass(object):
 
     def mocked_anthropic(self: Completions, *,
         max_tokens_to_sample: int,
-        model: Union[str, Literal["claude-2.1", "claude-instant-1"]],
+        model: Union[str, Literal["claude-2.1", "claude-instant-1.2"]],
         prompt: str,
         stream: Literal[True],
         **kwargs: Any
