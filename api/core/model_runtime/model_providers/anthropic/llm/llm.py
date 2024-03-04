@@ -1,23 +1,33 @@
 import base64
 import mimetypes
 from collections.abc import Generator
-from typing import Optional, Union, cast, Tuple
+from typing import Optional, Union, cast
 
 import anthropic
 import requests
 from anthropic import Anthropic, Stream
-from anthropic.types import completion_create_params, Message, MessageStreamEvent, MessageStartEvent, \
-    MessageDeltaEvent, MessageStopEvent, ContentBlockDeltaEvent
+from anthropic.types import (
+    ContentBlockDeltaEvent,
+    Message,
+    MessageDeltaEvent,
+    MessageStartEvent,
+    MessageStopEvent,
+    MessageStreamEvent,
+    completion_create_params,
+)
 from httpx import Timeout
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
-    UserPromptMessage, PromptMessageContentType, TextPromptMessageContent, ImagePromptMessageContent,
+    TextPromptMessageContent,
+    UserPromptMessage,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -327,7 +337,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return credentials_kwargs
 
-    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> Tuple[str, list[dict]]:
+    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
         """
         Convert prompt messages to dict list and system
         """
