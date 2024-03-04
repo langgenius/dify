@@ -1,9 +1,8 @@
-model: claude-2
+model: claude-instant-1.2
 label:
-  en_US: claude-2
+  en_US: claude-instant-1.2
 model_type: llm
-features:
-  - agent-thought
+features: [ ]
 model_properties:
   mode: chat
   context_size: 100000
@@ -21,7 +20,7 @@ parameter_rules:
       zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
       en_US: Only sample from the top K options for each subsequent token.
     required: false
-  - name: max_tokens_to_sample
+  - name: max_tokens
     use_template: max_tokens
     required: true
     default: 4096
@@ -30,8 +29,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '8.00'
-  output: '24.00'
+  input: '1.63'
+  output: '5.51'
   unit: '0.000001'
   currency: USD
-deprecated: true

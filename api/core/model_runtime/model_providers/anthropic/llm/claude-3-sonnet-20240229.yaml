@@ -1,12 +1,13 @@
-model: claude-2
+model: claude-3-sonnet-20240229
 label:
-  en_US: claude-2
+  en_US: claude-3-sonnet-20240229
 model_type: llm
 features:
   - agent-thought
+  - vision
 model_properties:
   mode: chat
-  context_size: 100000
+  context_size: 200000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -21,7 +22,7 @@ parameter_rules:
       zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
       en_US: Only sample from the top K options for each subsequent token.
     required: false
-  - name: max_tokens_to_sample
+  - name: max_tokens
     use_template: max_tokens
     required: true
     default: 4096
@@ -30,8 +31,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '8.00'
-  output: '24.00'
+  input: '3.00'
+  output: '15.00'
   unit: '0.000001'
   currency: USD
-deprecated: true
