@@ -10,7 +10,6 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
-from services.workflow.defaults import default_block_configs
 from services.workflow.workflow_converter import WorkflowConverter
 
 
