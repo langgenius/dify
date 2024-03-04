@@ -1,6 +1,7 @@
 import json
 from json import dumps
 from typing import Any, Union
+from urllib.parse import urlencode
 
 import httpx
 import requests
@@ -203,6 +204,8 @@ class ApiTool(Tool):
         if 'Content-Type' in headers:
             if headers['Content-Type'] == 'application/json':
                 body = dumps(body)
+            elif headers['Content-Type'] == 'application/x-www-form-urlencoded':
+                body = urlencode(body)
             else:
                 body = body
         
