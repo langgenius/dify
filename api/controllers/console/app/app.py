@@ -129,7 +129,7 @@ class AppListApi(Resource):
                         "No Default System Reasoning Model available. Please configure "
                         "in the Settings -> Model Provider.")
                 else:
-                    model_config_dict["model"]["provider"] = default_model_entity.provider
+                    model_config_dict["model"]["provider"] = default_model_entity.provider.provider
                     model_config_dict["model"]["name"] = default_model_entity.model
 
             model_configuration = AppModelConfigService.validate_configuration(

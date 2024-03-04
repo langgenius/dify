@@ -84,7 +84,7 @@ class AppRunner:
 
         return rest_tokens
 
-    def recale_llm_max_tokens(self, model_config: ModelConfigEntity,
+    def recalc_llm_max_tokens(self, model_config: ModelConfigEntity,
                               prompt_messages: list[PromptMessage]):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
         model_type_instance = model_config.provider_model_bundle.model_type_instance
