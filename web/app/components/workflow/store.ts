@@ -6,6 +6,7 @@ type State = {
   showFeaturesPanel: boolean
   runStaus: string
   isDragging: boolean
+  helpLine?: { x?: number; y?: number }
 }
 
 type Action = {
@@ -13,6 +14,7 @@ type Action = {
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   setRunStaus: (runStaus: string) => void
   setIsDragging: (isDragging: boolean) => void
+  setHelpLine: (helpLine?: { x?: number; y?: number }) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -25,4 +27,6 @@ export const useStore = create<State & Action>(set => ({
   setRunStaus: runStaus => set(() => ({ runStaus })),
   isDragging: false,
   setIsDragging: isDragging => set(() => ({ isDragging })),
+  helpLine: undefined,
+  setHelpLine: helpLine => set(() => ({ helpLine })),
 }))

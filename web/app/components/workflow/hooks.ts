@@ -6,10 +6,12 @@ import type {
   NodeMouseHandler,
   OnConnect,
   OnEdgesChange,
+  Viewport,
 } from 'reactflow'
 import {
   getConnectedEdges,
   getIncomers,
+  useReactFlow,
   useStoreApi,
 } from 'reactflow'
 import type {
@@ -23,6 +25,7 @@ import { useStore } from './store'
 
 export const useWorkflow = () => {
   const store = useStoreApi()
+  const reactFlow = useReactFlow()
 
   const handleLayout = useCallback(async () => {
     const {
@@ -45,6 +48,10 @@ export const useWorkflow = () => {
     setNodes(newNodes)
   }, [store])
 
+  const handleSetViewport = useCallback((viewPort: Viewport) => {
+    reactFlow.setViewport(viewPort)
+  }, [reactFlow])
+
   const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
     useStore.getState().setIsDragging(true)
   }, [])
@@ -54,6 +61,7 @@ export const useWorkflow = () => {
       getNodes,
       setNodes,
     } = store.getState()
+    const { setHelpLine } = useStore.getState()
     e.stopPropagation()
 
     const nodes = getNodes()
@@ -65,10 +73,53 @@ export const useWorkflow = () => {
     })
 
     setNodes(newNodes)
+
+    const showVerticalHelpLine = nodes.find((n) => {
+      if (n.id === node.id)
+        return false
+
+      if (
+        n.position.x === node.position.x
+        || n.position.x + n.width! === node.position.x
+        || n.position.x === node.position.x + node.width!
+      )
+        return true
+
+      return false
+    })
+    const showHorizontalHelpLine = nodes.find((n) => {
+      if (n.id === node.id)
+        return false
+
+      if (
+        n.position.y === node.position.y
+        || n.position.y === node.position.y + node.height!
+        || n.position.y + n.height! === node.position.y
+        || n.position.y + n.height! === node.position.y + node.height!
+      )
+        return true
+
+      return false
+    })
+
+    if (showVerticalHelpLine || showHorizontalHelpLine) {
+      setHelpLine({
+        x: showVerticalHelpLine ? node.position.x : undefined,
+        y: showHorizontalHelpLine ? node.position.y : undefined,
+      })
+    }
+    else {
+      setHelpLine()
+    }
   }, [store])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
-    useStore.getState().setIsDragging(false)
+    const {
+      setIsDragging,
+      setHelpLine,
+    } = useStore.getState()
+    setIsDragging(false)
+    setHelpLine()
   }, [])
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
@@ -353,6 +404,7 @@ export const useWorkflow = () => {
 
   return {
     handleLayout,
+    handleSetViewport,
 
     handleNodeDragStart,
     handleNodeDrag,

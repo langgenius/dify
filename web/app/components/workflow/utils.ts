@@ -34,7 +34,7 @@ export const nodesLevelOrderTraverse = (
 
     callback({ node, depth, breath })
 
-    const targetBranches = node.data.targetBranches
+    const targetBranches = node.data._targetBranches
     if (targetBranches?.length) {
       const targetEdges = getConnectedEdges([node], edges)
 
@@ -133,9 +133,7 @@ export const getLayoutByDagre = (nodes: Node[], edges: Edge[]) => {
   })
 
   edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target, {
-      weight: edge?.data?.weight || 1,
-    })
+    dagreGraph.setEdge(edge.source, edge.target)
   })
 
   dagre.layout(dagreGraph)

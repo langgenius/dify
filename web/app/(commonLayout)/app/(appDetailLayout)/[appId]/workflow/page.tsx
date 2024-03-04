@@ -8,7 +8,7 @@ const Page = () => {
     {
       id: '1',
       type: 'custom',
-      position: { x: 180, y: 180 },
+      position: { x: 0, y: 0 },
       data: { type: 'start' },
     },
   ]
