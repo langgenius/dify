@@ -9,12 +9,14 @@ import { textToAudio } from '@/service/share'
 
 type AudioBtnProps = {
   value: string
+  voice?: string
   className?: string
   isAudition?: boolean
 }
 
 const AudioBtn = ({
   value,
+  voice,
   className,
   isAudition,
 }: AudioBtnProps) => {
@@ -27,13 +29,16 @@ const AudioBtn = ({
   const pathname = usePathname()
   const removeCodeBlocks = (inputText: any) => {
     const codeBlockRegex = /```[\s\S]*?```/g
-    return inputText.replace(codeBlockRegex, '')
+    if (inputText)
+      return inputText.replace(codeBlockRegex, '')
+    return ''
   }
 
   const playAudio = async () => {
     const formData = new FormData()
     if (value !== '') {
       formData.append('text', removeCodeBlocks(value))
+      formData.append('voice', removeCodeBlocks(voice))
 
       let url = ''
       let isPublic = false

@@ -16,7 +16,8 @@ class BingProvider(BuiltinToolProviderController):
                 user_id='',
                 tool_parameters={
                     "query": "test",
-                    "result_type": "link"
+                    "result_type": "link",
+                    "enable_webpages": True,
                 },
             )
         except Exception as e:

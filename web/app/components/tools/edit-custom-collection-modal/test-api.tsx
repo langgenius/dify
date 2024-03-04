@@ -42,6 +42,7 @@ const TestApi: FC<Props> = ({
       delete credentials.api_key_value
     }
     const data = {
+      provider_name: customCollection.provider,
       tool_name: toolName,
       credentials,
       schema_type: customCollection.schema_type,

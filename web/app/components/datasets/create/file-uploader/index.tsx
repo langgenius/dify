@@ -13,6 +13,7 @@ import { fetchFileUploadConfig } from '@/service/common'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import { IS_CE_EDITION } from '@/config'
 
 const FILES_NUMBER_LIMIT = 20
 
@@ -180,7 +181,7 @@ const FileUploader = ({
     if (!files.length)
       return false
 
-    if (files.length + fileList.length > FILES_NUMBER_LIMIT) {
+    if (files.length + fileList.length > FILES_NUMBER_LIMIT && !IS_CE_EDITION) {
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
       return false
     }
