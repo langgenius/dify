@@ -1,8 +1,10 @@
 from flask import Flask
 from flask_compress import Compress
 
-compress = Compress()
+
 
 
 def init_app(app: Flask):
-    compress.init_app(app)
+    if app.config['API_COMPRESSION_ENABLED']:
+        compress = Compress()
+        compress.init_app(app)

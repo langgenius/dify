@@ -293,6 +293,8 @@ class Config:
 
         self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
 
+        self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
+
 
 class CloudEditionConfig(Config):
 
