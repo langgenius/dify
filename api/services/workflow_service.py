@@ -1,6 +1,7 @@
 import json
+from collections.abc import Generator
 from datetime import datetime
-from typing import Optional, Union, Any, Generator
+from typing import Optional, Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator

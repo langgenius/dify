@@ -1,6 +1,6 @@
-from typing import Optional, Union, Generator
+from collections.abc import Generator
+from typing import Optional, Union
 
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.direct_answer.direct_answer_node import DirectAnswerNode
@@ -16,7 +16,7 @@ from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_assigner.variable_assigner_node import VariableAssignerNode
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, EndUser, Conversation
+from models.model import App, EndUser
 from models.workflow import Workflow
 
 node_classes = {
