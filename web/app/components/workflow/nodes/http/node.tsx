@@ -1,8 +1,11 @@
 import type { FC } from 'react'
-import { mockData } from './mock'
+import type { HttpNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
 
-const Node: FC = () => {
-  const { method, url } = mockData
+const Node: FC<NodeProps<HttpNodeType>> = ({
+  data,
+}) => {
+  const { method, url } = data
   return (
     <div className='px-3'>
       <div className='flex items-center p-1 rounded-md bg-gray-100'>

@@ -1,12 +1,15 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { mockData } from './mock'
+import type { EndNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.end'
 
-const Node: FC = () => {
+const Node: FC<NodeProps<EndNodeType>> = ({
+  data,
+}) => {
   const { t } = useTranslation()
-  const { outputs } = mockData
+  const { outputs } = data
   return (
     <div className='px-3'>
       <div className='flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>

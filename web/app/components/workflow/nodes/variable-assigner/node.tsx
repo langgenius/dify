@@ -3,16 +3,17 @@ import { useState } from 'react'
 import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { NodeTargetHandle } from '../_base/components/node-handle'
-import { mockData } from './mock'
+import type { VariableAssignerNodeType } from './types'
 import { getNodeInfoById } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 
-const Node: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
+const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
-  const { variables: tempVar, output_type } = mockData
+  const { data } = props
+  const { variables: tempVar, output_type } = data
   const [variables, setVariables] = useState(tempVar)
 
   // TODO: get var type through node and  value

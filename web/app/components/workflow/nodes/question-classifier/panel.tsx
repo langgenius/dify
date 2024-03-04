@@ -2,14 +2,19 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
-import { mockData } from './mock'
 import ClassList from './components/class-list'
 import AdvancedSetting from './components/advanced-setting'
+import type { QuestionClassifierNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { NodeProps } from '@/app/components/workflow/types'
+
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
-const Panel: FC = () => {
+const Panel: FC<NodeProps<QuestionClassifierNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
 
@@ -21,7 +26,8 @@ const Panel: FC = () => {
     handleTopicsChange,
     handleInstructionChange,
     handleMemoryChange,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
+
   const model = inputs.model
 
   return (

@@ -2,14 +2,15 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
 import { NodeSourceHandle } from '../_base/components/node-handle'
-import { mockData } from './mock'
 import { isComparisonOperatorNeedTranslate, isEmptyRelatedOperator } from './utils'
+import type { IfElseNodeType } from './types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
-const IfElseNode: FC<Pick<NodeProps, 'id' | 'data'>> = (props) => {
+const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
+  const { id, data } = props
   const { t } = useTranslation()
-  const { conditions, logical_operator } = mockData
+  const { conditions, logical_operator } = data
 
   return (
     <div className='px-3'>

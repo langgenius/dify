@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
-import { mockData } from './mock'
+import type { CodeNodeType } from './types'
 import { CodeLanguage } from './types'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import OutputVarList from '@/app/components/workflow/nodes/_base/components/variable/output-var-list'
@@ -10,6 +10,8 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
+import type { NodeProps } from '@/app/components/workflow/types'
+
 const i18nPrefix = 'workflow.nodes.code'
 
 const codeLanguages = [
@@ -22,7 +24,10 @@ const codeLanguages = [
     value: CodeLanguage.javascript,
   },
 ]
-const Panel: FC = () => {
+const Panel: FC<NodeProps<CodeNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
 
@@ -34,7 +39,7 @@ const Panel: FC = () => {
     handleCodeLanguageChange,
     handleOutputVarListChange,
     handleAddOutputVariable,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>

@@ -1,10 +1,11 @@
 import produce from 'immer'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import useVarList from '../_base/hooks/use-var-list'
 import type { EndNodeType, EndVarType, OutPuts } from './types'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
-const useConfig = (initInputs: EndNodeType) => {
-  const [inputs, setInputs] = useState<EndNodeType>(initInputs)
+const useConfig = (id: string, payload: EndNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<EndNodeType>(id, payload)
   const handleOutputTypeChange = useCallback((type: EndVarType) => {
     const newInputs = produce(inputs, (draft: any) => {
       draft.outputs.type = type

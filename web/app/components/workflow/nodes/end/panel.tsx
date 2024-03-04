@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
-import { mockData } from './mock'
+import type { EndNodeType } from './types'
 import { EndVarType } from './types'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
+import type { NodeProps } from '@/app/components/workflow/types'
+
 const i18nPrefix = 'workflow.nodes.end'
 
 const TypeItem = ({ type, current, onClick }: { type: EndVarType; current: EndVarType; onClick: (type: EndVarType) => void }) => {
@@ -33,7 +35,10 @@ const TypeItem = ({ type, current, onClick }: { type: EndVarType; current: EndVa
 
 const allTypes = [EndVarType.plainText, EndVarType.structured, EndVarType.none]
 
-const Panel: FC = () => {
+const Panel: FC<NodeProps<EndNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
 
@@ -43,7 +48,7 @@ const Panel: FC = () => {
     handleVarListChange,
     handelPlainTextSelectorChange,
     handleAddVariable,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
 
   const outputs = inputs.outputs
   return (

@@ -1,11 +1,13 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
 import type { Authorization, Body, HttpNodeType, Method } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
-const useConfig = (initInputs: HttpNodeType) => {
-  const [inputs, setInputs] = useState<HttpNodeType>(initInputs)
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+
+const useConfig = (id: string, payload: HttpNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
 
   const { handleVarListChange, handleAddVariable } = useVarList<HttpNodeType>({
     inputs,
@@ -13,17 +15,17 @@ const useConfig = (initInputs: HttpNodeType) => {
   })
 
   const handleMethodChange = useCallback((method: Method) => {
-    setInputs(prev => ({
-      ...prev,
-      method,
-    }))
+    const newInputs = produce(inputs, (draft: HttpNodeType) => {
+      draft.method = method
+    })
+    setInputs(newInputs)
   }, [])
 
   const handleUrlChange = useCallback((url: string) => {
-    setInputs(prev => ({
-      ...prev,
-      url,
-    }))
+    const newInputs = produce(inputs, (draft: HttpNodeType) => {
+      draft.url = url
+    })
+    setInputs(newInputs)
   }, [])
 
   const {

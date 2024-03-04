@@ -1,10 +1,13 @@
 import type { FC } from 'react'
-import { mockData } from './mock'
+import type { ToolNodeType } from './types'
 import { VarType } from './types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import type { NodeProps } from '@/app/components/workflow/types'
 
-const Node: FC = () => {
-  const { tool_inputs } = mockData
+const Node: FC<NodeProps<ToolNodeType>> = ({
+  data,
+}) => {
+  const { tool_inputs } = data
 
   return (
     <div className='px-3'>

@@ -8,7 +8,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import AddButton from '@/app/components/base/button/add-button'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { InputVar, NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.start'
 
@@ -26,6 +26,11 @@ const Panel: FC<NodeProps<StartNodeType>> = ({
     hideAddVarModal,
     handleVarListChange,
   } = useConfig(id, data)
+
+  const handleAddVarConfirm = (payload: InputVar) => {
+    handleAddVariable(payload)
+    hideAddVarModal()
+  }
 
   return (
     <div className='mt-2'>
@@ -83,10 +88,7 @@ const Panel: FC<NodeProps<StartNodeType>> = ({
           isCreate
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
-          onConfirm={(payload) => {
-            handleAddVariable(payload)
-            hideAddVarModal()
-          }}
+          onConfirm={handleAddVarConfirm}
         />
       )}
     </div>

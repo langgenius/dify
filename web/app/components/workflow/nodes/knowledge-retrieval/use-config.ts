@@ -5,9 +5,10 @@ import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './type
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
-const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
-  const [inputs, setInputs] = useState<KnowledgeRetrievalNodeType>(initInputs)
+const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
   const handleQueryVarChange = useCallback((newVar: ValueSelector) => {
     const newInputs = produce(inputs, (draft) => {
       draft.query_variable_selector = newVar
@@ -38,6 +39,10 @@ const useConfig = (initInputs: KnowledgeRetrievalNodeType) => {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
         setSelectedDatasets(dataSetsWithDetail)
       }
+      const newInputs = produce(inputs, (draft) => {
+        draft.dataset_ids = datasetIds
+      })
+      setInputs(newInputs)
     })()
   }, [])
 

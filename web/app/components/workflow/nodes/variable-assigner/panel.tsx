@@ -1,15 +1,19 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
-import { mockData } from './mock'
 import VarList from './components/var-list'
+import type { VariableAssignerNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 import AddButton from '@/app/components/base/button/add-button'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import type { NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
-const Panel: FC = () => {
+const Panel: FC<NodeProps<VariableAssignerNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
 
@@ -18,7 +22,7 @@ const Panel: FC = () => {
     handleOutputTypeChange,
     handleVarListChange,
     handleAddVariable,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
 
   const typeOptions = [
     { label: t(`${i18nPrefix}.type.string`), value: 'string' },

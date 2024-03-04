@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import type { Memory, ValueSelector } from '../../types'
@@ -6,9 +6,10 @@ import type { LLMNodeType } from './types'
 import type { Resolution } from '@/types/app'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
-const useConfig = (initInputs: LLMNodeType) => {
-  const [inputs, setInputs] = useState<LLMNodeType>(initInputs)
+const useConfig = (id: string, payload: LLMNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<LLMNodeType>(id, payload)
 
   // model
   const model = inputs.model

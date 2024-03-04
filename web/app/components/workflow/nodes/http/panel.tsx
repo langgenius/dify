@@ -1,20 +1,24 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
-import { mockData } from './mock'
 import ApiInput from './components/api-input'
 import KeyValue from './components/key-value'
 import EditBody from './components/edit-body'
 import AuthorizationModal from './components/authorization'
+import type { HttpNodeType } from './types'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import type { NodeProps } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow.nodes.http'
 
-const Panel: FC = () => {
+const Panel: FC<NodeProps<HttpNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
 
@@ -39,7 +43,7 @@ const Panel: FC = () => {
     showAuthorization,
     hideAuthorization,
     setAuthorization,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
 
   return (
     <div className='mt-2'>

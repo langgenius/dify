@@ -13,7 +13,7 @@ const i18nPrefix = 'workflow.nodes.http.authorization'
 
 type Props = {
   payload: AuthorizationPayloadType
-  onChange: (newPayload: AuthorizationPayloadType) => void
+  onChange: (payload: AuthorizationPayloadType) => void
   isShow: boolean
   onHide: () => void
 }

@@ -1,18 +1,17 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
 import { ComparisonOperator, LogicalOperator } from './types'
 import type { Condition, IfElseNodeType } from './types'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
-const useConfig = (initInputs: IfElseNodeType) => {
-  const [inputs, setInputs] = useState<IfElseNodeType>(initInputs)
+const useConfig = (id: string, payload: IfElseNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
 
   const handleConditionsChange = useCallback((newConditions: Condition[]) => {
-    setInputs((prev) => {
-      return {
-        ...prev,
-        conditions: newConditions,
-      }
+    const newInputs = produce(inputs, (draft) => {
+      draft.conditions = newConditions
     })
+    setInputs(newInputs)
   }, [])
 
   const handleAddCondition = useCallback(() => {

@@ -2,17 +2,21 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
-import { mockData } from './mock'
 import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
+import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import type { NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
-const Panel: FC = () => {
+const Panel: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
 
@@ -23,7 +27,7 @@ const Panel: FC = () => {
     handleMultipleRetrievalConfigChange,
     selectedDatasets,
     handleOnDatasetsChange,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
 
   return (
     <div className='mt-2'>

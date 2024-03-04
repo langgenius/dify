@@ -13,7 +13,7 @@ import CodeEditor from '../../../_base/components/editor/code-editor'
 type Props = {
   readonly: boolean
   payload: Body
-  onChange: (newPayload: Body) => void
+  onChange: (payload: Body) => void
 }
 
 const allTypes = [

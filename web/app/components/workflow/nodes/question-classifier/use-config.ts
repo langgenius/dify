@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
 import type { Memory, ValueSelector } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
-const useConfig = (initInputs: QuestionClassifierNodeType) => {
-  const [inputs, setInputs] = useState<QuestionClassifierNodeType>(initInputs)
+const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<QuestionClassifierNodeType>(id, payload)
 
   // model
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
