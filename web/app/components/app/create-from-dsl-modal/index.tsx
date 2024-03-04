@@ -68,12 +68,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (!isCurrentWorkspaceManager) {
-        router.push(`/app/${app.id}/'overview'`)
+        router.push(`/app/${app.id}/overview`)
       }
       else {
         if (app.mode === 'workflow' || app.mode === 'advanced-chat')
-          router.push(`/app/${app.id}/'workflow'`)
-        router.push(`/app/${app.id}/'configuration'`)
+          router.push(`/app/${app.id}/workflow`)
+        router.push(`/app/${app.id}/configuration`)
       }
     }
     catch (e) {

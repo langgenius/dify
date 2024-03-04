@@ -47,8 +47,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
   // const nodesInitialized = useNodesInitialized()
 
-  console.log(nodes)
-
   const {
     // handleLayout,
 

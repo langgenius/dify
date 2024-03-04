@@ -122,12 +122,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (!isCurrentWorkspaceManager) {
-        push(`/app/${newApp.id}/'overview'`)
+        push(`/app/${newApp.id}/overview`)
       }
       else {
         if (newApp.mode === 'workflow' || newApp.mode === 'advanced-chat')
-          push(`/app/${newApp.id}/'workflow'`)
-        push(`/app/${newApp.id}/'configuration'`)
+          push(`/app/${newApp.id}/workflow`)
+        push(`/app/${newApp.id}/configuration`)
       }
     }
     catch (e) {

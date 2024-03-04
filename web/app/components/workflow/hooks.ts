@@ -55,11 +55,14 @@ export const useWorkflow = () => {
     } = store.getState()
     e.stopPropagation()
 
-    const newNodes = produce(getNodes(), (draft) => {
+    const nodes = getNodes()
+
+    const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(n => n.id === node.id)!
 
       currentNode.position = node.position
     })
+
     setNodes(newNodes)
   }, [store])
 
