@@ -87,7 +87,7 @@ class TextApi(Resource):
                 tenant_id=app_model.tenant_id,
                 text=args['text'],
                 end_user=end_user,
-                voice=app_model.app_model_config.text_to_speech_dict.get('voice'),
+                voice=args['voice'] if args['voice'] else app_model.app_model_config.text_to_speech_dict.get('voice'),
                 streaming=args['streaming']
             )
 
