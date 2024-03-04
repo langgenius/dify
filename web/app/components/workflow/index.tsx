@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import {
   memo,
-  // useEffect,
 } from 'react'
 import { useParams } from 'next/navigation'
 import useSWR from 'swr'
@@ -10,11 +9,9 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   useEdgesState,
-  // useNodesInitialized,
   useNodesState,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-// import './style.css'
 import type {
   Edge,
   Node,
@@ -22,7 +19,7 @@ import type {
 import { useWorkflow } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
-import ZoomInOut from './zoom-in-out'
+import Operator from './operator'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
@@ -34,6 +31,7 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
+import { FeaturesProvider } from '@/app/components/base/features'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -53,11 +51,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const [nodes] = useNodesState(initialNodes)
   const [edges, _, onEdgesChange] = useEdgesState(initialEdges)
-  // const nodesInitialized = useNodesInitialized()
 
   const {
-    // handleLayout,
-
     handleNodeDragStart,
     handleNodeDrag,
     handleNodeDragStop,
@@ -71,18 +66,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeDelete,
   } = useWorkflow()
 
-  // useEffect(() => {
-  //   if (nodesInitialized)
-  //     handleLayout()
-  // }, [nodesInitialized, handleLayout])
-
   useKeyPress('Backspace', handleEdgeDelete)
 
   return (
     <div className='relative w-full h-full'>
       <Header />
       <Panel />
-      <ZoomInOut />
+      <Operator />
       {
         showFeaturesPanel && <Features />
       }
@@ -121,8 +111,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   edges,
 }) => {
   const appId = useParams().appId
-  const { data, isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
-  // const { data: configsData } = useSWR(`/apps/${appId}/workflows/default-workflow-block-configs`, fetchNodesDefaultConfigs)
+  const { isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
 
   if (error) {
     syncWorkflowDraft({
@@ -152,10 +141,12 @@ const WorkflowWrap: FC<WorkflowProps> = ({
 
   return (
     <ReactFlowProvider>
-      <Workflow
-        nodes={nodes}
-        edges={edges}
-      />
+      <FeaturesProvider>
+        <Workflow
+          nodes={nodes}
+          edges={edges}
+        />
+      </FeaturesProvider>
     </ReactFlowProvider>
   )
 }
