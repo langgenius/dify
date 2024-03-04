@@ -10,12 +10,14 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
 )
 from core.app.entities.queue_entities import QueueStopEvent
+from core.callback_handler.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.moderation.base import ModerationException
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
+from models.workflow import WorkflowRunTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +85,16 @@ class AdvancedChatAppRunner(AppRunner):
         result_generator = workflow_engine_manager.run_workflow(
             app_model=app_record,
             workflow=workflow,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING
+            if application_generate_entity.invoke_from == InvokeFrom.DEBUGGER else WorkflowRunTriggeredFrom.APP_RUN,
             user=user,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.QUERY: query,
                 SystemVariable.FILES: files,
                 SystemVariable.CONVERSATION: conversation.id,
-            }
+            },
+            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)]
         )
 
         for result in result_generator:

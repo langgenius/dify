@@ -112,6 +112,7 @@ class VariableEntity(BaseModel):
     max_length: Optional[int] = None
     options: Optional[list[str]] = None
     default: Optional[str] = None
+    hint: Optional[str] = None
 
 
 class ExternalDataVariableEntity(BaseModel):
