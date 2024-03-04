@@ -4,6 +4,7 @@ from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.workflow.entities.node_entities import NodeType
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
@@ -121,12 +122,26 @@ class WorkflowService:
         # return new workflow
         return workflow
 
-    def get_default_block_configs(self) -> dict:
+    def get_default_block_configs(self) -> list[dict]:
         """
         Get default block configs
         """
         # return default block config
-        return default_block_configs
+        workflow_engine_manager = WorkflowEngineManager()
+        return workflow_engine_manager.get_default_configs()
+
+    def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
+        """
+        Get default config of node.
+        :param node_type: node type
+        :param filters: filter by node config parameters.
+        :return:
+        """
+        node_type = NodeType.value_of(node_type)
+
+        # return default block config
+        workflow_engine_manager = WorkflowEngineManager()
+        return workflow_engine_manager.get_default_config(node_type, filters)
 
     def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """

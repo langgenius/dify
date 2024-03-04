@@ -30,7 +30,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.entities.NodeEntities import NodeType
+from core.workflow.entities.node_entities import NodeType
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageFile

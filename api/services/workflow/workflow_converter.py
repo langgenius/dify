@@ -18,7 +18,7 @@ from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from core.workflow.entities.NodeEntities import NodeType
+from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.end.entities import EndNodeOutputType
 from events.app_event import app_was_created
 from extensions.ext_database import db
