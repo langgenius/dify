@@ -130,7 +130,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 input=query
             )
 
-            # recale llm max tokens
+            # recalc llm max tokens
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
