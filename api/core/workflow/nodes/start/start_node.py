@@ -1,4 +1,4 @@
-from typing import Type, Optional
+from typing import Optional
 
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
