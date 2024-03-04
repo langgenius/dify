@@ -3,6 +3,8 @@ import {
   memo,
   // useEffect,
 } from 'react'
+import { useParams } from 'next/navigation'
+import useSWR from 'swr'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
   Background,
@@ -26,6 +28,12 @@ import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import Features from './features'
 import { useStore } from './store'
+import { NodeInitialData } from './constants'
+import {
+  fetchWorkflowDraft,
+  syncWorkflowDraft,
+} from '@/service/workflow'
+import Loading from '@/app/components/base/loading'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -112,6 +120,36 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   nodes,
   edges,
 }) => {
+  const appId = useParams().appId
+  const { data, isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
+  // const { data: configsData } = useSWR(`/apps/${appId}/workflows/default-workflow-block-configs`, fetchNodesDefaultConfigs)
+
+  if (error) {
+    syncWorkflowDraft({
+      url: `/apps/${appId}/workflows/draft`,
+      params: {
+        graph: {
+          nodes: [{
+            id: `${Date.now()}`,
+            data: NodeInitialData.start,
+            position: {
+              x: 100,
+              y: 100,
+            },
+          }],
+          edges: [],
+        },
+        features: {},
+      },
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <Loading />
+    )
+  }
+
   return (
     <ReactFlowProvider>
       <Workflow

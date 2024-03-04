@@ -44,6 +44,7 @@ type IOtherOptions = {
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
+  silent?: boolean
   onData?: IOnData // for stream
   onThought?: IOnThought
   onFile?: IOnFile
@@ -176,6 +177,7 @@ const baseFetch = <T>(
     needAllResponseContent,
     deleteContentType,
     getAbortController,
+    silent,
   }: IOtherOptions,
 ): Promise<T> => {
   const options: typeof baseOptions & FetchOptionType = Object.assign({}, baseOptions, fetchOptions)
@@ -250,13 +252,14 @@ const baseFetch = <T>(
               case 401: {
                 if (isPublicAPI) {
                   return bodyJson.then((data: ResponseError) => {
-                    Toast.notify({ type: 'error', message: data.message })
+                    if (!silent)
+                      Toast.notify({ type: 'error', message: data.message })
                     return Promise.reject(data)
                   })
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
                 bodyJson.then((data: ResponseError) => {
-                  if (data.code === 'init_validate_failed' && IS_CE_EDITION)
+                  if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
                     Toast.notify({ type: 'error', message: data.message, duration: 4000 })
                   else if (data.code === 'not_init_validated' && IS_CE_EDITION)
                     globalThis.location.href = `${globalThis.location.origin}/init`
@@ -264,7 +267,7 @@ const baseFetch = <T>(
                     globalThis.location.href = `${globalThis.location.origin}/install`
                   else if (location.pathname !== '/signin' || !IS_CE_EDITION)
                     globalThis.location.href = loginUrl
-                  else
+                  else if (!silent)
                     Toast.notify({ type: 'error', message: data.message })
                 }).catch(() => {
                   // Handle any other errors
@@ -275,7 +278,8 @@ const baseFetch = <T>(
               }
               case 403:
                 bodyJson.then((data: ResponseError) => {
-                  Toast.notify({ type: 'error', message: data.message })
+                  if (!silent)
+                    Toast.notify({ type: 'error', message: data.message })
                   if (data.code === 'already_setup')
                     globalThis.location.href = `${globalThis.location.origin}/signin`
                 })
@@ -283,7 +287,8 @@ const baseFetch = <T>(
               // fall through
               default:
                 bodyJson.then((data: ResponseError) => {
-                  Toast.notify({ type: 'error', message: data.message })
+                  if (!silent)
+                    Toast.notify({ type: 'error', message: data.message })
                 })
             }
             return Promise.reject(resClone)
@@ -301,7 +306,8 @@ const baseFetch = <T>(
           resolve(needAllResponseContent ? resClone : data)
         })
         .catch((err) => {
-          Toast.notify({ type: 'error', message: err })
+          if (!silent)
+            Toast.notify({ type: 'error', message: err })
           reject(err)
         })
     }),

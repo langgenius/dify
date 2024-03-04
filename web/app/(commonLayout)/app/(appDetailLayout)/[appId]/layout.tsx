@@ -29,10 +29,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const detailParams = { url: '/apps', id: appId }
   const { data: response } = useSWR(detailParams, fetchAppDetail)
 
-  // redirection
-  if ((response?.mode === 'workflow' || response?.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
+  // redirections
+  if (response && (response?.mode === 'workflow' || response?.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
     router.replace(`/app/${appId}/workflow`)
-  if ((response?.mode !== 'workflow' && response?.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
+  if (response && (response?.mode !== 'workflow' && response?.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
     router.replace(`/app/${appId}/configuration`)
 
   const appModeName = (() => {
@@ -89,11 +89,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [response])
   if (!response)
     return null
+
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
       <AppSideBar title={response.name} icon={response.icon} icon_background={response.icon_background} desc={appModeName} navigation={navigation} />
       <div className="bg-white grow overflow-hidden">
-        {React.cloneElement(children as React.ReactElement<any>, { appMode: response.mode })}
+        {children}
       </div>
     </div>
   )
