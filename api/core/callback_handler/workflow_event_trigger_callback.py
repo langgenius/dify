@@ -1,6 +1,6 @@
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.workflow.callbacks.base_callback import BaseWorkflowCallback
-from models.workflow import WorkflowRun, WorkflowNodeExecution
+from models.workflow import WorkflowNodeExecution, WorkflowRun
 
 
 class WorkflowEventTriggerCallback(BaseWorkflowCallback):

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from models.workflow import WorkflowRun, WorkflowNodeExecution
+from models.workflow import WorkflowNodeExecution, WorkflowRun
 
 
 class BaseWorkflowCallback:

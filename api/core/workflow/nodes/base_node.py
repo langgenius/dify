@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Type
+from typing import Optional
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
@@ -8,7 +8,7 @@ from core.workflow.entities.variable_pool import VariablePool
 
 class BaseNode:
     _node_type: NodeType
-    _node_data_cls: Type[BaseNodeData]
+    _node_data_cls: type[BaseNodeData]
 
     def __init__(self, config: dict) -> None:
         self._node_id = config.get("id")

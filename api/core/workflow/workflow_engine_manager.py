@@ -19,7 +19,7 @@ from core.workflow.nodes.variable_assigner.variable_assigner_node import Variabl
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
-from models.workflow import Workflow, WorkflowRunTriggeredFrom, WorkflowRun, WorkflowRunStatus, CreatedByRole
+from models.workflow import CreatedByRole, Workflow, WorkflowRun, WorkflowRunStatus, WorkflowRunTriggeredFrom
 
 node_classes = {
     NodeType.START: StartNode,
