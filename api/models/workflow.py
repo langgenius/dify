@@ -273,6 +273,14 @@ class WorkflowRun(db.Model):
             if created_by_role == CreatedByRole.END_USER else None
 
     @property
+    def graph_dict(self):
+        return self.graph if not self.graph else json.loads(self.graph)
+
+    @property
+    def inputs_dict(self):
+        return self.inputs if not self.inputs else json.loads(self.inputs)
+
+    @property
     def outputs_dict(self):
         return self.outputs if not self.outputs else json.loads(self.outputs)
 

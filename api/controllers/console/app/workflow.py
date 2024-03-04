@@ -1,16 +1,26 @@
 import json
+import logging
+from typing import Generator
 
+from flask import Response, stream_with_context
 from flask_restful import Resource, marshal_with, reqparse
+from werkzeug.exceptions import NotFound, InternalServerError
 
+import services
 from controllers.console import api
-from controllers.console.app.error import DraftWorkflowNotExist
+from controllers.console.app.error import DraftWorkflowNotExist, ConversationCompletedError
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.workflow_fields import workflow_fields
+from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
 from services.workflow_service import WorkflowService
+
+
+logger = logging.getLogger(__name__)
 
 
 class DraftWorkflowApi(Resource):
@@ -59,23 +69,80 @@ class DraftWorkflowApi(Resource):
         }
 
 
-class DraftWorkflowRunApi(Resource):
+class AdvancedChatDraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def post(self, app_model: App):
         """
         Run draft workflow
         """
-        # TODO
-        workflow_service = WorkflowService()
-        workflow_service.run_draft_workflow(app_model=app_model, account=current_user)
+        parser = reqparse.RequestParser()
+        parser.add_argument('inputs', type=dict, required=True, location='json')
+        parser.add_argument('query', type=str, location='json', default='')
+        parser.add_argument('files', type=list, required=False, location='json')
+        parser.add_argument('conversation_id', type=uuid_value, location='json')
+        args = parser.parse_args()
 
-        # TODO
-        return {
-            "result": "success"
-        }
+        workflow_service = WorkflowService()
+        try:
+            response = workflow_service.run_advanced_chat_draft_workflow(
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER
+            )
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+        def generate() -> Generator:
+            yield from response
+
+        return Response(stream_with_context(generate()), status=200,
+                        mimetype='text/event-stream')
+
+
+class DraftWorkflowRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        """
+        Run draft workflow
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument('inputs', type=dict, required=True, location='json')
+        args = parser.parse_args()
+
+        workflow_service = WorkflowService()
+
+        try:
+            response = workflow_service.run_draft_workflow(
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER
+            )
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+        def generate() -> Generator:
+            yield from response
+
+        return Response(stream_with_context(generate()), status=200,
+                        mimetype='text/event-stream')
 
 
 class WorkflowTaskStopApi(Resource):
@@ -214,10 +281,12 @@ class ConvertToWorkflowApi(Resource):
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')
+api.add_resource(AdvancedChatDraftWorkflowRunApi, '/apps/<uuid:app_id>/advanced-chat/workflows/draft/run')
 api.add_resource(DraftWorkflowRunApi, '/apps/<uuid:app_id>/workflows/draft/run')
 api.add_resource(WorkflowTaskStopApi, '/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop')
 api.add_resource(DraftWorkflowNodeRunApi, '/apps/<uuid:app_id>/workflows/draft/nodes/<uuid:node_id>/run')
 api.add_resource(PublishedWorkflowApi, '/apps/<uuid:app_id>/workflows/published')
 api.add_resource(DefaultBlockConfigsApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
-api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs/:block_type')
+api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs'
+                                        '/<string:block_type>')
 api.add_resource(ConvertToWorkflowApi, '/apps/<uuid:app_id>/convert-to-workflow')
