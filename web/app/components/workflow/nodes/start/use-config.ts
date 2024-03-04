@@ -1,11 +1,19 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
 import type { InputVar } from '@/app/components/workflow/types'
-
-const useConfig = (initInputs: StartNodeType) => {
-  const [inputs, setInputs] = useState<StartNodeType>(initInputs)
+import { useWorkflow } from '@/app/components/workflow/hooks'
+const useConfig = (id: string, payload: StartNodeType) => {
+  const { handleNodeDataUpdate } = useWorkflow()
+  // const [inputs, setInputs] = useState<StartNodeType>(initInputs)
+  const inputs = payload
+  const setInputs = (newInputs: StartNodeType) => {
+    handleNodeDataUpdate({
+      id,
+      data: newInputs,
+    })
+  }
 
   const [isShowAddVarModal, {
     setTrue: showAddVarModal,

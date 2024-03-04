@@ -1,9 +1,10 @@
+import { BlockEnum } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 
 export const mockData: TemplateTransformNodeType = {
   title: 'Test',
   desc: 'Test',
-  type: 'Test',
+  type: BlockEnum.TemplateTransform,
   variables: [
     {
       variable: 'name',

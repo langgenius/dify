@@ -1,13 +1,16 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import InputVarTypeIcon from '../_base/components/input-var-type-icon'
-import { mockData } from './mock'
+import type { StartNodeType } from './types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import type { NodeProps } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow.nodes.start'
 
-const Node: FC = () => {
+const Node: FC<NodeProps<StartNodeType>> = ({
+  data,
+}) => {
   const { t } = useTranslation()
-  const { variables } = mockData
+  const { variables } = data
 
   return (
     <div className='px-3'>

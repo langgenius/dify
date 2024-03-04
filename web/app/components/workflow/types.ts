@@ -23,7 +23,7 @@ export type Branch = {
   name: string
 }
 
-export type CommonNodeType = {
+export type CommonNodeType<T = {}> = {
   index?: {
     x: number
     y: number
@@ -34,10 +34,11 @@ export type CommonNodeType = {
   title: string
   desc: string
   type: BlockEnum
-}
+} & T
 
 export type Node = ReactFlowNode<CommonNodeType>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
+export type NodeProps<T> = { id: string; data: CommonNodeType<T> }
 export type Edge = ReactFlowEdge
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]

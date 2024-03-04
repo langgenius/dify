@@ -2,16 +2,20 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarList from './components/var-list'
 import useConfig from './use-config'
-import { mockData } from './mock'
+import type { StartNodeType } from './types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import AddButton from '@/app/components/base/button/add-button'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
+import type { NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.start'
 
-const Panel: FC = () => {
+const Panel: FC<NodeProps<StartNodeType>> = ({
+  id,
+  data,
+}) => {
   const { t } = useTranslation()
   const readOnly = false
   const {
@@ -21,7 +25,7 @@ const Panel: FC = () => {
     handleAddVariable,
     hideAddVarModal,
     handleVarListChange,
-  } = useConfig(mockData)
+  } = useConfig(id, data)
 
   return (
     <div className='mt-2'>

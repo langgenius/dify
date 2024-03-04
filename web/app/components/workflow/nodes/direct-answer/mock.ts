@@ -1,9 +1,10 @@
+import { BlockEnum } from '../../types'
 import type { DirectAnswerNodeType } from './types'
 
 export const mockData: DirectAnswerNodeType = {
   title: 'Test',
   desc: 'Test',
-  type: 'Test',
+  type: BlockEnum.DirectAnswer,
   variables: [
     {
       variable: 'age',

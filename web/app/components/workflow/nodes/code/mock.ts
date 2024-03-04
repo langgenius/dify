@@ -1,10 +1,11 @@
+import { BlockEnum } from '../../types'
 import { CodeLanguage } from './types'
 import type { CodeNodeType } from './types'
 
 export const mockData: CodeNodeType = {
   title: 'Test',
   desc: 'Test',
-  type: 'Test',
+  type: BlockEnum.Code,
   variables: [
     {
       variable: 'name',
