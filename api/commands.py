@@ -286,7 +286,7 @@ def annotation_migrate():
         for app in apps:
             total_count = total_count + 1
             click.echo(f'Processing the {total_count} app {app.id}. '
-                       + f'{create_count} created, ${skipped_count} skipped.')
+                       + f'{create_count} created, {skipped_count} skipped.')
             try:
                 click.echo('Create app annotation index: {}'.format(app.id))
                 app_annotation_setting = db.session.query(AppAnnotationSetting).filter(
