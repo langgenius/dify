@@ -1,3 +1,5 @@
+import json
+
 from flask_restful import Resource, marshal_with, reqparse
 
 from controllers.console import api
@@ -147,7 +149,7 @@ class PublishedWorkflowApi(Resource):
         }
 
 
-class DefaultBlockConfigApi(Resource):
+class DefaultBlockConfigsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -159,6 +161,34 @@ class DefaultBlockConfigApi(Resource):
         # Get default block configs
         workflow_service = WorkflowService()
         return workflow_service.get_default_block_configs()
+
+
+class DefaultBlockConfigApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, block_type: str):
+        """
+        Get default block config
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument('q', type=str, location='args')
+        args = parser.parse_args()
+
+        filters = None
+        if args.get('q'):
+            try:
+                filters = json.loads(args.get('q'))
+            except json.JSONDecodeError:
+                raise ValueError('Invalid filters')
+
+        # Get default block configs
+        workflow_service = WorkflowService()
+        return workflow_service.get_default_block_config(
+            node_type=block_type,
+            filters=filters
+        )
 
 
 class ConvertToWorkflowApi(Resource):
@@ -188,5 +218,6 @@ api.add_resource(DraftWorkflowRunApi, '/apps/<uuid:app_id>/workflows/draft/run')
 api.add_resource(WorkflowTaskStopApi, '/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop')
 api.add_resource(DraftWorkflowNodeRunApi, '/apps/<uuid:app_id>/workflows/draft/nodes/<uuid:node_id>/run')
 api.add_resource(PublishedWorkflowApi, '/apps/<uuid:app_id>/workflows/published')
-api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
+api.add_resource(DefaultBlockConfigsApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
+api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs/:block_type')
 api.add_resource(ConvertToWorkflowApi, '/apps/<uuid:app_id>/convert-to-workflow')

@@ -34,7 +34,7 @@ class AppListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('page', type=inputs.int_range(1, 99999), required=False, default=1, location='args')
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
-        parser.add_argument('mode', type=str, choices=['chat', 'workflow', 'agent', 'channel', 'all'], default='all', location='args', required=False)
+        parser.add_argument('mode', type=str, choices=['chat', 'workflow', 'agent-chat', 'channel', 'all'], default='all', location='args', required=False)
         parser.add_argument('name', type=str, location='args', required=False)
         args = parser.parse_args()
 
