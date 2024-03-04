@@ -1,6 +1,6 @@
-model: claude-instant-1
+model: claude-instant-1.2
 label:
-  en_US: claude-instant-1
+  en_US: claude-instant-1.2
 model_type: llm
 features: [ ]
 model_properties:
@@ -20,7 +20,7 @@ parameter_rules:
       zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
       en_US: Only sample from the top K options for each subsequent token.
     required: false
-  - name: max_tokens_to_sample
+  - name: max_tokens
     use_template: max_tokens
     required: true
     default: 4096
@@ -33,4 +33,3 @@ pricing:
   output: '5.51'
   unit: '0.000001'
   currency: USD
-deprecated: true
