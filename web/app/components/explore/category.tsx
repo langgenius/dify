@@ -12,7 +12,11 @@ export type ICategoryProps = {
   className?: string
   list: AppCategory[]
   value: string
-  onChange: (value: AppCategory | '') => void
+  onChange: (value: AppCategory | string) => void
+  /**
+   * default value for searchparam 'category' in en
+   */
+  allCategoriesEn: string
 }
 
 const Category: FC<ICategoryProps> = ({
@@ -20,8 +24,10 @@ const Category: FC<ICategoryProps> = ({
   list,
   value,
   onChange,
+  allCategoriesEn,
 }) => {
   const { t } = useTranslation()
+  const isAllCategories = !list.includes(value)
 
   const itemClassName = (isSelected: boolean) => cn(
     'px-3 py-[5px] h-[28px] rounded-lg border-[0.5px] border-transparent text-gray-700 font-medium leading-[18px] cursor-pointer hover:bg-gray-200',
@@ -31,8 +37,8 @@ const Category: FC<ICategoryProps> = ({
   return (
     <div className={cn(className, 'flex space-x-1 text-[13px] flex-wrap')}>
       <div
-        className={itemClassName(value === '')}
-        onClick={() => onChange('')}
+        className={itemClassName(isAllCategories)}
+        onClick={() => onChange(allCategoriesEn)}
       >
         {t('explore.apps.allCategories')}
       </div>
@@ -48,4 +54,5 @@ const Category: FC<ICategoryProps> = ({
     </div>
   )
 }
+
 export default React.memo(Category)

@@ -70,7 +70,7 @@ class WeaviateVector(BaseVector):
             return class_prefix
 
         dataset_id = dataset.id
-        return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+        return Dataset.gen_collection_name_by_id(dataset_id)
 
     def to_index_struct(self) -> dict:
         return {

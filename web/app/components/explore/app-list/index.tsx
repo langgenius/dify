@@ -37,7 +37,8 @@ const Apps = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const router = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
-  const allCategoriesEn = t('explore.apps.allCategories')
+  const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
   })
@@ -58,11 +59,10 @@ const Apps = ({
     },
   )
 
-  const currList = (() => {
-    if (currCategory === allCategoriesEn)
-      return allList
-    return allList.filter(item => item.category === currCategory)
-  })()
+  const currList
+    = currCategory === allCategoriesEn
+      ? allList
+      : allList.filter(item => item.category === currCategory)
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
@@ -127,6 +127,7 @@ const Apps = ({
         list={categories}
         value={currCategory}
         onChange={setCurrCategory}
+        allCategoriesEn={allCategoriesEn}
       />
       <div className={cn(
         'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',

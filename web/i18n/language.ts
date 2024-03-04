@@ -59,7 +59,7 @@ export const languages = [
     value: 'ja-JP',
     name: '日本語(日本)',
     example: 'こんにちは、Dify!',
-    supported: false,
+    supported: true,
   },
   {
     value: 'ko-KR',

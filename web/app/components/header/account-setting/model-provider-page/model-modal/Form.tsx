@@ -69,7 +69,7 @@ const Form: FC<FormProps> = ({
         <Tooltip popupContent={
           // w-[100px] caused problem
           <div className=''>
-            {tooltip[language]}
+            {tooltip[language] || tooltip.en_US}
           </div>
         } >
           <HelpCircle className='w-3 h-3  text-gray-500' />
@@ -91,7 +91,7 @@ const Form: FC<FormProps> = ({
       return (
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
-            {label[language]}
+            {label[language] || label.en_US}
             {
               required && (
                 <span className='ml-1 text-red-500'>*</span>
@@ -104,7 +104,7 @@ const Form: FC<FormProps> = ({
             value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
-            placeholder={placeholder?.[language]}
+            placeholder={placeholder?.[language] || placeholder?.en_US}
             disabled={disabed}
             type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
@@ -132,7 +132,7 @@ const Form: FC<FormProps> = ({
       return (
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
-            {label[language]}
+            {label[language] || label.en_US}
             {
               required && (
                 <span className='ml-1 text-red-500'>*</span>
@@ -188,7 +188,7 @@ const Form: FC<FormProps> = ({
       return (
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
-            {label[language]}
+            {label[language] || label.en_US}
 
             {
               required && (
@@ -230,7 +230,7 @@ const Form: FC<FormProps> = ({
         <div key={variable} className='py-3'>
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
             <div className='flex items-center space-x-2'>
-              <span>{label[language]}</span>
+              <span>{label[language] || label.en_US}</span>
               {tooltipContent}
             </div>
             <Radio.Group

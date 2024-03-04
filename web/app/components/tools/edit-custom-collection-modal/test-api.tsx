@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { Settings01 } from '../../base/icons/src/vender/line/general'
 import ConfigCredentials from './config-credentials'
-import type { Credential, CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
+import { AuthType, type Credential, type CustomCollectionBackend, type CustomParamSchema } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import I18n from '@/context/i18n'
@@ -34,9 +34,16 @@ const TestApi: FC<Props> = ({
   const { operation_id: toolName, parameters } = tool
   const [parametersValue, setParametersValue] = useState<Record<string, string>>({})
   const handleTest = async () => {
+    // clone test schema
+    const credentials = JSON.parse(JSON.stringify(tempCredential)) as Credential
+    if (credentials.auth_type === AuthType.none) {
+      delete credentials.api_key_header_prefix
+      delete credentials.api_key_header
+      delete credentials.api_key_value
+    }
     const data = {
       tool_name: toolName,
-      credentials: tempCredential,
+      credentials,
       schema_type: customCollection.schema_type,
       schema: customCollection.schema,
       parameters: parametersValue,

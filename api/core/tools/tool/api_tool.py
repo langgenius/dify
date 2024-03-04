@@ -67,9 +67,9 @@ class ApiTool(Tool):
             
             if 'api_key_header_prefix' in credentials:
                 api_key_header_prefix = credentials['api_key_header_prefix']
-                if api_key_header_prefix == 'basic':
+                if api_key_header_prefix == 'basic' and credentials['api_key_value']:
                     credentials['api_key_value'] = f'Basic {credentials["api_key_value"]}'
-                elif api_key_header_prefix == 'bearer':
+                elif api_key_header_prefix == 'bearer' and credentials['api_key_value']:
                     credentials['api_key_value'] = f'Bearer {credentials["api_key_value"]}'
                 elif api_key_header_prefix == 'custom':
                     pass
@@ -184,21 +184,7 @@ class ApiTool(Tool):
                     for name, property in properties.items():
                         if name in parameters:
                             # convert type
-                            try:
-                                value = parameters[name]
-                                if property['type'] == 'integer':
-                                    value = int(value)
-                                elif property['type'] == 'number':
-                                    # check if it is a float
-                                    if '.' in value:
-                                        value = float(value)
-                                    else:
-                                        value = int(value)
-                                elif property['type'] == 'boolean':
-                                    value = bool(value)
-                                body[name] = value
-                            except ValueError as e:
-                                body[name] = parameters[name]
+                            body[name] = self._convert_body_property_type(property, parameters[name])
                         elif name in required:
                             raise ToolProviderCredentialValidationError(
                                 f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
@@ -228,10 +214,6 @@ class ApiTool(Tool):
         elif method == 'put':
             response = ssrf_proxy.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
         elif method == 'delete':
-            """
-            request body data is unsupported for DELETE method in standard http protocol
-            however, OpenAPI 3.0 supports request body data for DELETE method, so we support it here by using requests
-            """
             response = ssrf_proxy.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, allow_redirects=True)
         elif method == 'patch':
             response = ssrf_proxy.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=10, follow_redirects=True)
@@ -243,6 +225,66 @@ class ApiTool(Tool):
             raise ValueError(f'Invalid http method {method}')
         
         return response
+    
+    def _convert_body_property_any_of(self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10) -> Any:
+        if max_recursive <= 0:
+            raise Exception("Max recursion depth reached")
+        for option in any_of or []:
+            try:
+                if 'type' in option:
+                    # Attempt to convert the value based on the type.
+                    if option['type'] == 'integer' or option['type'] == 'int':
+                        return int(value)
+                    elif option['type'] == 'number':
+                        if '.' in str(value):
+                            return float(value)
+                        else:
+                            return int(value)
+                    elif option['type'] == 'string':
+                        return str(value)
+                    elif option['type'] == 'boolean':
+                        if str(value).lower() in ['true', '1']:
+                            return True
+                        elif str(value).lower() in ['false', '0']:
+                            return False
+                        else:
+                            continue  # Not a boolean, try next option
+                    elif option['type'] == 'null' and not value:
+                        return None
+                    else:
+                        continue  # Unsupported type, try next option
+                elif 'anyOf' in option and isinstance(option['anyOf'], list):
+                    # Recursive call to handle nested anyOf
+                    return self._convert_body_property_any_of(property, value, option['anyOf'], max_recursive - 1)
+            except ValueError:
+                continue  # Conversion failed, try next option
+        # If no option succeeded, you might want to return the value as is or raise an error
+        return value  # or raise ValueError(f"Cannot convert value '{value}' to any specified type in anyOf")
+
+    def _convert_body_property_type(self, property: dict[str, Any], value: Any) -> Any:
+        try:
+            if 'type' in property:
+                if property['type'] == 'integer' or property['type'] == 'int':
+                    return int(value)
+                elif property['type'] == 'number':
+                    # check if it is a float
+                    if '.' in value:
+                        return float(value)
+                    else:
+                        return int(value)
+                elif property['type'] == 'string':
+                    return str(value)
+                elif property['type'] == 'boolean':
+                    return bool(value)
+                elif property['type'] == 'null':
+                    if value is None:
+                        return None
+                else:
+                    raise ValueError(f"Invalid type {property['type']} for property {property}")
+            elif 'anyOf' in property and isinstance(property['anyOf'], list):
+                return self._convert_body_property_any_of(property, value, property['anyOf'])
+        except ValueError as e:
+            return value
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """

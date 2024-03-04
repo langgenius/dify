@@ -54,4 +54,4 @@ class GaodeRepositoriesTool(BuiltinTool):
             s.close()
             return self.create_text_message(f'No weather information for {city} was found.')
         except Exception as e:
-            return self.create_text_message("Github API Key and Api Version is invalid. {}".format(e))
+            return self.create_text_message("Gaode API Key and Api Version is invalid. {}".format(e))
