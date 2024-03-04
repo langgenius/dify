@@ -1,4 +1,7 @@
 from typing import Optional
+
+import httpx
+
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -10,7 +13,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
-import httpx
+
 
 class JinaRerankModel(RerankModel):
     """
