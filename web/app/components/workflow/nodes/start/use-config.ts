@@ -3,17 +3,10 @@ import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+
 const useConfig = (id: string, payload: StartNodeType) => {
-  const { handleNodeDataUpdate } = useWorkflow()
-  // const [inputs, setInputs] = useState<StartNodeType>(initInputs)
-  const inputs = payload
-  const setInputs = (newInputs: StartNodeType) => {
-    handleNodeDataUpdate({
-      id,
-      data: newInputs,
-    })
-  }
+  const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
 
   const [isShowAddVarModal, {
     setTrue: showAddVarModal,
