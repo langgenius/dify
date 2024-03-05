@@ -53,7 +53,7 @@ type Props = {
 const MemoryConfig: FC<Props> = ({
   className,
   readonly,
-  payload,
+  payload = { window: { enabled: false, size: WINDOW_SIZE_DEFAULT } },
   onChange,
   canSetRoleName = false,
 }) => {
