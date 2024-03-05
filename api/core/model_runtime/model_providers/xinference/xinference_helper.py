@@ -1,6 +1,6 @@
-from urllib.parse import urljoin
 from threading import Lock
 from time import time
+from yarl import URL
 
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, MissingSchema, Timeout
@@ -55,7 +55,7 @@ class XinferenceHelper:
             get xinference model extra parameter like model_format and model_handle_type
         """
 
-        url = urljoin(server_url, 'v1/models', model_uid)
+        url = URL(server_url) / 'v1' / 'models' / model_uid
 
         # this method is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
         session = Session()
