@@ -1,7 +1,11 @@
 import { del, get, patch, post } from './base'
+import type { App, AppCategory } from '@/models/explore'
 
 export const fetchAppList = () => {
-  return get('/explore/apps')
+  return get<{
+    categories: AppCategory[]
+    recommended_apps: App[]
+  }>('/explore/apps')
 }
 
 export const fetchAppDetail = (id: string): Promise<any> => {

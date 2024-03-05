@@ -246,12 +246,12 @@ const ModelModal: FC<ModelModalProps> = ({
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
                       <a
-                        href={provider.help?.url[language]}
+                        href={provider.help?.url[language] || provider.help?.url.en_US}
                         target='_blank' rel='noopener noreferrer'
                         className='inline-flex items-center text-xs text-primary-600'
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
-                        {provider.help.title?.[language] || provider.help.url[language]}
+                        {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
                         <LinkExternal02 className='ml-1 w-3 h-3' />
                       </a>
                     )

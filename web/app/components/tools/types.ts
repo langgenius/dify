@@ -9,10 +9,17 @@ export enum AuthType {
   apiKey = 'api_key',
 }
 
+export enum AuthHeaderPrefix {
+  basic = 'basic',
+  bearer = 'bearer',
+  custom = 'custom',
+}
+
 export type Credential = {
   'auth_type': AuthType
   'api_key_header'?: string
   'api_key_value'?: string
+  'api_key_header_prefix'?: AuthHeaderPrefix
 }
 
 export enum CollectionType {

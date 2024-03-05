@@ -69,7 +69,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
         </div>
         {
           provider.description && (
-            <div className='mt-1 leading-4 text-xs text-black/[48]'>{provider.description[language]}</div>
+            <div className='mt-1 leading-4 text-xs text-black/[48]'>{provider.description[language] || provider.description.en_US}</div>
           )
         }
       </div>

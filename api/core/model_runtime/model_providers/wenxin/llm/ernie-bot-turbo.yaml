@@ -25,3 +25,5 @@ parameter_rules:
     use_template: presence_penalty
   - name: frequency_penalty
     use_template: frequency_penalty
+  - name: response_format
+    use_template: response_format

@@ -1,13 +1,36 @@
-import 'server-only'
-
 import { cookies, headers } from 'next/headers'
 import Negotiator from 'negotiator'
 import { match } from '@formatjs/intl-localematcher'
-import type { Locale } from '.'
+
+import { createInstance } from 'i18next'
+import resourcesToBackend from 'i18next-resources-to-backend'
+import { initReactI18next } from 'react-i18next/initReactI18next'
 import { i18n } from '.'
+import type { Locale } from '.'
+
+// https://locize.com/blog/next-13-app-dir-i18n/
+const initI18next = async (lng: Locale, ns: string) => {
+  const i18nInstance = createInstance()
+  await i18nInstance
+    .use(initReactI18next)
+    .use(resourcesToBackend((language: string, namespace: string) => import(`./${language}/${namespace}.ts`)))
+    .init({
+      lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
+      ns,
+      fallbackLng: 'en-US',
+    })
+  return i18nInstance
+}
+
+export async function useTranslation(lng: Locale, ns = '', options: Record<string, any> = {}) {
+  const i18nextInstance = await initI18next(lng, ns)
+  return {
+    t: i18nextInstance.getFixedT(lng, ns, options.keyPrefix),
+    i18n: i18nextInstance,
+  }
+}
 
 export const getLocaleOnServer = (): Locale => {
-  // @ts-expect-error locales are readonly
   const locales: string[] = i18n.locales
 
   let languages: string[] | undefined

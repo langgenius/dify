@@ -1,0 +1,23 @@
+identity:
+  name: pubmed_search
+  author: Pink Banana
+  label:
+    en_US: PubMed Search
+    zh_Hans: PubMed 搜索
+description:
+  human:
+    en_US: PubMed® comprises more than 35 million citations for biomedical literature from MEDLINE, life science journals, and online books. Citations may include links to full text content from PubMed Central and publisher web sites.
+    zh_Hans: PubMed® 包含来自 MEDLINE、生命科学期刊和在线书籍的超过 3500 万篇生物医学文献引用。引用可能包括来自 PubMed Central 和出版商网站的全文内容链接。
+  llm: Perform searches on PubMed and get results.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    human_description:
+      en_US: The search query.
+      zh_Hans: 搜索查询语句。
+    llm_description: Key words for searching
+    form: llm

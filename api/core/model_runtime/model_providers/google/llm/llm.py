@@ -31,6 +31,16 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 logger = logging.getLogger(__name__)
 
+GEMINI_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+<instructions>
+{{instructions}}
+</instructions>
+"""
+
+
 class GoogleLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
@@ -53,7 +63,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         """
         # invoke model
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
-
+    
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
