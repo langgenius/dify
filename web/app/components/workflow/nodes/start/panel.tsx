@@ -43,7 +43,7 @@ const Panel: FC<NodeProps<StartNodeType>> = ({
         >
           <VarList
             readonly={readOnly}
-            list={inputs.variables}
+            list={inputs.variables || []}
             onChange={handleVarListChange}
           />
         </Field>
