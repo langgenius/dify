@@ -13,7 +13,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { data } = props
   const { provider, name: modelId } = data.model
   // const tempTopics = data.topics
-  const topics = data.topics
+  const topics = data.classes
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()

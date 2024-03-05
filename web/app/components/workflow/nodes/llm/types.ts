@@ -12,7 +12,7 @@ export type LLMNodeType = CommonNodeType & {
   }
   vision: {
     enabled: boolean
-    configs: {
+    configs?: {
       detail: Resolution
     }
   }

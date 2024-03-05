@@ -2,7 +2,10 @@ import type { NodeDefault } from '../../types'
 import type { ToolNodeType } from './types'
 
 const nodeDefault: NodeDefault<ToolNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+    tool_inputs: [],
+    tool_parameters: {},
+  },
   getAvailablePrevNodes() {
     return []
   },

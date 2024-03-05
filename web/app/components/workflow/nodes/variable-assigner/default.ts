@@ -2,7 +2,10 @@ import type { NodeDefault } from '../../types'
 import type { VariableAssignerNodeType } from './types'
 
 const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+    output_type: 'string',
+    variables: [],
+  },
   getAvailablePrevNodes() {
     return []
   },

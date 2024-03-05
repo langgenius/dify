@@ -44,7 +44,7 @@ export type Authorization = {
     type: APIType
     api_key: string
     header?: string
-  }
+  } | null
 }
 
 export type HttpNodeType = CommonNodeType & {

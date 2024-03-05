@@ -14,7 +14,7 @@ export const mockData: QuestionClassifierNodeType = {
       temperature: 0.7,
     },
   },
-  topics: [
+  classes: [
     {
       id: '1',
       name: 'topic 1',

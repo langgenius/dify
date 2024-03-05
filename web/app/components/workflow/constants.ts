@@ -48,21 +48,10 @@ export const NODES_INITIAL_DATA = {
     ...KnowledgeRetrievalDefault.defaultValue,
   },
   [BlockEnum.IfElse]: {
-    _targetBranches: [
-      {
-        id: 'if-true',
-        name: 'IS TRUE',
-      },
-      {
-        id: 'if-false',
-        name: 'IS FALSE',
-      },
-    ],
     type: BlockEnum.IfElse,
     title: '',
     desc: '',
-    logical_operator: 'and',
-    conditions: [],
+
     ...IfElseDefault.defaultValue,
   },
   [BlockEnum.Code]: {

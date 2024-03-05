@@ -9,7 +9,7 @@ export type Topic = {
 export type QuestionClassifierNodeType = CommonNodeType & {
   query_variable_selector: ValueSelector
   model: ModelConfig
-  topics: Topic[]
+  classes: Topic[]
   instruction: string
   memory: Memory
 }

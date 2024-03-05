@@ -62,7 +62,7 @@ const Panel: FC<NodeProps<QuestionClassifierNodeType>> = ({
         title={t(`${i18nPrefix}.class`)}
       >
         <ClassList
-          list={inputs.topics}
+          list={inputs.classes}
           onChange={handleTopicsChange} />
       </Field>
       <Field

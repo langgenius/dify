@@ -2,7 +2,9 @@ import type { NodeDefault } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 
 const nodeDefault: NodeDefault<TemplateTransformNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+    variables: [],
+  },
   getAvailablePrevNodes() {
     return []
   },

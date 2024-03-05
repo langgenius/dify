@@ -1,8 +1,22 @@
 import type { NodeDefault } from '../../types'
-import type { HttpNodeType } from './types'
+import { AuthorizationType, BodyType, type HttpNodeType, Method } from './types'
 
 const nodeDefault: NodeDefault<HttpNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+    variables: [],
+    method: Method.get,
+    url: '',
+    authorization: {
+      type: AuthorizationType.none,
+      config: null,
+    },
+    headers: '',
+    params: '',
+    body: {
+      type: BodyType.none,
+      data: '',
+    },
+  },
   getAvailablePrevNodes() {
     return []
   },
