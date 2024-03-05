@@ -1,0 +1,29 @@
+identity:
+  author: Yash Parmar
+  name: tavily
+  label:
+    en_US: Tavily
+    zh_Hans: Tavily
+    pt_BR: Tavily
+  description:
+    en_US: Tavily
+    zh_Hans: Tavily
+    pt_BR: Tavily
+  icon: icon.png
+credentials_for_provider:
+  tavily_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Tavily API key
+      zh_Hans: Tavily API key
+      pt_BR: Tavily API key
+    placeholder:
+      en_US: Please input your Tavily API key
+      zh_Hans: 请输入你的 Tavily API key
+      pt_BR: Please input your Tavily API key
+    help:
+      en_US: Get your Tavily API key from Tavily
+      zh_Hans: 从 TavilyApi 获取您的 Tavily API key
+      pt_BR: Get your Tavily API key from Tavily
+    url: https://docs.tavily.com/docs/tavily-api/introduction
