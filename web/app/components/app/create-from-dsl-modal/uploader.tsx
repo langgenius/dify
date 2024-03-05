@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
 import { Trash03, UploadCloud01 } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
@@ -104,7 +104,7 @@ const Uploader: FC<Props> = ({
         )}
         {file && (
           <div className={cn('flex items-center h-20 px-6 rounded-xl bg-gray-50 border border-gray-200 text-sm font-normal group', 'hover:bg-[#F5F8FF] hover:border-[#B2CCFF]')}>
-            <CSVIcon className="shrink-0" />
+            <YamlIcon className="shrink-0" />
             <div className='flex ml-2 w-0 grow'>
               <span className='max-w-[calc(100%_-_30px)] text-ellipsis whitespace-nowrap overflow-hidden text-gray-800'>{file.name.replace(/(.yaml|.yml)$/, '')}</span>
               <span className='shrink-0 text-gray-500'>.yml</span>
