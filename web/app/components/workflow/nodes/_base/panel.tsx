@@ -6,7 +6,6 @@ import {
   cloneElement,
   memo,
   useCallback,
-  useState,
 } from 'react'
 import { type Node } from '../../types'
 import { BlockEnum } from '../../types'
@@ -39,7 +38,6 @@ const BasePanel: FC<BasePanelProps> = ({
     handleNodeSelect,
     handleNodeDataUpdate,
   } = useWorkflow()
-  const [controlSingleRun, setControlSingleRun] = useState(0)
   const handleTitleChange = useCallback((title: string) => {
     handleNodeDataUpdate({ id, data: { ...data, title } })
   }, [handleNodeDataUpdate, id, data])
@@ -68,7 +66,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 >
                   <div
                     className='flex items-center justify-center mr-1 w-6 h-6 rounded-md hover:bg-black/5 cursor-pointer'
-                    onClick={() => !controlSingleRun && setControlSingleRun(Date.now())}
+                    onClick={() => handleNodeDataUpdate({ id, data: { _isSingleRun: true } })}
                   >
                     <Play className='w-4 h-4 text-gray-500' />
                   </div>
@@ -93,7 +91,7 @@ const BasePanel: FC<BasePanelProps> = ({
         </div>
       </div>
       <div className='py-2'>
-        {cloneElement(children, { id, data, controlSingleRun, setControlSingleRun })}
+        {cloneElement(children, { id, data })}
       </div>
       {
         data.type !== BlockEnum.End && (

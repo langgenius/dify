@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import { useWorkflow } from '../../../hooks'
 import {
   DotsHorizontal,
   Loading02,
@@ -11,10 +12,14 @@ import {
 
 type NodeControlProps = {
   isRunning?: boolean
+  nodeId: string
 }
 const NodeControl: FC<NodeControlProps> = ({
   isRunning,
+  nodeId,
 }) => {
+  const { handleNodeDataUpdate } = useWorkflow()
+
   return (
     <div className='absolute right-0 -top-7 flex items-center px-0.5 h-6 bg-white rounded-lg border-[0.5px] border-gray-100 shadow-xs text-gray-500'>
       {
@@ -25,7 +30,15 @@ const NodeControl: FC<NodeControlProps> = ({
           </div>
         )
       }
-      <div className='flex items-center justify-center w-5 h-5 cursor-pointer'>
+      <div
+        className='flex items-center justify-center w-5 h-5 cursor-pointer'
+        onClick={() => {
+          handleNodeDataUpdate({
+            id: nodeId,
+            data: { _isSingleRun: !isRunning },
+          })
+        }}
+      >
         {
           isRunning
             ? <Stop className='w-3 h-3' />

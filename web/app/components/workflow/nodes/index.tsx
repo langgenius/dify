@@ -16,6 +16,7 @@ import {
 import NodeControl from './_base/components/node-control'
 
 const CustomNode = memo((props: NodeProps) => {
+  const nodeId = props.id
   const nodeData = props.data
   const NodeComponent = NodeComponentMap[nodeData.type]
 
@@ -43,10 +44,13 @@ const CustomNode = memo((props: NodeProps) => {
         )
       }
       {
-        nodeData.hovering
+        nodeData._selected
         && canRunBySingle(nodeData.type)
         && (
-          <NodeControl />
+          <NodeControl
+            nodeId={nodeId}
+            isRunning={nodeData._isSingleRun}
+          />
         )
       }
     </>

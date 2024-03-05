@@ -18,7 +18,6 @@ import {
 import type {
   BlockEnum,
   Node,
-  SelectedNode,
 } from './types'
 import { NODES_INITIAL_DATA } from './constants'
 import { getLayoutByDagre } from './utils'
@@ -258,7 +257,7 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleNodeDataUpdate = useCallback(({ id, data }: SelectedNode) => {
+  const handleNodeDataUpdate = useCallback(({ id, data }: { id: string; data: Record<string, any> }) => {
     const {
       getNodes,
       setNodes,

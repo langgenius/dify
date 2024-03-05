@@ -6,7 +6,7 @@ import {
   cloneElement,
   memo,
 } from 'react'
-import type { NodeProps } from 'reactflow'
+import type { NodeProps } from '../../types'
 import BlockIcon from '../../block-icon'
 
 type BaseNodeProps = {

@@ -27,6 +27,7 @@ export type CommonNodeType<T = {}> = {
   _selected?: boolean
   _hovering?: boolean
   _targetBranches?: Branch[]
+  _isSingleRun?: boolean
   title: string
   desc: string
   type: BlockEnum
@@ -39,12 +40,10 @@ export type CommonEdgeType = {
 
 export type Node = ReactFlowNode<CommonNodeType>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
-export type NodeProps<T> = { id: string; data: CommonNodeType<T> }
+export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
   data: CommonNodeType<T>
-  controlSingleRun: boolean
-  setControlSingleRun: (value: boolean) => void
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
