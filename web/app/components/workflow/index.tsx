@@ -28,6 +28,7 @@ import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import Features from './features'
+import HelpLine from './help-line'
 import { useStore } from './store'
 import {
   fetchWorkflowDraft,
@@ -80,6 +81,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       {
         showFeaturesPanel && <Features />
       }
+      <HelpLine />
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -98,6 +100,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         multiSelectionKeyCode={null}
         connectionLineComponent={CustomConnectionLine}
         deleteKeyCode={null}
+        nodeDragThreshold={1}
       >
         <Background
           gap={[14, 14]}

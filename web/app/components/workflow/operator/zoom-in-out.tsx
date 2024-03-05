@@ -5,7 +5,10 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow } from 'reactflow'
+import {
+  useReactFlow,
+  useViewport,
+} from 'reactflow'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -16,7 +19,13 @@ import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const ZoomInOut: FC = () => {
   const { t } = useTranslation()
-  const reactFlow = useReactFlow()
+  const {
+    zoomIn,
+    zoomOut,
+    zoomTo,
+    fitView,
+  } = useReactFlow()
+  const { zoom } = useViewport()
   const [open, setOpen] = useState(false)
 
   const ZOOM_IN_OUT_OPTIONS = [
@@ -50,19 +59,19 @@ const ZoomInOut: FC = () => {
 
   const handleZoom = (type: string) => {
     if (type === 'in')
-      reactFlow.zoomIn()
+      zoomIn()
 
     if (type === 'out')
-      reactFlow.zoomOut()
+      zoomOut()
 
     if (type === 'fit')
-      reactFlow.fitView()
+      fitView()
 
     if (type === 'to50')
-      reactFlow.zoomTo(0.5)
+      zoomTo(0.5)
 
     if (type === 'to100')
-      reactFlow.zoomTo(1)
+      zoomTo(1)
   }
 
   return (
@@ -78,7 +87,7 @@ const ZoomInOut: FC = () => {
           ${open && 'bg-gray-50'}
         `}>
           <SearchLg className='mr-1 w-4 h-4' />
-          100%
+          <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
           <ChevronDown className='ml-1 w-4 h-4' />
         </div>
       </PortalToFollowElemTrigger>

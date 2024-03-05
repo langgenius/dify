@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { HelpLinePosition } from './help-line/types'
 
 type State = {
   mode: string
@@ -6,7 +7,7 @@ type State = {
   showFeaturesPanel: boolean
   runStaus: string
   isDragging: boolean
-  helpLine?: { x?: number; y?: number }
+  helpLine?: HelpLinePosition
 }
 
 type Action = {
@@ -14,7 +15,7 @@ type Action = {
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   setRunStaus: (runStaus: string) => void
   setIsDragging: (isDragging: boolean) => void
-  setHelpLine: (helpLine?: { x?: number; y?: number }) => void
+  setHelpLine: (helpLine?: HelpLinePosition) => void
 }
 
 export const useStore = create<State & Action>(set => ({

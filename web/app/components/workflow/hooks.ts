@@ -78,18 +78,7 @@ export const useWorkflow = () => {
 
     const nodes = getNodes()
 
-    const newNodes = produce(nodes, (draft) => {
-      const currentNode = draft.find(n => n.id === node.id)!
-
-      currentNode.position = node.position
-    })
-
-    setNodes(newNodes)
-
-    const showVerticalHelpLine = nodes.find((n) => {
-      if (n.id === node.id)
-        return false
-
+    const showVerticalHelpLineNodes = nodes.filter((n) => {
       if (
         n.position.x === node.position.x
         || n.position.x + n.width! === node.position.x
@@ -99,10 +88,7 @@ export const useWorkflow = () => {
 
       return false
     })
-    const showHorizontalHelpLine = nodes.find((n) => {
-      if (n.id === node.id)
-        return false
-
+    const showHorizontalHelpLineNodes = nodes.filter((n) => {
       if (
         n.position.y === node.position.y
         || n.position.y === node.position.y + node.height!
@@ -114,15 +100,13 @@ export const useWorkflow = () => {
       return false
     })
 
-    if (showVerticalHelpLine || showHorizontalHelpLine) {
-      setHelpLine({
-        x: showVerticalHelpLine ? node.position.x : undefined,
-        y: showHorizontalHelpLine ? node.position.y : undefined,
-      })
-    }
-    else {
-      setHelpLine()
-    }
+    const newNodes = produce(nodes, (draft) => {
+      const currentNode = draft.find(n => n.id === node.id)!
+
+      currentNode.position = node.position
+    })
+
+    setNodes(newNodes)
   }, [store])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
@@ -306,7 +290,7 @@ export const useWorkflow = () => {
       draft.push(newEdge)
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, nodesInitialData])
 
   const handleNodeChange = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle?: string) => {
     const {
@@ -357,7 +341,7 @@ export const useWorkflow = () => {
       })
       setEdges(newEdges)
     }
-  }, [store])
+  }, [store, nodesInitialData])
 
   const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
