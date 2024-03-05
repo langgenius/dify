@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import VarList from './components/var-list'
 import useConfig from './use-config'
@@ -95,4 +96,4 @@ const Panel: FC<NodeProps<StartNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)

@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import useConfig from './use-config'
 import ApiInput from './components/api-input'
@@ -151,4 +152,4 @@ const Panel: FC<NodeProps<HttpNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)

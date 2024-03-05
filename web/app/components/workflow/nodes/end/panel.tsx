@@ -1,4 +1,5 @@
 import { type FC, useCallback } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -100,4 +101,4 @@ const Panel: FC<NodeProps<EndNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)

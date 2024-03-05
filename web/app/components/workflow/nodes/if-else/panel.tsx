@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import AddButton from '../_base/components/add-button'
@@ -55,4 +56,4 @@ const Panel: FC<NodeProps<IfElseNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)

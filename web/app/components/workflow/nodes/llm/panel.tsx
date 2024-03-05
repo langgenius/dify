@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -145,4 +146,4 @@ const Panel: FC<NodeProps<LLMNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)

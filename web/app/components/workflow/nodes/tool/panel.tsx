@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
@@ -42,4 +43,4 @@ const Panel: FC<NodeProps<ToolNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)

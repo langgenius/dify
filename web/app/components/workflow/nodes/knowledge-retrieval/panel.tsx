@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
@@ -115,4 +116,4 @@ const Panel: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   )
 }
 
-export default Panel
+export default React.memo(Panel)
