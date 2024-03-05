@@ -31,7 +31,7 @@ const NodeControl: FC<NodeControlProps> = ({
         )
       }
       <div
-        className='flex items-center justify-center w-5 h-5 cursor-pointer'
+        className='flex items-center justify-center w-5 h-5 rounded-md cursor-pointer hover:bg-black/5'
         onClick={() => {
           handleNodeDataUpdate({
             id: nodeId,
@@ -45,7 +45,7 @@ const NodeControl: FC<NodeControlProps> = ({
             : <Play className='w-3 h-3' />
         }
       </div>
-      <div className='flex items-center justify-center w-5 h-5 cursor-pointer'>
+      <div className='flex items-center justify-center w-5 h-5 rounded-md cursor-pointer hover:bg-black/5'>
         <DotsHorizontal className='w-3 h-3' />
       </div>
     </div>

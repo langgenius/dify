@@ -3,7 +3,6 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { useParams } from 'next/navigation'
 import useSWR from 'swr'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
@@ -120,10 +119,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   edges,
 }) => {
   const appDetail = useAppStore(state => state.appDetail)
-  console.log(appDetail?.name)
-  console.log(appDetail?.description)
-  const appId = useParams().appId
-  const { data, isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
+  const { data, isLoading, error } = useSWR(appDetail?.id ? `/apps/${appDetail.id}/workflows/draft` : null, fetchWorkflowDraft)
   const nodesInitialData = useNodesInitialData()
 
   const startNode = {
@@ -155,9 +151,9 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     return []
   }, [data, nodes])
 
-  if (error) {
+  if (error && appDetail) {
     syncWorkflowDraft({
-      url: `/apps/${appId}/workflows/draft`,
+      url: `/apps/${appDetail.id}/workflows/draft`,
       params: {
         graph: {
           nodes: [startNode],

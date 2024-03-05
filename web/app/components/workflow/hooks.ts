@@ -24,6 +24,7 @@ import { getLayoutByDagre } from './utils'
 import { useStore } from './store'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useNodesInitialData = () => {
   const { t } = useTranslation()
@@ -46,17 +47,20 @@ export const useWorkflow = () => {
       getNodes,
       edges,
     } = store.getState()
+    const appId = useAppStore.getState().appDetail?.id
 
-    syncWorkflowDraft({
-      url: `/apps/${''}/workflows/draft`,
-      params: {
-        graph: {
-          nodes: getNodes(),
-          edges,
+    if (appId) {
+      syncWorkflowDraft({
+        url: `/apps/${appId}/workflows/draft`,
+        params: {
+          graph: {
+            nodes: getNodes(),
+            edges,
+          },
+          features: {},
         },
-        features: {},
-      },
-    })
+      })
+    }
   }, [store])
 
   const handleLayout = useCallback(async () => {
@@ -136,7 +140,8 @@ export const useWorkflow = () => {
     } = useStore.getState()
     setIsDragging(false)
     setHelpLine()
-  }, [])
+    handleSyncWorkflowDraft()
+  }, [handleSyncWorkflowDraft])
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
     const {
@@ -198,7 +203,8 @@ export const useWorkflow = () => {
         selectedNode.data._selected = true
     })
     setNodes(newNodes)
-  }, [store])
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
     if (useStore.getState().isDragging)
@@ -233,7 +239,8 @@ export const useWorkflow = () => {
       return filtered
     })
     setEdges(newEdges)
-  }, [store])
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     const {
@@ -255,7 +262,8 @@ export const useWorkflow = () => {
       return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
     })
     setEdges(newEdges)
-  }, [store])
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeDataUpdate = useCallback(({ id, data }: { id: string; data: Record<string, any> }) => {
     const {
@@ -310,7 +318,8 @@ export const useWorkflow = () => {
       draft.push(newEdge)
     })
     setEdges(newEdges)
-  }, [store, nodesInitialData])
+    handleSyncWorkflowDraft()
+  }, [store, nodesInitialData, handleSyncWorkflowDraft])
 
   const handleNodeChange = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle?: string) => {
     const {
@@ -360,8 +369,9 @@ export const useWorkflow = () => {
         return filtered
       })
       setEdges(newEdges)
+      handleSyncWorkflowDraft()
     }
-  }, [store, nodesInitialData])
+  }, [store, nodesInitialData, handleSyncWorkflowDraft])
 
   const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
     const {
@@ -401,7 +411,8 @@ export const useWorkflow = () => {
         draft.splice(index, 1)
     })
     setEdges(newEdges)
-  }, [store])
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
 
   const handleEdgesChange = useCallback<OnEdgesChange>((changes) => {
     const {
