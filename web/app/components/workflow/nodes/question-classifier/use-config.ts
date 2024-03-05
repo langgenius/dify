@@ -31,9 +31,9 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleTopicsChange = useCallback((newTopics: any) => {
+  const handleClassesChange = useCallback((newClasses: any) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.topics = newTopics
+      draft.classes = newClasses
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -57,7 +57,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleModelChanged,
     handleCompletionParamsChange,
     handleQueryVarChange,
-    handleTopicsChange,
+    handleTopicsChange: handleClassesChange,
     handleInstructionChange,
     handleMemoryChange,
   }

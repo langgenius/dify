@@ -31,7 +31,7 @@ const ClassList: FC<Props> = ({
 
   const handleAddClass = useCallback(() => {
     const newList = produce(list, (draft) => {
-      draft.push({ id: '', name: t(`${i18nPrefix}.class`) + (list.length + 1), topic: '' })
+      draft.push({ id: `${Date.now()}`, name: '' })
     })
     onChange(newList)
   }, [list, onChange, t])
@@ -56,6 +56,7 @@ const ClassList: FC<Props> = ({
               payload={item}
               onChange={handleClassChange(index)}
               onRemove={handleRemoveClass(index)}
+              index={index + 1}
             />
           )
         })
