@@ -11,9 +11,10 @@ import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
 import Record from './record'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const Panel: FC = () => {
-  const mode = useStore(state => state.mode)
+  const appDetail = useAppStore(state => state.appDetail)
   const runStaus = useStore(state => state.runStaus)
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find(node => node.data._selected)
@@ -24,11 +25,11 @@ const Panel: FC = () => {
     showDebugAndPreviewPanel,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: mode === 'workflow' && !selectedNode,
+      showWorkflowInfoPanel: appDetail?.mode === 'workflow' && !selectedNode,
       showNodePanel: !!selectedNode,
-      showDebugAndPreviewPanel: mode === 'chatbot' && !selectedNode,
+      showDebugAndPreviewPanel: appDetail?.mode === 'advanced-chat' && !selectedNode,
     }
-  }, [mode, selectedNode])
+  }, [selectedNode, appDetail])
 
   return (
     <div className='absolute top-14 right-0 bottom-2 flex z-10'>

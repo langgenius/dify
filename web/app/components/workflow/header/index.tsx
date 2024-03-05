@@ -10,9 +10,10 @@ import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const Header: FC = () => {
-  const mode = useStore(state => state.mode)
+  const appDetail = useAppStore(state => state.appDetail)
   const setShowFeaturesPanel = useStore(state => state.setShowFeaturesPanel)
   const runStaus = useStore(state => state.runStaus)
   const setRunStaus = useStore(state => state.setRunStaus)
@@ -29,7 +30,7 @@ const Header: FC = () => {
       }}
     >
       <div>
-        <div className='text-xs font-medium text-gray-700'>Fitness and Nutrition Expert</div>
+        <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
         <div className='flex items-center'>
           <div className='flex items-center text-xs text-gray-500'>
             <Edit03 className='mr-1 w-3 h-3 text-gray-400' />
@@ -55,7 +56,7 @@ const Header: FC = () => {
         <RunAndHistory />
         <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
         {
-          mode === 'workflow' && (
+          appDetail?.mode === 'advanced-chat' && (
             <Button
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
