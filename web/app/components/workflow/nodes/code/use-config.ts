@@ -17,14 +17,14 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       draft.code = code
     })
     setInputs(newInputs)
-  }, [setInputs])
+  }, [inputs, setInputs])
 
   const handleCodeLanguageChange = useCallback((codeLanguage: CodeLanguage) => {
     const newInputs = produce(inputs, (draft) => {
       draft.code_language = codeLanguage
     })
     setInputs(newInputs)
-  }, [setInputs])
+  }, [inputs, setInputs])
 
   const { handleVarListChange: handleOutputVarListChange, handleAddVariable: handleAddOutputVariable } = useOutputVarList<CodeNodeType>({
     inputs,

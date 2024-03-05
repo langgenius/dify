@@ -1,13 +1,15 @@
 'use client'
 import type { FC } from 'react'
+import Editor from '@monaco-editor/react'
 import React from 'react'
 import Base from './base'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 type Props = {
   value: string
   onChange: (value: string) => void
   title: JSX.Element
-  language?: string
+  language: CodeLanguage
   headerRight?: JSX.Element
 }
 
@@ -16,9 +18,13 @@ const CodeEditor: FC<Props> = ({
   onChange,
   title,
   headerRight,
+  language,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
 
+  const handleEditorChange = (value: string | undefined) => {
+    onChange(value || '')
+  }
   return (
     <div>
       <Base
@@ -26,15 +32,24 @@ const CodeEditor: FC<Props> = ({
         value={value}
         headerRight={headerRight}
         isFocus={isFocus}
-        minHeight={86}
+        minHeight={200}
       >
-        <textarea
+        {/* https://www.npmjs.com/package/@monaco-editor/react */}
+        <Editor
+          className='h-full'
+          defaultLanguage={language === CodeLanguage.javascript ? 'javascript' : 'python'}
           value={value}
-          onChange={e => onChange(e.target.value)}
-          onFocus={() => setIsFocus(true)}
-          onBlur={() => setIsFocus(false)}
-          className='w-full h-full p-3 resize-none bg-transparent'
+          onChange={handleEditorChange}
+          // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
+          options={{
+            quickSuggestions: false,
+            minimap: { enabled: false },
+            // lineNumbers: (num) => {
+            //   return <div>{num}</div>
+            // }
+          }}
         />
+
       </Base>
     </div>
   )

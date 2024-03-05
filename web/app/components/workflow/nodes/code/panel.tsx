@@ -57,6 +57,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           />
         </Field>
         <Split />
+        {inputs.code_language}
         <CodeEditor
           title={
             <TypeSelector
@@ -65,6 +66,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
               onChange={handleCodeLanguageChange}
             />
           }
+          language={inputs.code_language}
           value={inputs.code}
           onChange={handleCodeChange}
         />
