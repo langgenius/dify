@@ -8,6 +8,9 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 class QRCodeProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
-            QRCodeGenratorTool().invoke(user_id='', tool_parameters={})
+            QRCodeGenratorTool().invoke(user_id='',
+                                        tool_parameters={
+                                            'content': 'Dify 123 😊'
+                                        })
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
