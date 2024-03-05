@@ -34,6 +34,7 @@ import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 
@@ -118,6 +119,9 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   nodes,
   edges,
 }) => {
+  const appDetail = useAppStore(state => state.appDetail)
+  console.log(appDetail?.name)
+  console.log(appDetail?.description)
   const appId = useParams().appId
   const { data, isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
   const nodesInitialData = useNodesInitialData()

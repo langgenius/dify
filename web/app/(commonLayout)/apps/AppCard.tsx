@@ -22,6 +22,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { asyncRunSafe } from '@/utils'
+import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
@@ -207,8 +208,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           if (showSettingsModal)
             return
           e.preventDefault()
-
-          push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
+          getRedirection(isCurrentWorkspaceManager, app, push)
         }}
         className={style.listItem}
       >

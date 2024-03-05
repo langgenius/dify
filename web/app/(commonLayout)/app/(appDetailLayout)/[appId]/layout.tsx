@@ -6,6 +6,7 @@ import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
+import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import { fetchAppDetail } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
@@ -27,13 +28,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const { isCurrentWorkspaceManager } = useAppContext()
   const detailParams = { url: '/apps', id: appId }
+  const { appDetail, setAppDetail } = useStore()
   const { data: response } = useSWR(detailParams, fetchAppDetail)
-
-  // redirections
-  if (response && (response?.mode === 'workflow' || response?.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
-    router.replace(`/app/${appId}/workflow`)
-  if (response && (response?.mode !== 'workflow' && response?.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
-    router.replace(`/app/${appId}/configuration`)
 
   const appModeName = (() => {
     if (response?.mode === 'chat' || response?.mode === 'advanced-chat')
@@ -86,9 +82,18 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     if (response?.name)
       document.title = `${(response.name || 'App')} - Dify`
-  }, [response])
+    if (response && response !== appDetail)
+      setAppDetail(response)
+  }, [appDetail, response, setAppDetail])
+
   if (!response)
     return null
+
+  // redirections
+  if (response && (response?.mode === 'workflow' || response?.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
+    router.replace(`/app/${appId}/workflow`)
+  if (response && (response?.mode !== 'workflow' && response?.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
+    router.replace(`/app/${appId}/configuration`)
 
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
