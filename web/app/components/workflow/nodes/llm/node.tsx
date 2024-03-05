@@ -9,7 +9,7 @@ import type { NodeProps } from '@/app/components/workflow/types'
 const Node: FC<NodeProps<LLMNodeType>> = ({
   data,
 }) => {
-  const { provider, name: modelId } = data.model
+  const { provider, name: modelId } = data.model || {}
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()

@@ -2,7 +2,9 @@ import type { NodeDefault } from '../../types'
 import type { StartNodeType } from './types'
 
 const nodeDefault: NodeDefault<StartNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+    variables: [],
+  },
   getAvailablePrevNodes() {
     return []
   },

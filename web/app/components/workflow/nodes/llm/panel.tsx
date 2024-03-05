@@ -51,8 +51,8 @@ const Panel: FC<NodeProps<LLMNodeType>> = ({
             isAdvancedMode={true}
             mode={model?.mode}
             provider={model?.provider}
-            completionParams={model.completion_params}
-            modelId={model.name}
+            completionParams={model?.completion_params}
+            modelId={model?.name}
             setModel={handleModelChanged}
             onCompletionParamsChange={handleCompletionParamsChange}
             hideDebugWithMultipleModel
@@ -81,7 +81,7 @@ const Panel: FC<NodeProps<LLMNodeType>> = ({
           <VarReferencePicker
             readonly={readOnly}
             isShowNodeName
-            value={inputs.context.variable_selector}
+            value={inputs.context?.variable_selector || []}
             onChange={handleContextVarChange}
           />
 

@@ -1,29 +1,42 @@
 import { BlockEnum } from './types'
+import StartNodeDefault from './nodes/start/default'
+import DirectAnswerDefault from './nodes/direct-answer/default'
+import LLMDefault from './nodes/llm/default'
+import KnowledgeRetrievalDefault from './nodes/knowledge-retrieval/default'
+import QuestionClassifierDefault from './nodes/question-classifier/default'
+import IfElseDefault from './nodes/if-else/default'
+import CodeDefault from './nodes/code/default'
+import TemplateTransformDefault from './nodes/template-transform/default'
+import HttpRequestDefault from './nodes/http/default'
+import ToolDefault from './nodes/tool/default'
+import VariableAssignerDefault from './nodes/variable-assigner/default'
+import EndNodeDefault from './nodes/end/default'
 
 export const NodeInitialData = {
   [BlockEnum.Start]: {
     type: BlockEnum.Start,
     title: '',
     desc: '',
-    variables: [],
+    ...StartNodeDefault.defaultValue,
   },
   [BlockEnum.End]: {
     type: BlockEnum.End,
     title: '',
     desc: '',
-    outputs: {},
+    ...EndNodeDefault.defaultValue,
   },
   [BlockEnum.DirectAnswer]: {
     type: BlockEnum.DirectAnswer,
     title: '',
     desc: '',
-    variables: [],
+    ...DirectAnswerDefault.defaultValue,
   },
   [BlockEnum.LLM]: {
     type: BlockEnum.LLM,
     title: '',
     desc: '',
     variables: [],
+    ...LLMDefault.defaultValue,
   },
   [BlockEnum.KnowledgeRetrieval]: {
     type: BlockEnum.KnowledgeRetrieval,
@@ -32,9 +45,10 @@ export const NodeInitialData = {
     query_variable_selector: [],
     dataset_ids: [],
     retrieval_mode: 'single',
+    ...KnowledgeRetrievalDefault.defaultValue,
   },
   [BlockEnum.IfElse]: {
-    targetBranches: [
+    _targetBranches: [
       {
         id: 'if-true',
         name: 'IS TRUE',
@@ -49,6 +63,7 @@ export const NodeInitialData = {
     desc: '',
     logical_operator: 'and',
     conditions: [],
+    ...IfElseDefault.defaultValue,
   },
   [BlockEnum.Code]: {
     type: BlockEnum.Code,
@@ -58,6 +73,7 @@ export const NodeInitialData = {
     code_language: 'python3',
     code: '',
     outputs: [],
+    ...CodeDefault.defaultValue,
   },
   [BlockEnum.TemplateTransform]: {
     type: BlockEnum.TemplateTransform,
@@ -65,6 +81,7 @@ export const NodeInitialData = {
     desc: '',
     variables: [],
     template: '',
+    ...TemplateTransformDefault.defaultValue,
   },
   [BlockEnum.QuestionClassifier]: {
     type: BlockEnum.QuestionClassifier,
@@ -72,12 +89,14 @@ export const NodeInitialData = {
     desc: '',
     query_variable_selector: [],
     topics: [],
+    ...QuestionClassifierDefault.defaultValue,
   },
   [BlockEnum.HttpRequest]: {
     type: BlockEnum.HttpRequest,
     title: '',
     desc: '',
     variables: [],
+    ...HttpRequestDefault.defaultValue,
   },
   [BlockEnum.VariableAssigner]: {
     type: BlockEnum.VariableAssigner,
@@ -85,11 +104,13 @@ export const NodeInitialData = {
     desc: '',
     variables: [],
     output_type: '',
+    ...VariableAssignerDefault.defaultValue,
   },
   [BlockEnum.Tool]: {
     type: BlockEnum.Tool,
     title: '',
     desc: '',
+    ...ToolDefault.defaultValue,
   },
 }
 

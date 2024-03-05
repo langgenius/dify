@@ -2,7 +2,10 @@ import type { NodeDefault } from '../../types'
 import type { DirectAnswerNodeType } from './types'
 
 const nodeDefault: NodeDefault<DirectAnswerNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+    variables: [],
+    answer: '',
+  },
   getAvailablePrevNodes() {
     return []
   },

@@ -2,7 +2,9 @@ import type { NodeDefault } from '../../types'
 import type { LLMNodeType } from './types'
 
 const nodeDefault: NodeDefault<LLMNodeType> = {
-  defaultValue: {},
+  defaultValue: {
+
+  },
   getAvailablePrevNodes() {
     return []
   },
