@@ -55,6 +55,9 @@ class XinferenceHelper:
             get xinference model extra parameter like model_format and model_handle_type
         """
 
+        if not model_uid or not model_uid.strip() or not server_url or not server_url.strip():
+            raise RuntimeError('model_uid is empty')
+
         url = str(URL(server_url) / 'v1' / 'models' / model_uid)
 
         # this method is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
@@ -66,7 +69,6 @@ class XinferenceHelper:
             response = session.get(url, timeout=10)
         except (MissingSchema, ConnectionError, Timeout) as e:
             raise RuntimeError(f'get xinference model extra parameter failed, url: {url}, error: {e}')
-
         if response.status_code != 200:
             raise RuntimeError(f'get xinference model extra parameter failed, status code: {response.status_code}, response: {response.text}')
         
