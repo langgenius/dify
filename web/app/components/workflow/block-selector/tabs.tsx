@@ -3,13 +3,14 @@ import {
   memo,
   useState,
 } from 'react'
+import { groupBy } from 'lodash-es'
 import BlockIcon from '../block-icon'
 import type { BlockEnum } from '../types'
 import {
   BLOCK_CLASSIFICATIONS,
-  BLOCK_GROUP_BY_CLASSIFICATION,
   TABS,
 } from './constants'
+import { useBlocks } from './hooks'
 
 export type TabsProps = {
   onSelect: (type: BlockEnum) => void
@@ -18,6 +19,7 @@ const Tabs: FC<TabsProps> = ({
   onSelect,
 }) => {
   const [activeTab, setActiveTab] = useState(TABS[0].key)
+  const blocks = useBlocks()
 
   return (
     <div>
@@ -52,7 +54,7 @@ const Tabs: FC<TabsProps> = ({
                 )
               }
               {
-                BLOCK_GROUP_BY_CLASSIFICATION[classification].map(block => (
+                groupBy(blocks, 'classification')[classification].map(block => (
                   <div
                     key={block.type}
                     className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'

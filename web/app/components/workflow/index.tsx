@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import {
   memo,
+  useMemo,
 } from 'react'
 import { useParams } from 'next/navigation'
 import useSWR from 'swr'
@@ -112,21 +113,42 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   edges,
 }) => {
   const appId = useParams().appId
-  const { isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
+  const { data, isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
+
+  const startNode = {
+    id: `${Date.now()}`,
+    data: NodeInitialData.start,
+    position: {
+      x: 100,
+      y: 100,
+    },
+  }
+
+  const nodesData = useMemo(() => {
+    if (nodes)
+      return nodes
+
+    if (data)
+      return data.graph.nodes
+
+    return [startNode]
+  }, [data, nodes])
+  const edgesData = useMemo(() => {
+    if (edges)
+      return edges
+
+    if (data)
+      return data.graph.edges
+
+    return []
+  }, [data, nodes])
 
   if (error) {
     syncWorkflowDraft({
       url: `/apps/${appId}/workflows/draft`,
       params: {
         graph: {
-          nodes: [{
-            id: `${Date.now()}`,
-            data: NodeInitialData.start,
-            position: {
-              x: 100,
-              y: 100,
-            },
-          }],
+          nodes: [startNode],
           edges: [],
         },
         features: {},
@@ -144,8 +166,8 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     <ReactFlowProvider>
       <FeaturesProvider>
         <Workflow
-          nodes={nodes}
-          edges={edges}
+          nodes={nodesData}
+          edges={edgesData}
         />
       </FeaturesProvider>
     </ReactFlowProvider>

@@ -1,4 +1,17 @@
 const translation = {
+  blocks: {
+    'start': 'Start',
+    'end': 'End',
+    'direct-answer': 'Direct Answer',
+    'llm': 'LLM',
+    'knowledge-retrieval': 'Knowledge Retrieval',
+    'question-classifier': 'Question Classifier',
+    'if-else': 'IF/ELSE',
+    'code': 'Code',
+    'template-transform': 'Templating Transform',
+    'http-request': 'HTTP Request',
+    'variable-assigner': 'Variable Assigner',
+  },
   nodes: {
     common: {
       outputVars: 'Output Variables',

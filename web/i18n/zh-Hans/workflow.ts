@@ -1,4 +1,17 @@
 const translation = {
+  blocks: {
+    'start': '开始',
+    'end': '结束',
+    'direct-answer': '直接回答',
+    'llm': 'LLM',
+    'knowledge-retrieval': '知识检索',
+    'question-classifier': '问题分类器',
+    'if-else': '条件分支',
+    'code': '代码',
+    'template-transform': '模板转换',
+    'http-request': 'HTTP 请求',
+    'variable-assigner': '变量赋值',
+  },
   nodes: {
     common: {
       outputVars: '输出变量',
