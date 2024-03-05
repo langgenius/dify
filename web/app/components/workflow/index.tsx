@@ -17,7 +17,10 @@ import type {
   Edge,
   Node,
 } from './types'
-import { useWorkflow } from './hooks'
+import {
+  useNodesInitialData,
+  useWorkflow,
+} from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
 import Operator from './operator'
@@ -26,7 +29,6 @@ import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import Features from './features'
 import { useStore } from './store'
-import { NodeInitialData } from './constants'
 import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
@@ -115,11 +117,12 @@ const WorkflowWrap: FC<WorkflowProps> = ({
 }) => {
   const appId = useParams().appId
   const { data, isLoading, error } = useSWR(`/apps/${appId}/workflows/draft`, fetchWorkflowDraft)
+  const nodesInitialData = useNodesInitialData()
 
   const startNode = {
     id: `${Date.now()}`,
     type: 'custom',
-    data: NodeInitialData.start,
+    data: nodesInitialData.start,
     position: {
       x: 100,
       y: 100,

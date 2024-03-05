@@ -12,7 +12,7 @@ import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
 import EndNodeDefault from './nodes/end/default'
 
-export const NodeInitialData = {
+export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {
     type: BlockEnum.Start,
     title: '',

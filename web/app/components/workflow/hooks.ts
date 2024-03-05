@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type {
   EdgeMouseHandler,
@@ -19,13 +20,24 @@ import type {
   Node,
   SelectedNode,
 } from './types'
-import { NodeInitialData } from './constants'
+import { NODES_INITIAL_DATA } from './constants'
 import { getLayoutByDagre } from './utils'
 import { useStore } from './store'
+
+export const useNodesInitialData = () => {
+  const { t } = useTranslation()
+
+  return produce(NODES_INITIAL_DATA, (draft) => {
+    Object.keys(draft).forEach((key) => {
+      draft[key as BlockEnum].title = t(`workflow.blocks.${key}`)
+    })
+  })
+}
 
 export const useWorkflow = () => {
   const store = useStoreApi()
   const reactFlow = useReactFlow()
+  const nodesInitialData = useNodesInitialData()
 
   const handleLayout = useCallback(async () => {
     const {
@@ -267,7 +279,7 @@ export const useWorkflow = () => {
       id: `${Date.now()}`,
       type: 'custom',
       data: {
-        ...NodeInitialData[nodeType],
+        ...nodesInitialData[nodeType],
         _selected: true,
       },
       position: {
@@ -311,7 +323,7 @@ export const useWorkflow = () => {
       id: `${Date.now()}`,
       type: 'custom',
       data: {
-        ...NodeInitialData[nodeType],
+        ...nodesInitialData[nodeType],
         _selected: currentNode.data._selected,
       },
       position: {

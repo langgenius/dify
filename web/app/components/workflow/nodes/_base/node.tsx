@@ -39,22 +39,16 @@ const BaseNode: FC<BaseNodeProps> = ({
           {data.title}
         </div>
       </div>
+      <div className='mb-1'>
+        {cloneElement(children, { id, data })}
+      </div>
       {
-        children && (
-          <div className='mb-1'>
-            {cloneElement(children, { id, data })}
+        data.desc && (
+          <div className='px-3 pt-s1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
+            {data.desc}
           </div>
         )
       }
-      <div className='pb-1'>
-        {
-          data.desc && (
-            <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
-              {data.desc}
-            </div>
-          )
-        }
-      </div>
     </div>
   )
 }
