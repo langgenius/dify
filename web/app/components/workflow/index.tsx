@@ -71,7 +71,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   useKeyPress('Backspace', handleEdgeDelete)
 
   return (
-    <div className='relative w-full h-full'>
+    <div className='relative w-full h-full bg-[#F0F2F7]'>
       <Header />
       <Panel />
       <Operator />
@@ -99,7 +99,8 @@ const Workflow: FC<WorkflowProps> = memo(({
       >
         <Background
           gap={[14, 14]}
-          size={1}
+          size={2}
+          color='#E4E5E7'
         />
       </ReactFlow>
     </div>

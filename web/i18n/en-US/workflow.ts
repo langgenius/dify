@@ -12,6 +12,13 @@ const translation = {
     'http-request': 'HTTP Request',
     'variable-assigner': 'Variable Assigner',
   },
+  operator: {
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    zoomTo50: 'Zoom to 50%',
+    zoomTo100: 'Zoom to 100%',
+    zoomToFit: 'Zoom to Fit',
+  },
   nodes: {
     common: {
       outputVars: 'Output Variables',

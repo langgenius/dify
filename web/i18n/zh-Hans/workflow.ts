@@ -12,6 +12,13 @@ const translation = {
     'http-request': 'HTTP 请求',
     'variable-assigner': '变量赋值',
   },
+  operator: {
+    zoomIn: '放大',
+    zoomOut: '缩小',
+    zoomTo50: '缩放到 50%',
+    zoomTo100: '放大到 100%',
+    zoomToFit: '自适应视图',
+  },
   nodes: {
     common: {
       outputVars: '输出变量',

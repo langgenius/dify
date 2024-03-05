@@ -4,6 +4,7 @@ import {
   memo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import {
   PortalToFollowElem,
@@ -13,38 +14,39 @@ import {
 import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
-const ZOOM_IN_OUT_OPTIONS = [
-  [
-    {
-      key: 'in',
-      text: 'Zoom In',
-    },
-    {
-      key: 'out',
-      text: 'Zoom Out',
-    },
-  ],
-  [
-    {
-      key: 'to50',
-      text: 'Zoom to 50%',
-    },
-    {
-      key: 'to100',
-      text: 'Zoom to 100%',
-    },
-  ],
-  [
-    {
-      key: 'fit',
-      text: 'Zoom to Fit',
-    },
-  ],
-]
-
 const ZoomInOut: FC = () => {
+  const { t } = useTranslation()
   const reactFlow = useReactFlow()
   const [open, setOpen] = useState(false)
+
+  const ZOOM_IN_OUT_OPTIONS = [
+    [
+      {
+        key: 'in',
+        text: t('workflow.operator.zoomIn'),
+      },
+      {
+        key: 'out',
+        text: t('workflow.operator.zoomOut'),
+      },
+    ],
+    [
+      {
+        key: 'to50',
+        text: t('workflow.operator.zoomTo50'),
+      },
+      {
+        key: 'to100',
+        text: t('workflow.operator.zoomTo100'),
+      },
+    ],
+    [
+      {
+        key: 'fit',
+        text: t('workflow.operator.zoomToFit'),
+      },
+    ],
+  ]
 
   const handleZoom = (type: string) => {
     if (type === 'in')
@@ -55,6 +57,12 @@ const ZoomInOut: FC = () => {
 
     if (type === 'fit')
       reactFlow.fitView()
+
+    if (type === 'to50')
+      reactFlow.zoomTo(0.5)
+
+    if (type === 'to100')
+      reactFlow.zoomTo(1)
   }
 
   return (
