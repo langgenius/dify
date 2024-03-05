@@ -47,6 +47,7 @@ export const useWorkflow = () => {
       getNodes,
       edges,
     } = store.getState()
+    const { getViewport } = reactFlow
     const appId = useAppStore.getState().appDetail?.id
 
     if (appId) {
@@ -56,12 +57,13 @@ export const useWorkflow = () => {
           graph: {
             nodes: getNodes(),
             edges,
+            viewport: getViewport(),
           },
           features: {},
         },
       })
     }
-  }, [store])
+  }, [store, reactFlow])
 
   const handleLayout = useCallback(async () => {
     const {
@@ -430,6 +432,7 @@ export const useWorkflow = () => {
   }, [store])
 
   return {
+    handleSyncWorkflowDraft,
     handleLayout,
     handleSetViewport,
 

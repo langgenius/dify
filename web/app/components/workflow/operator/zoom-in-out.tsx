@@ -9,6 +9,7 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
+import { useWorkflow } from '../hooks'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -26,6 +27,7 @@ const ZoomInOut: FC = () => {
     fitView,
   } = useReactFlow()
   const { zoom } = useViewport()
+  const { handleSyncWorkflowDraft } = useWorkflow()
   const [open, setOpen] = useState(false)
 
   const ZOOM_IN_OUT_OPTIONS = [
@@ -72,6 +74,8 @@ const ZoomInOut: FC = () => {
 
     if (type === 'to100')
       zoomTo(1)
+
+    handleSyncWorkflowDraft()
   }
 
   return (

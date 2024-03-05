@@ -10,7 +10,9 @@ import ReactFlow, {
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useOnViewportChange,
 } from 'reactflow'
+import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
 import type {
   Edge,
@@ -47,16 +49,20 @@ const edgeTypes = {
 type WorkflowProps = {
   nodes: Node[]
   edges: Edge[]
+  viewport?: Viewport
 }
 const Workflow: FC<WorkflowProps> = memo(({
   nodes: initialNodes,
   edges: initialEdges,
+  viewport,
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const [nodes] = useNodesState(initialNodes)
   const [edges] = useEdgesState(initialEdges)
 
   const {
+    handleSyncWorkflowDraft,
+
     handleNodeDragStart,
     handleNodeDrag,
     handleNodeDragStop,
@@ -70,6 +76,10 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeDelete,
     handleEdgesChange,
   } = useWorkflow()
+
+  useOnViewportChange({
+    onEnd: () => handleSyncWorkflowDraft(),
+  })
 
   useKeyPress('Backspace', handleEdgeDelete)
 
@@ -101,6 +111,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         connectionLineComponent={CustomConnectionLine}
         deleteKeyCode={null}
         nodeDragThreshold={1}
+        defaultViewport={viewport}
       >
         <Background
           gap={[14, 14]}
@@ -176,6 +187,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
         <Workflow
           nodes={nodesData}
           edges={edgesData}
+          viewport={data?.graph.viewport}
         />
       </FeaturesProvider>
     </ReactFlowProvider>

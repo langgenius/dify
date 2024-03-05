@@ -1,3 +1,4 @@
+import type { Viewport } from 'reactflow'
 import type {
   Edge,
   Node,
@@ -8,6 +9,7 @@ export type FetchWorkflowDraftResponse = {
   graph: {
     nodes: Node[]
     edges: Edge[]
+    viewport?: Viewport
   }
   features?: any
 }
