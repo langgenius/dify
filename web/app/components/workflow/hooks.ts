@@ -23,6 +23,8 @@ import type {
 import { NODES_INITIAL_DATA } from './constants'
 import { getLayoutByDagre } from './utils'
 import { useStore } from './store'
+import { syncWorkflowDraft } from '@/service/workflow'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 
 export const useNodesInitialData = () => {
   const { t } = useTranslation()
@@ -38,6 +40,25 @@ export const useWorkflow = () => {
   const store = useStoreApi()
   const reactFlow = useReactFlow()
   const nodesInitialData = useNodesInitialData()
+  const featuresStore = useFeaturesStore()
+
+  const handleSyncWorkflowDraft = useCallback(() => {
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+
+    syncWorkflowDraft({
+      url: `/apps/${''}/workflows/draft`,
+      params: {
+        graph: {
+          nodes: getNodes(),
+          edges,
+        },
+        features: {},
+      },
+    })
+  }, [store])
 
   const handleLayout = useCallback(async () => {
     const {
