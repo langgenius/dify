@@ -9,7 +9,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class QRCodeGenratorTool(BuiltinTool):
+class QRCodeGeneratorTool(BuiltinTool):
     def _invoke(self,
                 user_id: str,
                 tool_parameters: dict[str, Any],
