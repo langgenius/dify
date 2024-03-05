@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { useState } from 'react'
 import type { NodeProps } from 'reactflow'
 import InfoPanel from '../_base/components/info-panel'
 import { NodeSourceHandle } from '../_base/components/node-handle'
@@ -14,7 +13,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { data } = props
   const { provider, name: modelId } = data.model
   // const tempTopics = data.topics
-  const [topics, setTopics] = useState(data.topics)
+  const topics = data.topics
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()
@@ -42,17 +41,6 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
             />
           </div>
         ))}
-        {/* For test */}
-        <div
-          className='mt-1 flex items-center h-6 justify-center bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'
-          onClick={() => {
-            setTopics([...topics, {
-              id: `${Date.now()}`,
-              name: `Topic${topics.length}`,
-              topic: `Topic${topics.length}`,
-            }])
-          }}
-        >Add</div>
       </div>
     </div>
   )
