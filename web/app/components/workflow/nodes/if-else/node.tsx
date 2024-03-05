@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
 import { NodeSourceHandle } from '../_base/components/node-handle'
@@ -50,4 +51,4 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   )
 }
 
-export default IfElseNode
+export default React.memo(IfElseNode)

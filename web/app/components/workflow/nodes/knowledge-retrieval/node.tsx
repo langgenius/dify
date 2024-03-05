@@ -1,4 +1,5 @@
 import { type FC, useEffect, useState } from 'react'
+import React from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import type { NodeProps } from '@/app/components/workflow/types'
@@ -38,4 +39,4 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   )
 }
 
-export default Node
+export default React.memo(Node)

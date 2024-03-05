@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import type { LLMNodeType } from './types'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
@@ -24,4 +25,4 @@ const Node: FC<NodeProps<LLMNodeType>> = ({
   )
 }
 
-export default Node
+export default React.memo(Node)

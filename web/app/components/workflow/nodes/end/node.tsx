@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { EndNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
@@ -24,4 +25,4 @@ const Node: FC<NodeProps<EndNodeType>> = ({
   )
 }
 
-export default Node
+export default React.memo(Node)

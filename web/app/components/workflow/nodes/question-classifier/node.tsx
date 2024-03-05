@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import type { NodeProps } from 'reactflow'
 import InfoPanel from '../_base/components/info-panel'
 import { NodeSourceHandle } from '../_base/components/node-handle'
@@ -46,4 +47,4 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   )
 }
 
-export default Node
+export default React.memo(Node)

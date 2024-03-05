@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { NodeTargetHandle } from '../_base/components/node-handle'
@@ -78,4 +79,4 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   )
 }
 
-export default Node
+export default React.memo(Node)

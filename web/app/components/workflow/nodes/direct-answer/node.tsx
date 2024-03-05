@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import InfoPanel from '../_base/components/info-panel'
 import type { DirectAnswerNodeType } from './types'
@@ -16,4 +17,4 @@ const Node: FC<NodeProps<DirectAnswerNodeType>> = ({
   )
 }
 
-export default Node
+export default React.memo(Node)

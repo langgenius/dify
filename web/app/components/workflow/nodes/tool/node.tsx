@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import React from 'react'
 import type { ToolNodeType } from './types'
 import { VarType } from './types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -36,4 +37,4 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   )
 }
 
-export default Node
+export default React.memo(Node)

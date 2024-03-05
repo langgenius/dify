@@ -13,6 +13,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodeProps } from '@/app/components/workflow/types'
+import { Resolution } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -119,7 +120,7 @@ const Panel: FC<NodeProps<LLMNodeType>> = ({
             tooltip={t('appDebug.vision.description')!}
             operations={
               <ResolutionPicker
-                value={inputs.vision.configs.detail}
+                value={inputs.vision.configs?.detail || Resolution.high}
                 onChange={handleVisionResolutionChange}
               />
             }
