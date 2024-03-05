@@ -27,7 +27,7 @@ const Panel: FC<NodeProps<VariableAssignerNodeType>> = ({
   const typeOptions = [
     { label: t(`${i18nPrefix}.type.string`), value: 'string' },
     { label: t(`${i18nPrefix}.type.number`), value: 'number' },
-    { label: t(`${i18nPrefix}.type.object`), value: 'Object' },
+    { label: t(`${i18nPrefix}.type.object`), value: 'object' },
     { label: t(`${i18nPrefix}.type.array`), value: 'array' },
   ]
 

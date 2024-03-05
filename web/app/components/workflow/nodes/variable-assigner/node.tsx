@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { useState } from 'react'
 import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { NodeTargetHandle } from '../_base/components/node-handle'
@@ -13,8 +12,7 @@ const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
   const { data } = props
-  const { variables: tempVar, output_type } = data
-  const [variables, setVariables] = useState(tempVar)
+  const { variables, output_type } = data
 
   // TODO: get var type through node and  value
   const getVarType = () => {
@@ -65,13 +63,6 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
 
             )}
           </div>
-          {/* For test */}
-          <div
-            className='mt-1 flex items-center h-6 justify-center bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'
-            onClick={() => {
-              setVariables([...variables, []])
-            }}
-          >Add</div>
           <div className='mt-2 flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
             <div className='text-xs font-medium text-gray-500 uppercase'>
               {t(`${i18nPrefix}.outputType`)}
