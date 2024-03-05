@@ -24,7 +24,21 @@ done
 
 if $api_modified; then
     echo "Running Ruff linter on api module"
-    ./dev/reformat
+
+    # python style checks rely on `ruff` in path
+    if ! command -v ruff &> /dev/null; then
+        echo "Installing Ruff ..."
+        pip install ruff
+    fi
+
+    ruff check ./api
+    result=$?
+
+    if [ $result -ne 0 ]; then
+      echo "Please run 'dev/reformat' to fix the fixable linting errors."
+    fi
+
+    exit $result
 fi
 
 if $web_modified; then
