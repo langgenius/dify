@@ -15,6 +15,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { getRedirection } from '@/utils/app-redirection'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -23,7 +24,7 @@ type CreateFromDSLModalProps = {
 }
 
 const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProps) => {
-  const router = useRouter()
+  const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File>()
@@ -67,14 +68,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
         onClose()
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      if (!isCurrentWorkspaceManager) {
-        router.push(`/app/${app.id}/overview`)
-      }
-      else {
-        if (app.mode === 'workflow' || app.mode === 'advanced-chat')
-          router.push(`/app/${app.id}/workflow`)
-        router.push(`/app/${app.id}/configuration`)
-      }
+      getRedirection(isCurrentWorkspaceManager, app, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

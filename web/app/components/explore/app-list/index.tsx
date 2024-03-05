@@ -20,6 +20,7 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { getRedirection } from '@/utils/app-redirection'
 
 type AppsProps = {
   pageType?: PageType
@@ -35,7 +36,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const router = useRouter()
+  const { push } = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 
@@ -89,14 +90,7 @@ const Apps = ({
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      if (!isCurrentWorkspaceManager) {
-        router.push(`/app/${app.id}/overview`)
-      }
-      else {
-        if (app.mode === 'workflow' || app.mode === 'advanced-chat')
-          router.push(`/app/${app.id}/workflow`)
-        router.push(`/app/${app.id}/configuration`)
-      }
+      getRedirection(isCurrentWorkspaceManager, app, push)
     }
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

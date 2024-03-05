@@ -122,14 +122,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      if (!isCurrentWorkspaceManager) {
-        push(`/app/${newApp.id}/overview`)
-      }
-      else {
-        if (newApp.mode === 'workflow' || newApp.mode === 'advanced-chat')
-          push(`/app/${newApp.id}/workflow`)
-        push(`/app/${newApp.id}/configuration`)
-      }
+      getRedirection(isCurrentWorkspaceManager, newApp, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

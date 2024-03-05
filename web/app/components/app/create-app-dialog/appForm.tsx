@@ -19,6 +19,7 @@ import { ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/line/
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { getRedirection } from '@/utils/app-redirection'
 
 export type AppFormProps = {
   onConfirm: () => void
@@ -32,7 +33,7 @@ const AppForm = ({
   onTipChange,
 }: AppFormProps) => {
   const { t } = useTranslation()
-  const router = useRouter()
+  const { push } = useRouter()
   const { notify } = useContext(ToastContext)
 
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
@@ -73,21 +74,13 @@ const AppForm = ({
       onConfirm()
       onHide()
       mutateApps()
-      if (!isCurrentWorkspaceManager) {
-        router.push(`/app/${app.id}/overview`)
-      }
-      else {
-        if (app.mode === 'workflow' || app.mode === 'advanced-chat')
-          router.push(`/app/${app.id}/workflow`)
-        else
-          router.push(`/app/${app.id}/configuration`)
-      }
+      getRedirection(isCurrentWorkspaceManager, app, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onConfirm, onHide, mutateApps, router, isCurrentWorkspaceManager])
+  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onConfirm, onHide, mutateApps, push, isCurrentWorkspaceManager])
 
   return (
     <div className='overflow-y-auto'>
