@@ -21,8 +21,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
   }, [inputs, setInputs])
 
   const handleAddVariable = useCallback((payload: InputVar) => {
-    const newInputs = produce(inputs, (draft: any) => {
-      draft.variables.push(`${Date.now()}`, payload)
+    const newInputs = produce(inputs, (draft: StartNodeType) => {
+      draft.variables.push(payload)
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
