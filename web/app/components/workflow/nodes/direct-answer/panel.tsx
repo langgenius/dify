@@ -8,11 +8,11 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.directAnswer'
 
-const Panel: FC<NodeProps<DirectAnswerNodeType>> = ({
+const Panel: FC<NodePanelProps<DirectAnswerNodeType>> = ({
   id,
   data,
 }) => {

@@ -8,11 +8,11 @@ import AdvancedSetting from './components/advanced-setting'
 import type { QuestionClassifierNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
-const Panel: FC<NodeProps<QuestionClassifierNodeType>> = ({
+const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   id,
   data,
 }) => {

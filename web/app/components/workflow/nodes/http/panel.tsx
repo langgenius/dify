@@ -13,10 +13,10 @@ import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow.nodes.http'
 
-const Panel: FC<NodeProps<HttpNodeType>> = ({
+const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   id,
   data,
 }) => {

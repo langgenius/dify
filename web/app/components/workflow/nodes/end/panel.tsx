@@ -9,7 +9,7 @@ import { EndVarType } from './types'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.end'
 
@@ -36,7 +36,7 @@ const TypeItem = ({ type, current, onClick }: { type: EndVarType; current: EndVa
 
 const allTypes = [EndVarType.plainText, EndVarType.structured, EndVarType.none]
 
-const Panel: FC<NodeProps<EndNodeType>> = ({
+const Panel: FC<NodePanelProps<EndNodeType>> = ({
   id,
   data,
 }) => {

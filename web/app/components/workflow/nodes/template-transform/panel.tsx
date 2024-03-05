@@ -10,11 +10,11 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.templateTransform'
 
-const Panel: FC<NodeProps<TemplateTransformNodeType>> = ({
+const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   id,
   data,
 }) => {

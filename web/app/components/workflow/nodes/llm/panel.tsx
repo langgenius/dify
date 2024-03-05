@@ -12,12 +12,12 @@ import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodeProps } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
-const Panel: FC<NodeProps<LLMNodeType>> = ({
+const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   id,
   data,
 }) => {

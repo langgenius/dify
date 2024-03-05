@@ -11,7 +11,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.code'
 
@@ -25,7 +25,7 @@ const codeLanguages = [
     value: CodeLanguage.javascript,
   },
 ]
-const Panel: FC<NodeProps<CodeNodeType>> = ({
+const Panel: FC<NodePanelProps<CodeNodeType>> = ({
   id,
   data,
 }) => {

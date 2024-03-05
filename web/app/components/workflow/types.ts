@@ -40,6 +40,12 @@ export type CommonEdgeType = {
 export type Node = ReactFlowNode<CommonNodeType>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
 export type NodeProps<T> = { id: string; data: CommonNodeType<T> }
+export type NodePanelProps<T> = {
+  id: string
+  data: CommonNodeType<T>
+  controlSingleRun: boolean
+  setControlSingleRun: (value: boolean) => void
+}
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]

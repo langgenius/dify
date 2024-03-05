@@ -10,11 +10,11 @@ import type { KnowledgeRetrievalNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
-const Panel: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
+const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   id,
   data,
 }) => {

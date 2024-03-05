@@ -7,10 +7,10 @@ import useConfig from './use-config'
 import ConditionList from './components/condition-list'
 import type { IfElseNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
-const Panel: FC<NodeProps<IfElseNodeType>> = ({
+const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   id,
   data,
 }) => {

@@ -8,10 +8,10 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 import AddButton from '@/app/components/base/button/add-button'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-import type { NodeProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
-const Panel: FC<NodeProps<VariableAssignerNodeType>> = ({
+const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
   id,
   data,
 }) => {
