@@ -118,6 +118,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
 
   const startNode = {
     id: `${Date.now()}`,
+    type: 'custom',
     data: NodeInitialData.start,
     position: {
       x: 100,
