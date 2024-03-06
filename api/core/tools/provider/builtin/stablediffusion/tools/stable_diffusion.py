@@ -165,7 +165,7 @@ class StableDiffusionTool(BuiltinTool):
         except Exception as e:
             raise ToolProviderCredentialValidationError(f'Failed to get models, {e}')
 
-    def get_sd_models(self) -> List[str]:
+    def get_sd_models(self) -> list[str]:
         """
             get sd models
         """

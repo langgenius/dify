@@ -1,0 +1,42 @@
+identity:
+  author: Dify
+  name: aippt
+  label:
+    en_US: AIPPT
+    zh_Hans: AIPPT
+  description:
+    en_US: AI-generated PPT with one click, input your content topic, and let AI serve you one-stop
+    zh_Hans: AI一键生成PPT，输入你的内容主题，让AI为你一站式服务到底
+  icon: icon.png
+credentials_for_provider:
+  aippt_access_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: AIPPT API key
+      zh_Hans: AIPPT API key
+      pt_BR: AIPPT API key
+    help:
+      en_US: Please input your AIPPT API key
+      zh_Hans: 请输入你的 AIPPT API key
+      pt_BR: Please input your AIPPT API key
+    placeholder:
+      en_US: Please input your AIPPT API key
+      zh_Hans: 请输入你的 AIPPT API key
+      pt_BR: Please input your AIPPT API key
+    url: https://www.aippt.cn
+  aippt_secret_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: AIPPT Secret key
+      zh_Hans: AIPPT Secret key
+      pt_BR: AIPPT Secret key
+    help:
+      en_US: Please input your AIPPT Secret key
+      zh_Hans: 请输入你的 AIPPT Secret key
+      pt_BR: Please input your AIPPT Secret key
+    placeholder:
+      en_US: Please input your AIPPT Secret key
+      zh_Hans: 请输入你的 AIPPT Secret key
+      pt_BR: Please input your AIPPT Secret key
