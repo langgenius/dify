@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { del, get, post } from './base'
+import { del, get, post, put } from './base'
 import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
@@ -18,6 +18,10 @@ export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> =
 
 export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string; icon_background: string; mode: AppMode; description?: string; config?: ModelConfig }> = ({ name, icon, icon_background, mode, description, config }) => {
   return post<AppDetailResponse>('apps', { body: { name, icon, icon_background, mode, description, model_config: config } })
+}
+
+export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; description: string }> = ({ appID, name, icon, icon_background, description }) => {
+  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon, icon_background, description } })
 }
 
 export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; mode: AppMode; description?: string }> = ({ appID, name, icon, icon_background, mode, description }) => {

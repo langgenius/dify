@@ -57,9 +57,10 @@ const translation = {
     appCreated: '应用已创建',
     appCreateFailed: '应用创建失败',
   },
-  editApp: {
-    startToEdit: '编辑应用',
-  },
+  editApp: '编辑信息',
+  editAppTitle: '编辑应用信息',
+  editDone: '应用信息已更新',
+  editFailed: '更新应用信息失败',
   emoji: {
     ok: '确认',
     cancel: '取消',

@@ -11,9 +11,12 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 export type CreateAppModalProps = {
-  appName: string
-  appDescription?: string
   show: boolean
+  isEditModal?: boolean
+  appName: string
+  appDescription: string
+  appIcon: string
+  appIconBackground: string
   onConfirm: (info: {
     name: string
     icon: string
@@ -24,9 +27,12 @@ export type CreateAppModalProps = {
 }
 
 const CreateAppModal = ({
+  show = false,
+  isEditModal = false,
+  appIcon,
+  appIconBackground,
   appName,
   appDescription,
-  show = false,
   onConfirm,
   onHide,
 }: CreateAppModalProps) => {
@@ -34,7 +40,7 @@ const CreateAppModal = ({
 
   const [name, setName] = React.useState(appName)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [emoji, setEmoji] = useState({ icon: '🤖', icon_background: '#FFEAD5' })
+  const [emoji, setEmoji] = useState({ icon: appIcon, icon_background: appIconBackground })
   const [description, setDescription] = useState(appDescription || '')
 
   const { plan, enableBilling } = useProviderContext()
@@ -64,7 +70,12 @@ const CreateAppModal = ({
         <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onHide}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
-        <div className='mb-9 font-semibold text-xl leading-[30px] text-gray-900'>{t('explore.appCustomize.title', { name: appName })}</div>
+        {isEditModal && (
+          <div className='mb-9 font-semibold text-xl leading-[30px] text-gray-900'>{t('app.editAppTitle')}</div>
+        )}
+        {!isEditModal && (
+          <div className='mb-9 font-semibold text-xl leading-[30px] text-gray-900'>{t('explore.appCustomize.title', { name: appName })}</div>
+        )}
         <div className='mb-9'>
           {/* icon & name */}
           <div className='pt-2'>
@@ -78,16 +89,6 @@ const CreateAppModal = ({
                 className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
               />
             </div>
-            {showEmojiPicker && <EmojiPicker
-              onSelect={(icon, icon_background) => {
-                setEmoji({ icon, icon_background })
-                setShowEmojiPicker(false)
-              }}
-              onClose={() => {
-                setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
-                setShowEmojiPicker(false)
-              }}
-            />}
           </div>
           {/* description */}
           <div className='pt-2'>
@@ -99,10 +100,10 @@ const CreateAppModal = ({
               onChange={e => setDescription(e.target.value)}
             />
           </div>
-          {isAppsFull && <AppsFull loc='app-explore-create' />}
+          {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={isAppsFull} className='w-24 ml-2' type='primary' onClick={submit}>{t('common.operation.create')}</Button>
+          <Button disabled={!isEditModal && isAppsFull} className='w-24 ml-2' type='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>
@@ -112,7 +113,7 @@ const CreateAppModal = ({
           setShowEmojiPicker(false)
         }}
         onClose={() => {
-          setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
+          setEmoji({ icon: appIcon, icon_background: appIconBackground })
           setShowEmojiPicker(false)
         }}
       />}

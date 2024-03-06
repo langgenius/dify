@@ -149,7 +149,10 @@ const Apps = ({
       </div>
       {isShowCreateModal && (
         <CreateAppModal
+          appIcon={currApp?.app.icon || ''}
+          appIconBackground={currApp?.app.icon_background || ''}
           appName={currApp?.app.name || ''}
+          appDescription={currApp?.app.description || ''}
           show={isShowCreateModal}
           onConfirm={onCreate}
           onHide={() => setIsShowCreateModal(false)}

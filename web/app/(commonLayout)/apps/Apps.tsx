@@ -49,11 +49,10 @@ const Apps = () => {
   )
 
   const anchorRef = useRef<HTMLDivElement>(null)
-  // #TODO# query key ???
   const options = [
     { value: 'all', text: t('app.types.all') },
     { value: 'chat', text: t('app.types.chatbot') },
-    { value: 'agent-chat', text: t('app.types.agent') },
+    { value: 'agent', text: t('app.types.agent') },
     { value: 'workflow', text: t('app.types.workflow') },
   ]
 

@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppBasic from './basic'
+import AppInfo from './app-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import {
   AlignLeft01,
@@ -62,14 +63,19 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
           ${expand ? 'p-4' : 'p-2'}
         `}
       >
-        <AppBasic
-          mode={modeState}
-          iconType={iconType}
-          icon={icon}
-          icon_background={icon_background}
-          name={title}
-          type={desc}
-        />
+        {iconType === 'app' && (
+          <AppInfo expand={expand}/>
+        )}
+        {iconType !== 'app' && (
+          <AppBasic
+            mode={modeState}
+            iconType={iconType}
+            icon={icon}
+            icon_background={icon_background}
+            name={title}
+            type={desc}
+          />
+        )}
       </div>
       <nav
         className={`

@@ -122,6 +122,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      mutateApps()
+      onPlanInfoChanged()
       getRedirection(isCurrentWorkspaceManager, newApp, push)
     }
     catch (e) {
@@ -175,13 +177,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <span className={s.actionName}>{t('common.operation.settings')}</span>
         </button>
         <Divider className="!my-1" />
-        <button className={s.actionItem} onClick={onClickDuplicate} disabled={detailState.loading}>
-          <span className={s.actionName}>{t('app.duplicate')}</span>
-        </button>
-        <button className={s.actionItem} onClick={onClickExport} disabled={detailState.loading}>
-          <span className={s.actionName}>{t('app.export')}</span>
-        </button>
-        <Divider className="!my-1" />
+        {app.mode !== 'completion' && (
+          <>
+            <button className={s.actionItem} onClick={onClickDuplicate} disabled={detailState.loading}>
+              <span className={s.actionName}>{t('app.duplicate')}</span>
+            </button>
+            <button className={s.actionItem} onClick={onClickExport} disabled={detailState.loading}>
+              <span className={s.actionName}>{t('app.export')}</span>
+            </button>
+            <Divider className="!my-1" />
+          </>
+        )}
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
           onClick={onClickDelete}

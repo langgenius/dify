@@ -1,11 +1,11 @@
 import type { AppMode } from '@/types/app'
 export type AppBasicInfo = {
   id: string
-  name: string
   mode: AppMode
   icon: string
   icon_background: string
-  is_agent: boolean
+  name: string
+  description: string
 }
 
 export type AppCategory = 'Writing' | 'Translate' | 'HR' | 'Programming' | 'Assistant'
