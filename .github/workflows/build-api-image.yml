@@ -44,7 +44,7 @@ jobs:
           build-args: |
             COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: vccler/dify-api:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
