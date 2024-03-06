@@ -1,4 +1,3 @@
-import uuid
 from typing import Any, Union
 
 import httpx
