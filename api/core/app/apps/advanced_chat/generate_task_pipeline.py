@@ -253,8 +253,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                             'error': workflow_run.error,
                             'elapsed_time': workflow_run.elapsed_time,
                             'total_tokens': workflow_run.total_tokens,
-                            'total_price': workflow_run.total_price,
-                            'currency': workflow_run.currency,
                             'total_steps': workflow_run.total_steps,
                             'created_at': int(workflow_run.created_at.timestamp()),
                             'finished_at': int(workflow_run.finished_at.timestamp())

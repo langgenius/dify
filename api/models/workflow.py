@@ -216,8 +216,6 @@ class WorkflowRun(db.Model):
     - error (string) `optional` Error reason
     - elapsed_time (float) `optional` Time consumption (s)
     - total_tokens (int) `optional` Total tokens used
-    - total_price (decimal) `optional` Total cost
-    - currency (string) `optional` Currency, such as USD / RMB
     - total_steps (int) Total steps (redundant), default 0
     - created_by_role (string) Creator role
 
@@ -251,8 +249,6 @@ class WorkflowRun(db.Model):
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text('0'))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
-    total_price = db.Column(db.Numeric(10, 7))
-    currency = db.Column(db.String(255))
     total_steps = db.Column(db.Integer, server_default=db.text('0'))
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
