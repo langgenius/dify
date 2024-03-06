@@ -59,7 +59,7 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         try:
             response = post(join(url, 'embeddings'), headers=headers, data=dumps(data), timeout=10)
         except Exception as e:
-            raise InvokeConnectionError(e)
+            raise InvokeConnectionError(str(e))
         
         if response.status_code != 200:
             try:
