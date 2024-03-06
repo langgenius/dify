@@ -71,8 +71,8 @@ Chat applications support session persistence, allowing previous chat history to
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
-      Auto-generate title, default is `false`.
-      Can achieve async title generation by calling the conversation rename API and setting `auto_generate` to true.
+      Auto-generate title, default is `true`.
+      If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
     </Properties>
 
