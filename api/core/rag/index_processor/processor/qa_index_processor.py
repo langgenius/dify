@@ -7,7 +7,6 @@ from typing import Optional
 
 import pandas as pd
 from flask import Flask, current_app
-from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 
 from core.generator.llm_generator import LLMGenerator
