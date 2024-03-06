@@ -56,7 +56,7 @@ const Editor: FC<Props> = ({
 
   return (
     <div className={cn(wrapClassName)}>
-      <div ref={ref} className={cn(isFocus && s.gradientBorder, isExpand && 'h-full', '!rounded-[9px] shadow-md')}>
+      <div ref={ref} className={cn(isFocus && s.gradientBorder, isExpand && 'h-full', '!rounded-[9px]')}>
         <div className={cn(isFocus ? 'bg-white' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
             <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
