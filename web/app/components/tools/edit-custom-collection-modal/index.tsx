@@ -2,10 +2,9 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
 import { useDebounce, useGetState } from 'ahooks'
-import { clone } from 'lodash-es'
 import cn from 'classnames'
+import produce from 'immer'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
 import { AuthHeaderPrefix, AuthType } from '../types'
@@ -116,14 +115,16 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
   const handleSave = () => {
-    const postData = clone(customCollection)
-    delete postData.tools
+    // const postData = clone(customCollection)
+    const postData = produce(customCollection, (draft) => {
+      delete draft.tools
 
-    if (postData.credentials.auth_type === AuthType.none) {
-      delete postData.credentials.api_key_header
-      delete postData.credentials.api_key_header_prefix
-      delete postData.credentials.api_key_value
-    }
+      if (draft.credentials.auth_type === AuthType.none) {
+        delete draft.credentials.api_key_header
+        delete draft.credentials.api_key_header_prefix
+        delete draft.credentials.api_key_value
+      }
+    })
 
     if (isAdd) {
       onAdd?.(postData)

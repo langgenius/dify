@@ -3,6 +3,7 @@ beautifulsoup4==4.12.2
 flask~=3.0.1
 Flask-SQLAlchemy~=3.0.5
 SQLAlchemy~=1.4.28
+Flask-Compress~=1.14
 flask-login~=0.6.3
 flask-migrate~=4.0.5
 flask-restful~=0.3.10
@@ -35,7 +36,7 @@ docx2txt==0.8
 pypdfium2==4.16.0
 resend~=0.7.0
 pyjwt~=2.8.0
-anthropic~=0.7.7
+anthropic~=0.17.0
 newspaper3k==0.2.8
 google-api-python-client==2.90.0
 wikipedia==1.4.0
@@ -52,7 +53,7 @@ safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug~=3.0.1
 pymilvus==2.3.0
-qdrant-client==1.6.4
+qdrant-client==1.7.3
 cohere~=4.44
 pyyaml~=6.0.1
 numpy~=1.25.2
@@ -68,3 +69,6 @@ gmpy2~=2.1.5
 numexpr~=2.9.0
 duckduckgo-search==4.4.3
 arxiv==2.1.0
+yarl~=1.9.4
+twilio==9.0.0
+qrcode~=7.4.2

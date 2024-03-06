@@ -140,7 +140,8 @@ class MilvusVector(BaseVector):
         connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
 
         from pymilvus import utility
-        utility.drop_collection(self._collection_name, None, using=alias)
+        if utility.has_collection(self._collection_name, using=alias):
+            utility.drop_collection(self._collection_name, None, using=alias)
 
     def text_exists(self, id: str) -> bool:
 

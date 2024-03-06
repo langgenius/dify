@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useThrottleEffect } from 'ahooks'
+import { debounce } from 'lodash-es'
 import type {
   ChatConfig,
   ChatItem,
@@ -81,15 +82,23 @@ const Chat: FC<ChatProps> = ({
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
   }
 
-  useThrottleEffect(() => {
-    handleScrolltoBottom()
-
+  const handleWindowResize = () => {
     if (chatContainerRef.current && chatFooterRef.current)
       chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
 
     if (chatContainerInnerRef.current && chatFooterInnerRef.current)
       chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
+  }
+
+  useThrottleEffect(() => {
+    handleScrolltoBottom()
+    handleWindowResize()
   }, [chatList], { wait: 500 })
+
+  useEffect(() => {
+    window.addEventListener('resize', debounce(handleWindowResize))
+    return () => window.removeEventListener('resize', handleWindowResize)
+  }, [])
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {

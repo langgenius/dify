@@ -26,6 +26,7 @@ from config import CloudEditionConfig, Config
 from extensions import (
     ext_celery,
     ext_code_based_extension,
+    ext_compress,
     ext_database,
     ext_hosting_provider,
     ext_login,
@@ -96,6 +97,7 @@ def create_app(test_config=None) -> Flask:
 def initialize_extensions(app):
     # Since the application instance is now created, pass it to each Flask
     # extension instance to bind it to the Flask application instance (app)
+    ext_compress.init_app(app)
     ext_code_based_extension.init()
     ext_database.init_app(app)
     ext_migrate.init(app, db)

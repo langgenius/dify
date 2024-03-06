@@ -186,7 +186,7 @@ class IndexingRunner:
                 first()
 
             index_type = dataset_document.doc_form
-            index_processor = IndexProcessorFactory(index_type, processing_rule.to_dict()).init_index_processor()
+            index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
                 index_processor=index_processor,
                 dataset=dataset,

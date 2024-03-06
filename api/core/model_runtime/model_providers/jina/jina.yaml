@@ -2,7 +2,7 @@ provider: jina
 label:
   en_US: Jina
 description:
-  en_US: Embedding Model Supported
+  en_US: Embedding and Rerank Model Supported
 icon_small:
   en_US: icon_s_en.svg
 icon_large:
@@ -13,9 +13,10 @@ help:
     en_US: Get your API key from Jina AI
     zh_Hans: 从 Jina 获取 API Key
   url:
-    en_US: https://jina.ai/embeddings/
+    en_US: https://jina.ai/
 supported_model_types:
   - text-embedding
+  - rerank
 configurate_methods:
   - predefined-model
 provider_credential_schema:

@@ -174,7 +174,18 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
+    def invoke(self, user_id: str, tool_parameters: Union[dict[str, Any], str]) -> list[ToolInvokeMessage]:
+        # check if tool_parameters is a string
+        if isinstance(tool_parameters, str):
+            # check if this tool has only one parameter
+            parameters = [parameter for parameter in self.parameters if parameter.form == ToolParameter.ToolParameterForm.LLM]
+            if parameters and len(parameters) == 1:
+                tool_parameters = {
+                    parameters[0].name: tool_parameters
+                }
+            else:
+                raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
+
         # update tool_parameters
         if self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
