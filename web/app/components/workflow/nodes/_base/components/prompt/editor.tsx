@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef } from 'react'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import ToggleExpandBtn from '../toggle-expand-btn'
+import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
+import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
@@ -33,6 +34,13 @@ const Editor: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
+  const ref = useRef<HTMLDivElement>(null)
+  const {
+    wrapClassName,
+    isExpand,
+    setIsExpand,
+    editorExpandHeight,
+  } = useToggleExpend({ ref })
   const minHeight = 98
   const [editorHeight, setEditorHeight] = React.useState(minHeight)
   const [isCopied, setIsCopied] = React.useState(false)
@@ -46,15 +54,8 @@ const Editor: FC<Props> = ({
     setFalse: setBlur,
   }] = useBoolean(false)
 
-  const ref = useRef<HTMLDivElement>(null)
-  const [isExpand, setIsExpand] = useState(false)
-  const [wrapHeight, setWrapHeight] = useState(ref.current?.clientHeight)
-  const editorExpandHeight = isExpand ? wrapHeight! - 56 : 0
-  useEffect(() => {
-    setWrapHeight(ref.current?.clientHeight)
-  }, [isExpand])
   return (
-    <div className={cn(isExpand && 'absolute z-10 left-4 right-6 top-[52px] bottom-0 pb-4 bg-white')}>
+    <div className={cn(wrapClassName)}>
       <div ref={ref} className={cn(isFocus && s.gradientBorder, isExpand && 'h-full', '!rounded-[9px] shadow-md')}>
         <div className={cn(isFocus ? 'bg-white' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>

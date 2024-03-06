@@ -5,7 +5,7 @@ import { RETRIEVE_TYPE } from '@/types/app'
 export const mockData: KnowledgeRetrievalNodeType = {
   type: BlockEnum.KnowledgeRetrieval,
   desc: 'xxx',
-  title: 'KnowledgeRetrieval',
+  title: 'Knowledge Retrieval',
   query_variable_selector: ['aaa', 'name'],
   dataset_ids: ['744a0635-2496-4a87-8e6d-fae410f610be'],
   retrieval_mode: RETRIEVE_TYPE.oneWay,

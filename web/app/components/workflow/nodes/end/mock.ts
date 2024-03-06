@@ -3,7 +3,7 @@ import { EndVarType } from './types'
 import type { EndNodeType } from './types'
 
 export const mockData: EndNodeType = {
-  title: 'Test',
+  title: 'End',
   desc: 'Test',
   type: BlockEnum.End,
   outputs: {

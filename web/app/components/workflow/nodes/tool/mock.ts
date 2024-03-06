@@ -3,7 +3,7 @@ import type { ToolNodeType } from './types'
 import { VarType } from './types'
 
 export const mockData: ToolNodeType = {
-  title: 'Test',
+  title: 'Tool',
   desc: 'Test',
   type: BlockEnum.Tool,
   provider_id: 'test',

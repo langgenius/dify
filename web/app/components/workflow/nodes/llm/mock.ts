@@ -3,7 +3,7 @@ import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 
 export const mockData: LLMNodeType = {
-  title: 'Test',
+  title: 'LLM',
   desc: 'Test',
   type: BlockEnum.LLM,
   model: {

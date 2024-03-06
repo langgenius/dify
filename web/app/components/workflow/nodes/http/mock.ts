@@ -3,7 +3,7 @@ import { APIType, AuthorizationType, BodyType, Method } from './types'
 import type { HttpNodeType } from './types'
 
 export const mockData: HttpNodeType = {
-  title: 'Test',
+  title: 'HTTP Request',
   desc: 'Test',
   type: BlockEnum.HttpRequest,
   variables: [

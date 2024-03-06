@@ -2,7 +2,7 @@ import type { StartNodeType } from './types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 
 export const mockData: StartNodeType = {
-  title: 'Test',
+  title: 'Start',
   desc: 'Test',
   type: BlockEnum.Start,
   variables: [
