@@ -1,21 +1,25 @@
 from abc import abstractmethod
 from typing import Optional
 
+from core.workflow.callbacks.base_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
 
 
 class BaseNode:
-    _node_type: NodeType
     _node_data_cls: type[BaseNodeData]
+    _node_type: NodeType
+
+    node_id: str
+    node_data: BaseNodeData
 
     def __init__(self, config: dict) -> None:
-        self._node_id = config.get("id")
-        if not self._node_id:
+        self.node_id = config.get("id")
+        if not self.node_id:
             raise ValueError("Node ID is required.")
 
-        self._node_data = self._node_data_cls(**config.get("data", {}))
+        self.node_data = self._node_data_cls(**config.get("data", {}))
 
     @abstractmethod
     def _run(self, variable_pool: Optional[VariablePool] = None,
@@ -29,11 +33,13 @@ class BaseNode:
         raise NotImplementedError
 
     def run(self, variable_pool: Optional[VariablePool] = None,
-            run_args: Optional[dict] = None) -> dict:
+            run_args: Optional[dict] = None,
+            callbacks: list[BaseWorkflowCallback] = None) -> dict:
         """
         Run node entry
         :param variable_pool: variable pool
         :param run_args: run args
+        :param callbacks: callbacks
         :return:
         """
         if variable_pool is None and run_args is None:
@@ -52,3 +58,11 @@ class BaseNode:
         :return:
         """
         return {}
+
+    @property
+    def node_type(self) -> NodeType:
+        """
+        Get node type
+        :return:
+        """
+        return self._node_type

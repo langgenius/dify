@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.app.app_config.entities import VariableEntity
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
@@ -22,6 +20,4 @@ class StartNodeData(BaseNodeData):
     """
     type: str = NodeType.START.value
 
-    title: str
-    desc: Optional[str] = None
     variables: list[VariableEntity] = []

@@ -15,7 +15,7 @@ def run(script):
 
 
 class TimestampField(fields.Raw):
-    def format(self, value):
+    def format(self, value) -> int:
         return int(value.timestamp())
 
 
