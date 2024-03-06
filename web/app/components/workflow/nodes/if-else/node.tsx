@@ -19,7 +19,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         <div className='w-full text-right text-gray-700 text-xs font-semibold'>IF</div>
         <NodeSourceHandle
           {...props}
-          handleId='if-true'
+          handleId='true'
           handleClassName='!top-1 !-right-[21px]'
         />
       </div>
@@ -43,7 +43,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         <div className='w-full text-right text-gray-700 text-xs font-semibold'>ELSE</div>
         <NodeSourceHandle
           {...props}
-          handleId='if-false'
+          handleId='false'
           handleClassName='!top-1 !-right-[21px]'
         />
       </div>

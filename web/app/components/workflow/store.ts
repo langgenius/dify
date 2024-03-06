@@ -15,6 +15,7 @@ type State = {
   helpLine?: HelpLinePosition
   toolsets: CollectionWithExpanded[]
   toolsMap: ToolsMap
+  draftUpdatedAt: number
 }
 
 type Action = {
@@ -25,6 +26,7 @@ type Action = {
   setHelpLine: (helpLine?: HelpLinePosition) => void
   setToolsets: (toolsets: CollectionWithExpanded[]) => void
   setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
+  setDraftUpdatedAt: (draftUpdatedAt: number) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -43,4 +45,6 @@ export const useStore = create<State & Action>(set => ({
   setToolsets: toolsets => set(() => ({ toolsets })),
   toolsMap: {},
   setToolsMap: toolsMap => set(() => ({ toolsMap })),
+  draftUpdatedAt: 0,
+  setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt })),
 }))

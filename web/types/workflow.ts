@@ -12,4 +12,5 @@ export type FetchWorkflowDraftResponse = {
     viewport?: Viewport
   }
   features?: any
+  updated_at: number
 }

@@ -3,6 +3,7 @@ import {
   memo,
   useCallback,
 } from 'react'
+import dayjs from 'dayjs'
 import { useStore } from '../store'
 import RunAndHistory from './run-and-history'
 import Publish from './publish'
@@ -17,6 +18,7 @@ const Header: FC = () => {
   const setShowFeaturesPanel = useStore(state => state.setShowFeaturesPanel)
   const runStaus = useStore(state => state.runStaus)
   const setRunStaus = useStore(state => state.setRunStaus)
+  const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
 
   const handleShowFeatures = useCallback(() => {
     setShowFeaturesPanel(true)
@@ -35,6 +37,16 @@ const Header: FC = () => {
           <div className='flex items-center text-xs text-gray-500'>
             <Edit03 className='mr-1 w-3 h-3 text-gray-400' />
             Editing
+            {
+              draftUpdatedAt && (
+                <>
+                  <span className='flex items-center mx-1'>·</span>
+                  <span>
+                    Auto-Saved {dayjs(draftUpdatedAt).format('HH:mm:ss')}
+                  </span>
+                </>
+              )
+            }
           </div>
         </div>
       </div>

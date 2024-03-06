@@ -136,6 +136,11 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   const { data, isLoading, error } = useSWR(appDetail?.id ? `/apps/${appDetail.id}/workflows/draft` : null, fetchWorkflowDraft)
   const nodesInitialData = useNodesInitialData()
 
+  useEffect(() => {
+    if (data)
+      useStore.setState({ draftUpdatedAt: data.updated_at })
+  }, [data])
+
   const startNode = {
     id: `${Date.now()}`,
     type: 'custom',

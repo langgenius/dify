@@ -5,11 +5,11 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
   defaultValue: {
     _targetBranches: [
       {
-        id: 'if-true',
+        id: 'true',
         name: 'IS TRUE',
       },
       {
-        id: 'if-false',
+        id: 'false',
         name: 'IS FALSE',
       },
     ],
