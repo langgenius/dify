@@ -1,0 +1,26 @@
+identity:
+  name: qrcode_generator
+  author: Bowen Liang
+  label:
+    en_US: QR Code Generator
+    zh_Hans: 二维码生成器
+    pt_BR: QR Code Generator
+description:
+  human:
+    en_US: A tool for generating QR code image
+    zh_Hans: 一个用于生成二维码的工具
+    pt_BR: A tool for generating QR code image
+  llm: A tool for generating QR code image
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content text for QR code
+      zh_Hans: 二维码文本内容
+      pt_BR: content text for QR code
+    human_description:
+      en_US: content text for QR code
+      zh_Hans: 二维码文本内容
+      pt_BR: 二维码文本内容
+    form: llm
