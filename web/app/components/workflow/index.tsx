@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import {
   memo,
+  useEffect,
   useMemo,
 } from 'react'
 import useSWR from 'swr'
@@ -14,6 +15,7 @@ import ReactFlow, {
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
+import type { ToolsMap } from './block-selector/types'
 import type {
   Edge,
   Node,
@@ -38,6 +40,7 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
+import { fetchCollectionList } from '@/service/tools'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -161,6 +164,22 @@ const WorkflowWrap: FC<WorkflowProps> = ({
 
     return []
   }, [data, nodes])
+
+  const handleFetchCollectionList = async () => {
+    const toolsets = await fetchCollectionList()
+
+    useStore.setState({
+      toolsets,
+      toolsMap: toolsets.reduce((acc, toolset) => {
+        acc[toolset.id] = []
+        return acc
+      }, {} as ToolsMap),
+    })
+  }
+
+  useEffect(() => {
+    handleFetchCollectionList()
+  }, [])
 
   if (error && appDetail) {
     syncWorkflowDraft({

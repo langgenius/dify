@@ -1,4 +1,9 @@
 const translation = {
+  tabs: {
+    blocks: 'Blocks',
+    builtInTool: 'Built-in Tool',
+    customTool: 'Custom Tool',
+  },
   blocks: {
     'start': 'Start',
     'end': 'End',

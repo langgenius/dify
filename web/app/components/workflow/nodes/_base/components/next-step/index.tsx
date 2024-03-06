@@ -35,6 +35,7 @@ const NextStep = ({
             <Item
               nodeId={outgoers[0].id}
               data={outgoers[0].data}
+              sourceHandle='source'
             />
           )
         }

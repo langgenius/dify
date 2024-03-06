@@ -3,17 +3,17 @@ import {
   useCallback,
 } from 'react'
 import type {
-  BlockEnum,
   CommonNodeType,
-} from '../../../../types'
-import BlockIcon from '../../../../block-icon'
-import BlockSelector from '../../../../block-selector'
-import { useWorkflow } from '../../../../hooks'
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import BlockSelector from '@/app/components/workflow/block-selector'
+import { useWorkflow } from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
 
 type ItemProps = {
   nodeId: string
-  sourceHandle?: string
+  sourceHandle: string
   branchName?: string
   data: CommonNodeType
 }
@@ -24,8 +24,8 @@ const Item = ({
   data,
 }: ItemProps) => {
   const { handleNodeChange } = useWorkflow()
-  const handleSelect = useCallback((type: BlockEnum) => {
-    handleNodeChange(nodeId, type, sourceHandle)
+  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+    handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
   }, [nodeId, sourceHandle, handleNodeChange])
   const renderTrigger = useCallback((open: boolean) => {
     return (

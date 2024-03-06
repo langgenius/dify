@@ -7,7 +7,9 @@ import {
   memo,
 } from 'react'
 import type { NodeProps } from '../../types'
-import BlockIcon from '../../block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import AppIcon from '@/app/components/base/app-icon'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -18,6 +20,8 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const type = data.type
+
   return (
     <div
       className={`
@@ -27,14 +31,43 @@ const BaseNode: FC<BaseNodeProps> = ({
       `}
     >
       <div className='flex items-center px-3 pt-3 pb-2'>
-        <BlockIcon
-          className='shrink-0 mr-2'
-          type={data.type}
-          size='md'
-        />
+        {
+          type !== BlockEnum.Tool && (
+            <BlockIcon
+              className='shrink-0 mr-2'
+              type={data.type}
+              size='md'
+            />
+          )
+        }
+        {
+          type === BlockEnum.Tool && (
+            <>
+              {
+                typeof data._icon === 'string'
+                  ? (
+                    <div
+                      className='shrink-0 mr-2 w-6 h-6 bg-cover bg-center rounded-md'
+                      style={{
+                        backgroundImage: `url(${data._icon})`,
+                      }}
+                    ></div>
+                  )
+                  : (
+                    <AppIcon
+                      className='shrink-0 mr-2'
+                      size='tiny'
+                      icon={data._icon?.content}
+                      background={data._icon?.background}
+                    />
+                  )
+              }
+            </>
+          )
+        }
         <div
           title={data.title}
-          className='text-[13px] font-semibold text-gray-700 truncate'
+          className='grow text-[13px] font-semibold text-gray-700 truncate'
         >
           {data.title}
         </div>

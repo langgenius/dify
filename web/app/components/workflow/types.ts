@@ -2,6 +2,8 @@ import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
 } from 'reactflow'
+import type { Collection } from '@/app/components/tools/types'
+import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -28,6 +30,7 @@ export type CommonNodeType<T = {}> = {
   _hovering?: boolean
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
+  _icon?: Collection['icon']
   title: string
   desc: string
   type: BlockEnum
@@ -134,3 +137,5 @@ export type NodeDefault<T> = {
   getAvailablePrevNodes: () => BlockEnum[]
   getAvailableNextNodes: () => BlockEnum[]
 }
+
+export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void

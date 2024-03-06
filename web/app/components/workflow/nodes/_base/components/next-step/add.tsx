@@ -2,10 +2,10 @@ import {
   memo,
   useCallback,
 } from 'react'
-import BlockSelector from '../../../../block-selector'
-import { useWorkflow } from '../../../../hooks'
-import type { BlockEnum } from '../../../../types'
+import { useWorkflow } from '@/app/components/workflow/hooks'
+import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
 
 type AddProps = {
   nodeId: string
@@ -19,8 +19,8 @@ const Add = ({
 }: AddProps) => {
   const { handleNodeAddNext } = useWorkflow()
 
-  const handleSelect = useCallback((type: BlockEnum) => {
-    handleNodeAddNext(nodeId, type, sourceHandle)
+  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+    handleNodeAddNext(nodeId, type, sourceHandle, toolDefaultValue)
   }, [nodeId, sourceHandle, handleNodeAddNext])
 
   const renderTrigger = useCallback((open: boolean) => {

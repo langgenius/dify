@@ -2,8 +2,9 @@ import {
   memo,
   useState,
 } from 'react'
-import { useWorkflow } from '../../../../hooks'
+import { useEdges } from 'reactflow'
 import ChangeBlock from './change-block'
+import { useWorkflow } from '@/app/components/workflow/hooks'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
@@ -17,8 +18,11 @@ type PanelOperatorProps = {
 const PanelOperator = ({
   nodeId,
 }: PanelOperatorProps) => {
+  const edges = useEdges()
   const { handleNodeDelete } = useWorkflow()
   const [open, setOpen] = useState(false)
+
+  const edge = edges.find(edge => edge.target === nodeId)
 
   return (
     <PortalToFollowElem
@@ -44,7 +48,10 @@ const PanelOperator = ({
       <PortalToFollowElemContent className='z-[11]'>
         <div className='w-[240px] border-[0.5px] border-gray-200 rounded-2xl shadow-xl bg-white'>
           <div className='p-1'>
-            <ChangeBlock nodeId={nodeId} />
+            <ChangeBlock
+              nodeId={nodeId}
+              sourceHandle={edge?.sourceHandle || 'source'}
+            />
             <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>Help Link</div>
           </div>
           <div className='h-[1px] bg-gray-100'></div>

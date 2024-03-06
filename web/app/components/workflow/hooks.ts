@@ -22,6 +22,7 @@ import type {
 import { NODES_INITIAL_DATA } from './constants'
 import { getLayoutByDagre } from './utils'
 import { useStore } from './store'
+import type { ToolDefaultValue } from './block-selector/types'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -197,6 +198,12 @@ export const useWorkflow = () => {
       setNodes,
     } = store.getState()
 
+    const nodes = getNodes()
+    const selectedNode = nodes.find(node => node.data._selected)
+
+    if (!cancelSelection && selectedNode?.id === nodeId)
+      return
+
     const newNodes = produce(getNodes(), (draft) => {
       draft.forEach(node => node.data._selected = false)
       const selectedNode = draft.find(node => node.id === nodeId)!
@@ -280,7 +287,12 @@ export const useWorkflow = () => {
     setNodes(newNodes)
   }, [store])
 
-  const handleNodeAddNext = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle: string) => {
+  const handleNodeAddNext = useCallback((
+    currentNodeId: string,
+    nodeType: BlockEnum,
+    sourceHandle: string,
+    toolDefaultValue?: ToolDefaultValue,
+  ) => {
     const {
       getNodes,
       setNodes,
@@ -294,6 +306,7 @@ export const useWorkflow = () => {
       type: 'custom',
       data: {
         ...nodesInitialData[nodeType],
+        ...(toolDefaultValue || {}),
         _selected: true,
       },
       position: {
@@ -323,7 +336,12 @@ export const useWorkflow = () => {
     handleSyncWorkflowDraft()
   }, [store, nodesInitialData, handleSyncWorkflowDraft])
 
-  const handleNodeChange = useCallback((currentNodeId: string, nodeType: BlockEnum, sourceHandle?: string) => {
+  const handleNodeChange = useCallback((
+    currentNodeId: string,
+    nodeType: BlockEnum,
+    sourceHandle: string,
+    toolDefaultValue?: ToolDefaultValue,
+  ) => {
     const {
       getNodes,
       setNodes,
@@ -339,6 +357,7 @@ export const useWorkflow = () => {
       type: 'custom',
       data: {
         ...nodesInitialData[nodeType],
+        ...(toolDefaultValue || {}),
         _selected: currentNode.data._selected,
       },
       position: {
@@ -359,7 +378,7 @@ export const useWorkflow = () => {
         id: `${parentNodeId}-${newCurrentNode.id}`,
         type: 'custom',
         source: parentNodeId,
-        sourceHandle: sourceHandle || 'source',
+        sourceHandle,
         target: newCurrentNode.id,
         targetHandle: 'target',
       }

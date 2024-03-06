@@ -6,30 +6,34 @@ import {
 import { groupBy } from 'lodash-es'
 import BlockIcon from '../block-icon'
 import type { BlockEnum } from '../types'
+import { BLOCK_CLASSIFICATIONS } from './constants'
 import {
-  BLOCK_CLASSIFICATIONS,
-  TABS,
-} from './constants'
-import { useBlocks } from './hooks'
+  useBlocks,
+  useTabs,
+} from './hooks'
+import type { ToolDefaultValue } from './types'
+import { TabsEnum } from './types'
+import Tools from './tools'
 
 export type TabsProps = {
-  onSelect: (type: BlockEnum) => void
+  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 const Tabs: FC<TabsProps> = ({
   onSelect,
 }) => {
-  const [activeTab, setActiveTab] = useState(TABS[0].key)
   const blocks = useBlocks()
+  const tabs = useTabs()
+  const [activeTab, setActiveTab] = useState(tabs[0].key)
 
   return (
-    <div>
-      <div className='flex items-center justify-between px-3 h-[34px] border-b-[0.5px] border-b-black/5'>
+    <div onClick={e => e.stopPropagation()}>
+      <div className='flex items-center px-3 h-[34px] border-b-[0.5px] border-b-black/5'>
         {
-          TABS.map(tab => (
+          tabs.map(tab => (
             <div
               key={tab.key}
               className={`
-                text-[13px] font-medium cursor-pointer
+                mr-4 text-[13px] font-medium cursor-pointer
                 ${activeTab === tab.key ? 'text-gray-700' : 'text-gray-500'}
               `}
               onClick={() => setActiveTab(tab.key)}
@@ -39,42 +43,56 @@ const Tabs: FC<TabsProps> = ({
           ))
         }
       </div>
-      <div className='p-1'>
-        {
-          BLOCK_CLASSIFICATIONS.map(classification => (
-            <div
-              key={classification}
-              className='mb-1 last-of-type:mb-0'
-            >
-              {
-                classification !== '-' && (
-                  <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
-                    {classification}
-                  </div>
-                )
-              }
-              {
-                groupBy(blocks, 'classification')[classification].map(block => (
-                  <div
-                    key={block.type}
-                    className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onSelect(block.type)
-                    }}
-                  >
-                    <BlockIcon
-                      className='mr-2'
-                      type={block.type}
-                    />
-                    <div className='text-sm text-gray-900'>{block.title}</div>
-                  </div>
-                ))
-              }
-            </div>
-          ))
-        }
-      </div>
+      {
+        activeTab === TabsEnum.Blocks && (
+          <div className='p-1'>
+            {
+              BLOCK_CLASSIFICATIONS.map(classification => (
+                <div
+                  key={classification}
+                  className='mb-1 last-of-type:mb-0'
+                >
+                  {
+                    classification !== '-' && (
+                      <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
+                        {classification}
+                      </div>
+                    )
+                  }
+                  {
+                    groupBy(blocks, 'classification')[classification].map(block => (
+                      <div
+                        key={block.type}
+                        className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+                        onClick={() => onSelect(block.type)}
+                      >
+                        <BlockIcon
+                          className='mr-2'
+                          type={block.type}
+                        />
+                        <div className='text-sm text-gray-900'>{block.title}</div>
+                      </div>
+                    ))
+                  }
+                </div>
+              ))
+            }
+          </div>
+        )
+      }
+      {
+        activeTab === TabsEnum.BuiltInTool && (
+          <Tools onSelect={onSelect} />
+        )
+      }
+      {
+        activeTab === TabsEnum.CustomTool && (
+          <Tools
+            isCustom
+            onSelect={onSelect}
+          />
+        )
+      }
     </div>
   )
 }

@@ -2,21 +2,23 @@ import {
   memo,
   useCallback,
 } from 'react'
-import BlockSelector from '../../../../block-selector'
-import { useWorkflow } from '../../../../hooks'
-import type { BlockEnum } from '../../../../types'
+import BlockSelector from '@/app/components/workflow/block-selector'
+import { useWorkflow } from '@/app/components/workflow/hooks'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
 
 type ChangeBlockProps = {
   nodeId: string
+  sourceHandle: string
 }
 const ChangeBlock = ({
   nodeId,
+  sourceHandle,
 }: ChangeBlockProps) => {
   const { handleNodeChange } = useWorkflow()
 
-  const handleSelect = useCallback((type: BlockEnum) => {
-    handleNodeChange(nodeId, type)
-  }, [handleNodeChange, nodeId])
+  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+    handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
+  }, [handleNodeChange, nodeId, sourceHandle])
 
   const renderTrigger = useCallback(() => {
     return (

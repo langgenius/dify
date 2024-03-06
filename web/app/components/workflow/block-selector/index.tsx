@@ -11,7 +11,6 @@ import type {
   OffsetOptions,
   Placement,
 } from '@floating-ui/react'
-import type { BlockEnum } from '../types'
 import Tabs from './tabs'
 import {
   PortalToFollowElem,
@@ -22,11 +21,12 @@ import {
   Plus02,
   SearchLg,
 } from '@/app/components/base/icons/src/vender/line/general'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
 
 type NodeSelectorProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  onSelect: (type: BlockEnum) => void
+  onSelect: OnSelectBlock
   trigger?: (open: boolean) => React.ReactNode
   placement?: Placement
   offset?: OffsetOptions
@@ -59,9 +59,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     e.stopPropagation()
     setLocalOpen(v => !v)
   }, [])
-  const handleSelect = useCallback((type: BlockEnum) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleOpenChange(false)
-    onSelect(type)
+    onSelect(type, toolDefaultValue)
   }, [handleOpenChange, onSelect])
 
   return (

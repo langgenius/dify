@@ -1,29 +1,6 @@
-import { groupBy } from 'lodash-es'
 import type { Block } from '../types'
 import { BlockEnum } from '../types'
-
-export const TABS = [
-  {
-    key: 'blocks',
-    name: 'Blocks',
-  },
-  {
-    key: 'built-in-tool',
-    name: 'Built-in Tool',
-  },
-  {
-    key: 'custom-tool',
-    name: 'Custom Tool',
-  },
-]
-
-export enum BlockClassificationEnum {
-  Default = '-',
-  QuestionUnderstand = 'question-understand',
-  Logic = 'logic',
-  Transform = 'transform',
-  Utilities = 'utilities',
-}
+import { BlockClassificationEnum } from './types'
 
 export const BLOCKS: Block[] = [
   {
@@ -91,5 +68,3 @@ export const BLOCK_CLASSIFICATIONS: string[] = [
   BlockClassificationEnum.Transform,
   BlockClassificationEnum.Utilities,
 ]
-
-export const BLOCK_GROUP_BY_CLASSIFICATION = groupBy(BLOCKS, 'classification')

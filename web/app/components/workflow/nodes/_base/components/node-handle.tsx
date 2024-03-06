@@ -13,6 +13,7 @@ import {
 import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
+import type { ToolDefaultValue } from '../../../block-selector/types'
 import { useWorkflow } from '../../../hooks'
 
 type NodeHandleProps = {
@@ -100,8 +101,8 @@ export const NodeSourceHandle = ({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum) => {
-    handleNodeAddNext(id, type, handleId)
+  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+    handleNodeAddNext(id, type, handleId, toolDefaultValue)
   }, [handleNodeAddNext, id, handleId])
 
   return (

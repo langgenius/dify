@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import type { HelpLinePosition } from './help-line/types'
+import type {
+  CollectionWithExpanded,
+  ToolInWorkflow,
+  ToolsMap,
+} from './block-selector/types'
 
 type State = {
   mode: string
@@ -8,6 +13,8 @@ type State = {
   runStaus: string
   isDragging: boolean
   helpLine?: HelpLinePosition
+  toolsets: CollectionWithExpanded[]
+  toolsMap: ToolsMap
 }
 
 type Action = {
@@ -16,6 +23,8 @@ type Action = {
   setRunStaus: (runStaus: string) => void
   setIsDragging: (isDragging: boolean) => void
   setHelpLine: (helpLine?: HelpLinePosition) => void
+  setToolsets: (toolsets: CollectionWithExpanded[]) => void
+  setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -30,4 +39,8 @@ export const useStore = create<State & Action>(set => ({
   setIsDragging: isDragging => set(() => ({ isDragging })),
   helpLine: undefined,
   setHelpLine: helpLine => set(() => ({ helpLine })),
+  toolsets: [],
+  setToolsets: toolsets => set(() => ({ toolsets })),
+  toolsMap: {},
+  setToolsMap: toolsMap => set(() => ({ toolsMap })),
 }))
