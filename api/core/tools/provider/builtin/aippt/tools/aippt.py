@@ -1,17 +1,19 @@
-from typing import Any
-from yarl import URL
-from httpx import get, post
-from requests import get as requests_get, post as requests_post
-from threading import Lock
-from time import time, sleep
 from base64 import b64encode
 from hashlib import sha1
 from hmac import new as hmac_new
 from json import loads as json_loads
+from threading import Lock
+from time import sleep, time
+from typing import Any
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
+from httpx import get, post
+from requests import get as requests_get
+from yarl import URL
+
 from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
 from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class AIPPTGenerateTool(BuiltinTool):
     """
@@ -383,7 +385,7 @@ class AIPPTGenerateTool(BuiltinTool):
         return b64encode(
             hmac_new(
                 key=secret_key.encode('utf-8'), 
-                msg=f'GET@/api/grant/token/@{timestamp}'.encode('utf-8'),
+                msg=f'GET@/api/grant/token/@{timestamp}'.encode(),
                 digestmod=sha1
             ).digest()
         ).decode('utf-8')
