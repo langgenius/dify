@@ -7,7 +7,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 
 
-class WecomRepositoriesTool(BuiltinTool):
+class WecomGroupBotTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]
                 ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
