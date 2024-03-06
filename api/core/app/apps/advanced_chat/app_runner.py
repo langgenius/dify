@@ -82,7 +82,7 @@ class AdvancedChatAppRunner(AppRunner):
 
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
-        result_generator = workflow_engine_manager.run_workflow(
+        workflow_engine_manager.run_workflow(
             app_model=app_record,
             workflow=workflow,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING
@@ -96,11 +96,6 @@ class AdvancedChatAppRunner(AppRunner):
             },
             callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)]
         )
-
-        for result in result_generator:
-            # todo handle workflow and node event
-            pass
-
 
     def handle_input_moderation(self, queue_manager: AppQueueManager,
                                 app_record: App,

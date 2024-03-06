@@ -7,8 +7,8 @@ from core.workflow.nodes.start.entities import StartNodeData
 
 
 class StartNode(BaseNode):
-    _node_type = NodeType.START
     _node_data_cls = StartNodeData
+    node_type = NodeType.START
 
     def _run(self, variable_pool: Optional[VariablePool] = None,
              run_args: Optional[dict] = None) -> dict:

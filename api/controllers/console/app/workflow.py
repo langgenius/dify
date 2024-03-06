@@ -14,7 +14,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.workflow_fields import workflow_fields
-from libs.helper import uuid_value
+from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
 from services.workflow_service import WorkflowService
@@ -56,7 +56,7 @@ class DraftWorkflowApi(Resource):
         args = parser.parse_args()
 
         workflow_service = WorkflowService()
-        workflow_service.sync_draft_workflow(
+        workflow = workflow_service.sync_draft_workflow(
             app_model=app_model,
             graph=args.get('graph'),
             features=args.get('features'),
@@ -64,7 +64,8 @@ class DraftWorkflowApi(Resource):
         )
 
         return {
-            "result": "success"
+            "result": "success",
+            "updated_at": TimestampField().format(workflow.updated_at)
         }
 
 
