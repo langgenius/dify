@@ -6,8 +6,8 @@ from mimetypes import guess_extension
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
-from core.app.app_queue_manager import AppQueueManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,

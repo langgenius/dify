@@ -1,6 +1,7 @@
 
-from core.app.app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import DatasetQuery, DocumentSegment
@@ -82,4 +83,7 @@ class DatasetIndexToolCallbackHandler:
                 db.session.add(dataset_retriever_resource)
                 db.session.commit()
 
-        self._queue_manager.publish_retriever_resources(resource, PublishFrom.APPLICATION_MANAGER)
+        self._queue_manager.publish(
+            QueueRetrieverResourcesEvent(retriever_resources=resource),
+            PublishFrom.APPLICATION_MANAGER
+        )

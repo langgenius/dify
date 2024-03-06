@@ -6,7 +6,7 @@ from typing import Optional, Union, cast
 
 from pydantic import BaseModel
 
-from core.app.app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
@@ -385,14 +385,19 @@ class EasyUIBasedGenerateTaskPipeline:
                     if self._output_moderation_handler.should_direct_output():
                         # stop subscribe new token when output moderation should direct output
                         self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
-                        self._queue_manager.publish_llm_chunk(LLMResultChunk(
-                            model=self._task_state.llm_result.model,
-                            prompt_messages=self._task_state.llm_result.prompt_messages,
-                            delta=LLMResultChunkDelta(
-                                index=0,
-                                message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
-                            )
-                        ), PublishFrom.TASK_PIPELINE)
+                        self._queue_manager.publish(
+                            QueueLLMChunkEvent(
+                                chunk=LLMResultChunk(
+                                    model=self._task_state.llm_result.model,
+                                    prompt_messages=self._task_state.llm_result.prompt_messages,
+                                    delta=LLMResultChunkDelta(
+                                        index=0,
+                                        message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
+                                    )
+                                )
+                            ), PublishFrom.TASK_PIPELINE
+                        )
+
                         self._queue_manager.publish(
                             QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
                             PublishFrom.TASK_PIPELINE
@@ -664,5 +669,5 @@ class EasyUIBasedGenerateTaskPipeline:
                     type=sensitive_word_avoidance.type,
                     config=sensitive_word_avoidance.config
                 ),
-                on_message_replace_func=self._queue_manager.publish_message_replace
+                queue_manager=self._queue_manager
             )

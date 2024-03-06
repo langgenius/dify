@@ -9,10 +9,11 @@ from pydantic import ValidationError
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
@@ -112,7 +113,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         ) = self._init_generate_records(application_generate_entity)
 
         # init queue manager
-        queue_manager = AppQueueManager(
+        queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,
             invoke_from=application_generate_entity.invoke_from,
@@ -263,7 +264,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         ) = self._init_generate_records(application_generate_entity)
 
         # init queue manager
-        queue_manager = AppQueueManager(
+        queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,
             invoke_from=application_generate_entity.invoke_from,

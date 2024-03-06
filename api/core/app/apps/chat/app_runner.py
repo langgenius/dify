@@ -1,12 +1,13 @@
 import logging
 from typing import cast
 
-from core.app.app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.entities.app_invoke_entities import (
     ChatAppGenerateEntity,
 )
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
@@ -117,10 +118,11 @@ class ChatAppRunner(AppRunner):
             )
 
             if annotation_reply:
-                queue_manager.publish_annotation_reply(
-                    message_annotation_id=annotation_reply.id,
-                    pub_from=PublishFrom.APPLICATION_MANAGER
+                queue_manager.publish(
+                    QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                    PublishFrom.APPLICATION_MANAGER
                 )
+
                 self.direct_output(
                     queue_manager=queue_manager,
                     app_generate_entity=application_generate_entity,
