@@ -57,7 +57,6 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           />
         </Field>
         <Split />
-        {inputs.code_language}
         <CodeEditor
           readOnly={readOnly}
           title={

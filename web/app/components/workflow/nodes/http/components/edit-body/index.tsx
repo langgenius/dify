@@ -73,7 +73,7 @@ const EditBody: FC<Props> = ({
     })
     onChange(newBody)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [body, isCurrentKeyValue])
+  }, [isCurrentKeyValue])
 
   const handleBodyValueChange = useCallback((value: string) => {
     const newBody = produce(payload, (draft: Body) => {
@@ -127,7 +127,7 @@ const EditBody: FC<Props> = ({
             readOnly={readonly}
             title={<div className='uppercase'>JSON</div>}
             value={payload.data} onChange={handleBodyValueChange}
-            language={CodeLanguage.javascript}
+            language={CodeLanguage.json}
           />
         )}
       </div>

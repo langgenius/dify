@@ -15,6 +15,12 @@ type Props = {
   readOnly?: boolean
 }
 
+const languageMap = {
+  [CodeLanguage.javascript]: 'javascript',
+  [CodeLanguage.python3]: 'python',
+  [CodeLanguage.json]: 'json',
+}
+
 const CodeEditor: FC<Props> = ({
   value,
   onChange,
@@ -70,7 +76,8 @@ const CodeEditor: FC<Props> = ({
         {/* https://www.npmjs.com/package/@monaco-editor/react */}
         <Editor
           className='h-full'
-          defaultLanguage={language === CodeLanguage.javascript ? 'javascript' : 'python'}
+          // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
+          language={languageMap[language] || 'javascript'}
           theme={isFocus ? 'focus-theme' : 'blur-theme'}
           value={value}
           onChange={handleEditorChange}
