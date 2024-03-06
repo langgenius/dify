@@ -96,6 +96,7 @@ const translation = {
       context: '上下文',
       contextTooltip: '您可以导入知识库作为上下文',
       prompt: '提示词',
+      addMessage: '添加消息',
       vision: '视觉',
       resolution: {
         name: '分辨率',

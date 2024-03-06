@@ -1,23 +1,31 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
-import type { Memory, ValueSelector } from '../../types'
+import { type Memory, PromptRole, type ValueSelector } from '../../types'
 import type { LLMNodeType } from './types'
-import type { Resolution } from '@/types/app'
+import { Resolution } from '@/types/app'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import type { PromptItem } from '@/models/debug'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { inputs, setInputs } = useNodeCrud<LLMNodeType>(id, payload)
 
   // model
   const model = inputs.model
+  const modelMode = inputs.model?.mode
+  const isChatModel = modelMode === 'chat'
+  const isCompletionModel = !isChatModel
+
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
+      const isModeChange = model.mode !== inputs.model.mode
+      if (isModeChange)
+        draft.prompt = model.mode === 'chat' ? [{ role: PromptRole.system, text: '' }] : { text: '' }
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -53,6 +61,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.prompt = newPrompt
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleMemoryChange = useCallback((newMemory: Memory) => {
     const newInputs = produce(inputs, (draft) => {
       draft.memory = newMemory
@@ -62,6 +77,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const handleVisionResolutionChange = useCallback((newResolution: Resolution) => {
     const newInputs = produce(inputs, (draft) => {
+      if (!draft.vision.configs) {
+        draft.vision.configs = {
+          detail: Resolution.high,
+        }
+      }
       draft.vision.configs.detail = newResolution
     })
     setInputs(newInputs)
@@ -69,12 +89,15 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   return {
     inputs,
+    isChatModel,
+    isCompletionModel,
     isShowVisionConfig,
     handleModelChanged,
     handleCompletionParamsChange,
     handleVarListChange,
     handleAddVariable,
     handleContextVarChange,
+    handlePromptChange,
     handleMemoryChange,
     handleVisionResolutionChange,
   }

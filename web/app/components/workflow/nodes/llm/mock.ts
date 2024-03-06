@@ -1,4 +1,4 @@
-import { BlockEnum } from '../../types'
+import { BlockEnum, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 
@@ -24,7 +24,12 @@ export const mockData: LLMNodeType = {
       value_selector: ['bbb', 'b', 'c'],
     },
   ],
-  prompt: [],
+  prompt: [
+    {
+      role: PromptRole.system,
+      text: '',
+    },
+  ],
   memory: {
     role_prefix: {
       user: 'user: ',

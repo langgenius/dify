@@ -6,6 +6,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import useConfig from './use-config'
 import ResolutionPicker from './components/resolution-picker'
 import type { LLMNodeType } from './types'
+import ConfigPrompt from './components/config-prompt'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddButton from '@/app/components/base/button/add-button'
@@ -26,21 +27,21 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
   const {
     inputs,
+    isChatModel,
+    isCompletionModel,
     isShowVisionConfig,
     handleModelChanged,
     handleCompletionParamsChange,
     handleVarListChange,
     handleAddVariable,
     handleContextVarChange,
+    handlePromptChange,
     handleMemoryChange,
     handleVisionResolutionChange,
   } = useConfig(id, data)
 
   const isChatApp = true // TODO: get from app context
   const model = inputs.model
-  const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
-  const isCompletionModel = !isChatModel
 
   return (
     <div className='mt-2'>
@@ -90,16 +91,20 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         </Field>
 
         {/* Prompt */}
-        <Field
-          title={t(`${i18nPrefix}.prompt`)}
-        >
-          Prompt
-        </Field>
-
-        {/* Memory examples */}
-        {isChatApp && isChatModel && (
-          <div className='text-xs text-gray-300'>Memory examples(Designing)</div>
+        {model.name && (
+          <ConfigPrompt
+            readOnly={readOnly}
+            isChatModel={isChatModel}
+            payload={inputs.prompt}
+            variables={inputs.variables.map(item => item.variable)}
+            onChange={handlePromptChange}
+          />
         )}
+
+        {/* Memory examples. Wait for design */}
+        {/* {isChatApp && isChatModel && (
+          <div className='text-xs text-gray-300'>Memory examples(Designing)</div>
+        )} */}
         {/* Memory */}
         {isChatApp && (
           <>

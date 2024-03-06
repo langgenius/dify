@@ -96,6 +96,7 @@ const translation = {
       context: 'context',
       contextTooltip: 'You can import Knowledge as context',
       prompt: 'prompt',
+      addMessage: 'Add Message',
       vision: 'vision',
       resolution: {
         name: 'Resolution',

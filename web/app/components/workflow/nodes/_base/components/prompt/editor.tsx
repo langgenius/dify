@@ -9,12 +9,16 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import { Expand04 } from '@/app/components/base/icons/src/vender/solid/arrows'
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
+import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
-  title: string
+  title: string | JSX.Element
   value: string
   variables: string[]
   onChange: (value: string) => void
+  readOnly?: boolean
+  showRemove?: boolean
+  onRemove?: () => void
 }
 
 const Editor: FC<Props> = ({
@@ -22,6 +26,9 @@ const Editor: FC<Props> = ({
   value,
   variables,
   onChange,
+  readOnly,
+  showRemove,
+  onRemove,
 }) => {
   const { t } = useTranslation()
 
@@ -40,20 +47,27 @@ const Editor: FC<Props> = ({
   return (
     <div className={cn(s.gradientBorder, '!rounded-[9px] shadow-md')}>
       <div className='rounded-lg bg-white'>
-        <div className='pt-1 pl-3 pr-1 flex justify-between h-6 items-center'>
+        <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
           <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
           <div className='flex items-center'>
             <div className='leading-[18px] text-xs font-medium text-gray-500'>{value.length}</div>
-            <div className='w-px h-3 ml-2 mr-3 bg-gray-200'></div>
-            {!isCopied
-              ? (
-                <Clipboard className='mx-1 w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />
-              )
-              : (
-                <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-gray-500' />
-              )
-            }
-            <Expand04 className='ml-2 mr-2 w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={toggleExpand} />
+            <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
+            {/* Operations */}
+            <div className='flex items-center space-x-2'>
+              {showRemove && (
+                <Trash03 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
+              )}
+              {!isCopied
+                ? (
+                  <Clipboard className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />
+                )
+                : (
+                  <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-gray-500' />
+                )
+              }
+              <Expand04 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={toggleExpand} />
+            </div>
+
           </div>
         </div>
         <PromptEditorHeightResizeWrap
@@ -99,6 +113,7 @@ const Editor: FC<Props> = ({
             }}
             onChange={onChange}
             onBlur={() => { }}
+            editable={!readOnly}
           />
         </PromptEditorHeightResizeWrap>
       </div>

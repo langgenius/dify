@@ -1,4 +1,4 @@
-import type { NodeDefault } from '../../types'
+import { type NodeDefault, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
 
 const nodeDefault: NodeDefault<LLMNodeType> = {
@@ -12,7 +12,10 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       },
     },
     variables: [],
-    prompt: [],
+    prompt: [{
+      role: PromptRole.system,
+      text: '',
+    }],
     context: {
       enabled: false,
       variable_selector: [],
