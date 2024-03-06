@@ -6,8 +6,8 @@ from typing import Optional, Union
 from sqlalchemy import and_
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
-from core.app.app_queue_manager import AppQueueManager, ConversationTaskStoppedException
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.base_app_queue_manager import AppQueueManager, ConversationTaskStoppedException
 from core.app.apps.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,

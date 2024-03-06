@@ -6,7 +6,8 @@ from typing import Any, Optional
 from flask import Flask, current_app
 from pydantic import BaseModel
 
-from core.app.app_queue_manager import PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.entities.queue_entities import QueueMessageReplaceEvent
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
 
@@ -25,7 +26,7 @@ class OutputModeration(BaseModel):
     app_id: str
 
     rule: ModerationRule
-    on_message_replace_func: Any
+    queue_manager: AppQueueManager
 
     thread: Optional[threading.Thread] = None
     thread_running: bool = True
@@ -67,7 +68,12 @@ class OutputModeration(BaseModel):
             final_output = result.text
 
         if public_event:
-            self.on_message_replace_func(final_output, PublishFrom.TASK_PIPELINE)
+            self.queue_manager.publish(
+                QueueMessageReplaceEvent(
+                    text=final_output
+                ),
+                PublishFrom.TASK_PIPELINE
+            )
 
         return final_output
 
@@ -117,7 +123,12 @@ class OutputModeration(BaseModel):
 
                 # trigger replace event
                 if self.thread_running:
-                    self.on_message_replace_func(final_output, PublishFrom.TASK_PIPELINE)
+                    self.queue_manager.publish(
+                        QueueMessageReplaceEvent(
+                            text=final_output
+                        ),
+                        PublishFrom.TASK_PIPELINE
+                    )
 
                 if result.action == ModerationAction.DIRECT_OUTPUT:
                     break

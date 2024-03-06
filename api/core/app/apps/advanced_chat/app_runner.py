@@ -2,14 +2,14 @@ import logging
 import time
 from typing import cast
 
-from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
 )
-from core.app.entities.queue_entities import QueueStopEvent
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
 from core.callback_handler.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.moderation.base import ModerationException
 from core.workflow.entities.node_entities import SystemVariable
@@ -93,7 +93,7 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.FILES: files,
                 SystemVariable.CONVERSATION: conversation.id,
             },
-            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)],
+            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)]
         )
 
     def handle_input_moderation(self, queue_manager: AppQueueManager,
@@ -153,9 +153,9 @@ class AdvancedChatAppRunner(AppRunner):
         )
 
         if annotation_reply:
-            queue_manager.publish_annotation_reply(
-                message_annotation_id=annotation_reply.id,
-                pub_from=PublishFrom.APPLICATION_MANAGER
+            queue_manager.publish(
+                QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                PublishFrom.APPLICATION_MANAGER
             )
 
             self._stream_output(
@@ -182,7 +182,11 @@ class AdvancedChatAppRunner(AppRunner):
         if stream:
             index = 0
             for token in text:
-                queue_manager.publish_text_chunk(token, PublishFrom.APPLICATION_MANAGER)
+                queue_manager.publish(
+                    QueueTextChunkEvent(
+                        text=token
+                    ), PublishFrom.APPLICATION_MANAGER
+                )
                 index += 1
                 time.sleep(0.01)
 
@@ -190,4 +194,3 @@ class AdvancedChatAppRunner(AppRunner):
             QueueStopEvent(stopped_by=stopped_by),
             PublishFrom.APPLICATION_MANAGER
         )
-        queue_manager.stop_listen()

@@ -127,9 +127,9 @@ class AdvancedChatAppGenerateEntity(AppGenerateEntity):
     query: Optional[str] = None
 
 
-class WorkflowUIBasedAppGenerateEntity(AppGenerateEntity):
+class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
-    Workflow UI Based Application Generate Entity.
+    Workflow Application Generate Entity.
     """
     # app config
     app_config: WorkflowUIBasedAppConfig

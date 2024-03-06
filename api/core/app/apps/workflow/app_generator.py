@@ -2,32 +2,34 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
 
-from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
-from core.app.apps.agent_chat.app_runner import AgentChatAppRunner
+from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
-from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
+from core.app.apps.workflow.app_runner import WorkflowAppRunner
+from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
 
-class AgentChatAppGenerator(MessageBasedAppGenerator):
+class WorkflowAppGenerator(BaseAppGenerator):
     def generate(self, app_model: App,
+                 workflow: Workflow,
                  user: Union[Account, EndUser],
-                 args: Any,
+                 args: dict,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
             -> Union[dict, Generator]:
@@ -35,52 +37,18 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         Generate App response.
 
         :param app_model: App
+        :param workflow: Workflow
         :param user: account or end user
         :param args: request args
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        if not args.get('query'):
-            raise ValueError('query is required')
-
-        query = args['query']
-        if not isinstance(query, str):
-            raise ValueError('query must be a string')
-
-        query = query.replace('\x00', '')
         inputs = args['inputs']
-
-        extras = {
-            "auto_generate_conversation_name": args['auto_generate_name'] if 'auto_generate_name' in args else True
-        }
-
-        # get conversation
-        conversation = None
-        if args.get('conversation_id'):
-            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id'), user)
-
-        # get app model config
-        app_model_config = self._get_app_model_config(
-            app_model=app_model,
-            conversation=conversation
-        )
-
-        # validate override model config
-        override_model_config_dict = None
-        if args.get('model_config'):
-            if invoke_from != InvokeFrom.DEBUGGER:
-                raise ValueError('Only in App debug mode can override model config')
-
-            # validate config
-            override_model_config_dict = AgentChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id,
-                config=args.get('model_config')
-            )
 
         # parse files
         files = args['files'] if 'files' in args and args['files'] else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
-        file_upload_entity = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
+        file_upload_entity = FileUploadConfigManager.convert(workflow.features_dict)
         if file_upload_entity:
             file_objs = message_file_parser.validate_and_transform_files_arg(
                 files,
@@ -91,51 +59,35 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             file_objs = []
 
         # convert to app config
-        app_config = AgentChatAppConfigManager.get_app_config(
+        app_config = WorkflowAppConfigManager.get_app_config(
             app_model=app_model,
-            app_model_config=app_model_config,
-            conversation=conversation,
-            override_config_dict=override_model_config_dict
+            workflow=workflow
         )
 
         # init application generate entity
-        application_generate_entity = AgentChatAppGenerateEntity(
+        application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            model_config=ModelConfigConverter.convert(app_config),
-            conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
-            query=query,
+            inputs=self._get_cleaned_inputs(inputs, app_config),
             files=file_objs,
             user_id=user.id,
             stream=stream,
-            invoke_from=invoke_from,
-            extras=extras
+            invoke_from=invoke_from
         )
 
-        # init generate records
-        (
-            conversation,
-            message
-        ) = self._init_generate_records(application_generate_entity, conversation)
-
         # init queue manager
-        queue_manager = MessageBasedAppQueueManager(
+        queue_manager = WorkflowAppQueueManager(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,
             invoke_from=application_generate_entity.invoke_from,
-            conversation_id=conversation.id,
-            app_mode=conversation.mode,
-            message_id=message.id
+            app_mode=app_model.mode
         )
 
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
             'flask_app': current_app._get_current_object(),
             'application_generate_entity': application_generate_entity,
-            'queue_manager': queue_manager,
-            'conversation_id': conversation.id,
-            'message_id': message.id,
+            'queue_manager': queue_manager
         })
 
         worker_thread.start()
@@ -144,38 +96,26 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         return self._handle_response(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
-            conversation=conversation,
-            message=message,
             stream=stream
         )
 
     def _generate_worker(self, flask_app: Flask,
-                         application_generate_entity: AgentChatAppGenerateEntity,
-                         queue_manager: AppQueueManager,
-                         conversation_id: str,
-                         message_id: str) -> None:
+                         application_generate_entity: WorkflowAppGenerateEntity,
+                         queue_manager: AppQueueManager) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
-        :param conversation_id: conversation ID
-        :param message_id: message ID
         :return:
         """
         with flask_app.app_context():
             try:
-                # get conversation and message
-                conversation = self._get_conversation(conversation_id)
-                message = self._get_message(message_id)
-
-                # chatbot app
-                runner = AgentChatAppRunner()
+                # workflow app
+                runner = WorkflowAppRunner()
                 runner.run(
                     application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    conversation=conversation,
-                    message=message
+                    queue_manager=queue_manager
                 )
             except ConversationTaskStoppedException:
                 pass
@@ -194,3 +134,31 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.remove()
+
+    def _handle_response(self, application_generate_entity: WorkflowAppGenerateEntity,
+                         queue_manager: AppQueueManager,
+                         stream: bool = False) -> Union[dict, Generator]:
+        """
+        Handle response.
+        :param application_generate_entity: application generate entity
+        :param queue_manager: queue manager
+        :param stream: is stream
+        :return:
+        """
+        # init generate task pipeline
+        generate_task_pipeline = WorkflowAppGenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            stream=stream
+        )
+
+        try:
+            return generate_task_pipeline.process()
+        except ValueError as e:
+            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+                raise ConversationTaskStoppedException()
+            else:
+                logger.exception(e)
+                raise e
+        finally:
+            db.session.remove()

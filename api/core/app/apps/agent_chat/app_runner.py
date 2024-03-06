@@ -4,10 +4,11 @@ from typing import cast
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentEntity
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
-from core.app.app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ModelConfigWithCredentialsEntity
+from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -120,10 +121,11 @@ class AgentChatAppRunner(AppRunner):
             )
 
             if annotation_reply:
-                queue_manager.publish_annotation_reply(
-                    message_annotation_id=annotation_reply.id,
-                    pub_from=PublishFrom.APPLICATION_MANAGER
+                queue_manager.publish(
+                    QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
+                    PublishFrom.APPLICATION_MANAGER
                 )
+
                 self.direct_output(
                     queue_manager=queue_manager,
                     app_generate_entity=application_generate_entity,

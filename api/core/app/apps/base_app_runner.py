@@ -3,13 +3,14 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
-from core.app.app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
     InvokeFrom,
     ModelConfigWithCredentialsEntity,
 )
+from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
@@ -187,25 +188,32 @@ class AppRunner:
         if stream:
             index = 0
             for token in text:
-                queue_manager.publish_llm_chunk(LLMResultChunk(
+                chunk = LLMResultChunk(
                     model=app_generate_entity.model_config.model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
                         message=AssistantPromptMessage(content=token)
                     )
-                ), PublishFrom.APPLICATION_MANAGER)
+                )
+
+                queue_manager.publish(
+                    QueueLLMChunkEvent(
+                        chunk=chunk
+                    ), PublishFrom.APPLICATION_MANAGER
+                )
                 index += 1
                 time.sleep(0.01)
 
-        queue_manager.publish_message_end(
-            llm_result=LLMResult(
-                model=app_generate_entity.model_config.model,
-                prompt_messages=prompt_messages,
-                message=AssistantPromptMessage(content=text),
-                usage=usage if usage else LLMUsage.empty_usage()
-            ),
-            pub_from=PublishFrom.APPLICATION_MANAGER
+        queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model=app_generate_entity.model_config.model,
+                    prompt_messages=prompt_messages,
+                    message=AssistantPromptMessage(content=text),
+                    usage=usage if usage else LLMUsage.empty_usage()
+                ),
+            ), PublishFrom.APPLICATION_MANAGER
         )
 
     def _handle_invoke_result(self, invoke_result: Union[LLMResult, Generator],
@@ -241,9 +249,10 @@ class AppRunner:
         :param queue_manager: application queue manager
         :return:
         """
-        queue_manager.publish_message_end(
-            llm_result=invoke_result,
-            pub_from=PublishFrom.APPLICATION_MANAGER
+        queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=invoke_result,
+            ), PublishFrom.APPLICATION_MANAGER
         )
 
     def _handle_invoke_result_stream(self, invoke_result: Generator,
@@ -261,9 +270,17 @@ class AppRunner:
         usage = None
         for result in invoke_result:
             if not agent:
-                queue_manager.publish_llm_chunk(result, PublishFrom.APPLICATION_MANAGER)
+                queue_manager.publish(
+                    QueueLLMChunkEvent(
+                        chunk=result
+                    ), PublishFrom.APPLICATION_MANAGER
+                )
             else:
-                queue_manager.publish_agent_chunk_message(result, PublishFrom.APPLICATION_MANAGER)
+                queue_manager.publish(
+                    QueueAgentMessageEvent(
+                        chunk=result
+                    ), PublishFrom.APPLICATION_MANAGER
+                )
 
             text += result.delta.message.content
 
@@ -286,9 +303,10 @@ class AppRunner:
             usage=usage
         )
 
-        queue_manager.publish_message_end(
-            llm_result=llm_result,
-            pub_from=PublishFrom.APPLICATION_MANAGER
+        queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=llm_result,
+            ), PublishFrom.APPLICATION_MANAGER
         )
 
     def moderation_for_inputs(self, app_id: str,
@@ -311,7 +329,7 @@ class AppRunner:
             tenant_id=tenant_id,
             app_config=app_generate_entity.app_config,
             inputs=inputs,
-            query=query,
+            query=query if query else ''
         )
     
     def check_hosting_moderation(self, application_generate_entity: EasyUIBasedAppGenerateEntity,

@@ -6,6 +6,7 @@ from typing import Optional, Union
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
@@ -175,8 +176,24 @@ class WorkflowService:
                            user: Union[Account, EndUser],
                            args: dict,
                            invoke_from: InvokeFrom) -> Union[dict, Generator]:
-        # TODO
-        pass
+        # fetch draft workflow by app_model
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+
+        if not draft_workflow:
+            raise ValueError('Workflow not initialized')
+
+        # run draft workflow
+        app_generator = WorkflowAppGenerator()
+        response = app_generator.generate(
+            app_model=app_model,
+            workflow=draft_workflow,
+            user=user,
+            args=args,
+            invoke_from=invoke_from,
+            stream=True
+        )
+
+        return response
 
     def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """

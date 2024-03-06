@@ -4,7 +4,8 @@ from collections.abc import Generator
 from typing import Any, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.app.app_queue_manager import PublishFrom
+from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -135,7 +136,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 is_first_chunk = True
                 for chunk in chunks:
                     if is_first_chunk:
-                        self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                        self.queue_manager.publish(QueueAgentThoughtEvent(
+                            agent_thought_id=agent_thought.id
+                        ), PublishFrom.APPLICATION_MANAGER)
                         is_first_chunk = False
                     # check if there is any tool call
                     if self.check_tool_calls(chunk):
@@ -195,7 +198,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 if not result.message.content:
                     result.message.content = ''
 
-                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                self.queue_manager.publish(QueueAgentThoughtEvent(
+                    agent_thought_id=agent_thought.id
+                ), PublishFrom.APPLICATION_MANAGER)
                 
                 yield LLMResultChunk(
                     model=model_instance.model,
@@ -233,8 +238,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 messages_ids=[],
                 llm_usage=current_llm_usage
             )
-
-            self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+            self.queue_manager.publish(QueueAgentThoughtEvent(
+                agent_thought_id=agent_thought.id
+            ), PublishFrom.APPLICATION_MANAGER)
             
             final_answer += response + '\n'
 
@@ -275,7 +281,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                                 self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
 
                             # publish message file
-                            self.queue_manager.publish_message_file(message_file, PublishFrom.APPLICATION_MANAGER)
+                            self.queue_manager.publish(QueueMessageFileEvent(
+                                message_file_id=message_file.id
+                            ), PublishFrom.APPLICATION_MANAGER)
                             # add message file ids
                             message_file_ids.append(message_file.id)
                             
@@ -331,7 +339,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     answer=None,
                     messages_ids=message_file_ids
                 )
-                self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
+                self.queue_manager.publish(QueueAgentThoughtEvent(
+                    agent_thought_id=agent_thought.id
+                ), PublishFrom.APPLICATION_MANAGER)
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
@@ -341,15 +351,15 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
-        self.queue_manager.publish_message_end(LLMResult(
+        self.queue_manager.publish(QueueMessageEndEvent(llm_result=LLMResult(
             model=model_instance.model,
             prompt_messages=prompt_messages,
             message=AssistantPromptMessage(
-                content=final_answer,
+                content=final_answer
             ),
             usage=llm_usage['usage'] if llm_usage['usage'] else LLMUsage.empty_usage(),
             system_fingerprint=''
-        ), PublishFrom.APPLICATION_MANAGER)
+        )), PublishFrom.APPLICATION_MANAGER)
 
     def check_tool_calls(self, llm_result_chunk: LLMResultChunk) -> bool:
         """
