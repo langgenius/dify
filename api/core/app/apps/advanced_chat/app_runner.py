@@ -83,7 +83,6 @@ class AdvancedChatAppRunner(AppRunner):
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
-            app_model=app_record,
             workflow=workflow,
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING
             if application_generate_entity.invoke_from == InvokeFrom.DEBUGGER else WorkflowRunTriggeredFrom.APP_RUN,
@@ -94,7 +93,7 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.FILES: files,
                 SystemVariable.CONVERSATION: conversation.id,
             },
-            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)]
+            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)],
         )
 
     def handle_input_moderation(self, queue_manager: AppQueueManager,

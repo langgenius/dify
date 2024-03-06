@@ -1,4 +1,9 @@
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel
+
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class NodeType(Enum):
@@ -39,3 +44,19 @@ class SystemVariable(Enum):
     QUERY = 'query'
     FILES = 'files'
     CONVERSATION = 'conversation'
+
+
+class NodeRunResult(BaseModel):
+    """
+    Node Run Result.
+    """
+    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING
+
+    inputs: Optional[dict] = None  # node inputs
+    process_data: Optional[dict] = None  # process data
+    outputs: Optional[dict] = None  # node outputs
+    metadata: Optional[dict] = None  # node metadata
+
+    edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
+
+    error: Optional[str] = None  # error message if status is failed

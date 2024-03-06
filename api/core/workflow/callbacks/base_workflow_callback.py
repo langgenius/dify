@@ -31,3 +31,11 @@ class BaseWorkflowCallback:
         Workflow node execute finished
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def on_text_chunk(self, text: str) -> None:
+        """
+        Publish text chunk
+        """
+        raise NotImplementedError
+

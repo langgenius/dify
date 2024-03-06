@@ -1,5 +1,5 @@
 from core.app.app_queue_manager import AppQueueManager, PublishFrom
-from core.workflow.callbacks.base_callback import BaseWorkflowCallback
+from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from models.workflow import WorkflowNodeExecution, WorkflowRun
 
 
@@ -41,5 +41,14 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         """
         self._queue_manager.publish_node_finished(
             workflow_node_execution_id=workflow_node_execution.id,
+            pub_from=PublishFrom.TASK_PIPELINE
+        )
+
+    def on_text_chunk(self, text: str) -> None:
+        """
+        Publish text chunk
+        """
+        self._queue_manager.publish_text_chunk(
+            text=text,
             pub_from=PublishFrom.TASK_PIPELINE
         )
