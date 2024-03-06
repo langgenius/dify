@@ -90,7 +90,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.5.7"
+        self.CURRENT_VERSION = "0.5.8"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -292,6 +292,8 @@ class Config:
         self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
 
         self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
+
+        self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
 
 
 class CloudEditionConfig(Config):

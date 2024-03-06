@@ -3,6 +3,7 @@ import csv
 from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.extractor.helpers import detect_file_encodings
 from core.rag.models.document import Document
 
 
@@ -36,7 +37,7 @@ class CSVExtractor(BaseExtractor):
                 docs = self._read_from_file(csvfile)
         except UnicodeDecodeError as e:
             if self._autodetect_encoding:
-                detected_encodings = detect_filze_encodings(self._file_path)
+                detected_encodings = detect_file_encodings(self._file_path)
                 for encoding in detected_encodings:
                     try:
                         with open(self._file_path, newline="", encoding=encoding.encoding) as csvfile:

@@ -62,7 +62,8 @@ class IndexingRunner:
                 text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
 
                 # transform
-                documents = self._transform(index_processor, dataset, text_docs, processing_rule.to_dict())
+                documents = self._transform(index_processor, dataset, text_docs, dataset_document.doc_language,
+                                            processing_rule.to_dict())
                 # save segment
                 self._load_segments(dataset, dataset_document, documents)
 
@@ -120,7 +121,8 @@ class IndexingRunner:
             text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
 
             # transform
-            documents = self._transform(index_processor, dataset, text_docs, processing_rule.to_dict())
+            documents = self._transform(index_processor, dataset, text_docs, dataset_document.doc_language,
+                                        processing_rule.to_dict())
             # save segment
             self._load_segments(dataset, dataset_document, documents)
 
@@ -186,7 +188,7 @@ class IndexingRunner:
                 first()
 
             index_type = dataset_document.doc_form
-            index_processor = IndexProcessorFactory(index_type, processing_rule.to_dict()).init_index_processor()
+            index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
                 index_processor=index_processor,
                 dataset=dataset,
@@ -750,7 +752,7 @@ class IndexingRunner:
         index_processor.load(dataset, documents)
 
     def _transform(self, index_processor: BaseIndexProcessor, dataset: Dataset,
-                   text_docs: list[Document], process_rule: dict) -> list[Document]:
+                   text_docs: list[Document], doc_language: str, process_rule: dict) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
         if dataset.indexing_technique == 'high_quality':
@@ -768,7 +770,8 @@ class IndexingRunner:
                 )
 
         documents = index_processor.transform(text_docs, embedding_model_instance=embedding_model_instance,
-                                              process_rule=process_rule)
+                                              process_rule=process_rule, tenant_id=dataset.tenant_id,
+                                              doc_language=doc_language)
 
         return documents
 

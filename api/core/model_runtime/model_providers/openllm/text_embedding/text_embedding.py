@@ -53,7 +53,7 @@ class OpenLLMTextEmbeddingModel(TextEmbeddingModel):
             # cloud not connect to the server
             raise InvokeAuthorizationError(f"Invalid server URL: {e}")
         except Exception as e:
-            raise InvokeConnectionError(e)
+            raise InvokeConnectionError(str(e))
         
         if response.status_code != 200:
             if response.status_code == 400:
