@@ -59,6 +59,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         <Split />
         {inputs.code_language}
         <CodeEditor
+          readOnly={readOnly}
           title={
             <TypeSelector
               options={codeLanguages}

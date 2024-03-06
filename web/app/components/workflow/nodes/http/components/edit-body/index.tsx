@@ -9,6 +9,7 @@ import useKeyValueList from '../../hooks/use-key-value-list'
 import KeyValue from '../key-value'
 import TextEditor from '../../../_base/components/editor/text-editor'
 import CodeEditor from '../../../_base/components/editor/code-editor'
+import { CodeLanguage } from '../../../code/types'
 
 type Props = {
   readonly: boolean
@@ -123,8 +124,10 @@ const EditBody: FC<Props> = ({
 
         {type === BodyType.json && (
           <CodeEditor
+            readOnly={readonly}
             title={<div className='uppercase'>JSON</div>}
             value={payload.data} onChange={handleBodyValueChange}
+            language={CodeLanguage.javascript}
           />
         )}
       </div>

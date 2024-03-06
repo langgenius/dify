@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { CodeLanguage } from '../code/types'
 import useConfig from './use-config'
 import type { TemplateTransformNodeType } from './types'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -46,6 +47,8 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         </Field>
         <Split />
         <CodeEditor
+          readOnly={readOnly}
+          language={CodeLanguage.python3}
           title={
             <div className='uppercase'>{t(`${i18nPrefix}.code`)}</div>
           }
