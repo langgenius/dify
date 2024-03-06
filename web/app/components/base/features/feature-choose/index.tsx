@@ -5,8 +5,14 @@ import { useFeatures } from '../hooks'
 import FeatureModal from './feature-modal'
 import Button from '@/app/components/base/button'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import type { Features } from '@/app/components/base/features/types'
 
-const ChooseFeature = () => {
+type ChooseFeatureProps = {
+  onChange?: (features: Features) => void
+}
+const ChooseFeature = ({
+  onChange,
+}: ChooseFeatureProps) => {
   const { t } = useTranslation()
   const showFeaturesModal = useFeatures(s => s.showFeaturesModal)
   const setShowFeaturesModal = useFeatures(s => s.setShowFeaturesModal)
@@ -21,7 +27,7 @@ const ChooseFeature = () => {
       </Button>
       {
         showFeaturesModal && (
-          <FeatureModal />
+          <FeatureModal onChange={onChange} />
         )
       }
     </>
