@@ -37,6 +37,7 @@ const Features = () => {
       </div>
       <div className='p-4'>
         <FeaturesPanel
+          onChange={handleFeaturesChange}
           openingStatementProps={{
             onAutoAddPromptVariable: () => {},
           }}

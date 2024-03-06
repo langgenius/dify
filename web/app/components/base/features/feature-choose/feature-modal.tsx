@@ -20,19 +20,18 @@ import {
   MessageHeartCircle,
 } from '@/app/components/base/icons/src/vender/solid/communication'
 import { FeatureEnum } from '@/app/components/base/features/types'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type FeatureModalProps = {
   onChange?: OnFeaturesChange
-  showTextToSpeechItem?: boolean
-  showSpeechToTextItem?: boolean
 }
 
 const FeatureModal: FC<FeatureModalProps> = ({
   onChange,
-  showTextToSpeechItem,
-  showSpeechToTextItem,
 }) => {
   const { t } = useTranslation()
+  const { data: speech2textDefaultModel } = useDefaultModel(4)
+  const { data: text2speechDefaultModel } = useDefaultModel(5)
   const featuresStore = useFeaturesStore()
   const setShowFeaturesModal = useFeatures(s => s.setShowFeaturesModal)
   const features = useFeatures(s => s.features)
@@ -90,7 +89,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
               type={FeatureEnum.suggested}
             />
             {
-              showTextToSpeechItem && (
+              !!text2speechDefaultModel && (
                 <FeatureItem
                   icon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
                   previewImgClassName='textToSpeechPreview'
@@ -103,7 +102,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
               )
             }
             {
-              showSpeechToTextItem && (
+              !!speech2textDefaultModel && (
                 <FeatureItem
                   icon={<Microphone01 className='w-4 h-4 text-[#7839EE]' />}
                   previewImgClassName='speechToTextPreview'

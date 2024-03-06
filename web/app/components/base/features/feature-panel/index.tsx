@@ -63,7 +63,7 @@ const FeaturePanel = ({
               }
               {
                 features.text2speech.enabled && (
-                  <TextToSpeech />
+                  <TextToSpeech onChange={onChange} />
                 )
               }
               {
