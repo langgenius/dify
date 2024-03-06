@@ -52,6 +52,7 @@ export const useWorkflow = () => {
     const appId = useAppStore.getState().appDetail?.id
 
     if (appId) {
+      const features = featuresStore!.getState().features
       syncWorkflowDraft({
         url: `/apps/${appId}/workflows/draft`,
         params: {
@@ -60,11 +61,22 @@ export const useWorkflow = () => {
             edges,
             viewport: getViewport(),
           },
-          features: {},
+          features: {
+            opening_statement: features.opening.opening_statement,
+            suggested_questions: features.opening.suggested_questions,
+            suggested_questions_after_answer: features.suggested,
+            text_to_speech: features.text2speech,
+            speech_to_text: features.speech2text,
+            retriever_resource: features.citation,
+            sensitive_word_avoidance: features.moderation,
+            annotation_reply: features.annotation,
+          },
         },
+      }).then((res) => {
+        useStore.setState({ draftUpdatedAt: res.updated_at })
       })
     }
-  }, [store, reactFlow])
+  }, [store, reactFlow, featuresStore])
 
   const handleLayout = useCallback(async () => {
     const {

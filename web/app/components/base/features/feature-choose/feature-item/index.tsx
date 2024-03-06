@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
+import produce from 'immer'
 import cn from 'classnames'
 import s from './style.module.css'
 import Switch from '@/app/components/base/switch'
-import type { FeatureEnum } from '@/app/components/base/features/types'
+import { FeatureEnum } from '@/app/components/base/features/types'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useModalContext } from '@/context/modal-context'
 
 export type IFeatureItemProps = {
   icon: React.ReactNode
@@ -25,9 +28,43 @@ const FeatureItem: FC<IFeatureItemProps> = ({
   onChange,
   type,
 }) => {
+  const featuresStore = useFeaturesStore()
+  const { setShowModerationSettingModal } = useModalContext()
+
   const handleChange = useCallback((newValue: boolean) => {
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
+
+    if (newValue && !features.moderation.type && type === FeatureEnum.moderation) {
+      setShowModerationSettingModal({
+        payload: {
+          enabled: true,
+          type: 'keywords',
+          config: {
+            keywords: '',
+            inputs_config: {
+              enabled: true,
+              preset_response: '',
+            },
+          },
+        },
+        onSaveCallback: (newModeration) => {
+          setFeatures(produce(features, (draft) => {
+            draft.moderation = newModeration
+          }))
+        },
+        onCancelCallback: () => {
+          setFeatures(produce(features, (draft) => {
+            draft.moderation = { enabled: false }
+          }))
+        },
+      })
+      return
+    }
     onChange(type, newValue)
-  }, [type, onChange])
+  }, [type, onChange, featuresStore, setShowModerationSettingModal])
 
   return (
     <div className={cn(s.wrap, 'relative flex justify-between p-3 rounded-xl border border-transparent bg-gray-50 hover:border-gray-200  cursor-pointer')}>

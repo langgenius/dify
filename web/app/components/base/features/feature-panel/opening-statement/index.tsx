@@ -11,6 +11,7 @@ import {
   useFeatures,
   useFeaturesStore,
 } from '../../hooks'
+import type { OnFeaturesChange } from '../../types'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Button from '@/app/components/base/button'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
@@ -24,6 +25,7 @@ import type { PromptVariable } from '@/models/debug'
 const MAX_QUESTION_NUM = 5
 
 export type OpeningStatementProps = {
+  onChange?: OnFeaturesChange
   readonly?: boolean
   promptVariables?: PromptVariable[]
   onAutoAddPromptVariable: (variable: PromptVariable[]) => void
@@ -33,6 +35,7 @@ export type OpeningStatementProps = {
 const regex = /\{\{([^}]+)\}\}/g
 
 const OpeningStatement: FC<OpeningStatementProps> = ({
+  onChange,
   readonly,
   promptVariables = [],
   onAutoAddPromptVariable,
@@ -112,10 +115,14 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
       setFeatures,
     } = getState()
 
-    setFeatures(produce(features, (draft) => {
+    const newFeatures = produce(features, (draft) => {
       draft.opening.opening_statement = tempValue
       draft.opening.suggested_questions = tempSuggestedQuestions
-    }))
+    })
+    setFeatures(newFeatures)
+
+    if (onChange)
+      onChange(newFeatures)
   }
 
   const cancelAutoAddVar = () => {
@@ -125,9 +132,13 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
       setFeatures,
     } = getState()
 
-    setFeatures(produce(features, (draft) => {
+    const newFeatures = produce(features, (draft) => {
       draft.opening.opening_statement = tempValue
-    }))
+    })
+    setFeatures(newFeatures)
+
+    if (onChange)
+      onChange(newFeatures)
     hideConfirmAddVar()
     setBlur()
   }
@@ -139,9 +150,12 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
       setFeatures,
     } = getState()
 
-    setFeatures(produce(features, (draft) => {
+    const newFeatures = produce(features, (draft) => {
       draft.opening.opening_statement = tempValue
-    }))
+    })
+    setFeatures(newFeatures)
+    if (onChange)
+      onChange(newFeatures)
     onAutoAddPromptVariable([...notIncludeKeys.map(key => getNewVar(key, 'string'))])
     hideConfirmAddVar()
     setBlur()

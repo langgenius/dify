@@ -17,7 +17,7 @@ const EditingTitle = () => {
         draftUpdatedAt && (
           <>
             <span className='flex items-center mx-1'>·</span>
-            {t('workflow.common.autoSaved')} {dayjs(draftUpdatedAt).format('HH:mm:ss')}
+            {t('workflow.common.autoSaved')} {dayjs(draftUpdatedAt * 1000).format('HH:mm:ss')}
           </>
         )
       }

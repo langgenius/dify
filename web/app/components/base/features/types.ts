@@ -51,3 +51,5 @@ export type Features = {
   [FeatureEnum.moderation]: SensitiveWordAvoidance
   [FeatureEnum.annotation]: AnnotationReply
 }
+
+export type OnFeaturesChange = (features: Features) => void

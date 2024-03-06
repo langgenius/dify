@@ -7,13 +7,19 @@ import {
   useFeatures,
   useFeaturesStore,
 } from '../../hooks'
+import type { OnFeaturesChange } from '../../types'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import I18n from '@/context/i18n'
 
-const Moderation = () => {
+type ModerationProps = {
+  onChange?: OnFeaturesChange
+}
+const Moderation = ({
+  onChange,
+}: ModerationProps) => {
   const { t } = useTranslation()
   const { setShowModerationSettingModal } = useModalContext()
   const { locale } = useContext(I18n)
@@ -33,9 +39,12 @@ const Moderation = () => {
     setShowModerationSettingModal({
       payload: moderation as any,
       onSaveCallback: (newModeration) => {
-        setFeatures(produce(features, (draft) => {
+        const newFeatures = produce(features, (draft) => {
           draft.moderation = newModeration
-        }))
+        })
+        setFeatures(newFeatures)
+        if (onChange)
+          onChange(newFeatures)
       },
     })
   }

@@ -9,8 +9,8 @@ export const fetchWorkflowDraft: Fetcher<FetchWorkflowDraftResponse, string> = (
   return get<FetchWorkflowDraftResponse>(url, {}, { silent: true })
 }
 
-export const syncWorkflowDraft: Fetcher<CommonResponse, { url: string; params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features'> }> = ({ url, params }) => {
-  return post<CommonResponse>(url, { body: params })
+export const syncWorkflowDraft = ({ url, params }: { url: string; params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features'> }) => {
+  return post<CommonResponse & { updated_at: number }>(url, { body: params })
 }
 
 export const fetchNodesDefaultConfigs: Fetcher<any, string> = (url) => {

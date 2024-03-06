@@ -7,6 +7,7 @@ import {
   useFeatures,
   useFeaturesStore,
 } from '../hooks'
+import type { OnFeaturesChange } from '../types'
 import FeatureGroup from './feature-group'
 import FeatureItem from './feature-item'
 import Modal from '@/app/components/base/modal'
@@ -19,10 +20,9 @@ import {
   MessageHeartCircle,
 } from '@/app/components/base/icons/src/vender/solid/communication'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import type { Features } from '@/app/components/base/features/types'
 
 export type FeatureModalProps = {
-  onChange?: (features: Features) => void
+  onChange?: OnFeaturesChange
   showTextToSpeechItem?: boolean
   showSpeechToTextItem?: boolean
 }

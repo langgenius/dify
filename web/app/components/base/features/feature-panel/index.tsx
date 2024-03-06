@@ -3,6 +3,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { OnFeaturesChange } from '../types'
 import { useFeatures } from '../hooks'
 import OpeningStatement from './opening-statement'
 import type { OpeningStatementProps } from './opening-statement'
@@ -11,14 +12,16 @@ import TextToSpeech from './text-to-speech'
 import SpeechToText from './speech-to-text'
 import Citation from './citation'
 import Moderation from './moderation'
-import Annotation from './annotation/config-param'
-import type { AnnotationProps } from './annotation/config-param'
+import Annotation from './annotation'
+import type { AnnotationProps } from './annotation'
 
 export type FeaturePanelProps = {
+  onChange?: OnFeaturesChange
   openingStatementProps: OpeningStatementProps
   annotationProps: AnnotationProps
 }
 const FeaturePanel = ({
+  onChange,
   openingStatementProps,
   annotationProps,
 }: FeaturePanelProps) => {
@@ -50,7 +53,7 @@ const FeaturePanel = ({
             <div className='py-2 space-y-2'>
               {
                 features.opening.enabled && (
-                  <OpeningStatement {...openingStatementProps} />
+                  <OpeningStatement {...openingStatementProps} onChange={onChange} />
                 )
               }
               {
@@ -92,7 +95,7 @@ const FeaturePanel = ({
             <div className='py-2 space-y-2'>
               {
                 features.moderation.enabled && (
-                  <Moderation />
+                  <Moderation onChange={onChange} />
                 )
               }
               {

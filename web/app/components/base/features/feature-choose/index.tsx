@@ -2,13 +2,13 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures } from '../hooks'
+import type { OnFeaturesChange } from '../types'
 import FeatureModal from './feature-modal'
 import Button from '@/app/components/base/button'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import type { Features } from '@/app/components/base/features/types'
 
 type ChooseFeatureProps = {
-  onChange?: (features: Features) => void
+  onChange?: OnFeaturesChange
 }
 const ChooseFeature = ({
   onChange,
