@@ -49,9 +49,9 @@ export type IChatProps = {
   onSend?: (message: string, files: VisionFile[]) => void
   displayScene?: DisplayScene
   useCurrentUserAvatar?: boolean
-  isResponsing?: boolean
-  canStopResponsing?: boolean
-  abortResponsing?: () => void
+  isResponding?: boolean
+  canStopResponding?: boolean
+  abortResponding?: () => void
   controlClearQuery?: number
   controlFocus?: number
   isShowSuggestion?: boolean
@@ -82,9 +82,9 @@ const Chat: FC<IChatProps> = ({
   onSend = () => { },
   displayScene,
   useCurrentUserAvatar,
-  isResponsing,
-  canStopResponsing,
-  abortResponsing,
+  isResponding,
+  canStopResponding,
+  abortResponding,
   controlClearQuery,
   controlFocus,
   isShowSuggestion,
@@ -153,7 +153,7 @@ const Chat: FC<IChatProps> = ({
     if (!files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
       if (files.length)
         onClear()
-      if (!isResponsing)
+      if (!isResponding)
         onQueryChange('')
     }
   }
@@ -286,7 +286,7 @@ const Chat: FC<IChatProps> = ({
               isHideFeedbackEdit={isHideFeedbackEdit}
               onFeedback={onFeedback}
               displayScene={displayScene ?? 'web'}
-              isResponsing={isResponsing && isLast}
+              isResponding={isResponding && isLast}
               answerIcon={answerIcon}
               citation={citation}
               dataSets={dataSets}
@@ -311,7 +311,7 @@ const Chat: FC<IChatProps> = ({
               useCurrentUserAvatar={useCurrentUserAvatar}
               item={item}
               isShowPromptLog={isShowPromptLog}
-              isResponsing={isResponsing}
+              isResponding={isResponding}
             />
           )
         })}
@@ -320,9 +320,9 @@ const Chat: FC<IChatProps> = ({
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
             {/* Thinking is sync and can not be stopped */}
-            {(isResponsing && canStopResponsing && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
+            {(isResponding && canStopResponding && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
               <div className='flex justify-center mb-4'>
-                <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponsing?.()}>
+                <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponding?.()}>
                   {stopIcon}
                   <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
                 </Button>

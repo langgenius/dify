@@ -203,7 +203,7 @@ const Main: FC<IMainProps> = ({
     }
 
     // update chat list of current conversation
-    if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponsing) {
+    if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponding) {
       fetchChatList(currConversationId, isInstalledApp, installedAppInfo?.id).then((res: any) => {
         const { data } = res
         const newChatList: IChatItem[] = generateNewChatListWithOpenstatement(notSyncToStateIntroduction, notSyncToStateInputs)
@@ -252,7 +252,7 @@ const Main: FC<IMainProps> = ({
   const createNewChat = async () => {
     // if new chat is already exist, do not create new chat
     abortController?.abort()
-    setResponsingFalse()
+    setRespondingFalse()
     if (conversationList.some(item => item.id === '-1'))
       return
 
@@ -369,7 +369,7 @@ const Main: FC<IMainProps> = ({
     })()
   }, [])
 
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
+  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const { notify } = useContext(ToastContext)
   const logError = (message: string) => {
@@ -407,11 +407,11 @@ const Main: FC<IMainProps> = ({
 
   const [controlFocus, setControlFocus] = useState(0)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
-  const doShowSuggestion = isShowSuggestion && !isResponsing
+  const doShowSuggestion = isShowSuggestion && !isResponding
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
-  const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
+  const [isRespondingConIsCurrCon, setIsRespondingConCurrCon, getIsRespondingConIsCurrCon] = useGetState(true)
   const [shouldReload, setShouldReload] = useState(false)
   const [userQuery, setUserQuery] = useState('')
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
@@ -445,7 +445,7 @@ const Main: FC<IMainProps> = ({
   }
 
   const handleSend = async (message: string, files?: VisionFile[]) => {
-    if (isResponsing) {
+    if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return
     }
@@ -507,7 +507,7 @@ const Main: FC<IMainProps> = ({
     let tempNewConversationId = prevTempNewConversationId
 
     setHasStopResponded(false)
-    setResponsingTrue()
+    setRespondingTrue()
     setIsShowSuggestion(false)
     sendChatMessage(data, {
       getAbortController: (abortController) => {
@@ -533,7 +533,7 @@ const Main: FC<IMainProps> = ({
         setMessageTaskId(taskId)
         // has switched to other conversation
         if (prevTempNewConversationId !== getCurrConversationId()) {
-          setIsResponsingConCurrCon(false)
+          setIsRespondingConCurrCon(false)
           return
         }
         updateCurrentQA({
@@ -565,7 +565,7 @@ const Main: FC<IMainProps> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
-        setResponsingFalse()
+        setRespondingFalse()
       },
       onFile(file) {
         const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
@@ -604,7 +604,7 @@ const Main: FC<IMainProps> = ({
         }
         // has switched to other conversation
         if (prevTempNewConversationId !== getCurrConversationId()) {
-          setIsResponsingConCurrCon(false)
+          setIsRespondingConCurrCon(false)
           return false
         }
 
@@ -666,7 +666,7 @@ const Main: FC<IMainProps> = ({
         }
       },
       onError() {
-        setResponsingFalse()
+        setRespondingFalse()
         // role back placeholder answer
         setChatList(produce(getChatList(), (draft) => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
@@ -773,7 +773,7 @@ const Main: FC<IMainProps> = ({
           }
           {
             hasSetInputs && (
-              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
+              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponding ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
                 <div className='h-full overflow-y-auto' ref={chatListDomRef}>
                   <Chat
                     chatList={chatList}
@@ -782,12 +782,12 @@ const Main: FC<IMainProps> = ({
                     onSend={handleSend}
                     isHideFeedbackEdit
                     onFeedback={handleFeedback}
-                    isResponsing={isResponsing}
-                    canStopResponsing={!!messageTaskId && isResponsingConIsCurrCon}
-                    abortResponsing={async () => {
+                    isResponding={isResponding}
+                    canStopResponding={!!messageTaskId && isRespondingConIsCurrCon}
+                    abortResponding={async () => {
                       await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
                       setHasStopResponded(true)
-                      setResponsingFalse()
+                      setRespondingFalse()
                     }}
                     checkCanSend={checkCanSend}
                     controlFocus={controlFocus}

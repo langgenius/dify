@@ -43,7 +43,7 @@ const ChatWrapper = () => {
     chatList,
     handleSend,
     handleStop,
-    isResponsing,
+    isResponding,
     suggestedQuestions,
   } = useChat(
     appConfig,
@@ -130,7 +130,7 @@ const ChatWrapper = () => {
     <Chat
       config={appConfig}
       chatList={chatList}
-      isResponsing={isResponsing}
+      isResponding={isResponding}
       chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
       chatFooterClassName='pb-4'
       chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
