@@ -64,7 +64,8 @@ class AudioService:
         return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
 
     @classmethod
-    def transcript_tts(cls, app_model: App, text: str, streaming: bool, end_user: Optional[str] = None):
+    def transcript_tts(cls, app_model: App, text: str, streaming: bool,
+                       voice: Optional[str] = None, end_user: Optional[str] = None):
         if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
             workflow = app_model.workflow
             if workflow is None:
@@ -74,14 +75,14 @@ class AudioService:
             if 'text_to_speech' not in features_dict or not features_dict['text_to_speech'].get('enabled'):
                 raise ValueError("TTS is not enabled")
 
-            voice = features_dict['text_to_speech'].get('voice')
+            voice = features_dict['text_to_speech'].get('voice') if voice is None else voice
         else:
             text_to_speech_dict = app_model.app_model_config.text_to_speech_dict
 
             if not text_to_speech_dict.get('enabled'):
                 raise ValueError("TTS is not enabled")
 
-            voice = text_to_speech_dict.get('voice'),
+            voice = text_to_speech_dict.get('voice') if voice is None else voice
 
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
