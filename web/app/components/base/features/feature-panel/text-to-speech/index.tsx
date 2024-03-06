@@ -12,7 +12,7 @@ import AudioBtn from '@/app/components/base/audio-btn'
 
 const TextToSpeech: FC = () => {
   const { t } = useTranslation()
-  const textToSpeech = useFeatures(s => s.textToSpeech)
+  const textToSpeech = useFeatures(s => s.features.text2speech)
 
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)

@@ -23,21 +23,15 @@ const FeaturePanel = ({
   annotationProps,
 }: FeaturePanelProps) => {
   const { t } = useTranslation()
-  const openingStatement = useFeatures(s => s.openingStatement)
-  const suggestedQuestionsAfterAnswer = useFeatures(s => s.suggestedQuestionsAfterAnswer)
-  const textToSpeech = useFeatures(s => s.textToSpeech)
-  const speechToText = useFeatures(s => s.speechToText)
-  const citation = useFeatures(s => s.citation)
-  const moderation = useFeatures(s => s.moderation)
-  const annotation = useFeatures(s => s.annotation)
+  const features = useFeatures(s => s.features)
 
   const showAdvanceFeature = useMemo(() => {
-    return openingStatement.enabled || suggestedQuestionsAfterAnswer.enabled || textToSpeech.enabled || speechToText.enabled || citation.enabled
-  }, [openingStatement, suggestedQuestionsAfterAnswer, textToSpeech, speechToText, citation])
+    return features.opening.enabled || features.suggested.enabled || features.speech2text.enabled || features.text2speech.enabled || features.citation.enabled
+  }, [features])
 
   const showToolFeature = useMemo(() => {
-    return moderation.enabled || annotation.enabled
-  }, [moderation, annotation])
+    return features.moderation.enabled || features.annotation.enabled
+  }, [features])
 
   return (
     <div className='space-y-3'>
@@ -55,27 +49,27 @@ const FeaturePanel = ({
             </div>
             <div className='py-2 space-y-2'>
               {
-                openingStatement.enabled && (
+                features.opening.enabled && (
                   <OpeningStatement {...openingStatementProps} />
                 )
               }
               {
-                suggestedQuestionsAfterAnswer.enabled && (
+                features.suggested.enabled && (
                   <SuggestedQuestionsAfterAnswer />
                 )
               }
               {
-                textToSpeech.enabled && (
+                features.text2speech.enabled && (
                   <TextToSpeech />
                 )
               }
               {
-                speechToText.enabled && (
+                features.speech2text.enabled && (
                   <SpeechToText />
                 )
               }
               {
-                citation.enabled && (
+                features.citation.enabled && (
                   <Citation />
                 )
               }
@@ -97,12 +91,12 @@ const FeaturePanel = ({
             </div>
             <div className='py-2 space-y-2'>
               {
-                moderation.enabled && (
+                features.moderation.enabled && (
                   <Moderation />
                 )
               }
               {
-                annotation.enabled && (
+                features.annotation.enabled && (
                   <Annotation {...annotationProps} />
                 )
               }

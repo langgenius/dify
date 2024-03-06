@@ -1,8 +1,12 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
+import produce from 'immer'
 import { useContext } from 'use-context-selector'
-import { useFeatures } from '../../hooks'
+import {
+  useFeatures,
+  useFeaturesStore,
+} from '../../hooks'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
@@ -13,8 +17,8 @@ const Moderation = () => {
   const { t } = useTranslation()
   const { setShowModerationSettingModal } = useModalContext()
   const { locale } = useContext(I18n)
-  const moderation = useFeatures(s => s.moderation)
-  const setModeration = useFeatures(s => s.setModeration)
+  const featuresStore = useFeaturesStore()
+  const moderation = useFeatures(s => s.features.moderation)
 
   const { data: codeBasedExtensionList } = useSWR(
     '/code-based-extension?module=moderation',
@@ -22,9 +26,17 @@ const Moderation = () => {
   )
 
   const handleOpenModerationSettingModal = () => {
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
     setShowModerationSettingModal({
-      payload: moderation,
-      onSaveCallback: setModeration,
+      payload: moderation as any,
+      onSaveCallback: (newModeration) => {
+        setFeatures(produce(features, (draft) => {
+          draft.moderation = newModeration
+        }))
+      },
     })
   }
 

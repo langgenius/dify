@@ -48,7 +48,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdate, id, data])
 
   return (
-    <div className='mr-2 w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'>
+    <div className='w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'>
       <div className='sticky top-0 bg-white border-b-[0.5px] border-black/5 z-10'>
         <div className='flex items-center px-4 pt-4 pb-1'>
           {

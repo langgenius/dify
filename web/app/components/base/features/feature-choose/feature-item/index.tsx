@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import cn from 'classnames'
 import s from './style.module.css'
 import Switch from '@/app/components/base/switch'
+import type { FeatureEnum } from '@/app/components/base/features/types'
 
 export type IFeatureItemProps = {
   icon: React.ReactNode
@@ -11,7 +12,8 @@ export type IFeatureItemProps = {
   title: string
   description: string
   value: boolean
-  onChange: (value: boolean) => void
+  onChange: (type: FeatureEnum, value: boolean) => void
+  type: FeatureEnum
 }
 
 const FeatureItem: FC<IFeatureItemProps> = ({
@@ -21,7 +23,12 @@ const FeatureItem: FC<IFeatureItemProps> = ({
   description,
   value,
   onChange,
+  type,
 }) => {
+  const handleChange = useCallback((newValue: boolean) => {
+    onChange(type, newValue)
+  }, [type, onChange])
+
   return (
     <div className={cn(s.wrap, 'relative flex justify-between p-3 rounded-xl border border-transparent bg-gray-50 hover:border-gray-200  cursor-pointer')}>
       <div className='flex space-x-3 mr-2'>
@@ -40,7 +47,7 @@ const FeatureItem: FC<IFeatureItemProps> = ({
         </div>
       </div>
 
-      <Switch onChange={onChange} defaultValue={value} />
+      <Switch onChange={handleChange} defaultValue={value} />
       {
         previewImgClassName && (
           <div className={cn(s.preview, s[previewImgClassName])}>

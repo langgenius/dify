@@ -1,13 +1,5 @@
 import { createStore } from 'zustand'
-import type {
-  AnnotationReply,
-  OpeningStatement,
-  RetrieverResource,
-  SensitiveWordAvoidance,
-  SpeechToText,
-  SuggestedQuestionsAfterAnswer,
-  TextToSpeech,
-} from './types'
+import type { Features } from './types'
 
 export type FeaturesModal = {
   showFeaturesModal: boolean
@@ -15,23 +7,11 @@ export type FeaturesModal = {
 }
 
 export type FeaturesState = {
-  openingStatement: OpeningStatement
-  suggestedQuestionsAfterAnswer: SuggestedQuestionsAfterAnswer
-  textToSpeech: TextToSpeech
-  speechToText: SpeechToText
-  citation: RetrieverResource
-  moderation: SensitiveWordAvoidance
-  annotation: AnnotationReply
+  features: Features
 }
 
 export type FeaturesAction = {
-  setOpeningStatement: (openingStatement: OpeningStatement) => void
-  setSuggestedQuestionsAfterAnswer: (suggestedQuestionsAfterAnswer: SuggestedQuestionsAfterAnswer) => void
-  setTextToSpeech: (textToSpeech: TextToSpeech) => void
-  setSpeechToText: (speechToText: SpeechToText) => void
-  setCitation: (citation: RetrieverResource) => void
-  setModeration: (moderation: SensitiveWordAvoidance) => void
-  setAnnotation: (annotation: AnnotationReply) => void
+  setFeatures: (features: Features) => void
 }
 
 export type FeatureStoreState = FeaturesState & FeaturesAction & FeaturesModal
@@ -40,39 +20,34 @@ export type FeaturesStore = ReturnType<typeof createFeaturesStore>
 
 export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
   const DEFAULT_PROPS: FeaturesState = {
-    openingStatement: {
-      enabled: false,
-    },
-    suggestedQuestionsAfterAnswer: {
-      enabled: false,
-    },
-    textToSpeech: {
-      enabled: false,
-    },
-    speechToText: {
-      enabled: false,
-    },
-    citation: {
-      enabled: false,
-    },
-    moderation: {
-      enabled: false,
-    },
-    annotation: {
-      enabled: false,
+    features: {
+      opening: {
+        enabled: false,
+      },
+      suggested: {
+        enabled: false,
+      },
+      text2speech: {
+        enabled: false,
+      },
+      speech2text: {
+        enabled: false,
+      },
+      citation: {
+        enabled: false,
+      },
+      moderation: {
+        enabled: false,
+      },
+      annotation: {
+        enabled: false,
+      },
     },
   }
   return createStore<FeatureStoreState>()(set => ({
     ...DEFAULT_PROPS,
     ...initProps,
-    setOpeningStatement: openingStatement => set(() => ({ openingStatement })),
-    setSuggestedQuestionsAfterAnswer: suggestedQuestionsAfterAnswer => set(() => ({ suggestedQuestionsAfterAnswer })),
-    setSpeechToText: speechToText => set(() => ({ speechToText })),
-    setTextToSpeech: textToSpeech => set(() => ({ textToSpeech })),
-    setCitation: citation => set(() => ({ citation })),
-    setModeration: moderation => set(() => ({ moderation })),
-    setAnnotation: annotation => set(() => ({ annotation })),
-
+    setFeatures: features => set(() => ({ features })),
     showFeaturesModal: false,
     setShowFeaturesModal: showFeaturesModal => set(() => ({ showFeaturesModal })),
   }))

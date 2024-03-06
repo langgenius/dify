@@ -7,7 +7,10 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { ReactSortable } from 'react-sortablejs'
-import { useFeatures } from '../../hooks'
+import {
+  useFeatures,
+  useFeaturesStore,
+} from '../../hooks'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Button from '@/app/components/base/button'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
@@ -35,8 +38,8 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
   onAutoAddPromptVariable,
 }) => {
   const { t } = useTranslation()
-  const openingStatement = useFeatures(s => s.openingStatement)
-  const setOpeningStatement = useFeatures(s => s.setOpeningStatement)
+  const featureStore = useFeaturesStore()
+  const openingStatement = useFeatures(s => s.features.opening)
   const value = openingStatement.opening_statement || ''
   const suggestedQuestions = openingStatement.suggested_questions || []
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
@@ -103,23 +106,41 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
       return
     }
     setBlur()
-    setOpeningStatement(produce(openingStatement, (draft) => {
-      draft.opening_statement = tempValue
-      draft.suggested_questions = tempSuggestedQuestions
+    const { getState } = featureStore!
+    const {
+      features,
+      setFeatures,
+    } = getState()
+
+    setFeatures(produce(features, (draft) => {
+      draft.opening.opening_statement = tempValue
+      draft.opening.suggested_questions = tempSuggestedQuestions
     }))
   }
 
   const cancelAutoAddVar = () => {
-    setOpeningStatement(produce(openingStatement, (draft) => {
-      draft.opening_statement = tempValue
+    const { getState } = featureStore!
+    const {
+      features,
+      setFeatures,
+    } = getState()
+
+    setFeatures(produce(features, (draft) => {
+      draft.opening.opening_statement = tempValue
     }))
     hideConfirmAddVar()
     setBlur()
   }
 
   const autoAddVar = () => {
-    setOpeningStatement(produce(openingStatement, (draft) => {
-      draft.opening_statement = tempValue
+    const { getState } = featureStore!
+    const {
+      features,
+      setFeatures,
+    } = getState()
+
+    setFeatures(produce(features, (draft) => {
+      draft.opening.opening_statement = tempValue
     }))
     onAutoAddPromptVariable([...notIncludeKeys.map(key => getNewVar(key, 'string'))])
     hideConfirmAddVar()

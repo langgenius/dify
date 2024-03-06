@@ -3,26 +3,27 @@ import {
   memo,
   useCallback,
 } from 'react'
-import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import RunAndHistory from './run-and-history'
+import EditingTitle from './editing-title'
+import RunningTitle from './running-title'
 import Publish from './publish'
-import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { Mode } from '@/app/components/workflow/types'
 
 const Header: FC = () => {
+  const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
-  const setShowFeaturesPanel = useStore(state => state.setShowFeaturesPanel)
-  const runStaus = useStore(state => state.runStaus)
-  const setRunStaus = useStore(state => state.setRunStaus)
-  const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
+  const mode = useStore(state => state.mode)
+  const runTaskId = useStore(state => state.runTaskId)
 
   const handleShowFeatures = useCallback(() => {
-    setShowFeaturesPanel(true)
-  }, [setShowFeaturesPanel])
+    useStore.setState({ showFeaturesPanel: true })
+  }, [])
 
   return (
     <div
@@ -33,35 +34,25 @@ const Header: FC = () => {
     >
       <div>
         <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
-        <div className='flex items-center'>
-          <div className='flex items-center text-xs text-gray-500'>
-            <Edit03 className='mr-1 w-3 h-3 text-gray-400' />
-            Editing
-            {
-              draftUpdatedAt && (
-                <>
-                  <span className='flex items-center mx-1'>·</span>
-                  <span>
-                    Auto-Saved {dayjs(draftUpdatedAt).format('HH:mm:ss')}
-                  </span>
-                </>
-              )
-            }
-          </div>
-        </div>
+        {
+          mode === Mode.Editing && !runTaskId && <EditingTitle />
+        }
+        {
+          (mode === Mode.Running || runTaskId) && <RunningTitle />
+        }
       </div>
       <div className='flex items-center'>
         {
-          runStaus && (
+          (mode === Mode.Running || runTaskId) && (
             <Button
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
                 border-[0.5px] border-gray-200 shadow-xs
               `}
-              onClick={() => setRunStaus('')}
+              onClick={() => useStore.setState({ mode: Mode.Editing, runTaskId: '' })}
             >
               <ArrowNarrowLeft className='mr-1 w-4 h-4' />
-              Go back to editor
+              {t('workflow.common.goBackToEdit')}
             </Button>
           )
         }
@@ -77,7 +68,7 @@ const Header: FC = () => {
               onClick={handleShowFeatures}
             >
               <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
-              Features
+              {t('workflow.common.features')}
             </Button>
           )
         }

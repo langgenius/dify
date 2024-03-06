@@ -31,3 +31,23 @@ export type AnnotationReply = EnabledOrDisabled & {
     embedding_provider_name: string
   }
 }
+
+export enum FeatureEnum {
+  opening = 'opening',
+  suggested = 'suggested',
+  text2speech = 'text2speech',
+  speech2text = 'speech2text',
+  citation = 'citation',
+  moderation = 'moderation',
+  annotation = 'annotation',
+}
+
+export type Features = {
+  [FeatureEnum.opening]: OpeningStatement
+  [FeatureEnum.suggested]: SuggestedQuestionsAfterAnswer
+  [FeatureEnum.text2speech]: TextToSpeech
+  [FeatureEnum.speech2text]: SpeechToText
+  [FeatureEnum.citation]: RetrieverResource
+  [FeatureEnum.moderation]: SensitiveWordAvoidance
+  [FeatureEnum.annotation]: AnnotationReply
+}

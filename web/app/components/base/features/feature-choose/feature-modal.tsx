@@ -3,7 +3,10 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
-import { useFeatures } from '../hooks'
+import {
+  useFeatures,
+  useFeaturesStore,
+} from '../hooks'
 import FeatureGroup from './feature-group'
 import FeatureItem from './feature-item'
 import Modal from '@/app/components/base/modal'
@@ -15,36 +18,42 @@ import {
   MessageFast,
   MessageHeartCircle,
 } from '@/app/components/base/icons/src/vender/solid/communication'
+import { FeatureEnum } from '@/app/components/base/features/types'
+import type { Features } from '@/app/components/base/features/types'
 
-export type ChooseFeatureProps = {
+export type FeatureModalProps = {
+  onChange?: (features: Features) => void
   showTextToSpeechItem?: boolean
   showSpeechToTextItem?: boolean
 }
 
-const ChooseFeature: FC<ChooseFeatureProps> = ({
+const FeatureModal: FC<FeatureModalProps> = ({
+  onChange,
   showTextToSpeechItem,
   showSpeechToTextItem,
 }) => {
   const { t } = useTranslation()
+  const featuresStore = useFeaturesStore()
   const setShowFeaturesModal = useFeatures(s => s.setShowFeaturesModal)
-  const openingStatement = useFeatures(s => s.openingStatement)
-  const setOpeningStatement = useFeatures(s => s.setOpeningStatement)
-  const suggestedQuestionsAfterAnswer = useFeatures(s => s.suggestedQuestionsAfterAnswer)
-  const setSuggestedQuestionsAfterAnswer = useFeatures(s => s.setSuggestedQuestionsAfterAnswer)
-  const textToSpeech = useFeatures(s => s.textToSpeech)
-  const setTextToSpeech = useFeatures(s => s.setTextToSpeech)
-  const speechToText = useFeatures(s => s.speechToText)
-  const setSpeechToText = useFeatures(s => s.setSpeechToText)
-  const citation = useFeatures(s => s.citation)
-  const setCitation = useFeatures(s => s.setCitation)
-  const moderation = useFeatures(s => s.moderation)
-  const setModeration = useFeatures(s => s.setModeration)
-  const annotation = useFeatures(s => s.annotation)
-  const setAnnotation = useFeatures(s => s.setAnnotation)
+  const features = useFeatures(s => s.features)
 
   const handleCancelModal = useCallback(() => {
     setShowFeaturesModal(false)
   }, [setShowFeaturesModal])
+
+  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
+
+    const newFeatures = produce(features, (draft) => {
+      draft[type].enabled = enabled
+    })
+    setFeatures(newFeatures)
+    if (onChange)
+      onChange(newFeatures)
+  }, [featuresStore, onChange])
 
   return (
     <Modal
@@ -67,20 +76,18 @@ const ChooseFeature: FC<ChooseFeatureProps> = ({
               previewImgClassName='openingStatementPreview'
               title={t('appDebug.feature.conversationOpener.title')}
               description={t('appDebug.feature.conversationOpener.description')}
-              value={openingStatement.enabled}
-              onChange={value => setOpeningStatement(produce(openingStatement, (draft) => {
-                draft.enabled = value
-              }))}
+              value={!!features.opening.enabled}
+              onChange={handleChange}
+              type={FeatureEnum.opening}
             />
             <FeatureItem
               icon={<SuggestedQuestionsAfterAnswerIcon />}
               previewImgClassName='suggestedQuestionsAfterAnswerPreview'
               title={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
               description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
-              value={suggestedQuestionsAfterAnswer.enabled}
-              onChange={value => setSuggestedQuestionsAfterAnswer(produce(suggestedQuestionsAfterAnswer, (draft) => {
-                draft.enabled = value
-              }))}
+              value={!!features.suggested.enabled}
+              onChange={handleChange}
+              type={FeatureEnum.suggested}
             />
             {
               showTextToSpeechItem && (
@@ -89,10 +96,9 @@ const ChooseFeature: FC<ChooseFeatureProps> = ({
                   previewImgClassName='textToSpeechPreview'
                   title={t('appDebug.feature.textToSpeech.title')}
                   description={t('appDebug.feature.textToSpeech.description')}
-                  value={textToSpeech.enabled}
-                  onChange={value => setTextToSpeech(produce(textToSpeech, (draft) => {
-                    draft.enabled = value
-                  }))}
+                  value={!!features.text2speech.enabled}
+                  onChange={handleChange}
+                  type={FeatureEnum.text2speech}
                 />
               )
             }
@@ -103,10 +109,9 @@ const ChooseFeature: FC<ChooseFeatureProps> = ({
                   previewImgClassName='speechToTextPreview'
                   title={t('appDebug.feature.speechToText.title')}
                   description={t('appDebug.feature.speechToText.description')}
-                  value={speechToText.enabled}
-                  onChange={value => setSpeechToText(produce(speechToText, (draft) => {
-                    draft.enabled = value
-                  }))}
+                  value={!!features.speech2text.enabled}
+                  onChange={handleChange}
+                  type={FeatureEnum.speech2text}
                 />
               )
             }
@@ -115,10 +120,9 @@ const ChooseFeature: FC<ChooseFeatureProps> = ({
               previewImgClassName='citationPreview'
               title={t('appDebug.feature.citation.title')}
               description={t('appDebug.feature.citation.description')}
-              value={citation.enabled}
-              onChange={value => setCitation(produce(citation, (draft) => {
-                draft.enabled = value
-              }))}
+              value={!!features.citation.enabled}
+              onChange={handleChange}
+              type={FeatureEnum.citation}
             />
           </>
         </FeatureGroup>
@@ -130,19 +134,17 @@ const ChooseFeature: FC<ChooseFeatureProps> = ({
               previewImgClassName=''
               title={t('appDebug.feature.moderation.title')}
               description={t('appDebug.feature.moderation.description')}
-              value={moderation.enabled}
-              onChange={value => setModeration(produce(moderation, (draft) => {
-                draft.enabled = value
-              }))}
+              value={!!features.moderation.enabled}
+              onChange={handleChange}
+              type={FeatureEnum.moderation}
             />
             <FeatureItem
               icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
               title={t('appDebug.feature.annotation.title')}
               description={t('appDebug.feature.annotation.description')}
-              value={annotation.enabled}
-              onChange={value => setAnnotation(produce(annotation, (draft) => {
-                draft.enabled = value
-              }))}
+              value={!!features.annotation.enabled}
+              onChange={handleChange}
+              type={FeatureEnum.annotation}
             />
           </>
         </FeatureGroup>
@@ -150,4 +152,4 @@ const ChooseFeature: FC<ChooseFeatureProps> = ({
     </Modal>
   )
 }
-export default React.memo(ChooseFeature)
+export default React.memo(FeatureModal)

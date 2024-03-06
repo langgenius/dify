@@ -6,6 +6,7 @@ const translation = {
     published: 'Published',
     publish: 'Publish',
     run: 'Run',
+    running: 'Running',
     inRunMode: 'In Run Mode',
     inPreview: 'In Preview',
     inPreviewMode: 'In Preview Mode',

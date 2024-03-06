@@ -5,38 +5,43 @@ import type {
   ToolInWorkflow,
   ToolsMap,
 } from './block-selector/types'
+import { Mode } from './types'
 
 type State = {
-  mode: string
+  mode: Mode
+  runTaskId: string
   showRunHistory: boolean
   showFeaturesPanel: boolean
-  runStaus: string
   isDragging: boolean
   helpLine?: HelpLinePosition
   toolsets: CollectionWithExpanded[]
   toolsMap: ToolsMap
   draftUpdatedAt: number
+  publishedAt: number
 }
 
 type Action = {
+  setMode: (mode: Mode) => void
+  setRunTaskId: (runTaskId: string) => void
   setShowRunHistory: (showRunHistory: boolean) => void
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
-  setRunStaus: (runStaus: string) => void
   setIsDragging: (isDragging: boolean) => void
   setHelpLine: (helpLine?: HelpLinePosition) => void
   setToolsets: (toolsets: CollectionWithExpanded[]) => void
   setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
   setDraftUpdatedAt: (draftUpdatedAt: number) => void
+  setPublishedAt: (publishedAt: number) => void
 }
 
 export const useStore = create<State & Action>(set => ({
-  mode: 'workflow',
+  mode: Mode.Editing,
+  runTaskId: '',
+  setRunTaskId: runTaskId => set(() => ({ runTaskId })),
+  setMode: mode => set(() => ({ mode })),
   showRunHistory: false,
   setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
   showFeaturesPanel: false,
   setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
-  runStaus: '',
-  setRunStaus: runStaus => set(() => ({ runStaus })),
   isDragging: false,
   setIsDragging: isDragging => set(() => ({ isDragging })),
   helpLine: undefined,
@@ -47,4 +52,6 @@ export const useStore = create<State & Action>(set => ({
   setToolsMap: toolsMap => set(() => ({ toolsMap })),
   draftUpdatedAt: 0,
   setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt })),
+  publishedAt: 0,
+  setPublishedAt: publishedAt => set(() => ({ publishedAt })),
 }))

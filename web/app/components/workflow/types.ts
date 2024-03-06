@@ -139,3 +139,8 @@ export type NodeDefault<T> = {
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
+
+export enum Mode {
+  Editing = 'editing',
+  Running = 'running',
+}

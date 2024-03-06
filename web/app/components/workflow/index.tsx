@@ -40,6 +40,7 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
+import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { fetchCollectionList } from '@/service/tools'
 
 const nodeTypes = {
@@ -205,9 +206,24 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     )
   }
 
+  const features = data?.features || {}
+  const initialFeatures: FeaturesData = {
+    opening: {
+      enabled: !!features.opening_statement,
+      opening_statement: features.opening_statement,
+      suggested_questions: features.suggested_questions,
+    },
+    suggested: features.suggested_questions_after_answer || { enabled: false },
+    speech2text: features.speech_to_text || { enabled: false },
+    text2speech: features.text_to_speech || { enabled: false },
+    citation: features.retriever_resource || { enabled: false },
+    moderation: features.sensitive_word_avoidance || { enabled: false },
+    annotation: features.annotation_reply || { enabled: false },
+  }
+
   return (
     <ReactFlowProvider>
-      <FeaturesProvider>
+      <FeaturesProvider features={initialFeatures}>
         <Workflow
           nodes={nodesData}
           edges={edgesData}

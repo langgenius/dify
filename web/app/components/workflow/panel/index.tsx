@@ -15,7 +15,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 
 const Panel: FC = () => {
   const appDetail = useAppStore(state => state.appDetail)
-  const runStaus = useStore(state => state.runStaus)
+  const runTaskId = useStore(state => state.runTaskId)
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find(node => node.data._selected)
   const showRunHistory = useStore(state => state.showRunHistory)
@@ -25,16 +25,16 @@ const Panel: FC = () => {
     showDebugAndPreviewPanel,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: appDetail?.mode === 'workflow' && !selectedNode,
-      showNodePanel: !!selectedNode,
-      showDebugAndPreviewPanel: appDetail?.mode === 'advanced-chat' && !selectedNode,
+      showWorkflowInfoPanel: appDetail?.mode === 'workflow' && !selectedNode && !runTaskId,
+      showNodePanel: !!selectedNode && !runTaskId,
+      showDebugAndPreviewPanel: appDetail?.mode === 'advanced-chat' && !selectedNode && !runTaskId,
     }
-  }, [selectedNode, appDetail])
+  }, [selectedNode, appDetail, runTaskId])
 
   return (
     <div className='absolute top-14 right-0 bottom-2 flex z-10'>
       {
-        runStaus && (
+        runTaskId && (
           <Record />
         )
       }
