@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import cn from 'classnames'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
+import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetail } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { BarChartSquare02, FileHeart02, PromptEngineering, TerminalSquare } from '@/app/components/base/icons/src/vender/line/development'
@@ -28,15 +28,19 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const { isCurrentWorkspaceManager } = useAppContext()
   const { appDetail, setAppDetail } = useStore()
-  const detailParams = { url: '/apps', id: appId }
-  const { data: response } = useSWR(detailParams, fetchAppDetail)
+  const [navigation, setNavigation] = useState<Array<{
+    name: string
+    href: string
+    icon: NavIcon
+    selectedIcon: NavIcon
+  }>>([])
 
-  const navigation = useMemo(() => {
+  const getNavigations = useCallback((appId: string, isCurrentWorkspaceManager: boolean, mode: string) => {
     const navs = [
       ...(isCurrentWorkspaceManager
         ? [{
           name: t('common.appMenus.promptEng'),
-          href: `/app/${appId}/${(response?.mode === 'workflow' || response?.mode === 'advanced-chat') ? 'workflow' : 'configuration'}`,
+          href: `/app/${appId}/${(mode === 'workflow' || mode === 'advanced-chat') ? 'workflow' : 'configuration'}`,
           icon: PromptEngineering,
           selectedIcon: PromptEngineeringSolid,
         }]
@@ -49,7 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         selectedIcon: TerminalSquareSolid,
       },
       {
-        name: response?.mode !== 'workflow'
+        name: mode !== 'workflow'
           ? t('common.appMenus.logAndAnn')
           : t('common.appMenus.logs'),
         href: `/app/${appId}/logs`,
@@ -64,17 +68,19 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       },
     ]
     return navs
-  }, [appId, isCurrentWorkspaceManager, response?.mode, t])
+  }, [t])
 
   useEffect(() => {
-    if (response && !appDetail)
-      setAppDetail(response)
-  }, [appDetail, response, setAppDetail])
-
-  useEffect(() => {
-    if (appDetail?.name)
+    if (appDetail)
       document.title = `${(appDetail.name || 'App')} - Dify`
   }, [appDetail])
+
+  useEffect(() => {
+    fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
+      setAppDetail(res)
+      setNavigation(getNavigations(appId, isCurrentWorkspaceManager, res.mode))
+    })
+  }, [appId, getNavigations, isCurrentWorkspaceManager, setAppDetail])
 
   if (!appDetail)
     return null
