@@ -31,7 +31,7 @@ import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
-import OnBlurBlock from './plugins/on-blur-block'
+import OnBlurBlock from './plugins/on-blur-or-focus-block'
 import { textToEditorState } from './utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
@@ -48,6 +48,7 @@ export type PromptEditorProps = {
   editable?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
+  onFocus?: () => void
   contextBlock?: {
     show?: boolean
     selectable?: boolean
@@ -84,13 +85,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
   editable = true,
   onChange,
   onBlur,
+  onFocus,
   contextBlock = {
     show: true,
     selectable: true,
     datasets: [],
-    onAddContext: () => {},
-    onInsert: () => {},
-    onDelete: () => {},
+    onAddContext: () => { },
+    onInsert: () => { },
+    onDelete: () => { },
   },
   historyBlock = {
     show: true,
@@ -99,9 +101,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
       user: '',
       assistant: '',
     },
-    onEditRole: () => {},
-    onInsert: () => {},
-    onDelete: () => {},
+    onEditRole: () => { },
+    onInsert: () => { },
+    onDelete: () => { },
   },
   variableBlock = {
     variables: [],
@@ -109,8 +111,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
   queryBlock = {
     show: true,
     selectable: true,
-    onInsert: () => {},
-    onDelete: () => {},
+    onInsert: () => { },
+    onDelete: () => { },
   },
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -221,7 +223,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         }
         <VariableValueBlock />
         <OnChangePlugin onChange={handleEditorChange} />
-        <OnBlurBlock onBlur={onBlur} />
+        <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

@@ -4,6 +4,7 @@ import React, { useCallback } from 'react'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
@@ -44,9 +45,14 @@ const Editor: FC<Props> = ({
     setIsExpanded(!isExpanded)
   }, [isExpanded])
 
+  const [isFocus, {
+    setTrue: setFocus,
+    setFalse: setBlur,
+  }] = useBoolean(false)
+
   return (
-    <div className={cn(s.gradientBorder, '!rounded-[9px] shadow-md')}>
-      <div className='rounded-lg bg-white'>
+    <div className={cn(isFocus && s.gradientBorder, '!rounded-[9px] shadow-md')}>
+      <div className={cn(isFocus ? 'bg-white' : 'bg-gray-100', 'rounded-lg')}>
         <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
           <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
           <div className='flex items-center'>
@@ -76,8 +82,10 @@ const Editor: FC<Props> = ({
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           footer={(
-            <div className='pl-4 pb-2 flex'>
-              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
+            <div className='pl-3 pb-2 flex'>
+              {isFocus
+                ? <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
+                : <div className='h-[18px]'></div>}
             </div>
           )}
         >
@@ -112,7 +120,8 @@ const Editor: FC<Props> = ({
               selectable: true,
             }}
             onChange={onChange}
-            onBlur={() => { }}
+            onBlur={setBlur}
+            onFocus={setFocus}
             editable={!readOnly}
           />
         </PromptEditorHeightResizeWrap>
