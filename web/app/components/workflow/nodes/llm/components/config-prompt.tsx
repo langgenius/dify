@@ -7,6 +7,7 @@ import type { PromptItem } from '../../../types'
 import { PromptRole } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
+import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -31,6 +32,26 @@ const ConfigPrompt: FC<Props> = ({
     return (prompt: string) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
         draft[index].text = prompt
+      })
+      onChange(newPrompt)
+    }
+  }, [onChange, payload])
+
+  const roleOptions = [
+    {
+      label: 'user',
+      value: PromptRole.user,
+    },
+    {
+      label: 'system',
+      value: PromptRole.system,
+    },
+  ]
+
+  const handleChatModeMessageRoleChange = useCallback((index: number) => {
+    return (role: PromptRole) => {
+      const newPrompt = produce(payload as PromptItem[], (draft) => {
+        draft[index].role = role
       })
       onChange(newPrompt)
     }
@@ -71,7 +92,15 @@ const ConfigPrompt: FC<Props> = ({
                   return (
                     <Editor
                       key={index}
-                      title={item.role === PromptRole.user ? 'User' : 'System'}
+                      title={
+                        <div className='relative left-1'>
+                          <TypeSelector
+                            value={item.role as string}
+                            options={roleOptions}
+                            onChange={handleChatModeMessageRoleChange(index)}
+                          />
+                        </div>
+                      }
                       value={item.text}
                       onChange={handleChatModePromptChange(index)}
                       variables={variables}
