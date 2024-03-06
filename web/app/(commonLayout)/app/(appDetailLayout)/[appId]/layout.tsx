@@ -27,8 +27,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const router = useRouter()
   const pathname = usePathname()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const detailParams = { url: '/apps', id: appId }
   const { appDetail, setAppDetail } = useStore()
+  const detailParams = { url: '/apps', id: appId }
   const { data: response } = useSWR(detailParams, fetchAppDetail)
 
   const navigation = useMemo(() => {
@@ -67,24 +67,27 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appId, isCurrentWorkspaceManager, response?.mode, t])
 
   useEffect(() => {
-    if (response?.name)
-      document.title = `${(response.name || 'App')} - Dify`
-    if (response && response !== appDetail)
+    if (response && !appDetail)
       setAppDetail(response)
   }, [appDetail, response, setAppDetail])
 
-  if (!response)
+  useEffect(() => {
+    if (appDetail?.name)
+      document.title = `${(appDetail.name || 'App')} - Dify`
+  }, [appDetail])
+
+  if (!appDetail)
     return null
 
   // redirections
-  if (response && (response?.mode === 'workflow' || response?.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
+  if ((appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
     router.replace(`/app/${appId}/workflow`)
-  if (response && (response?.mode !== 'workflow' && response?.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
+  if ((appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
     router.replace(`/app/${appId}/configuration`)
 
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
-      <AppSideBar title={response.name} icon={response.icon} icon_background={response.icon_background} desc={response.mode} navigation={navigation} />
+      <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background} desc={appDetail.mode} navigation={navigation} />
       <div className="bg-white grow overflow-hidden">
         {children}
       </div>
