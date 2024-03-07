@@ -22,6 +22,11 @@ const translation = {
     latestPublished: '最新发布',
     restore: '恢复',
   },
+  singleRun: {
+    testRun: '测试运行 ',
+    startRun: '开始运行',
+    running: '运行中',
+  },
   tabs: {
     'searchBlock': '搜索节点',
     'blocks': '节点',

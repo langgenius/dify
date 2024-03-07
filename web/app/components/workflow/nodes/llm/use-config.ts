@@ -7,6 +7,7 @@ import { Resolution } from '@/types/app'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import type { PromptItem } from '@/models/debug'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
@@ -87,6 +88,26 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    setRunningStatus,
+  } = useOneStepRun<LLMNodeType>({
+    id,
+    data: inputs,
+  })
+  const varInputs = toVarInputs(inputs.variables)
+  const handleRun = () => {
+    setRunningStatus('running')
+  }
+
+  const handleStop = () => {
+    setRunningStatus('not started')
+  }
+
   return {
     inputs,
     isChatModel,
@@ -100,6 +121,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handlePromptChange,
     handleMemoryChange,
     handleVisionResolutionChange,
+    isShowSingleRun,
+    hideSingleRun,
+    varInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
   }
 }
 

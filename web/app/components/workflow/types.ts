@@ -59,6 +59,11 @@ export type Variable = {
   value_selector: ValueSelector
 }
 
+export type VariableWithValue = {
+  key: string
+  value: string
+}
+
 export enum InputVarType {
   textInput = 'text-input',
   paragraph = 'paragraph',

@@ -22,6 +22,11 @@ const translation = {
     latestPublished: 'Latest Published',
     restore: 'Restore',
   },
+  singleRun: {
+    testRun: 'Test Run ',
+    startRun: 'Start Run',
+    running: 'Running',
+  },
   tabs: {
     'searchBlock': 'Search block',
     'blocks': 'Blocks',

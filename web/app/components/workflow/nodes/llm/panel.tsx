@@ -15,6 +15,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Resolution } from '@/types/app'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -38,6 +39,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handlePromptChange,
     handleMemoryChange,
     handleVisionResolutionChange,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    varInputs,
   } = useConfig(id, data)
 
   const isChatApp = true // TODO: get from app context
@@ -148,6 +155,17 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           </>
         </OutputVars>
       </div>
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          inputs={varInputs}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
+        />
+      )}
+
     </div>
   )
 }
