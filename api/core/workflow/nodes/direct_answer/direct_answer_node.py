@@ -48,7 +48,7 @@ class DirectAnswerNode(BaseNode):
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=variable_values,
-            output={
+            outputs={
                 "answer": answer
             }
         )
