@@ -7,14 +7,14 @@ import { useNodes } from 'reactflow'
 import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
-import { useIsWorkflow } from '../hooks'
+import { useIsChatMode } from '../hooks'
 import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
 import Record from './record'
 
 const Panel: FC = () => {
-  const isWorkflow = useIsWorkflow()
+  const isChatMode = useIsChatMode()
   const runTaskId = useStore(state => state.runTaskId)
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find(node => node.data._selected)
@@ -25,11 +25,11 @@ const Panel: FC = () => {
     showDebugAndPreviewPanel,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: isWorkflow && !selectedNode && !runTaskId,
+      showWorkflowInfoPanel: !isChatMode && !selectedNode && !runTaskId,
       showNodePanel: !!selectedNode && !runTaskId,
-      showDebugAndPreviewPanel: !isWorkflow && !selectedNode && !runTaskId,
+      showDebugAndPreviewPanel: isChatMode && !selectedNode && !runTaskId,
     }
-  }, [selectedNode, isWorkflow, runTaskId])
+  }, [selectedNode, isChatMode, runTaskId])
 
   return (
     <div className='absolute top-14 right-0 bottom-2 flex z-10'>
