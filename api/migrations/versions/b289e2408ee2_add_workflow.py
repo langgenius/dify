@@ -78,8 +78,6 @@ def upgrade():
     sa.Column('error', sa.Text(), nullable=True),
     sa.Column('elapsed_time', sa.Float(), server_default=sa.text('0'), nullable=False),
     sa.Column('total_tokens', sa.Integer(), server_default=sa.text('0'), nullable=False),
-    sa.Column('total_price', sa.Numeric(precision=10, scale=7), nullable=True),
-    sa.Column('currency', sa.String(length=255), nullable=True),
     sa.Column('total_steps', sa.Integer(), server_default=sa.text('0'), nullable=True),
     sa.Column('created_by_role', sa.String(length=255), nullable=False),
     sa.Column('created_by', postgresql.UUID(), nullable=False),
