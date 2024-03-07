@@ -85,5 +85,4 @@ def retry_document_indexing_task(dataset_id: str, document_id: str):
     except Exception as ex:
         logging.info(click.style(str(ex), fg='yellow'))
         redis_client.delete(retry_indexing_cache_key)
-
         pass

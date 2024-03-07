@@ -51,21 +51,23 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 class DatasetService:
 
     @staticmethod
-    def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None):
+    def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None):
         if user:
             permission_filter = db.or_(Dataset.created_by == user.id,
                                        Dataset.permission == 'all_team_members')
         else:
             permission_filter = Dataset.permission == 'all_team_members'
-        datasets = Dataset.query.filter(
+        query = Dataset.query.filter(
             db.and_(Dataset.provider == provider, Dataset.tenant_id == tenant_id, permission_filter)) \
-            .order_by(Dataset.created_at.desc()) \
-            .paginate(
-            page=page,
-            per_page=per_page,
-            max_per_page=100,
-            error_out=False
-        )
+            .order_by(Dataset.created_at.desc())
+        if search:
+            query = query.filter(db.and_(Dataset.name.ilike(f'%{search}%')))
+        datasets = query.paginate(
+                    page=page,
+                    per_page=per_page,
+                    max_per_page=100,
+                    error_out=False
+                )
 
         return datasets.items, datasets.total
 

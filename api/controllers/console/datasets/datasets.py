@@ -48,11 +48,13 @@ class DatasetListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         ids = request.args.getlist('ids')
         provider = request.args.get('provider', default="vendor")
+        search = request.args.get('keyword', default=None, type=str)
+
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(page, limit, provider,
-                                                          current_user.current_tenant_id, current_user)
+                                                          current_user.current_tenant_id, current_user, search)
 
         # check embedding setting
         provider_manager = ProviderManager()
