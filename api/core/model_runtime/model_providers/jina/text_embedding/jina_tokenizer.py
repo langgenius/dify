@@ -3,6 +3,7 @@ from threading import Lock
 
 from transformers import AutoTokenizer
 
+
 class JinaTokenizer:
     _tokenizer = None
     _lock = Lock()
