@@ -95,10 +95,19 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     toVarInputs,
     runningStatus,
     setRunningStatus,
+    inputVarValues,
+    setInputVarValues,
+    visionFiles,
+    setVisionFiles,
+    contexts,
+    setContexts,
   } = useOneStepRun<LLMNodeType>({
     id,
     data: inputs,
   })
+
+  console.log(contexts)
+
   const varInputs = toVarInputs(inputs.variables)
   const handleRun = () => {
     setRunningStatus('running')
@@ -123,6 +132,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleVisionResolutionChange,
     isShowSingleRun,
     hideSingleRun,
+    inputVarValues,
+    setInputVarValues,
+    visionFiles,
+    setVisionFiles,
+    contexts,
+    setContexts,
     varInputs,
     runningStatus,
     handleRun,

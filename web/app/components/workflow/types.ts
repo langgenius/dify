@@ -70,6 +70,7 @@ export enum InputVarType {
   number = 'number',
   url = 'url',
   files = 'files',
+  contexts = 'contexts', // knowledge retrieval
 }
 
 export type InputVar = {

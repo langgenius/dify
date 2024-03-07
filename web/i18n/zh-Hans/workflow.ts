@@ -124,6 +124,7 @@ const translation = {
       addMessage: '添加消息',
       roleDescription: 'TODO: Role Description',
       vision: '视觉',
+      files: '文件',
       resolution: {
         name: '分辨率',
         high: '高',
@@ -132,6 +133,9 @@ const translation = {
       outputVars: {
         output: '生成内容',
         usage: '模型用量信息',
+      },
+      singleRun: {
+        variable: '变量',
       },
     },
     knowledgeRetrieval: {

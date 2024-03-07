@@ -14,7 +14,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Resolution } from '@/types/app'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.llm'
@@ -41,6 +41,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleVisionResolutionChange,
     isShowSingleRun,
     hideSingleRun,
+    inputVarValues,
+    setInputVarValues,
+    visionFiles,
+    setVisionFiles,
+    contexts,
+    setContexts,
     runningStatus,
     handleRun,
     handleStop,
@@ -49,6 +55,51 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
   const isChatApp = true // TODO: get from app context
   const model = inputs.model
+
+  const singleRunForms = (() => {
+    const forms = [
+      {
+        label: t(`${i18nPrefix}.singleRun.variable`)!,
+        inputs: varInputs,
+        values: inputVarValues,
+        onChange: setInputVarValues,
+      },
+    ]
+
+    if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
+      forms.push(
+        {
+          label: t(`${i18nPrefix}.context`)!,
+          inputs: [{
+            label: '',
+            variable: 'contexts',
+            type: InputVarType.contexts,
+            required: false,
+          }],
+          values: { contexts },
+          onChange: keyValue => setContexts((keyValue as any).contexts),
+        },
+      )
+    }
+
+    if (isShowVisionConfig) {
+      forms.push(
+        {
+          label: t(`${i18nPrefix}.vision`)!,
+          inputs: [{
+            label: t(`${i18nPrefix}.files`)!,
+            variable: 'visionFiles',
+            type: InputVarType.files,
+            required: false,
+          }],
+          values: { visionFiles },
+          onChange: keyValue => setVisionFiles((keyValue as any).visionFiles),
+        },
+      )
+    }
+
+    return forms
+  })()
 
   return (
     <div className='mt-2'>
@@ -159,7 +210,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         <BeforeRunForm
           nodeName={inputs.title}
           onHide={hideSingleRun}
-          inputs={varInputs}
+          forms={singleRunForms}
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}

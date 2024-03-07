@@ -117,3 +117,23 @@ export const NODE_WIDTH = 220
 export const X_OFFSET = 64
 export const Y_OFFSET = 39
 export const TREE_DEEPTH = 20
+
+export const RETRIEVAL_OUTPUT_STRUCT = `{
+  "content": "",
+  "title": "",
+  "url": "",
+  "icon": "",
+  "metadata": {
+    "dataset_id": "",
+    "dataset_name": "",
+    "document_id": [],
+    "document_name": "",
+    "document_data_source_type": "",
+    "segment_id": "",
+    "segment_position": "",
+    "segment_word_count": "",
+    "segment_hit_count": "",
+    "segment_index_node_hash": "",
+    "score": ""
+  }
+}`

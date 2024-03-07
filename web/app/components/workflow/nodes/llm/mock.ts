@@ -23,6 +23,14 @@ export const mockData: LLMNodeType = {
       variable: 'age',
       value_selector: ['bbb', 'b', 'c'],
     },
+    {
+      variable: 'a1',
+      value_selector: ['aaa', 'name'],
+    },
+    {
+      variable: 'a2',
+      value_selector: ['aaa', 'name'],
+    },
   ],
   prompt: [
     {

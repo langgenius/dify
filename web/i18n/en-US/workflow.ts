@@ -124,6 +124,7 @@ const translation = {
       roleDescription: 'TODO: Role Description',
       addMessage: 'Add Message',
       vision: 'vision',
+      files: 'Files',
       resolution: {
         name: 'Resolution',
         high: 'High',
@@ -132,6 +133,9 @@ const translation = {
       outputVars: {
         output: 'Generate content',
         usage: 'Model Usage Information',
+      },
+      singleRun: {
+        variable: 'Variable',
       },
     },
     knowledgeRetrieval: {
