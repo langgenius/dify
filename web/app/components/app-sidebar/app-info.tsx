@@ -156,7 +156,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         >
           <div className={cn('flex cursor-pointer p-1 rounded-lg hover:bg-gray-100', open && 'bg-gray-100')}>
             <div className='shrink-0 mr-2'>
-              <AppIcon size="large" icon={appDetail.icon} background={appDetail.icon_background} />
+              <AppIcon size={expand ? 'large' : 'medium'} icon={appDetail.icon} background={appDetail.icon_background} />
             </div>
             {expand && (
               <div className="grow w-0">
@@ -244,7 +244,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               }}>
                 <span className='text-gray-700 text-sm leading-5'>{t('app.editApp')}</span>
               </div>
-              {appDetail.mode !== 'completion' && appDetail.model_config.prompt_type !== 'advanced' && (
+              {appDetail.mode !== 'completion' && appDetail.model_config?.prompt_type !== 'advanced' && (
                 <>
                   <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={() => {
                     setOpen(false)
@@ -257,7 +257,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   </div>
                 </>
               )}
-              {(appDetail.mode === 'completion' || appDetail.model_config.prompt_type === 'advanced') && (
+              {(appDetail.mode === 'completion' || appDetail.model_config?.prompt_type === 'advanced') && (
                 <>
                   <Divider className="!my-1" />
                   <div

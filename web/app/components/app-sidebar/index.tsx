@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppBasic from './basic'
@@ -8,8 +8,7 @@ import {
   AlignLeft01,
   AlignRight01,
 } from '@/app/components/base/icons/src/vender/line/layout'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { APP_SIDEBAR_SHOULD_COLLAPSE } from '@/app/components/app/configuration/debug/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
@@ -27,28 +26,26 @@ export type IAppDetailNavProps = {
 }
 
 const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
-  const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const mode = isMobile ? 'collapse' : 'expand'
-  const [modeState, setModeState] = useState(isMobile ? mode : localeMode)
+  const [modeState, setModeState] = useState(appSidebarExpand)
   const expand = modeState === 'expand'
 
   const handleToggle = useCallback(() => {
     setModeState((prev) => {
       const next = prev === 'expand' ? 'collapse' : 'expand'
-      localStorage.setItem('app-detail-collapse-or-expand', next)
+      setAppSiderbarExpand(next)
       return next
     })
-  }, [])
+  }, [setAppSiderbarExpand])
 
-  const { eventEmitter } = useEventEmitterContextContext()
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === APP_SIDEBAR_SHOULD_COLLAPSE) {
-      setModeState('collapse')
-      localStorage.setItem('app-detail-collapse-or-expand', 'collapse')
+  useEffect(() => {
+    if (appSidebarExpand) {
+      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      setModeState(appSidebarExpand)
     }
-  })
+  }, [appSidebarExpand])
 
   return (
     <div

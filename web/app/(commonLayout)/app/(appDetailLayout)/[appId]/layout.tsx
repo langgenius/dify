@@ -13,6 +13,7 @@ import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import { BarChartSquare02, FileHeart02, PromptEngineering, TerminalSquare } from '@/app/components/base/icons/src/vender/line/development'
 import { BarChartSquare02 as BarChartSquare02Solid, FileHeart02 as FileHeart02Solid, PromptEngineering as PromptEngineeringSolid, TerminalSquare as TerminalSquareSolid } from '@/app/components/base/icons/src/vender/solid/development'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -27,8 +28,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { appDetail, setAppDetail } = useStore()
+  const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore()
   const [navigation, setNavigation] = useState<Array<{
     name: string
     href: string
@@ -72,9 +75,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [t])
 
   useEffect(() => {
-    if (appDetail)
+    if (appDetail) {
       document.title = `${(appDetail.name || 'App')} - Dify`
-  }, [appDetail])
+      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+      const mode = isMobile ? 'collapse' : 'expand'
+      setAppSiderbarExpand(isMobile ? mode : localeMode)
+      if (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
+        setAppSiderbarExpand('collapse')
+    }
+  }, [appDetail, isMobile, setAppSiderbarExpand])
 
   useEffect(() => {
     setAppDetail()

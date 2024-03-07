@@ -19,7 +19,6 @@ import {
   useFormattingChangedDispatcher,
 } from './debug/hooks'
 import type { ModelAndParameter } from './debug/types'
-import { APP_SIDEBAR_SHOULD_COLLAPSE } from './debug/types'
 import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
 import type {
   AnnotationReplyConfig,
@@ -57,7 +56,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -67,6 +66,7 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { setAppSiderbarExpand } = useAppStore()
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
@@ -645,7 +645,6 @@ const Configuration: FC = () => {
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
 
-  const { eventEmitter } = useEventEmitterContextContext()
   const {
     debugWithMultipleModel,
     multipleModelConfigs,
@@ -660,9 +659,7 @@ const Configuration: FC = () => {
         { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
-    eventEmitter?.emit({
-      type: APP_SIDEBAR_SHOULD_COLLAPSE,
-    } as any)
+    setAppSiderbarExpand('collapse')
   }
 
   if (isLoading) {
