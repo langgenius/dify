@@ -48,7 +48,7 @@ app_detail_fields = {
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
-    'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
+    'model_config': fields.Nested(model_config_fields, attribute='app_model_config', allow_null=True),
     'created_at': TimestampField
 }
 
@@ -68,7 +68,7 @@ app_partial_fields = {
     'mode': fields.String,
     'icon': fields.String,
     'icon_background': fields.String,
-    'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config'),
+    'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config', allow_null=True),
     'created_at': TimestampField
 }
 
@@ -118,7 +118,7 @@ app_detail_fields_with_site = {
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
-    'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
+    'model_config': fields.Nested(model_config_fields, attribute='app_model_config', allow_null=True),
     'site': fields.Nested(site_fields),
     'api_base_url': fields.String,
     'created_at': TimestampField,

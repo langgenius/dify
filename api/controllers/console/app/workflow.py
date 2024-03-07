@@ -65,7 +65,7 @@ class DraftWorkflowApi(Resource):
 
         return {
             "result": "success",
-            "updated_at": TimestampField().format(workflow.updated_at)
+            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at)
         }
 
 
