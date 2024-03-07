@@ -216,7 +216,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           onStop={handleStop}
         />
       )}
-
     </div>
   )
 }

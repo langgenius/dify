@@ -23,6 +23,13 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData }: Params<T>) => {
   }
 
   const [runningStatus, setRunningStatus] = useState('un started')
+  const handleRun = () => {
+    setRunningStatus('running')
+  }
+
+  const handleStop = () => {
+    setRunningStatus('not started')
+  }
 
   // TODO: store to node
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
@@ -50,6 +57,8 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData }: Params<T>) => {
     hideSingleRun,
     toVarInputs,
     runningStatus,
+    handleRun,
+    handleStop,
     setRunningStatus,
     runInputData,
     setRunInputData,

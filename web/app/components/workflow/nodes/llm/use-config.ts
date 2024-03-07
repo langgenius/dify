@@ -95,7 +95,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     hideSingleRun,
     toVarInputs,
     runningStatus,
-    setRunningStatus,
+    handleRun,
+    handleStop,
     runInputData,
     setRunInputData,
   } = useOneStepRun<LLMNodeType>({
@@ -145,13 +146,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [runInputData, setRunInputData])
 
   const varInputs = toVarInputs(inputs.variables)
-  const handleRun = () => {
-    setRunningStatus('running')
-  }
-
-  const handleStop = () => {
-    setRunningStatus('not started')
-  }
 
   return {
     inputs,

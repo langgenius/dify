@@ -6,6 +6,7 @@ import type { RETRIEVE_TYPE } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { inputs, setInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
@@ -54,6 +55,31 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setSelectedDatasets(newDatasets)
   }, [inputs, setInputs])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+  } = useOneStepRun<KnowledgeRetrievalNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {
+      query: 'What is the capital of France?',
+    },
+  })
+
+  const query = runInputData.query
+  const setQuery = useCallback((newQuery: string) => {
+    setRunInputData({
+      ...runInputData,
+      query: newQuery,
+    })
+  }, [runInputData, setRunInputData])
+
   return {
     inputs,
     handleQueryVarChange,
@@ -61,6 +87,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleMultipleRetrievalConfigChange,
     selectedDatasets,
     handleOnDatasetsChange,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    query,
+    setQuery,
   }
 }
 
