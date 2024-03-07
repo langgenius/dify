@@ -538,7 +538,7 @@ SPEECH2TEXT_BASE_MODELS = [
             model_type=ModelType.SPEECH2TEXT,
             model_properties={
                 ModelPropertyKey.FILE_UPLOAD_LIMIT: 25,
-                ModelPropertyKey.MAX_CHUNKS: 'flac,mp3,mp4,mpeg,mpga,m4a,ogg,wav,webm'
+                ModelPropertyKey.SUPPORTED_FILE_EXTENSIONS: 'flac,mp3,mp4,mpeg,mpga,m4a,ogg,wav,webm'
             }
         )
     )
