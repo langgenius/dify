@@ -6,6 +6,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
 from core.model_runtime.model_providers.azure_openai._constant import SPEECH2TEXT_BASE_MODELS, AzureBaseModel
+from core.model_runtime.entities.model_entities import AIModelEntity
 
 
 class AzureOpenAISpeech2TextModel(_CommonAzureOpenAI, Speech2TextModel):
