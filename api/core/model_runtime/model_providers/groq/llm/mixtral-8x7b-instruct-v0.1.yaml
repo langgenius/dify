@@ -1,0 +1,25 @@
+model: mixtral-8x7b-32768
+label:
+  zh_Hans: Mixtral-8x7b-Instruct-v0.1
+  en_US: Mixtral-8x7b-Instruct-v0.1
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 32768
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: max_tokens
+    use_template: max_tokens
+    default: 512
+    min: 1
+    max: 20480
+pricing:
+  input: '0.27'
+  output: '0.27'
+  unit: '0.000001'
+  currency: USD
