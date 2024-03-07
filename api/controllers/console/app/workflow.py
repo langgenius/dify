@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
+from typing import Union
 
 from flask import Response, stream_with_context
 from flask_restful import Resource, marshal_with, reqparse
@@ -79,9 +80,9 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, location='json', default='')
-        parser.add_argument('files', type=list, required=False, location='json')
+        parser.add_argument('inputs', type=dict, location='json')
+        parser.add_argument('query', type=str, required=True, location='json', default='')
+        parser.add_argument('files', type=list, location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         args = parser.parse_args()
 
@@ -93,6 +94,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER
             )
+
+            return compact_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -102,12 +105,6 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
-
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 class DraftWorkflowRunApi(Resource):
@@ -120,7 +117,7 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, location='json')
+        parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
         workflow_service = WorkflowService()
@@ -278,6 +275,17 @@ class ConvertToWorkflowApi(Resource):
 
         # return workflow
         return workflow
+
+
+def compact_response(response: Union[dict, Generator]) -> Response:
+    if isinstance(response, dict):
+        return Response(response=json.dumps(response), status=200, mimetype='application/json')
+    else:
+        def generate() -> Generator:
+            yield from response
+
+        return Response(stream_with_context(generate()), status=200,
+                        mimetype='text/event-stream')
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')

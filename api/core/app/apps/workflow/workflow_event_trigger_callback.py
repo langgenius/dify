@@ -15,7 +15,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
 
     def __init__(self, queue_manager: AppQueueManager, workflow: Workflow):
         self._queue_manager = queue_manager
-        self._streamable_node_ids = self._fetch_streamable_node_ids(workflow.graph)
+        self._streamable_node_ids = self._fetch_streamable_node_ids(workflow.graph_dict)
 
     def on_workflow_run_started(self, workflow_run: WorkflowRun) -> None:
         """
