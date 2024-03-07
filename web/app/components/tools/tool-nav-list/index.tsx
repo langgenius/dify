@@ -20,7 +20,7 @@ const ToolNavList: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {list.map((item, index) => (
-        <Item isCurrent={index === currentIndex} key={item.name} payload={item} onClick={() => onChosen(index)}></Item>
+        <Item isCurrent={index === currentIndex} key={index} payload={item} onClick={() => onChosen(index)}></Item>
       ))}
     </div>
   )

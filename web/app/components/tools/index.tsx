@@ -90,10 +90,10 @@ const Tools: FC<Props> = ({
     let typeFilteredList: Collection[] = []
     if (collectionType === CollectionType.all)
       typeFilteredList = collectionList.filter(item => item.type !== CollectionType.model)
-
     else if (collectionType === CollectionType.builtIn)
-      typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn).filter(item => item.type !== CollectionType.model)
-
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn)
+    else if (collectionType === CollectionType.custom)
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.custom)
     if (query)
       return typeFilteredList.filter(item => item.name.includes(query))
 
