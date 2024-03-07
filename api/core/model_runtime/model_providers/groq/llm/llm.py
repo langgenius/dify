@@ -1,4 +1,5 @@
-from typing import Optional, Union, Generator
+from collections.abc import Generator
+from typing import Optional, Union
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
