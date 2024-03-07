@@ -4,6 +4,7 @@ from yaml import FullLoader, load
 
 from core.tools.entities.user_entities import UserToolProvider
 
+
 class BuiltinToolProviderSort:
     _position = {}
 

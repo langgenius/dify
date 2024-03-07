@@ -7,22 +7,22 @@ from typing import Any, Union
 
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.model_runtime.entities.message_entities import PromptMessage
+from core.provider_manager import ProviderManager
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeMessage, ToolProviderCredentials
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
-from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.utils.configuration import ToolConfiguration, ModelToolConfigurationManager
+from core.tools.utils.configuration import ModelToolConfigurationManager, ToolConfiguration
 from core.tools.utils.encoder import serialize_base_model_dict
-from core.provider_manager import ProviderManager
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 

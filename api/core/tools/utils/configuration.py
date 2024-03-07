@@ -1,13 +1,16 @@
 import os
-
 from typing import Any, Union
 
 from pydantic import BaseModel
-from yaml import load, FullLoader
+from yaml import FullLoader, load
 
 from core.helper import encrypter
 from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
-from core.tools.entities.tool_entities import ToolProviderCredentials, ModelToolProviderConfiguration, ModelToolConfiguration
+from core.tools.entities.tool_entities import (
+    ModelToolConfiguration,
+    ModelToolProviderConfiguration,
+    ToolProviderCredentials,
+)
 from core.tools.provider.tool_provider import ToolProviderController
 
 
@@ -120,7 +123,7 @@ class ModelToolConfigurationManager:
 
         for file in files:
             provider = file.split('.')[0]
-            with open(os.path.join(model_tools_path, file), mode='r', encoding='utf-8') as f:
+            with open(os.path.join(model_tools_path, file), encoding='utf-8') as f:
                 configurations = ModelToolProviderConfiguration(**load(f, Loader=FullLoader))
                 models = configurations.models or []
                 for model in models:

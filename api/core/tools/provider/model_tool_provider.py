@@ -1,19 +1,26 @@
-from typing import List, Dict, Any
+from typing import Any
 
-from core.tools.entities.tool_entities import ToolProviderType, \
-      ToolParameter, ToolProviderCredentials, ToolDescription, ToolProviderIdentity
-from core.tools.provider.tool_provider import ToolProviderController
+from core.entities.model_entities import ModelStatus
+from core.errors.error import ProviderTokenNotInitError
+from core.model_manager import ModelInstance
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
+from core.provider_manager import ProviderConfiguration, ProviderManager, ProviderModelBundle
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import (
+    ModelToolPropertyKey,
+    ToolDescription,
+    ToolIdentity,
+    ToolParameter,
+    ToolProviderCredentials,
+    ToolProviderIdentity,
+    ToolProviderType,
+)
 from core.tools.errors import ToolNotFoundError
+from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.model_tool import ModelTool
 from core.tools.tool.tool import Tool
-from core.tools.entities.tool_entities import ToolIdentity, ModelToolPropertyKey
 from core.tools.utils.configuration import ModelToolConfigurationManager
-from core.tools.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType, ModelFeature
-from core.entities.model_entities import ModelStatus
-from core.provider_manager import ProviderManager, ProviderConfiguration, ProviderModelBundle
-from core.model_manager import ModelInstance
-from core.errors.error import ProviderTokenNotInitError
+
 
 class ModelToolProviderController(ToolProviderController):
     configuration: ProviderConfiguration = None
@@ -87,7 +94,7 @@ class ModelToolProviderController(ToolProviderController):
                 return True
         return False
 
-    def _get_model_tools(self, tenant_id: str = None) -> List[ModelTool]:
+    def _get_model_tools(self, tenant_id: str = None) -> list[ModelTool]:
         """
             returns a list of tools that the provider can provide
 
@@ -99,7 +106,7 @@ class ModelToolProviderController(ToolProviderController):
             configurations = provider_manager.get_configurations(tenant_id=tenant_id).values()
             self.configuration = next(filter(lambda x: x.provider == self.identity.name, configurations), None)
         # get all tools
-        tools: List[ModelTool] = []
+        tools: list[ModelTool] = []
         # get all models
         if not self.configuration:
             return tools
@@ -158,7 +165,7 @@ class ModelToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
     
-    def get_credentials_schema(self) -> Dict[str, ToolProviderCredentials]:
+    def get_credentials_schema(self) -> dict[str, ToolProviderCredentials]:
         """
             returns the credentials schema of the provider
 
@@ -166,7 +173,7 @@ class ModelToolProviderController(ToolProviderController):
         """
         return {}
 
-    def get_tools(self, user_id: str, tenant_id: str) -> List[ModelTool]:
+    def get_tools(self, user_id: str, tenant_id: str) -> list[ModelTool]:
         """
             returns a list of tools that the provider can provide
 
@@ -190,7 +197,7 @@ class ModelToolProviderController(ToolProviderController):
 
         raise ValueError(f'tool {tool_name} not found')
 
-    def get_parameters(self, tool_name: str) -> List[ToolParameter]:
+    def get_parameters(self, tool_name: str) -> list[ToolParameter]:
         """
             returns the parameters of the tool
 
@@ -211,7 +218,7 @@ class ModelToolProviderController(ToolProviderController):
         """
         return ToolProviderType.MODEL
     
-    def validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 
@@ -220,7 +227,7 @@ class ModelToolProviderController(ToolProviderController):
         """
         pass
 
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
             validate the credentials of the provider
 

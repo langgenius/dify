@@ -1,14 +1,18 @@
-from typing import Any, Dict, List, cast
-from enum import Enum
 from base64 import b64encode
+from enum import Enum
+from typing import Any, cast
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ModelToolPropertyKey
-from core.tools.tool.tool import Tool
-from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage,\
-    PromptMessageContent, PromptMessageContentType
-from core.model_runtime.entities.llm_entities import LLMResult
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMResult
+from core.model_runtime.entities.message_entities import (
+    PromptMessageContent,
+    PromptMessageContentType,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.tools.entities.tool_entities import ModelToolPropertyKey, ToolInvokeMessage
+from core.tools.tool.tool import Tool
 
 VISION_PROMPT = """## Image Recognition Task
 ### Task Description
@@ -31,12 +35,12 @@ class ModelTool(Tool):
         """
         VISION = 'vision'
 
-    model_configuration: Dict[str, Any] = None
+    model_configuration: dict[str, Any] = None
     tool_type: ModelToolType
     
     def __init__(self, model_instance: ModelInstance = None, model: str = None, 
                  tool_type: ModelToolType = ModelToolType.VISION, 
-                 properties: Dict[ModelToolPropertyKey, Any] = None,
+                 properties: dict[ModelToolPropertyKey, Any] = None,
                  **kwargs):
         """
             init the tool
@@ -52,7 +56,7 @@ class ModelTool(Tool):
     """
     Model tool
     """
-    def fork_tool_runtime(self, meta: Dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -69,13 +73,13 @@ class ModelTool(Tool):
             runtime=Tool.Runtime(**meta)
         )
 
-    def validate_credentials(self, credentials: Dict[str, Any], parameters: Dict[str, Any], format_only: bool = False) -> None:
+    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False) -> None:
         """
             validate the credentials for Model tool
         """
         pass
 
-    def _invoke(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         """
         model_instance = self.model_configuration['model_instance']
@@ -87,7 +91,7 @@ class ModelTool(Tool):
         else:
             return self.create_text_message('the tool is not configured correctly')
         
-    def _invoke_llm_vision(self, user_id: str, tool_parameters: Dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke_llm_vision(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         # get image
         image_parameter_name = self.model_configuration['properties'].get(ModelToolPropertyKey.IMAGE_PARAMETER_NAME, 'image_id')
         image_id = tool_parameters.pop(image_parameter_name, '')

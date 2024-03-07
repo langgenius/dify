@@ -24,6 +24,7 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 from services.model_provider_service import ModelProviderService
 
+
 class ToolManageService:
     @staticmethod
     def list_tool_providers(user_id: str, tenant_id: str):
