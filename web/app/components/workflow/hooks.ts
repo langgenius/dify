@@ -368,6 +368,7 @@ export const useWorkflow = () => {
         x: currentNode.position.x,
         y: currentNode.position.y,
       },
+      targetPosition: Position.Left,
     }
     const newNodes = produce(nodes, (draft) => {
       const index = draft.findIndex(node => node.id === currentNodeId)

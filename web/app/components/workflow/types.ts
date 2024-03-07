@@ -27,7 +27,6 @@ export type Branch = {
 
 export type CommonNodeType<T = {}> = {
   _selected?: boolean
-  _hovering?: boolean
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
   _icon?: Collection['icon']

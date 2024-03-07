@@ -21,7 +21,7 @@ const NodeControl: FC<NodeControlProps> = ({
   const { handleNodeDataUpdate } = useWorkflow()
 
   return (
-    <div className='absolute right-0 -top-7 flex items-center px-0.5 h-6 bg-white rounded-lg border-[0.5px] border-gray-100 shadow-xs text-gray-500'>
+    <div className='flex items-center px-0.5 h-6 bg-white rounded-lg border-[0.5px] border-gray-100 shadow-xs text-gray-500'>
       {
         isRunning && (
           <div className='flex items-center px-1 h-5 rounded-md bg-primary-50 text-xs font-medium text-primary-600'>

@@ -9,8 +9,6 @@ import { useKeyPress } from 'ahooks'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
   useOnViewportChange,
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
@@ -56,13 +54,11 @@ type WorkflowProps = {
   viewport?: Viewport
 }
 const Workflow: FC<WorkflowProps> = memo(({
-  nodes: initialNodes,
-  edges: initialEdges,
+  nodes,
+  edges,
   viewport,
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
-  const [nodes] = useNodesState(initialNodes)
-  const [edges] = useEdgesState(initialEdges)
 
   const {
     handleSyncWorkflowDraft,
