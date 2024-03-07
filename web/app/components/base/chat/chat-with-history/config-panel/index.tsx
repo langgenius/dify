@@ -95,7 +95,10 @@ const ConfigPanel = () => {
                 <Button
                   type='primary'
                   className='mr-2 text-sm font-medium'
-                  onClick={handleStartChat}
+                  onClick={() => {
+                    setCollapsed(true)
+                    handleStartChat()
+                  }}
                 >
                   {t('common.operation.save')}
                 </Button>
