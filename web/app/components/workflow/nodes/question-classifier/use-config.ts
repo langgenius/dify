@@ -3,6 +3,7 @@ import produce from 'immer'
 import type { Memory, ValueSelector } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const { inputs, setInputs } = useNodeCrud<QuestionClassifierNodeType>(id, payload)
@@ -52,6 +53,31 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+  } = useOneStepRun<QuestionClassifierNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {
+      query: 'Negative or positive sentiment?',
+    },
+  })
+
+  const query = runInputData.query
+  const setQuery = useCallback((newQuery: string) => {
+    setRunInputData({
+      ...runInputData,
+      query: newQuery,
+    })
+  }, [runInputData, setRunInputData])
+
   return {
     inputs,
     handleModelChanged,
@@ -60,6 +86,13 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleTopicsChange: handleClassesChange,
     handleInstructionChange,
     handleMemoryChange,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    query,
+    setQuery,
   }
 }
 
