@@ -45,7 +45,8 @@ from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
-
+from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
+from tasks.retry_document_indexing_task import retry_document_indexing_task
 
 class DatasetService:
 
@@ -441,6 +442,18 @@ class DocumentService:
         recover_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
+    def retry_document(document):
+        # retry document indexing
+        document.indexing_status = 'waiting'
+        db.session.add(document)
+        db.session.commit()
+        # add retry flag
+        retry_indexing_cache_key = 'document_{}_is_retried'.format(document.id)
+        redis_client.setex(retry_indexing_cache_key, 600, 1)
+        # trigger async task
+        retry_document_indexing_task.delay(document.dataset_id, [document.id])
+
+    @staticmethod
     def get_documents_position(dataset_id):
         document = Document.query.filter_by(dataset_id=dataset_id).order_by(Document.position.desc()).first()
         if document:
@@ -537,6 +550,7 @@ class DocumentService:
                 db.session.commit()
             position = DocumentService.get_documents_position(dataset.id)
             document_ids = []
+            duplicate_document_ids = []
             if document_data["data_source"]["type"] == "upload_file":
                 upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
                 for file_id in upload_file_list:
@@ -553,6 +567,28 @@ class DocumentService:
                     data_source_info = {
                         "upload_file_id": file_id,
                     }
+                    # check duplicate
+                    if document_data.get('duplicate', True):
+                        document = Document.query.filter_by(
+                            dataset_id=dataset.id,
+                            tenant_id=current_user.current_tenant_id,
+                            data_source_type='upload_file',
+                            enabled=True,
+                            name=file_name
+                        ).first()
+                        if document:
+                            document.dataset_process_rule_id = dataset_process_rule.id
+                            document.updated_at = datetime.datetime.utcnow()
+                            document.created_from = created_from
+                            document.doc_form = document_data['doc_form']
+                            document.doc_language = document_data['doc_language']
+                            document.data_source_info = json.dumps(data_source_info)
+                            document.batch = batch
+                            document.indexing_status = 'waiting'
+                            db.session.add(document)
+                            documents.append(document)
+                            duplicate_document_ids.append(document.id)
+                            continue
                     document = DocumentService.build_document(dataset, dataset_process_rule.id,
                                                               document_data["data_source"]["type"],
                                                               document_data["doc_form"],
@@ -618,7 +654,10 @@ class DocumentService:
             db.session.commit()
 
             # trigger async task
-            document_indexing_task.delay(dataset.id, document_ids)
+            if document_ids:
+                document_indexing_task.delay(dataset.id, document_ids)
+            if duplicate_document_ids:
+                duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
         return documents, batch
 
@@ -752,7 +791,6 @@ class DocumentService:
         db.session.commit()
         # trigger async task
         document_indexing_update_task.delay(document.dataset_id, document.id)
-
         return document
 
     @staticmethod

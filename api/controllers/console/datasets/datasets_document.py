@@ -233,7 +233,7 @@ class DatasetDocumentListApi(Resource):
                             location='json')
         parser.add_argument('data_source', type=dict, required=False, location='json')
         parser.add_argument('process_rule', type=dict, required=False, location='json')
-        parser.add_argument('duplicate', type=bool, nullable=False, location='json')
+        parser.add_argument('duplicate', type=bool, default=True, nullable=False, location='json')
         parser.add_argument('original_document_id', type=str, required=False, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
@@ -879,6 +879,39 @@ class DocumentRecoverApi(DocumentResource):
             DocumentService.recover_document(document)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError('Document is not in paused status.')
+
+        return {'result': 'success'}, 204
+
+
+
+class DocumentRetryApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, document_id):
+        """retry document."""
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
+
+        document = DocumentService.get_document(dataset.id, document_id)
+
+        # 404 if document not found
+        if document is None:
+            raise NotFound("Document Not Exists.")
+
+        # 403 if document is archived
+        if DocumentService.check_archived(document):
+            raise ArchivedDocumentImmutableError()
+
+        # 400 if document is completed
+        if document.indexing_status == 'completed':
+            raise DocumentAlreadyFinishedError()
+
+        # retry document
+        DocumentService.retry_document(document)
 
         return {'result': 'success'}, 204
 
