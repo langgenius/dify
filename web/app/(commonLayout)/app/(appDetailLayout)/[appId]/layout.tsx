@@ -10,6 +10,7 @@ import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetail } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
+import Loading from '@/app/components/base/loading'
 import { BarChartSquare02, FileHeart02, PromptEngineering, TerminalSquare } from '@/app/components/base/icons/src/vender/line/development'
 import { BarChartSquare02 as BarChartSquare02Solid, FileHeart02 as FileHeart02Solid, PromptEngineering as PromptEngineeringSolid, TerminalSquare as TerminalSquareSolid } from '@/app/components/base/icons/src/vender/solid/development'
 
@@ -76,14 +77,20 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appDetail])
 
   useEffect(() => {
+    setAppDetail()
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
       setAppDetail(res)
       setNavigation(getNavigations(appId, isCurrentWorkspaceManager, res.mode))
     })
   }, [appId, getNavigations, isCurrentWorkspaceManager, setAppDetail])
 
-  if (!appDetail)
-    return null
+  if (!appDetail) {
+    return (
+      <div className='flex h-full items-center justify-center bg-white'>
+        <Loading />
+      </div>
+    )
+  }
 
   // redirections
   if ((appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
@@ -93,7 +100,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
-      <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background} desc={appDetail.mode} navigation={navigation} />
+      {appDetail && (
+        <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background} desc={appDetail.mode} navigation={navigation} />
+      )}
       <div className="bg-white grow overflow-hidden">
         {children}
       </div>

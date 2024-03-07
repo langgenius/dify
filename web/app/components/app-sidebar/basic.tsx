@@ -58,7 +58,7 @@ const ICON_MAP = {
 
 export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
   return (
-    <div className="flex items-start">
+    <div className="flex items-start p-1">
       {icon && icon_background && iconType === 'app' && (
         <div className='flex-shrink-0 mr-3'>
           <AppIcon icon={icon} background={icon_background} />

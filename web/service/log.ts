@@ -63,13 +63,3 @@ export const fetchAnnotationsCount: Fetcher<AnnotationsCountResponse, { url: str
 export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string; params?: WorkflowLogsRequest }> = ({ url, params }) => {
   return get<WorkflowLogsResponse>(url, { params })
 }
-
-// TODO
-export const fetchFullRunDetail: Fetcher<WorkflowLogsResponse, { url: string; params?: WorkflowLogsRequest }> = ({ url, params }) => {
-  return get<WorkflowLogsResponse>(url, { params })
-}
-
-// TODO
-export const fetchTracingDetail: Fetcher<WorkflowLogsResponse, { url: string; params?: WorkflowLogsRequest }> = ({ url, params }) => {
-  return get<WorkflowLogsResponse>(url, { params })
-}

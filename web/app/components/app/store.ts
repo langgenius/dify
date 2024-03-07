@@ -6,7 +6,7 @@ type State = {
 }
 
 type Action = {
-  setAppDetail: (appDetail: App) => void
+  setAppDetail: (appDetail?: App) => void
 }
 
 export const useStore = create<State & Action>(set => ({

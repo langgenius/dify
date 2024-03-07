@@ -66,7 +66,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         type: 'success',
         message: t('app.editDone'),
       })
-      console.log(app.description)
       setAppDetail(app)
       mutateApps()
     }
@@ -151,17 +150,17 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           onClick={() => setOpen(v => !v)}
           className='block'
         >
-          <div className='flex cursor-pointer'>
+          <div className={cn('flex cursor-pointer p-1 rounded-lg hover:bg-gray-100', open && 'bg-gray-100')}>
             <div className='shrink-0 mr-2'>
-              <AppIcon icon={appDetail.icon} background={appDetail.icon_background} />
+              <AppIcon size="large" icon={appDetail.icon} background={appDetail.icon_background} />
             </div>
             {expand && (
-              <div className="grow w-0 pt-[2px]">
-                <div className='flex justify-between items-center text-sm leading-4 font-medium text-gray-900'>
+              <div className="grow w-0">
+                <div className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900'>
                   <div className='truncate' title={appDetail.name}>{appDetail.name}</div>
                   <ChevronDown className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />
                 </div>
-                <div className='flex items-center text-xs leading-[18px] font-medium text-gray-500 gap-1'>
+                <div className='flex items-center text-[10px] leading-[18px] font-medium text-gray-500 gap-1'>
                   {appDetail.mode === 'advanced-chat' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
@@ -193,11 +192,11 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             {/* header */}
             <div className={cn('flex pl-4 pt-3 pr-3', !appDetail.description && 'pb-2')}>
               <div className='shrink-0 mr-2'>
-                <AppIcon icon={appDetail.icon} background={appDetail.icon_background} />
+                <AppIcon size="large" icon={appDetail.icon} background={appDetail.icon_background} />
               </div>
-              <div className='grow w-0 pt-[2px]'>
-                <div title={appDetail.name} className='flex justify-between items-center text-sm leading-4 font-medium text-gray-900 truncate'>{appDetail.name}</div>
-                <div className='flex items-center text-xs leading-[18px] font-medium text-gray-500 gap-1'>
+              <div className='grow w-0'>
+                <div title={appDetail.name} className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900 truncate'>{appDetail.name}</div>
+                <div className='flex items-center text-[10px] leading-[18px] font-medium text-gray-500 gap-1'>
                   {appDetail.mode === 'advanced-chat' && (
                     <>
                       <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.chatbot').toUpperCase()}</div>
