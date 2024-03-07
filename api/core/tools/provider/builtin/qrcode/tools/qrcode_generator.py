@@ -32,10 +32,9 @@ class QRCodeGeneratorTool(BuiltinTool):
             return self.create_text_message('Invalid parameter content')
 
         # get border size
-        border = tool_parameters.get('border', '')
-        if not border or isinstance(border, str):
+        border = tool_parameters.get('border', 0)
+        if border < 0 or border > 100:
             return self.create_text_message('Invalid parameter border')
-        border_size = int(border)
 
         # get error_correction
         error_correction = tool_parameters.get('error_correction', '')
@@ -43,7 +42,7 @@ class QRCodeGeneratorTool(BuiltinTool):
             return self.create_text_message('Invalid parameter error_correction')
 
         try:
-            image = self._generate_qrcode(content, border_size, error_correction)
+            image = self._generate_qrcode(content, border, error_correction)
             image_bytes = self._image_to_byte_array(image)
             return self.create_blob_message(blob=image_bytes,
                                             meta={'mime_type': 'image/png'},
