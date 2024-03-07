@@ -17,7 +17,7 @@ parameter_rules:
     use_template: max_tokens
     default: 512
     min: 1
-    max: 8196
+    max: 20480
 pricing:
   input: '0.27'
   output: '0.27'
