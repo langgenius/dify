@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useWorkflow } from '@/app/components/workflow/hooks'
 import type { CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
-import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
 type Params<T> = {
   id: string
   data: CommonNodeType<T>
+  defaultRunInputData: Record<string, any>
 }
 
-const useOneStepRun = <T>({ id, data }: Params<T>) => {
+const useOneStepRun = <T>({ id, data, defaultRunInputData }: Params<T>) => {
   const { handleNodeDataUpdate } = useWorkflow()
   const isShowSingleRun = data._isSingleRun
   const hideSingleRun = () => {
@@ -24,15 +24,8 @@ const useOneStepRun = <T>({ id, data }: Params<T>) => {
 
   const [runningStatus, setRunningStatus] = useState('un started')
 
-  // TODO: test
-  const [inputVarValues, setInputVarValues] = useState<Record<string, any>>({
-    name: 'Joel',
-    age: '18',
-  })
-
-  const [visionFiles, setVisionFiles] = useState<any[]>([])
-
-  const [contexts, setContexts] = useState<string[]>([RETRIEVAL_OUTPUT_STRUCT])
+  // TODO: store to node
+  const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
 
   const toVarInputs = (variables: Variable[]): InputVar[] => {
     if (!variables)
@@ -58,12 +51,8 @@ const useOneStepRun = <T>({ id, data }: Params<T>) => {
     toVarInputs,
     runningStatus,
     setRunningStatus,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
+    runInputData,
+    setRunInputData,
   }
 }
 

@@ -9,6 +9,7 @@ import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import type { PromptItem } from '@/models/debug'
+import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { inputs, setInputs } = useNodeCrud<LLMNodeType>(id, payload)
@@ -95,18 +96,53 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     toVarInputs,
     runningStatus,
     setRunningStatus,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
+    runInputData,
+    setRunInputData,
   } = useOneStepRun<LLMNodeType>({
     id,
     data: inputs,
+    defaultRunInputData: {
+      'name': 'Joel',
+      'age': '18',
+      '#context#': [RETRIEVAL_OUTPUT_STRUCT],
+      '#vision#': [],
+    },
   })
 
-  console.log(contexts)
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {}
+    Object.keys(runInputData)
+      .filter(key => !['#context#', '#vision#'].includes(key))
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    const newVars = {
+      ...newPayload,
+      '#context#': runInputData['#context#'],
+      '#vision#': runInputData['#vision#'],
+    }
+    setRunInputData(newVars)
+  }, [runInputData, setRunInputData])
+
+  const contexts = runInputData['#context#']
+  const setContexts = useCallback((newContexts: string[]) => {
+    setRunInputData({
+      ...runInputData,
+      '#context#': newContexts,
+    })
+  }, [runInputData, setRunInputData])
+
+  const visionFiles = runInputData['#vision']
+  const setVisionFiles = useCallback((newFiles: any[]) => {
+    setRunInputData({
+      ...runInputData,
+      '#vision#': newFiles,
+    })
+  }, [runInputData, setRunInputData])
 
   const varInputs = toVarInputs(inputs.variables)
   const handleRun = () => {
