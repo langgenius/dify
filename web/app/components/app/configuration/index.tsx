@@ -441,7 +441,7 @@ const Configuration: FC = () => {
             model_id: model.name,
             mode: model.mode,
             configs: {
-              prompt_template: modelConfig.pre_prompt,
+              prompt_template: modelConfig.pre_prompt || '',
               prompt_variables: userInputsFormToPromptVariables(
                 [
                   ...modelConfig.user_input_form,

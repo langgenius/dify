@@ -17,6 +17,7 @@ type IPopover = {
   btnElement?: string | React.ReactNode
   btnClassName?: string | ((open: boolean) => string)
   manualClose?: boolean
+  onTriggerClick?: () => void
 }
 
 const timeoutDuration = 100
@@ -30,6 +31,7 @@ export default function CustomPopover({
   className,
   btnClassName,
   manualClose,
+  onTriggerClick,
 }: IPopover) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const timeOutRef = useRef<NodeJS.Timeout | null>(null)
@@ -66,6 +68,10 @@ export default function CustomPopover({
                     ? btnClassName
                     : btnClassName?.(open)
                 }`}
+                onClick={() => {
+                  if (!open)
+                    onTriggerClick && onTriggerClick()
+                }}
               >
                 {btnElement}
               </Popover.Button>

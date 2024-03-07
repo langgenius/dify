@@ -177,7 +177,10 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                     </>
                   )}
                   {appDetail.mode === 'completion' && (
-                    <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
+                    <>
+                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
+                      <div title={t('app.newApp.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.newApp.basic').toUpperCase())}</div>
+                    </>
                   )}
                   {appDetail.mode === 'workflow' && (
                     <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.workflow').toUpperCase()}</div>
@@ -213,7 +216,10 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                     </>
                   )}
                   {appDetail.mode === 'completion' && (
-                    <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
+                    <>
+                      <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.completion').toUpperCase()}</div>
+                      <div title={t('app.newApp.basic') || ''} className='px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{(t('app.newApp.basic').toUpperCase())}</div>
+                    </>
                   )}
                   {appDetail.mode === 'workflow' && (
                     <div className='shrink-0 px-1 border bg-white border-[rgba(0,0,0,0.08)] rounded-[5px] truncate'>{t('app.types.workflow').toUpperCase()}</div>

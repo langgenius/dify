@@ -177,7 +177,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <span className={s.actionName}>{t('common.operation.settings')}</span>
         </button>
         <Divider className="!my-1" />
-        {app.mode !== 'completion' && (
+        {(app.mode === 'workflow' || app.mode === 'agent-chat' || app.mode === 'advanced-chat' || (app.mode === 'chat' && detailState.detail?.model_config.prompt_type === 'simple')) && (
           <>
             <button className={s.actionItem} onClick={onClickDuplicate} disabled={detailState.loading}>
               <span className={s.actionName}>{t('app.duplicate')}</span>
@@ -221,6 +221,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <div className={style.listItemHeadingContent}>{app.name}</div>
           </div>
           {isCurrentWorkspaceManager && <CustomPopover
+            onTriggerClick={() => {
+              if (app.mode === 'chat' && !detailState.detail)
+                getAppDetail()
+            }}
             htmlContent={<Operations />}
             position="br"
             trigger="click"
