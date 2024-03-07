@@ -26,22 +26,28 @@ class WorkflowService:
         """
         Get draft workflow
         """
-        workflow_engine_manager = WorkflowEngineManager()
+        # fetch draft workflow by app_model
+        workflow = db.session.query(Workflow).filter(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.version == 'draft'
+        ).first()
 
         # return draft workflow
-        return workflow_engine_manager.get_draft_workflow(app_model=app_model)
+        return workflow
 
     def get_published_workflow(self, app_model: App) -> Optional[Workflow]:
         """
         Get published workflow
         """
+
         if not app_model.workflow_id:
             return None
 
         workflow_engine_manager = WorkflowEngineManager()
 
-        # return published workflow
-        return workflow_engine_manager.get_published_workflow(app_model=app_model)
+        # fetch published workflow by workflow_id
+        return workflow_engine_manager.get_workflow(app_model, app_model.workflow_id)
 
     def sync_draft_workflow(self, app_model: App,
                             graph: dict,
