@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   CommonNodeType,
   OnSelectBlock,
@@ -23,6 +24,7 @@ const Item = ({
   branchName,
   data,
 }: ItemProps) => {
+  const { t } = useTranslation()
   const { handleNodeChange } = useWorkflow()
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
@@ -35,10 +37,10 @@ const Item = ({
           ${open && '!bg-gray-100 !flex'}
         `}
       >
-        Change
+        {t('workflow.panel.change')}
       </Button>
     )
-  }, [])
+  }, [t])
 
   return (
     <div

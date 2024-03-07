@@ -138,15 +138,17 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       useStore.setState({ draftUpdatedAt: data.updated_at })
   }, [data])
 
-  const startNode = {
-    id: `${Date.now()}`,
-    type: 'custom',
-    data: nodesInitialData.start,
-    position: {
-      x: 100,
-      y: 100,
-    },
-  }
+  const startNode = useMemo(() => {
+    return {
+      id: `${Date.now()}`,
+      type: 'custom',
+      data: nodesInitialData.start,
+      position: {
+        x: 100,
+        y: 100,
+      },
+    }
+  }, [nodesInitialData])
 
   const nodesData = useMemo(() => {
     if (nodes)
@@ -156,7 +158,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       return data.graph.nodes
 
     return [startNode]
-  }, [data, nodes])
+  }, [data, nodes, startNode])
   const edgesData = useMemo(() => {
     if (edges)
       return edges
@@ -165,7 +167,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       return data.graph.edges
 
     return []
-  }, [data, nodes])
+  }, [data, edges])
 
   const handleFetchCollectionList = async () => {
     const toolsets = await fetchCollectionList()
@@ -183,16 +185,22 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     handleFetchCollectionList()
   }, [])
 
-  if (error && appDetail) {
-    syncWorkflowDraft({
-      url: `/apps/${appDetail.id}/workflows/draft`,
-      params: {
-        graph: {
-          nodes: [startNode],
-          edges: [],
-        },
-        features: {},
-      },
+  if (error && !error.bodyUsed && appDetail) {
+    error.json().then((err: any) => {
+      if (err.code === 'draft_workflow_not_exist') {
+        syncWorkflowDraft({
+          url: `/apps/${appDetail.id}/workflows/draft`,
+          params: {
+            graph: {
+              nodes: [startNode],
+              edges: [],
+            },
+            features: {},
+          },
+        }).then((res) => {
+          useStore.setState({ draftUpdatedAt: res.updated_at })
+        })
+      }
     })
   }
 
@@ -203,6 +211,9 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       </div>
     )
   }
+
+  if (!data)
+    return null
 
   const features = data?.features || {}
   const initialFeatures: FeaturesData = {

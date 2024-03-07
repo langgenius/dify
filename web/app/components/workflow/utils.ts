@@ -144,10 +144,13 @@ export const getLayoutByDagre = (nodes: Node[], edges: Edge[]) => {
 export const canRunBySingle = (nodeType: BlockEnum) => {
   return nodeType === BlockEnum.LLM
     || nodeType === BlockEnum.KnowledgeRetrieval
-    || nodeType === BlockEnum.IfElse
     || nodeType === BlockEnum.Code
     || nodeType === BlockEnum.TemplateTransform
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
     || nodeType === BlockEnum.Tool
+}
+
+export const getVariables = () => {
+
 }

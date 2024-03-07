@@ -40,7 +40,7 @@ const translation = {
   blocks: {
     'start': '开始',
     'end': '结束',
-    'direct-answer': '直接回答',
+    'direct-answer': '直接回复',
     'llm': 'LLM',
     'knowledge-retrieval': '知识检索',
     'question-classifier': '问题分类器',
@@ -70,6 +70,7 @@ const translation = {
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
     organizeBlocks: '整理节点',
+    change: '更改',
   },
   nodes: {
     common: {

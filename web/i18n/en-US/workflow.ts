@@ -70,6 +70,7 @@ const translation = {
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
     organizeBlocks: 'Organize blocks',
+    change: 'Change',
   },
   nodes: {
     common: {

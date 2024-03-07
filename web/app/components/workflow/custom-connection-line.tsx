@@ -26,7 +26,7 @@ const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponen
         d={edgePath}
       />
       <rect
-        x={toX - 2}
+        x={toX}
         y={toY - 4}
         width={2}
         height={8}
