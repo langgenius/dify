@@ -4,6 +4,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import cn from 'classnames'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
+import s from './style.module.css'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -39,6 +40,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showSwitchTip, setShowSwitchTip] = useState<string>('')
 
   const mutateApps = useContextSelector(
     AppsContext,
@@ -191,7 +193,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='w-[320px] bg-white rounded-2xl shadow-xl'>
+          <div className='relative w-[320px] bg-white rounded-2xl shadow-xl'>
             {/* header */}
             <div className={cn('flex pl-4 pt-3 pr-3', !appDetail.description && 'pb-2')}>
               <div className='shrink-0 mr-2'>
@@ -232,7 +234,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <div className='px-4 py-2 text-gray-500 text-xs leading-[18px]'>{appDetail.description}</div>
             )}
             {/* operations */}
-            <div></div>
             <Divider className="!my-1" />
             <div className="w-full py-1">
               <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={() => {
@@ -241,7 +242,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               }}>
                 <span className='text-gray-700 text-sm leading-5'>{t('app.editApp')}</span>
               </div>
-              {appDetail.mode !== 'completion' && (
+              {appDetail.mode !== 'completion' && appDetail.model_config.prompt_type !== 'advanced' && (
                 <>
                   <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={() => {
                     setOpen(false)
@@ -254,6 +255,19 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   </div>
                 </>
               )}
+              {(appDetail.mode === 'completion' || appDetail.model_config.prompt_type === 'advanced') && (
+                <>
+                  <Divider className="!my-1" />
+                  <div
+                    className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+                    onMouseEnter={() => setShowSwitchTip(appDetail.mode)}
+                    onMouseLeave={() => setShowSwitchTip('')}
+                    onClick={() => setShowSwitchTip(appDetail.mode)}
+                  >
+                    <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
+                  </div>
+                </>
+              )}
               <Divider className="!my-1" />
               <div className='group h-9 py-2 px-3 mx-1 flex items-center hover:bg-red-50 rounded-lg cursor-pointer' onClick={() => {
                 setOpen(false)
@@ -262,6 +276,24 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                 <span className='text-gray-700 text-sm leading-5 group-hover:text-red-500'>
                   {t('common.operation.delete')}
                 </span>
+              </div>
+            </div>
+            {/* switch tip */}
+            <div
+              className={cn(
+                'hidden absolute left-[324px] top-0 w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg',
+                showSwitchTip && '!block',
+              )}
+            >
+              <div className={cn(
+                'w-full h-[256px] bg-center bg-no-repeat bg-contain',
+                showSwitchTip === 'chat' && s.expertPic,
+                showSwitchTip === 'completion' && s.completionPic,
+              )}/>
+              <div className='px-4 pb-2'>
+                <div className='text-gray-700 text-md leading-6 font-semibold'>{t('app.newApp.advanced')}</div>
+                <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.advancedFor')}</div>
+                <div className='mt-1 text-gray-500 text-sm leading-5'>{t('app.newApp.advancedDescription')}</div>
               </div>
             </div>
           </div>

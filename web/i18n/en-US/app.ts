@@ -66,6 +66,7 @@ const translation = {
     ok: 'OK',
     cancel: 'Cancel',
   },
+  switch: 'Switch to Workflow Orchestrate',
 }
 
 export default translation

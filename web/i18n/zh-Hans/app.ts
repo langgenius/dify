@@ -65,6 +65,7 @@ const translation = {
     ok: '确认',
     cancel: '取消',
   },
+  switch: '迁移为工作流编排',
 }
 
 export default translation
