@@ -1,9 +1,11 @@
-from typing import Optional
+from typing import Optional, cast
 
-from core.workflow.entities.node_entities import NodeType
+from core.app.app_config.entities import VariableEntity
+from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.start.entities import StartNodeData
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class StartNode(BaseNode):
@@ -11,12 +13,58 @@ class StartNode(BaseNode):
     node_type = NodeType.START
 
     def _run(self, variable_pool: Optional[VariablePool] = None,
-             run_args: Optional[dict] = None) -> dict:
+             run_args: Optional[dict] = None) -> NodeRunResult:
         """
         Run node
         :param variable_pool: variable pool
         :param run_args: run args
         :return:
         """
-        pass
+        node_data = self.node_data
+        node_data = cast(self._node_data_cls, node_data)
+        variables = node_data.variables
 
+        # Get cleaned inputs
+        cleaned_inputs = self._get_cleaned_inputs(variables, run_args)
+
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs=cleaned_inputs,
+            outputs=cleaned_inputs
+        )
+
+    def _get_cleaned_inputs(self, variables: list[VariableEntity], user_inputs: dict):
+        if user_inputs is None:
+            user_inputs = {}
+
+        filtered_inputs = {}
+
+        for variable_config in variables:
+            variable = variable_config.variable
+
+            if variable not in user_inputs or not user_inputs[variable]:
+                if variable_config.required:
+                    raise ValueError(f"Input form variable {variable} is required")
+                else:
+                    filtered_inputs[variable] = variable_config.default if variable_config.default is not None else ""
+                    continue
+
+            value = user_inputs[variable]
+
+            if value:
+                if not isinstance(value, str):
+                    raise ValueError(f"{variable} in input form must be a string")
+
+            if variable_config.type == VariableEntity.Type.SELECT:
+                options = variable_config.options if variable_config.options is not None else []
+                if value not in options:
+                    raise ValueError(f"{variable} in input form must be one of the following: {options}")
+            else:
+                if variable_config.max_length is not None:
+                    max_length = variable_config.max_length
+                    if len(value) > max_length:
+                        raise ValueError(f'{variable} in input form must be less than {max_length} characters')
+
+            filtered_inputs[variable] = value.replace('\x00', '') if value else None
+
+        return filtered_inputs

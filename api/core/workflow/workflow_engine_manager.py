@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 from typing import Optional, Union
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
@@ -141,6 +142,7 @@ class WorkflowEngineManager:
         workflow_run_state = WorkflowRunState(
             workflow_run=workflow_run,
             start_at=time.perf_counter(),
+            user_inputs=user_inputs,
             variable_pool=VariablePool(
                 system_variables=system_inputs,
             )
@@ -399,7 +401,9 @@ class WorkflowEngineManager:
 
         # run node, result must have inputs, process_data, outputs, execution_metadata
         node_run_result = node.run(
-            variable_pool=workflow_run_state.variable_pool
+            variable_pool=workflow_run_state.variable_pool,
+            run_args=workflow_run_state.user_inputs
+            if (not predecessor_node and node.node_type == NodeType.START) else None  # only on start node
         )
 
         if node_run_result.status == WorkflowNodeExecutionStatus.FAILED:
@@ -492,7 +496,7 @@ class WorkflowEngineManager:
         workflow_node_execution.inputs = json.dumps(result.inputs)
         workflow_node_execution.process_data = json.dumps(result.process_data)
         workflow_node_execution.outputs = json.dumps(result.outputs)
-        workflow_node_execution.execution_metadata = json.dumps(result.metadata)
+        workflow_node_execution.execution_metadata = json.dumps(jsonable_encoder(result.metadata))
         workflow_node_execution.finished_at = datetime.utcnow()
 
         db.session.commit()

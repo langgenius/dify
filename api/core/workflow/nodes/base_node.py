@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import Optional
 
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
@@ -8,7 +8,7 @@ from core.workflow.entities.variable_pool import VariablePool
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class BaseNode:
+class BaseNode(ABC):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
 

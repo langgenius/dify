@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -46,6 +46,15 @@ class SystemVariable(Enum):
     CONVERSATION = 'conversation'
 
 
+class NodeRunMetadataKey(Enum):
+    """
+    Node Run Metadata Key.
+    """
+    TOTAL_TOKENS = 'total_tokens'
+    TOTAL_PRICE = 'total_price'
+    CURRENCY = 'currency'
+
+
 class NodeRunResult(BaseModel):
     """
     Node Run Result.
@@ -55,7 +64,7 @@ class NodeRunResult(BaseModel):
     inputs: Optional[dict] = None  # node inputs
     process_data: Optional[dict] = None  # process data
     outputs: Optional[dict] = None  # node outputs
-    metadata: Optional[dict] = None  # node metadata
+    metadata: Optional[dict[NodeRunMetadataKey, Any]] = None  # node metadata
 
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
 
