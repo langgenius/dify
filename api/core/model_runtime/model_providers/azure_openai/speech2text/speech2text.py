@@ -1,3 +1,4 @@
+import copy
 from typing import IO, Optional
 
 from openai import AzureOpenAI
