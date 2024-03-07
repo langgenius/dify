@@ -1,9 +1,28 @@
-from typing import Optional
+from typing import Optional, cast
 
+from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.llm.entities import LLMNodeData
 
 
 class LLMNode(BaseNode):
+    _node_data_cls = LLMNodeData
+    node_type = NodeType.LLM
+
+    def _run(self, variable_pool: Optional[VariablePool] = None,
+             run_args: Optional[dict] = None) -> NodeRunResult:
+        """
+        Run node
+        :param variable_pool: variable pool
+        :param run_args: run args
+        :return:
+        """
+        node_data = self.node_data
+        node_data = cast(self._node_data_cls, node_data)
+
+        pass
+
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
         """
