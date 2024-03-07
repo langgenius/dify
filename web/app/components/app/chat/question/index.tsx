@@ -13,10 +13,10 @@ import ImageGallery from '@/app/components/base/image-gallery'
 type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'> & {
   isShowPromptLog?: boolean
   item: IChatItem
-  isResponsing?: boolean
+  isResponding?: boolean
 }
 
-const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item, isResponsing }) => {
+const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item, isResponding }) => {
   const { userProfile } = useContext(AppContext)
   const userName = userProfile?.name
   const ref = useRef(null)
@@ -28,7 +28,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar,
 
         <div className={`${s.question} group relative text-sm text-gray-900`}>
           {
-            isShowPromptLog && !isResponsing && (
+            isShowPromptLog && !isResponding && (
               <Log log={item.log!} containerRef={ref} />
             )
           }

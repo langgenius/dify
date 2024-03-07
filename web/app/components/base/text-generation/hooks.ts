@@ -6,7 +6,7 @@ import { ssePost } from '@/service/base'
 export const useTextGeneration = () => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const [isResponsing, setIsResponsing] = useState(false)
+  const [isResponding, setIsResponding] = useState(false)
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
 
@@ -14,12 +14,12 @@ export const useTextGeneration = () => {
     url: string,
     data: any,
   ) => {
-    if (isResponsing) {
+    if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
 
-    setIsResponsing(true)
+    setIsResponding(true)
     setCompletion('')
     setMessageId('')
     let res: string[] = []
@@ -42,10 +42,10 @@ export const useTextGeneration = () => {
           setCompletion(res.join(''))
         },
         onCompleted() {
-          setIsResponsing(false)
+          setIsResponding(false)
         },
         onError() {
-          setIsResponsing(false)
+          setIsResponding(false)
         },
       })
     return true
@@ -53,8 +53,8 @@ export const useTextGeneration = () => {
 
   return {
     completion,
-    isResponsing,
-    setIsResponsing,
+    isResponding,
+    setIsResponding,
     handleSend,
     messageId,
   }

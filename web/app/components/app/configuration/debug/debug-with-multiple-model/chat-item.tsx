@@ -46,7 +46,7 @@ const ChatItem: FC<ChatItemProps> = ({
   const config = useConfigFromDebugContext()
   const {
     chatList,
-    isResponsing,
+    isResponding,
     handleSend,
     suggestedQuestions,
     handleRestart,
@@ -118,7 +118,7 @@ const ChatItem: FC<ChatItemProps> = ({
     <Chat
       config={config}
       chatList={chatList}
-      isResponsing={isResponsing}
+      isResponding={isResponding}
       noChatInput
       noStopResponding
       chatContainerclassName='p-4'
