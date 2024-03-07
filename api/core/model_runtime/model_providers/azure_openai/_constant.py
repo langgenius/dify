@@ -526,3 +526,20 @@ EMBEDDING_BASE_MODELS = [
         )
     )
 ]
+SPEECH2TEXT_BASE_MODELS = [
+    AzureBaseModel(
+        base_model_name='whisper-1',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.SPEECH2TEXT,
+            model_properties={
+                ModelPropertyKey.FILE_UPLOAD_LIMIT: 25,
+                ModelPropertyKey.SUPPORTED_FILE_EXTENSIONS: 'flac,mp3,mp4,mpeg,mpga,m4a,ogg,wav,webm'
+            }
+        )
+    )
+]

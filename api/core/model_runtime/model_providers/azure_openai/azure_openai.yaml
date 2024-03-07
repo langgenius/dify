@@ -15,6 +15,7 @@ help:
 supported_model_types:
   - llm
   - text-embedding
+  - speech2text
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -99,6 +100,12 @@ model_credential_schema:
           show_on:
             - variable: __model_type
               value: text-embedding
+        - label:
+            en_US: whisper-1
+          value: whisper-1
+          show_on:
+            - variable: __model_type
+              value: speech2text
       placeholder:
         zh_Hans: 在此输入您的模型版本
         en_US: Enter your model version
