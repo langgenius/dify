@@ -16,7 +16,6 @@ class BaseNode:
     node_data: BaseNodeData
     node_run_result: Optional[NodeRunResult] = None
 
-    stream_output_supported: bool = False
     callbacks: list[BaseWorkflowCallback]
 
     def __init__(self, config: dict,
@@ -71,10 +70,12 @@ class BaseNode:
         :param text: chunk text
         :return:
         """
-        if self.stream_output_supported:
-            if self.callbacks:
-                for callback in self.callbacks:
-                    callback.on_text_chunk(text)
+        if self.callbacks:
+            for callback in self.callbacks:
+                callback.on_node_text_chunk(
+                    node_id=self.node_id,
+                    text=text
+                )
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:

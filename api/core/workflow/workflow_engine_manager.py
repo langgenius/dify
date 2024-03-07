@@ -32,7 +32,6 @@ from models.workflow import (
     WorkflowRun,
     WorkflowRunStatus,
     WorkflowRunTriggeredFrom,
-    WorkflowType,
 )
 
 node_classes = {
@@ -171,9 +170,6 @@ class WorkflowEngineManager:
             )
         )
 
-        # fetch predecessor node ids before end node (include: llm, direct answer)
-        streamable_node_ids = self._fetch_streamable_node_ids(workflow, graph)
-
         try:
             predecessor_node = None
             while True:
@@ -186,10 +182,6 @@ class WorkflowEngineManager:
 
                 if not next_node:
                     break
-
-                # check if node is streamable
-                if next_node.node_id in streamable_node_ids:
-                    next_node.stream_output_supported = True
 
                 # max steps 30 reached
                 if len(workflow_run_state.workflow_node_executions) > 30:
@@ -232,34 +224,6 @@ class WorkflowEngineManager:
             workflow_run_state=workflow_run_state,
             callbacks=callbacks
         )
-
-    def _fetch_streamable_node_ids(self, workflow: Workflow, graph: dict) -> list[str]:
-        """
-        Fetch streamable node ids
-        When the Workflow type is chat, only the nodes before END Node are LLM or Direct Answer can be streamed output
-        When the Workflow type is workflow, only the nodes before END Node (only Plain Text mode) are LLM can be streamed output
-
-        :param workflow: Workflow instance
-        :param graph: workflow graph
-        :return:
-        """
-        workflow_type = WorkflowType.value_of(workflow.type)
-
-        streamable_node_ids = []
-        end_node_ids = []
-        for node_config in graph.get('nodes'):
-            if node_config.get('type') == NodeType.END.value:
-                if workflow_type == WorkflowType.WORKFLOW:
-                    if node_config.get('data', {}).get('outputs', {}).get('type', '') == 'plain-text':
-                        end_node_ids.append(node_config.get('id'))
-                else:
-                    end_node_ids.append(node_config.get('id'))
-
-        for edge_config in graph.get('edges'):
-            if edge_config.get('target') in end_node_ids:
-                streamable_node_ids.append(edge_config.get('source'))
-
-        return streamable_node_ids
 
     def _init_workflow_run(self, workflow: Workflow,
                            triggered_from: WorkflowRunTriggeredFrom,
