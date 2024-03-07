@@ -57,7 +57,6 @@ export const NODES_INITIAL_DATA = {
     type: BlockEnum.IfElse,
     title: '',
     desc: '',
-
     ...IfElseDefault.defaultValue,
   },
   [BlockEnum.Code]: {

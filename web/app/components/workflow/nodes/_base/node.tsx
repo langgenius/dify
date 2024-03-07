@@ -7,6 +7,11 @@ import {
   memo,
 } from 'react'
 import type { NodeProps } from '../../types'
+import { BlockEnum } from '../../types'
+import {
+  NodeSourceHandle,
+  NodeTargetHandle,
+} from './components/node-handle'
 import BlockIcon from '@/app/components/workflow/block-icon'
 
 type BaseNodeProps = {
@@ -18,8 +23,6 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
-  const type = data.type
-
   return (
     <div
       className={`
@@ -28,6 +31,26 @@ const BaseNode: FC<BaseNodeProps> = ({
         ${data._selected ? 'border-[2px] border-primary-600' : 'border border-white'}
       `}
     >
+      {
+        data.type !== BlockEnum.VariableAssigner && (
+          <NodeTargetHandle
+            id={id}
+            data={data}
+            handleClassName='!top-[17px] !-left-2'
+            handleId='target'
+          />
+        )
+      }
+      {
+        data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && (
+          <NodeSourceHandle
+            id={id}
+            data={data}
+            handleClassName='!top-[17px] !-right-2'
+            handleId='source'
+          />
+        )
+      }
       <div className='flex items-center px-3 pt-3 pb-2'>
         <BlockIcon
           className='shrink-0 mr-2'

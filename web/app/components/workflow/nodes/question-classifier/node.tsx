@@ -42,7 +42,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
             <NodeSourceHandle
               {...props}
               handleId={topic.name}
-              handleClassName='!top-[11px] !-right-[21px]'
+              handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
             />
           </div>
         ))}

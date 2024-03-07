@@ -10,6 +10,7 @@ import type {
   Viewport,
 } from 'reactflow'
 import {
+  Position,
   getConnectedEdges,
   getIncomers,
   useReactFlow,
@@ -118,32 +119,32 @@ export const useWorkflow = () => {
       getNodes,
       setNodes,
     } = store.getState()
-    const { setHelpLine } = useStore.getState()
+    // const { setHelpLine } = useStore.getState()
     e.stopPropagation()
 
     const nodes = getNodes()
 
-    const showVerticalHelpLineNodes = nodes.filter((n) => {
-      if (
-        n.position.x === node.position.x
-        || n.position.x + n.width! === node.position.x
-        || n.position.x === node.position.x + node.width!
-      )
-        return true
+    // const showVerticalHelpLineNodes = nodes.filter((n) => {
+    //   if (
+    //     n.position.x === node.position.x
+    //     || n.position.x + n.width! === node.position.x
+    //     || n.position.x === node.position.x + node.width!
+    //   )
+    //     return true
 
-      return false
-    })
-    const showHorizontalHelpLineNodes = nodes.filter((n) => {
-      if (
-        n.position.y === node.position.y
-        || n.position.y === node.position.y + node.height!
-        || n.position.y + n.height! === node.position.y
-        || n.position.y + n.height! === node.position.y + node.height!
-      )
-        return true
+    //   return false
+    // })
+    // const showHorizontalHelpLineNodes = nodes.filter((n) => {
+    //   if (
+    //     n.position.y === node.position.y
+    //     || n.position.y === node.position.y + node.height!
+    //     || n.position.y + n.height! === node.position.y
+    //     || n.position.y + n.height! === node.position.y + node.height!
+    //   )
+    //     return true
 
-      return false
-    })
+    //   return false
+    // })
 
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(n => n.id === node.id)!
@@ -166,17 +167,9 @@ export const useWorkflow = () => {
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
     const {
-      getNodes,
-      setNodes,
       edges,
       setEdges,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(n => n.id === node.id)!
-
-      currentNode.data._hovering = true
-    })
-    setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       const connectedEdges = getConnectedEdges([node], edges)
 
@@ -189,19 +182,11 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
-  const handleNodeLeave = useCallback<NodeMouseHandler>((_, node) => {
+  const handleNodeLeave = useCallback<NodeMouseHandler>(() => {
     const {
-      getNodes,
-      setNodes,
       edges,
       setEdges,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(n => n.id === node.id)!
-
-      currentNode.data._hovering = false
-    })
-    setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
         edge.data = { ...edge.data, _connectedNodeIsHovering: false }
@@ -331,6 +316,7 @@ export const useWorkflow = () => {
         x: currentNode.position.x + 304,
         y: currentNode.position.y,
       },
+      targetPosition: Position.Left,
     }
     const newEdge = {
       id: `${currentNode.id}-${nextNode.id}`,

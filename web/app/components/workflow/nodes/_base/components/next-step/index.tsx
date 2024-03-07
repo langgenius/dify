@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import {
   getConnectedEdges,
   getOutgoers,
@@ -6,10 +6,14 @@ import {
   useStoreApi,
 } from 'reactflow'
 import BlockIcon from '../../../../block-icon'
-import type { Node } from '../../../../types'
+import type {
+  Branch,
+  Node,
+} from '../../../../types'
 import Add from './add'
 import Item from './item'
 import Line from './line'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type NextStepProps = {
   selectedNode: Node
@@ -18,7 +22,15 @@ const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
   const store = useStoreApi()
-  const branches = selectedNode?.data._targetBranches
+  const branches = useMemo(() => {
+    const nodeData = selectedNode.data
+
+    if (nodeData.type === BlockEnum.IfElse)
+      return nodeData._targetBranches
+
+    if (nodeData.type === BlockEnum.QuestionClassifier)
+      return (nodeData as any).classes
+  }, [selectedNode])
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
@@ -52,7 +64,7 @@ const NextStep = ({
         }
         {
           branches?.length && (
-            branches.map((branch) => {
+            branches.map((branch: Branch) => {
               const connected = connectedEdges.find(edge => edge.sourceHandle === branch.id)
               const target = outgoers.find(outgoer => outgoer.id === connected?.target)
 
