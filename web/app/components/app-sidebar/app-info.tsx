@@ -42,7 +42,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showSwitchTip, setShowSwitchTip] = useState<string>('')
-  const [showSwitchModal, setShowSwitchModal] = useState<boolean>(true)
+  const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
 
   const mutateApps = useContextSelector(
     AppsContext,
