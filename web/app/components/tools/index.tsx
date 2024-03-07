@@ -88,18 +88,11 @@ const Tools: FC<Props> = ({
 
   const showCollectionList = (() => {
     let typeFilteredList: Collection[] = []
-    if (collectionType === CollectionType.all) {
-      if (isInDebugPage)
-        typeFilteredList = collectionList.filter(item => item.type !== CollectionType.model)
-      else
-        typeFilteredList = collectionList
-    }
-    else if (collectionType === CollectionType.builtIn) {
-      if (isInDebugPage)
-        typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn)
-      else
-        typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn || item.type === CollectionType.model)
-    }
+    if (collectionType === CollectionType.all)
+      typeFilteredList = collectionList.filter(item => item.type !== CollectionType.model)
+
+    else if (collectionType === CollectionType.builtIn)
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn).filter(item => item.type !== CollectionType.model)
 
     if (query)
       return typeFilteredList.filter(item => item.name.includes(query))
