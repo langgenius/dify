@@ -14,11 +14,13 @@ import {
   TemplatingTransform,
   VariableX,
 } from '@/app/components/base/icons/src/vender/workflow'
+import AppIcon from '@/app/components/base/app-icon'
 
 type BlockIconProps = {
   type: BlockEnum
   size?: string
   className?: string
+  icon?: any
 }
 const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   sm: 'w-5 h-5 rounded-md shadow-xs',
@@ -57,6 +59,7 @@ const BlockIcon: FC<BlockIconProps> = ({
   type,
   size = 'sm',
   className,
+  icon,
 }) => {
   return (
     <div className={`
@@ -66,7 +69,36 @@ const BlockIcon: FC<BlockIconProps> = ({
       ${className}
     `}
     >
-      {getIcon(type, 'w-3.5 h-3.5')}
+      {
+        type !== BlockEnum.Tool && (
+          getIcon(type, 'w-3.5 h-3.5')
+        )
+      }
+      {
+        type === BlockEnum.Tool && icon && (
+          <>
+            {
+              typeof icon === 'string'
+                ? (
+                  <div
+                    className='shrink-0 w-full h-full bg-cover bg-center rounded-md'
+                    style={{
+                      backgroundImage: `url(${icon})`,
+                    }}
+                  ></div>
+                )
+                : (
+                  <AppIcon
+                    className='shrink-0 !w-full !h-full'
+                    size='tiny'
+                    icon={icon?.content}
+                    background={icon?.background}
+                  />
+                )
+            }
+          </>
+        )
+      }
     </div>
   )
 }

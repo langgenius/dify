@@ -53,6 +53,7 @@ const Item = ({
       }
       <BlockIcon
         type={data.type}
+        icon={data._icon}
         className='shrink-0 mr-1.5'
       />
       <div className='grow'>{data.title}</div>

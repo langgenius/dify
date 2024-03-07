@@ -107,6 +107,7 @@ const Item = ({
               tool_name: tool.name,
               _icon: data.icon,
               title: tool.label[language],
+              desc: tool.description[language],
             })}
           >
             <div className='absolute left-[22px] w-[1px] h-8 bg-black/5' />

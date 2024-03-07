@@ -24,7 +24,6 @@ import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import AppIcon from '@/app/components/base/app-icon'
 
 type BasePanelProps = {
   children: ReactElement
@@ -51,40 +50,12 @@ const BasePanel: FC<BasePanelProps> = ({
     <div className='w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'>
       <div className='sticky top-0 bg-white border-b-[0.5px] border-black/5 z-10'>
         <div className='flex items-center px-4 pt-4 pb-1'>
-          {
-            type !== BlockEnum.Tool && (
-              <BlockIcon
-                className='shrink-0 mr-1'
-                type={data.type}
-                size='md'
-              />
-            )
-          }
-          {
-            type === BlockEnum.Tool && (
-              <>
-                {
-                  typeof data._icon === 'string'
-                    ? (
-                      <div
-                        className='shrink-0 mr-2 w-6 h-6 bg-cover bg-center rounded-md'
-                        style={{
-                          backgroundImage: `url(${data._icon})`,
-                        }}
-                      ></div>
-                    )
-                    : (
-                      <AppIcon
-                        className='shrink-0 mr-2'
-                        size='tiny'
-                        icon={data._icon?.content}
-                        background={data._icon?.background}
-                      />
-                    )
-                }
-              </>
-            )
-          }
+          <BlockIcon
+            className='shrink-0 mr-1'
+            type={data.type}
+            icon={data._icon}
+            size='md'
+          />
           <TitleInput
             value={data.title || ''}
             onChange={handleTitleChange}
