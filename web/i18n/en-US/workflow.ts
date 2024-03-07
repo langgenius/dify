@@ -64,6 +64,7 @@ const translation = {
     runThisStep: 'Run this step',
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
+    organizeBlocks: 'Organize blocks',
   },
   nodes: {
     common: {

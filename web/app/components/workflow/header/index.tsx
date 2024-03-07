@@ -5,6 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
+import { useIsChatMode } from '../hooks'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
@@ -18,6 +19,7 @@ import { Mode } from '@/app/components/workflow/types'
 const Header: FC = () => {
   const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
+  const isChatMode = useIsChatMode()
   const mode = useStore(state => state.mode)
   const runTaskId = useStore(state => state.runTaskId)
 
@@ -59,7 +61,7 @@ const Header: FC = () => {
         <RunAndHistory />
         <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
         {
-          appDetail?.mode === 'advanced-chat' && (
+          isChatMode && (
             <Button
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700

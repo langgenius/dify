@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { groupBy } from 'lodash-es'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { useIsChatMode } from '../hooks'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import {
   useBlocks,
@@ -15,7 +16,6 @@ import {
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Tools from './tools'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type TabsProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
@@ -24,7 +24,7 @@ const Tabs: FC<TabsProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const appDetail = useAppStore(state => state.appDetail)
+  const isChatMode = useIsChatMode()
   const blocks = useBlocks()
   const tabs = useTabs()
   const [activeTab, setActiveTab] = useState(tabs[0].key)
@@ -65,7 +65,7 @@ const Tabs: FC<TabsProps> = ({
                   }
                   {
                     groupBy(blocks, 'classification')[classification].filter((block) => {
-                      if (block.type === BlockEnum.DirectAnswer && appDetail?.mode === 'workflow')
+                      if (block.type === BlockEnum.DirectAnswer && !isChatMode)
                         return false
 
                       return true

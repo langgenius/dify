@@ -13,6 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import type { Node } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type PanelOperatorProps = {
   id: string
@@ -61,15 +62,21 @@ const PanelOperator = ({
               {t('workflow.panel.helpLink')}
             </div>
           </div>
-          <div className='h-[1px] bg-gray-100'></div>
-          <div className='p-1'>
-            <div
-              className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-              onClick={() => handleNodeDelete(id)}
-            >
-              {t('common.operation.delete')}
-            </div>
-          </div>
+          {
+            data.type !== BlockEnum.Start && (
+              <>
+                <div className='h-[1px] bg-gray-100'></div>
+                <div className='p-1'>
+                  <div
+                    className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+                    onClick={() => handleNodeDelete(id)}
+                  >
+                    {t('common.operation.delete')}
+                  </div>
+                </div>
+              </>
+            )
+          }
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
             <div className='px-3 py-2 text-xs text-gray-500'>

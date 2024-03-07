@@ -64,6 +64,7 @@ const translation = {
     runThisStep: '运行此步骤',
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
+    organizeBlocks: '整理节点',
   },
   nodes: {
     common: {

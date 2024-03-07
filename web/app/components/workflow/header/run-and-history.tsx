@@ -2,16 +2,16 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
+import { useIsChatMode } from '../hooks'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Mode } from '@/app/components/workflow/types'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
 const RunAndHistory: FC = () => {
   const { t } = useTranslation()
-  const appDetail = useAppStore(state => state.appDetail)
+  const isChatMode = useIsChatMode()
   const mode = useStore(state => state.mode)
   const showRunHistory = useStore(state => state.showRunHistory)
 
@@ -22,7 +22,7 @@ const RunAndHistory: FC = () => {
           flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600
           hover:bg-primary-50 cursor-pointer
           ${mode === 'running' && 'bg-primary-50 !cursor-not-allowed'}
-          ${mode === 'running' && appDetail?.mode !== 'workflow' && 'opacity-50'}
+          ${mode === 'running' && isChatMode && 'opacity-50'}
         `}
         onClick={() => mode !== 'running' && useStore.setState({ mode: Mode.Running })}
       >
@@ -31,12 +31,12 @@ const RunAndHistory: FC = () => {
             ? (
               <>
                 {
-                  appDetail?.mode === 'workflow' && (
+                  !isChatMode && (
                     <Loading02 className='mr-1 w-4 h-4 animate-spin' />
                   )
                 }
                 {
-                  appDetail?.mode === 'workflow'
+                  !isChatMode
                     ? t('workflow.common.running')
                     : t('workflow.common.inPreview')
                 }
@@ -46,7 +46,7 @@ const RunAndHistory: FC = () => {
               <>
                 <Play className='mr-1 w-4 h-4' />
                 {
-                  appDetail?.mode === 'workflow'
+                  !isChatMode
                     ? t('workflow.common.run')
                     : t('workflow.common.preview')
                 }
