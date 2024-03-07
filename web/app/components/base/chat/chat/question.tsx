@@ -17,12 +17,12 @@ type QuestionProps = {
   item: ChatItem
   showPromptLog?: boolean
   questionIcon?: ReactNode
-  isResponsing?: boolean
+  isResponding?: boolean
 }
 const Question: FC<QuestionProps> = ({
   item,
   showPromptLog,
-  isResponsing,
+  isResponding,
   questionIcon,
 }) => {
   const ref = useRef(null)
@@ -38,7 +38,7 @@ const Question: FC<QuestionProps> = ({
       <div className='group relative mr-4'>
         <QuestionTriangle className='absolute -right-2 top-0 w-2 h-3 text-[#D1E9FF]/50' />
         {
-          showPromptLog && !isResponsing && (
+          showPromptLog && !isResponding && (
             <Log log={item.log!} containerRef={ref} />
           )
         }
