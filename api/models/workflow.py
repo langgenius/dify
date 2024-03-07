@@ -138,7 +138,7 @@ class Workflow(db.Model):
         if 'nodes' not in graph_dict:
             return []
 
-        start_node = next((node for node in graph_dict['nodes'] if node['type'] == 'start'), None)
+        start_node = next((node for node in graph_dict['nodes'] if node['data']['type'] == 'start'), None)
         if not start_node:
             return []
 
@@ -392,8 +392,8 @@ class WorkflowNodeExecution(db.Model):
     node_id = db.Column(db.String(255), nullable=False)
     node_type = db.Column(db.String(255), nullable=False)
     title = db.Column(db.String(255), nullable=False)
-    inputs = db.Column(db.Text, nullable=False)
-    process_data = db.Column(db.Text, nullable=False)
+    inputs = db.Column(db.Text)
+    process_data = db.Column(db.Text)
     outputs = db.Column(db.Text)
     status = db.Column(db.String(255), nullable=False)
     error = db.Column(db.Text)

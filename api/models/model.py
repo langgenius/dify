@@ -585,8 +585,8 @@ class Message(db.Model):
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=False)
-    model_provider = db.Column(db.String(255), nullable=False)
-    model_id = db.Column(db.String(255), nullable=False)
+    model_provider = db.Column(db.String(255), nullable=True)
+    model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
     conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=False)
     inputs = db.Column(db.JSON)

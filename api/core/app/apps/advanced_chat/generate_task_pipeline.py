@@ -174,7 +174,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 response = {
                     'event': 'workflow_started',
                     'task_id': self._application_generate_entity.task_id,
-                    'workflow_run_id': event.workflow_run_id,
+                    'workflow_run_id': workflow_run.id,
                     'data': {
                         'id': workflow_run.id,
                         'workflow_id': workflow_run.workflow_id,
