@@ -23,9 +23,14 @@ const translation = {
     restore: 'Restore',
   },
   tabs: {
-    blocks: 'Blocks',
-    builtInTool: 'Built-in Tool',
-    customTool: 'Custom Tool',
+    'searchBlock': 'Search block',
+    'blocks': 'Blocks',
+    'builtInTool': 'Built-in Tool',
+    'customTool': 'Custom Tool',
+    'question-understand': 'Question Understand',
+    'logic': 'Logic',
+    'transform': 'Transform',
+    'utilities': 'Utilities',
   },
   blocks: {
     'start': 'Start',
@@ -49,6 +54,16 @@ const translation = {
   },
   panel: {
     userInputField: 'User Input Field',
+    changeBlock: 'Change Block',
+    helpLink: 'Help Link',
+    about: 'About',
+    createdBy: 'Created By ',
+    nextStep: 'Next Step',
+    addNextStep: 'Add the next block in this workflow',
+    selectNextStep: 'Select Next Block',
+    runThisStep: 'Run this step',
+    checklist: 'Checklist',
+    checklistTip: 'Make sure all issues are resolved before publishing',
   },
   nodes: {
     common: {

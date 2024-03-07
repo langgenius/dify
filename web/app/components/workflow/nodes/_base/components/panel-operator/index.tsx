@@ -2,6 +2,7 @@ import {
   memo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import ChangeBlock from './change-block'
 import { useWorkflow } from '@/app/components/workflow/hooks'
@@ -21,6 +22,7 @@ const PanelOperator = ({
   id,
   data,
 }: PanelOperatorProps) => {
+  const { t } = useTranslation()
   const edges = useEdges()
   const { handleNodeDelete } = useWorkflow()
   const [open, setOpen] = useState(false)
@@ -55,7 +57,9 @@ const PanelOperator = ({
               nodeId={id}
               sourceHandle={edge?.sourceHandle || 'source'}
             />
-            <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>Help Link</div>
+            <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>
+              {t('workflow.panel.helpLink')}
+            </div>
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
@@ -63,19 +67,19 @@ const PanelOperator = ({
               className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
               onClick={() => handleNodeDelete(id)}
             >
-              Delete
+              {t('common.operation.delete')}
             </div>
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
             <div className='px-3 py-2 text-xs text-gray-500'>
               <div className='flex items-center mb-1 h-[22px] font-medium'>
-                ABOUT
+                {t('workflow.panel.about')}
               </div>
               <div className='text-gray-500 leading-[18px]'>{data._about}</div>
               <div className='my-2 h-[0.5px] bg-black/5'></div>
               <div className='leading-[18px]'>
-                Created By {data._author}
+                {t('workflow.panel.createdBy')} {data._author}
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { useWorkflow } from '@/app/components/workflow/hooks'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
@@ -14,6 +15,7 @@ const ChangeBlock = ({
   nodeId,
   sourceHandle,
 }: ChangeBlockProps) => {
+  const { t } = useTranslation()
   const { handleNodeChange } = useWorkflow()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
@@ -23,10 +25,10 @@ const ChangeBlock = ({
   const renderTrigger = useCallback(() => {
     return (
       <div className='flex items-center px-3 w-[232px] h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>
-        Change Block
+        {t('workflow.panel.changeBlock')}
       </div>
     )
-  }, [])
+  }, [t])
 
   return (
     <BlockSelector

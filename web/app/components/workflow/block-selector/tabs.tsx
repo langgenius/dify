@@ -3,9 +3,10 @@ import {
   memo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { groupBy } from 'lodash-es'
 import BlockIcon from '../block-icon'
-import type { BlockEnum } from '../types'
+import { BlockEnum } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import {
   useBlocks,
@@ -14,6 +15,7 @@ import {
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Tools from './tools'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type TabsProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
@@ -21,6 +23,8 @@ export type TabsProps = {
 const Tabs: FC<TabsProps> = ({
   onSelect,
 }) => {
+  const { t } = useTranslation()
+  const appDetail = useAppStore(state => state.appDetail)
   const blocks = useBlocks()
   const tabs = useTabs()
   const [activeTab, setActiveTab] = useState(tabs[0].key)
@@ -55,12 +59,17 @@ const Tabs: FC<TabsProps> = ({
                   {
                     classification !== '-' && (
                       <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
-                        {classification}
+                        {t(`workflow.tabs.${classification}`)}
                       </div>
                     )
                   }
                   {
-                    groupBy(blocks, 'classification')[classification].map(block => (
+                    groupBy(blocks, 'classification')[classification].filter((block) => {
+                      if (block.type === BlockEnum.DirectAnswer && appDetail?.mode === 'workflow')
+                        return false
+
+                      return true
+                    }).map(block => (
                       <div
                         key={block.type}
                         className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'

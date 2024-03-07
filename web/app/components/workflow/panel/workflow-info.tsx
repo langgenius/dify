@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
@@ -8,6 +9,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import AppIcon from '@/app/components/base/app-icon'
 
 const WorkflowInfo: FC = () => {
+  const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
 
   if (!appDetail)
@@ -32,12 +34,12 @@ const WorkflowInfo: FC = () => {
         </div>
         <div className='flex items-center px-4 h-[42px] text-[13px] font-semibold text-gray-700'>
           <FileCheck02 className='mr-1 w-4 h-4' />
-          Checklist(2)
+          {t('workflow.panel.checklist')}(2)
         </div>
       </div>
       <div className='py-2'>
         <div className='px-4 py-2 text-xs text-gray-400'>
-          Make sure all issues are resolved before publishing
+          {t('workflow.panel.checklistTip')}
         </div>
         <div className='px-4 py-2'>
           <div className='border-[0.5px] border-gray-200 bg-white shadow-xs rounded-lg'>

@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useWorkflow } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
@@ -17,6 +18,7 @@ const Add = ({
   sourceHandle,
   branchName,
 }: AddProps) => {
+  const { t } = useTranslation()
   const { handleNodeAddNext } = useWorkflow()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
@@ -42,10 +44,10 @@ const Add = ({
         <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-gray-200'>
           <Plus className='w-3 h-3' />
         </div>
-        SELECT NEXT BLOCK
+        {t('workflow.panel.selectNextStep')}
       </div>
     )
-  }, [branchName])
+  }, [branchName, t])
 
   return (
     <BlockSelector

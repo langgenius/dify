@@ -66,6 +66,7 @@ const BlockIcon: FC<BlockIconProps> = ({
       flex items-center justify-center border-[0.5px] border-white/[0.02] text-white
       ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]} 
       ${ICON_CONTAINER_BG_COLOR_MAP[type]}
+      ${icon && '!shadow-none'}
       ${className}
     `}
     >

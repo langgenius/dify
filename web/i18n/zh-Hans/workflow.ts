@@ -23,9 +23,14 @@ const translation = {
     restore: '恢复',
   },
   tabs: {
-    blocks: 'Blocks',
-    builtInTool: '内置工具',
-    customTool: '自定义工具',
+    'searchBlock': '搜索节点',
+    'blocks': '节点',
+    'builtInTool': '内置工具',
+    'customTool': '自定义工具',
+    'question-understand': '问题理解',
+    'logic': '逻辑',
+    'transform': '转换',
+    'utilities': '工具',
   },
   blocks: {
     'start': '开始',
@@ -49,6 +54,16 @@ const translation = {
   },
   panel: {
     userInputField: '用户输入字段',
+    changeBlock: '更改节点',
+    helpLink: '帮助链接',
+    about: '关于',
+    createdBy: '作者',
+    nextStep: '下一步',
+    addNextStep: '添加此工作流程中的下一个节点',
+    selectNextStep: '选择下一个节点',
+    runThisStep: '运行此步骤',
+    checklist: '检查清单',
+    checklistTip: '发布前确保所有问题均已解决',
   },
   nodes: {
     common: {

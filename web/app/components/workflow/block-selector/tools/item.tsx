@@ -85,9 +85,9 @@ const Item = ({
         }
         <div
           className='grow mr-2 truncate text-sm text-gray-900'
-          title={data.name}
+          title={data.label[language]}
         >
-          {data.name}
+          {data.label[language]}
         </div>
         {
           data.expanded

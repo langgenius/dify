@@ -7,6 +7,7 @@ import {
   memo,
   useCallback,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import NextStep from './components/next-step'
 import PanelOperator from './components/panel-operator'
 import {
@@ -34,6 +35,7 @@ const BasePanel: FC<BasePanelProps> = ({
   data,
   children,
 }) => {
+  const { t } = useTranslation()
   const {
     handleNodeSelect,
     handleNodeDataUpdate,
@@ -63,7 +65,7 @@ const BasePanel: FC<BasePanelProps> = ({
             {
               canRunBySingle(data.type) && (
                 <TooltipPlus
-                  popupContent='Run this step'
+                  popupContent={t('workflow.panel.runThisStep')}
                 >
                   <div
                     className='flex items-center justify-center mr-1 w-6 h-6 rounded-md hover:bg-black/5 cursor-pointer'
@@ -99,10 +101,10 @@ const BasePanel: FC<BasePanelProps> = ({
           <div className='p-4 border-t-[0.5px] border-t-black/5'>
             <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
               <GitBranch01 className='mr-1 w-4 h-4' />
-              NEXT STEP
+              {t('workflow.panel.nextStep').toLocaleUpperCase()}
             </div>
             <div className='mb-2 text-xs text-gray-400'>
-              Add the next block in this workflow
+              {t('workflow.panel.addNextStep')}
             </div>
             <NextStep selectedNode={{ id, data } as Node} />
           </div>

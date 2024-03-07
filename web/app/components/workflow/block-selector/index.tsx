@@ -7,6 +7,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   OffsetOptions,
   Placement,
@@ -47,6 +48,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   popupClassName,
   asChild,
 }) => {
+  const { t } = useTranslation()
   const [localOpen, setLocalOpen] = useState(false)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback((newOpen: boolean) => {
@@ -95,11 +97,14 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       <PortalToFollowElemContent className='z-[1000]'>
         <div className={`w-[256px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg ${popupClassName}`}>
           <div className='px-2 pt-2'>
-            <div className='flex items-center px-2 rounded-lg bg-gray-100'>
+            <div
+              className='flex items-center px-2 rounded-lg bg-gray-100'
+              onClick={e => e.stopPropagation()}
+            >
               <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
               <input
                 className='grow px-0.5 py-[7px] text-[13px] bg-transparent appearance-none outline-none'
-                placeholder='Search block'
+                placeholder={t('workflow.tabs.searchBlock') || ''}
               />
             </div>
           </div>
