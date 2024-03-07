@@ -156,7 +156,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         >
           <div className={cn('flex cursor-pointer p-1 rounded-lg hover:bg-gray-100', open && 'bg-gray-100')}>
             <div className='shrink-0 mr-2'>
-              <AppIcon size={expand ? 'large' : 'medium'} icon={appDetail.icon} background={appDetail.icon_background} />
+              <AppIcon size={expand ? 'large' : 'small'} icon={appDetail.icon} background={appDetail.icon_background} />
             </div>
             {expand && (
               <div className="grow w-0">

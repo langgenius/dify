@@ -74,6 +74,9 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
           />
         )}
       </div>
+      {!expand && (
+        <div className='mt-1 mx-auto w-6 h-[1px] bg-gray-100'/>
+      )}
       <nav
         className={`
           grow space-y-1 bg-white
