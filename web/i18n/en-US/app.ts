@@ -67,6 +67,12 @@ const translation = {
     cancel: 'Cancel',
   },
   switch: 'Switch to Workflow Orchestrate',
+  switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
+  switchTip: 'not allow',
+  switchTipEnd: ' switching back to Basic Orchestrate.',
+  switchLabel: 'The app copy to be created',
+  removeOriginal: 'Delete the original app',
+  switchStart: 'Start swtich',
 }
 
 export default translation

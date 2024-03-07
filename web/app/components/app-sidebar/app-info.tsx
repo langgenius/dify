@@ -4,6 +4,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import cn from 'classnames'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
+import SwitchAppModal from '../app/switch-app-modal'
 import s from './style.module.css'
 import {
   PortalToFollowElem,
@@ -41,6 +42,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showSwitchTip, setShowSwitchTip] = useState<string>('')
+  const [showSwitchModal, setShowSwitchModal] = useState<boolean>(true)
 
   const mutateApps = useContextSelector(
     AppsContext,
@@ -262,7 +264,10 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                     className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
                     onMouseEnter={() => setShowSwitchTip(appDetail.mode)}
                     onMouseLeave={() => setShowSwitchTip('')}
-                    onClick={() => setShowSwitchTip(appDetail.mode)}
+                    onClick={() => {
+                      setOpen(false)
+                      setShowSwitchModal(true)
+                    }}
                   >
                     <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
                   </div>
@@ -298,6 +303,14 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             </div>
           </div>
         </PortalToFollowElemContent>
+        {showSwitchModal && (
+          <SwitchAppModal
+            show={showSwitchModal}
+            appDetail={appDetail}
+            onClose={() => setShowSwitchModal(false)}
+            onSuccess={() => setShowSwitchModal(false)}
+          />
+        )}
         {showEditModal && (
           <CreateAppModal
             isEditModal

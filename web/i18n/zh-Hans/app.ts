@@ -66,6 +66,12 @@ const translation = {
     cancel: '取消',
   },
   switch: '迁移为工作流编排',
+  switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',
+  switchTip: '不能够',
+  switchTipEnd: '迁移回基础编排',
+  switchLabel: '新应用创建为',
+  removeOriginal: '删除原应用',
+  switchStart: '开始迁移',
 }
 
 export default translation
