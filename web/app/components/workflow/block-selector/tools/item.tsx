@@ -105,9 +105,10 @@ const Item = ({
               provider_id: data.id,
               provider_type: data.type,
               tool_name: tool.name,
-              _icon: data.icon,
               title: tool.label[language],
-              desc: tool.description[language],
+              _icon: data.icon,
+              _about: tool.description[language],
+              _author: data.author,
             })}
           >
             <div className='absolute left-[22px] w-[1px] h-8 bg-black/5' />

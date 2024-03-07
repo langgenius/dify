@@ -11,18 +11,21 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import type { Node } from '@/app/components/workflow/types'
 
 type PanelOperatorProps = {
-  nodeId: string
+  id: string
+  data: Node['data']
 }
 const PanelOperator = ({
-  nodeId,
+  id,
+  data,
 }: PanelOperatorProps) => {
   const edges = useEdges()
   const { handleNodeDelete } = useWorkflow()
   const [open, setOpen] = useState(false)
 
-  const edge = edges.find(edge => edge.target === nodeId)
+  const edge = edges.find(edge => edge.target === id)
 
   return (
     <PortalToFollowElem
@@ -49,7 +52,7 @@ const PanelOperator = ({
         <div className='w-[240px] border-[0.5px] border-gray-200 rounded-2xl shadow-xl bg-white'>
           <div className='p-1'>
             <ChangeBlock
-              nodeId={nodeId}
+              nodeId={id}
               sourceHandle={edge?.sourceHandle || 'source'}
             />
             <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>Help Link</div>
@@ -58,7 +61,7 @@ const PanelOperator = ({
           <div className='p-1'>
             <div
               className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-              onClick={() => handleNodeDelete(nodeId)}
+              onClick={() => handleNodeDelete(id)}
             >
               Delete
             </div>
@@ -69,10 +72,10 @@ const PanelOperator = ({
               <div className='flex items-center mb-1 h-[22px] font-medium'>
                 ABOUT
               </div>
-              <div className='text-gray-500 leading-[18px]'>A tool for performing a Google SERP search and extracting snippets and webpages.Input should be a search query.</div>
+              <div className='text-gray-500 leading-[18px]'>{data._about}</div>
               <div className='my-2 h-[0.5px] bg-black/5'></div>
               <div className='leading-[18px]'>
-                Created By Dify
+                Created By {data._author}
               </div>
             </div>
           </div>

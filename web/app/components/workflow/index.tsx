@@ -202,7 +202,9 @@ const WorkflowWrap: FC<WorkflowProps> = ({
 
   if (isLoading) {
     return (
-      <Loading />
+      <div className='flex justify-center items-center relative w-full h-full bg-[#F0F2F7]'>
+        <Loading />
+      </div>
     )
   }
 

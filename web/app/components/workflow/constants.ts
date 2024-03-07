@@ -14,24 +14,28 @@ import EndNodeDefault from './nodes/end/default'
 
 export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {
+    _author: 'Dify',
     type: BlockEnum.Start,
     title: '',
     desc: '',
     ...StartNodeDefault.defaultValue,
   },
   [BlockEnum.End]: {
+    _author: 'Dify',
     type: BlockEnum.End,
     title: '',
     desc: '',
     ...EndNodeDefault.defaultValue,
   },
   [BlockEnum.DirectAnswer]: {
+    _author: 'Dify',
     type: BlockEnum.DirectAnswer,
     title: '',
     desc: '',
     ...DirectAnswerDefault.defaultValue,
   },
   [BlockEnum.LLM]: {
+    _author: 'Dify',
     type: BlockEnum.LLM,
     title: '',
     desc: '',
@@ -39,6 +43,7 @@ export const NODES_INITIAL_DATA = {
     ...LLMDefault.defaultValue,
   },
   [BlockEnum.KnowledgeRetrieval]: {
+    _author: 'Dify',
     type: BlockEnum.KnowledgeRetrieval,
     title: '',
     desc: '',
@@ -48,6 +53,7 @@ export const NODES_INITIAL_DATA = {
     ...KnowledgeRetrievalDefault.defaultValue,
   },
   [BlockEnum.IfElse]: {
+    _author: 'Dify',
     type: BlockEnum.IfElse,
     title: '',
     desc: '',
@@ -55,6 +61,7 @@ export const NODES_INITIAL_DATA = {
     ...IfElseDefault.defaultValue,
   },
   [BlockEnum.Code]: {
+    _author: 'Dify',
     type: BlockEnum.Code,
     title: '',
     desc: '',
@@ -65,6 +72,7 @@ export const NODES_INITIAL_DATA = {
     ...CodeDefault.defaultValue,
   },
   [BlockEnum.TemplateTransform]: {
+    _author: 'Dify',
     type: BlockEnum.TemplateTransform,
     title: '',
     desc: '',
@@ -73,6 +81,7 @@ export const NODES_INITIAL_DATA = {
     ...TemplateTransformDefault.defaultValue,
   },
   [BlockEnum.QuestionClassifier]: {
+    _author: 'Dify',
     type: BlockEnum.QuestionClassifier,
     title: '',
     desc: '',
@@ -81,6 +90,7 @@ export const NODES_INITIAL_DATA = {
     ...QuestionClassifierDefault.defaultValue,
   },
   [BlockEnum.HttpRequest]: {
+    _author: 'Dify',
     type: BlockEnum.HttpRequest,
     title: '',
     desc: '',
@@ -88,6 +98,7 @@ export const NODES_INITIAL_DATA = {
     ...HttpRequestDefault.defaultValue,
   },
   [BlockEnum.VariableAssigner]: {
+    _author: 'Dify',
     type: BlockEnum.VariableAssigner,
     title: '',
     desc: '',
@@ -106,3 +117,4 @@ export const NODES_INITIAL_DATA = {
 export const NODE_WIDTH = 220
 export const X_OFFSET = 64
 export const Y_OFFSET = 39
+export const TREE_DEEPTH = 20

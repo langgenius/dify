@@ -31,6 +31,8 @@ export type CommonNodeType<T = {}> = {
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
   _icon?: Collection['icon']
+  _about?: string
+  _author?: string
   title: string
   desc: string
   type: BlockEnum

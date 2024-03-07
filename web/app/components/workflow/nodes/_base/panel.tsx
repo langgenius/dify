@@ -34,7 +34,6 @@ const BasePanel: FC<BasePanelProps> = ({
   data,
   children,
 }) => {
-  const type = data.type
   const {
     handleNodeSelect,
     handleNodeDataUpdate,
@@ -75,7 +74,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 </TooltipPlus>
               )
             }
-            <PanelOperator nodeId={id} />
+            <PanelOperator id={id} data={data} />
             <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
             <div
               className='flex items-center justify-center w-6 h-6 cursor-pointer'
