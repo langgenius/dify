@@ -7,13 +7,15 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
 )
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
-from models.workflow import WorkflowNodeExecution, WorkflowRun
+from core.workflow.entities.node_entities import NodeType
+from models.workflow import Workflow, WorkflowNodeExecution, WorkflowRun
 
 
 class WorkflowEventTriggerCallback(BaseWorkflowCallback):
 
-    def __init__(self, queue_manager: AppQueueManager):
+    def __init__(self, queue_manager: AppQueueManager, workflow: Workflow):
         self._queue_manager = queue_manager
+        self._streamable_node_ids = self._fetch_streamable_node_ids(workflow.graph)
 
     def on_workflow_run_started(self, workflow_run: WorkflowRun) -> None:
         """
@@ -51,13 +53,34 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
             PublishFrom.APPLICATION_MANAGER
         )
 
-
-    def on_text_chunk(self, text: str) -> None:
+    def on_node_text_chunk(self, node_id: str, text: str) -> None:
         """
         Publish text chunk
         """
-        self._queue_manager.publish(
-            QueueTextChunkEvent(
-                text=text
-            ), PublishFrom.APPLICATION_MANAGER
-        )
+        if node_id in self._streamable_node_ids:
+            self._queue_manager.publish(
+                QueueTextChunkEvent(
+                    text=text
+                ), PublishFrom.APPLICATION_MANAGER
+            )
+
+    def _fetch_streamable_node_ids(self, graph: dict) -> list[str]:
+        """
+        Fetch streamable node ids
+        When the Workflow type is chat, only the nodes before END Node are LLM or Direct Answer can be streamed output
+        When the Workflow type is workflow, only the nodes before END Node (only Plain Text mode) are LLM can be streamed output
+
+        :param graph: workflow graph
+        :return:
+        """
+        streamable_node_ids = []
+        end_node_ids = []
+        for node_config in graph.get('nodes'):
+            if node_config.get('type') == NodeType.END.value:
+                end_node_ids.append(node_config.get('id'))
+
+        for edge_config in graph.get('edges'):
+            if edge_config.get('target') in end_node_ids:
+                streamable_node_ids.append(edge_config.get('source'))
+
+        return streamable_node_ids

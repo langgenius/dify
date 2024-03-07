@@ -3,6 +3,7 @@ import time
 from typing import cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
+from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
@@ -10,7 +11,6 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
-from core.callback_handler.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.moderation.base import ModerationException
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
@@ -93,7 +93,10 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.FILES: files,
                 SystemVariable.CONVERSATION: conversation.id,
             },
-            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)]
+            callbacks=[WorkflowEventTriggerCallback(
+                queue_manager=queue_manager,
+                workflow=workflow
+            )]
         )
 
     def handle_input_moderation(self, queue_manager: AppQueueManager,

@@ -1,9 +1,9 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from models.workflow import WorkflowNodeExecution, WorkflowRun
 
 
-class BaseWorkflowCallback:
+class BaseWorkflowCallback(ABC):
     @abstractmethod
     def on_workflow_run_started(self, workflow_run: WorkflowRun) -> None:
         """
@@ -33,7 +33,7 @@ class BaseWorkflowCallback:
         raise NotImplementedError
 
     @abstractmethod
-    def on_text_chunk(self, text: str) -> None:
+    def on_node_text_chunk(self, node_id: str, text: str) -> None:
         """
         Publish text chunk
         """

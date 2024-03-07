@@ -4,13 +4,13 @@ from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
+from core.app.apps.workflow.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.queue_entities import QueueStopEvent, QueueTextChunkEvent
-from core.callback_handler.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.moderation.base import ModerationException
 from core.moderation.input_moderation import InputModeration
 from core.workflow.entities.node_entities import SystemVariable
@@ -76,7 +76,10 @@ class WorkflowAppRunner:
             system_inputs={
                 SystemVariable.FILES: files
             },
-            callbacks=[WorkflowEventTriggerCallback(queue_manager=queue_manager)]
+            callbacks=[WorkflowEventTriggerCallback(
+                queue_manager=queue_manager,
+                workflow=workflow
+            )]
         )
 
     def handle_input_moderation(self, queue_manager: AppQueueManager,
