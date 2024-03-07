@@ -33,6 +33,7 @@ from models.workflow import (
     WorkflowRun,
     WorkflowRunStatus,
     WorkflowRunTriggeredFrom,
+    WorkflowType,
 )
 
 node_classes = {
@@ -268,7 +269,7 @@ class WorkflowEngineManager:
         # fetch last workflow_node_executions
         last_workflow_node_execution = workflow_run_state.workflow_node_executions[-1]
         if last_workflow_node_execution:
-            workflow_run.outputs = json.dumps(last_workflow_node_execution.node_run_result.outputs)
+            workflow_run.outputs = last_workflow_node_execution.outputs
 
         workflow_run.elapsed_time = time.perf_counter() - workflow_run_state.start_at
         workflow_run.total_tokens = workflow_run_state.total_tokens
@@ -390,6 +391,7 @@ class WorkflowEngineManager:
             workflow_run_state=workflow_run_state,
             node=node,
             predecessor_node=predecessor_node,
+            callbacks=callbacks
         )
 
         # add to workflow node executions
@@ -411,6 +413,9 @@ class WorkflowEngineManager:
                 callbacks=callbacks
             )
             raise ValueError(f"Node {node.node_data.title} run failed: {node_run_result.error}")
+
+        # set end node output if in chat
+        self._set_end_node_output_if_in_chat(workflow_run_state, node, node_run_result)
 
         # node run success
         self._workflow_node_execution_success(
@@ -528,6 +533,32 @@ class WorkflowEngineManager:
                 callback.on_workflow_node_execute_finished(workflow_node_execution)
 
         return workflow_node_execution
+
+    def _set_end_node_output_if_in_chat(self, workflow_run_state: WorkflowRunState,
+                                        node: BaseNode,
+                                        node_run_result: NodeRunResult):
+        """
+        Set end node output if in chat
+        :param workflow_run_state: workflow run state
+        :param node: current node
+        :param node_run_result: node run result
+        :return:
+        """
+        if workflow_run_state.workflow_run.type == WorkflowType.CHAT.value and node.node_type == NodeType.END:
+            workflow_node_execution_before_end = workflow_run_state.workflow_node_executions[-2]
+            if workflow_node_execution_before_end:
+                if workflow_node_execution_before_end.node_type == NodeType.LLM.value:
+                    if not node_run_result.outputs:
+                        node_run_result.outputs = {}
+
+                    node_run_result.outputs['text'] = workflow_node_execution_before_end.outputs_dict.get('text')
+                elif workflow_node_execution_before_end.node_type == NodeType.DIRECT_ANSWER.value:
+                    if not node_run_result.outputs:
+                        node_run_result.outputs = {}
+
+                    node_run_result.outputs['text'] = workflow_node_execution_before_end.outputs_dict.get('answer')
+
+        return node_run_result
 
     def _append_variables_recursively(self, variable_pool: VariablePool,
                                       node_id: str,
