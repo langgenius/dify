@@ -47,6 +47,9 @@ const translation = {
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
   },
+  panel: {
+    userInputField: 'User Input Field',
+  },
   nodes: {
     common: {
       outputVars: 'Output Variables',

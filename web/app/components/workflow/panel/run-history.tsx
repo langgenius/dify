@@ -1,16 +1,18 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useStore } from '@/app/components/workflow/store'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 const RunHistory = () => {
+  const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
 
   return (
     <div className='ml-2 w-[200px] h-full bg-white border-[0.5px] border-gray-200 shadow-xl rounded-l-2xl'>
       <div className='flex items-center justify-between px-4 pt-3 text-base font-semibold text-gray-900'>
-        Run History
+        {t('workflow.common.runHistory')}
         <div
           className='flex items-center justify-center w-6 h-6 cursor-pointer'
           onClick={() => useStore.setState({ showRunHistory: false })}
