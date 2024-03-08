@@ -1,16 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { App } from '@/types/app'
 import Run from '@/app/components/workflow/run'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type ILogDetail = {
-  appDetail: App
+  runID: string
   onClose: () => void
 }
 
-const DetailPanel: FC<ILogDetail> = ({ appDetail, onClose }) => {
+const DetailPanel: FC<ILogDetail> = ({ runID, onClose }) => {
   const { t } = useTranslation()
 
   return (
@@ -19,7 +18,7 @@ const DetailPanel: FC<ILogDetail> = ({ appDetail, onClose }) => {
         <XClose className='w-4 h-4 text-gray-500' />
       </span>
       <h1 className='shrink-0 px-4 py-1 text-md font-semibold text-gray-900'>{t('appLog.runDetail.workflowTitle')}</h1>
-      <Run activeTab='TRACING' appId={appDetail.id}></Run>
+      <Run activeTab='RESULT' runID={runID}/>
     </div>
   )
 }

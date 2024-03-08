@@ -95,8 +95,8 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               key={log.id}
               className={`border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer ${currentLog?.id !== log.id ? '' : 'bg-gray-50'}`}
               onClick={() => {
-                setShowDrawer(true)
                 setCurrentLog(log)
+                setShowDrawer(true)
               }}>
               <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
               <td className='w-[160px]'>{dayjs.unix(log.created_at).format(t('appLog.dateTimeFormat') as string)}</td>
@@ -124,7 +124,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         footer={null}
         panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-gray-200'
       >
-        <DetailPanel onClose={onCloseDrawer} appDetail={appDetail} />
+        <DetailPanel onClose={onCloseDrawer} runID={currentLog?.workflow_run.id || ''} />
       </Drawer>
     </div>
   )

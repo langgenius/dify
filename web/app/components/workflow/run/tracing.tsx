@@ -7,7 +7,7 @@ import { BlockEnum } from '../types'
 import NodePanel from './node'
 
 type TracingProps = {
-  appId: string
+  // appId: string
 }
 
 const nodeInfoFake = {
@@ -18,7 +18,7 @@ const nodeInfoFake = {
   status: 'succeeded',
 }
 
-const Tracing: FC<TracingProps> = ({ appId }) => {
+const Tracing: FC<TracingProps> = () => {
   const { t } = useTranslation()
   const [nodeCollapsed, setCurrentTab] = useState<boolean>(false)
 

@@ -10,8 +10,6 @@ type Props = {
   startTime?: number
   time?: number
   tokens?: number
-  fee?: number
-  currency?: string
   steps?: number
 }
 
@@ -21,8 +19,6 @@ const MetaData: FC<Props> = ({
   startTime = 0,
   time,
   tokens,
-  fee = 0,
-  currency = 'USD',
   steps = 1,
 }) => {
   const { t } = useTranslation()
@@ -55,7 +51,7 @@ const MetaData: FC<Props> = ({
               <div className='my-[5px] w-[88px] h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{executor}</span>
+              <span>{executor || 'N/A'}</span>
             )}
           </div>
         </div>
@@ -88,7 +84,7 @@ const MetaData: FC<Props> = ({
               <div className='my-[5px] w-[48px] h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{`${tokens} Tokens · ${fee.toLocaleString('en-US', { style: 'currency', currency, minimumFractionDigits: 4 })}`}</span>
+              <span>{`${tokens} Tokens`}</span>
             )}
           </div>
         </div>

@@ -5,13 +5,14 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Result from './result'
 import Tracing from './tracing'
+// import type { App } from '@/types/app'
 
 type RunProps = {
   activeTab: 'RESULT' | 'TRACING'
-  appId: string
+  runID: string
 }
 
-const RunPanel: FC<RunProps> = ({ activeTab, appId }) => {
+const RunPanel: FC<RunProps> = ({ activeTab, runID }) => {
   const { t } = useTranslation()
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
 
@@ -36,8 +37,8 @@ const RunPanel: FC<RunProps> = ({ activeTab, appId }) => {
       </div>
       {/* panel detal */}
       <div className={cn('grow bg-white h-0 overflow-y-auto', currentTab === 'TRACING' && '!bg-gray-50')}>
-        {currentTab === 'RESULT' && <Result />}
-        {currentTab === 'TRACING' && <Tracing appId={appId}/>}
+        {currentTab === 'RESULT' && <Result runID={runID} />}
+        {currentTab === 'TRACING' && <Tracing />}
       </div>
     </div>
   )

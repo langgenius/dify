@@ -81,10 +81,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <h1 className='text-md font-semibold text-gray-900' onClick={() => {
-        console.log(1)
-        setShowDrawer(true)
-      }}>{t('appLog.workflowTitle')}</h1>
+      <h1 className='text-md font-semibold text-gray-900' onClick={() => setShowDrawer(true)}>{t('appLog.workflowTitle')}</h1>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.workflowSubtitle')}</p>
       <div className='flex flex-col py-4 flex-1'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
@@ -136,7 +133,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         footer={null}
         panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-gray-200'
       >
-        <DetailPanel onClose={onCloseDrawer} appDetail={appDetail} />
+        <DetailPanel onClose={onCloseDrawer} runID={'fakerRunID'} />
       </Drawer>
     </div>
   )

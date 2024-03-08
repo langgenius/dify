@@ -1,46 +1,94 @@
 'use client'
 import type { FC } from 'react'
-// import React, { useState } from 'react'
-// import { useTranslation } from 'react-i18next'
-// import cn from 'classnames'
+import React, { useEffect, useMemo, useState } from 'react'
 import StatusPanel from './status'
 import MetaData from './meta'
-// import Loading from '@/app/components/base/loading'
+import Loading from '@/app/components/base/loading'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { fetchRunDetail } from '@/service/log'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import type { WorkflowRunDetailResponse } from '@/models/log'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type ResultProps = {
-  // appId: string
+  runID: string
 }
 
-const Result: FC<ResultProps> = () => {
-  // const { t } = useTranslation()
-  // const [currentTab, setCurrentTab] = useState<string>(activeTab)
+const Result: FC<ResultProps> = ({ runID }) => {
+  const { appDetail } = useAppStore()
+  const [loading, setLoading] = useState<boolean>(true)
+  const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
+
+  const executor = useMemo(() => {
+    if (runDetail?.created_by_role === 'account')
+      return runDetail.created_by_account?.name
+    if (runDetail?.created_by_role === 'end_user')
+      return runDetail.created_by_end_user?.session_id
+    return 'N/A'
+  }, [runDetail])
+
+  useEffect(() => {
+    // fetch data
+    if (appDetail && runID) {
+      setLoading(true)
+      fetchRunDetail({
+        appID: appDetail?.id,
+        runID,
+      }).then((res: WorkflowRunDetailResponse) => {
+        setLoading(false)
+        setRunDetail(res)
+      })
+    }
+  }, [appDetail, runID])
+
+  if (loading || !runDetail) {
+    return (
+      <div className='flex h-full items-center justify-center bg-white'>
+        <Loading />
+      </div>
+    )
+  }
 
   return (
     <div className='bg-white py-2'>
       <div className='px-4 py-2'>
-        <StatusPanel status={'running'} time={0.653} tokens={27} />
-      </div>
-      <div className='px-4 py-2'>
-        <StatusPanel status={'succeeded'} time={0.653} tokens={27} />
-      </div>
-      <div className='px-4 py-2'>
-        <StatusPanel status={'failed'} time={0.653} tokens={27} error='Fail message here' />
-      </div>
-      <div className='px-4 py-2'>
-        <StatusPanel status={'stopped'} time={0.653} tokens={27} />
+        <StatusPanel
+          status={runDetail.status}
+          time={runDetail.elapsed_time}
+          tokens={runDetail.total_tokens}
+          error={runDetail.error}
+        />
       </div>
       <div className='px-4 py-2 flex flex-col gap-2'>
-        <div>INPUT TODO</div>
-        <div>OUPUT TODO</div>
+        {/* ###TODO### value */}
+        <CodeEditor
+          readOnly
+          title={<div>INPUT</div>}
+          language={CodeLanguage.json}
+          value={''}
+          onChange={() => {}}
+        />
+        {/* ###TODO### value */}
+        <CodeEditor
+          readOnly
+          title={<div>OUTPUT</div>}
+          language={CodeLanguage.json}
+          value={''}
+          onChange={() => {}}
+        />
       </div>
       <div className='px-4 py-2'>
         <div className='h-[0.5px] bg-black opacity-5'/>
       </div>
       <div className='px-4 py-2'>
-        <MetaData status={'running'} />
-      </div>
-      <div className='px-4 py-2'>
-        <MetaData status={'succeeded'} executor={'Vince'} startTime={1702972783} time={0.653} tokens={27} fee={0.035} currency={'USD'} steps={7} />
+        <MetaData
+          status={runDetail.status}
+          executor={executor}
+          startTime={runDetail.created_at}
+          time={runDetail.elapsed_time}
+          tokens={runDetail.total_tokens}
+          steps={runDetail.total_steps}
+        />
       </div>
     </div>
   )

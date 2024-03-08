@@ -264,3 +264,22 @@ export type WorkflowLogsRequest = {
   page: number
   limit: number // The default value is 20 and the range is 1-100
 }
+
+export type WorkflowRunDetailResponse = {
+  id: string
+  sequence_number: number
+  version: string
+  graph: any // TODO
+  inputs: any // json
+  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  outputs?: any // json
+  error?: string
+  elapsed_time?: number
+  total_tokens?: number
+  total_steps: number
+  created_by_role: 'account' | 'end_user'
+  created_by_account?: AccountInfo
+  created_by_end_user?: EndUserInfo
+  created_at: number
+  finished_at: number
+}

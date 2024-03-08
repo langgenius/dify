@@ -17,6 +17,7 @@ import type {
   LogMessageFeedbacksResponse,
   WorkflowLogsRequest,
   WorkflowLogsResponse,
+  WorkflowRunDetailResponse,
 } from '@/models/log'
 
 export const fetchConversationList: Fetcher<ConversationListResponse, { name: string; appId: string; params?: Record<string, any> }> = ({ appId, params }) => {
@@ -62,4 +63,8 @@ export const fetchAnnotationsCount: Fetcher<AnnotationsCountResponse, { url: str
 
 export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string; params?: WorkflowLogsRequest }> = ({ url, params }) => {
   return get<WorkflowLogsResponse>(url, { params })
+}
+
+export const fetchRunDetail = ({ appID, runID }: { appID: string; runID: string }) => {
+  return get<WorkflowRunDetailResponse>(`/apps/${appID}/workflow-run/${runID}`)
 }
