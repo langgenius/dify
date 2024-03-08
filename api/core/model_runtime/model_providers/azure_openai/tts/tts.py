@@ -17,7 +17,7 @@ from core.model_runtime.model_providers.azure_openai._constant import TTS_BASE_M
 from extensions.ext_storage import storage
 
 
-class AzureOpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
+class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
     """
     Model class for OpenAI Speech to text model.
     """
