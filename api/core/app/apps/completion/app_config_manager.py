@@ -37,7 +37,7 @@ class CompletionAppConfigManager(BaseAppConfigManager):
         else:
             config_from = EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
 
-        if override_config_dict != EasyUIBasedAppModelConfigFrom.ARGS:
+        if config_from != EasyUIBasedAppModelConfigFrom.ARGS:
             app_model_config_dict = app_model_config.to_dict()
             config_dict = app_model_config_dict.copy()
         else:
