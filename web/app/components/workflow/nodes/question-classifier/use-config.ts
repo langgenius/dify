@@ -66,7 +66,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {
-      query: 'Negative or positive sentiment?',
+      query: '',
     },
   })
 

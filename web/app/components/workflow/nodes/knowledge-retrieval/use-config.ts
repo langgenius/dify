@@ -68,7 +68,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {
-      query: 'What is the capital of France?',
+      query: '',
     },
   })
 

@@ -14,6 +14,8 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+
 const i18nPrefix = 'workflow.nodes.http'
 
 const Panel: FC<NodePanelProps<HttpNodeType>> = ({
@@ -44,6 +46,15 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     showAuthorization,
     hideAuthorization,
     setAuthorization,
+    // single run
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
   } = useConfig(id, data)
 
   return (
@@ -148,6 +159,22 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           </>
         </OutputVars>
       </div>
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          forms={[
+            {
+              inputs: varInputs,
+              values: inputVarValues,
+              onChange: setInputVarValues,
+            },
+          ]}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
+        />
+      )}
     </div >
   )
 }

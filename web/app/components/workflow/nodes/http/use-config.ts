@@ -5,6 +5,7 @@ import useVarList from '../_base/hooks/use-var-list'
 import type { Authorization, Body, HttpNodeType, Method } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
@@ -64,6 +65,36 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+  } = useOneStepRun<HttpNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {},
+  })
+  const varInputs = toVarInputs(inputs.variables)
+
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {}
+    Object.keys(runInputData)
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    setRunInputData(newPayload)
+  }, [runInputData, setRunInputData])
+
   return {
     inputs,
     handleVarListChange,
@@ -89,6 +120,15 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     showAuthorization,
     hideAuthorization,
     setAuthorization,
+    // single run
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
   }
 }
 

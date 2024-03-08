@@ -32,10 +32,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   } = useOneStepRun<TemplateTransformNodeType>({
     id,
     data: inputs,
-    defaultRunInputData: {
-      name: 'Joel',
-      age: '18',
-    },
+    defaultRunInputData: {},
   })
   const varInputs = toVarInputs(inputs.variables)
 

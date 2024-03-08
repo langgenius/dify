@@ -103,8 +103,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {
-      'name': 'Joel',
-      'age': '18',
       '#context#': [RETRIEVAL_OUTPUT_STRUCT],
       '#vision#': [],
     },

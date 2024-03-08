@@ -7,10 +7,11 @@ type Params<T> = {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
+  isInvalid?: () => boolean
 }
 
-const useOneStepRun = <T>({ id, data, defaultRunInputData }: Params<T>) => {
-  const { handleNodeDataUpdate } = useWorkflow()
+const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => true }: Params<T>) => {
+  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useWorkflow()
   const isShowSingleRun = data._isSingleRun
   const hideSingleRun = () => {
     handleNodeDataUpdate({
@@ -24,6 +25,9 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData }: Params<T>) => {
 
   const [runningStatus, setRunningStatus] = useState('un started')
   const handleRun = () => {
+    if (isInvalid())
+      return
+
     setRunningStatus('running')
   }
 

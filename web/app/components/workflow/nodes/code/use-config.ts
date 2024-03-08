@@ -45,10 +45,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   } = useOneStepRun<CodeNodeType>({
     id,
     data: inputs,
-    defaultRunInputData: {
-      name: 'Joel',
-      age: '18',
-    },
+    defaultRunInputData: {},
   })
   const varInputs = toVarInputs(inputs.variables)
 
