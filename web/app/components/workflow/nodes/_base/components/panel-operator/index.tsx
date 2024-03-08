@@ -9,6 +9,7 @@ import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
+import type { OffsetOptions } from '@floating-ui/react'
 import ChangeBlock from './change-block'
 import { useStore } from '@/app/components/workflow/store'
 import {
@@ -33,10 +34,19 @@ import {
 type PanelOperatorProps = {
   id: string
   data: Node['data']
+  triggerClassName?: string
+  offset?: OffsetOptions
+  onOpenChange?: (open: boolean) => void
 }
 const PanelOperator = ({
   id,
   data,
+  triggerClassName,
+  offset = {
+    mainAxis: 4,
+    crossAxis: 53,
+  },
+  onOpenChange,
 }: PanelOperatorProps) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -86,22 +96,27 @@ const PanelOperator = ({
     return tool?.description[language] || ''
   }, [data, nodesExtraData, toolsMap, language])
 
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    setOpen(newOpen)
+
+    if (onOpenChange)
+      onOpenChange(newOpen)
+  }, [onOpenChange])
+
   return (
     <PortalToFollowElem
       placement='bottom-end'
-      offset={{
-        mainAxis: 4,
-        crossAxis: 53,
-      }}
+      offset={offset}
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
         <div
           className={`
             flex items-center justify-center w-6 h-6 rounded-md cursor-pointer
             hover:bg-black/5
             ${open && 'bg-black/5'}
+            ${triggerClassName}
           `}
         >
           <DotsHorizontal className='w-4 h-4 text-gray-700' />
@@ -110,10 +125,14 @@ const PanelOperator = ({
       <PortalToFollowElemContent className='z-[11]'>
         <div className='w-[240px] border-[0.5px] border-gray-200 rounded-2xl shadow-xl bg-white'>
           <div className='p-1'>
-            <ChangeBlock
-              nodeId={id}
-              sourceHandle={edge?.sourceHandle || 'source'}
-            />
+            {
+              data.type !== BlockEnum.Start && (
+                <ChangeBlock
+                  nodeId={id}
+                  sourceHandle={edge?.sourceHandle || 'source'}
+                />
+              )
+            }
             <div className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'>
               {t('workflow.panel.helpLink')}
             </div>
@@ -124,7 +143,10 @@ const PanelOperator = ({
                 <div className='h-[1px] bg-gray-100'></div>
                 <div className='p-1'>
                   <div
-                    className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+                    className={`
+                    flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer
+                    hover:bg-rose-50 hover:text-red-500
+                    `}
                     onClick={() => handleNodeDelete(id)}
                   >
                     {t('common.operation.delete')}

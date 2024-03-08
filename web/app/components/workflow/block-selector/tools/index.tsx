@@ -19,7 +19,8 @@ const Tools = ({
   isCustom,
   onSelect,
 }: ToolsProps) => {
-  const toolsets = useStore(state => state.toolsets).filter(toolset => toolset.type === (isCustom ? 'api' : 'builtin'))
+  const totalToolsets = useStore(state => state.toolsets)
+  const toolsets = totalToolsets.filter(toolset => toolset.type === (isCustom ? 'api' : 'builtin'))
   const setToolsets = useStore(state => state.setToolsets)
   const toolsMap = useStore(state => state.toolsMap)
   const setToolsMap = useStore(state => state.setToolsMap)

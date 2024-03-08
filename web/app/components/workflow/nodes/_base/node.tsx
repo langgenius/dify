@@ -8,7 +8,6 @@ import {
 } from 'react'
 import type { NodeProps } from '../../types'
 import { BlockEnum } from '../../types'
-import { canRunBySingle } from '../../utils'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -59,17 +58,10 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
           )
         }
-        {
-          canRunBySingle(data.type)
-          && (
-            <div className='hidden group-hover:flex pb-1 absolute right-0 -top-7 h-7'>
-              <NodeControl
-                nodeId={id}
-                isRunning={data._isSingleRun}
-              />
-            </div>
-          )
-        }
+        <NodeControl
+          id={id}
+          data={data}
+        />
         <div className='flex items-center px-3 pt-3 pb-2'>
           <BlockIcon
             className='shrink-0 mr-2'
