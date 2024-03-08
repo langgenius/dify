@@ -1,10 +1,10 @@
-from typing import Optional, cast, Union
+from typing import Optional, Union, cast
+
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-
 from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.code.code_executor import CodeExecutionException, CodeExecutor
 from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.code.code_executor import CodeExecutor, CodeExecutionException
 from models.workflow import WorkflowNodeExecutionStatus
 
 MAX_NUMBER = 2 ** 63 - 1
@@ -151,7 +151,7 @@ class CodeNode(BaseNode):
         :param variable: variable
         :return:
         """
-        if not isinstance(value, (int, float)):
+        if not isinstance(value, int | float):
             raise ValueError(f"{variable} in input form must be a number")
 
         if value > MAX_NUMBER or value < MIN_NUMBER:

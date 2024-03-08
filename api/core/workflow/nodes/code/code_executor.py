@@ -1,8 +1,8 @@
 from os import environ
 
 from httpx import post
-from yarl import URL
 from pydantic import BaseModel
+from yarl import URL
 
 from core.workflow.nodes.code.python_template import PythonTemplateTransformer
 
