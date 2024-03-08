@@ -12,6 +12,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.code'
 
@@ -40,6 +41,15 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     handleCodeLanguageChange,
     handleOutputVarListChange,
     handleAddOutputVariable,
+    // single run
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
   } = useConfig(id, data)
   return (
     <div className='mt-2'>
@@ -86,6 +96,22 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           />
         </Field>
       </div>
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          forms={[
+            {
+              inputs: varInputs,
+              values: inputVarValues,
+              onChange: setInputVarValues,
+            },
+          ]}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
+        />
+      )}
     </div>
   )
 }

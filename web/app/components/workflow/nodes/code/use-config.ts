@@ -4,6 +4,7 @@ import useVarList from '../_base/hooks/use-var-list'
 import useOutputVarList from '../_base/hooks/use-output-var-list'
 import type { CodeLanguage, CodeNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: CodeNodeType) => {
   const { inputs, setInputs } = useNodeCrud<CodeNodeType>(id, payload)
@@ -31,6 +32,39 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs,
   })
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    toVarInputs,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+  } = useOneStepRun<CodeNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {
+      name: 'Joel',
+      age: '18',
+    },
+  })
+  const varInputs = toVarInputs(inputs.variables)
+
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {}
+    Object.keys(runInputData)
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    setRunInputData(newPayload)
+  }, [runInputData, setRunInputData])
+
   return {
     inputs,
     handleVarListChange,
@@ -39,6 +73,15 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     handleCodeLanguageChange,
     handleOutputVarListChange,
     handleAddOutputVariable,
+    // single run
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
   }
 }
 
