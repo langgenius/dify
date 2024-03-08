@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import produce from 'immer'
 import { useBoolean } from 'ahooks'
+import { useStore } from '../../store'
 import type { ToolNodeType, ToolVarInput } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
@@ -11,6 +13,8 @@ import Toast from '@/app/components/base/toast'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const { t } = useTranslation()
+  const toolsMap = useStore(s => s.toolsMap)
+  const setToolsMap = useStore(s => s.setToolsMap)
 
   const { inputs, setInputs } = useNodeCrud<ToolNodeType>(id, payload)
   const { provider_id, provider_name, provider_type, tool_name, tool_parameters } = inputs
@@ -78,7 +82,17 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   useEffect(() => {
     (async () => {
-      const list = isBuiltIn ? await fetchBuiltInToolList(provider_name || provider_id) : await fetchCustomToolList(provider_name)
+      let list: Tool[] = []
+      if (toolsMap[provider_id]?.length) {
+        list = toolsMap[provider_id]
+      }
+      else {
+        list = isBuiltIn ? await fetchBuiltInToolList(provider_name || provider_id) : await fetchCustomToolList(provider_name)
+
+        setToolsMap(produce(toolsMap, (draft) => {
+          draft[provider_id] = list
+        }))
+      }
       const currTool = list.find(tool => tool.name === tool_name)
       if (currTool)
         setCurrTool(currTool)

@@ -25,7 +25,7 @@ export const Panel = memo((props: Node) => {
   const PanelComponent = PanelComponentMap[nodeData.type]
 
   return (
-    <BasePanel {...props}>
+    <BasePanel key={props.id} {...props}>
       <PanelComponent />
     </BasePanel>
   )
