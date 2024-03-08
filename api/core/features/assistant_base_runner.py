@@ -5,7 +5,6 @@ from datetime import datetime
 from mimetypes import guess_extension
 from typing import Optional, Union, cast
 
-from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.app_runner.app_runner import AppRunner
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler

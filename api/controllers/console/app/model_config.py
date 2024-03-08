@@ -8,14 +8,15 @@ from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.entities.application_entities import AgentToolEntity
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.login import login_required
 from models.model import AppModelConfig
 from services.app_model_config_service import AppModelConfigService
-from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.tools.tool_manager import ToolManager
-from core.entities.application_entities import AgentToolEntity
+
 
 class ModelConfigResource(Resource):
 

@@ -6,16 +6,16 @@ from os import listdir, path
 from typing import Any, Union
 
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.entities.application_entities import AgentToolEntity
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.provider_manager import ProviderManager
-from core.entities.application_entities import AgentToolEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constant import DEFAULT_PROVIDERS
 from core.tools.entities.tool_entities import (
-    ApiProviderAuthType, 
-    ToolInvokeMessage, 
-    ToolProviderCredentials, 
-    ToolParameter
+    ApiProviderAuthType,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderCredentials,
 )
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolProviderNotFoundError
@@ -26,12 +26,12 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.api_tool import ApiTool
-from core.tools.tool.tool import Tool
 from core.tools.tool.builtin_tool import BuiltinTool
+from core.tools.tool.tool import Tool
 from core.tools.utils.configuration import (
-    ModelToolConfigurationManager, 
-    ToolConfigurationManager, 
-    ToolParameterConfigurationManager
+    ModelToolConfigurationManager,
+    ToolConfigurationManager,
+    ToolParameterConfigurationManager,
 )
 from core.tools.utils.encoder import serialize_base_model_dict
 from extensions.ext_database import db
