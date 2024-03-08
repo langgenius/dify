@@ -438,6 +438,11 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 message_text = f"{ai_prompt} {content}"
             else:
                 message_text = ""
+                for sub_message in message.content:
+                    if sub_message.type == PromptMessageContentType.TEXT:
+                        message_text += f"{ai_prompt} {sub_message.data}"
+                    elif sub_message.type == PromptMessageContentType.IMAGE:
+                        message_text += f"{ai_prompt} [IMAGE]"
         elif isinstance(message, SystemPromptMessage):
             message_text = content
         else:
