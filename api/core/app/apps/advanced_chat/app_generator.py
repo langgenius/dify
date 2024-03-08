@@ -216,5 +216,5 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             else:
                 logger.exception(e)
                 raise e
-        finally:
-            db.session.remove()
+        # finally:
+        #     db.session.remove()

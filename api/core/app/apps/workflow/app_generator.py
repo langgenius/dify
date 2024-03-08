@@ -168,5 +168,3 @@ class WorkflowAppGenerator(BaseAppGenerator):
             else:
                 logger.exception(e)
                 raise e
-        finally:
-            db.session.remove()
