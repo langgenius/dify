@@ -15,6 +15,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueuePingEvent,
     QueueStopEvent,
+    QueueWorkflowFinishedEvent,
 )
 from extensions.ext_redis import redis_client
 
@@ -36,7 +37,8 @@ class AppQueueManager:
         self._invoke_from = invoke_from
 
         user_prefix = 'account' if self._invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end-user'
-        redis_client.setex(AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}")
+        redis_client.setex(AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800,
+                           f"{user_prefix}-{self._user_id}")
 
         q = queue.Queue()
 
@@ -106,7 +108,10 @@ class AppQueueManager:
 
         self._q.put(message)
 
-        if isinstance(event, QueueStopEvent | QueueErrorEvent | QueueMessageEndEvent):
+        if isinstance(event, QueueStopEvent
+                             | QueueErrorEvent
+                             | QueueMessageEndEvent
+                             | QueueWorkflowFinishedEvent):
             self.stop_listen()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():

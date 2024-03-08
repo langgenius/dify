@@ -346,7 +346,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                     yield self._yield_response(response)
             elif isinstance(event, QueueTextChunkEvent):
-                delta_text = event.chunk_text
+                delta_text = event.text
                 if delta_text is None:
                     continue
 

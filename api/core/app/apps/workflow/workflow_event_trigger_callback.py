@@ -76,7 +76,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         streamable_node_ids = []
         end_node_ids = []
         for node_config in graph.get('nodes'):
-            if node_config.get('type') == NodeType.END.value:
+            if node_config.get('data', {}).get('type') == NodeType.END.value:
                 if node_config.get('data', {}).get('outputs', {}).get('type', '') == 'plain-text':
                     end_node_ids.append(node_config.get('id'))
 

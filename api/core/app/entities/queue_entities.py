@@ -48,7 +48,7 @@ class QueueTextChunkEvent(AppQueueEvent):
     QueueTextChunkEvent entity
     """
     event = QueueEvent.TEXT_CHUNK
-    chunk_text: str
+    text: str
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
