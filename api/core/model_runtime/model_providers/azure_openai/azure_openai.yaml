@@ -101,6 +101,18 @@ model_credential_schema:
             - variable: __model_type
               value: text-embedding
         - label:
+            en_US: text-embedding-3-small
+          value: text-embedding-3-small
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: text-embedding-3-large
+          value: text-embedding-3-large
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
             en_US: whisper-1
           value: whisper-1
           show_on:

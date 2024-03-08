@@ -100,6 +100,7 @@ class ToolParameter(BaseModel):
         NUMBER = "number"
         BOOLEAN = "boolean"
         SELECT = "select"
+        SECRET_INPUT = "secret-input"
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema" # should be set while adding tool

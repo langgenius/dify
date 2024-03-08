@@ -154,9 +154,9 @@ class BaseAssistantApplicationRunner(AppRunner):
         """
             convert tool to prompt message tool
         """
-        tool_entity = ToolManager.get_tool_runtime(
-            provider_type=tool.provider_type, provider_name=tool.provider_id, tool_name=tool.tool_name, 
-            tenant_id=self.application_generate_entity.tenant_id,
+        tool_entity = ToolManager.get_agent_tool_runtime(
+            tenant_id=self.tenant_id,
+            agent_tool=tool,
             agent_callback=self.agent_callback
         )
         tool_entity.load_variables(self.variables_pool)
@@ -171,33 +171,11 @@ class BaseAssistantApplicationRunner(AppRunner):
             }
         )
 
-        runtime_parameters = {}
-
-        parameters = tool_entity.parameters or []
-        user_parameters = tool_entity.get_runtime_parameters() or []
-
-        # override parameters
-        for parameter in user_parameters:
-            # check if parameter in tool parameters
-            found = False
-            for tool_parameter in parameters:
-                if tool_parameter.name == parameter.name:
-                    found = True
-                    break
-
-            if found:
-                # override parameter
-                tool_parameter.type = parameter.type
-                tool_parameter.form = parameter.form
-                tool_parameter.required = parameter.required
-                tool_parameter.default = parameter.default
-                tool_parameter.options = parameter.options
-                tool_parameter.llm_description = parameter.llm_description
-            else:
-                # add new parameter
-                parameters.append(parameter)
-
+        parameters = tool_entity.get_all_runtime_parameters()
         for parameter in parameters:
+            if parameter.form != ToolParameter.ToolParameterForm.LLM:
+                continue
+
             parameter_type = 'string'
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.STRING:
@@ -213,59 +191,16 @@ class BaseAssistantApplicationRunner(AppRunner):
             else:
                 raise ValueError(f"parameter type {parameter.type} is not supported")
             
-            if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # get tool parameter from form
-                tool_parameter_config = tool.tool_parameters.get(parameter.name)
-                if not tool_parameter_config:
-                    # get default value
-                    tool_parameter_config = parameter.default
-                    if not tool_parameter_config and parameter.required:
-                        raise ValueError(f"tool parameter {parameter.name} not found in tool config")
-                    
-                if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                    # check if tool_parameter_config in options
-                    options = list(map(lambda x: x.value, parameter.options))
-                    if tool_parameter_config not in options:
-                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
-                    
-                # convert tool parameter config to correct type
-                try:
-                    if parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                        # check if tool parameter is integer
-                        if isinstance(tool_parameter_config, int):
-                            tool_parameter_config = tool_parameter_config
-                        elif isinstance(tool_parameter_config, float):
-                            tool_parameter_config = tool_parameter_config
-                        elif isinstance(tool_parameter_config, str):
-                            if '.' in tool_parameter_config:
-                                tool_parameter_config = float(tool_parameter_config)
-                            else:
-                                tool_parameter_config = int(tool_parameter_config)
-                    elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                        tool_parameter_config = bool(tool_parameter_config)
-                    elif parameter.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
-                        tool_parameter_config = str(tool_parameter_config)
-                    elif parameter.type == ToolParameter.ToolParameterType:
-                        tool_parameter_config = str(tool_parameter_config)
-                except Exception as e:
-                    raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} is not correct type")
-                
-                # save tool parameter to tool entity memory
-                runtime_parameters[parameter.name] = tool_parameter_config
-            
-            elif parameter.form == ToolParameter.ToolParameterForm.LLM:
-                message_tool.parameters['properties'][parameter.name] = {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or '',
-                }
+            message_tool.parameters['properties'][parameter.name] = {
+                "type": parameter_type,
+                "description": parameter.llm_description or '',
+            }
 
-                if len(enum) > 0:
-                    message_tool.parameters['properties'][parameter.name]['enum'] = enum
+            if len(enum) > 0:
+                message_tool.parameters['properties'][parameter.name]['enum'] = enum
 
-                if parameter.required:
-                    message_tool.parameters['required'].append(parameter.name)
-
-        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+            if parameter.required:
+                message_tool.parameters['required'].append(parameter.name)
 
         return message_tool, tool_entity
     
@@ -305,6 +240,9 @@ class BaseAssistantApplicationRunner(AppRunner):
         tool_runtime_parameters = tool.get_runtime_parameters() or []
 
         for parameter in tool_runtime_parameters:
+            if parameter.form != ToolParameter.ToolParameterForm.LLM:
+                continue
+
             parameter_type = 'string'
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.STRING:
@@ -320,18 +258,17 @@ class BaseAssistantApplicationRunner(AppRunner):
             else:
                 raise ValueError(f"parameter type {parameter.type} is not supported")
         
-            if parameter.form == ToolParameter.ToolParameterForm.LLM:
-                prompt_tool.parameters['properties'][parameter.name] = {
-                    "type": parameter_type,
-                    "description": parameter.llm_description or '',
-                }
+            prompt_tool.parameters['properties'][parameter.name] = {
+                "type": parameter_type,
+                "description": parameter.llm_description or '',
+            }
 
-                if len(enum) > 0:
-                    prompt_tool.parameters['properties'][parameter.name]['enum'] = enum
+            if len(enum) > 0:
+                prompt_tool.parameters['properties'][parameter.name]['enum'] = enum
 
-                if parameter.required:
-                    if parameter.name not in prompt_tool.parameters['required']:
-                        prompt_tool.parameters['required'].append(parameter.name)
+            if parameter.required:
+                if parameter.name not in prompt_tool.parameters['required']:
+                    prompt_tool.parameters['required'].append(parameter.name)
 
         return prompt_tool
     
