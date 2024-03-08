@@ -354,12 +354,12 @@ class WorkflowEngineManager:
         if workflow_run_state.workflow.type == WorkflowType.CHAT.value and node.node_type == NodeType.END:
             workflow_nodes_and_result_before_end = workflow_run_state.workflow_nodes_and_results[-2]
             if workflow_nodes_and_result_before_end:
-                if workflow_nodes_and_result_before_end.node.node_type == NodeType.LLM.value:
+                if workflow_nodes_and_result_before_end.node.node_type == NodeType.LLM:
                     if not node_run_result.outputs:
                         node_run_result.outputs = {}
 
                     node_run_result.outputs['text'] = workflow_nodes_and_result_before_end.result.outputs.get('text')
-                elif workflow_nodes_and_result_before_end.node.node_type == NodeType.DIRECT_ANSWER.value:
+                elif workflow_nodes_and_result_before_end.node.node_type == NodeType.DIRECT_ANSWER:
                     if not node_run_result.outputs:
                         node_run_result.outputs = {}
 
