@@ -59,7 +59,9 @@ DEFAULTS = {
     'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
     'KEYWORD_STORE': 'jieba',
-    'BATCH_UPLOAD_LIMIT': 20
+    'BATCH_UPLOAD_LIMIT': 20,
+    'CODE_EXECUTION_ENDPOINT': '',
+    'CODE_EXECUTION_API_KEY': ''
 }
 
 
@@ -292,6 +294,9 @@ class Config:
         self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
 
         self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
+
+        self.CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
+        self.CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
 
         self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
 
