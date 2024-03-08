@@ -3,9 +3,11 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
+import useConfig from './use-config'
 import Button from '@/app/components/base/button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -15,6 +17,13 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const readOnly = false
+
+  const {
+    inputs,
+    toolSettingSchema,
+    toolSettingValue,
+    setToolSettingValue,
+  } = useConfig(id, data)
 
   return (
     <div className='mt-2'>
@@ -37,8 +46,21 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         >
           inputVars
         </Field>
+        <Split />
+        <Form
+          className='space-y-4'
+          itemClassName='!py-0'
+          fieldLabelClassName='!text-[13px] !font-semibold !text-gray-700 uppercase'
+          value={toolSettingValue}
+          onChange={setToolSettingValue}
+          formSchemas={toolSettingSchema as any}
+          isEditMode={false}
+          showOnVariableMap={{}}
+          validating={false}
+          inputClassName='!bg-gray-50'
+          readonly={readOnly}
+        />
       </div>
-      <Split />
     </div>
   )
 }
