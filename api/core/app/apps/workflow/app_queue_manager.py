@@ -3,6 +3,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueMessage,
+    WorkflowQueueMessage,
 )
 
 
@@ -16,7 +17,7 @@ class WorkflowAppQueueManager(AppQueueManager):
         self._app_mode = app_mode
 
     def construct_queue_message(self, event: AppQueueEvent) -> QueueMessage:
-        return QueueMessage(
+        return WorkflowQueueMessage(
             task_id=self._task_id,
             app_mode=self._app_mode,
             event=event

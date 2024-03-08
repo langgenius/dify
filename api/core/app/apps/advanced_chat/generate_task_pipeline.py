@@ -235,36 +235,39 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 yield self._yield_response(response)
             elif isinstance(event, QueueStopEvent | QueueWorkflowFinishedEvent):
-                if isinstance(event, QueueWorkflowFinishedEvent):
+                if isinstance(event, QueueStopEvent):
+                    workflow_run = self._get_workflow_run(self._task_state.workflow_run_id)
+                else:
                     workflow_run = self._get_workflow_run(event.workflow_run_id)
-                    if workflow_run.status == WorkflowRunStatus.SUCCEEDED.value:
-                        outputs = workflow_run.outputs_dict
-                        self._task_state.answer = outputs.get('text', '')
-                    else:
-                        err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
-                        data = self._error_to_stream_response_data(self._handle_error(err_event))
-                        yield self._yield_response(data)
-                        break
 
-                    workflow_run_response = {
-                        'event': 'workflow_finished',
-                        'task_id': self._application_generate_entity.task_id,
-                        'workflow_run_id': event.workflow_run_id,
-                        'data': {
-                            'id': workflow_run.id,
-                            'workflow_id': workflow_run.workflow_id,
-                            'status': workflow_run.status,
-                            'outputs': workflow_run.outputs_dict,
-                            'error': workflow_run.error,
-                            'elapsed_time': workflow_run.elapsed_time,
-                            'total_tokens': workflow_run.total_tokens,
-                            'total_steps': workflow_run.total_steps,
-                            'created_at': int(workflow_run.created_at.timestamp()),
-                            'finished_at': int(workflow_run.finished_at.timestamp())
-                        }
+                if workflow_run.status == WorkflowRunStatus.SUCCEEDED.value:
+                    outputs = workflow_run.outputs_dict
+                    self._task_state.answer = outputs.get('text', '')
+                else:
+                    err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
+                    data = self._error_to_stream_response_data(self._handle_error(err_event))
+                    yield self._yield_response(data)
+                    break
+
+                workflow_run_response = {
+                    'event': 'workflow_finished',
+                    'task_id': self._application_generate_entity.task_id,
+                    'workflow_run_id': event.workflow_run_id,
+                    'data': {
+                        'id': workflow_run.id,
+                        'workflow_id': workflow_run.workflow_id,
+                        'status': workflow_run.status,
+                        'outputs': workflow_run.outputs_dict,
+                        'error': workflow_run.error,
+                        'elapsed_time': workflow_run.elapsed_time,
+                        'total_tokens': workflow_run.total_tokens,
+                        'total_steps': workflow_run.total_steps,
+                        'created_at': int(workflow_run.created_at.timestamp()),
+                        'finished_at': int(workflow_run.finished_at.timestamp())
                     }
+                }
 
-                    yield self._yield_response(workflow_run_response)
+                yield self._yield_response(workflow_run_response)
 
                 # response moderation
                 if self._output_moderation_handler:

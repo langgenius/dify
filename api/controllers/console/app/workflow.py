@@ -129,17 +129,13 @@ class DraftWorkflowRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER
             )
+
+            return compact_response(response)
         except ValueError as e:
             raise e
         except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
-
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 class WorkflowTaskStopApi(Resource):

@@ -176,7 +176,20 @@ class QueueMessage(BaseModel):
     QueueMessage entity
     """
     task_id: str
-    message_id: str
-    conversation_id: str
     app_mode: str
     event: AppQueueEvent
+
+
+class MessageQueueMessage(QueueMessage):
+    """
+    MessageQueueMessage entity
+    """
+    message_id: str
+    conversation_id: str
+
+
+class WorkflowQueueMessage(QueueMessage):
+    """
+    WorkflowQueueMessage entity
+    """
+    pass
