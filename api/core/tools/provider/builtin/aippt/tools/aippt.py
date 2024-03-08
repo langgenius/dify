@@ -23,6 +23,8 @@ class AIPPTGenerateTool(BuiltinTool):
     _api_base_url = URL('https://co.aippt.cn/api')
     _api_token_cache = {}
     _api_token_cache_lock = Lock()
+    _style_cache = {}
+    _style_cache_lock = Lock()
 
     _task = {}
     _task_type_map = {
@@ -390,20 +392,31 @@ class AIPPTGenerateTool(BuiltinTool):
             ).digest()
         ).decode('utf-8')
 
-    def get_styles(self, user_id: str) -> tuple[list[dict], list[dict]]:
+    @classmethod
+    def _get_styles(cls, credentials: dict[str, str], user_id: str) -> tuple[list[dict], list[dict]]:
         """
         Get styles
-
-        :param credentials: the credentials
-        :return: Tuple[list[dict[id, color]], list[dict[id, style]]
         """
+
+        # check cache
+        with cls._style_cache_lock:
+            # clear expired styles
+            now = time()
+            for key in list(cls._style_cache.keys()):
+                if cls._style_cache[key]['expire'] < now:
+                    del cls._style_cache[key]
+
+            key = f'{credentials["aippt_access_key"]}#@#{user_id}'
+            if key in cls._style_cache:
+                return cls._style_cache[key]['colors'], cls._style_cache[key]['styles']
+
         headers = {
             'x-channel': '',
-            'x-api-key': self.runtime.credentials['aippt_access_key'],
-            'x-token': self._get_api_token(credentials=self.runtime.credentials, user_id=user_id)
+            'x-api-key': credentials['aippt_access_key'],
+            'x-token': cls._get_api_token(credentials=credentials, user_id=user_id)
         }
         response = get(
-            str(self._api_base_url / 'template_component' / 'suit' / 'select'),
+            str(cls._api_base_url / 'template_component' / 'suit' / 'select'),
             headers=headers
         )
 
@@ -425,7 +438,26 @@ class AIPPTGenerateTool(BuiltinTool):
             'name': item.get('title'),
         } for item in response.get('data', {}).get('suit_style') or []]
 
+        with cls._style_cache_lock:
+            cls._style_cache[key] = {
+                'colors': colors,
+                'styles': styles,
+                'expire': now + 60 * 60
+            }
+
         return colors, styles
+
+    def get_styles(self, user_id: str) -> tuple[list[dict], list[dict]]:
+        """
+        Get styles
+
+        :param credentials: the credentials
+        :return: Tuple[list[dict[id, color]], list[dict[id, style]]
+        """
+        if not self.runtime.credentials.get('aippt_access_key') or not self.runtime.credentials.get('aippt_secret_key'):
+            return [], []
+
+        return self._get_styles(credentials=self.runtime.credentials, user_id=user_id)
     
     def _get_suit(self, style_id: int, colour_id: int) -> int:
         """

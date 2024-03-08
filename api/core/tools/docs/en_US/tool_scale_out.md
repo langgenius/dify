@@ -119,7 +119,7 @@ parameters: # Parameter list
 - The `identity` field is mandatory, it contains the basic information of the tool, including name, author, label, description, etc.
 - `parameters` Parameter list
     - `name` Parameter name, unique, no duplication with other parameters
-    - `type` Parameter type, currently supports `string`, `number`, `boolean`, `select` four types, corresponding to string, number, boolean, drop-down box
+    - `type` Parameter type, currently supports `string`, `number`, `boolean`, `select`, `secret-input` four types, corresponding to string, number, boolean, drop-down box, and encrypted input box, respectively. For sensitive information, we recommend using `secret-input` type
     - `required` Required or not
         - In `llm` mode, if the parameter is required, the Agent is required to infer this parameter
         - In `form` mode, if the parameter is required, the user is required to fill in this parameter on the frontend before the conversation starts

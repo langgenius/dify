@@ -27,7 +27,9 @@ from fields.app_fields import (
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
-
+from core.tools.utils.configuration import ToolParameterConfigurationManager
+from core.tools.tool_manager import ToolManager
+from core.entities.application_entities import AgentToolEntity
 
 def _get_app(app_id, tenant_id):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()
@@ -236,7 +238,39 @@ class AppApi(Resource):
     def get(self, app_id):
         """Get app detail"""
         app_id = str(app_id)
-        app = _get_app(app_id, current_user.current_tenant_id)
+        app: App = _get_app(app_id, current_user.current_tenant_id)
+
+        # get original app model config
+        model_config: AppModelConfig = app.app_model_config
+        agent_mode = model_config.agent_mode_dict
+        # decrypt agent tool parameters if it's secret-input
+        for tool in agent_mode.get('tools') or []:
+            agent_tool_entity = AgentToolEntity(**tool)
+            # get tool
+            tool_runtime = ToolManager.get_agent_tool_runtime(
+                tenant_id=current_user.current_tenant_id,
+                agent_tool=agent_tool_entity,
+                agent_callback=None
+            )
+            manager = ToolParameterConfigurationManager(
+                tenant_id=current_user.current_tenant_id,
+                tool_runtime=tool_runtime,
+                provider_name=agent_tool_entity.provider_id,
+                provider_type=agent_tool_entity.provider_type,
+            )
+
+            # get decrypted parameters
+            if agent_tool_entity.tool_parameters:
+                parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
+                masked_parameter = manager.mask_tool_parameters(parameters or {})
+            else:
+                masked_parameter = {}
+
+            # override tool parameters
+            tool['tool_parameters'] = masked_parameter
+
+        # override agent mode
+        model_config.agent_mode = json.dumps(agent_mode)
 
         return app
 
