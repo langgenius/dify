@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
@@ -95,7 +95,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # return response or stream generator
         return self._handle_response(
             application_generate_entity=application_generate_entity,
+            workflow=workflow,
             queue_manager=queue_manager,
+            user=user,
             stream=stream
         )
 
@@ -117,7 +119,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager
                 )
-            except ConversationTaskStoppedException:
+            except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
@@ -136,19 +138,25 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 db.session.remove()
 
     def _handle_response(self, application_generate_entity: WorkflowAppGenerateEntity,
+                         workflow: Workflow,
                          queue_manager: AppQueueManager,
+                         user: Union[Account, EndUser],
                          stream: bool = False) -> Union[dict, Generator]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
+        :param workflow: workflow
         :param queue_manager: queue manager
+        :param user: account or end user
         :param stream: is stream
         :return:
         """
         # init generate task pipeline
         generate_task_pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
+            workflow=workflow,
             queue_manager=queue_manager,
+            user=user,
             stream=stream
         )
 
@@ -156,7 +164,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise ConversationTaskStoppedException()
+                raise GenerateTaskStoppedException()
             else:
                 logger.exception(e)
                 raise e

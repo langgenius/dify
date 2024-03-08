@@ -1,9 +1,11 @@
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.entities.node_entities import NodeType
 
 
 class QueueEvent(Enum):
@@ -16,9 +18,11 @@ class QueueEvent(Enum):
     MESSAGE_REPLACE = "message_replace"
     MESSAGE_END = "message_end"
     WORKFLOW_STARTED = "workflow_started"
-    WORKFLOW_FINISHED = "workflow_finished"
+    WORKFLOW_SUCCEEDED = "workflow_succeeded"
+    WORKFLOW_FAILED = "workflow_failed"
     NODE_STARTED = "node_started"
-    NODE_FINISHED = "node_finished"
+    NODE_SUCCEEDED = "node_succeeded"
+    NODE_FAILED = "node_failed"
     RETRIEVER_RESOURCES = "retriever_resources"
     ANNOTATION_REPLY = "annotation_reply"
     AGENT_THOUGHT = "agent_thought"
@@ -96,15 +100,21 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
     QueueWorkflowStartedEvent entity
     """
     event = QueueEvent.WORKFLOW_STARTED
-    workflow_run_id: str
 
 
-class QueueWorkflowFinishedEvent(AppQueueEvent):
+class QueueWorkflowSucceededEvent(AppQueueEvent):
     """
-    QueueWorkflowFinishedEvent entity
+    QueueWorkflowSucceededEvent entity
     """
-    event = QueueEvent.WORKFLOW_FINISHED
-    workflow_run_id: str
+    event = QueueEvent.WORKFLOW_SUCCEEDED
+
+
+class QueueWorkflowFailedEvent(AppQueueEvent):
+    """
+    QueueWorkflowFailedEvent entity
+    """
+    event = QueueEvent.WORKFLOW_FAILED
+    error: str
 
 
 class QueueNodeStartedEvent(AppQueueEvent):
@@ -112,17 +122,45 @@ class QueueNodeStartedEvent(AppQueueEvent):
     QueueNodeStartedEvent entity
     """
     event = QueueEvent.NODE_STARTED
-    workflow_node_execution_id: str
+
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+    node_run_index: int = 1
+    predecessor_node_id: Optional[str] = None
 
 
-class QueueNodeFinishedEvent(AppQueueEvent):
+class QueueNodeSucceededEvent(AppQueueEvent):
     """
-    QueueNodeFinishedEvent entity
+    QueueNodeSucceededEvent entity
     """
-    event = QueueEvent.NODE_FINISHED
-    workflow_node_execution_id: str
+    event = QueueEvent.NODE_SUCCEEDED
 
-    
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+
+    inputs: Optional[dict] = None
+    process_data: Optional[dict] = None
+    outputs: Optional[dict] = None
+    execution_metadata: Optional[dict] = None
+
+    error: Optional[str] = None
+
+
+class QueueNodeFailedEvent(AppQueueEvent):
+    """
+    QueueNodeFailedEvent entity
+    """
+    event = QueueEvent.NODE_FAILED
+
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+
+    error: str
+
+
 class QueueAgentThoughtEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity

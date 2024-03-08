@@ -5,6 +5,7 @@ from typing import Optional, Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -44,10 +45,14 @@ class WorkflowService:
         if not app_model.workflow_id:
             return None
 
-        workflow_engine_manager = WorkflowEngineManager()
-
         # fetch published workflow by workflow_id
-        return workflow_engine_manager.get_workflow(app_model, app_model.workflow_id)
+        workflow = db.session.query(Workflow).filter(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.id == app_model.workflow_id
+        ).first()
+
+        return workflow
 
     def sync_draft_workflow(self, app_model: App,
                             graph: dict,
@@ -200,6 +205,14 @@ class WorkflowService:
         )
 
         return response
+
+    def stop_workflow_task(self, task_id: str,
+                           user: Union[Account, EndUser],
+                           invoke_from: InvokeFrom) -> None:
+        """
+        Stop workflow task
+        """
+        AppQueueManager.set_stop_flag(task_id, invoke_from, user.id)
 
     def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """

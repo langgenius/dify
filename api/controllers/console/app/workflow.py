@@ -147,9 +147,12 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        # TODO
         workflow_service = WorkflowService()
-        workflow_service.stop_workflow_task(app_model=app_model, task_id=task_id, account=current_user)
+        workflow_service.stop_workflow_task(
+            task_id=task_id,
+            user=current_user,
+            invoke_from=InvokeFrom.DEBUGGER
+        )
 
         return {
             "result": "success"

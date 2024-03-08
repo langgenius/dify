@@ -1,14 +1,19 @@
+from typing import Optional
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
-    QueueNodeFinishedEvent,
+    QueueNodeFailedEvent,
     QueueNodeStartedEvent,
+    QueueNodeSucceededEvent,
     QueueTextChunkEvent,
-    QueueWorkflowFinishedEvent,
+    QueueWorkflowFailedEvent,
     QueueWorkflowStartedEvent,
+    QueueWorkflowSucceededEvent,
 )
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
-from models.workflow import Workflow, WorkflowNodeExecution, WorkflowRun
+from models.workflow import Workflow
 
 
 class WorkflowEventTriggerCallback(BaseWorkflowCallback):
@@ -17,39 +22,91 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         self._queue_manager = queue_manager
         self._streamable_node_ids = self._fetch_streamable_node_ids(workflow.graph_dict)
 
-    def on_workflow_run_started(self, workflow_run: WorkflowRun) -> None:
+    def on_workflow_run_started(self) -> None:
         """
         Workflow run started
         """
         self._queue_manager.publish(
-            QueueWorkflowStartedEvent(workflow_run_id=workflow_run.id),
+            QueueWorkflowStartedEvent(),
             PublishFrom.APPLICATION_MANAGER
         )
 
-    def on_workflow_run_finished(self, workflow_run: WorkflowRun) -> None:
+    def on_workflow_run_succeeded(self) -> None:
         """
-        Workflow run finished
+        Workflow run succeeded
         """
         self._queue_manager.publish(
-            QueueWorkflowFinishedEvent(workflow_run_id=workflow_run.id),
+            QueueWorkflowSucceededEvent(),
             PublishFrom.APPLICATION_MANAGER
         )
 
-    def on_workflow_node_execute_started(self, workflow_node_execution: WorkflowNodeExecution) -> None:
+    def on_workflow_run_failed(self, error: str) -> None:
+        """
+        Workflow run failed
+        """
+        self._queue_manager.publish(
+            QueueWorkflowFailedEvent(
+                error=error
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_workflow_node_execute_started(self, node_id: str,
+                                         node_type: NodeType,
+                                         node_data: BaseNodeData,
+                                         node_run_index: int = 1,
+                                         predecessor_node_id: Optional[str] = None) -> None:
         """
         Workflow node execute started
         """
         self._queue_manager.publish(
-            QueueNodeStartedEvent(workflow_node_execution_id=workflow_node_execution.id),
+            QueueNodeStartedEvent(
+                node_id=node_id,
+                node_type=node_type,
+                node_data=node_data,
+                node_run_index=node_run_index,
+                predecessor_node_id=predecessor_node_id
+            ),
             PublishFrom.APPLICATION_MANAGER
         )
 
-    def on_workflow_node_execute_finished(self, workflow_node_execution: WorkflowNodeExecution) -> None:
+    def on_workflow_node_execute_succeeded(self, node_id: str,
+                                           node_type: NodeType,
+                                           node_data: BaseNodeData,
+                                           inputs: Optional[dict] = None,
+                                           process_data: Optional[dict] = None,
+                                           outputs: Optional[dict] = None,
+                                           execution_metadata: Optional[dict] = None) -> None:
         """
-        Workflow node execute finished
+        Workflow node execute succeeded
         """
         self._queue_manager.publish(
-            QueueNodeFinishedEvent(workflow_node_execution_id=workflow_node_execution.id),
+            QueueNodeSucceededEvent(
+                node_id=node_id,
+                node_type=node_type,
+                node_data=node_data,
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+                execution_metadata=execution_metadata
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_workflow_node_execute_failed(self, node_id: str,
+                                        node_type: NodeType,
+                                        node_data: BaseNodeData,
+                                        error: str) -> None:
+        """
+        Workflow node execute failed
+        """
+        self._queue_manager.publish(
+            QueueNodeFailedEvent(
+                node_id=node_id,
+                node_type=node_type,
+                node_data=node_data,
+                error=error
+            ),
             PublishFrom.APPLICATION_MANAGER
         )
 
