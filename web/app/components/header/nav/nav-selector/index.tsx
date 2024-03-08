@@ -7,8 +7,9 @@ import { debounce } from 'lodash-es'
 import Indicator from '../../indicator'
 import AppIcon from '@/app/components/base/app-icon'
 import { useAppContext } from '@/context/app-context'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
-type NavItem = {
+export type NavItem = {
   id: string
   name: string
   link: string
@@ -31,6 +32,7 @@ const itemClassName = `
 const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSelectorProps) => {
   const router = useRouter()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const { setAppDetail } = useAppStore()
 
   const handleScroll = useCallback(debounce((e) => {
     if (typeof onLoadmore === 'function') {
@@ -70,7 +72,10 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
             {
               navs.map(nav => (
                 <Menu.Item key={nav.id}>
-                  <div className={itemClassName} onClick={() => router.push(nav.link)} title={nav.name}>
+                  <div className={itemClassName} onClick={() => {
+                    setAppDetail()
+                    router.push(nav.link)
+                  }} title={nav.name}>
                     <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
                       <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
                       <div className='flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded'>

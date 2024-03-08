@@ -88,10 +88,19 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     setAppDetail()
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
-      setAppDetail(res)
-      setNavigation(getNavigations(appId, isCurrentWorkspaceManager, res.mode))
+      // redirections
+      if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration')) {
+        router.replace(`/app/${appId}/workflow`)
+      }
+      else if ((res.mode !== 'workflow' && res.mode !== 'advanced-chat') && (pathname).endsWith('workflow')) {
+        router.replace(`/app/${appId}/configuration`)
+      }
+      else {
+        setAppDetail(res)
+        setNavigation(getNavigations(appId, isCurrentWorkspaceManager, res.mode))
+      }
     })
-  }, [appId, getNavigations, isCurrentWorkspaceManager, setAppDetail])
+  }, [appId, getNavigations, isCurrentWorkspaceManager, pathname, router, setAppDetail])
 
   if (!appDetail) {
     return (
@@ -100,12 +109,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       </div>
     )
   }
-
-  // redirections
-  if ((appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
-    router.replace(`/app/${appId}/workflow`)
-  if ((appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
-    router.replace(`/app/${appId}/configuration`)
 
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
