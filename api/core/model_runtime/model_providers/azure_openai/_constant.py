@@ -524,6 +524,46 @@ EMBEDDING_BASE_MODELS = [
                 currency='USD',
             )
         )
+    ),
+    AzureBaseModel(
+        base_model_name='text-embedding-3-small',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: 8191,
+                ModelPropertyKey.MAX_CHUNKS: 32,
+            },
+            pricing=PriceConfig(
+                input=0.00002,
+                unit=0.001,
+                currency='USD',
+            )
+        )
+    ),
+    AzureBaseModel(
+        base_model_name='text-embedding-3-large',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: 8191,
+                ModelPropertyKey.MAX_CHUNKS: 32,
+            },
+            pricing=PriceConfig(
+                input=0.00013,
+                unit=0.001,
+                currency='USD',
+            )
+        )
     )
 ]
 SPEECH2TEXT_BASE_MODELS = [
