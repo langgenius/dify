@@ -13,6 +13,7 @@ MAX_PRECISION = 20
 MAX_DEPTH = 5
 MAX_STRING_LENGTH = 1000
 MAX_STRING_ARRAY_LENGTH = 30
+MAX_NUMBER_ARRAY_LENGTH = 1000
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
@@ -210,6 +211,11 @@ class CodeNode(BaseNode):
                         f'Output {prefix}.{output_name} is not an array, got {type(result.get(output_name))} instead.'
                     )
                 
+                if len(result[output_name]) > MAX_NUMBER_ARRAY_LENGTH:
+                    raise ValueError(
+                        f'{prefix}.{output_name} in input form must be less than {MAX_NUMBER_ARRAY_LENGTH} characters'
+                    )
+
                 transformed_result[output_name] = [
                     self._check_number(
                         value=value,
