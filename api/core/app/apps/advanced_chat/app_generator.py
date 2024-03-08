@@ -11,7 +11,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
 from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
-from core.app.apps.base_app_queue_manager import AppQueueManager, ConversationTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
@@ -123,11 +123,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        return self._handle_response(
+        return self._handle_advanced_chat_response(
             application_generate_entity=application_generate_entity,
+            workflow=workflow,
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
+            user=user,
             stream=stream
         )
 
@@ -159,7 +161,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     conversation=conversation,
                     message=message
                 )
-            except ConversationTaskStoppedException:
+            except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
@@ -177,33 +179,40 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             finally:
                 db.session.remove()
 
-    def _handle_response(self, application_generate_entity: AdvancedChatAppGenerateEntity,
-                         queue_manager: AppQueueManager,
-                         conversation: Conversation,
-                         message: Message,
-                         stream: bool = False) -> Union[dict, Generator]:
+    def _handle_advanced_chat_response(self, application_generate_entity: AdvancedChatAppGenerateEntity,
+                                       workflow: Workflow,
+                                       queue_manager: AppQueueManager,
+                                       conversation: Conversation,
+                                       message: Message,
+                                       user: Union[Account, EndUser],
+                                       stream: bool = False) -> Union[dict, Generator]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
+        :param workflow: workflow
         :param queue_manager: queue manager
         :param conversation: conversation
         :param message: message
+        :param user: account or end user
         :param stream: is stream
         :return:
         """
         # init generate task pipeline
         generate_task_pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
+            workflow=workflow,
             queue_manager=queue_manager,
             conversation=conversation,
-            message=message
+            message=message,
+            user=user,
+            stream=stream
         )
 
         try:
-            return generate_task_pipeline.process(stream=stream)
+            return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise ConversationTaskStoppedException()
+                raise GenerateTaskStoppedException()
             else:
                 logger.exception(e)
                 raise e

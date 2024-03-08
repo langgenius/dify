@@ -11,11 +11,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueErrorEvent,
-    QueueMessage,
-    QueueMessageEndEvent,
     QueuePingEvent,
     QueueStopEvent,
-    QueueWorkflowFinishedEvent,
 )
 from extensions.ext_redis import redis_client
 
@@ -103,22 +100,16 @@ class AppQueueManager:
         :return:
         """
         self._check_for_sqlalchemy_models(event.dict())
-
-        message = self.construct_queue_message(event)
-
-        self._q.put(message)
-
-        if isinstance(event, QueueStopEvent
-                             | QueueErrorEvent
-                             | QueueMessageEndEvent
-                             | QueueWorkflowFinishedEvent):
-            self.stop_listen()
-
-        if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
-            raise ConversationTaskStoppedException()
+        self._publish(event, pub_from)
 
     @abstractmethod
-    def construct_queue_message(self, event: AppQueueEvent) -> QueueMessage:
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        """
+        Publish event to queue
+        :param event:
+        :param pub_from:
+        :return:
+        """
         raise NotImplementedError
 
     @classmethod
@@ -182,5 +173,5 @@ class AppQueueManager:
                                 "that cause thread safety issues is not allowed.")
 
 
-class ConversationTaskStoppedException(Exception):
+class GenerateTaskStoppedException(Exception):
     pass

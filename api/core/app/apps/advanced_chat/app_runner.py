@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import cast
+from typing import Optional, cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
@@ -8,16 +8,14 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
-    InvokeFrom,
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
 from core.moderation.base import ModerationException
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
-from models.account import Account
-from models.model import App, Conversation, EndUser, Message
-from models.workflow import WorkflowRunTriggeredFrom
+from models.model import App, Conversation, Message
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +44,7 @@ class AdvancedChatAppRunner(AppRunner):
         if not app_record:
             raise ValueError("App not found")
 
-        workflow = WorkflowEngineManager().get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
+        workflow = self.get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
         if not workflow:
             raise ValueError("Workflow not initialized")
 
@@ -74,19 +72,10 @@ class AdvancedChatAppRunner(AppRunner):
         ):
             return
 
-        # fetch user
-        if application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE]:
-            user = db.session.query(Account).filter(Account.id == application_generate_entity.user_id).first()
-        else:
-            user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
-
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
             workflow=workflow,
-            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING
-            if application_generate_entity.invoke_from == InvokeFrom.DEBUGGER else WorkflowRunTriggeredFrom.APP_RUN,
-            user=user,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.QUERY: query,
@@ -98,6 +87,20 @@ class AdvancedChatAppRunner(AppRunner):
                 workflow=workflow
             )]
         )
+
+    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
+        """
+        Get workflow
+        """
+        # fetch workflow by workflow_id
+        workflow = db.session.query(Workflow).filter(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.id == workflow_id
+        ).first()
+
+        # return workflow
+        return workflow
 
     def handle_input_moderation(self, queue_manager: AppQueueManager,
                                 app_record: App,

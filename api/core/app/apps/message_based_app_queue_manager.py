@@ -1,9 +1,14 @@
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
+    QueueErrorEvent,
     QueueMessage,
+    QueueMessageEndEvent,
+    QueueStopEvent,
+    QueueWorkflowFailedEvent,
+    QueueWorkflowSucceededEvent,
 )
 
 
@@ -28,3 +33,31 @@ class MessageBasedAppQueueManager(AppQueueManager):
             app_mode=self._app_mode,
             event=event
         )
+
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        """
+        Publish event to queue
+        :param event:
+        :param pub_from:
+        :return:
+        """
+        message = MessageQueueMessage(
+            task_id=self._task_id,
+            message_id=self._message_id,
+            conversation_id=self._conversation_id,
+            app_mode=self._app_mode,
+            event=event
+        )
+
+        self._q.put(message)
+
+        if isinstance(event, QueueStopEvent
+                             | QueueErrorEvent
+                             | QueueMessageEndEvent
+                             | QueueWorkflowSucceededEvent
+                             | QueueWorkflowFailedEvent):
+            self.stop_listen()
+
+        if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
+            raise GenerateTaskStoppedException()
+

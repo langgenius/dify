@@ -7,7 +7,7 @@ from sqlalchemy import and_
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, ConversationTaskStoppedException
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException
 from core.app.apps.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -60,7 +60,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             return generate_task_pipeline.process(stream=stream)
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise ConversationTaskStoppedException()
+                raise GenerateTaskStoppedException()
             else:
                 logger.exception(e)
                 raise e
