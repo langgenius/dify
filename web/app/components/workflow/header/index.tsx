@@ -18,7 +18,8 @@ import { Mode } from '@/app/components/workflow/types'
 
 const Header: FC = () => {
   const { t } = useTranslation()
-  const appDetail = useAppStore(state => state.appDetail)
+  const appDetail = useAppStore(s => s.appDetail)
+  const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const isChatMode = useIsChatMode()
   const mode = useStore(state => state.mode)
   const runTaskId = useStore(state => state.runTaskId)
@@ -35,7 +36,11 @@ const Header: FC = () => {
       }}
     >
       <div>
-        <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
+        {
+          appSidebarExpand && (
+            <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
+          )
+        }
         {
           mode === Mode.Editing && !runTaskId && <EditingTitle />
         }

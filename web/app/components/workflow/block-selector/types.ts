@@ -28,6 +28,7 @@ export type ToolsMap = Record<string, ToolInWorkflow[]>
 export type ToolDefaultValue = {
   provider_id: string
   provider_type: string
+  provider_name: string
   tool_name: string
   title: string
 }

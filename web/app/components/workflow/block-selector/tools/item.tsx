@@ -104,6 +104,7 @@ const Item = ({
             onClick={() => onSelect(BlockEnum.Tool, {
               provider_id: data.id,
               provider_type: data.type,
+              provider_name: data.name,
               tool_name: tool.name,
               title: tool.label[language],
             })}

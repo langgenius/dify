@@ -31,7 +31,7 @@ export type CommonNodeType<T = {}> = {
   title: string
   desc: string
   type: BlockEnum
-} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'tool_name'>>
+} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
   _hovering: boolean

@@ -138,37 +138,96 @@ export const useWorkflow = () => {
       getNodes,
       setNodes,
     } = store.getState()
-    // const { setHelpLine } = useStore.getState()
+    const {
+      setHelpLineHorizontal,
+      setHelpLineVertical,
+    } = useStore.getState()
     e.stopPropagation()
 
     const nodes = getNodes()
 
-    // const showVerticalHelpLineNodes = nodes.filter((n) => {
-    //   if (
-    //     n.position.x === node.position.x
-    //     || n.position.x + n.width! === node.position.x
-    //     || n.position.x === node.position.x + node.width!
-    //   )
-    //     return true
+    const showHorizontalHelpLineNodes = nodes.filter((n) => {
+      if (n.id === node.id)
+        return false
 
-    //   return false
-    // })
-    // const showHorizontalHelpLineNodes = nodes.filter((n) => {
-    //   if (
-    //     n.position.y === node.position.y
-    //     || n.position.y === node.position.y + node.height!
-    //     || n.position.y + n.height! === node.position.y
-    //     || n.position.y + n.height! === node.position.y + node.height!
-    //   )
-    //     return true
+      const nY = Math.ceil(n.position.y)
+      const nodeY = Math.ceil(node.position.y)
 
-    //   return false
-    // })
+      if (nY - nodeY < 5 && nY - nodeY > -5)
+        return true
+
+      return false
+    }).sort((a, b) => a.position.x - b.position.x)
+    const showHorizontalHelpLineNodesLength = showHorizontalHelpLineNodes.length
+    if (showHorizontalHelpLineNodesLength > 0) {
+      const first = showHorizontalHelpLineNodes[0]
+      const last = showHorizontalHelpLineNodes[showHorizontalHelpLineNodesLength - 1]
+
+      const helpLine = {
+        top: first.position.y,
+        left: first.position.x,
+        width: last.position.x + last.width! - first.position.x,
+      }
+
+      if (node.position.x < first.position.x) {
+        helpLine.left = node.position.x
+        helpLine.width = first.position.x + first.width! - node.position.x
+      }
+
+      if (node.position.x > last.position.x)
+        helpLine.width = node.position.x + node.width! - first.position.x
+
+      setHelpLineHorizontal(helpLine)
+    }
+    else {
+      setHelpLineHorizontal()
+    }
+
+    const showVerticalHelpLineNodes = nodes.filter((n) => {
+      if (n.id === node.id)
+        return false
+
+      const nX = Math.ceil(n.position.x)
+      const nodeX = Math.ceil(node.position.x)
+
+      if (nX - nodeX < 5 && nX - nodeX > -5)
+        return true
+
+      return false
+    }).sort((a, b) => a.position.x - b.position.x)
+    const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
+
+    if (showVerticalHelpLineNodesLength > 0) {
+      const first = showVerticalHelpLineNodes[0]
+      const last = showVerticalHelpLineNodes[showVerticalHelpLineNodesLength - 1]
+
+      const helpLine = {
+        top: first.position.y,
+        left: first.position.x,
+        height: last.position.y + last.height! - first.position.y,
+      }
+
+      if (node.position.y < first.position.y) {
+        helpLine.top = node.position.y
+        helpLine.height = first.position.y + first.height! - node.position.y
+      }
+
+      if (node.position.y > last.position.y)
+        helpLine.height = node.position.y + node.height! - first.position.y
+
+      setHelpLineVertical(helpLine)
+    }
+    else {
+      setHelpLineVertical()
+    }
 
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(n => n.id === node.id)!
 
-      currentNode.position = node.position
+      currentNode.position = {
+        x: showVerticalHelpLineNodesLength > 0 ? showVerticalHelpLineNodes[0].position.x : node.position.x,
+        y: showHorizontalHelpLineNodesLength > 0 ? showHorizontalHelpLineNodes[0].position.y : node.position.y,
+      }
     })
 
     setNodes(newNodes)
@@ -177,10 +236,12 @@ export const useWorkflow = () => {
   const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
     const {
       setIsDragging,
-      setHelpLine,
+      setHelpLineHorizontal,
+      setHelpLineVertical,
     } = useStore.getState()
     setIsDragging(false)
-    setHelpLine()
+    setHelpLineHorizontal()
+    setHelpLineVertical()
     handleSyncWorkflowDraft()
   }, [handleSyncWorkflowDraft])
 

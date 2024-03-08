@@ -1,6 +1,11 @@
-export type HelpLinePosition = {
+export type HelpLineHorizontalPosition = {
   top: number
-  right?: number
-  bottom?: number
   left: number
+  width: number
+}
+
+export type HelpLineVerticalPosition = {
+  top: number
+  left: number
+  height: number
 }

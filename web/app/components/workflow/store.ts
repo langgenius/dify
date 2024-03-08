@@ -1,5 +1,8 @@
 import { create } from 'zustand'
-import type { HelpLinePosition } from './help-line/types'
+import type {
+  HelpLineHorizontalPosition,
+  HelpLineVerticalPosition,
+} from './help-line/types'
 import type {
   CollectionWithExpanded,
   ToolInWorkflow,
@@ -13,7 +16,8 @@ type State = {
   showRunHistory: boolean
   showFeaturesPanel: boolean
   isDragging: boolean
-  helpLine?: HelpLinePosition
+  helpLineHorizontal?: HelpLineHorizontalPosition
+  helpLineVertical?: HelpLineVerticalPosition
   toolsets: CollectionWithExpanded[]
   toolsMap: ToolsMap
   draftUpdatedAt: number
@@ -26,7 +30,8 @@ type Action = {
   setShowRunHistory: (showRunHistory: boolean) => void
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   setIsDragging: (isDragging: boolean) => void
-  setHelpLine: (helpLine?: HelpLinePosition) => void
+  setHelpLineHorizontal: (helpLineHorizontal?: HelpLineHorizontalPosition) => void
+  setHelpLineVertical: (helpLineVertical?: HelpLineVerticalPosition) => void
   setToolsets: (toolsets: CollectionWithExpanded[]) => void
   setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
   setDraftUpdatedAt: (draftUpdatedAt: number) => void
@@ -44,8 +49,10 @@ export const useStore = create<State & Action>(set => ({
   setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
   isDragging: false,
   setIsDragging: isDragging => set(() => ({ isDragging })),
-  helpLine: undefined,
-  setHelpLine: helpLine => set(() => ({ helpLine })),
+  helpLineHorizontal: undefined,
+  setHelpLineHorizontal: helpLineHorizontal => set(() => ({ helpLineHorizontal })),
+  helpLineVertical: undefined,
+  setHelpLineVertical: helpLineVertical => set(() => ({ helpLineVertical })),
   toolsets: [],
   setToolsets: toolsets => set(() => ({ toolsets })),
   toolsMap: {},

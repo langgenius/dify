@@ -49,6 +49,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   asChild,
 }) => {
   const { t } = useTranslation()
+  const [searchText, setSearchText] = useState('')
   const [localOpen, setLocalOpen] = useState(false)
   const open = openFromProps === undefined ? localOpen : openFromProps
   const handleOpenChange = useCallback((newOpen: boolean) => {
@@ -103,12 +104,17 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             >
               <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
               <input
+                value={searchText}
                 className='grow px-0.5 py-[7px] text-[13px] bg-transparent appearance-none outline-none'
                 placeholder={t('workflow.tabs.searchBlock') || ''}
+                onChange={e => setSearchText(e.target.value)}
               />
             </div>
           </div>
-          <Tabs onSelect={handleSelect} />
+          <Tabs
+            onSelect={handleSelect}
+            searchText={searchText}
+          />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
