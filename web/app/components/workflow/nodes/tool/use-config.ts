@@ -5,7 +5,7 @@ import type { ToolNodeType, ToolVarInput } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import { fetchBuiltInToolList, fetchCollectionList, fetchCustomToolList } from '@/service/tools'
+import { fetchBuiltInToolList, fetchCollectionList, fetchCustomToolList, updateBuiltInToolCredential } from '@/service/tools'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
 
@@ -41,7 +41,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }] = useBoolean(false)
 
   const handleSaveAuth = useCallback(async (value: any) => {
-    // await updateBuiltInToolCredential(currCollection?.name, value)
+    await updateBuiltInToolCredential(currCollection?.name as string, value)
 
     Toast.notify({
       type: 'success',
