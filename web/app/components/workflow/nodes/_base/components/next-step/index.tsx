@@ -40,7 +40,7 @@ const NextStep = ({
       <div className='shrink-0 relative flex items-center justify-center w-9 h-9 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
         <BlockIcon
           type={selectedNode!.data.type}
-          icon={selectedNode!.data._icon}
+          toolProviderId={selectedNode!.data.provider_id}
         />
       </div>
       <Line linesNumber={branches ? branches.length : 1} />

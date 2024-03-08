@@ -30,7 +30,4 @@ export type ToolDefaultValue = {
   provider_type: string
   tool_name: string
   title: string
-  _icon: Collection['icon']
-  _about: string
-  _author: string
 }

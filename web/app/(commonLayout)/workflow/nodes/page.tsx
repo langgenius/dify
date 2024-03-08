@@ -42,7 +42,7 @@ const nodes = [
     type: 'custom',
     position: { x: 330, y: 30 + i * 300 },
     data: {
-      _selected: i === 0, // for test: always select the first node
+      selected: i === 0, // for test: always select the first node
       name: item,
       ...payload,
     },

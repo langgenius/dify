@@ -17,7 +17,7 @@ const Panel: FC = () => {
   const isChatMode = useIsChatMode()
   const runTaskId = useStore(state => state.runTaskId)
   const nodes = useNodes<CommonNodeType>()
-  const selectedNode = nodes.find(node => node.data._selected)
+  const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const {
     showWorkflowInfoPanel,

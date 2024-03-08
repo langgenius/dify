@@ -12,30 +12,77 @@ import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
 import EndNodeDefault from './nodes/end/default'
 
+export const NODES_EXTRA_DATA = {
+  [BlockEnum.Start]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.End]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.DirectAnswer]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.LLM]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.KnowledgeRetrieval]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.IfElse]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.Code]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.TemplateTransform]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.QuestionClassifier]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.HttpRequest]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.VariableAssigner]: {
+    author: 'Dify',
+    about: '',
+  },
+  [BlockEnum.Tool]: {
+    author: 'Dify',
+    about: '',
+  },
+}
+
 export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {
-    _author: 'Dify',
     type: BlockEnum.Start,
     title: '',
     desc: '',
     ...StartNodeDefault.defaultValue,
   },
   [BlockEnum.End]: {
-    _author: 'Dify',
     type: BlockEnum.End,
     title: '',
     desc: '',
     ...EndNodeDefault.defaultValue,
   },
   [BlockEnum.DirectAnswer]: {
-    _author: 'Dify',
     type: BlockEnum.DirectAnswer,
     title: '',
     desc: '',
     ...DirectAnswerDefault.defaultValue,
   },
   [BlockEnum.LLM]: {
-    _author: 'Dify',
     type: BlockEnum.LLM,
     title: '',
     desc: '',
@@ -43,7 +90,6 @@ export const NODES_INITIAL_DATA = {
     ...LLMDefault.defaultValue,
   },
   [BlockEnum.KnowledgeRetrieval]: {
-    _author: 'Dify',
     type: BlockEnum.KnowledgeRetrieval,
     title: '',
     desc: '',
@@ -53,14 +99,12 @@ export const NODES_INITIAL_DATA = {
     ...KnowledgeRetrievalDefault.defaultValue,
   },
   [BlockEnum.IfElse]: {
-    _author: 'Dify',
     type: BlockEnum.IfElse,
     title: '',
     desc: '',
     ...IfElseDefault.defaultValue,
   },
   [BlockEnum.Code]: {
-    _author: 'Dify',
     type: BlockEnum.Code,
     title: '',
     desc: '',
@@ -71,7 +115,6 @@ export const NODES_INITIAL_DATA = {
     ...CodeDefault.defaultValue,
   },
   [BlockEnum.TemplateTransform]: {
-    _author: 'Dify',
     type: BlockEnum.TemplateTransform,
     title: '',
     desc: '',
@@ -80,7 +123,6 @@ export const NODES_INITIAL_DATA = {
     ...TemplateTransformDefault.defaultValue,
   },
   [BlockEnum.QuestionClassifier]: {
-    _author: 'Dify',
     type: BlockEnum.QuestionClassifier,
     title: '',
     desc: '',
@@ -89,7 +131,6 @@ export const NODES_INITIAL_DATA = {
     ...QuestionClassifierDefault.defaultValue,
   },
   [BlockEnum.HttpRequest]: {
-    _author: 'Dify',
     type: BlockEnum.HttpRequest,
     title: '',
     desc: '',
@@ -97,7 +138,6 @@ export const NODES_INITIAL_DATA = {
     ...HttpRequestDefault.defaultValue,
   },
   [BlockEnum.VariableAssigner]: {
-    _author: 'Dify',
     type: BlockEnum.VariableAssigner,
     title: '',
     desc: '',

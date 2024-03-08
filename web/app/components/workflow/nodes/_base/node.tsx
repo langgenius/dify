@@ -29,7 +29,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     <div
       className={`
         flex border-[2px] rounded-2xl
-        ${data._selected ? 'border-primary-600' : 'border-transparent'}
+        ${data.selected ? 'border-primary-600' : 'border-transparent'}
       `}
     >
       <div
@@ -75,7 +75,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             className='shrink-0 mr-2'
             type={data.type}
             size='md'
-            icon={data._icon}
+            toolProviderId={data.provider_id}
           />
           <div
             title={data.title}

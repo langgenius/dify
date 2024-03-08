@@ -39,7 +39,7 @@ const Tools = ({
       setToolsets(produce(toolsets, (draft) => {
         const index = draft.findIndex(toolset => toolset.id === toolId)
 
-        if (!toolsMap[toolId].length && !currentToolset.fetching)
+        if (!toolsMap[toolId]?.length && !currentToolset.fetching)
           draft[index].fetching = true
 
         draft[index].expanded = true

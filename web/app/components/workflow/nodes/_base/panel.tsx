@@ -54,7 +54,7 @@ const BasePanel: FC<BasePanelProps> = ({
           <BlockIcon
             className='shrink-0 mr-1'
             type={data.type}
-            icon={data._icon}
+            toolProviderId={data.provider_id}
             size='md'
           />
           <TitleInput

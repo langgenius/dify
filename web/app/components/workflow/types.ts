@@ -2,7 +2,6 @@ import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
 } from 'reactflow'
-import type { Collection } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 
 export enum BlockEnum {
@@ -26,16 +25,13 @@ export type Branch = {
 }
 
 export type CommonNodeType<T = {}> = {
-  _selected?: boolean
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
-  _icon?: Collection['icon']
-  _about?: string
-  _author?: string
+  selected?: boolean
   title: string
   desc: string
   type: BlockEnum
-} & T
+} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'tool_name'>>
 
 export type CommonEdgeType = {
   _hovering: boolean

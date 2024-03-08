@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { BlockEnum } from './types'
+import { useStore } from './store'
 import {
   Code,
   DirectAnswer,
@@ -20,7 +21,7 @@ type BlockIconProps = {
   type: BlockEnum
   size?: string
   className?: string
-  icon?: any
+  toolProviderId?: string
 }
 const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   sm: 'w-5 h-5 rounded-md shadow-xs',
@@ -59,8 +60,11 @@ const BlockIcon: FC<BlockIconProps> = ({
   type,
   size = 'sm',
   className,
-  icon,
+  toolProviderId,
 }) => {
+  const toolsets = useStore(s => s.toolsets)
+  const icon = toolsets.find(toolset => toolset.id === toolProviderId)?.icon
+
   return (
     <div className={`
       flex items-center justify-center border-[0.5px] border-white/[0.02] text-white

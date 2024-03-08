@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { debounce } from 'lodash-es'
+import { useDebounceFn } from 'ahooks'
 import type {
   EdgeMouseHandler,
   NodeDragHandler,
@@ -21,7 +21,10 @@ import type {
   BlockEnum,
   Node,
 } from './types'
-import { NODES_INITIAL_DATA } from './constants'
+import {
+  NODES_EXTRA_DATA,
+  NODES_INITIAL_DATA,
+} from './constants'
 import { getLayoutByDagre } from './utils'
 import { useStore } from './store'
 import type { ToolDefaultValue } from './block-selector/types'
@@ -45,13 +48,23 @@ export const useNodesInitialData = () => {
   })
 }
 
+export const useNodesExtraData = () => {
+  const { t } = useTranslation()
+
+  return produce(NODES_EXTRA_DATA, (draft) => {
+    Object.keys(draft).forEach((key) => {
+      draft[key as BlockEnum].about = t(`workflow.blocksAbout.${key}`)
+    })
+  })
+}
+
 export const useWorkflow = () => {
   const store = useStoreApi()
   const reactFlow = useReactFlow()
   const nodesInitialData = useNodesInitialData()
   const featuresStore = useFeaturesStore()
 
-  const handleSyncWorkflowDraft = useCallback(debounce(() => {
+  const shouldDebouncedSyncWorkflowDraft = () => {
     const {
       getNodes,
       edges,
@@ -84,7 +97,12 @@ export const useWorkflow = () => {
         useStore.setState({ draftUpdatedAt: res.updated_at })
       })
     }
-  }, 2000, { trailing: true }), [store, reactFlow, featuresStore])
+  }
+
+  const { run: handleSyncWorkflowDraft } = useDebounceFn(shouldDebouncedSyncWorkflowDraft, {
+    wait: 2000,
+    trailing: true,
+  })
 
   const handleLayout = useCallback(async () => {
     const {
@@ -203,17 +221,17 @@ export const useWorkflow = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const selectedNode = nodes.find(node => node.data._selected)
+    const selectedNode = nodes.find(node => node.data.selected)
 
     if (!cancelSelection && selectedNode?.id === nodeId)
       return
 
     const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach(node => node.data._selected = false)
+      draft.forEach(node => node.data.selected = false)
       const selectedNode = draft.find(node => node.id === nodeId)!
 
       if (!cancelSelection)
-        selectedNode.data._selected = true
+        selectedNode.data.selected = true
     })
     setNodes(newNodes)
     handleSyncWorkflowDraft()
@@ -312,7 +330,7 @@ export const useWorkflow = () => {
       data: {
         ...nodesInitialData[nodeType],
         ...(toolDefaultValue || {}),
-        _selected: true,
+        selected: true,
       },
       position: {
         x: currentNode.position.x + 304,
@@ -330,7 +348,7 @@ export const useWorkflow = () => {
     }
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        node.data._selected = false
+        node.data.selected = false
       })
       draft.push(nextNode)
     })
@@ -364,7 +382,7 @@ export const useWorkflow = () => {
       data: {
         ...nodesInitialData[nodeType],
         ...(toolDefaultValue || {}),
-        _selected: currentNode.data._selected,
+        selected: currentNode.data.selected,
       },
       position: {
         x: currentNode.position.x,
