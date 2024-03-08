@@ -14,12 +14,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 
 type Props = {
   pageType: PageType
-  appId: string
 }
 
 const LogAnnotation: FC<Props> = ({
   pageType,
-  appId,
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -45,14 +43,14 @@ const LogAnnotation: FC<Props> = ({
           className='shrink-0'
           value={pageType}
           onChange={(value) => {
-            router.push(`/app/${appId}/${value === PageType.log ? 'logs' : 'annotations'}`)
+            router.push(`/app/${appDetail.id}/${value === PageType.log ? 'logs' : 'annotations'}`)
           }}
           options={options}
         />
       )}
       <div className={cn('grow', appDetail.mode !== 'workflow' && 'mt-3')}>
-        {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appId={appId} />)}
-        {pageType === PageType.annotation && (<Annotation appId={appId} />)}
+        {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appDetail={appDetail} />)}
+        {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
         {pageType === PageType.log && appDetail.mode === 'workflow' && (<WorkflowLog appDetail={appDetail} />)}
       </div>
     </div>

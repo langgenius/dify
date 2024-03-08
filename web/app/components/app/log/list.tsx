@@ -38,7 +38,7 @@ import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
-  appDetail?: App
+  appDetail: App
   onRefresh: () => void
 }
 
@@ -175,11 +175,11 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   }
 
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode === 'chat')
+    if (appDetail?.id && detail.id && appDetail?.mode === 'completion')
       fetchData()
   }, [appDetail?.id, detail.id, appDetail?.mode])
 
-  const isChatMode = appDetail?.mode === 'chat'
+  const isChatMode = appDetail?.mode !== 'completion'
 
   const targetTone = TONE_LIST.find((item: any) => {
     let res = true
@@ -460,7 +460,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
-  const isChatMode = appDetail?.mode === 'chat' // Whether the app is a chat app
+  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
@@ -559,8 +559,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           appDetail,
         }}>
           {isChatMode
-            ? <ChatConversationDetailComp appId={appDetail?.id} conversationId={currentConversation?.id} />
-            : <CompletionConversationDetailComp appId={appDetail?.id} conversationId={currentConversation?.id} />
+            ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
+            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
           }
         </DrawerContext.Provider>
       </Drawer>
