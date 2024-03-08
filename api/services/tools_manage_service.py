@@ -17,7 +17,7 @@ from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidatio
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolConfiguration
+from core.tools.utils.configuration import ToolConfigurationManager
 from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
@@ -77,7 +77,7 @@ class ToolManageService:
         provider_controller: ToolProviderController = ToolManager.get_builtin_provider(provider)
         tools = provider_controller.get_tools()
 
-        tool_provider_configurations = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_provider_configurations = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         # check if user has added the provider
         builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
             BuiltinToolProvider.tenant_id == tenant_id,
@@ -279,7 +279,7 @@ class ToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # encrypt credentials
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         encrypted_credentials = tool_configuration.encrypt_tool_credentials(credentials)
         db_provider.credentials_str = json.dumps(encrypted_credentials)
 
@@ -366,7 +366,7 @@ class ToolManageService:
             provider_controller = ToolManager.get_builtin_provider(provider_name)
             if not provider_controller.need_credentials:
                 raise ValueError(f'provider {provider_name} does not need credentials')
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
             # get original credentials if exists
             if provider is not None:
                 original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
@@ -450,7 +450,7 @@ class ToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # get original credentials if exists
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
 
         original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
         masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
@@ -490,7 +490,7 @@ class ToolManageService:
 
         # delete cache
         provider_controller = ToolManager.get_builtin_provider(provider_name)
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         tool_configuration.delete_tool_credentials_cache()
 
         return { 'result': 'success' }
@@ -632,7 +632,7 @@ class ToolManageService:
 
         # decrypt credentials
         if db_provider.id:
-            tool_configuration = ToolConfiguration(
+            tool_configuration = ToolConfigurationManager(
                 tenant_id=tenant_id, 
                 provider_controller=provider_controller
             )
