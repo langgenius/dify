@@ -143,7 +143,7 @@ class Workflow(db.Model):
             return []
 
         # get user_input_form from start node
-        return start_node.get('variables', [])
+        return start_node.get('data', {}).get('variables', [])
 
 
 class WorkflowRunTriggeredFrom(Enum):

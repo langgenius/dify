@@ -86,7 +86,7 @@ class WorkflowAppGenerateTaskPipeline:
                     workflow_run = self._get_workflow_run(event.workflow_run_id)
 
                 if workflow_run.status == WorkflowRunStatus.SUCCEEDED.value:
-                    outputs = workflow_run.outputs
+                    outputs = workflow_run.outputs_dict
                     self._task_state.answer = outputs.get('text', '')
                 else:
                     raise self._handle_error(QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}')))
@@ -136,12 +136,11 @@ class WorkflowAppGenerateTaskPipeline:
                 break
             elif isinstance(event, QueueWorkflowStartedEvent):
                 self._task_state.workflow_run_id = event.workflow_run_id
-
                 workflow_run = self._get_workflow_run(event.workflow_run_id)
                 response = {
                     'event': 'workflow_started',
                     'task_id': self._application_generate_entity.task_id,
-                    'workflow_run_id': event.workflow_run_id,
+                    'workflow_run_id': workflow_run.id,
                     'data': {
                         'id': workflow_run.id,
                         'workflow_id': workflow_run.workflow_id,
@@ -198,7 +197,7 @@ class WorkflowAppGenerateTaskPipeline:
                     workflow_run = self._get_workflow_run(event.workflow_run_id)
 
                 if workflow_run.status == WorkflowRunStatus.SUCCEEDED.value:
-                    outputs = workflow_run.outputs
+                    outputs = workflow_run.outputs_dict
                     self._task_state.answer = outputs.get('text', '')
                 else:
                     err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
@@ -227,6 +226,9 @@ class WorkflowAppGenerateTaskPipeline:
                     }
 
                     yield self._yield_response(replace_response)
+
+                # save workflow app log
+                self._save_workflow_app_log()
 
                 workflow_run_response = {
                     'event': 'workflow_finished',
@@ -295,7 +297,13 @@ class WorkflowAppGenerateTaskPipeline:
         :param workflow_run_id: workflow run id
         :return:
         """
-        return db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
+        if workflow_run:
+            # Because the workflow_run will be modified in the sub-thread,
+            # and the first query in the main thread will cache the entity,
+            # you need to expire the entity after the query
+            db.session.expire(workflow_run)
+        return workflow_run
 
     def _get_workflow_node_execution(self, workflow_node_execution_id: str) -> WorkflowNodeExecution:
         """
@@ -303,7 +311,21 @@ class WorkflowAppGenerateTaskPipeline:
         :param workflow_node_execution_id: workflow node execution id
         :return:
         """
-        return db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution_id).first()
+        workflow_node_execution = (db.session.query(WorkflowNodeExecution)
+                                   .filter(WorkflowNodeExecution.id == workflow_node_execution_id).first())
+        if workflow_node_execution:
+            # Because the workflow_node_execution will be modified in the sub-thread,
+            # and the first query in the main thread will cache the entity,
+            # you need to expire the entity after the query
+            db.session.expire(workflow_node_execution)
+        return workflow_node_execution
+
+    def _save_workflow_app_log(self) -> None:
+        """
+        Save workflow app log.
+        :return:
+        """
+        pass # todo
 
     def _handle_chunk(self, text: str) -> dict:
         """

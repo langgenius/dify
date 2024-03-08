@@ -2,6 +2,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    MessageQueueMessage,
     QueueMessage,
 )
 
@@ -20,7 +21,7 @@ class MessageBasedAppQueueManager(AppQueueManager):
         self._message_id = str(message_id)
 
     def construct_queue_message(self, event: AppQueueEvent) -> QueueMessage:
-        return QueueMessage(
+        return MessageQueueMessage(
             task_id=self._task_id,
             message_id=self._message_id,
             conversation_id=self._conversation_id,
