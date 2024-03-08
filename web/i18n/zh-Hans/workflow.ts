@@ -36,6 +36,7 @@ const translation = {
     'logic': '逻辑',
     'transform': '转换',
     'utilities': '工具',
+    'noResult': '未找到匹配项',
   },
   blocks: {
     'start': '开始',

@@ -23,6 +23,7 @@ import {
   SearchLg,
 } from '@/app/components/base/icons/src/vender/line/general'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type NodeSelectorProps = {
   open?: boolean
@@ -105,10 +106,20 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
               <input
                 value={searchText}
-                className='grow px-0.5 py-[7px] text-[13px] bg-transparent appearance-none outline-none'
+                className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
                 placeholder={t('workflow.tabs.searchBlock') || ''}
                 onChange={e => setSearchText(e.target.value)}
               />
+              {
+                searchText && (
+                  <div
+                    className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
+                    onClick={() => setSearchText('')}
+                  >
+                    <XCircle className='w-[14px] h-[14px] text-gray-400' />
+                  </div>
+                )
+              }
             </div>
           </div>
           <Tabs

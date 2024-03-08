@@ -36,6 +36,7 @@ const translation = {
     'logic': 'Logic',
     'transform': 'Transform',
     'utilities': 'Utilities',
+    'noResult': 'No match found',
   },
   blocks: {
     'start': 'Start',

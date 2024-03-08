@@ -1,8 +1,10 @@
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import produce from 'immer'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../../store'
 import type { BlockEnum } from '../../types'
 import type {
@@ -14,13 +16,20 @@ import Item from './item'
 type ToolsProps = {
   isCustom?: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  searchText: string
 }
 const Tools = ({
   isCustom,
   onSelect,
+  searchText,
 }: ToolsProps) => {
+  const { t } = useTranslation()
   const totalToolsets = useStore(state => state.toolsets)
-  const toolsets = totalToolsets.filter(toolset => toolset.type === (isCustom ? 'api' : 'builtin'))
+  const toolsets = useMemo(() => {
+    return totalToolsets.filter((toolset) => {
+      return toolset.type === (isCustom ? 'api' : 'builtin') && toolset.name.toLowerCase().includes(searchText.toLowerCase())
+    })
+  }, [totalToolsets, isCustom, searchText])
   const setToolsets = useStore(state => state.setToolsets)
   const toolsMap = useStore(state => state.toolsMap)
   const setToolsMap = useStore(state => state.setToolsMap)
@@ -63,6 +72,11 @@ const Tools = ({
 
   return (
     <div className='p-1 max-h-[464px] overflow-y-auto'>
+      {
+        !toolsets.length && (
+          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
+        )
+      }
       {
         toolsets.map(toolset => (
           <Item
