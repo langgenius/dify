@@ -7,32 +7,40 @@ import { useRouter } from 'next/navigation'
 import Log from '@/app/components/app/log'
 import WorkflowLog from '@/app/components/app/workflow-log'
 import Annotation from '@/app/components/app/annotation'
+import Loading from '@/app/components/base/loading'
 import { PageType } from '@/app/components/app/configuration/toolbox/annotation/type'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-import type { AppMode } from '@/types/app'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type Props = {
   pageType: PageType
   appId: string
-  appMode: AppMode
 }
 
 const LogAnnotation: FC<Props> = ({
   pageType,
   appId,
-  appMode,
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
+  const { appDetail } = useAppStore()
 
   const options = [
     { value: PageType.log, text: t('appLog.title') },
     { value: PageType.annotation, text: t('appAnnotation.title') },
   ]
 
+  if (!appDetail) {
+    return (
+      <div className='flex h-full items-center justify-center bg-white'>
+        <Loading />
+      </div>
+    )
+  }
+
   return (
     <div className='pt-4 px-6 h-full flex flex-col'>
-      {appMode !== 'workflow' && (
+      {appDetail.mode !== 'workflow' && (
         <TabSlider
           className='shrink-0'
           value={pageType}
@@ -42,10 +50,10 @@ const LogAnnotation: FC<Props> = ({
           options={options}
         />
       )}
-      <div className={cn('grow', appMode !== 'workflow' && 'mt-3')}>
-        {pageType === PageType.log && appMode !== 'workflow' && (<Log appId={appId} />)}
+      <div className={cn('grow', appDetail.mode !== 'workflow' && 'mt-3')}>
+        {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appId={appId} />)}
         {pageType === PageType.annotation && (<Annotation appId={appId} />)}
-        {pageType === PageType.log && appMode === 'workflow' && (<WorkflowLog appId={appId} />)}
+        {pageType === PageType.log && appDetail.mode === 'workflow' && (<WorkflowLog appDetail={appDetail} />)}
       </div>
     </div>
   )

@@ -20,7 +20,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
       <div className="relative rounded-md">
         <SimpleSelect
           defaultValue={'all'}
-          className='!w-[100px]'
+          className='!min-w-[100px]'
           onSelect={
             (item) => {
               setQueryParams({ ...queryParams, status: item.value as string })

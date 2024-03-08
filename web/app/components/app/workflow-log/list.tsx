@@ -50,7 +50,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     if (status === 'stopped') {
       return (
         <div className='inline-flex items-center gap-1'>
-          <Indicator color={'gray'} />
+          <Indicator color={'yellow'} />
           <span>Stop</span>
         </div>
       )
@@ -71,7 +71,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setCurrentLog(undefined)
   }
 
-  if (!logs)
+  if (!logs || !appDetail)
     return <Loading />
 
   return (
@@ -104,7 +104,6 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               <td>
                 <div className={cn(
                   log.workflow_run.elapsed_time === 0 && 'text-gray-400',
-                  log.workflow_run.elapsed_time > 10 && 'text-orange-400',
                 )}>{`${log.workflow_run.elapsed_time}s`}</div>
               </td>
               <td>{log.workflow_run.total_tokens}</td>

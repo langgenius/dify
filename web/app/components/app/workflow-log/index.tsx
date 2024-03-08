@@ -13,13 +13,12 @@ import DetailPanel from './detail'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchWorkflowLogs } from '@/service/log'
-import { fetchAppDetail } from '@/service/apps'
 import { APP_PAGE_LIMIT } from '@/config'
-import type { AppMode } from '@/types/app'
+import type { App, AppMode } from '@/types/app'
 import Drawer from '@/app/components/base/drawer'
 
 export type ILogsProps = {
-  appId: string
+  appDetail: App
 }
 
 export type QueryParam = {
@@ -32,7 +31,6 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
     <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 }
-
 const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -51,7 +49,8 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   </div>
 }
 
-const Logs: FC<ILogsProps> = ({ appId }) => {
+const Logs: FC<ILogsProps> = ({ appDetail }) => {
+  // ###TODO###
   const [showDrawer, setShowDrawer] = useState<boolean>(true)
   const onCloseDrawer = () => {
     setShowDrawer(false)
@@ -64,22 +63,18 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...queryParams,
+    ...(queryParams.status !== 'all' ? { status: queryParams.status } : {}),
+    ...(queryParams.keyword ? { keyword: queryParams.keyword } : {}),
   }
 
-  // Get the app type first
-  const { data: appDetail } = useSWR({ url: '/apps', id: appId }, fetchAppDetail)
-
-  const getWebAppType = (appType?: AppMode) => {
-    if (!appType)
-      return ''
+  const getWebAppType = (appType: AppMode) => {
     if (appType === 'completion' || appType === 'workflow')
       return 'completion'
     return 'chat'
   }
 
   const { data: workflowLogs, mutate } = useSWR({
-    url: `/apps/${appId}/workflow-app-logs`,
+    url: `/apps/${appDetail.id}/workflow-app-logs`,
     params: query,
   }, fetchWorkflowLogs)
   const total = workflowLogs?.total
@@ -98,7 +93,7 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appUrl={`${appDetail?.site.app_base_url}/${getWebAppType(appDetail?.mode)}/${appDetail?.site.access_token}`} />
+            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
