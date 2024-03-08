@@ -12,6 +12,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.templateTransform'
 
@@ -27,6 +28,15 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
     handleVarListChange,
     handleAddVariable,
     handleCodeChange,
+    // single run
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
   } = useConfig(id, data)
 
   return (
@@ -80,6 +90,22 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           </>
         </OutputVars>
       </div>
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          forms={[
+            {
+              inputs: varInputs,
+              values: inputVarValues,
+              onChange: setInputVarValues,
+            },
+          ]}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
+        />
+      )}
     </div>
   )
 }
