@@ -31,7 +31,7 @@ const Filed: FC<Props> = ({
     <div className={cn(inline && 'flex justify-between items-center')}>
       <div className='flex justify-between items-center'>
         <div className='flex items-center h-6'>
-          <div className='text-xs font-medium text-gray-700 uppercase'>{title}</div>
+          <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
           {tooltip && (
             <TooltipPlus popupContent={
               <div className='w-[120px]'>

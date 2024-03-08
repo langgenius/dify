@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
 import useConfig from './use-config'
+import InputVarList from './components/input-var-list'
 import Button from '@/app/components/base/button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
@@ -20,6 +21,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 
   const {
     inputs,
+    toolInputVarSchema,
+    setInputVar,
     toolSettingSchema,
     toolSettingValue,
     setToolSettingValue,
@@ -41,12 +44,22 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
       )}
 
       <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.inputVars`)}
-        >
-          inputVars
-        </Field>
-        <Split />
+        {toolInputVarSchema.length > 0 && (
+          <>
+            <Field
+              title={t(`${i18nPrefix}.inputVars`)}
+            >
+              <InputVarList
+                readOnly={readOnly}
+                schema={toolInputVarSchema as any}
+                value={inputs.tool_inputs}
+                onChange={setInputVar}
+              />
+            </Field>
+            <Split />
+          </>
+        )}
+
         <Form
           className='space-y-4'
           itemClassName='!py-0'
