@@ -12,18 +12,14 @@ import TextToSpeech from './text-to-speech'
 import SpeechToText from './speech-to-text'
 import Citation from './citation'
 import Moderation from './moderation'
-import Annotation from './annotation'
-import type { AnnotationProps } from './annotation'
 
 export type FeaturePanelProps = {
   onChange?: OnFeaturesChange
   openingStatementProps: OpeningStatementProps
-  annotationProps: AnnotationProps
 }
 const FeaturePanel = ({
   onChange,
   openingStatementProps,
-  annotationProps,
 }: FeaturePanelProps) => {
   const { t } = useTranslation()
   const features = useFeatures(s => s.features)
@@ -96,11 +92,6 @@ const FeaturePanel = ({
               {
                 features.moderation.enabled && (
                   <Moderation onChange={onChange} />
-                )
-              }
-              {
-                features.annotation.enabled && (
-                  <Annotation {...annotationProps} />
                 )
               }
             </div>

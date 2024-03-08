@@ -54,14 +54,14 @@ const PanelOperator = ({
   }, [toolsets, data.provider_id])
 
   const handleGetAbout = useCallback(() => {
-    if (data.provider_id && !toolsMap[data.provider_id]?.length) {
+    if (data.provider_id && !toolsMap[data.provider_id]?.length && open) {
       fetchToolList(data.provider_id).then((list: any) => {
         setToolsMap(produce(toolsMap, (draft) => {
           draft[data.provider_id as string] = list
         }))
       })
     }
-  }, [data, toolsMap, fetchToolList, setToolsMap])
+  }, [data, toolsMap, fetchToolList, setToolsMap, open])
   useEffect(() => {
     handleGetAbout()
   }, [handleGetAbout])

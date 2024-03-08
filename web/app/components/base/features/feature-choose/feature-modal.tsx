@@ -15,10 +15,7 @@ import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuratio
 import { Microphone01, Speaker } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
-import {
-  MessageFast,
-  MessageHeartCircle,
-} from '@/app/components/base/icons/src/vender/solid/communication'
+import { MessageHeartCircle } from '@/app/components/base/icons/src/vender/solid/communication'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
@@ -136,14 +133,6 @@ const FeatureModal: FC<FeatureModalProps> = ({
               value={!!features.moderation.enabled}
               onChange={handleChange}
               type={FeatureEnum.moderation}
-            />
-            <FeatureItem
-              icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
-              title={t('appDebug.feature.annotation.title')}
-              description={t('appDebug.feature.annotation.description')}
-              value={!!features.annotation.enabled}
-              onChange={handleChange}
-              type={FeatureEnum.annotation}
             />
           </>
         </FeatureGroup>
