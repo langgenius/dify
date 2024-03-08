@@ -22,13 +22,17 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()
+  const hasSetModel = provider && modelId
+
   return (
     <div className='px-3'>
-      <ModelSelector
-        defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
-        modelList={textGenerationModelList}
-        readonly
-      />
+      {hasSetModel && (
+        <ModelSelector
+          defaultModel={{ provider, model: modelId }}
+          modelList={textGenerationModelList}
+          readonly
+        />
+      )}
       <div className='mt-2 space-y-0.5'>
         {topics.map((topic, index) => (
           <div
