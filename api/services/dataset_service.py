@@ -44,9 +44,10 @@ from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
-from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
+from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
+
 
 class DatasetService:
 
@@ -63,11 +64,11 @@ class DatasetService:
         if search:
             query = query.filter(db.and_(Dataset.name.ilike(f'%{search}%')))
         datasets = query.paginate(
-                    page=page,
-                    per_page=per_page,
-                    max_per_page=100,
-                    error_out=False
-                )
+            page=page,
+            per_page=per_page,
+            max_per_page=100,
+            error_out=False
+        )
 
         return datasets.items, datasets.total
 
@@ -667,7 +668,8 @@ class DocumentService:
     def check_documents_upload_quota(count: int, features: FeatureModel):
         can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size
         if count > can_upload_size:
-            raise ValueError(f'You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded.')
+            raise ValueError(
+                f'You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded.')
 
     @staticmethod
     def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
