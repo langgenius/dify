@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
+import { debounce } from 'lodash-es'
 import type {
   EdgeMouseHandler,
   NodeDragHandler,
@@ -50,7 +51,7 @@ export const useWorkflow = () => {
   const nodesInitialData = useNodesInitialData()
   const featuresStore = useFeaturesStore()
 
-  const handleSyncWorkflowDraft = useCallback(() => {
+  const handleSyncWorkflowDraft = useCallback(debounce(() => {
     const {
       getNodes,
       edges,
@@ -83,7 +84,7 @@ export const useWorkflow = () => {
         useStore.setState({ draftUpdatedAt: res.updated_at })
       })
     }
-  }, [store, reactFlow, featuresStore])
+  }, 2000, { trailing: true }), [store, reactFlow, featuresStore])
 
   const handleLayout = useCallback(async () => {
     const {
@@ -288,7 +289,8 @@ export const useWorkflow = () => {
       currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
-  }, [store])
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeAddNext = useCallback((
     currentNodeId: string,
