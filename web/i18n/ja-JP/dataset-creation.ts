@@ -89,7 +89,7 @@ const translation = {
     other: 'その他',
     fileUnit: 'ファイル',
     notionUnit: 'ページ',
-    lastStep: '最後のステップ',
+    previousStep: '最後のステップ',
     nextStep: '保存して処理',
     save: '保存して処理',
     cancel: 'キャンセル',
