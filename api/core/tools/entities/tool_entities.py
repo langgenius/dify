@@ -305,3 +305,23 @@ class ToolRuntimeVariablePool(BaseModel):
         )
 
         self.pool.append(variable)
+
+class ModelToolPropertyKey(Enum):
+    IMAGE_PARAMETER_NAME = "image_parameter_name"
+
+class ModelToolConfiguration(BaseModel):
+    """
+    Model tool configuration
+    """
+    type: str = Field(..., description="The type of the model tool")
+    model: str = Field(..., description="The model")
+    label: I18nObject = Field(..., description="The label of the model tool")
+    properties: dict[ModelToolPropertyKey, Any] = Field(..., description="The properties of the model tool")
+
+class ModelToolProviderConfiguration(BaseModel):
+    """
+    Model tool provider configuration
+    """
+    provider: str = Field(..., description="The provider of the model tool")
+    models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
+    label: I18nObject = Field(..., description="The label of the model tool")

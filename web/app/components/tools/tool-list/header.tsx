@@ -29,9 +29,8 @@ const Header: FC<Props> = ({
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
   const isInDebugPage = !isInToolsPage
-  const needAuth = collection?.allow_delete
 
-  // const isBuiltIn = collection.type === CollectionType.builtIn
+  const needAuth = collection?.allow_delete || collection?.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
   return (
     <div className={cn(isInToolsPage ? 'py-4 px-6' : 'py-[11px] pl-4 pr-3', 'flex justify-between items-start border-b border-gray-200')}>
@@ -50,10 +49,13 @@ const Header: FC<Props> = ({
           )}
         </div>
       </div>
-      {collection.type === CollectionType.builtIn && needAuth && (
+      {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && (
         <div
           className={cn('cursor-pointer', 'ml-1 shrink-0 flex items-center h-8 border border-gray-200 rounded-lg px-3 space-x-2 shadow-xs')}
-          onClick={() => onShowAuth()}
+          onClick={() => {
+            if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+              onShowAuth()
+          }}
         >
           <div className={cn(isAuthed ? 'border-[#12B76A] bg-[#32D583]' : 'border-gray-400 bg-gray-300', 'rounded h-2 w-2 border')}></div>
           <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
