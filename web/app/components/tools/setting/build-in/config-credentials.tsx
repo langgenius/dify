@@ -16,14 +16,16 @@ type Props = {
   collection: Collection
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
-  onRemove: () => void
+  isHideRemoveBtn?: boolean
+  onRemove?: () => void
 }
 
 const ConfigCredential: FC<Props> = ({
   collection,
   onCancel,
   onSaved,
-  onRemove,
+  isHideRemoveBtn,
+  onRemove = () => { },
 }) => {
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
@@ -74,9 +76,9 @@ const ConfigCredential: FC<Props> = ({
                     </a>)
                     : null}
                 />
-                <div className={cn(collection.is_team_authorization ? 'justify-between' : 'justify-end', 'mt-2 flex ')} >
+                <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')} >
                   {
-                    collection.is_team_authorization && (
+                    (collection.is_team_authorization && !isHideRemoveBtn) && (
                       <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
                     )
                   }

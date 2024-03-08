@@ -9,6 +9,8 @@ import Button from '@/app/components/base/button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
+import Loading from '@/app/components/base/loading'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -26,26 +28,39 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     toolSettingSchema,
     toolSettingValue,
     setToolSettingValue,
+    currCollection,
+    isShowAuthBtn,
+    showSetAuth,
+    showSetAuthModal,
+    hideSetAuthModal,
+    handleSaveAuth,
+    isLoading,
   } = useConfig(id, data)
+
+  if (isLoading) {
+    return <div className='flex h-[200px] items-center justify-center'>
+      <Loading />
+    </div>
+  }
 
   return (
     <div className='mt-2'>
-      {!readOnly && (
+      {!readOnly && isShowAuthBtn && (
         <>
           <div className='px-4 pb-3'>
             <Button
               type='primary'
-              className='w-full !h-8'>
+              className='w-full !h-8'
+              onClick={showSetAuthModal}
+            >
               {t(`${i18nPrefix}.toAuthorize`)}
             </Button>
           </div>
-          <Split className='mb-2' />
         </>
       )}
-
-      <div className='px-4 pb-4 space-y-4'>
-        {toolInputVarSchema.length > 0 && (
-          <>
+      {!isShowAuthBtn && <>
+        <div className='px-4 pb-4 space-y-4'>
+          {toolInputVarSchema.length > 0 && (
             <Field
               title={t(`${i18nPrefix}.inputVars`)}
             >
@@ -56,24 +71,36 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 onChange={setInputVar}
               />
             </Field>
-            <Split />
-          </>
-        )}
+          )}
 
-        <Form
-          className='space-y-4'
-          itemClassName='!py-0'
-          fieldLabelClassName='!text-[13px] !font-semibold !text-gray-700 uppercase'
-          value={toolSettingValue}
-          onChange={setToolSettingValue}
-          formSchemas={toolSettingSchema as any}
-          isEditMode={false}
-          showOnVariableMap={{}}
-          validating={false}
-          inputClassName='!bg-gray-50'
-          readonly={readOnly}
+          {toolInputVarSchema.length > 0 && toolSettingSchema.length > 0 && (
+            <Split />
+          )}
+
+          <Form
+            className='space-y-4'
+            itemClassName='!py-0'
+            fieldLabelClassName='!text-[13px] !font-semibold !text-gray-700 uppercase'
+            value={toolSettingValue}
+            onChange={setToolSettingValue}
+            formSchemas={toolSettingSchema as any}
+            isEditMode={false}
+            showOnVariableMap={{}}
+            validating={false}
+            inputClassName='!bg-gray-50'
+            readonly={readOnly}
+          />
+        </div>
+      </>}
+
+      {showSetAuth && (
+        <ConfigCredential
+          collection={currCollection!}
+          onCancel={hideSetAuthModal}
+          onSaved={handleSaveAuth}
+          isHideRemoveBtn
         />
-      </div>
+      )}
     </div>
   )
 }
