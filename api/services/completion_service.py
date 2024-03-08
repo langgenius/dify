@@ -30,16 +30,16 @@ class CompletionService:
                 invoke_from=invoke_from,
                 stream=streaming
             )
-        elif app_model.mode == AppMode.CHAT.value:
-            return ChatAppGenerator().generate(
+        elif app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
+            return AgentChatAppGenerator().generate(
                 app_model=app_model,
                 user=user,
                 args=args,
                 invoke_from=invoke_from,
                 stream=streaming
             )
-        elif app_model.mode == AppMode.AGENT_CHAT.value:
-            return AgentChatAppGenerator().generate(
+        elif app_model.mode == AppMode.CHAT.value:
+            return ChatAppGenerator().generate(
                 app_model=app_model,
                 user=user,
                 args=args,
