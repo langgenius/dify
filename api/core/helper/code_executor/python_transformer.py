@@ -1,6 +1,8 @@
 import json
 import re
 
+from core.helper.code_executor.template_transformer import TemplateTransformer
+
 PYTHON_RUNNER = """# declare main function here
 {{code}}
 
@@ -19,7 +21,7 @@ print(result)
 """
 
 
-class PythonTemplateTransformer:
+class PythonTemplateTransformer(TemplateTransformer):
     @classmethod
     def transform_caller(cls, code: str, inputs: dict) -> str:
         """
