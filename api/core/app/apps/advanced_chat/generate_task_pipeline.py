@@ -55,6 +55,19 @@ class TaskState(BaseModel):
     """
     TaskState entity
     """
+    class NodeExecutionInfo(BaseModel):
+        """
+        NodeExecutionInfo entity
+        """
+        workflow_node_execution: WorkflowNodeExecution
+        start_at: float
+
+        class Config:
+            """Configuration for this pydantic object."""
+
+            extra = Extra.forbid
+            arbitrary_types_allowed = True
+
     answer: str = ""
     metadata: dict = {}
     usage: LLMUsage
@@ -64,8 +77,8 @@ class TaskState(BaseModel):
     total_tokens: int = 0
     total_steps: int = 0
 
-    current_node_execution: Optional[WorkflowNodeExecution] = None
-    current_node_execution_start_at: Optional[float] = None
+    running_node_execution_infos: dict[str, NodeExecutionInfo] = {}
+    latest_node_execution_info: Optional[NodeExecutionInfo] = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -218,7 +231,7 @@ class AdvancedChatAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                 yield self._yield_response(response)
             elif isinstance(event, QueueNodeStartedEvent):
                 self._on_node_start(event)
-                workflow_node_execution = self._task_state.current_node_execution
+                workflow_node_execution = self._task_state.latest_node_execution_info.workflow_node_execution
 
                 response = {
                     'event': 'node_started',
@@ -237,7 +250,7 @@ class AdvancedChatAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                 yield self._yield_response(response)
             elif isinstance(event, QueueNodeSucceededEvent | QueueNodeFailedEvent):
                 self._on_node_finished(event)
-                workflow_node_execution = self._task_state.current_node_execution
+                workflow_node_execution = self._task_state.latest_node_execution_info.workflow_node_execution
 
                 if workflow_node_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED.value:
                     if workflow_node_execution.node_type == NodeType.LLM.value:
@@ -447,15 +460,21 @@ class AdvancedChatAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
             predecessor_node_id=event.predecessor_node_id
         )
 
-        self._task_state.current_node_execution = workflow_node_execution
-        self._task_state.current_node_execution_start_at = time.perf_counter()
+        latest_node_execution_info = TaskState.NodeExecutionInfo(
+            workflow_node_execution=workflow_node_execution,
+            start_at=time.perf_counter()
+        )
+
+        self._task_state.running_node_execution_infos[event.node_id] = latest_node_execution_info
+        self._task_state.latest_node_execution_info = latest_node_execution_info
         self._task_state.total_steps += 1
 
     def _on_node_finished(self, event: QueueNodeSucceededEvent | QueueNodeFailedEvent) -> None:
+        current_node_execution = self._task_state.running_node_execution_infos[event.node_id]
         if isinstance(event, QueueNodeSucceededEvent):
             workflow_node_execution = self._workflow_node_execution_success(
-                workflow_node_execution=self._task_state.current_node_execution,
-                start_at=self._task_state.current_node_execution_start_at,
+                workflow_node_execution=current_node_execution.workflow_node_execution,
+                start_at=current_node_execution.start_at,
                 inputs=event.inputs,
                 process_data=event.process_data,
                 outputs=event.outputs,
@@ -472,12 +491,14 @@ class AdvancedChatAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                 self._task_state.metadata['usage'] = usage_dict
         else:
             workflow_node_execution = self._workflow_node_execution_failed(
-                workflow_node_execution=self._task_state.current_node_execution,
-                start_at=self._task_state.current_node_execution_start_at,
+                workflow_node_execution=current_node_execution.workflow_node_execution,
+                start_at=current_node_execution.start_at,
                 error=event.error
             )
 
-        self._task_state.current_node_execution = workflow_node_execution
+            # remove running node execution info
+            del self._task_state.running_node_execution_infos[event.node_id]
+            self._task_state.latest_node_execution_info.workflow_node_execution = workflow_node_execution
 
     def _on_workflow_finished(self, event: QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent) -> None:
         if isinstance(event, QueueStopEvent):
@@ -504,8 +525,8 @@ class AdvancedChatAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                 start_at=self._task_state.start_at,
                 total_tokens=self._task_state.total_tokens,
                 total_steps=self._task_state.total_steps,
-                outputs=self._task_state.current_node_execution.outputs
-                if self._task_state.current_node_execution else None
+                outputs=self._task_state.latest_node_execution_info.workflow_node_execution.outputs
+                if self._task_state.latest_node_execution_info else None
             )
 
         self._task_state.workflow_run = workflow_run

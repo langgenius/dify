@@ -1,5 +1,6 @@
 from typing import Optional, Union, cast
 
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -14,6 +15,7 @@ MAX_DEPTH = 5
 MAX_STRING_LENGTH = 1000
 MAX_STRING_ARRAY_LENGTH = 30
 MAX_NUMBER_ARRAY_LENGTH = 1000
+
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
@@ -78,21 +80,15 @@ class CodeNode(BaseNode):
             }
         }
 
-    def _run(self, variable_pool: Optional[VariablePool] = None,
-             run_args: Optional[dict] = None) -> NodeRunResult:
+    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
         Run code
         :param variable_pool: variable pool
-        :param run_args: run args
         :return:
         """
         node_data = self.node_data
-        node_data: CodeNodeData = cast(self._node_data_cls, node_data)
+        node_data = cast(self._node_data_cls, node_data)
 
-        # SINGLE DEBUG NOT IMPLEMENTED YET
-        if variable_pool is None and run_args:
-            raise ValueError("Not support single step debug.")
-        
         # Get code language
         code_language = node_data.code_language
         code = node_data.code
@@ -134,7 +130,6 @@ class CodeNode(BaseNode):
         Check string
         :param value: value
         :param variable: variable
-        :param max_length: max length
         :return:
         """
         if not isinstance(value, str):
@@ -142,9 +137,9 @@ class CodeNode(BaseNode):
 
         if len(value) > MAX_STRING_LENGTH:
             raise ValueError(f'{variable} in input form must be less than {MAX_STRING_LENGTH} characters')
-        
+
         return value.replace('\x00', '')
-        
+
     def _check_number(self, value: Union[int, float], variable: str) -> Union[int, float]:
         """
         Check number
@@ -157,13 +152,13 @@ class CodeNode(BaseNode):
 
         if value > MAX_NUMBER or value < MIN_NUMBER:
             raise ValueError(f'{variable} in input form is out of range.')
-        
+
         if isinstance(value, float):
             value = round(value, MAX_PRECISION)
 
         return value
 
-    def _transform_result(self, result: dict, output_schema: dict[str, CodeNodeData.Output], 
+    def _transform_result(self, result: dict, output_schema: dict[str, CodeNodeData.Output],
                           prefix: str = '',
                           depth: int = 1) -> dict:
         """
@@ -174,7 +169,7 @@ class CodeNode(BaseNode):
         """
         if depth > MAX_DEPTH:
             raise ValueError("Depth limit reached, object too deep.")
-        
+
         transformed_result = {}
         for output_name, output_config in output_schema.items():
             if output_config.type == 'object':
@@ -183,7 +178,7 @@ class CodeNode(BaseNode):
                     raise ValueError(
                         f'Output {prefix}.{output_name} is not an object, got {type(result.get(output_name))} instead.'
                     )
-                
+
                 transformed_result[output_name] = self._transform_result(
                     result=result[output_name],
                     output_schema=output_config.children,
@@ -208,7 +203,7 @@ class CodeNode(BaseNode):
                     raise ValueError(
                         f'Output {prefix}.{output_name} is not an array, got {type(result.get(output_name))} instead.'
                     )
-                
+
                 if len(result[output_name]) > MAX_NUMBER_ARRAY_LENGTH:
                     raise ValueError(
                         f'{prefix}.{output_name} in input form must be less than {MAX_NUMBER_ARRAY_LENGTH} characters'
@@ -227,12 +222,12 @@ class CodeNode(BaseNode):
                     raise ValueError(
                         f'Output {prefix}.{output_name} is not an array, got {type(result.get(output_name))} instead.'
                     )
-                
+
                 if len(result[output_name]) > MAX_STRING_ARRAY_LENGTH:
                     raise ValueError(
                         f'{prefix}.{output_name} in input form must be less than {MAX_STRING_ARRAY_LENGTH} characters'
                     )
-                
+
                 transformed_result[output_name] = [
                     self._check_string(
                         value=value,
@@ -242,5 +237,15 @@ class CodeNode(BaseNode):
                 ]
             else:
                 raise ValueError(f'Output type {output_config.type} is not supported.')
-            
+
         return transformed_result
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
+        """
+        Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
+        """
+        # TODO extract variable selector to variable mapping for single step debugging
+        return {}

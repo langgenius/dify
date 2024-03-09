@@ -1,6 +1,7 @@
-from typing import Optional, cast
+from typing import cast
 
 from core.app.app_config.entities import VariableEntity
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -12,12 +13,10 @@ class StartNode(BaseNode):
     _node_data_cls = StartNodeData
     node_type = NodeType.START
 
-    def _run(self, variable_pool: Optional[VariablePool] = None,
-             run_args: Optional[dict] = None) -> NodeRunResult:
+    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
         Run node
         :param variable_pool: variable pool
-        :param run_args: run args
         :return:
         """
         node_data = self.node_data
@@ -25,7 +24,7 @@ class StartNode(BaseNode):
         variables = node_data.variables
 
         # Get cleaned inputs
-        cleaned_inputs = self._get_cleaned_inputs(variables, run_args)
+        cleaned_inputs = self._get_cleaned_inputs(variables, variable_pool.user_inputs)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -68,3 +67,12 @@ class StartNode(BaseNode):
             filtered_inputs[variable] = value.replace('\x00', '') if value else None
 
         return filtered_inputs
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
+        """
+        Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
+        """
+        return {}
