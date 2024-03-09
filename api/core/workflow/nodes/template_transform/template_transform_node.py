@@ -1,9 +1,8 @@
 from typing import Optional, cast
+
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 from models.workflow import WorkflowNodeExecutionStatus
