@@ -1,10 +1,11 @@
 from os import environ
+from typing import Literal
 
 from httpx import post
 from pydantic import BaseModel
 from yarl import URL
 
-from core.workflow.nodes.code.python_template import PythonTemplateTransformer
+from core.helper.code_executor.python_transformer import PythonTemplateTransformer
 
 # Code Executor
 CODE_EXECUTION_ENDPOINT = environ.get('CODE_EXECUTION_ENDPOINT', '')
@@ -24,7 +25,7 @@ class CodeExecutionResponse(BaseModel):
 
 class CodeExecutor:
     @classmethod
-    def execute_code(cls, language: str, code: str, inputs: dict) -> dict:
+    def execute_code(cls, language: Literal['python3', 'javascript', 'jina2'], code: str, inputs: dict) -> dict:
         """
         Execute code
         :param language: code language
@@ -32,7 +33,13 @@ class CodeExecutor:
         :param inputs: inputs
         :return:
         """
-        runner = PythonTemplateTransformer.transform_caller(code, inputs)
+        template_transformer = None
+        if language == 'python3':
+            template_transformer = PythonTemplateTransformer
+        else:
+            raise CodeExecutionException('Unsupported language')
+
+        runner = template_transformer.transform_caller(code, inputs)
 
         url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'run'
         headers = {
@@ -67,4 +74,4 @@ class CodeExecutor:
         if response.data.stderr:
             raise CodeExecutionException(response.data.stderr)
         
-        return PythonTemplateTransformer.transform_response(response.data.stdout)
+        return template_transformer.transform_response(response.data.stdout)
