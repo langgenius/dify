@@ -18,15 +18,13 @@ class WorkflowNodeAndResult:
 class WorkflowRunState:
     workflow: Workflow
     start_at: float
-    user_inputs: dict
     variable_pool: VariablePool
 
     total_tokens: int = 0
 
     workflow_nodes_and_results: list[WorkflowNodeAndResult] = []
 
-    def __init__(self, workflow: Workflow, start_at: float, user_inputs: dict, variable_pool: VariablePool):
+    def __init__(self, workflow: Workflow, start_at: float, variable_pool: VariablePool):
         self.workflow = workflow
         self.start_at = start_at
-        self.user_inputs = user_inputs
         self.variable_pool = variable_pool

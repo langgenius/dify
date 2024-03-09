@@ -109,9 +109,9 @@ class WorkflowEngineManager:
         workflow_run_state = WorkflowRunState(
             workflow=workflow,
             start_at=time.perf_counter(),
-            user_inputs=user_inputs,
             variable_pool=VariablePool(
                 system_variables=system_inputs,
+                user_inputs=user_inputs
             )
         )
 
@@ -292,9 +292,7 @@ class WorkflowEngineManager:
 
         # run node, result must have inputs, process_data, outputs, execution_metadata
         node_run_result = node.run(
-            variable_pool=workflow_run_state.variable_pool,
-            run_args=workflow_run_state.user_inputs
-            if (not predecessor_node and node.node_type == NodeType.START) else None  # only on start node
+            variable_pool=workflow_run_state.variable_pool
         )
 
         if node_run_result.status == WorkflowNodeExecutionStatus.FAILED:

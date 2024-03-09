@@ -19,14 +19,17 @@ class ValueType(Enum):
 
 class VariablePool:
     variables_mapping = {}
+    user_inputs: dict
 
-    def __init__(self, system_variables: dict[SystemVariable, Any]) -> None:
+    def __init__(self, system_variables: dict[SystemVariable, Any],
+                 user_inputs: dict) -> None:
         # system variables
         # for example:
         # {
         #     'query': 'abc',
         #     'files': []
         # }
+        self.user_inputs = user_inputs
         for system_variable, value in system_variables.items():
             self.append_variable('sys', [system_variable.value], value)
 

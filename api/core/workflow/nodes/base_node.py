@@ -28,31 +28,23 @@ class BaseNode(ABC):
         self.callbacks = callbacks or []
 
     @abstractmethod
-    def _run(self, variable_pool: Optional[VariablePool] = None,
-             run_args: Optional[dict] = None) -> NodeRunResult:
+    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
         Run node
         :param variable_pool: variable pool
-        :param run_args: run args
         :return:
         """
         raise NotImplementedError
 
-    def run(self, variable_pool: Optional[VariablePool] = None,
-            run_args: Optional[dict] = None) -> NodeRunResult:
+    def run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
         Run node entry
         :param variable_pool: variable pool
-        :param run_args: run args
         :return:
         """
-        if variable_pool is None and run_args is None:
-            raise ValueError("At least one of `variable_pool` or `run_args` must be provided.")
-
         try:
             result = self._run(
-                variable_pool=variable_pool,
-                run_args=run_args
+                variable_pool=variable_pool
             )
         except Exception as e:
             # process unhandled exception
@@ -76,6 +68,26 @@ class BaseNode(ABC):
                     node_id=self.node_id,
                     text=text
                 )
+
+    @classmethod
+    def extract_variable_selector_to_variable_mapping(cls, config: dict) -> dict:
+        """
+        Extract variable selector to variable mapping
+        :param config: node config
+        :return:
+        """
+        node_data = cls._node_data_cls(**config.get("data", {}))
+        return cls._extract_variable_selector_to_variable_mapping(node_data)
+
+    @classmethod
+    @abstractmethod
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
+        """
+        Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
+        """
+        raise NotImplementedError
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
