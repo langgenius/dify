@@ -5,14 +5,13 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Result from './result'
 import Tracing from './tracing'
-// import type { App } from '@/types/app'
 
 type RunProps = {
-  activeTab: 'RESULT' | 'TRACING'
+  activeTab?: 'RESULT' | 'TRACING'
   runID: string
 }
 
-const RunPanel: FC<RunProps> = ({ activeTab, runID }) => {
+const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
   const { t } = useTranslation()
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
 

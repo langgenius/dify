@@ -3,24 +3,15 @@ import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
 import cn from 'classnames'
 import BlockIcon from '../block-icon'
-import type { BlockEnum } from '../types'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AlertCircle, AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { CheckCircle, Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
-
-export type NodeInfo = {
-  type: BlockEnum
-  title: string
-  time: number
-  tokens: number
-  status: string
-  error?: string
-}
+import type { NodeTracing } from '@/types/workflow'
 
 type Props = {
-  nodeInfo: NodeInfo
+  nodeInfo: NodeTracing
   collapsed: boolean
   collapseHandle: () => void
 }
@@ -60,9 +51,9 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
               !collapsed && 'rotate-90',
             )}
           />
-          <BlockIcon className='shrink-0 mr-2' type={nodeInfo.type} />
+          <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} />
           <div className='grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate' title={nodeInfo.title}>{nodeInfo.title}</div>
-          <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.time)} · ${getTokenCount(nodeInfo.tokens)} tokens`}</div>
+          <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time)} · ${getTokenCount(nodeInfo.execution_metadata.total_tokens)} tokens`}</div>
           {nodeInfo.status === 'succeeded' && (
             <CheckCircle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#12B76A]' />
           )}

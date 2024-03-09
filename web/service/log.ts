@@ -19,6 +19,7 @@ import type {
   WorkflowLogsResponse,
   WorkflowRunDetailResponse,
 } from '@/models/log'
+import type { NodeTracingListResponse } from '@/types/workflow'
 
 export const fetchConversationList: Fetcher<ConversationListResponse, { name: string; appId: string; params?: Record<string, any> }> = ({ appId, params }) => {
   return get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
@@ -67,4 +68,8 @@ export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string; par
 
 export const fetchRunDetail = ({ appID, runID }: { appID: string; runID: string }) => {
   return get<WorkflowRunDetailResponse>(`/apps/${appID}/workflow-run/${runID}`)
+}
+
+export const fetchTracingList: Fetcher<NodeTracingListResponse, { url: string }> = ({ url }) => {
+  return get<NodeTracingListResponse>(url)
 }
