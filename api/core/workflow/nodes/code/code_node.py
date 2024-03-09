@@ -196,8 +196,6 @@ class CodeNode(BaseNode):
                     value=result[output_name],
                     variable=f'{prefix}.{output_name}' if prefix else output_name
                 )
-
-                transformed_result[output_name] = result[output_name]
             elif output_config.type == 'string':
                 # check if string available
                 transformed_result[output_name] = self._check_string(
