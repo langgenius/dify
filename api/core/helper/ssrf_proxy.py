@@ -38,6 +38,10 @@ def patch(url, *args, **kwargs):
     return _patch(url=url, *args, proxies=httpx_proxies, **kwargs)
 
 def delete(url, *args, **kwargs):
+    if 'follow_redirects' in kwargs:
+        if kwargs['follow_redirects']:
+            kwargs['allow_redirects'] = kwargs['follow_redirects']
+        kwargs.pop('follow_redirects')
     return _delete(url=url, *args, proxies=requests_proxies, **kwargs)
 
 def head(url, *args, **kwargs):
