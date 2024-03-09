@@ -87,7 +87,7 @@ class CodeNode(BaseNode):
         :return:
         """
         node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data: CodeNodeData = cast(self._node_data_cls, node_data)
 
         # Get code language
         code_language = node_data.code_language
@@ -241,11 +241,13 @@ class CodeNode(BaseNode):
         return transformed_result
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: CodeNodeData) -> dict[list[str], str]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
         :return:
         """
-        # TODO extract variable selector to variable mapping for single step debugging
-        return {}
+
+        return {
+            variable_selector.value_selector: variable_selector.variable for variable_selector in node_data.variables
+        }
