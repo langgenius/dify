@@ -15,7 +15,8 @@ const nodeInfoFake = {
   title: 'START',
   time: 67.349,
   tokens: 2708,
-  status: 'succeeded',
+  status: 'failed',
+  error: 'lvlvlvlv',
 }
 
 const Tracing: FC<TracingProps> = ({ runID }) => {

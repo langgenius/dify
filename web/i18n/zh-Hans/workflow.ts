@@ -256,6 +256,9 @@ const translation = {
       instructionPlaceholder: '在这里输入你的指令',
     },
   },
+  tracing: {
+    stopBy: '由{{user}}终止',
+  },
 }
 
 export default translation

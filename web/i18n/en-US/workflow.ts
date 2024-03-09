@@ -256,6 +256,9 @@ const translation = {
       instructionPlaceholder: 'Write your instruction',
     },
   },
+  tracing: {
+    stopBy: 'Stop by {{user}}',
+  },
 }
 
 export default translation
