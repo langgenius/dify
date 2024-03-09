@@ -257,7 +257,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   </div>
                 </>
               )}
-              {(appDetail.mode === 'completion' || appDetail.model_config?.prompt_type === 'advanced') && (
+              {(appDetail.mode === 'completion' || appDetail.mode === 'chat') && (
                 <>
                   <Divider className="!my-1" />
                   <div

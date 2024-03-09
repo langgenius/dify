@@ -9,7 +9,7 @@ import s from './style.module.css'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
-import { importApp } from '@/service/apps'
+import { deleteApp, switchApp } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -29,7 +29,7 @@ type SwitchAppModalProps = {
 }
 
 const SwitchAppModal = ({ show, appDetail, onSuccess, onClose }: SwitchAppModalProps) => {
-  const { push } = useRouter()
+  const { push, replace } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
@@ -43,18 +43,21 @@ const SwitchAppModal = ({ show, appDetail, onSuccess, onClose }: SwitchAppModalP
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
 
   const goStart = async () => {
-    // ###TODO### SWITCH
     try {
-      const app = await importApp({
-        data: '',
-      })
+      const { new_app_id: newAppID } = await switchApp(appDetail.id)
       if (onSuccess)
         onSuccess()
       if (onClose)
         onClose()
       notify({ type: 'success', message: t('app.newApp.appCreated') })
+      if (removeOriginal)
+        await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceManager, app, push)
+      getRedirection(
+        isCurrentWorkspaceManager,
+        { id: newAppID },
+        removeOriginal ? replace : push,
+      )
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })

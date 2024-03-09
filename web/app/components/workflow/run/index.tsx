@@ -38,7 +38,7 @@ const RunPanel: FC<RunProps> = ({ activeTab, runID }) => {
       {/* panel detal */}
       <div className={cn('grow bg-white h-0 overflow-y-auto', currentTab === 'TRACING' && '!bg-gray-50')}>
         {currentTab === 'RESULT' && <Result runID={runID} />}
-        {currentTab === 'TRACING' && <Tracing />}
+        {currentTab === 'TRACING' && <Tracing runID={runID} />}
       </div>
     </div>
   )

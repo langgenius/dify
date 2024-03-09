@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+// import { useTranslation } from 'react-i18next'
 // import cn from 'classnames'
 import { BlockEnum } from '../types'
 import NodePanel from './node'
 
 type TracingProps = {
-  // appId: string
+  runID: string
 }
 
 const nodeInfoFake = {
@@ -18,8 +18,8 @@ const nodeInfoFake = {
   status: 'succeeded',
 }
 
-const Tracing: FC<TracingProps> = () => {
-  const { t } = useTranslation()
+const Tracing: FC<TracingProps> = ({ runID }) => {
+  // const { t } = useTranslation()
   const [nodeCollapsed, setCurrentTab] = useState<boolean>(false)
 
   const collapseStateChange = () => {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppBasic from './basic'
@@ -32,13 +32,9 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
   const [modeState, setModeState] = useState(appSidebarExpand)
   const expand = modeState === 'expand'
 
-  const handleToggle = useCallback(() => {
-    setModeState((prev) => {
-      const next = prev === 'expand' ? 'collapse' : 'expand'
-      setAppSiderbarExpand(next)
-      return next
-    })
-  }, [setAppSiderbarExpand])
+  const handleToggle = (state: string) => {
+    setAppSiderbarExpand(state === 'expand' ? 'collapse' : 'expand')
+  }
 
   useEffect(() => {
     if (appSidebarExpand) {
@@ -100,7 +96,7 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
           >
             <div
               className='flex items-center justify-center w-6 h-6 text-gray-500 cursor-pointer'
-              onClick={handleToggle}
+              onClick={() => handleToggle(modeState)}
             >
               {
                 expand
