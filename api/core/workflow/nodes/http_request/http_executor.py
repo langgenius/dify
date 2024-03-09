@@ -1,10 +1,11 @@
+import re
 from copy import deepcopy
 from typing import Any, Union
 from urllib.parse import urlencode
 
 import httpx
-import re
 import requests
+
 import core.helper.ssrf_proxy as ssrf_proxy
 from core.workflow.nodes.http_request.entities import HttpRequestNodeData
 
