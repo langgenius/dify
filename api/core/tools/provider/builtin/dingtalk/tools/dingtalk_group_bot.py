@@ -17,23 +17,23 @@ class DingTalkGroupBotTool(BuiltinTool):
                 ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
-            Dingtalk group chat api: https://open.dingtalk.com/document/orgapp/custom-robot-access
+            Dingtalk custom group robot API docs:
+            https://open.dingtalk.com/document/orgapp/custom-robot-access
         """
-        content = tool_parameters.get('content', '')
+        content = tool_parameters.get('content')
         if not content:
             return self.create_text_message('Invalid parameter content')
 
-        access_token = tool_parameters.get('access_token', '')
+        access_token = tool_parameters.get('access_token')
         if not access_token:
             return self.create_text_message('Invalid parameter access_token. '
                                             'Regarding information about security details,'
                                             'please refer to the DingTalk docs:'
                                             'https://open.dingtalk.com/document/robots/customize-robot-security-settings')
 
-
-        secret = tool_parameters.get('secret', '')
-        if not secret:
-            return self.create_text_message('Invalid parameter secret. '
+        sign_secret = tool_parameters.get('sign_secret')
+        if not sign_secret:
+            return self.create_text_message('Invalid parameter sign_secret. '
                                             'Regarding information about security details,'
                                             'please refer to the DingTalk docs:'
                                             'https://open.dingtalk.com/document/robots/customize-robot-security-settings')
@@ -47,7 +47,7 @@ class DingTalkGroupBotTool(BuiltinTool):
             'access_token': access_token,
         }
 
-        self._apply_security_mechanism(params, secret)
+        self._apply_security_mechanism(params, sign_secret)
 
         payload = {
             "msgtype": msgtype,
@@ -67,11 +67,11 @@ class DingTalkGroupBotTool(BuiltinTool):
             return self.create_text_message("Failed to send message to group chat bot. {}".format(e))
 
     @staticmethod
-    def _apply_security_mechanism(params, secret):
+    def _apply_security_mechanism(params: dict[str, Any], sign_secret: str):
         try:
             timestamp = str(round(time.time() * 1000))
-            secret_enc = secret.encode('utf-8')
-            string_to_sign = '{}\n{}'.format(timestamp, secret)
+            secret_enc = sign_secret.encode('utf-8')
+            string_to_sign = f'{timestamp}\n{sign_secret}'
             string_to_sign_enc = string_to_sign.encode('utf-8')
             hmac_code = hmac.new(secret_enc, string_to_sign_enc, digestmod=hashlib.sha256).digest()
             sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
@@ -79,5 +79,5 @@ class DingTalkGroupBotTool(BuiltinTool):
             params['timestamp'] = timestamp
             params['sign'] = sign
         except Exception:
-            msg = "failed to apply security mechanism to the request."
+            msg = "Failed to apply security mechanism to the request."
             logging.exception(msg)

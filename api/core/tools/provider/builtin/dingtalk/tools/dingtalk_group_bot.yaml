@@ -25,17 +25,17 @@ parameters:
       zh_Hans: 群自定义机器人webhook中access_token字段的值
       pt_BR: access_token in the group robot webhook
     form: form
-  - name: secret
+  - name: sign_secret
     type: secret-input
     required: true
     label:
-      en_US: secret key
+      en_US: secret key for signing
       zh_Hans: 加签秘钥
-      pt_BR: secret key
+      pt_BR: secret key for signing
     human_description:
-      en_US: secret key
+      en_US: secret key for signing
       zh_Hans: 加签秘钥
-      pt_BR: secret key
+      pt_BR: secret key for signing
     form: form
   - name: content
     type: string
