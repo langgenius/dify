@@ -17,9 +17,10 @@ class HttpRequestNodeData(BaseNodeData):
             header: Union[None, str]
 
         type: Literal['no-auth', 'api-key']
+        config: Config
 
     class Body(BaseModel):
-        type: Literal[None, 'form-data', 'x-www-form-urlencoded', 'raw']
+        type: Literal[None, 'form-data', 'x-www-form-urlencoded', 'raw', 'json']
         data: Union[None, str]
 
     variables: list[VariableSelector]
@@ -28,4 +29,4 @@ class HttpRequestNodeData(BaseNodeData):
     authorization: Authorization
     headers: str
     params: str
-    
+    body: Body
