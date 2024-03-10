@@ -60,8 +60,7 @@ class WorkflowBasedGenerateTaskPipeline:
 
         db.session.add(workflow_run)
         db.session.commit()
-
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run.id).first()
+        db.session.refresh(workflow_run)
         db.session.close()
 
         return workflow_run
@@ -155,9 +154,7 @@ class WorkflowBasedGenerateTaskPipeline:
 
         db.session.add(workflow_node_execution)
         db.session.commit()
-
-        workflow_node_execution = (db.session.query(WorkflowNodeExecution)
-                                   .filter(WorkflowNodeExecution.id == workflow_node_execution.id).first())
+        db.session.refresh(workflow_node_execution)
         db.session.close()
 
         return workflow_node_execution

@@ -176,9 +176,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
             db.session.add(conversation)
             db.session.commit()
-
-            conversation = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
-            db.session.close()
+            db.session.refresh(conversation)
 
         message = Message(
             app_id=app_config.app_id,
@@ -206,9 +204,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         db.session.add(message)
         db.session.commit()
-
-        message = db.session.query(Message).filter(Message.id == message.id).first()
-        db.session.close()
+        db.session.refresh(message)
 
         for file in application_generate_entity.files:
             message_file = MessageFile(
@@ -223,8 +219,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             )
             db.session.add(message_file)
             db.session.commit()
-
-        db.session.close()
 
         return conversation, message
 
