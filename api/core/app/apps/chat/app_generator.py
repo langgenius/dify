@@ -193,4 +193,4 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
-                db.session.remove()
+                db.session.close()

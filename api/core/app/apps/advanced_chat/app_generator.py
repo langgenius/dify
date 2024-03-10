@@ -153,8 +153,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
 
-                db.session.close()
-
                 # chatbot app
                 runner = AdvancedChatAppRunner()
                 runner.run(

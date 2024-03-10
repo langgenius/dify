@@ -64,8 +64,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             else:
                 logger.exception(e)
                 raise e
-        finally:
-            db.session.remove()
 
     def _get_conversation_by_user(self, app_model: App, conversation_id: str,
                                   user: Union[Account, EndUser]) -> Conversation:

@@ -57,6 +57,8 @@ class WorkflowAppRunner:
         ):
             return
 
+        db.session.close()
+
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(

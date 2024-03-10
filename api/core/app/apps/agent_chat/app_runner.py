@@ -201,8 +201,8 @@ class AgentChatAppRunner(AppRunner):
         if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
-        db.session.refresh(conversation)
-        db.session.refresh(message)
+        conversation = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
+        message = db.session.query(Message).filter(Message.id == message.id).first()
         db.session.close()
 
         # start agent runner
