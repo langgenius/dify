@@ -4,6 +4,7 @@ from typing import Literal, Optional
 from httpx import post
 from pydantic import BaseModel
 from yarl import URL
+from core.helper.code_executor.jina2_transformer import Jinja2TemplateTransformer
 
 from core.helper.code_executor.python_transformer import PythonTemplateTransformer
 
@@ -25,7 +26,7 @@ class CodeExecutionResponse(BaseModel):
 
 class CodeExecutor:
     @classmethod
-    def execute_code(cls, language: Literal['python3', 'javascript', 'jina2'], code: str, inputs: dict) -> dict:
+    def execute_code(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict) -> dict:
         """
         Execute code
         :param language: code language
@@ -36,6 +37,8 @@ class CodeExecutor:
         template_transformer = None
         if language == 'python3':
             template_transformer = PythonTemplateTransformer
+        elif language == 'jinja2':
+            template_transformer = Jinja2TemplateTransformer
         else:
             raise CodeExecutionException('Unsupported language')
 
@@ -46,7 +49,7 @@ class CodeExecutor:
             'X-Api-Key': CODE_EXECUTION_API_KEY
         }
         data = {
-            'language': language,
+            'language': language if language != 'jinja2' else 'python3',
             'code': runner,
         }
 

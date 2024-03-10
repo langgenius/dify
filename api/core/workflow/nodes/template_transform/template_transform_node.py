@@ -52,7 +52,7 @@ class TemplateTransformNode(BaseNode):
         # Run code
         try:
             result = CodeExecutor.execute_code(
-                language='jina2',
+                language='jinja2',
                 code=node_data.template,
                 inputs=variables
             )
@@ -66,7 +66,9 @@ class TemplateTransformNode(BaseNode):
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=variables,
-            outputs=result['result']
+            outputs={
+                'output': result['result']
+            }
         )
     
     @classmethod
