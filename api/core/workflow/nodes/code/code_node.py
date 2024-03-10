@@ -132,10 +132,10 @@ class CodeNode(BaseNode):
         :return:
         """
         if not isinstance(value, str):
-            raise ValueError(f"{variable} in input form must be a string")
+            raise ValueError(f"{variable} in output form must be a string")
 
         if len(value) > MAX_STRING_LENGTH:
-            raise ValueError(f'{variable} in input form must be less than {MAX_STRING_LENGTH} characters')
+            raise ValueError(f'{variable} in output form must be less than {MAX_STRING_LENGTH} characters')
 
         return value.replace('\x00', '')
 
@@ -147,7 +147,7 @@ class CodeNode(BaseNode):
         :return:
         """
         if not isinstance(value, int | float):
-            raise ValueError(f"{variable} in input form must be a number")
+            raise ValueError(f"{variable} in output form must be a number")
 
         if value > MAX_NUMBER or value < MIN_NUMBER:
             raise ValueError(f'{variable} in input form is out of range.')
@@ -205,7 +205,7 @@ class CodeNode(BaseNode):
 
                 if len(result[output_name]) > MAX_NUMBER_ARRAY_LENGTH:
                     raise ValueError(
-                        f'{prefix}.{output_name} in input form must be less than {MAX_NUMBER_ARRAY_LENGTH} characters'
+                        f'{prefix}.{output_name} in output form must be less than {MAX_NUMBER_ARRAY_LENGTH} characters'
                     )
 
                 transformed_result[output_name] = [
@@ -224,7 +224,7 @@ class CodeNode(BaseNode):
 
                 if len(result[output_name]) > MAX_STRING_ARRAY_LENGTH:
                     raise ValueError(
-                        f'{prefix}.{output_name} in input form must be less than {MAX_STRING_ARRAY_LENGTH} characters'
+                        f'{prefix}.{output_name} in output form must be less than {MAX_STRING_ARRAY_LENGTH} characters'
                     )
 
                 transformed_result[output_name] = [
