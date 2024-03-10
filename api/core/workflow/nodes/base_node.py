@@ -12,14 +12,25 @@ class BaseNode(ABC):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
 
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+
     node_id: str
     node_data: BaseNodeData
     node_run_result: Optional[NodeRunResult] = None
 
     callbacks: list[BaseWorkflowCallback]
 
-    def __init__(self, config: dict,
+    def __init__(self, tenant_id: str,
+                 app_id: str,
+                 workflow_id: str,
+                 config: dict,
                  callbacks: list[BaseWorkflowCallback] = None) -> None:
+        self.tenant_id = tenant_id
+        self.app_id = app_id
+        self.workflow_id = workflow_id
+
         self.node_id = config.get("id")
         if not self.node_id:
             raise ValueError("Node ID is required.")
