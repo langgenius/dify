@@ -19,6 +19,7 @@ from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_assigner.variable_assigner_node import VariableAssignerNode
+from extensions.ext_database import db
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionStatus,
@@ -282,6 +283,8 @@ class WorkflowEngineManager:
                     predecessor_node_id=predecessor_node.node_id if predecessor_node else None
                 )
 
+        db.session.close()
+
         workflow_nodes_and_result = WorkflowNodeAndResult(
             node=node,
             result=None
@@ -338,6 +341,8 @@ class WorkflowEngineManager:
 
         if node_run_result.metadata and node_run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
             workflow_run_state.total_tokens += int(node_run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS))
+
+        db.session.close()
 
     def _set_end_node_output_if_in_chat(self, workflow_run_state: WorkflowRunState,
                                         node: BaseNode,
