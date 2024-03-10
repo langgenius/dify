@@ -32,7 +32,15 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, SystemVaria
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
-from models.workflow import Workflow, WorkflowNodeExecution, WorkflowRun, WorkflowRunStatus, WorkflowRunTriggeredFrom
+from models.workflow import (
+    Workflow,
+    WorkflowAppLog,
+    WorkflowAppLogCreatedFrom,
+    WorkflowNodeExecution,
+    WorkflowRun,
+    WorkflowRunStatus,
+    WorkflowRunTriggeredFrom,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +150,7 @@ class WorkflowAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                     )
 
                 # save workflow app log
-                self._save_workflow_app_log()
+                self._save_workflow_app_log(workflow_run)
 
                 response = {
                     'task_id': self._application_generate_entity.task_id,
@@ -261,7 +269,7 @@ class WorkflowAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                     yield self._yield_response(replace_response)
 
                 # save workflow app log
-                self._save_workflow_app_log()
+                self._save_workflow_app_log(workflow_run)
 
                 workflow_run_response = {
                     'event': 'workflow_finished',
@@ -448,12 +456,34 @@ class WorkflowAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
 
         return workflow_run
 
-    def _save_workflow_app_log(self) -> None:
+    def _save_workflow_app_log(self, workflow_run: WorkflowRun) -> None:
         """
         Save workflow app log.
         :return:
         """
-        pass # todo
+        invoke_from = self._application_generate_entity.invoke_from
+        if invoke_from == InvokeFrom.SERVICE_API:
+            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+        elif invoke_from == InvokeFrom.EXPLORE:
+            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+        elif invoke_from == InvokeFrom.WEB_APP:
+            created_from = WorkflowAppLogCreatedFrom.WEB_APP
+        else:
+            # not save log for debugging
+            return
+
+        workflow_app_log = WorkflowAppLog(
+            tenant_id=workflow_run.tenant_id,
+            app_id=workflow_run.app_id,
+            workflow_id=workflow_run.workflow_id,
+            workflow_run_id=workflow_run.id,
+            created_from=created_from.value,
+            created_by_role=('account' if isinstance(self._user, Account) else 'end_user'),
+            created_by=self._user.id,
+        )
+        db.session.add(workflow_app_log)
+        db.session.commit()
+        db.session.close()
 
     def _handle_chunk(self, text: str) -> dict:
         """
