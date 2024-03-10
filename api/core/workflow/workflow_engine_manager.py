@@ -122,6 +122,7 @@ class WorkflowEngineManager:
             while True:
                 # get next node, multiple target nodes in the future
                 next_node = self._get_next_node(
+                    workflow_run_state=workflow_run_state,
                     graph=graph,
                     predecessor_node=predecessor_node,
                     callbacks=callbacks
@@ -198,7 +199,8 @@ class WorkflowEngineManager:
                     error=error
                 )
 
-    def _get_next_node(self, graph: dict,
+    def _get_next_node(self, workflow_run_state: WorkflowRunState,
+                       graph: dict,
                        predecessor_node: Optional[BaseNode] = None,
                        callbacks: list[BaseWorkflowCallback] = None) -> Optional[BaseNode]:
         """
@@ -216,7 +218,13 @@ class WorkflowEngineManager:
         if not predecessor_node:
             for node_config in nodes:
                 if node_config.get('data', {}).get('type', '') == NodeType.START.value:
-                    return StartNode(config=node_config)
+                    return StartNode(
+                        tenant_id=workflow_run_state.tenant_id,
+                        app_id=workflow_run_state.app_id,
+                        workflow_id=workflow_run_state.workflow_id,
+                        config=node_config,
+                        callbacks=callbacks
+                    )
         else:
             edges = graph.get('edges')
             source_node_id = predecessor_node.node_id
@@ -256,6 +264,9 @@ class WorkflowEngineManager:
             target_node = node_classes.get(NodeType.value_of(target_node_config.get('data', {}).get('type')))
 
             return target_node(
+                tenant_id=workflow_run_state.tenant_id,
+                app_id=workflow_run_state.app_id,
+                workflow_id=workflow_run_state.workflow_id,
                 config=target_node_config,
                 callbacks=callbacks
             )
@@ -354,7 +365,7 @@ class WorkflowEngineManager:
         :param node_run_result: node run result
         :return:
         """
-        if workflow_run_state.workflow.type == WorkflowType.CHAT.value and node.node_type == NodeType.END:
+        if workflow_run_state.workflow_type == WorkflowType.CHAT and node.node_type == NodeType.END:
             workflow_nodes_and_result_before_end = workflow_run_state.workflow_nodes_and_results[-2]
             if workflow_nodes_and_result_before_end:
                 if workflow_nodes_and_result_before_end.node.node_type == NodeType.LLM:
