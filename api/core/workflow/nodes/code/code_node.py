@@ -101,7 +101,6 @@ class CodeNode(BaseNode):
             )
 
             variables[variable] = value
-
         # Run code
         try:
             result = CodeExecutor.execute_code(
@@ -109,14 +108,15 @@ class CodeNode(BaseNode):
                 code=code,
                 inputs=variables
             )
-        except CodeExecutionException as e:
+
+            # Transform result
+            result = self._transform_result(result, node_data.outputs)
+        except (CodeExecutionException, ValueError) as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=variables,
                 error=str(e)
             )
-
-        # Transform result
-        result = self._transform_result(result, node_data.outputs)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,

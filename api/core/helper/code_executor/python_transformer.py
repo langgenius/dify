@@ -11,11 +11,11 @@ PYTHON_RUNNER = """# declare main function here
 output = main(**{{inputs}})
 
 # convert output to json and print
-result = '''
-<<RESULT>>
+output = json.dumps(output, indent=4)
+
+result = f'''<<RESULT>>
 {output}
-<<RESULT>>
-'''
+<<RESULT>>'''
 
 print(result)
 """
@@ -47,11 +47,9 @@ class PythonTemplateTransformer(TemplateTransformer):
         :param response: response
         :return:
         """
-        
         # extract result
         result = re.search(r'<<RESULT>>(.*)<<RESULT>>', response, re.DOTALL)
         if not result:
             raise ValueError('Failed to parse result')
-        
         result = result.group(1)
         return json.loads(result)
