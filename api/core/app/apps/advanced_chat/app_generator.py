@@ -95,12 +95,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras
         )
 
-        workflow = db.session.query(Workflow).filter(Workflow.id == workflow.id).first()
-        user = (db.session.query(Account).filter(Account.id == user.id).first()
-                if isinstance(user, Account)
-                else db.session.query(EndUser).filter(EndUser.id == user.id).first())
-        db.session.close()
-
         # init generate records
         (
             conversation,
@@ -206,7 +200,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
         # init generate task pipeline
-
         generate_task_pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             workflow=workflow,

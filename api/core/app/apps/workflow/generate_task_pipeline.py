@@ -99,13 +99,15 @@ class WorkflowAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
         self._output_moderation_handler = self._init_output_moderation()
         self._stream = stream
 
-        db.session.close()
-
     def process(self) -> Union[dict, Generator]:
         """
         Process generate task pipeline.
         :return:
         """
+        db.session.refresh(self._workflow)
+        db.session.refresh(self._user)
+        db.session.close()
+
         if self._stream:
             return self._process_stream_response()
         else:
