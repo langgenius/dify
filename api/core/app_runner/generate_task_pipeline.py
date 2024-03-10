@@ -89,6 +89,10 @@ class GenerateTaskPipeline:
         Process generate task pipeline.
         :return:
         """
+        db.session.refresh(self._conversation)
+        db.session.refresh(self._message)
+        db.session.close()
+
         if stream:
             return self._process_stream_response()
         else:
@@ -303,6 +307,7 @@ class GenerateTaskPipeline:
                     .first()
                 )
                 db.session.refresh(agent_thought)
+                db.session.close()
 
                 if agent_thought:
                     response = {
@@ -330,6 +335,8 @@ class GenerateTaskPipeline:
                     .filter(MessageFile.id == event.message_file_id)
                     .first()
                 )
+                db.session.close()
+
                 # get extension
                 if '.' in message_file.url:
                     extension = f'.{message_file.url.split(".")[-1]}'
