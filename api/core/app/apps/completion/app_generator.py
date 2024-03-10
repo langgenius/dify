@@ -182,7 +182,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
-                db.session.remove()
+                db.session.close()
 
     def generate_more_like_this(self, app_model: App,
                                 message_id: str,

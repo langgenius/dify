@@ -5,8 +5,8 @@ import mimetypes
 from os import listdir, path
 from typing import Any, Union
 
+from core.agent.entities import AgentToolEntity
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.entities.application_entities import AgentToolEntity
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.provider_manager import ProviderManager
 from core.tools.entities.common_entities import I18nObject

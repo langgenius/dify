@@ -322,7 +322,7 @@ class AppModelConfig(db.Model):
         }
 
     def from_model_config_dict(self, model_config: dict):
-        self.opening_statement = model_config['opening_statement']
+        self.opening_statement = model_config.get('opening_statement')
         self.suggested_questions = json.dumps(model_config['suggested_questions']) \
             if model_config.get('suggested_questions') else None
         self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer']) \

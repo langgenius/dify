@@ -123,7 +123,8 @@ class DatasetConfigManager:
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")
 
-        need_manual_query_datasets = config.get("dataset_configs") and config["dataset_configs"].get("datasets")
+        need_manual_query_datasets = (config.get("dataset_configs")
+                                      and config["dataset_configs"].get("datasets", {}).get("datasets"))
 
         if need_manual_query_datasets and app_mode == AppMode.COMPLETION:
             # Only check when mode is completion
