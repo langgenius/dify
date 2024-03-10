@@ -433,6 +433,29 @@ class WorkflowNodeExecution(db.Model):
     def execution_metadata_dict(self):
         return self.execution_metadata if not self.execution_metadata else json.loads(self.execution_metadata)
 
+
+class WorkflowAppLogCreatedFrom(Enum):
+    """
+    Workflow App Log Created From Enum
+    """
+    SERVICE_API = 'service-api'
+    WEB_APP = 'web-app'
+    INSTALLED_APP = 'installed-app'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'WorkflowAppLogCreatedFrom':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid workflow app log created from value {value}')
+
+
 class WorkflowAppLog(db.Model):
     """
     Workflow App execution log, excluding workflow debugging records.
