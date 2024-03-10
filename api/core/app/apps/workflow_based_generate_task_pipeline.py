@@ -87,6 +87,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_run.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.refresh(workflow_run)
         db.session.close()
 
         return workflow_run
@@ -115,6 +116,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_run.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.refresh(workflow_run)
         db.session.close()
 
         return workflow_run
@@ -185,6 +187,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_node_execution.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.refresh(workflow_node_execution)
         db.session.close()
 
         return workflow_node_execution
@@ -205,6 +208,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_node_execution.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.refresh(workflow_node_execution)
         db.session.close()
 
         return workflow_node_execution
