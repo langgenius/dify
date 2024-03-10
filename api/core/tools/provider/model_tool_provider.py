@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any
 
 from core.entities.model_entities import ModelStatus
@@ -59,10 +60,16 @@ class ModelToolProviderController(ToolProviderController):
 
         # override the configuration
         if model_tool_configuration.label:
-            if model_tool_configuration.label.en_US:
-                configuration.provider.label.en_US = model_tool_configuration.label.en_US
-            if model_tool_configuration.label.zh_Hans:
-                configuration.provider.label.zh_Hans = model_tool_configuration.label.zh_Hans
+            label = deepcopy(model_tool_configuration.label)
+            if label.en_US:
+                label.en_US = model_tool_configuration.label.en_US
+            if label.zh_Hans:
+                label.zh_Hans = model_tool_configuration.label.zh_Hans
+        else:
+            label = I18nObject(
+                en_US=configuration.provider.label.en_US,
+                zh_Hans=configuration.provider.label.zh_Hans
+            )
 
         return ModelToolProviderController(
             is_active=is_active,
@@ -70,12 +77,12 @@ class ModelToolProviderController(ToolProviderController):
                 author='Dify',
                 name=configuration.provider.provider,
                 description=I18nObject(
-                    zh_Hans=f'{configuration.provider.label.zh_Hans} 模型能力提供商', 
-                    en_US=f'{configuration.provider.label.en_US} model capability provider'
+                    zh_Hans=f'{label.zh_Hans} 模型能力提供商', 
+                    en_US=f'{label.en_US} model capability provider'
                 ),
                 label=I18nObject(
-                    zh_Hans=configuration.provider.label.zh_Hans,
-                    en_US=configuration.provider.label.en_US
+                    zh_Hans=label.zh_Hans,
+                    en_US=label.en_US
                 ),
                 icon=configuration.provider.icon_small.en_US,
             ),
