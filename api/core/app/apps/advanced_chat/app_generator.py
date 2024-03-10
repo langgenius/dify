@@ -95,6 +95,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras
         )
 
+        workflow = db.session.query(Workflow).filter(Workflow.id == workflow.id).first()
+        user = (db.session.query(Account).filter(Account.id == user.id).first()
+                if isinstance(user, Account)
+                else db.session.query(EndUser).filter(EndUser.id == user.id).first())
+        db.session.close()
+
         # init generate records
         (
             conversation,
@@ -153,6 +159,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
 
+                db.session.close()
+
                 # chatbot app
                 runner = AdvancedChatAppRunner()
                 runner.run(
@@ -177,7 +185,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
-                db.session.remove()
+                db.session.close()
 
     def _handle_advanced_chat_response(self, application_generate_entity: AdvancedChatAppGenerateEntity,
                                        workflow: Workflow,
@@ -198,6 +206,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
         # init generate task pipeline
+
         generate_task_pipeline = AdvancedChatAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
             workflow=workflow,
@@ -216,5 +225,3 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             else:
                 logger.exception(e)
                 raise e
-        # finally:
-        #     db.session.remove()

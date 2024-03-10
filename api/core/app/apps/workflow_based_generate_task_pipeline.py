@@ -61,6 +61,9 @@ class WorkflowBasedGenerateTaskPipeline:
         db.session.add(workflow_run)
         db.session.commit()
 
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run.id).first()
+        db.session.close()
+
         return workflow_run
 
     def _workflow_run_success(self, workflow_run: WorkflowRun,
@@ -85,6 +88,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_run.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.close()
 
         return workflow_run
 
@@ -112,6 +116,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_run.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.close()
 
         return workflow_run
 
@@ -151,6 +156,10 @@ class WorkflowBasedGenerateTaskPipeline:
         db.session.add(workflow_node_execution)
         db.session.commit()
 
+        workflow_node_execution = (db.session.query(WorkflowNodeExecution)
+                                   .filter(WorkflowNodeExecution.id == workflow_node_execution.id).first())
+        db.session.close()
+
         return workflow_node_execution
 
     def _workflow_node_execution_success(self, workflow_node_execution: WorkflowNodeExecution,
@@ -179,6 +188,7 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_node_execution.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.close()
 
         return workflow_node_execution
 
@@ -198,5 +208,6 @@ class WorkflowBasedGenerateTaskPipeline:
         workflow_node_execution.finished_at = datetime.utcnow()
 
         db.session.commit()
+        db.session.close()
 
         return workflow_node_execution

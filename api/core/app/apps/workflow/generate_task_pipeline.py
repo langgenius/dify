@@ -99,6 +99,8 @@ class WorkflowAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
         self._output_moderation_handler = self._init_output_moderation()
         self._stream = stream
 
+        db.session.close()
+
     def process(self) -> Union[dict, Generator]:
         """
         Process generate task pipeline.

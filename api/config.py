@@ -27,6 +27,7 @@ DEFAULTS = {
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
     'DEPLOY_ENV': 'PRODUCTION',
     'SQLALCHEMY_POOL_SIZE': 30,
+    'SQLALCHEMY_MAX_OVERFLOW': 10,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
     'SQLALCHEMY_ECHO': 'False',
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
@@ -148,6 +149,7 @@ class Config:
         self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
+            'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
         }
 
