@@ -1,5 +1,5 @@
 from os import environ
-from typing import Literal
+from typing import Literal, Optional
 
 from httpx import post
 from pydantic import BaseModel
@@ -16,8 +16,8 @@ class CodeExecutionException(Exception):
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: str
-        stderr: str
+        stdout: Optional[str]
+        error: Optional[str]
 
     code: int
     message: str
@@ -58,9 +58,9 @@ class CodeExecutor:
                 raise Exception('Failed to execute code')
         except CodeExecutionException as e:
             raise e
-        except Exception:
+        except Exception as e:
             raise CodeExecutionException('Failed to execute code')
-
+        
         try:
             response = response.json()
         except:
@@ -71,7 +71,7 @@ class CodeExecutor:
         if response.code != 0:
             raise CodeExecutionException(response.message)
         
-        if response.data.stderr:
-            raise CodeExecutionException(response.data.stderr)
+        if response.data.error:
+            raise CodeExecutionException(response.data.error)
         
         return template_transformer.transform_response(response.data.stdout)
