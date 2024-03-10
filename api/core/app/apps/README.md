@@ -14,7 +14,7 @@ Examples:
    db.session.commit()
    db.session.refresh(app)  # Retrieve table default values, like created_at, cached in the app object, won't affect after close
    
-   # Process related app logic
+   # Handle non-long-running tasks or store the content of the App instance in memory (via variable assignment).
    
    db.session.close()
    
@@ -29,6 +29,9 @@ Examples:
    created_at = app.created_at
     
    db.session.close()
+   
+   # Handle tasks (include long-running).
+   
    ```
 
 3. Updating a table field:
