@@ -8,10 +8,12 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
+    InvokeFrom,
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
 from core.moderation.base import ModerationException
 from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
@@ -78,6 +80,10 @@ class AdvancedChatAppRunner(AppRunner):
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
             workflow=workflow,
+            user_id=application_generate_entity.user_id,
+            user_from=UserFrom.ACCOUNT
+            if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+            else UserFrom.END_USER,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.QUERY: query,
