@@ -416,9 +416,14 @@ class IndexingRunner:
             if separator:
                 separator = separator.replace('\\n', '\n')
 
+            if 'chunk_overlap' in segmentation and segmentation['chunk_overlap']:
+                chunk_overlap = segmentation['chunk_overlap']
+            else:
+                chunk_overlap = 0
+
             character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=segmentation["max_tokens"],
-                chunk_overlap=segmentation.get('chunk_overlap', 0),
+                chunk_overlap=chunk_overlap,
                 fixed_separator=separator,
                 separators=["\n\n", "。", ".", " ", ""],
                 embedding_model_instance=embedding_model_instance
