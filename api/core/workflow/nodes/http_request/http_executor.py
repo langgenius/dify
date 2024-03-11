@@ -43,6 +43,7 @@ class HttpExecutor:
         self.params = {}
         self.headers = {}
         self.body = None
+        self.files = None
 
         # init template
         self._init_template(node_data, variables)
@@ -248,10 +249,24 @@ class HttpExecutor:
             server_url += f'?{urlencode(self.params)}'
 
         raw_request = f'{self.method.upper()} {server_url} HTTP/1.1\n'
-        for k, v in self.headers.items():
+
+        headers = self._assembling_headers()
+        for k, v in headers.items():
             raw_request += f'{k}: {v}\n'
 
         raw_request += '\n'
-        raw_request += self.body or ''
+
+        # if files, use multipart/form-data with boundary
+        if self.files:
+            boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW'
+            raw_request = f'--{boundary}\n' + raw_request
+            for k, v in self.files.items():
+                raw_request += f'Content-Disposition: form-data; name="{k}"; filename="{v[0]}"\n'
+                raw_request += f'Content-Type: {v[1]}\n\n'
+                raw_request += v[1] + '\n'
+                raw_request += f'--{boundary}\n'
+            raw_request += '--\n'
+        else:
+            raw_request += self.body or ''
 
         return raw_request
