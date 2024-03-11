@@ -26,6 +26,7 @@ httpx_proxies = {
 } if SSRF_PROXY_HTTP_URL and SSRF_PROXY_HTTPS_URL else None
 
 def get(url, *args, **kwargs):
+    print(url, kwargs)
     return _get(url=url, *args, proxies=httpx_proxies, **kwargs)
 
 def post(url, *args, **kwargs):

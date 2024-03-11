@@ -24,10 +24,12 @@ class HttpRequestNode(BaseNode):
         # init http executor
         try:
             http_executor = HttpExecutor(node_data=node_data, variables=variables)
-            # invoke http executor
 
+            # invoke http executor
             response = http_executor.invoke()
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
