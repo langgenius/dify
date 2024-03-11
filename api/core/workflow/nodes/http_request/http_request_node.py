@@ -28,13 +28,13 @@ class HttpRequestNode(BaseNode):
             # invoke http executor
             response = http_executor.invoke()
         except Exception as e:
-            import traceback
-            print(traceback.format_exc())
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
                 error=str(e),
-                process_data=http_executor.to_raw_request()
+                process_data={
+                    'request': http_executor.to_raw_request()
+                }
             )
 
         return NodeRunResult(
@@ -45,7 +45,9 @@ class HttpRequestNode(BaseNode):
                 'body': response,
                 'headers': response.headers
             },
-            process_data=http_executor.to_raw_request()
+            process_data={
+                'request': http_executor.to_raw_request(),
+            }
         )
 
 

@@ -3,6 +3,7 @@ import pytest
 import requests.api as requests
 import httpx._api as httpx
 from requests import Response as RequestsResponse
+from httpx import Request as HttpxRequest
 from yarl import URL
 
 from typing import Literal
@@ -12,8 +13,8 @@ from json import dumps
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
 
 class MockedHttp:
-    def requests_request(self, method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
-                         url: str, **kwargs) -> RequestsResponse:
+    def requests_request(method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], url: str,
+                        **kwargs) -> RequestsResponse:
         """
         Mocked requests.request
         """
@@ -41,13 +42,15 @@ class MockedHttp:
         response._content = resp
         return response
 
-    def httpx_request(self, method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
+    def httpx_request(method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
                       url: str, **kwargs) -> httpx.Response:
         """
         Mocked httpx.request
         """
-        response = httpx.Response()
-        response.url = str(URL(url) % kwargs.get('params', {}))
+        response = httpx.Response(
+            status_code=200,
+            request=HttpxRequest(method, url)
+        )
         response.headers = kwargs.get('headers', {})
 
         if url == 'http://404.com':
@@ -67,7 +70,7 @@ class MockedHttp:
             resp = b'OK'
 
         response.status_code = 200
-        response.content = resp
+        response._content = resp
         return response
 
 @pytest.fixture
