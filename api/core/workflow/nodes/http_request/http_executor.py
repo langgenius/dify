@@ -43,6 +43,7 @@ class HttpExecutor:
         self.params = {}
         self.headers = {}
         self.body = None
+        self.files = None
 
         # init template
         self._init_template(node_data, variables)
@@ -76,11 +77,17 @@ class HttpExecutor:
         # fill in params
         kv_paris = original_params.split('\n')
         for kv in kv_paris:
+            if not kv.strip():
+                continue
+
             kv = kv.split(':')
-            if len(kv) != 2:
+            if len(kv) == 2:
+                k, v = kv
+            elif len(kv) == 1:
+                k, v = kv[0], ''
+            else:
                 raise ValueError(f'Invalid params {kv}')
             
-            k, v = kv
             self.params[k] = v
 
         # extract all template in headers
@@ -96,51 +103,61 @@ class HttpExecutor:
         # fill in headers
         kv_paris = original_headers.split('\n')
         for kv in kv_paris:
+            if not kv.strip():
+                continue
+
             kv = kv.split(':')
-            if len(kv) != 2:
+            if len(kv) == 2:
+                k, v = kv
+            elif len(kv) == 1:
+                k, v = kv[0], ''
+            else:
                 raise ValueError(f'Invalid headers {kv}')
             
-            k, v = kv
             self.headers[k] = v
 
         # extract all template in body
-        body_template = re.findall(r'{{(.*?)}}', node_data.body.data or '') or []
-        body_template = list(set(body_template))
-        original_body = node_data.body.data or ''
-        for body in body_template:
-            if not body:
-                continue
+        if node_data.body:
+            body_template = re.findall(r'{{(.*?)}}', node_data.body.data or '') or []
+            body_template = list(set(body_template))
+            original_body = node_data.body.data or ''
+            for body in body_template:
+                if not body:
+                    continue
 
-            original_body = original_body.replace(f'{{{{{body}}}}}', str(variables.get(body, '')))
+                original_body = original_body.replace(f'{{{{{body}}}}}', str(variables.get(body, '')))
 
-        if node_data.body.type == 'json':
-            self.headers['Content-Type'] = 'application/json'
-        elif node_data.body.type == 'x-www-form-urlencoded':
-            self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        # elif node_data.body.type == 'form-data':
-        #    self.headers['Content-Type'] = 'multipart/form-data'
+            if node_data.body.type == 'json':
+                self.headers['Content-Type'] = 'application/json'
+            elif node_data.body.type == 'x-www-form-urlencoded':
+                self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            # elif node_data.body.type == 'form-data':
+            #    self.headers['Content-Type'] = 'multipart/form-data'
 
-        if node_data.body.type in ['form-data', 'x-www-form-urlencoded']:
-            body = {}
-            kv_paris = original_body.split('\n')
-            for kv in kv_paris:
-                kv = kv.split(':')
-                if len(kv) != 2:
-                    raise ValueError(f'Invalid body {kv}')
-                body[kv[0]] = kv[1]
+            if node_data.body.type in ['form-data', 'x-www-form-urlencoded']:
+                body = {}
+                kv_paris = original_body.split('\n')
+                for kv in kv_paris:
+                    kv = kv.split(':')
+                    if len(kv) == 2:
+                        body[kv[0]] = kv[1]
+                    elif len(kv) == 1:
+                        body[kv[0]] = ''
+                    else:
+                        raise ValueError(f'Invalid body {kv}')
 
-            if node_data.body.type == 'form-data':
-                self.files = {
-                    k: ('', v) for k, v in body.items()
-                }
+                if node_data.body.type == 'form-data':
+                    self.files = {
+                        k: ('', v) for k, v in body.items()
+                    }
+                else:
+                    self.body = urlencode(body)
             else:
-                self.body = urlencode(body)
-        else:
-            self.body = original_body
+                self.body = original_body
                 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.authorization)
-        headers = deepcopy(self.headers) or []
+        headers = deepcopy(self.headers) or {}
         if self.authorization.type == 'api-key':
             if self.authorization.config.api_key is None:
                 raise ValueError('api_key is required')
@@ -232,10 +249,24 @@ class HttpExecutor:
             server_url += f'?{urlencode(self.params)}'
 
         raw_request = f'{self.method.upper()} {server_url} HTTP/1.1\n'
-        for k, v in self.headers.items():
+
+        headers = self._assembling_headers()
+        for k, v in headers.items():
             raw_request += f'{k}: {v}\n'
 
         raw_request += '\n'
-        raw_request += self.body or ''
+
+        # if files, use multipart/form-data with boundary
+        if self.files:
+            boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW'
+            raw_request = f'--{boundary}\n' + raw_request
+            for k, v in self.files.items():
+                raw_request += f'Content-Disposition: form-data; name="{k}"; filename="{v[0]}"\n'
+                raw_request += f'Content-Type: {v[1]}\n\n'
+                raw_request += v[1] + '\n'
+                raw_request += f'--{boundary}\n'
+            raw_request += '--\n'
+        else:
+            raw_request += self.body or ''
 
         return raw_request
