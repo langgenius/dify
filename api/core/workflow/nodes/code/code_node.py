@@ -182,7 +182,7 @@ class CodeNode(BaseNode):
                         prefix=f'{prefix}.{output_name}' if prefix else output_name,
                         depth=depth + 1
                     )
-                elif isinstance(output_value, (int, float)):
+                elif isinstance(output_value, int | float):
                     self._check_number(
                         value=output_value,
                         variable=f'{prefix}.{output_name}' if prefix else output_name
@@ -193,7 +193,7 @@ class CodeNode(BaseNode):
                         variable=f'{prefix}.{output_name}' if prefix else output_name
                     )
                 elif isinstance(output_value, list):
-                    if all(isinstance(value, (int, float)) for value in output_value):
+                    if all(isinstance(value, int | float) for value in output_value):
                         for value in output_value:
                             self._check_number(
                                 value=value,
