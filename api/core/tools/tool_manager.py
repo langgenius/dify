@@ -315,7 +315,7 @@ class ToolManager:
 
         for parameter in parameters:
             # save tool parameter to tool entity memory
-            value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_parameters)
+            value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_configurations)
             runtime_parameters[parameter.name] = value
     
         # decrypt runtime parameters
