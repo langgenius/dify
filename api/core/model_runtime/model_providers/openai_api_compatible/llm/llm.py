@@ -25,11 +25,12 @@ from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     DefaultParameterName,
     FetchFrom,
+    ModelFeature,
     ModelPropertyKey,
     ModelType,
     ParameterRule,
     ParameterType,
-    PriceConfig, ModelFeature,
+    PriceConfig,
 )
 from core.model_runtime.errors.invoke import InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
