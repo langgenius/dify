@@ -38,7 +38,7 @@ const Panel: FC = () => {
     <div
       className={`
         absolute top-14 right-0 bottom-2 flex pr-2 z-10
-        ${showRunHistory && '!pr-0'}
+        ${(showRunHistory || showDebugAndPreviewPanel) && '!pr-0'}
       `}
     >
       {
