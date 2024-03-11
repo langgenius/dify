@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel
 
@@ -29,4 +29,4 @@ class HttpRequestNodeData(BaseNodeData):
     authorization: Authorization
     headers: str
     params: str
-    body: Body
+    body: Optional[Body]
