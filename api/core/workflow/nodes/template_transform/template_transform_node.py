@@ -7,6 +7,7 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
+MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = 1000
 
 class TemplateTransformNode(BaseNode):
     _node_data_cls = TemplateTransformNodeData
@@ -48,7 +49,6 @@ class TemplateTransformNode(BaseNode):
             )
 
             variables[variable] = value
-
         # Run code
         try:
             result = CodeExecutor.execute_code(
@@ -61,6 +61,13 @@ class TemplateTransformNode(BaseNode):
                 inputs=variables,
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e)
+            )
+        
+        if len(result['result']) > MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH:
+            return NodeRunResult(
+                inputs=variables,
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=f"Output length exceeds {MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH} characters"
             )
 
         return NodeRunResult(
