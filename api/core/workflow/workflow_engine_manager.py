@@ -6,6 +6,7 @@ from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
+from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes.base_node import BaseNode, UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.direct_answer.direct_answer_node import DirectAnswerNode
@@ -179,6 +180,93 @@ class WorkflowEngineManager:
         self._workflow_run_success(
             callbacks=callbacks
         )
+
+    def single_step_run_workflow_node(self, workflow: Workflow,
+                                      node_id: str,
+                                      user_id: str,
+                                      user_inputs: dict) -> tuple[BaseNode, NodeRunResult]:
+        """
+        Single step run workflow node
+        :param workflow: Workflow instance
+        :param node_id: node id
+        :param user_id: user id
+        :param user_inputs: user inputs
+        :return:
+        """
+        # fetch node info from workflow graph
+        graph = workflow.graph_dict
+        if not graph:
+            raise ValueError('workflow graph not found')
+
+        nodes = graph.get('nodes')
+        if not nodes:
+            raise ValueError('nodes not found in workflow graph')
+
+        # fetch node config from node id
+        node_config = None
+        for node in nodes:
+            if node.get('id') == node_id:
+                node_config = node
+                break
+
+        if not node_config:
+            raise ValueError('node id not found in workflow graph')
+
+        # Get node class
+        node_cls = node_classes.get(NodeType.value_of(node_config.get('data', {}).get('type')))
+
+        # init workflow run state
+        node_instance = node_cls(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            config=node_config
+        )
+
+        try:
+            # init variable pool
+            variable_pool = VariablePool(
+                system_variables={},
+                user_inputs={}
+            )
+
+            # variable selector to variable mapping
+            try:
+                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
+            except NotImplementedError:
+                variable_mapping = {}
+
+            for variable_key, variable_selector in variable_mapping.items():
+                if variable_key not in user_inputs:
+                    raise ValueError(f'Variable key {variable_key} not found in user inputs.')
+
+                # fetch variable node id from variable selector
+                variable_node_id = variable_selector[0]
+                variable_key_list = variable_selector[1:]
+
+                # append variable and value to variable pool
+                variable_pool.append_variable(
+                    node_id=variable_node_id,
+                    variable_key_list=variable_key_list,
+                    value=user_inputs.get(variable_key)
+                )
+
+            # run node
+            node_run_result = node_instance.run(
+                variable_pool=variable_pool
+            )
+        except Exception as e:
+            raise WorkflowNodeRunFailedError(
+                node_id=node_instance.node_id,
+                node_type=node_instance.node_type,
+                node_title=node_instance.node_data.title,
+                error=str(e)
+            )
+
+        return node_instance, node_run_result
+
 
     def _workflow_run_success(self, callbacks: list[BaseWorkflowCallback] = None) -> None:
         """

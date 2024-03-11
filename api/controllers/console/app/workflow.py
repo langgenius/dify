@@ -15,6 +15,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.workflow_fields import workflow_fields
+from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
@@ -164,18 +165,24 @@ class DraftWorkflowNodeRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_run_node_execution_fields)
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow node
         """
-        # TODO
-        workflow_service = WorkflowService()
-        workflow_service.run_draft_workflow_node(app_model=app_model, node_id=node_id, account=current_user)
+        parser = reqparse.RequestParser()
+        parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
+        args = parser.parse_args()
 
-        # TODO
-        return {
-            "result": "success"
-        }
+        workflow_service = WorkflowService()
+        workflow_node_execution = workflow_service.run_draft_workflow_node(
+            app_model=app_model,
+            node_id=node_id,
+            user_inputs=args.get('inputs'),
+            account=current_user
+        )
+
+        return workflow_node_execution
 
 
 class PublishedWorkflowApi(Resource):
@@ -291,7 +298,7 @@ api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')
 api.add_resource(AdvancedChatDraftWorkflowRunApi, '/apps/<uuid:app_id>/advanced-chat/workflows/draft/run')
 api.add_resource(DraftWorkflowRunApi, '/apps/<uuid:app_id>/workflows/draft/run')
 api.add_resource(WorkflowTaskStopApi, '/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop')
-api.add_resource(DraftWorkflowNodeRunApi, '/apps/<uuid:app_id>/workflows/draft/nodes/<uuid:node_id>/run')
+api.add_resource(DraftWorkflowNodeRunApi, '/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run')
 api.add_resource(PublishedWorkflowApi, '/apps/<uuid:app_id>/workflows/published')
 api.add_resource(DefaultBlockConfigsApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
 api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs'

@@ -108,7 +108,7 @@ class BaseNode(ABC):
                 )
 
     @classmethod
-    def extract_variable_selector_to_variable_mapping(cls, config: dict) -> dict:
+    def extract_variable_selector_to_variable_mapping(cls, config: dict) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param config: node config
@@ -119,7 +119,7 @@ class BaseNode(ABC):
 
     @classmethod
     @abstractmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data

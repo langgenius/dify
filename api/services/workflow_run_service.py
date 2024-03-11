@@ -34,26 +34,26 @@ class WorkflowRunService:
             if not last_workflow_run:
                 raise ValueError('Last workflow run not exists')
 
-            conversations = base_query.filter(
+            workflow_runs = base_query.filter(
                 WorkflowRun.created_at < last_workflow_run.created_at,
                 WorkflowRun.id != last_workflow_run.id
             ).order_by(WorkflowRun.created_at.desc()).limit(limit).all()
         else:
-            conversations = base_query.order_by(WorkflowRun.created_at.desc()).limit(limit).all()
+            workflow_runs = base_query.order_by(WorkflowRun.created_at.desc()).limit(limit).all()
 
         has_more = False
-        if len(conversations) == limit:
-            current_page_first_conversation = conversations[-1]
+        if len(workflow_runs) == limit:
+            current_page_first_workflow_run = workflow_runs[-1]
             rest_count = base_query.filter(
-                WorkflowRun.created_at < current_page_first_conversation.created_at,
-                WorkflowRun.id != current_page_first_conversation.id
+                WorkflowRun.created_at < current_page_first_workflow_run.created_at,
+                WorkflowRun.id != current_page_first_workflow_run.id
             ).count()
 
             if rest_count > 0:
                 has_more = True
 
         return InfiniteScrollPagination(
-            data=conversations,
+            data=workflow_runs,
             limit=limit,
             has_more=has_more
         )

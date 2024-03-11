@@ -289,7 +289,7 @@ class CodeNode(BaseNode):
         return transformed_result
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: CodeNodeData) -> dict[list[str], str]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: CodeNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
@@ -297,5 +297,5 @@ class CodeNode(BaseNode):
         """
 
         return {
-            variable_selector.value_selector: variable_selector.variable for variable_selector in node_data.variables
+            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
         }
