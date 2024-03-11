@@ -315,8 +315,9 @@ class ToolManager:
 
         for parameter in parameters:
             # save tool parameter to tool entity memory
-            value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_configurations)
-            runtime_parameters[parameter.name] = value
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_configurations)
+                runtime_parameters[parameter.name] = value
     
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
@@ -325,7 +326,9 @@ class ToolManager:
             provider_name=workflow_tool.provider_id,
             provider_type=workflow_tool.provider_type,
         )
-        runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+        
+        if runtime_parameters:
+            runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity

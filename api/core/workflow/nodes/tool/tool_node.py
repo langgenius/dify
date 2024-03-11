@@ -29,7 +29,6 @@ class ToolNode(BaseNode):
 
         # get parameters
         parameters = self._generate_parameters(variable_pool, node_data)
-
         # get tool runtime
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(self.tenant_id, node_data, None)
@@ -41,7 +40,6 @@ class ToolNode(BaseNode):
             )
 
         try:
-            # TODO: user_id
             messages = tool_runtime.invoke(self.user_id, parameters)
         except Exception as e:
             return NodeRunResult(
@@ -68,7 +66,7 @@ class ToolNode(BaseNode):
         return {
             k.variable: 
                 k.value if k.variable_type == 'static' else 
-                variable_pool.get_variable_value(k.value) if k.variable_type == 'selector' else ''
+                variable_pool.get_variable_value(k.value_selector) if k.variable_type == 'selector' else ''
             for k in node_data.tool_parameters
         }
 
@@ -77,7 +75,12 @@ class ToolNode(BaseNode):
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
         # transform message and handle file storage
-        messages = ToolFileMessageTransformer.transform_tool_invoke_messages(messages)
+        messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+            messages=messages,
+            user_id=self.user_id,
+            tenant_id=self.tenant_id,
+            conversation_id='',
+        )
         # extract plain text and files
         files = self._extract_tool_response_binary(messages)
         plain_text = self._extract_tool_response_text(messages)
