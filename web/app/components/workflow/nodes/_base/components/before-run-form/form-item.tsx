@@ -15,12 +15,14 @@ type Props = {
   payload: InputVar
   value: any
   onChange: (value: any) => void
+  className?: string
 }
 
 const FormItem: FC<Props> = ({
   payload,
   value,
   onChange,
+  className,
 }) => {
   const { type } = payload
   const handleContextItemChange = useCallback((index: number) => {
@@ -41,9 +43,9 @@ const FormItem: FC<Props> = ({
     }
   }, [value, onChange])
   return (
-    <div className='flex justify-between items-start'>
+    <div className={`flex justify-between items-start ${className}`}>
       {type !== InputVarType.contexts && <div className='shrink-0 w-[96px] pr-1 h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{payload.label}</div>}
-      <div className='w-0 grow'>
+      <div className='grow'>
         {
           type === InputVarType.textInput && (
             <input

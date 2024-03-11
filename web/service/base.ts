@@ -2,6 +2,14 @@ import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
 import type { VisionFile } from '@/types/app'
+import type {
+  NodeFinishedResponse,
+  NodeStartedResponse,
+  TextChunkResponse,
+  TextReplaceResponse,
+  WorkflowFinishedResponse,
+  WorkflowStartedResponse,
+} from '@/types/workflow'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -39,6 +47,13 @@ export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
 export type IOnCompleted = (hasError?: boolean) => void
 export type IOnError = (msg: string, code?: string) => void
 
+export type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
+export type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
+export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
+export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
+export type IOnTextChunk = (textChunk: TextChunkResponse) => void
+export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+
 type IOtherOptions = {
   isPublicAPI?: boolean
   bodyStringify?: boolean
@@ -53,6 +68,13 @@ type IOtherOptions = {
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
+
+  onWorkflowStarted?: IOnWorkflowStarted
+  onWorkflowFinished?: IOnWorkflowFinished
+  onNodeStarted?: IOnNodeStarted
+  onNodeFinished?: IOnNodeFinished
+  onTextChunk?: IOnTextChunk
+  onTextReplace?: IOnTextReplace
 }
 
 type ResponseError = {
@@ -83,7 +105,21 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace, onFile?: IOnFile) => {
+const handleStream = (
+  response: Response,
+  onData: IOnData,
+  onCompleted?: IOnCompleted,
+  onThought?: IOnThought,
+  onMessageEnd?: IOnMessageEnd,
+  onMessageReplace?: IOnMessageReplace,
+  onFile?: IOnFile,
+  onWorkflowStarted?: IOnWorkflowStarted,
+  onWorkflowFinished?: IOnWorkflowFinished,
+  onNodeStarted?: IOnNodeStarted,
+  onNodeFinished?: IOnNodeFinished,
+  onTextChunk?: IOnTextChunk,
+  onTextReplace?: IOnTextReplace,
+) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -146,6 +182,24 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
             }
             else if (bufferObj.event === 'message_replace') {
               onMessageReplace?.(bufferObj as MessageReplace)
+            }
+            else if (bufferObj.event === 'workflow_started') {
+              onWorkflowStarted?.(bufferObj as WorkflowStartedResponse)
+            }
+            else if (bufferObj.event === 'workflow_finished') {
+              onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
+            }
+            else if (bufferObj.event === 'node_started') {
+              onNodeStarted?.(bufferObj as NodeStartedResponse)
+            }
+            else if (bufferObj.event === 'node_finished') {
+              onNodeFinished?.(bufferObj as NodeFinishedResponse)
+            }
+            else if (bufferObj.event === 'text_chunk') {
+              onTextChunk?.(bufferObj as TextChunkResponse)
+            }
+            else if (bufferObj.event === 'text_replace') {
+              onTextReplace?.(bufferObj as TextReplaceResponse)
             }
           }
         })

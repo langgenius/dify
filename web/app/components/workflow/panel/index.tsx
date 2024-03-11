@@ -12,6 +12,7 @@ import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
 import Record from './record'
+import InputsPanel from './inputs-panel'
 
 const Panel: FC = () => {
   const isChatMode = useIsChatMode()
@@ -19,6 +20,7 @@ const Panel: FC = () => {
   const nodes = useNodes<CommonNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
+  const showInputsPanel = useStore(s => s.showInputsPanel)
   const {
     showWorkflowInfoPanel,
     showNodePanel,
@@ -33,6 +35,11 @@ const Panel: FC = () => {
 
   return (
     <div className='absolute top-14 right-0 bottom-2 flex z-10'>
+      {
+        showInputsPanel && (
+          <InputsPanel />
+        )
+      }
       {
         runTaskId && (
           <Record />

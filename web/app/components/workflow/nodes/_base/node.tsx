@@ -7,13 +7,21 @@ import {
   memo,
 } from 'react'
 import type { NodeProps } from '../../types'
-import { BlockEnum } from '../../types'
+import {
+  BlockEnum,
+  NodeRunningStatus,
+} from '../../types'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from './components/node-handle'
 import NodeControl from './components/node-control'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import {
+  CheckCircle,
+  Loading02,
+} from '@/app/components/base/icons/src/vender/line/general'
+import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -28,7 +36,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     <div
       className={`
         flex border-[2px] rounded-2xl
-        ${data.selected ? 'border-primary-600' : 'border-transparent'}
+        ${(data.selected && !data._runningStatus) ? 'border-primary-600' : 'border-transparent'}
       `}
     >
       <div
@@ -36,6 +44,9 @@ const BaseNode: FC<BaseNodeProps> = ({
           group relative w-[240px] bg-[#fcfdff] shadow-xs
           border border-transparent rounded-[15px]
           hover:shadow-lg
+          ${data._runningStatus === NodeRunningStatus.Running && 'border-primary-500'}
+          ${data._runningStatus === NodeRunningStatus.Succeeded && 'border-[#12B76A]'}
+          ${data._runningStatus === NodeRunningStatus.Failed && 'border-[#F04438]'}
         `}
       >
         {
@@ -71,10 +82,25 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow text-[13px] font-semibold text-gray-700 truncate'
+            className='grow mr-1 text-[13px] font-semibold text-gray-700 truncate'
           >
             {data.title}
           </div>
+          {
+            data._runningStatus === NodeRunningStatus.Running && (
+              <Loading02 className='w-3.5 h-3.5 text-primary-600 animate-spin' />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Succeeded && (
+              <CheckCircle className='w-3.5 h-3.5 text-[#12B76A]' />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Failed && (
+              <AlertCircle className='w-3.5 h-3.5 text-[#F04438]' />
+            )
+          }
         </div>
         <div className='mb-1'>
           {cloneElement(children, { id, data })}

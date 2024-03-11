@@ -9,6 +9,7 @@ import type {
   ToolsMap,
 } from './block-selector/types'
 import { Mode } from './types'
+import type { WorkflowRunningStatus } from './types'
 
 type State = {
   mode: Mode
@@ -22,6 +23,8 @@ type State = {
   toolsMap: ToolsMap
   draftUpdatedAt: number
   publishedAt: number
+  runningStatus?: WorkflowRunningStatus
+  showInputsPanel: boolean
 }
 
 type Action = {
@@ -36,6 +39,8 @@ type Action = {
   setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
   setDraftUpdatedAt: (draftUpdatedAt: number) => void
   setPublishedAt: (publishedAt: number) => void
+  setRunningStatus: (runningStatus?: WorkflowRunningStatus) => void
+  setShowInputsPanel: (showInputsPanel: boolean) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -61,4 +66,8 @@ export const useStore = create<State & Action>(set => ({
   setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt })),
   publishedAt: 0,
   setPublishedAt: publishedAt => set(() => ({ publishedAt })),
+  runningStatus: undefined,
+  setRunningStatus: runningStatus => set(() => ({ runningStatus })),
+  showInputsPanel: false,
+  setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
 }))

@@ -22,6 +22,10 @@ import type {
   Node,
 } from './types'
 import {
+  NodeRunningStatus,
+  WorkflowRunningStatus,
+} from './types'
+import {
   NODES_EXTRA_DATA,
   NODES_INITIAL_DATA,
 } from './constants'
@@ -31,6 +35,7 @@ import type { ToolDefaultValue } from './block-selector/types'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { ssePost } from '@/service/base'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -558,5 +563,53 @@ export const useWorkflow = () => {
     handleEdgeLeave,
     handleEdgeDelete,
     handleEdgesChange,
+  }
+}
+
+export const useWorkflowRun = () => {
+  const store = useStoreApi()
+
+  return (params: any) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const appDetail = useAppStore.getState().appDetail
+
+    let url = ''
+    if (appDetail?.mode === 'advanced-chat')
+      url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
+
+    if (appDetail?.mode === 'workflow')
+      url = `/apps/${appDetail.id}/workflows/draft/run`
+
+    ssePost(
+      url,
+      params,
+      {
+        onWorkflowStarted: () => {
+          useStore.setState({ runningStatus: WorkflowRunningStatus.Running })
+        },
+        onWorkflowFinished: ({ data }) => {
+          useStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
+        },
+        onNodeStarted: ({ data }) => {
+          const newNodes = produce(getNodes(), (draft) => {
+            const currentNode = draft.find(node => node.id === data.node_id)!
+
+            currentNode.data._running = NodeRunningStatus.Running
+          })
+          setNodes(newNodes)
+        },
+        onNodeFinished: ({ data }) => {
+          const newNodes = produce(getNodes(), (draft) => {
+            const currentNode = draft.find(node => node.id === data.node_id)!
+
+            currentNode.data._running = data.status
+          })
+          setNodes(newNodes)
+        },
+      },
+    )
   }
 }

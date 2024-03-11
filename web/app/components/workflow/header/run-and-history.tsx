@@ -7,13 +7,17 @@ import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
-import { Mode } from '@/app/components/workflow/types'
 
 const RunAndHistory: FC = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const mode = useStore(state => state.mode)
   const showRunHistory = useStore(state => state.showRunHistory)
+
+  const handleClick = () => {
+    if (!isChatMode)
+      useStore.setState({ showInputsPanel: true })
+  }
 
   return (
     <div className='flex items-center px-0.5 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs'>
@@ -24,7 +28,7 @@ const RunAndHistory: FC = () => {
           ${mode === 'running' && 'bg-primary-50 !cursor-not-allowed'}
           ${mode === 'running' && isChatMode && 'opacity-50'}
         `}
-        onClick={() => mode !== 'running' && useStore.setState({ mode: Mode.Running })}
+        onClick={() => mode !== 'running' && handleClick()}
       >
         {
           mode === 'running'

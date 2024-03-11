@@ -27,6 +27,7 @@ export type Branch = {
 export type CommonNodeType<T = {}> = {
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
+  _runningStatus?: NodeRunningStatus
   selected?: boolean
   title: string
   desc: string
@@ -38,7 +39,7 @@ export type CommonEdgeType = {
   _connectedNodeIsHovering: boolean
 }
 
-export type Node = ReactFlowNode<CommonNodeType>
+export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
 export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
@@ -146,4 +147,17 @@ export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValu
 export enum Mode {
   Editing = 'editing',
   Running = 'running',
+}
+
+export enum WorkflowRunningStatus {
+  Running = 'running',
+  Succeeded = 'succeeded',
+  Failed = 'failed',
+  Stopped = 'stopped',
+}
+
+export enum NodeRunningStatus {
+  Running = 'running',
+  Succeeded = 'succeeded',
+  Failed = 'failed',
 }
