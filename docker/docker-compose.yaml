@@ -122,6 +122,9 @@ services:
       SENTRY_TRACES_SAMPLE_RATE: 1.0
       # The sample rate for Sentry profiles. Default: `1.0`
       SENTRY_PROFILES_SAMPLE_RATE: 1.0
+      # The sandbox service endpoint.
+      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
+      CODE_EXECUTION_API_KEY: dify-sandbox
     depends_on:
       - db
       - redis
@@ -285,6 +288,16 @@ services:
     # uncomment to expose weaviate port to host
     # ports:
     #  - "8080:8080"
+
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:latest
+    restart: always
+    environment:
+      # The DifySandbox configurations
+      API_KEY: dify-sandbox
+    ports:
+      - "8194:8194"
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
