@@ -39,7 +39,7 @@ class DirectAnswerNode(BaseNode):
         # publish answer as stream
         for word in answer:
             self.publish_text_chunk(word)
-            time.sleep(0.01)
+            time.sleep(10)  # TODO for debug
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
