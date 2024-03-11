@@ -137,4 +137,8 @@ class ToolNode(BaseNode):
         """
         Extract variable selector to variable mapping
         """
-        pass
+        return {
+            k.value_selector: k.variable
+            for k in cast(ToolNodeData, node_data).tool_parameters
+            if k.variable_type == 'selector'
+        }
