@@ -7,12 +7,14 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
+    InvokeFrom,
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.queue_entities import QueueStopEvent, QueueTextChunkEvent
 from core.moderation.base import ModerationException
 from core.moderation.input_moderation import InputModeration
 from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.model import App
@@ -63,6 +65,10 @@ class WorkflowAppRunner:
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
             workflow=workflow,
+            user_id=application_generate_entity.user_id,
+            user_from=UserFrom.ACCOUNT
+            if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+            else UserFrom.END_USER,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.FILES: files

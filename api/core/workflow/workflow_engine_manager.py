@@ -6,7 +6,7 @@ from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base_node import BaseNode, UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.direct_answer.direct_answer_node import DirectAnswerNode
 from core.workflow.nodes.end.end_node import EndNode
@@ -76,12 +76,16 @@ class WorkflowEngineManager:
         return default_config
 
     def run_workflow(self, workflow: Workflow,
+                     user_id: str,
+                     user_from: UserFrom,
                      user_inputs: dict,
                      system_inputs: Optional[dict] = None,
                      callbacks: list[BaseWorkflowCallback] = None) -> None:
         """
         Run workflow
         :param workflow: Workflow instance
+        :param user_id: user id
+        :param user_from: user from
         :param user_inputs: user variables inputs
         :param system_inputs: system inputs, like: query, files
         :param callbacks: workflow callbacks
@@ -113,7 +117,9 @@ class WorkflowEngineManager:
             variable_pool=VariablePool(
                 system_variables=system_inputs,
                 user_inputs=user_inputs
-            )
+            ),
+            user_id=user_id,
+            user_from=user_from
         )
 
         try:
@@ -222,6 +228,8 @@ class WorkflowEngineManager:
                         tenant_id=workflow_run_state.tenant_id,
                         app_id=workflow_run_state.app_id,
                         workflow_id=workflow_run_state.workflow_id,
+                        user_id=workflow_run_state.user_id,
+                        user_from=workflow_run_state.user_from,
                         config=node_config,
                         callbacks=callbacks
                     )
@@ -267,6 +275,8 @@ class WorkflowEngineManager:
                 tenant_id=workflow_run_state.tenant_id,
                 app_id=workflow_run_state.app_id,
                 workflow_id=workflow_run_state.workflow_id,
+                user_id=workflow_run_state.user_id,
+                user_from=workflow_run_state.user_from,
                 config=target_node_config,
                 callbacks=callbacks
             )

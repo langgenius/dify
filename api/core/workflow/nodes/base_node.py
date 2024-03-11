@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Optional
 
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
@@ -8,6 +9,26 @@ from core.workflow.entities.variable_pool import VariablePool
 from models.workflow import WorkflowNodeExecutionStatus
 
 
+class UserFrom(Enum):
+    """
+    User from
+    """
+    ACCOUNT = "account"
+    END_USER = "end-user"
+
+    @classmethod
+    def value_of(cls, value: str) -> "UserFrom":
+        """
+        Value of
+        :param value: value
+        :return:
+        """
+        for item in cls:
+            if item.value == value:
+                return item
+        raise ValueError(f"Invalid value: {value}")
+
+
 class BaseNode(ABC):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
@@ -15,6 +36,8 @@ class BaseNode(ABC):
     tenant_id: str
     app_id: str
     workflow_id: str
+    user_id: str
+    user_from: UserFrom
 
     node_id: str
     node_data: BaseNodeData
@@ -25,11 +48,15 @@ class BaseNode(ABC):
     def __init__(self, tenant_id: str,
                  app_id: str,
                  workflow_id: str,
+                 user_id: str,
+                 user_from: UserFrom,
                  config: dict,
                  callbacks: list[BaseWorkflowCallback] = None) -> None:
         self.tenant_id = tenant_id
         self.app_id = app_id
         self.workflow_id = workflow_id
+        self.user_id = user_id
+        self.user_from = user_from
 
         self.node_id = config.get("id")
         if not self.node_id:
