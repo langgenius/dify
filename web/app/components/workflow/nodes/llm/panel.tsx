@@ -16,6 +16,7 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import { Resolution } from '@/types/app'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -57,14 +58,18 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   const model = inputs.model
 
   const singleRunForms = (() => {
-    const forms = [
-      {
-        label: t(`${i18nPrefix}.singleRun.variable`)!,
-        inputs: varInputs,
-        values: inputVarValues,
-        onChange: setInputVarValues,
-      },
-    ]
+    const forms: FormProps[] = []
+
+    if (varInputs.length > 0) {
+      forms.push(
+        {
+          label: t(`${i18nPrefix}.singleRun.variable`)!,
+          inputs: varInputs,
+          values: inputVarValues,
+          onChange: setInputVarValues,
+        },
+      )
+    }
 
     if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
       forms.push(
