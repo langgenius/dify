@@ -15,6 +15,10 @@ class MockedCodeExecutor:
             return {
                 "result": 3
             }
+        elif language == 'jinja2':
+            return {
+                "result": "3"
+            }
 
 @pytest.fixture
 def setup_code_executor_mock(request, monkeypatch: MonkeyPatch):
