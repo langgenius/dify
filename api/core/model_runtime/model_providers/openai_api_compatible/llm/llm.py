@@ -207,14 +207,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     precision=2
                 ),
                 ParameterRule(
-                    name="top_k",
-                    label=I18nObject(en_US="Top K"),
-                    type=ParameterType.INT,
-                    default=int(credentials.get('top_k', 1)),
-                    min=1,
-                    max=100
-                ),
-                ParameterRule(
                     name=DefaultParameterName.FREQUENCY_PENALTY.value,
                     label=I18nObject(en_US="Frequency Penalty"),
                     type=ParameterType.FLOAT,
@@ -562,20 +554,20 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {
-                "role": "tool",
-                "content": message.content,
-                "tool_call_id": message.tool_call_id
-            }
             # message_dict = {
-            #     "role": "function",
+            #     "role": "tool",
             #     "content": message.content,
-            #     "name": message.tool_call_id
+            #     "tool_call_id": message.tool_call_id
             # }
+            message_dict = {
+                "role": "function",
+                "content": message.content,
+                "name": message.tool_call_id
+            }
         else:
             raise ValueError(f"Got unknown type {message}")
 
-        if message.name is not None:
+        if message.name:
             message_dict["name"] = message.name
 
         return message_dict
