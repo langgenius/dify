@@ -34,11 +34,9 @@ workflow_run_for_list_fields = {
 }
 
 workflow_run_pagination_fields = {
-    'page': fields.Integer,
-    'limit': fields.Integer(attribute='per_page'),
-    'total': fields.Integer,
-    'has_more': fields.Boolean(attribute='has_next'),
-    'data': fields.List(fields.Nested(workflow_run_for_list_fields), attribute='items')
+    'limit': fields.Integer(attribute='limit'),
+    'has_more': fields.Boolean(attribute='has_more'),
+    'data': fields.List(fields.Nested(workflow_run_for_list_fields), attribute='data')
 }
 
 workflow_run_detail_fields = {

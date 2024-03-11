@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import Generator
 from datetime import datetime
 from typing import Optional, Union
@@ -9,12 +10,21 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
+from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, EndUser
-from models.workflow import Workflow, WorkflowType
+from models.workflow import (
+    CreatedByRole,
+    Workflow,
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowType,
+)
 from services.workflow.workflow_converter import WorkflowConverter
 
 
@@ -213,6 +223,80 @@ class WorkflowService:
         Stop workflow task
         """
         AppQueueManager.set_stop_flag(task_id, invoke_from, user.id)
+
+    def run_draft_workflow_node(self, app_model: App,
+                                node_id: str,
+                                user_inputs: dict,
+                                account: Account) -> WorkflowNodeExecution:
+        """
+        Run draft workflow node
+        """
+        # fetch draft workflow by app_model
+        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError('Workflow not initialized')
+
+        # run draft workflow node
+        workflow_engine_manager = WorkflowEngineManager()
+        start_at = time.perf_counter()
+
+        try:
+            node_instance, node_run_result = workflow_engine_manager.single_step_run_workflow_node(
+                workflow=draft_workflow,
+                node_id=node_id,
+                user_inputs=user_inputs,
+                user_id=account.id,
+            )
+        except WorkflowNodeRunFailedError as e:
+            workflow_node_execution = WorkflowNodeExecution(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                workflow_id=draft_workflow.id,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
+                index=1,
+                node_id=e.node_id,
+                node_type=e.node_type.value,
+                title=e.node_title,
+                status=WorkflowNodeExecutionStatus.FAILED.value,
+                error=e.error,
+                elapsed_time=time.perf_counter() - start_at,
+                created_by_role=CreatedByRole.ACCOUNT.value,
+                created_by=account.id,
+                created_at=datetime.utcnow(),
+                finished_at=datetime.utcnow()
+            )
+            db.session.add(workflow_node_execution)
+            db.session.commit()
+
+            return workflow_node_execution
+
+        # create workflow node execution
+        workflow_node_execution = WorkflowNodeExecution(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=draft_workflow.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
+            index=1,
+            node_id=node_id,
+            node_type=node_instance.node_type.value,
+            title=node_instance.node_data.title,
+            inputs=json.dumps(node_run_result.inputs) if node_run_result.inputs else None,
+            process_data=json.dumps(node_run_result.process_data) if node_run_result.process_data else None,
+            outputs=json.dumps(node_run_result.outputs) if node_run_result.outputs else None,
+            execution_metadata=(json.dumps(jsonable_encoder(node_run_result.metadata))
+                                if node_run_result.metadata else None),
+            status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
+            elapsed_time=time.perf_counter() - start_at,
+            created_by_role=CreatedByRole.ACCOUNT.value,
+            created_by=account.id,
+            created_at=datetime.utcnow(),
+            finished_at=datetime.utcnow()
+        )
+
+        db.session.add(workflow_node_execution)
+        db.session.commit()
+
+        return workflow_node_execution
 
     def convert_to_workflow(self, app_model: App, account: Account) -> App:
         """

@@ -50,10 +50,16 @@ class DirectAnswerNode(BaseNode):
         )
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
         :return:
         """
-        return {}
+        node_data = cast(cls._node_data_cls, node_data)
+
+        variable_mapping = {}
+        for variable_selector in node_data.variables:
+            variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
+        return variable_mapping
