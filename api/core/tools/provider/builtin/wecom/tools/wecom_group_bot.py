@@ -4,9 +4,10 @@ import httpx
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
+from core.tools.utils.uuid_utils import is_valid_uuid
 
 
-class WecomRepositoriesTool(BuiltinTool):
+class WecomGroupBotTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]
                 ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
@@ -17,8 +18,9 @@ class WecomRepositoriesTool(BuiltinTool):
             return self.create_text_message('Invalid parameter content')
 
         hook_key = tool_parameters.get('hook_key', '')
-        if not hook_key:
-            return self.create_text_message('Invalid parameter hook_key')
+        if not is_valid_uuid(hook_key):
+            return self.create_text_message(
+                f'Invalid parameter hook_key ${hook_key}, not a valid UUID')
 
         msgtype = 'text'
         api_url = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send'

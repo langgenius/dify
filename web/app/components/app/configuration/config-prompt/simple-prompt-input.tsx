@@ -25,6 +25,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
+import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -122,6 +123,10 @@ const Prompt: FC<ISimplePromptInput> = ({
     if (mode === AppType.chat)
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      payload: res.prompt,
+    } as any)
   }
   const minHeight = 228
   const [editorHeight, setEditorHeight] = useState(minHeight)

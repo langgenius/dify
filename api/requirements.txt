@@ -32,7 +32,7 @@ celery==5.2.7
 redis~=4.5.4
 openpyxl==3.1.2
 chardet~=5.1.0
-docx2txt==0.8
+python-docx~=1.1.0
 pypdfium2==4.16.0
 resend~=0.7.0
 pyjwt~=2.8.0

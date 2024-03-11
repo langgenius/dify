@@ -195,6 +195,10 @@ class AssistantApplicationRunner(AppRunner):
         if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
+        db.session.refresh(conversation)
+        db.session.refresh(message)
+        db.session.close()
+
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             assistant_cot_runner = AssistantCotApplicationRunner(

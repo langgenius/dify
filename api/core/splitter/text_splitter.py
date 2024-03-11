@@ -30,7 +30,7 @@ def _split_text_with_regex(
     if separator:
         if keep_separator:
             # The parentheses in the pattern keep the delimiters in the result.
-            _splits = re.split(f"({separator})", text)
+            _splits = re.split(f"({re.escape(separator)})", text)
             splits = [_splits[i] + _splits[i + 1] for i in range(1, len(_splits), 2)]
             if len(_splits) % 2 == 0:
                 splits += _splits[-1:]
@@ -94,7 +94,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
                 documents.append(new_doc)
         return documents
 
-    def split_documents(self, documents: Iterable[Document]) -> list[Document]:
+    def split_documents(self, documents: Iterable[Document] ) -> list[Document]:
         """Split documents."""
         texts, metadatas = [], []
         for doc in documents:
