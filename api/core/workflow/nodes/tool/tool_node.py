@@ -42,7 +42,7 @@ class ToolNode(BaseNode):
 
         try:
             # TODO: user_id
-            messages = tool_runtime.invoke(None, parameters)
+            messages = tool_runtime.invoke(self.user_id, parameters)
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
