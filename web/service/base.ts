@@ -54,7 +54,7 @@ export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
 export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 
-type IOtherOptions = {
+export type IOtherOptions = {
   isPublicAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean

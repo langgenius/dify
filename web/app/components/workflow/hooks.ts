@@ -36,6 +36,7 @@ import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ssePost } from '@/service/base'
+import type { IOtherOptions } from '@/service/base'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -671,7 +672,7 @@ export const useWorkflow = () => {
 export const useWorkflowRun = () => {
   const store = useStoreApi()
 
-  return (params: any) => {
+  const run = useCallback((params: any, callback?: IOtherOptions) => {
     const {
       getNodes,
       setNodes,
@@ -721,7 +722,10 @@ export const useWorkflowRun = () => {
           })
           setNodes(newNodes)
         },
+        ...callback,
       },
     )
-  }
+  }, [store])
+
+  return run
 }

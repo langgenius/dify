@@ -3,11 +3,27 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
+import FormItem from '../../nodes/_base/components/before-run-form/form-item'
+import { BlockEnum } from '../../types'
+import { useStore } from '../../store'
+import type { StartNodeType } from '../../nodes/start/types'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const UserInput = () => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(true)
+  const inputs = useStore(s => s.inputs)
+  const nodes = useNodes<StartNodeType>()
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const variables = startNode?.data.variables || []
+
+  const handleValueChange = (variable: string, v: string) => {
+    useStore.getState().setInputs({
+      ...inputs,
+      [variable]: v,
+    })
+  }
 
   return (
     <div
@@ -32,10 +48,20 @@ const UserInput = () => {
         {
           expanded && (
             <div className='py-2 text-[13px] text-gray-900'>
-              <div className='flex px-4 py-1'>
-                <div className='shrink-0 mr-4 leading-8'>Service Name</div>
-                <input className='grow px-3 h-8 appearance-none outline-none rounded-lg bg-gray-100' />
-              </div>
+              {
+                variables.map(variable => (
+                  <div
+                    key={variable.variable}
+                    className='mb-2 last-of-type:mb-0'
+                  >
+                    <FormItem
+                      payload={variable}
+                      value={inputs[variable.variable]}
+                      onChange={v => handleValueChange(variable.variable, v)}
+                    />
+                  </div>
+                ))
+              }
             </div>
           )
         }

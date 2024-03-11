@@ -56,7 +56,6 @@ const PreviewMode = memo(() => {
   const { t } = useTranslation()
   const { handleRunInit } = useWorkflow()
   const runningStatus = useStore(s => s.runningStatus)
-  const isRunning = runningStatus === WorkflowRunningStatus.Running
 
   const handleClick = () => {
     handleRunInit()
@@ -67,12 +66,12 @@ const PreviewMode = memo(() => {
       className={`
         flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600
         hover:bg-primary-50 cursor-pointer
-        ${isRunning && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
+        ${runningStatus && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
       `}
-      onClick={() => !isRunning && handleClick()}
+      onClick={() => !runningStatus && handleClick()}
     >
       {
-        isRunning
+        runningStatus
           ? (
             <>
               {t('workflow.common.inPreview')}
