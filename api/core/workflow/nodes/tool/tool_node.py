@@ -27,14 +27,8 @@ class ToolNode(BaseNode):
 
         node_data = cast(ToolNodeData, self.node_data)
 
-        # extract tool parameters
-        parameters = {
-            k.variable: variable_pool.get_variable_value(k.value_selector) 
-            for k in node_data.tool_inputs
-        }
-
-        if len(parameters) != len(node_data.tool_inputs):
-            raise ValueError('Invalid tool parameters')
+        # get parameters
+        parameters = self._generate_parameters(variable_pool, node_data)
 
         # get tool runtime
         try:
@@ -47,6 +41,7 @@ class ToolNode(BaseNode):
             )
 
         try:
+            # TODO: user_id
             messages = tool_runtime.invoke(None, parameters)
         except Exception as e:
             return NodeRunResult(
@@ -59,12 +54,23 @@ class ToolNode(BaseNode):
         plain_text, files = self._convert_tool_messages(messages)
 
         return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCESS,
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={
                 'text': plain_text,
                 'files': files
             },
         )
+    
+    def _generate_parameters(self, variable_pool: VariablePool, node_data: ToolNodeData) -> dict:
+        """
+            Generate parameters
+        """
+        return {
+            k.variable: 
+                k.value if k.variable_type == 'static' else 
+                variable_pool.get_variable_value(k.value) if k.variable_type == 'selector' else ''
+            for k in node_data.tool_parameters
+        }
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[dict]]:
         """
@@ -125,11 +131,6 @@ class ToolNode(BaseNode):
             for message in tool_response
         ])
 
-    def _convert_tool_file(message: list[ToolInvokeMessage]) -> dict:
-        """
-        Convert ToolInvokeMessage into file
-        """
-        pass
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[list[str], str]:
