@@ -186,6 +186,10 @@ class DatasetApi(Resource):
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
             'only_me', 'all_team_members'), help='Invalid permission.')
+        parser.add_argument('embedding_model', type=str,
+                            location='json', help='Invalid embedding model.')
+        parser.add_argument('embedding_model_provider', type=str,
+                            location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
         args = parser.parse_args()
 

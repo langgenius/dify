@@ -169,9 +169,36 @@ class DatasetService:
                 # get embedding model setting
                 try:
                     model_manager = ModelManager()
-                    embedding_model = model_manager.get_default_model_instance(
+                    embedding_model = model_manager.get_model_instance(
                         tenant_id=current_user.current_tenant_id,
-                        model_type=ModelType.TEXT_EMBEDDING
+                        provider=data['embedding_model_provider'],
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=data['embedding_model']
+                    )
+                    filtered_data['embedding_model'] = embedding_model.model
+                    filtered_data['embedding_model_provider'] = embedding_model.provider
+                    dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                        embedding_model.provider,
+                        embedding_model.model
+                    )
+                    filtered_data['collection_binding_id'] = dataset_collection_binding.id
+                except LLMBadRequestError:
+                    raise ValueError(
+                        "No Embedding Model available. Please configure a valid provider "
+                        "in the Settings -> Model Provider.")
+                except ProviderTokenNotInitError as ex:
+                    raise ValueError(ex.description)
+        else:
+            if data['embedding_model_provider'] != dataset.embedding_model_provider or \
+                    data['embedding_model'] != dataset.embedding_model:
+                action = 'update'
+                try:
+                    model_manager = ModelManager()
+                    embedding_model = model_manager.get_model_instance(
+                        tenant_id=current_user.current_tenant_id,
+                        provider=data['embedding_model_provider'],
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=data['embedding_model']
                     )
                     filtered_data['embedding_model'] = embedding_model.model
                     filtered_data['embedding_model_provider'] = embedding_model.provider
