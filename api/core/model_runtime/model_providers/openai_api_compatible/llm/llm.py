@@ -169,8 +169,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         """
         support_function_call = False
         features = []
-        toll_function_type = credentials.get('toll_function_type', 'no_call')
-        if toll_function_type == 'function_call':
+        tool_function_type = credentials.get('tool_function_type', 'no_call')
+        if tool_function_type == 'function_call':
             features = [ModelFeature.TOOL_CALL]
             support_function_call = True
         endpoint_url = credentials["endpoint_url"]
@@ -297,16 +297,16 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             raise ValueError("Unsupported completion type for model configuration.")
 
         # annotate tools with names, descriptions, etc.
-        toll_function_type = credentials.get('toll_function_type', 'no_call')
+        tool_function_type = credentials.get('tool_function_type', 'no_call')
         formatted_tools = []
         if tools:
-            if toll_function_type == 'function_call':
+            if tool_function_type == 'function_call':
                 data['functions'] = [{
                     "name": tool.name,
                     "description": tool.description,
                     "parameters": tool.parameters
                 } for tool in tools]
-            elif toll_function_type == 'tool_call':
+            elif tool_function_type == 'tool_call':
                 data["tool_choice"] = "auto"
 
                 for tool in tools:
@@ -465,7 +465,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         response_content = ''
         tool_calls = None
-        function_type = credentials.get('toll_function_type', 'no_call')
+        function_type = credentials.get('tool_function_type', 'no_call')
         if completion_type is LLMMode.CHAT:
             response_content = output.get('message', {})['content']
             if function_type == 'tool_call':

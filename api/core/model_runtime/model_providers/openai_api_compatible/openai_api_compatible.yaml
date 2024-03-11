@@ -35,7 +35,7 @@ model_credential_schema:
       placeholder:
         zh_Hans: Base URL, e.g. https://api.openai.com/v1
         en_US: Base URL, e.g. https://api.openai.com/v1
-    - variable: toll_function_type
+    - variable: tool_function_type
       show_on:
         - variable: __model_type
           value: llm
