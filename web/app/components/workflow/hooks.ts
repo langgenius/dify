@@ -135,10 +135,21 @@ export const useWorkflow = () => {
   }, [reactFlow])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
-    useStore.getState().setIsDragging(true)
+    const {
+      runningStatus,
+      setIsDragging,
+    } = useStore.getState()
+
+    if (!runningStatus)
+      setIsDragging(true)
   }, [])
 
   const handleNodeDrag = useCallback<NodeDragHandler>((e, node: Node) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -240,10 +251,15 @@ export const useWorkflow = () => {
 
   const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
     const {
+      runningStatus,
       setIsDragging,
       setHelpLineHorizontal,
       setHelpLineVertical,
     } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     setIsDragging(false)
     setHelpLineHorizontal()
     setHelpLineVertical()
@@ -251,6 +267,11 @@ export const useWorkflow = () => {
   }, [handleSyncWorkflowDraft])
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -268,6 +289,11 @@ export const useWorkflow = () => {
   }, [store])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>(() => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -281,6 +307,11 @@ export const useWorkflow = () => {
   }, [store])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -304,7 +335,12 @@ export const useWorkflow = () => {
   }, [store, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
-    if (useStore.getState().isDragging)
+    const {
+      runningStatus,
+      isDragging,
+    } = useStore.getState()
+
+    if (runningStatus || isDragging)
       return
 
     handleNodeSelect(node.id)
@@ -316,6 +352,11 @@ export const useWorkflow = () => {
     target,
     targetHandle,
   }) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -340,6 +381,11 @@ export const useWorkflow = () => {
   }, [store, handleSyncWorkflowDraft])
 
   const handleNodeDelete = useCallback((nodeId: string) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -363,6 +409,11 @@ export const useWorkflow = () => {
   }, [store, handleSyncWorkflowDraft])
 
   const handleNodeDataUpdate = useCallback(({ id, data }: { id: string; data: Record<string, any> }) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -382,6 +433,11 @@ export const useWorkflow = () => {
     sourceHandle: string,
     toolDefaultValue?: ToolDefaultValue,
   ) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -432,6 +488,11 @@ export const useWorkflow = () => {
     sourceHandle: string,
     toolDefaultValue?: ToolDefaultValue,
   ) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -486,6 +547,11 @@ export const useWorkflow = () => {
   }, [store, nodesInitialData, handleSyncWorkflowDraft])
 
   const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -499,6 +565,11 @@ export const useWorkflow = () => {
   }, [store])
 
   const handleEdgeLeave = useCallback<EdgeMouseHandler>((_, edge) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -512,6 +583,11 @@ export const useWorkflow = () => {
   }, [store])
 
   const handleEdgeDelete = useCallback(() => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -527,6 +603,11 @@ export const useWorkflow = () => {
   }, [store, handleSyncWorkflowDraft])
 
   const handleEdgesChange = useCallback<OnEdgesChange>((changes) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
     const {
       edges,
       setEdges,
@@ -585,10 +666,14 @@ export const useWorkflowRun = () => {
 
     ssePost(
       url,
-      params,
       {
-        onWorkflowStarted: () => {
+        body: params,
+      },
+      {
+        onWorkflowStarted: ({ task_id, workflow_run_id }) => {
           useStore.setState({ runningStatus: WorkflowRunningStatus.Running })
+          useStore.setState({ taskId: task_id })
+          useStore.setState({ workflowRunId: workflow_run_id })
         },
         onWorkflowFinished: ({ data }) => {
           useStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
@@ -597,7 +682,7 @@ export const useWorkflowRun = () => {
           const newNodes = produce(getNodes(), (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 
-            currentNode.data._running = NodeRunningStatus.Running
+            currentNode.data._runningStatus = NodeRunningStatus.Running
           })
           setNodes(newNodes)
         },
@@ -605,7 +690,7 @@ export const useWorkflowRun = () => {
           const newNodes = produce(getNodes(), (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 
-            currentNode.data._running = data.status
+            currentNode.data._runningStatus = data.status
           })
           setNodes(newNodes)
         },

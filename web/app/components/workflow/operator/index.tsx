@@ -17,7 +17,7 @@ const Operator = () => {
           width: 128,
           height: 80,
         }}
-        className='!static !m-0 !w-[128px] !h-[80px] border-[0.5px] border-black/[0.08]'
+        className='!static !m-0 !w-[128px] !h-[80px] !border-[0.5px] !border-black/[0.08] !rounded-lg !shadow-lg'
         pannable
       />
       <div className='flex items-center mt-1 p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>

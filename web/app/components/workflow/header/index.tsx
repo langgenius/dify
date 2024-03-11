@@ -14,15 +14,13 @@ import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Mode } from '@/app/components/workflow/types'
 
 const Header: FC = () => {
   const { t } = useTranslation()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const isChatMode = useIsChatMode()
-  const mode = useStore(state => state.mode)
-  const runTaskId = useStore(state => state.runTaskId)
+  const runningStatus = useStore(s => s.runningStatus)
 
   const handleShowFeatures = useCallback(() => {
     useStore.setState({ showFeaturesPanel: true })
@@ -37,26 +35,26 @@ const Header: FC = () => {
     >
       <div>
         {
-          appSidebarExpand && (
+          appSidebarExpand === 'collapse' && (
             <div className='text-xs font-medium text-gray-700'>{appDetail?.name}</div>
           )
         }
         {
-          mode === Mode.Editing && !runTaskId && <EditingTitle />
+          !runningStatus && <EditingTitle />
         }
         {
-          (mode === Mode.Running || runTaskId) && <RunningTitle />
+          runningStatus && <RunningTitle />
         }
       </div>
       <div className='flex items-center'>
         {
-          (mode === Mode.Running || runTaskId) && (
+          runningStatus && (
             <Button
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
                 border-[0.5px] border-gray-200 shadow-xs
               `}
-              onClick={() => useStore.setState({ mode: Mode.Editing, runTaskId: '' })}
+              onClick={() => useStore.setState({ runningStatus: undefined })}
             >
               <ArrowNarrowLeft className='mr-1 w-4 h-4' />
               {t('workflow.common.goBackToEdit')}

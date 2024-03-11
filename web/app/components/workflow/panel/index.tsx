@@ -15,9 +15,10 @@ import Record from './record'
 import InputsPanel from './inputs-panel'
 
 const Panel: FC = () => {
-  const isChatMode = useIsChatMode()
-  const runTaskId = useStore(state => state.runTaskId)
   const nodes = useNodes<CommonNodeType>()
+  const isChatMode = useIsChatMode()
+  const runningStatus = useStore(s => s.runningStatus)
+  const workflowRunId = useStore(s => s.workflowRunId)
   const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const showInputsPanel = useStore(s => s.showInputsPanel)
@@ -27,11 +28,11 @@ const Panel: FC = () => {
     showDebugAndPreviewPanel,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: !isChatMode && !selectedNode && !runTaskId,
-      showNodePanel: !!selectedNode && !runTaskId,
-      showDebugAndPreviewPanel: isChatMode && !selectedNode && !runTaskId,
+      showWorkflowInfoPanel: !isChatMode && !selectedNode && !runningStatus,
+      showNodePanel: !!selectedNode && !runningStatus,
+      showDebugAndPreviewPanel: isChatMode && !selectedNode && !runningStatus,
     }
-  }, [selectedNode, isChatMode, runTaskId])
+  }, [selectedNode, isChatMode, runningStatus])
 
   return (
     <div className='absolute top-14 right-0 bottom-2 flex z-10'>
@@ -41,7 +42,7 @@ const Panel: FC = () => {
         )
       }
       {
-        runTaskId && (
+        runningStatus && !isChatMode && workflowRunId && (
           <Record />
         )
       }

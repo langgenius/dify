@@ -13,7 +13,8 @@ import type { WorkflowRunningStatus } from './types'
 
 type State = {
   mode: Mode
-  runTaskId: string
+  taskId: string
+  workflowRunId: string
   showRunHistory: boolean
   showFeaturesPanel: boolean
   isDragging: boolean
@@ -25,11 +26,13 @@ type State = {
   publishedAt: number
   runningStatus?: WorkflowRunningStatus
   showInputsPanel: boolean
+  inputs: Record<string, string>
 }
 
 type Action = {
   setMode: (mode: Mode) => void
-  setRunTaskId: (runTaskId: string) => void
+  setTaskId: (taskId: string) => void
+  setWorkflowRunId: (workflowRunId: string) => void
   setShowRunHistory: (showRunHistory: boolean) => void
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   setIsDragging: (isDragging: boolean) => void
@@ -41,12 +44,15 @@ type Action = {
   setPublishedAt: (publishedAt: number) => void
   setRunningStatus: (runningStatus?: WorkflowRunningStatus) => void
   setShowInputsPanel: (showInputsPanel: boolean) => void
+  setInputs: (inputs: Record<string, string>) => void
 }
 
 export const useStore = create<State & Action>(set => ({
   mode: Mode.Editing,
-  runTaskId: '',
-  setRunTaskId: runTaskId => set(() => ({ runTaskId })),
+  taskId: '',
+  setTaskId: taskId => set(() => ({ taskId })),
+  workflowRunId: '',
+  setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
   setMode: mode => set(() => ({ mode })),
   showRunHistory: false,
   setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
@@ -70,4 +76,6 @@ export const useStore = create<State & Action>(set => ({
   setRunningStatus: runningStatus => set(() => ({ runningStatus })),
   showInputsPanel: false,
   setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
+  inputs: {},
+  setInputs: inputs => set(() => ({ inputs })),
 }))

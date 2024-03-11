@@ -421,7 +421,27 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
   })
 }
 
-export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onFile, onMessageEnd, onMessageReplace, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (
+  url: string,
+  fetchOptions: FetchOptionType,
+  {
+    isPublicAPI = false,
+    onData,
+    onCompleted,
+    onThought,
+    onFile,
+    onMessageEnd,
+    onMessageReplace,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    onNodeStarted,
+    onNodeFinished,
+    onTextChunk,
+    onTextReplace,
+    onError,
+    getAbortController,
+  }: IOtherOptions,
+) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -459,7 +479,7 @@ export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAP
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onTextChunk, onTextReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

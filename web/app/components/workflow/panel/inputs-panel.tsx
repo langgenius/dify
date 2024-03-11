@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
@@ -15,13 +14,13 @@ import Button from '@/app/components/base/button'
 const InputsPanel = () => {
   const { t } = useTranslation()
   const nodes = useNodes<StartNodeType>()
+  const inputs = useStore(s => s.inputs)
   const run = useWorkflowRun()
-  const [inputs, setInputs] = useState<Record<string, string>>({})
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
 
   const handleValueChange = (variable: string, v: string) => {
-    setInputs({
+    useStore.getState().setInputs({
       ...inputs,
       [variable]: v,
     })
@@ -32,7 +31,8 @@ const InputsPanel = () => {
   }, [])
 
   const handleRun = () => {
-    run(inputs)
+    handleCancel()
+    run({ inputs })
   }
 
   return (

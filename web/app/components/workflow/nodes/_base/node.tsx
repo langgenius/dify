@@ -44,13 +44,13 @@ const BaseNode: FC<BaseNodeProps> = ({
           group relative w-[240px] bg-[#fcfdff] shadow-xs
           border border-transparent rounded-[15px]
           hover:shadow-lg
-          ${data._runningStatus === NodeRunningStatus.Running && 'border-primary-500'}
-          ${data._runningStatus === NodeRunningStatus.Succeeded && 'border-[#12B76A]'}
-          ${data._runningStatus === NodeRunningStatus.Failed && 'border-[#F04438]'}
+          ${data._runningStatus === NodeRunningStatus.Running && '!border-primary-500'}
+          ${data._runningStatus === NodeRunningStatus.Succeeded && '!border-[#12B76A]'}
+          ${data._runningStatus === NodeRunningStatus.Failed && '!border-[#F04438]'}
         `}
       >
         {
-          data.type !== BlockEnum.VariableAssigner && (
+          data.type !== BlockEnum.VariableAssigner && !data._runningStatus && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -60,7 +60,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._runningStatus && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -69,10 +69,14 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
           )
         }
-        <NodeControl
-          id={id}
-          data={data}
-        />
+        {
+          !data._runningStatus && (
+            <NodeControl
+              id={id}
+              data={data}
+            />
+          )
+        }
         <div className='flex items-center px-3 pt-3 pb-2'>
           <BlockIcon
             className='shrink-0 mr-2'

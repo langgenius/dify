@@ -9,6 +9,7 @@ import type {
   Node,
 } from './types'
 import { BlockEnum } from './types'
+import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
 
 export const nodesLevelOrderTraverse = (
   firstNode: Node,
@@ -80,19 +81,43 @@ export const nodesLevelOrderTraverse = (
   }
 }
 
-export const initialNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
+export const initialNodes = (nodes: Node[]) => {
   const newNodes = produce(nodes, (draft) => {
     draft.forEach((node) => {
       node.type = 'custom'
+
+      if (node.data.type === BlockEnum.IfElse) {
+        node.data._targetBranches = [
+          {
+            id: 'true',
+            name: 'IS TRUE',
+          },
+          {
+            id: 'false',
+            name: 'IS FALSE',
+          },
+        ]
+      }
+
+      if (node.data.type === BlockEnum.QuestionClassifier) {
+        node.data._targetBranches = (node.data as QuestionClassifierNodeType).classes.map((topic) => {
+          return topic
+        })
+      }
     })
   })
+
+  return newNodes
+}
+
+export const initialEdges = (edges: Edge[]) => {
   const newEdges = produce(edges, (draft) => {
     draft.forEach((edge) => {
       edge.type = 'custom'
     })
   })
 
-  return [newNodes, newEdges]
+  return newEdges
 }
 
 export type PositionMap = {

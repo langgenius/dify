@@ -32,6 +32,10 @@ import Features from './features'
 import HelpLine from './help-line'
 import { useStore } from './store'
 import {
+  initialEdges,
+  initialNodes,
+} from './utils'
+import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
@@ -130,7 +134,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   edges,
 }) => {
   const appDetail = useAppStore(state => state.appDetail)
-  const { data, isLoading, error } = useSWR(appDetail?.id ? `/apps/${appDetail.id}/workflows/draft` : null, fetchWorkflowDraft)
+  const { data, isLoading, error, mutate } = useSWR(appDetail?.id ? `/apps/${appDetail.id}/workflows/draft` : null, fetchWorkflowDraft)
   const nodesInitialData = useNodesInitialData()
 
   useEffect(() => {
@@ -145,7 +149,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       data: nodesInitialData.start,
       position: {
         x: 100,
-        y: 100,
+        y: 200,
       },
     }
   }, [nodesInitialData])
@@ -155,7 +159,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       return nodes
 
     if (data)
-      return data.graph.nodes
+      return initialNodes(data.graph.nodes)
 
     return [startNode]
   }, [data, nodes, startNode])
@@ -164,7 +168,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       return edges
 
     if (data)
-      return data.graph.edges
+      return initialEdges(data.graph.edges)
 
     return []
   }, [data, edges])
@@ -199,6 +203,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
           },
         }).then((res) => {
           useStore.setState({ draftUpdatedAt: res.updated_at })
+          mutate()
         })
       }
     })
