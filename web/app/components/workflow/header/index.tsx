@@ -5,7 +5,10 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
-import { useIsChatMode } from '../hooks'
+import {
+  useIsChatMode,
+  useWorkflow,
+} from '../hooks'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
@@ -21,10 +24,15 @@ const Header: FC = () => {
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const isChatMode = useIsChatMode()
   const runningStatus = useStore(s => s.runningStatus)
+  const { handleRunInit } = useWorkflow()
 
   const handleShowFeatures = useCallback(() => {
     useStore.setState({ showFeaturesPanel: true })
   }, [])
+
+  const handleGoBackToEdit = useCallback(() => {
+    handleRunInit(true)
+  }, [handleRunInit])
 
   return (
     <div
@@ -54,7 +62,7 @@ const Header: FC = () => {
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
                 border-[0.5px] border-gray-200 shadow-xs
               `}
-              onClick={() => useStore.setState({ runningStatus: undefined })}
+              onClick={handleGoBackToEdit}
             >
               <ArrowNarrowLeft className='mr-1 w-4 h-4' />
               {t('workflow.common.goBackToEdit')}

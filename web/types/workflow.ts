@@ -131,3 +131,31 @@ export type TextReplaceResponse = {
     text: string
   }
 }
+
+export type WorkflowRunHistory = {
+  id: string
+  sequence_number: number
+  version: string
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
+  inputs: Record<string, string>
+  status: string
+  outputs: Record<string, any>
+  error?: string
+  elapsed_time: number
+  total_tokens: number
+  total_steps: number
+  created_at: number
+  finished_at: number
+  created_by_account: {
+    id: string
+    name: string
+    email: string
+  }
+}
+export type WorkflowRunHistoryResponse = {
+  data: WorkflowRunHistory[]
+}

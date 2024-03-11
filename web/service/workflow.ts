@@ -3,6 +3,7 @@ import { get, post } from './base'
 import type { CommonResponse } from '@/models/common'
 import type {
   FetchWorkflowDraftResponse,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 
 export const fetchWorkflowDraft: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
@@ -15,4 +16,8 @@ export const syncWorkflowDraft = ({ url, params }: { url: string; params: Pick<F
 
 export const fetchNodesDefaultConfigs: Fetcher<any, string> = (url) => {
   return get<any>(url)
+}
+
+export const fetchWorkflowRunHistory: Fetcher<WorkflowRunHistoryResponse, string> = (url) => {
+  return get<WorkflowRunHistoryResponse>(url)
 }

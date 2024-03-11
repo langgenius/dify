@@ -63,6 +63,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   viewport,
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
+  const runningStatus = useStore(s => s.runningStatus)
 
   const {
     handleSyncWorkflowDraft,
@@ -116,6 +117,11 @@ const Workflow: FC<WorkflowProps> = memo(({
         deleteKeyCode={null}
         nodeDragThreshold={1}
         defaultViewport={viewport}
+        panOnDrag={!runningStatus}
+        nodesDraggable={!runningStatus}
+        nodesConnectable={!runningStatus}
+        nodesFocusable={!runningStatus}
+        edgesFocusable={!runningStatus}
       >
         <Background
           gap={[14, 14]}

@@ -2,7 +2,10 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
-import { useIsChatMode } from '../hooks'
+import {
+  useIsChatMode,
+  useWorkflow,
+} from '../hooks'
 import { WorkflowRunningStatus } from '../types'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
@@ -51,11 +54,12 @@ RunMode.displayName = 'RunMode'
 
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
+  const { handleRunInit } = useWorkflow()
   const runningStatus = useStore(s => s.runningStatus)
   const isRunning = runningStatus === WorkflowRunningStatus.Running
 
   const handleClick = () => {
-    useStore.setState({ runningStatus: WorkflowRunningStatus.Succeeded })
+    handleRunInit()
   }
 
   return (

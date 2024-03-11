@@ -7,7 +7,10 @@ import { useNodes } from 'reactflow'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
 import { BlockEnum } from '../types'
 import { useStore } from '../store'
-import { useWorkflowRun } from '../hooks'
+import {
+  useWorkflow,
+  useWorkflowRun,
+} from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
 import Button from '@/app/components/base/button'
 
@@ -16,6 +19,7 @@ const InputsPanel = () => {
   const nodes = useNodes<StartNodeType>()
   const inputs = useStore(s => s.inputs)
   const run = useWorkflowRun()
+  const { handleRunInit } = useWorkflow()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
 
@@ -32,6 +36,7 @@ const InputsPanel = () => {
 
   const handleRun = () => {
     handleCancel()
+    handleRunInit()
     run({ inputs })
   }
 

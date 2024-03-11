@@ -150,6 +150,7 @@ export enum Mode {
 }
 
 export enum WorkflowRunningStatus {
+  Waiting = 'waiting',
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',
@@ -157,6 +158,7 @@ export enum WorkflowRunningStatus {
 }
 
 export enum NodeRunningStatus {
+  Waiting = 'waiting',
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',

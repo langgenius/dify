@@ -79,11 +79,19 @@ export const useWorkflow = () => {
 
     if (appId) {
       const features = featuresStore!.getState().features
+      const nodes = produce(getNodes(), (draft) => {
+        draft.forEach((node) => {
+          Object.keys(node.data).forEach((key) => {
+            if (key.startsWith('_'))
+              delete node.data[key]
+          })
+        })
+      })
       syncWorkflowDraft({
         url: `/apps/${appId}/workflows/draft`,
         params: {
           graph: {
-            nodes: getNodes(),
+            nodes,
             edges,
             viewport: getViewport(),
           },
@@ -622,6 +630,17 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleRunInit = useCallback((shouldClear?: boolean) => {
+    useStore.setState({ runningStatus: shouldClear ? undefined : WorkflowRunningStatus.Waiting })
+    const { setNodes, getNodes } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      draft.forEach((node) => {
+        node.data._runningStatus = shouldClear ? undefined : NodeRunningStatus.Waiting
+      })
+    })
+    setNodes(newNodes)
+  }, [store])
+
   return {
     handleSyncWorkflowDraft,
     handleLayout,
@@ -644,6 +663,8 @@ export const useWorkflow = () => {
     handleEdgeLeave,
     handleEdgeDelete,
     handleEdgesChange,
+
+    handleRunInit,
   }
 }
 
@@ -674,6 +695,12 @@ export const useWorkflowRun = () => {
           useStore.setState({ runningStatus: WorkflowRunningStatus.Running })
           useStore.setState({ taskId: task_id })
           useStore.setState({ workflowRunId: workflow_run_id })
+          const newNodes = produce(getNodes(), (draft) => {
+            draft.forEach((node) => {
+              node.data._runningStatus = NodeRunningStatus.Waiting
+            })
+          })
+          setNodes(newNodes)
         },
         onWorkflowFinished: ({ data }) => {
           useStore.setState({ runningStatus: data.status as WorkflowRunningStatus })

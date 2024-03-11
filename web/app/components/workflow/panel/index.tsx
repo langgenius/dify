@@ -30,12 +30,17 @@ const Panel: FC = () => {
     return {
       showWorkflowInfoPanel: !isChatMode && !selectedNode && !runningStatus,
       showNodePanel: !!selectedNode && !runningStatus,
-      showDebugAndPreviewPanel: isChatMode && !selectedNode && !runningStatus,
+      showDebugAndPreviewPanel: isChatMode && runningStatus,
     }
   }, [selectedNode, isChatMode, runningStatus])
 
   return (
-    <div className='absolute top-14 right-0 bottom-2 flex z-10'>
+    <div
+      className={`
+        absolute top-14 right-0 bottom-2 flex pr-2 z-10
+        ${showRunHistory && '!pr-0'}
+      `}
+    >
       {
         showInputsPanel && (
           <InputsPanel />
