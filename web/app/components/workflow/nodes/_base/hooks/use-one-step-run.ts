@@ -25,6 +25,7 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
 
   const [runningStatus, setRunningStatus] = useState('un started')
   const handleRun = () => {
+    // console.log(runInputData)
     if (isInvalid())
       return
 

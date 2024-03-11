@@ -11,6 +11,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import Loading from '@/app/components/base/loading'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -35,6 +36,12 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     hideSetAuthModal,
     handleSaveAuth,
     isLoading,
+    isShowSingleRun,
+    hideSingleRun,
+    singleRunForms,
+    runningStatus,
+    handleRun,
+    handleStop,
   } = useConfig(id, data)
 
   if (isLoading) {
@@ -99,6 +106,17 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           onCancel={hideSetAuthModal}
           onSaved={handleSaveAuth}
           isHideRemoveBtn
+        />
+      )}
+
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          forms={singleRunForms}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
         />
       )}
     </div>

@@ -3,20 +3,27 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import { useStore } from '../../store'
-import type { ToolNodeType, ToolVarInput } from './types'
+import { type ToolNodeType, type ToolVarInput } from './types'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import { fetchBuiltInToolList, fetchCollectionList, fetchCustomToolList, updateBuiltInToolCredential } from '@/service/tools'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
+import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import { InputVarType } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const { t } = useTranslation()
+  const language = useLanguage()
   const toolsMap = useStore(s => s.toolsMap)
   const setToolsMap = useStore(s => s.setToolsMap)
 
   const { inputs, setInputs } = useNodeCrud<ToolNodeType>(id, payload)
+  const toolInputs = inputs.tool_inputs
   const { provider_id, provider_name, provider_type, tool_name, tool_parameters } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const [currCollection, setCurrCollection] = useState<Collection | null | undefined>(null)
@@ -99,6 +106,48 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })()
   }, [provider_name])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    setRunInputData,
+    handleRun,
+    handleStop,
+  } = useOneStepRun<ToolNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {},
+  })
+
+  const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
+  const setInputVarValues = (value: Record<string, any>) => {
+    doSetInputVarValues(value)
+    setRunInputData(value)
+  }
+
+  const singleRunForms = (() => {
+    const formInputs: InputVar[] = []
+    toolInputVarSchema.forEach((item: any) => {
+      const targetItem = toolInputs.find(input => input.variable === item.variable)
+      // TODO: support selector
+      // if (targetItem?.variable_type === VarType.selector) {
+      formInputs.push({
+        label: item.label[language] || item.label.en_US,
+        variable: item.variable,
+        type: InputVarType.textInput,
+        required: item.required,
+      })
+      // }
+    })
+    const forms: FormProps[] = [{
+      inputs: formInputs,
+      values: inputVarValues,
+      onChange: setInputVarValues,
+    }]
+    return forms
+  })()
+
   return {
     inputs,
     currTool,
@@ -114,6 +163,14 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     hideSetAuthModal,
     handleSaveAuth,
     isLoading,
+    isShowSingleRun,
+    hideSingleRun,
+    inputVarValues,
+    setInputVarValues,
+    singleRunForms,
+    runningStatus,
+    handleRun,
+    handleStop,
   }
 }
 
