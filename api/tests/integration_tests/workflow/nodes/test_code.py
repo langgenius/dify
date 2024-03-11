@@ -1,8 +1,9 @@
 import pytest
+from core.app.entities.app_invoke_entities import InvokeFrom
 
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.code.code_node import CodeNode
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowRunStatus
+from models.workflow import WorkflowNodeExecutionStatus
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 @pytest.mark.parametrize('setup_code_executor_mock', [['none']], indirect=True)
@@ -15,30 +16,37 @@ def test_execute_code(setup_code_executor_mock):
     '''
     # trim first 4 spaces at the beginning of each line
     code = '\n'.join([line[4:] for line in code.split('\n')])
-    node = CodeNode(config={
-        'id': '1',
-        'data': {
-            'outputs': {
-                'result': {
-                    'type': 'number',
+    node = CodeNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=InvokeFrom.WEB_APP,
+        config={
+            'id': '1',
+            'data': {
+                'outputs': {
+                    'result': {
+                        'type': 'number',
+                    },
                 },
-            },
-            'title': '123',
-            'variables': [
-                {
-                    'variable': 'args1',
-                    'value_selector': ['1', '123', 'args1'],
-                },
-                {
-                    'variable': 'args2',
-                    'value_selector': ['1', '123', 'args2']
-                }
-            ],
-            'answer': '123',
-            'code_language': 'python3',
-            'code': code
+                'title': '123',
+                'variables': [
+                    {
+                        'variable': 'args1',
+                        'value_selector': ['1', '123', 'args1'],
+                    },
+                    {
+                        'variable': 'args2',
+                        'value_selector': ['1', '123', 'args2']
+                    }
+                ],
+                'answer': '123',
+                'code_language': 'python3',
+                'code': code
+            }
         }
-    })
+    )
 
     # construct variable pool
     pool = VariablePool(system_variables={}, user_inputs={})
@@ -61,30 +69,37 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     '''
     # trim first 4 spaces at the beginning of each line
     code = '\n'.join([line[4:] for line in code.split('\n')])
-    node = CodeNode(config={
-        'id': '1',
-        'data': {
-            "outputs": {
-                "result": {
-                    "type": "string",
+    node = CodeNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=InvokeFrom.WEB_APP,
+        config={
+            'id': '1',
+            'data': {
+                "outputs": {
+                    "result": {
+                        "type": "string",
+                    },
                 },
-            },
-            'title': '123',
-            'variables': [
-                {
-                    'variable': 'args1',
-                    'value_selector': ['1', '123', 'args1'],
-                },
-                {
-                    'variable': 'args2',
-                    'value_selector': ['1', '123', 'args2']
-                }
-            ],
-            'answer': '123',
-            'code_language': 'python3',
-            'code': code
+                'title': '123',
+                'variables': [
+                    {
+                        'variable': 'args1',
+                        'value_selector': ['1', '123', 'args1'],
+                    },
+                    {
+                        'variable': 'args2',
+                        'value_selector': ['1', '123', 'args2']
+                    }
+                ],
+                'answer': '123',
+                'code_language': 'python3',
+                'code': code
+            }
         }
-    })
+    )
 
     # construct variable pool
     pool = VariablePool(system_variables={}, user_inputs={})
@@ -108,60 +123,67 @@ def test_execute_code_output_validator_depth():
     '''
     # trim first 4 spaces at the beginning of each line
     code = '\n'.join([line[4:] for line in code.split('\n')])
-    node = CodeNode(config={
-        'id': '1',
-        'data': {
-            "outputs": {
-                "string_validator": {
-                    "type": "string",
-                },
-                "number_validator": {
-                    "type": "number",
-                },
-                "number_array_validator": {
-                    "type": "array[number]",
-                },
-                "string_array_validator": {
-                    "type": "array[string]",
-                },
-                "object_validator": {
-                    "type": "object",
-                    "children": {
-                        "result": {
-                            "type": "number",
-                        },
-                        "depth": {
-                            "type": "object",
-                            "children": {
-                                "depth": {
-                                    "type": "object",
-                                    "children": {
-                                        "depth": {
-                                            "type": "number",
+    node = CodeNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=InvokeFrom.WEB_APP,
+        config={
+            'id': '1',
+            'data': {
+                "outputs": {
+                    "string_validator": {
+                        "type": "string",
+                    },
+                    "number_validator": {
+                        "type": "number",
+                    },
+                    "number_array_validator": {
+                        "type": "array[number]",
+                    },
+                    "string_array_validator": {
+                        "type": "array[string]",
+                    },
+                    "object_validator": {
+                        "type": "object",
+                        "children": {
+                            "result": {
+                                "type": "number",
+                            },
+                            "depth": {
+                                "type": "object",
+                                "children": {
+                                    "depth": {
+                                        "type": "object",
+                                        "children": {
+                                            "depth": {
+                                                "type": "number",
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
+                    },
+                },
+                'title': '123',
+                'variables': [
+                    {
+                        'variable': 'args1',
+                        'value_selector': ['1', '123', 'args1'],
+                    },
+                    {
+                        'variable': 'args2',
+                        'value_selector': ['1', '123', 'args2']
                     }
-                },
-            },
-            'title': '123',
-            'variables': [
-                {
-                    'variable': 'args1',
-                    'value_selector': ['1', '123', 'args1'],
-                },
-                {
-                    'variable': 'args2',
-                    'value_selector': ['1', '123', 'args2']
-                }
-            ],
-            'answer': '123',
-            'code_language': 'python3',
-            'code': code
+                ],
+                'answer': '123',
+                'code_language': 'python3',
+                'code': code
+            }
         }
-    })
+    )
 
     # construct result
     result = {

@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -12,7 +12,7 @@ class CodeNodeData(BaseNodeData):
     """
     class Output(BaseModel):
         type: Literal['string', 'number', 'object', 'array[string]', 'array[number]']
-        children: Union[None, dict[str, 'Output']]
+        children: Optional[dict[str, 'Output']]
 
     variables: list[VariableSelector]
     answer: str
