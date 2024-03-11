@@ -2,7 +2,6 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from mimetypes import guess_extension
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -39,7 +38,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
-from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.model import Message, MessageAgentThought, MessageFile
@@ -462,73 +460,6 @@ class BaseAgentRunner(AppRunner):
 
         db.session.commit()
         db.session.close()
-
-    def transform_tool_invoke_messages(self, messages: list[ToolInvokeMessage]) -> list[ToolInvokeMessage]:
-        """
-        Transform tool message into agent thought
-        """
-        result = []
-
-        for message in messages:
-            if message.type == ToolInvokeMessage.MessageType.TEXT:
-                result.append(message)
-            elif message.type == ToolInvokeMessage.MessageType.LINK:
-                result.append(message)
-            elif message.type == ToolInvokeMessage.MessageType.IMAGE:
-                # try to download image
-                try:
-                    file = ToolFileManager.create_file_by_url(user_id=self.user_id, tenant_id=self.tenant_id,
-                                                               conversation_id=self.message.conversation_id,
-                                                               file_url=message.message)
-                    
-                    url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".png"}'
-
-                    result.append(ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                        message=url,
-                        save_as=message.save_as,
-                        meta=message.meta.copy() if message.meta is not None else {},
-                    ))
-                except Exception as e:
-                    logger.exception(e)
-                    result.append(ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.TEXT,
-                        message=f"Failed to download image: {message.message}, you can try to download it yourself.",
-                        meta=message.meta.copy() if message.meta is not None else {},
-                        save_as=message.save_as,
-                    ))
-            elif message.type == ToolInvokeMessage.MessageType.BLOB:
-                # get mime type and save blob to storage
-                mimetype = message.meta.get('mime_type', 'octet/stream')
-                # if message is str, encode it to bytes
-                if isinstance(message.message, str):
-                    message.message = message.message.encode('utf-8')
-                file = ToolFileManager.create_file_by_raw(user_id=self.user_id, tenant_id=self.tenant_id,
-                                                            conversation_id=self.message.conversation_id,
-                                                            file_binary=message.message,
-                                                            mimetype=mimetype)
-                                                            
-                url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".bin"}'
-
-                # check if file is image
-                if 'image' in mimetype:
-                    result.append(ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                        message=url,
-                        save_as=message.save_as,
-                        meta=message.meta.copy() if message.meta is not None else {},
-                    ))
-                else:
-                    result.append(ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.LINK,
-                        message=url,
-                        save_as=message.save_as,
-                        meta=message.meta.copy() if message.meta is not None else {},
-                    ))
-            else:
-                result.append(message)
-
-        return result
     
     def update_db_variables(self, tool_variables: ToolRuntimeVariablePool, db_variables: ToolConversationVariables):
         """

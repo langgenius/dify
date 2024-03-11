@@ -23,6 +23,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -270,7 +271,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_parameters=tool_call_args, 
                         )
                         # transform tool invoke message to get LLM friendly message
-                        tool_invoke_message = self.transform_tool_invoke_messages(tool_invoke_message)
+                        tool_invoke_message = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                            messages=tool_invoke_message, 
+                            user_id=self.user_id, 
+                            tenant_id=self.tenant_id, 
+                            conversation_id=self.message.conversation_id
+                        )
                         # extract binary data from tool invoke message
                         binary_files = self.extract_tool_response_binary(tool_invoke_message)
                         # create message file

@@ -34,6 +34,7 @@ from core.tools.utils.configuration import (
     ToolParameterConfigurationManager,
 )
 from core.tools.utils.encoder import serialize_base_model_dict
+from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 
@@ -226,6 +227,48 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
 
     @staticmethod
+    def _init_runtime_parameter(parameter_rule: ToolParameter, parameters: dict) -> Union[str, int, float, bool]:
+        """
+            init runtime parameter
+        """
+        parameter_value = parameters.get(parameter_rule.name)
+        if not parameter_value:
+            # get default value
+            parameter_value = parameter_rule.default
+            if not parameter_value and parameter_rule.required:
+                raise ValueError(f"tool parameter {parameter_rule.name} not found in tool config")
+        
+        if parameter_rule.type == ToolParameter.ToolParameterType.SELECT:
+            # check if tool_parameter_config in options
+            options = list(map(lambda x: x.value, parameter_rule.options))
+            if parameter_value not in options:
+                raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}")
+        
+        # convert tool parameter config to correct type
+        try:
+            if parameter_rule.type == ToolParameter.ToolParameterType.NUMBER:
+                # check if tool parameter is integer
+                if isinstance(parameter_value, int):
+                    parameter_value = parameter_value
+                elif isinstance(parameter_value, float):
+                    parameter_value = parameter_value
+                elif isinstance(parameter_value, str):
+                    if '.' in parameter_value:
+                        parameter_value = float(parameter_value)
+                    else:
+                        parameter_value = int(parameter_value)
+            elif parameter_rule.type == ToolParameter.ToolParameterType.BOOLEAN:
+                parameter_value = bool(parameter_value)
+            elif parameter_rule.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
+                parameter_value = str(parameter_value)
+            elif parameter_rule.type == ToolParameter.ToolParameterType:
+                parameter_value = str(parameter_value)
+        except Exception as e:
+            raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} is not correct type")
+        
+        return parameter_value
+
+    @staticmethod
     def get_agent_tool_runtime(tenant_id: str, agent_tool: AgentToolEntity, agent_callback: DifyAgentCallbackHandler) -> Tool:
         """
             get the agent tool runtime
@@ -239,44 +282,9 @@ class ToolManager:
         parameters = tool_entity.get_all_runtime_parameters()
         for parameter in parameters:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # get tool parameter from form
-                tool_parameter_config = agent_tool.tool_parameters.get(parameter.name)
-                if not tool_parameter_config:
-                    # get default value
-                    tool_parameter_config = parameter.default
-                    if not tool_parameter_config and parameter.required:
-                        raise ValueError(f"tool parameter {parameter.name} not found in tool config")
-                    
-                if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                    # check if tool_parameter_config in options
-                    options = list(map(lambda x: x.value, parameter.options))
-                    if tool_parameter_config not in options:
-                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
-                    
-                # convert tool parameter config to correct type
-                try:
-                    if parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                        # check if tool parameter is integer
-                        if isinstance(tool_parameter_config, int):
-                            tool_parameter_config = tool_parameter_config
-                        elif isinstance(tool_parameter_config, float):
-                            tool_parameter_config = tool_parameter_config
-                        elif isinstance(tool_parameter_config, str):
-                            if '.' in tool_parameter_config:
-                                tool_parameter_config = float(tool_parameter_config)
-                            else:
-                                tool_parameter_config = int(tool_parameter_config)
-                    elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                        tool_parameter_config = bool(tool_parameter_config)
-                    elif parameter.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
-                        tool_parameter_config = str(tool_parameter_config)
-                    elif parameter.type == ToolParameter.ToolParameterType:
-                        tool_parameter_config = str(tool_parameter_config)
-                except Exception as e:
-                    raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} is not correct type")
-                
                 # save tool parameter to tool entity memory
-                runtime_parameters[parameter.name] = tool_parameter_config
+                value = ToolManager._init_runtime_parameter(parameter, agent_tool.tool_parameters)
+                runtime_parameters[parameter.name] = value
         
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
@@ -284,6 +292,38 @@ class ToolManager:
             tool_runtime=tool_entity,
             provider_name=agent_tool.provider_id,
             provider_type=agent_tool.provider_type,
+        )
+        runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+
+        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+        return tool_entity
+    
+    @staticmethod
+    def get_workflow_tool_runtime(tenant_id: str, workflow_tool: ToolEntity, agent_callback: DifyAgentCallbackHandler):
+        """
+            get the workflow tool runtime
+        """
+        tool_entity = ToolManager.get_tool_runtime(
+            provider_type=workflow_tool.provider_type, 
+            provider_name=workflow_tool.provider_id, 
+            tool_name=workflow_tool.tool_name, 
+            tenant_id=tenant_id,
+            agent_callback=agent_callback
+        )
+        runtime_parameters = {}
+        parameters = tool_entity.get_all_runtime_parameters()
+
+        for parameter in parameters:
+            # save tool parameter to tool entity memory
+            value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_parameters)
+            runtime_parameters[parameter.name] = value
+    
+        # decrypt runtime parameters
+        encryption_manager = ToolParameterConfigurationManager(
+            tenant_id=tenant_id,
+            tool_runtime=tool_entity,
+            provider_name=workflow_tool.provider_id,
+            provider_type=workflow_tool.provider_type,
         )
         runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
 

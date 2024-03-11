@@ -25,6 +25,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from models.model import Conversation, Message
 
 
@@ -280,7 +281,12 @@ class CotAgentRunner(BaseAgentRunner):
                                 tool_parameters=tool_call_args
                             )
                             # transform tool response to llm friendly response
-                            tool_response = self.transform_tool_invoke_messages(tool_response)
+                            tool_response = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                                messages=tool_response, 
+                                user_id=self.user_id, 
+                                tenant_id=self.tenant_id, 
+                                conversation_id=self.message.conversation_id
+                            )
                             # extract binary data from tool invoke message
                             binary_files = self.extract_tool_response_binary(tool_response)
                             # create message file
