@@ -11,9 +11,6 @@ services:
       POSTGRES_DB: dify
       # postgres data directory
       PGDATA: /var/lib/postgresql/data/pgdata
-      # The sandbox service endpoint.
-      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
-      CODE_EXECUTION_API_KEY: dify-sandbox
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
