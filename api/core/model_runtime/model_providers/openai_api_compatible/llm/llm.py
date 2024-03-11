@@ -169,8 +169,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         """
         support_function_call = False
         features = []
-        tool_function_type = credentials.get('tool_function_type', 'no_call')
-        if tool_function_type == 'function_call':
+        function_calling_type = credentials.get('function_calling_type', 'no_call')
+        if function_calling_type == 'function_call':
             features = [ModelFeature.TOOL_CALL]
             support_function_call = True
         endpoint_url = credentials["endpoint_url"]
@@ -297,16 +297,16 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             raise ValueError("Unsupported completion type for model configuration.")
 
         # annotate tools with names, descriptions, etc.
-        tool_function_type = credentials.get('tool_function_type', 'no_call')
+        function_calling_type = credentials.get('function_calling_type', 'no_call')
         formatted_tools = []
         if tools:
-            if tool_function_type == 'function_call':
+            if function_calling_type == 'function_call':
                 data['functions'] = [{
                     "name": tool.name,
                     "description": tool.description,
                     "parameters": tool.parameters
                 } for tool in tools]
-            elif tool_function_type == 'tool_call':
+            elif function_calling_type == 'tool_call':
                 data["tool_choice"] = "auto"
 
                 for tool in tools:
@@ -465,12 +465,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         response_content = ''
         tool_calls = None
-        function_type = credentials.get('tool_function_type', 'no_call')
+        function_calling_type = credentials.get('function_calling_type', 'no_call')
         if completion_type is LLMMode.CHAT:
             response_content = output.get('message', {})['content']
-            if function_type == 'tool_call':
+            if function_calling_type == 'tool_call':
                 tool_calls = output.get('message', {}).get('tool_calls')
-            elif function_type == 'function_call':
+            elif function_calling_type == 'function_call':
                 tool_calls = output.get('message', {}).get('function_call')
 
         elif completion_type is LLMMode.COMPLETION:
@@ -479,9 +479,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         assistant_message = AssistantPromptMessage(content=response_content, tool_calls=[])
 
         if tool_calls:
-            if function_type == 'tool_call':
+            if function_calling_type == 'tool_call':
                 assistant_message.tool_calls = self._extract_response_tool_calls(tool_calls)
-            elif function_type == 'function_call':
+            elif function_calling_type == 'function_call':
                 assistant_message.tool_calls = [self._extract_response_function_call(tool_calls)]
 
         usage = response_json.get("usage")
