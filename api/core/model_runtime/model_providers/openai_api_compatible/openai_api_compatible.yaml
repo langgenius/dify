@@ -80,13 +80,10 @@ model_credential_schema:
         - variable: __model_type
           value: llm
       label:
-        en_US: Function calling type
+        en_US: Function calling
       type: select
       required: false
       default: no_call
-      placeholder:
-        zh_Hans: Function calling
-        en_US: Function calling
       options:
         - value: function_call
           label:
