@@ -12,7 +12,7 @@ class CodeNodeData(BaseNodeData):
     """
     class Output(BaseModel):
         type: Literal['string', 'number', 'object', 'array[string]', 'array[number]']
-        children: Optional[dict[str, 'CodeNodeData.Output']]
+        children: Optional[dict[str, 'Output']]
 
     variables: list[VariableSelector]
     answer: str
