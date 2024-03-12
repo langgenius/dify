@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import {
   getConnectedEdges,
   getOutgoers,
@@ -10,10 +10,10 @@ import type {
   Branch,
   Node,
 } from '../../../../types'
+import { BlockEnum } from '../../../../types'
 import Add from './add'
 import Item from './item'
 import Line from './line'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 type NextStepProps = {
   selectedNode: Node
@@ -22,15 +22,8 @@ const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
   const store = useStoreApi()
-  const branches = useMemo(() => {
-    const nodeData = selectedNode.data
-
-    if (nodeData.type === BlockEnum.IfElse)
-      return nodeData._targetBranches
-
-    if (nodeData.type === BlockEnum.QuestionClassifier)
-      return (nodeData as any).classes
-  }, [selectedNode])
+  const branches = selectedNode.data._targetBranches
+  const nodeWithBranches = selectedNode.data.type === BlockEnum.IfElse || selectedNode.data.type === BlockEnum.QuestionClassifier
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
@@ -46,7 +39,7 @@ const NextStep = ({
       <Line linesNumber={branches ? branches.length : 1} />
       <div className='grow'>
         {
-          !branches && !!outgoers.length && (
+          !nodeWithBranches && !!outgoers.length && (
             <Item
               nodeId={outgoers[0].id}
               data={outgoers[0].data}
@@ -55,7 +48,7 @@ const NextStep = ({
           )
         }
         {
-          !branches && !outgoers.length && (
+          !nodeWithBranches && !outgoers.length && (
             <Add
               nodeId={selectedNode!.id}
               sourceHandle='source'
@@ -63,7 +56,7 @@ const NextStep = ({
           )
         }
         {
-          branches?.length && (
+          !!branches?.length && nodeWithBranches && (
             branches.map((branch: Branch) => {
               const connected = connectedEdges.find(edge => edge.sourceHandle === branch.id)
               const target = outgoers.find(outgoer => outgoer.id === connected?.target)

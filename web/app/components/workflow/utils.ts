@@ -1,4 +1,3 @@
-import produce from 'immer'
 import {
   getConnectedEdges,
   getOutgoers,
@@ -82,42 +81,38 @@ export const nodesLevelOrderTraverse = (
 }
 
 export const initialNodes = (nodes: Node[]) => {
-  const newNodes = produce(nodes, (draft) => {
-    draft.forEach((node) => {
-      node.type = 'custom'
+  return nodes.map((node) => {
+    node.type = 'custom'
 
-      if (node.data.type === BlockEnum.IfElse) {
-        node.data._targetBranches = [
-          {
-            id: 'true',
-            name: 'IS TRUE',
-          },
-          {
-            id: 'false',
-            name: 'IS FALSE',
-          },
-        ]
-      }
+    if (node.data.type === BlockEnum.IfElse) {
+      node.data._targetBranches = [
+        {
+          id: 'true',
+          name: 'IS TRUE',
+        },
+        {
+          id: 'false',
+          name: 'IS FALSE',
+        },
+      ]
+    }
 
-      if (node.data.type === BlockEnum.QuestionClassifier) {
-        node.data._targetBranches = (node.data as QuestionClassifierNodeType).classes.map((topic) => {
-          return topic
-        })
-      }
-    })
+    if (node.data.type === BlockEnum.QuestionClassifier) {
+      node.data._targetBranches = (node.data as QuestionClassifierNodeType).classes.map((topic) => {
+        return topic
+      })
+    }
+
+    return node
   })
-
-  return newNodes
 }
 
 export const initialEdges = (edges: Edge[]) => {
-  const newEdges = produce(edges, (draft) => {
-    draft.forEach((edge) => {
-      edge.type = 'custom'
-    })
-  })
+  return edges.map((edge) => {
+    edge.type = 'custom'
 
-  return newEdges
+    return edge
+  })
 }
 
 export type PositionMap = {

@@ -35,6 +35,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const handleClassesChange = useCallback((newClasses: any) => {
     const newInputs = produce(inputs, (draft) => {
       draft.classes = newClasses
+      draft._targetBranches = newClasses
     })
     setInputs(newInputs)
   }, [inputs, setInputs])

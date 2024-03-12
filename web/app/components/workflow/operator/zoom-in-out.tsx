@@ -95,7 +95,7 @@ const ZoomInOut: FC = () => {
           <ChevronDown className='ml-1 w-4 h-4' />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-10'>
         <div className='w-[168px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg'>
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (

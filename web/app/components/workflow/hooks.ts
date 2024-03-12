@@ -70,7 +70,7 @@ export const useWorkflow = () => {
   const nodesInitialData = useNodesInitialData()
   const featuresStore = useFeaturesStore()
 
-  const shouldDebouncedSyncWorkflowDraft = () => {
+  const shouldDebouncedSyncWorkflowDraft = useCallback(() => {
     const {
       getNodes,
       edges,
@@ -111,12 +111,19 @@ export const useWorkflow = () => {
         useStore.setState({ draftUpdatedAt: res.updated_at })
       })
     }
-  }
+  }, [store, reactFlow, featuresStore])
 
-  const { run: handleSyncWorkflowDraft } = useDebounceFn(shouldDebouncedSyncWorkflowDraft, {
+  const { run: debouncedSyncWorkflowDraft } = useDebounceFn(shouldDebouncedSyncWorkflowDraft, {
     wait: 2000,
     trailing: true,
   })
+
+  const handleSyncWorkflowDraft = useCallback((shouldDelay?: boolean) => {
+    if (shouldDelay)
+      debouncedSyncWorkflowDraft()
+    else
+      shouldDebouncedSyncWorkflowDraft()
+  }, [debouncedSyncWorkflowDraft, shouldDebouncedSyncWorkflowDraft])
 
   const handleLayout = useCallback(async () => {
     const {
@@ -332,11 +339,11 @@ export const useWorkflow = () => {
     if (!cancelSelection && selectedNode?.id === nodeId)
       return
 
-    const newNodes = produce(getNodes(), (draft) => {
+    const newNodes = produce(nodes, (draft) => {
       draft.forEach(node => node.data.selected = false)
       const selectedNode = draft.find(node => node.id === nodeId)!
 
-      if (!cancelSelection)
+      if (!cancelSelection && selectedNode)
         selectedNode.data.selected = true
     })
     setNodes(newNodes)
@@ -433,7 +440,7 @@ export const useWorkflow = () => {
       currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
-    handleSyncWorkflowDraft()
+    handleSyncWorkflowDraft(true)
   }, [store, handleSyncWorkflowDraft])
 
   const handleNodeAddNext = useCallback((
