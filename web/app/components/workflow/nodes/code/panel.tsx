@@ -47,10 +47,12 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     runningStatus,
     handleRun,
     handleStop,
+    runResult,
     varInputs,
     inputVarValues,
     setInputVarValues,
   } = useConfig(id, data)
+
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
@@ -110,9 +112,9 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          result={<span className='text-gray-900'>{JSON.stringify(runResult, null, 2)}</span>}
         />
       )}
-
     </div>
   )
 }

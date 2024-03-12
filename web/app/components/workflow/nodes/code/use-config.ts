@@ -38,10 +38,12 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     hideSingleRun,
     toVarInputs,
     runningStatus,
+    isCompleted,
     handleRun,
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   } = useOneStepRun<CodeNodeType>({
     id,
     data: inputs,
@@ -74,11 +76,13 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
+    isCompleted,
     handleRun,
     handleStop,
     varInputs,
     inputVarValues,
     setInputVarValues,
+    runResult,
   }
 }
 

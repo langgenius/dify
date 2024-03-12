@@ -19,6 +19,7 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
 
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
+  const [runResult, setRunResult] = useState<any>(null)
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useWorkflow()
   const isShowSingleRun = data._isSingleRun
@@ -32,6 +33,7 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
     })
   }
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
+  const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
   const handleRun = async () => {
     if (!isInvalid())
       return
@@ -42,10 +44,17 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
         _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
+    let res: any
     try {
-      const res = await singleNodeRun(appId!, id, { inputs: runInputData })
+      res = await singleNodeRun(appId!, id, { inputs: runInputData }) as any
+      if (res.error)
+        throw new Error(res.error)
     }
-    catch (e) {
+    catch (e: any) {
+      Toast.notify({
+        type: 'error',
+        message: e.toString(),
+      })
       handleNodeDataUpdate({
         id,
         data: {
@@ -55,6 +64,7 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
       })
       return false
     }
+    setRunResult(res)
     handleNodeDataUpdate({
       id,
       data: {
@@ -101,10 +111,12 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
     hideSingleRun,
     toVarInputs,
     runningStatus,
+    isCompleted,
     handleRun,
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   }
 }
 
