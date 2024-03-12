@@ -16,6 +16,7 @@ supported_model_types:
   - llm
   - text-embedding
   - speech2text
+  - tts
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -118,6 +119,18 @@ model_credential_schema:
           show_on:
             - variable: __model_type
               value: speech2text
+        - label:
+            en_US: tts-1
+          value: tts-1
+          show_on:
+            - variable: __model_type
+              value: tts
+        - label:
+            en_US: tts-1-hd
+          value: tts-1-hd
+          show_on:
+            - variable: __model_type
+              value: tts
       placeholder:
         zh_Hans: 在此输入您的模型版本
         en_US: Enter your model version
