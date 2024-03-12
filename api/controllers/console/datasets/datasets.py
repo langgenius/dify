@@ -512,10 +512,27 @@ class DatasetRetrievalSettingMockApi(Resource):
         else:
             raise ValueError("Unsupported vector db type.")
 
+class DatasetErrorDocs(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
+
+        return {
+            'data': [marshal(item, document_status_fields) for item in results],
+            'total': len(results)
+        }, 200
+
 
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
+api.add_resource(DatasetErrorDocs, '/datasets/<uuid:dataset_id>/error-docs')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')

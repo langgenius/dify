@@ -408,6 +408,15 @@ class DocumentService:
         return documents
 
     @staticmethod
+    def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
+        documents = db.session.query(Document).filter(
+            Document.dataset_id == dataset_id,
+            Document.indexing_status == 'error'
+        ).all()
+
+        return documents
+
+    @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:
         documents = db.session.query(Document).filter(
             Document.batch == batch,
