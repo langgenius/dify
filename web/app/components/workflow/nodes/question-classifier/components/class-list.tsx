@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
+import { useWorkflow } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
@@ -10,15 +11,18 @@ import type { Topic } from '@/app/components/workflow/nodes/question-classifier/
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 type Props = {
+  id: string
   list: Topic[]
   onChange: (list: Topic[]) => void
 }
 
 const ClassList: FC<Props> = ({
+  id,
   list,
   onChange,
 }) => {
   const { t } = useTranslation()
+  const { handleEdgeDeleteByDeleteBranch } = useWorkflow()
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
@@ -34,16 +38,17 @@ const ClassList: FC<Props> = ({
       draft.push({ id: `${Date.now()}`, name: '' })
     })
     onChange(newList)
-  }, [list, onChange, t])
+  }, [list, onChange])
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {
+      handleEdgeDeleteByDeleteBranch(id, list[index].id)
       const newList = produce(list, (draft) => {
         draft.splice(index, 1)
       })
       onChange(newList)
     }
-  }, [list, onChange])
+  }, [list, onChange, handleEdgeDeleteByDeleteBranch, id])
 
   // Todo Remove; edit topic name
   return (

@@ -80,7 +80,7 @@ export const useWorkflow = () => {
 
     if (appId) {
       const features = featuresStore!.getState().features
-      const nodes = produce(getNodes(), (draft) => {
+      const producedNodes = produce(getNodes(), (draft) => {
         draft.forEach((node) => {
           Object.keys(node.data).forEach((key) => {
             if (key.startsWith('_'))
@@ -88,12 +88,17 @@ export const useWorkflow = () => {
           })
         })
       })
+      const producedEdges = produce(edges, (draft) => {
+        draft.forEach((edge) => {
+          delete edge.data
+        })
+      })
       syncWorkflowDraft({
         url: `/apps/${appId}/workflows/draft`,
         params: {
           graph: {
-            nodes,
-            edges,
+            nodes: producedNodes,
+            edges: producedEdges,
             viewport: getViewport(),
           },
           features: {
@@ -599,6 +604,26 @@ export const useWorkflow = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleEdgeDeleteByDeleteBranch = useCallback((nodeId: string, branchId: string) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
+    const {
+      edges,
+      setEdges,
+    } = store.getState()
+    const newEdges = produce(edges, (draft) => {
+      const index = draft.findIndex(edge => edge.source === nodeId && edge.sourceHandle === branchId)
+
+      if (index > -1)
+        draft.splice(index, 1)
+    })
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+  }, [store, handleSyncWorkflowDraft])
+
   const handleEdgeDelete = useCallback(() => {
     const { runningStatus } = useStore.getState()
 
@@ -670,6 +695,7 @@ export const useWorkflow = () => {
 
     handleEdgeEnter,
     handleEdgeLeave,
+    handleEdgeDeleteByDeleteBranch,
     handleEdgeDelete,
     handleEdgesChange,
 
