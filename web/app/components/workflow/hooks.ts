@@ -112,7 +112,6 @@ export const useWorkflow = () => {
             speech_to_text: features.speech2text,
             retriever_resource: features.citation,
             sensitive_word_avoidance: features.moderation,
-            annotation_reply: features.annotation,
           },
         },
       }).then((res) => {
@@ -156,7 +155,8 @@ export const useWorkflow = () => {
 
   const handleSetViewport = useCallback((viewPort: Viewport) => {
     reactFlow.setViewport(viewPort)
-  }, [reactFlow])
+    handleSyncWorkflowDraft()
+  }, [reactFlow, handleSyncWorkflowDraft])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
     const {
@@ -854,6 +854,7 @@ export const useWorkflow = () => {
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
+  const reactflow = useReactFlow()
 
   const run = useCallback((params: any, callback?: IOtherOptions) => {
     const {
@@ -890,10 +891,22 @@ export const useWorkflowRun = () => {
           useStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
         },
         onNodeStarted: ({ data }) => {
-          const newNodes = produce(getNodes(), (draft) => {
-            const currentNode = draft.find(node => node.id === data.node_id)!
-
-            currentNode.data._runningStatus = NodeRunningStatus.Running
+          const nodes = getNodes()
+          const {
+            getViewport,
+            setViewport,
+          } = reactflow
+          const viewport = getViewport()
+          const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
+          const position = nodes[currentNodeIndex].position
+          const zoom = 1
+          setViewport({
+            zoom,
+            x: 200 / viewport.zoom - position.x,
+            y: 200 / viewport.zoom - position.y,
+          })
+          const newNodes = produce(nodes, (draft) => {
+            draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
           })
           setNodes(newNodes)
         },
@@ -908,7 +921,7 @@ export const useWorkflowRun = () => {
         ...callback,
       },
     )
-  }, [store])
+  }, [store, reactflow])
 
   return run
 }

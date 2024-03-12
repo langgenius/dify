@@ -23,15 +23,6 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
   config?: any
 }
 
-export type AnnotationReply = EnabledOrDisabled & {
-  id?: string
-  score_threshold?: number
-  embedding_model?: {
-    embedding_model_name: string
-    embedding_provider_name: string
-  }
-}
-
 export enum FeatureEnum {
   opening = 'opening',
   suggested = 'suggested',
@@ -39,7 +30,6 @@ export enum FeatureEnum {
   speech2text = 'speech2text',
   citation = 'citation',
   moderation = 'moderation',
-  annotation = 'annotation',
 }
 
 export type Features = {
@@ -49,7 +39,6 @@ export type Features = {
   [FeatureEnum.speech2text]: SpeechToText
   [FeatureEnum.citation]: RetrieverResource
   [FeatureEnum.moderation]: SensitiveWordAvoidance
-  [FeatureEnum.annotation]: AnnotationReply
 }
 
 export type OnFeaturesChange = (features: Features) => void

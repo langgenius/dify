@@ -29,7 +29,7 @@ const FeaturePanel = ({
   }, [features])
 
   const showToolFeature = useMemo(() => {
-    return features.moderation.enabled || features.annotation.enabled
+    return features.moderation.enabled
   }, [features])
 
   return (

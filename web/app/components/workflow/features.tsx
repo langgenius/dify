@@ -41,10 +41,6 @@ const Features = () => {
           openingStatementProps={{
             onAutoAddPromptVariable: () => {},
           }}
-          annotationProps={{
-            onEmbeddingChange: () => {},
-            onScoreChange: () => {},
-          }}
         />
       </div>
     </div>

@@ -39,9 +39,6 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       moderation: {
         enabled: false,
       },
-      annotation: {
-        enabled: false,
-      },
     },
   }
   return createStore<FeatureStoreState>()(set => ({
