@@ -7,6 +7,7 @@ import Item from './condition-item'
 import type { Condition, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 
 type Props = {
+  nodeId: string
   className?: string
   readonly: boolean
   list: Condition[]
@@ -18,6 +19,7 @@ type Props = {
 const ConditionList: FC<Props> = ({
   className,
   readonly,
+  nodeId,
   list,
   onChange,
   logicalOperator,
@@ -50,6 +52,7 @@ const ConditionList: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       <Item
         readonly={readonly}
+        nodeId={nodeId}
         payload={list[0]}
         onChange={handleItemChange(0)}
         canRemove={canRemove}
@@ -63,6 +66,7 @@ const ConditionList: FC<Props> = ({
             <Item
               key={item.id}
               readonly={readonly}
+              nodeId={nodeId}
               payload={item}
               onChange={handleItemChange(i + 1)}
               canRemove={canRemove}

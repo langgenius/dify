@@ -33,6 +33,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
             <ConditionList
               className='mt-2'
               readonly={readOnly}
+              nodeId={id}
               list={inputs.conditions}
               onChange={handleConditionsChange}
               logicalOperator={inputs.logical_operator}

@@ -11,6 +11,7 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 
 type Props = {
   readOnly: boolean
+  nodeId: string
   schema: CredentialFormSchema[]
   value: ToolVarInput[]
   onChange: (value: ToolVarInput[]) => void
@@ -18,6 +19,7 @@ type Props = {
 
 const InputVarList: FC<Props> = ({
   readOnly,
+  nodeId,
   schema,
   value,
   onChange,
@@ -72,6 +74,7 @@ const InputVarList: FC<Props> = ({
               <VarReferencePicker
                 readonly={readOnly}
                 isShowNodeName
+                nodeId={nodeId}
                 value={varInput?.value_selector || []} // TODO: support constant value
                 onChange={handleChange(variable)}
               />

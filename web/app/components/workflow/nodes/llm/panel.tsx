@@ -134,6 +134,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         >
           <VarList
             readonly={readOnly}
+            nodeId={id}
             list={inputs.variables}
             onChange={handleVarListChange}
           />
@@ -146,6 +147,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         >
           <VarReferencePicker
             readonly={readOnly}
+            nodeId={id}
             isShowNodeName
             value={inputs.context?.variable_selector || []}
             onChange={handleContextVarChange}

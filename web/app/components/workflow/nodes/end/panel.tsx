@@ -80,6 +80,7 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
               === EndVarType.structured
               ? (
                 <VarList
+                  nodeId={id}
                   readonly={readOnly}
                   list={outputs.structured_variables!}
                   onChange={handleVarListChange}
@@ -88,6 +89,7 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
               : (
                 <VarReferencePicker
                   isShowNodeName
+                  nodeId={id}
                   readonly={readOnly}
                   value={outputs.plain_text_selector!}
                   onChange={handelPlainTextSelectorChange}

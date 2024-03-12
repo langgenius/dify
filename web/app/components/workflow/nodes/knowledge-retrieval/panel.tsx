@@ -45,6 +45,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           title={t(`${i18nPrefix}.queryVariable`)}
         >
           <VarReferencePicker
+            nodeId={id}
             readonly={readOnly}
             isShowNodeName
             value={inputs.query_variable_selector}

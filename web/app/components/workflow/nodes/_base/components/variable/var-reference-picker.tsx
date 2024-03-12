@@ -13,9 +13,11 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useWorkflow } from '@/app/components/workflow/hooks'
 
 type Props = {
   className?: string
+  nodeId: string
   isShowNodeName: boolean
   readonly: boolean
   value: ValueSelector
@@ -35,12 +37,15 @@ export const getNodeInfoById = (id: string) => {
 }
 
 const VarReferencePicker: FC<Props> = ({
+  nodeId,
   readonly,
   className,
   isShowNodeName,
   value,
   onChange,
 }) => {
+  const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
+  // console.log(getBeforeNodesInSameBranch(nodeId), getTreeLeafNodes())
   const [open, setOpen] = useState(false)
   const hasValue = value.length > 0
   const node = hasValue ? getNodeInfoById(value[0]) : null

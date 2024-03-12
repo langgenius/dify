@@ -65,6 +65,7 @@ const getOperators = (type: string) => {
 
 type ItemProps = {
   readonly: boolean
+  nodeId: string
   payload: Condition
   onChange: (newItem: Condition) => void
   canRemove: boolean
@@ -76,6 +77,7 @@ type ItemProps = {
 
 const Item: FC<ItemProps> = ({
   readonly,
+  nodeId,
   payload,
   onChange,
   canRemove,
@@ -132,6 +134,7 @@ const Item: FC<ItemProps> = ({
 
       <div className='flex items-center space-x-1'>
         <VarReferencePicker
+          nodeId={nodeId}
           readonly={readonly}
           isShowNodeName
           className='grow'

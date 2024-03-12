@@ -64,6 +64,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         >
           <VarList
             readonly={readOnly}
+            nodeId={id}
             list={inputs.variables}
             onChange={handleVarListChange}
           />

@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
             >
               <InputVarList
                 readOnly={readOnly}
+                nodeId={id}
                 schema={toolInputVarSchema as any}
                 value={inputs.tool_inputs}
                 onChange={setInputVar}

@@ -48,6 +48,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           <VarReferencePicker
             readonly={readOnly}
             isShowNodeName
+            nodeId={id}
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
           />

@@ -7,12 +7,14 @@ import VarReferencePicker from './var-reference-picker'
 import type { ValueSelector, Variable } from '@/app/components/workflow/types'
 
 type Props = {
+  nodeId: string
   readonly: boolean
   list: Variable[]
   onChange: (list: Variable[]) => void
 }
 
 const VarList: FC<Props> = ({
+  nodeId,
   readonly,
   list,
   onChange,
@@ -57,6 +59,7 @@ const VarList: FC<Props> = ({
             className='w-[120px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
             type='text' />
           <VarReferencePicker
+            nodeId={nodeId}
             readonly={readonly}
             isShowNodeName
             className='grow'

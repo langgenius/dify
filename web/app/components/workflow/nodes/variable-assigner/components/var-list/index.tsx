@@ -9,12 +9,14 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 
 type Props = {
   readonly: boolean
+  nodeId: string
   list: ValueSelector[]
   onChange: (list: ValueSelector[]) => void
 }
 
 const VarList: FC<Props> = ({
   readonly,
+  nodeId,
   list,
   onChange,
 }) => {
@@ -51,6 +53,7 @@ const VarList: FC<Props> = ({
         <div className='flex items-center space-x-1' key={index}>
           <VarReferencePicker
             readonly={readonly}
+            nodeId={nodeId}
             isShowNodeName
             className='grow'
             value={item}
