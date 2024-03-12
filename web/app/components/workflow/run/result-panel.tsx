@@ -17,6 +17,7 @@ type ResultPanelProps = {
   created_by: string
   finished_at?: number
   steps: number
+  showSteps?: boolean
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -30,6 +31,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   created_at,
   created_by,
   steps,
+  showSteps,
 }) => {
   return (
     <div className='bg-white py-2'>
@@ -46,7 +48,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           readOnly
           title={<div>INPUT</div>}
           language={CodeLanguage.json}
-          value={inputs || ''}
+          value={JSON.stringify(inputs)}
           onChange={() => {}}
         />
         {process_data && (
@@ -54,7 +56,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             readOnly
             title={<div>PROCESS DATA</div>}
             language={CodeLanguage.json}
-            value={process_data}
+            value={JSON.stringify(process_data)}
             onChange={() => {}}
           />
         )}
@@ -63,7 +65,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             readOnly
             title={<div>OUTPUT</div>}
             language={CodeLanguage.json}
-            value={outputs}
+            value={JSON.stringify(outputs)}
             onChange={() => {}}
           />
         )}
@@ -79,6 +81,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           time={elapsed_time}
           tokens={total_tokens}
           steps={steps}
+          showSteps={showSteps}
         />
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import cn from 'classnames'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
@@ -6,7 +7,7 @@ import { WorkflowRunningStatus } from '../types'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore as useRunHistoryStore } from '@/app/components/workflow/store'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchWorkflowRunHistory } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
@@ -14,6 +15,7 @@ import Loading from '@/app/components/base/loading'
 const RunHistory = () => {
   const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
+  const workflowRunId = useRunHistoryStore(state => state.workflowRunId)
   const { data, isLoading } = useSWR(appDetail ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
 
   if (!appDetail)
@@ -25,7 +27,7 @@ const RunHistory = () => {
         {t('workflow.common.runHistory')}
         <div
           className='flex items-center justify-center w-6 h-6 cursor-pointer'
-          onClick={() => useStore.setState({ showRunHistory: false })}
+          onClick={() => useRunHistoryStore.setState({ showRunHistory: false })}
         >
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
@@ -42,8 +44,11 @@ const RunHistory = () => {
           data?.data.map(item => (
             <div
               key={item.id}
-              className='flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer'
-              onClick={() => useStore.setState({ workflowRunId: item.id })}
+              className={cn(
+                'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
+                item.id === workflowRunId && 'bg-primary-50',
+              )}
+              onClick={() => useRunHistoryStore.setState({ workflowRunId: item.id, runningStatus: item.status as WorkflowRunningStatus })}
             >
               {
                 appDetail?.mode === 'workflow' && item.status === WorkflowRunningStatus.Failed && (
@@ -56,7 +61,12 @@ const RunHistory = () => {
                 )
               }
               <div>
-                <div className='flex items-center text-[13px] font-medium text-primary-600 leading-[18px]'>
+                <div
+                  className={cn(
+                    'flex items-center text-[13px] font-medium leading-[18px]',
+                    item.id === workflowRunId && 'text-primary-600',
+                  )}
+                >
                   Test Run#{item.sequence_number}
                 </div>
                 <div className='flex items-center text-xs text-gray-500 leading-[18px]'>

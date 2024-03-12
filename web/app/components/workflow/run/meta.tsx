@@ -11,6 +11,7 @@ type Props = {
   time?: number
   tokens?: number
   steps?: number
+  showSteps?: boolean
 }
 
 const MetaData: FC<Props> = ({
@@ -20,6 +21,7 @@ const MetaData: FC<Props> = ({
   time,
   tokens,
   steps = 1,
+  showSteps = true,
 }) => {
   const { t } = useTranslation()
 
@@ -73,7 +75,7 @@ const MetaData: FC<Props> = ({
               <div className='my-[5px] w-[72px] h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{`${time}s`}</span>
+              <span>{`${time?.toFixed(3)}s`}</span>
             )}
           </div>
         </div>
@@ -88,7 +90,7 @@ const MetaData: FC<Props> = ({
             )}
           </div>
         </div>
-        {steps > 0 && (
+        {showSteps && (
           <div className='flex'>
             <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>{t('runLog.meta.steps')}</div>
             <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>

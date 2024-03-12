@@ -30,7 +30,7 @@ const StatusPanel: FC<ResultProps> = ({
       )}
     >
       <div className='flex'>
-        <div className='mr-24'>
+        <div className='flex-[33%] max-w-[120px]'>
           <div className='text-xs leading-[18px] font-medium text-gray-400'>{t('runLog.resultPanel.status')}</div>
           <div
             className={cn(
@@ -64,18 +64,18 @@ const StatusPanel: FC<ResultProps> = ({
             )}
           </div>
         </div>
-        <div className='mr-24'>
+        <div className='flex-[33%] max-w-[152px]'>
           <div className='text-xs leading-[18px] font-medium text-gray-400'>{t('runLog.resultPanel.time')}</div>
           <div className='flex items-center gap-1 h-[18px] text-gray-700 text-xs leading-3 font-semibold'>
             {status === 'running' && (
               <div className='w-16 h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{`${time}s`}</span>
+              <span>{`${time?.toFixed(3)}s`}</span>
             )}
           </div>
         </div>
-        <div className='mr-24'>
+        <div className='flex-[33%]'>
           <div className='text-xs leading-[18px] font-medium text-gray-400'>{t('runLog.resultPanel.tokens')}</div>
           <div className='flex items-center gap-1 h-[18px] text-gray-700 text-xs leading-3 font-semibold'>
             {status === 'running' && (
