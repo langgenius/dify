@@ -29,10 +29,10 @@ class ExcelExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         """Load from file path."""
         data = []
-        keys = []
         wb = load_workbook(filename=self._file_path, read_only=True)
         # loop over all sheets
         for sheet in wb:
+            keys = []
             if 'A1:A1' == sheet.calculate_dimension():
                 sheet.reset_dimensions()
             for row in sheet.iter_rows(values_only=True):
