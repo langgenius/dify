@@ -37,6 +37,9 @@
 
 You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free requests to OpenAI GPT-3.5.
 
+### Looking to purchase via AWS?
+Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. 
+
 ## Dify vs. LangChain vs. Assistants API
 
 | Feature | Dify.AI | Assistants API | LangChain |
