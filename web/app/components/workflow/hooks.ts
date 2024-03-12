@@ -340,11 +340,12 @@ export const useWorkflow = () => {
       return
 
     const newNodes = produce(nodes, (draft) => {
-      draft.forEach(node => node.data.selected = false)
-      const selectedNode = draft.find(node => node.id === nodeId)!
-
-      if (!cancelSelection && selectedNode)
-        selectedNode.data.selected = true
+      draft.forEach((node) => {
+        if (node.id === nodeId)
+          node.data.selected = !cancelSelection
+        else
+          node.data.selected = false
+      })
     })
     setNodes(newNodes)
     handleSyncWorkflowDraft()

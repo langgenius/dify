@@ -50,7 +50,7 @@ export const NodeTargetHandle = ({
         type='target'
         position={Position.Left}
         className={`
-          !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
+          !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]
           after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-primary-500
           ${!connected && 'after:opacity-0'}
           ${data.type === BlockEnum.Start && 'opacity-0'}
@@ -111,7 +111,7 @@ export const NodeSourceHandle = ({
         type='source'
         position={Position.Right}
         className={`
-          !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none !translate-y-0 z-[1]
+          !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]
           after:absolute after:w-0.5 after:h-2 after:right-1.5 after:top-1 after:bg-primary-500
           ${!connected && 'after:opacity-0'}
           ${handleClassName}

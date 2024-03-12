@@ -5,6 +5,7 @@ import {
   useMemo,
 } from 'react'
 import useSWR from 'swr'
+import { setAutoFreeze } from 'immer'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
   Background,
@@ -64,6 +65,14 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const runningStatus = useStore(s => s.runningStatus)
+
+  useEffect(() => {
+    setAutoFreeze(false)
+
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
 
   const {
     handleSyncWorkflowDraft,

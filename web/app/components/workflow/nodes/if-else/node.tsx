@@ -9,7 +9,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
-  const { id, data } = props
+  const { data } = props
   const { t } = useTranslation()
   const { conditions, logical_operator } = data
 
@@ -20,7 +20,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         <NodeSourceHandle
           {...props}
           handleId='true'
-          handleClassName='!top-1 !-right-[21px]'
+          handleClassName='!top-1/2 !-right-[21px] !-translate-y-1/2'
         />
       </div>
       <div className='mb-0.5 leading-4 text-[10px] font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conditions`)}</div>
@@ -44,7 +44,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
         <NodeSourceHandle
           {...props}
           handleId='false'
-          handleClassName='!top-1 !-right-[21px]'
+          handleClassName='!top-1/2 !-right-[21px] !-translate-y-1/2'
         />
       </div>
     </div>
