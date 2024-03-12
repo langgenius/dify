@@ -42,7 +42,7 @@ const Panel: FC<NodePanelProps<DirectAnswerNodeType>> = ({
       </Field>
       <Split />
       <Editor
-        title={t(`${i18nPrefix}.answer`)}
+        title={t(`${i18nPrefix}.answer`)!}
         value={inputs.answer}
         onChange={handleAnswerChange}
         variables={inputs.variables.map(item => item.variable)}

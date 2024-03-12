@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useWorkflow } from '@/app/components/workflow/hooks'
 import type { CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { singleNodeRun } from '@/service/workflow'
 
 type Params<T> = {
   id: string
@@ -11,6 +13,9 @@ type Params<T> = {
 }
 
 const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => true }: Params<T>) => {
+  const appId = useAppStore.getState().appDetail?.id
+  const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
+
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useWorkflow()
   const isShowSingleRun = data._isSingleRun
   const hideSingleRun = () => {
@@ -22,22 +27,31 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
       },
     })
   }
-
-  const [runningStatus, setRunningStatus] = useState('un started')
-  const handleRun = () => {
-    // console.log(runInputData)
-    if (isInvalid())
+  const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
+  const handleRun = async () => {
+    if (!isInvalid())
       return
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _singleRunningStatus: NodeRunningStatus.Running,
+      },
+    })
 
-    setRunningStatus('running')
+    const res = await singleNodeRun(appId!, id, { inputs: runInputData })
+    console.log(res)
   }
 
   const handleStop = () => {
-    setRunningStatus('not started')
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _singleRunningStatus: NodeRunningStatus.NotStart,
+      },
+    })
   }
-
-  // TODO: store to node
-  const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
 
   const toVarInputs = (variables: Variable[]): InputVar[] => {
     if (!variables)
@@ -64,7 +78,6 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
     runningStatus,
     handleRun,
     handleStop,
-    setRunningStatus,
     runInputData,
     setRunInputData,
   }

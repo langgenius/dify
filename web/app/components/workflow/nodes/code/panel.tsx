@@ -112,6 +112,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           onStop={handleStop}
         />
       )}
+
     </div>
   )
 }

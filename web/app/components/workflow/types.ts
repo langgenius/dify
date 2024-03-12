@@ -28,6 +28,7 @@ export type CommonNodeType<T = {}> = {
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
+  _singleRunningStatus?: NodeRunningStatus
   selected?: boolean
   title: string
   desc: string
@@ -158,6 +159,7 @@ export enum WorkflowRunningStatus {
 }
 
 export enum NodeRunningStatus {
+  NotStart = 'not-start',
   Waiting = 'waiting',
   Running = 'running',
   Succeeded = 'succeeded',

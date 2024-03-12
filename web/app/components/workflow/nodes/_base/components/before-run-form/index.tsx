@@ -9,6 +9,7 @@ import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -17,7 +18,7 @@ type BeforeRunFormProps = {
   onHide: () => void
   onRun: () => void
   onStop: () => void
-  runningStatus: string // todo: wait for enum
+  runningStatus: NodeRunningStatus
   result?: JSX.Element
   forms: FormProps[]
 }
@@ -32,8 +33,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const isFinished = runningStatus === 'finished'
-  const isRunning = runningStatus === 'running'
+  const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
+  const isRunning = runningStatus === NodeRunningStatus.Running
   return (
     <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{
       backgroundColor: 'rgba(16, 24, 40, 0.20)',

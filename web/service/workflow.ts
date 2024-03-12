@@ -21,3 +21,7 @@ export const fetchNodesDefaultConfigs: Fetcher<any, string> = (url) => {
 export const fetchWorkflowRunHistory: Fetcher<WorkflowRunHistoryResponse, string> = (url) => {
   return get<WorkflowRunHistoryResponse>(url)
 }
+
+export const singleNodeRun = (appId: string, nodeId: string, params: object) => {
+  return post(`apps/${appId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
+}

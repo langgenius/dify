@@ -91,7 +91,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             {data.title}
           </div>
           {
-            data._runningStatus === NodeRunningStatus.Running && (
+            (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
               <Loading02 className='w-3.5 h-3.5 text-primary-600 animate-spin' />
             )
           }
