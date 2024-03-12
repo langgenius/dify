@@ -1,28 +1,28 @@
 const translation = {
-  title: 'Retrieval Testing',
-  desc: 'Test the hitting effect of the Knowledge based on the given query text.',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Recents',
+  title: 'Test de Récupération',
+  desc: 'Testez l\'effet d\'impact de la Connaissance basée sur le texte de la requête donnée.',
+  dateTimeFormat: 'JJ/MM/AAAA hh:mm A',
+  recents: 'Récents',
   table: {
     header: {
       source: 'Source',
-      text: 'Text',
-      time: 'Time',
+      text: 'Texte',
+      time: 'Temps',
     },
   },
   input: {
-    title: 'Source text',
-    placeholder: 'Please enter a text, a short declarative sentence is recommended.',
-    countWarning: 'Up to 200 characters.',
-    indexWarning: 'High quality Knowledge only.',
-    testing: 'Testing',
+    title: 'Texte source',
+    placeholder: 'Veuillez entrer un texte, une phrase déclarative courte est recommandée.',
+    countWarning: 'Jusqu\'à 200 caractères.',
+    indexWarning: 'Connaissances de haute qualité uniquement.',
+    testing: 'Test',
   },
   hit: {
-    title: 'RETRIEVAL PARAGRAPHS',
-    emptyTip: 'Retrieval Testing results will show here',
+    title: 'PARAGRAPHES DE RÉCUPÉRATION',
+    emptyTip: 'Les résultats des tests de récupération s\'afficheront ici',
   },
-  noRecentTip: 'No recent query results here',
-  viewChart: 'View VECTOR CHART',
+  noRecentTip: 'Aucun résultat de requête récent ici',
+  viewChart: 'Voir GRAPHIQUE VECTORIEL',
 }
 
 export default translation
