@@ -12,7 +12,7 @@ class NodeType(Enum):
     """
     START = 'start'
     END = 'end'
-    DIRECT_ANSWER = 'direct-answer'
+    ANSWER = 'answer'
     LLM = 'llm'
     KNOWLEDGE_RETRIEVAL = 'knowledge-retrieval'
     IF_ELSE = 'if-else'

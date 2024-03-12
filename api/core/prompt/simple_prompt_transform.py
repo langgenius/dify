@@ -13,6 +13,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import AppMode
@@ -182,6 +183,11 @@ class SimplePromptTransform(PromptTransform):
         if memory:
             prompt_messages = self._append_chat_histories(
                 memory=memory,
+                memory_config=MemoryConfig(
+                    window=MemoryConfig.WindowConfig(
+                        enabled=False,
+                    )
+                ),
                 prompt_messages=prompt_messages,
                 model_config=model_config
             )
@@ -220,6 +226,11 @@ class SimplePromptTransform(PromptTransform):
             rest_tokens = self._calculate_rest_token([tmp_human_message], model_config)
             histories = self._get_history_messages_from_memory(
                 memory=memory,
+                memory_config=MemoryConfig(
+                    window=MemoryConfig.WindowConfig(
+                        enabled=False,
+                    )
+                ),
                 max_token_limit=rest_tokens,
                 ai_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
                 human_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'

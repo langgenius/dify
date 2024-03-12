@@ -5,14 +5,14 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import ValueType, VariablePool
+from core.workflow.nodes.answer.entities import AnswerNodeData
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.direct_answer.entities import DirectAnswerNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class DirectAnswerNode(BaseNode):
-    _node_data_cls = DirectAnswerNodeData
-    node_type = NodeType.DIRECT_ANSWER
+class AnswerNode(BaseNode):
+    _node_data_cls = AnswerNodeData
+    node_type = NodeType.ANSWER
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
