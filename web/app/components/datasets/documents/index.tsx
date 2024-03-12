@@ -204,7 +204,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         <p className={s.desc}>{t('datasetDocuments.list.desc')}</p>
       </div>
       <div className='flex flex-col px-6 py-4 flex-1'>
-        <div className='flex items-center justify-between flex-wrap gap-y-2 '>
+        <div className='flex items-center justify-between flex-wrap'>
           <Input
             showPrefix
             wrapperClassName='!w-[200px]'
@@ -212,7 +212,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onChange={debounce(setSearchValue, 500)}
             value={searchValue}
           />
-          <div className='flex gap-2'>
+          <div className='flex gap-2 justify-center items-center'>
             <div className={classNames('inline-flex justify-center items-center gap-2', s.retryBtn)}>
               <WarningIcon />
               <span className='flex shrink-0'>3 docs embeddings failed</span>
