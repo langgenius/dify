@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   Fragment,
   memo,
+  useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +11,7 @@ import {
   useViewport,
 } from 'reactflow'
 import { useWorkflow } from '../hooks'
+import { useStore } from '../store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -29,6 +31,7 @@ const ZoomInOut: FC = () => {
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useWorkflow()
   const [open, setOpen] = useState(false)
+  const runningStatus = useStore(s => s.runningStatus)
 
   const ZOOM_IN_OUT_OPTIONS = [
     [
@@ -60,6 +63,8 @@ const ZoomInOut: FC = () => {
   ]
 
   const handleZoom = (type: string) => {
+    if (runningStatus)
+      return
     if (type === 'in')
       zoomIn()
 
@@ -78,6 +83,12 @@ const ZoomInOut: FC = () => {
     handleSyncWorkflowDraft()
   }
 
+  const handleTrigger = useCallback(() => {
+    if (runningStatus)
+      return
+    setOpen(v => !v)
+  }, [runningStatus])
+
   return (
     <PortalToFollowElem
       placement='top-start'
@@ -85,10 +96,11 @@ const ZoomInOut: FC = () => {
       onOpenChange={setOpen}
       offset={4}
     >
-      <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger asChild onClick={handleTrigger}>
         <div className={`
           flex items-center px-2 h-8 cursor-pointer text-[13px] hover:bg-gray-50 rounded-lg
           ${open && 'bg-gray-50'}
+          ${runningStatus && '!cursor-not-allowed'}
         `}>
           <SearchLg className='mr-1 w-4 h-4' />
           <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>

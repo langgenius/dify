@@ -121,16 +121,18 @@ const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
-        multiSelectionKeyCode={null}
         connectionLineComponent={CustomConnectionLine}
-        deleteKeyCode={null}
-        nodeDragThreshold={1}
         defaultViewport={viewport}
+        multiSelectionKeyCode={null}
+        deleteKeyCode={null}
         panOnDrag={!runningStatus}
         nodesDraggable={!runningStatus}
         nodesConnectable={!runningStatus}
         nodesFocusable={!runningStatus}
         edgesFocusable={!runningStatus}
+        zoomOnPinch={!runningStatus}
+        zoomOnScroll={!runningStatus}
+        zoomOnDoubleClick={!runningStatus}
       >
         <Background
           gap={[14, 14]}
@@ -204,7 +206,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     handleFetchCollectionList()
   }, [])
 
-  if (error && !error.bodyUsed && appDetail) {
+  if (error && error.json && !error.bodyUsed && appDetail) {
     error.json().then((err: any) => {
       if (err.code === 'draft_workflow_not_exist') {
         syncWorkflowDraft({
