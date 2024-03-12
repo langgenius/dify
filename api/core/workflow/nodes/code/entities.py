@@ -15,7 +15,6 @@ class CodeNodeData(BaseNodeData):
         children: Optional[dict[str, 'Output']]
 
     variables: list[VariableSelector]
-    answer: str
     code_language: Literal['python3', 'javascript']
     code: str
     outputs: dict[str, Output]
