@@ -22,8 +22,8 @@
 </p>
 
 <p align="center">
-   <a href="https://dify.ai/blog/dify-ai-unveils-ai-agent-creating-gpts-and-assistants-with-various-llms" target="_blank">
-   Dify.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
+   <a href="https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6" target="_blank">
+   📌 Check out Dify Premium on AWS and deploy it to your own AWS VPC with one-click.
   </a>
 </p>
 
