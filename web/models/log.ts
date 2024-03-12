@@ -1,5 +1,9 @@
+import type { Viewport } from 'reactflow'
 import type { VisionFile } from '@/types/app'
-
+import type {
+  Edge,
+  Node,
+} from '@/app/components/workflow/types'
 // Log type contains key:string conversation_id:string created_at:string quesiton:string answer:string
 export type Conversation = {
   id: string
@@ -269,10 +273,14 @@ export type WorkflowRunDetailResponse = {
   id: string
   sequence_number: number
   version: string
-  graph: any // TODO
-  inputs: any // json
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
+  inputs: string
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
-  outputs?: any // json
+  outputs?: string
   error?: string
   elapsed_time?: number
   total_tokens?: number

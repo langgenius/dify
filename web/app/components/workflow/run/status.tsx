@@ -5,7 +5,7 @@ import cn from 'classnames'
 import Indicator from '@/app/components/header/indicator'
 
 type ResultProps = {
-  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  status: string
   time?: number
   tokens?: number
   error?: string
