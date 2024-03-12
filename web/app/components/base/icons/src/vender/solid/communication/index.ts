@@ -1,4 +1,5 @@
 export { default as AiText } from './AiText'
+export { default as ChatBot } from './ChatBot'
 export { default as CuteRobote } from './CuteRobote'
 export { default as EditList } from './EditList'
 export { default as MessageDotsCircle } from './MessageDotsCircle'

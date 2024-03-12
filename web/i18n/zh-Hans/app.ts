@@ -25,6 +25,8 @@ const translation = {
     startFromTemplate: '从应用模版创建',
     captionAppType: '想要哪种应用类型？',
     chatbotDescription: '使用大型语言模型构建基于聊天的助手',
+    completionDescription: '构建一个根据提示生成高质量文本的应用程序，例如生成文章、摘要、翻译等。',
+    completionWarning: '该类型不久后将不再支持创建',
     agentDescription: '构建一个智能Agent，可以自主选择工具来完成任务',
     workflowDescription: 'Description text here',
     chatbotType: '聊天助手编排方法',

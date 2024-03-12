@@ -15,8 +15,9 @@ import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/line/communication'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/line/communication'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { HelpCircle, InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { getRedirection } from '@/utils/app-redirection'
@@ -85,9 +86,9 @@ const AppForm = ({
   return (
     <div className='overflow-y-auto'>
       {/* app type */}
-      <div className='py-2 px-8 w-[480px]'>
+      <div className='py-2 px-8 w-[520px]'>
         <div className='py-2 text-sm leading-[20px] font-medium text-gray-900'>{t('app.newApp.captionAppType')}</div>
-        <div className='flex gap-2'>
+        <div className='flex justify-between'>
           <TooltipPlus
             hideArrow
             popupContent={
@@ -96,7 +97,7 @@ const AppForm = ({
           >
             <div
               className={cn(
-                'relative grow w-[133px] px-2 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
                 showChatBotType && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
               )}
               onClick={() => {
@@ -112,12 +113,39 @@ const AppForm = ({
           <TooltipPlus
             hideArrow
             popupContent={
+              <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
+                <div className='text-gray-700'>{t('app.newApp.completionDescription')}</div>
+                <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
+                <div className='flex items-center text-[#dc6803]'>
+                  <AlertTriangle className='w-3 h-3 mr-1'/>
+                  <div>{t('app.newApp.completionWarning')}</div>
+                </div>
+              </div>
+            }
+          >
+            <div
+              className={cn(
+                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                appMode === 'agent-chat' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
+              )}
+              onClick={() => {
+                setAppMode('completion')
+                setShowChatBotType(false)
+              }}
+            >
+              <AiText className='w-6 h-6' />
+              <div className='h-5 text-sm font-medium leading-5'>{t('app.newApp.completeApp')}</div>
+            </div>
+          </TooltipPlus>
+          <TooltipPlus
+            hideArrow
+            popupContent={
               <div className='max-w-[280px] leading-[18px] text-xs text-gray-700'>{t('app.newApp.agentDescription')}</div>
             }
           >
             <div
               className={cn(
-                'relative grow w-[133px] px-2 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
                 appMode === 'agent-chat' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
               )}
               onClick={() => {
@@ -129,19 +157,33 @@ const AppForm = ({
               <div className='h-5 text-sm font-medium leading-5'>{t('app.types.agent')}</div>
             </div>
           </TooltipPlus>
-          <div
-            className={cn(
-              'relative grow flex-[30%] px-2 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
-              appMode === 'workflow' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
-            )}
-            onClick={() => {
-              setAppMode('workflow')
-              setShowChatBotType(false)
-            }}
+          <TooltipPlus
+            hideArrow
+            popupContent={
+              <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
+                <div className='text-gray-700'>{t('app.newApp.workflowDescription')}</div>
+                <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
+                <div className='flex items-center text-indigo-600'>
+                  <InfoCircle className='w-3 h-3 mr-1'/>
+                  <div>{t('app.newApp.completionWarning')}</div>
+                </div>
+              </div>
+            }
           >
-            <Route className='w-6 h-6' />
-            <div className='h-5 text-sm font-medium leading-5'>{t('app.types.workflow')}</div>
-          </div>
+            <div
+              className={cn(
+                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                appMode === 'workflow' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
+              )}
+              onClick={() => {
+                setAppMode('workflow')
+                setShowChatBotType(false)
+              }}
+            >
+              <Route className='w-6 h-6' />
+              <div className='h-5 text-sm font-medium leading-5'>{t('app.types.workflow')}</div>
+            </div>
+          </TooltipPlus>
         </div>
       </div>
       {showChatBotType && (

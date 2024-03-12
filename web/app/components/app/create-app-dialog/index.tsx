@@ -25,7 +25,7 @@ const CreateAppDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => 
       onClose={() => {}}
     >
       {/* blank form */}
-      <div className='shrink-0 flex flex-col max-w-[480px] h-full bg-white'>
+      <div className='shrink-0 flex flex-col max-w-[520px] h-full bg-white'>
         {/* Heading */}
         <div className='shrink-0 pl-8 pr-6 pt-6 pb-3 bg-white rounded-ss-xl text-xl leading-[30px] font-semibold text-gray-900 z-10'>{t('app.newApp.startFromBlank')}</div>
         {/* app form */}
