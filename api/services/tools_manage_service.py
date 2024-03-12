@@ -17,11 +17,12 @@ from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidatio
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolConfiguration
+from core.tools.utils.configuration import ToolConfigurationManager
 from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
+from services.model_provider_service import ModelProviderService
 
 
 class ToolManageService:
@@ -50,11 +51,13 @@ class ToolManageService:
             :param provider: the provider dict
         """
         url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                      + "/console/api/workspaces/current/tool-provider/builtin/")
+                      + "/console/api/workspaces/current/tool-provider/")
         
         if 'icon' in provider:
             if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
-                provider['icon'] = url_prefix + provider['name'] + '/icon'
+                provider['icon'] = url_prefix + 'builtin/' + provider['name'] + '/icon'
+            elif provider['type'] == UserToolProvider.ProviderType.MODEL.value:
+                provider['icon'] = url_prefix + 'model/' + provider['name'] + '/icon'
             elif provider['type'] == UserToolProvider.ProviderType.API.value:
                 try:
                     provider['icon'] = json.loads(provider['icon'])
@@ -74,7 +77,7 @@ class ToolManageService:
         provider_controller: ToolProviderController = ToolManager.get_builtin_provider(provider)
         tools = provider_controller.get_tools()
 
-        tool_provider_configurations = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_provider_configurations = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         # check if user has added the provider
         builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
             BuiltinToolProvider.tenant_id == tenant_id,
@@ -276,7 +279,7 @@ class ToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # encrypt credentials
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         encrypted_credentials = tool_configuration.encrypt_tool_credentials(credentials)
         db_provider.credentials_str = json.dumps(encrypted_credentials)
 
@@ -363,7 +366,7 @@ class ToolManageService:
             provider_controller = ToolManager.get_builtin_provider(provider_name)
             if not provider_controller.need_credentials:
                 raise ValueError(f'provider {provider_name} does not need credentials')
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
             # get original credentials if exists
             if provider is not None:
                 original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
@@ -447,7 +450,7 @@ class ToolManageService:
         provider_controller.load_bundled_tools(tool_bundles)
 
         # get original credentials if exists
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
 
         original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
         masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
@@ -487,7 +490,7 @@ class ToolManageService:
 
         # delete cache
         provider_controller = ToolManager.get_builtin_provider(provider_name)
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         tool_configuration.delete_tool_credentials_cache()
 
         return { 'result': 'success' }
@@ -504,6 +507,46 @@ class ToolManageService:
             icon_bytes = f.read()
 
         return icon_bytes, mime_type
+    
+    @staticmethod
+    def get_model_tool_provider_icon(
+        provider: str
+    ):
+        """
+            get tool provider icon and it's mimetype
+        """
+        
+        service = ModelProviderService()
+        icon_bytes, mime_type = service.get_model_provider_icon(provider=provider, icon_type='icon_small', lang='en_US')
+
+        if icon_bytes is None:
+            raise ValueError(f'provider {provider} does not exists')
+
+        return icon_bytes, mime_type
+    
+    @staticmethod
+    def list_model_tool_provider_tools(
+        user_id: str, tenant_id: str, provider: str
+    ):
+        """
+            list model tool provider tools
+        """
+        provider_controller = ToolManager.get_model_provider(tenant_id=tenant_id, provider_name=provider)
+        tools = provider_controller.get_tools(user_id=user_id, tenant_id=tenant_id)
+
+        result = [
+            UserTool(
+                author=tool.identity.author,
+                name=tool.identity.name,
+                label=tool.identity.label,
+                description=tool.description.human,
+                parameters=tool.parameters or []
+            ) for tool in tools
+        ]
+
+        return json.loads(
+            serialize_base_model_array(result)
+        )
     
     @staticmethod
     def delete_api_tool_provider(
@@ -589,7 +632,7 @@ class ToolManageService:
 
         # decrypt credentials
         if db_provider.id:
-            tool_configuration = ToolConfiguration(
+            tool_configuration = ToolConfigurationManager(
                 tenant_id=tenant_id, 
                 provider_controller=provider_controller
             )

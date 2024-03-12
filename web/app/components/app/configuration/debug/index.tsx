@@ -130,7 +130,7 @@ const Debug: FC<IDebug> = ({
 
   const { notify } = useContext(ToastContext)
   const logError = useCallback((message: string) => {
-    notify({ type: 'error', message })
+    notify({ type: 'error', message, duration: 3000 })
   }, [notify])
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
