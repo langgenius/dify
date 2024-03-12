@@ -14,20 +14,21 @@ import {
   Position,
   getConnectedEdges,
   getIncomers,
+  getOutgoers,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type {
-  BlockEnum,
-  Node,
-} from './types'
+import type { Node } from './types'
 import {
+  BlockEnum,
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from './types'
 import {
   NODES_EXTRA_DATA,
   NODES_INITIAL_DATA,
+  NODE_WIDTH_X_OFFSET,
+  Y_OFFSET,
 } from './constants'
 import { getLayoutByDagre } from './utils'
 import { useStore } from './store'
@@ -468,6 +469,8 @@ export const useWorkflow = () => {
     } = store.getState()
     const nodes = getNodes()
     const currentNode = nodes.find(node => node.id === currentNodeId)!
+    const outgoers = getOutgoers(currentNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
+    const lastOutgoer = outgoers[outgoers.length - 1]
     const nextNode: Node = {
       id: `${Date.now()}`,
       type: 'custom',
@@ -477,8 +480,8 @@ export const useWorkflow = () => {
         selected: true,
       },
       position: {
-        x: currentNode.position.x + 304,
-        y: currentNode.position.y,
+        x: lastOutgoer ? lastOutgoer.position.x : currentNode.position.x + NODE_WIDTH_X_OFFSET,
+        y: lastOutgoer ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET : currentNode.position.y,
       },
       targetPosition: Position.Left,
     }
@@ -501,6 +504,69 @@ export const useWorkflow = () => {
       draft.push(newEdge)
     })
     setEdges(newEdges)
+    handleSyncWorkflowDraft()
+  }, [store, nodesInitialData, handleSyncWorkflowDraft])
+
+  const handleNodeAddPrev = useCallback((
+    currentNodeId: string,
+    nodeType: BlockEnum,
+    targetHandle: string,
+    toolDefaultValue?: ToolDefaultValue,
+  ) => {
+    const { runningStatus } = useStore.getState()
+
+    if (runningStatus)
+      return
+
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNodeIndex = nodes.findIndex(node => node.id === currentNodeId)
+    const currentNode = nodes[currentNodeIndex]
+    const prevNode: Node = {
+      id: `${Date.now()}`,
+      type: 'custom',
+      data: {
+        ...nodesInitialData[nodeType],
+        ...(toolDefaultValue || {}),
+        selected: true,
+      },
+      position: {
+        x: currentNode.position.x,
+        y: currentNode.position.y,
+      },
+      targetPosition: Position.Left,
+    }
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node, index) => {
+        node.data.selected = false
+
+        if (index === currentNodeIndex)
+          node.position.x += NODE_WIDTH_X_OFFSET
+      })
+      draft.push(prevNode)
+    })
+    setNodes(newNodes)
+
+    if (prevNode.type !== BlockEnum.IfElse && prevNode.type !== BlockEnum.QuestionClassifier) {
+      const newEdge = {
+        id: `${prevNode.id}-${currentNode.id}`,
+        type: 'custom',
+        source: prevNode.id,
+        sourceHandle: 'source',
+        target: currentNode.id,
+        targetHandle,
+      }
+      const newEdges = produce(edges, (draft) => {
+        draft.push(newEdge)
+      })
+      setEdges(newEdges)
+    }
+
     handleSyncWorkflowDraft()
   }, [store, nodesInitialData, handleSyncWorkflowDraft])
 
@@ -691,6 +757,7 @@ export const useWorkflow = () => {
     handleNodeDelete,
     handleNodeDataUpdate,
     handleNodeAddNext,
+    handleNodeAddPrev,
     handleNodeChange,
 
     handleEdgeEnter,

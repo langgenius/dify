@@ -30,6 +30,7 @@ export const NodeTargetHandle = ({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
+  const { handleNodeAddPrev } = useWorkflow()
   const edges = useEdges()
   const connectedEdges = getConnectedEdges([{ id } as Node], edges)
   const connected = connectedEdges.find(edge => edge.targetHandle === handleId && edge.target === id)
@@ -42,6 +43,9 @@ export const NodeTargetHandle = ({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
+  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+    handleNodeAddPrev(id, type, handleId, toolDefaultValue)
+  }, [handleNodeAddPrev, id, handleId])
 
   return (
     <>
@@ -64,7 +68,7 @@ export const NodeTargetHandle = ({
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
-              onSelect={() => {}}
+              onSelect={handleSelect}
               asChild
               placement='left'
               triggerClassName={open => `

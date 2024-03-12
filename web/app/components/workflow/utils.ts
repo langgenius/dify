@@ -171,6 +171,6 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.Tool
 }
 
-export const getVariables = () => {
+export const getVariables = (currentNodeId: string) => {
 
 }

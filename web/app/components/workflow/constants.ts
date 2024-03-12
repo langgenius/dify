@@ -155,6 +155,7 @@ export const NODES_INITIAL_DATA = {
 
 export const NODE_WIDTH = 220
 export const X_OFFSET = 64
+export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
 export const TREE_DEEPTH = 20
 

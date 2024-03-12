@@ -33,24 +33,28 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
           readonly
         />
       )}
-      <div className='mt-2 space-y-0.5'>
-        {topics.map((topic, index) => (
-          <div
-            key={index}
-            className='relative'
-          >
-            <InfoPanel
-              title={`${t(`${i18nPrefix}.class`)} ${index + 1}`}
-              content={topic.name}
-            />
-            <NodeSourceHandle
-              {...props}
-              handleId={topic.id}
-              handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
-            />
+      {
+        !!topics.length && (
+          <div className='mt-2 space-y-0.5'>
+            {topics.map((topic, index) => (
+              <div
+                key={index}
+                className='relative'
+              >
+                <InfoPanel
+                  title={`${t(`${i18nPrefix}.class`)} ${index + 1}`}
+                  content={topic.name}
+                />
+                <NodeSourceHandle
+                  {...props}
+                  handleId={topic.id}
+                  handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )
+      }
     </div>
   )
 }

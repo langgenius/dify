@@ -106,12 +106,12 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
         </div>
-        <div className='mb-1'>
+        <div className='pb-1'>
           {cloneElement(children, { id, data })}
         </div>
         {
           data.desc && (
-            <div className='px-3 pt-s1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
+            <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
               {data.desc}
             </div>
           )

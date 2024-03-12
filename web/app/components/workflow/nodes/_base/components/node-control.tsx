@@ -4,21 +4,23 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useWorkflow } from '../../../hooks'
 import type { Node } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
-import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   Play,
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'>
 const NodeControl: FC<NodeControlProps> = ({
   id,
   data,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { handleNodeDataUpdate } = useWorkflow()
 
@@ -39,28 +41,28 @@ const NodeControl: FC<NodeControlProps> = ({
         onClick={e => e.stopPropagation()}
       >
         {
-          data._isSingleRun && (
-            <div className='flex items-center mr-1 px-1 h-5 rounded-md bg-primary-50 text-xs font-medium text-primary-600'>
-              <Loading02 className='mr-1 w-3 h-3 animate-spin' />
-              RUNNING
-            </div>
-          )
-        }
-        {
           canRunBySingle(data.type) && (
             <div
               className='flex items-center justify-center w-5 h-5 rounded-md cursor-pointer hover:bg-black/5'
               onClick={() => {
                 handleNodeDataUpdate({
                   id,
-                  data: { _isSingleRun: !data._isSingleRun },
+                  data: {
+                    _isSingleRun: !data._isSingleRun,
+                  },
                 })
               }}
             >
               {
                 data._isSingleRun
                   ? <Stop className='w-3 h-3' />
-                  : <Play className='w-3 h-3' />
+                  : (
+                    <TooltipPlus
+                      popupContent={t('workflow.panel.runThisStep')}
+                    >
+                      <Play className='w-3 h-3' />
+                    </TooltipPlus>
+                  )
               }
             </div>
           )
