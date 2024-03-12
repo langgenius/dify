@@ -41,6 +41,8 @@ const BasePanel: FC<BasePanelProps> = ({
     handleNodeDataUpdate,
   } = useWorkflow()
   const handleTitleChange = useCallback((title: string) => {
+    if (!title)
+      return
     handleNodeDataUpdate({ id, data: { ...data, title } })
   }, [handleNodeDataUpdate, id, data])
   const handleDescriptionChange = useCallback((desc: string) => {

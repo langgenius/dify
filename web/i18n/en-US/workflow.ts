@@ -21,6 +21,8 @@ const translation = {
     currentDraft: 'Current Draft',
     latestPublished: 'Latest Published',
     restore: 'Restore',
+    addTitle: 'Add title...',
+    addDescription: 'Add description...',
   },
   singleRun: {
     testRun: 'Test Run ',

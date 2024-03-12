@@ -43,7 +43,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         className={`
           group relative w-[240px] bg-[#fcfdff] shadow-xs
           border border-transparent rounded-[15px]
-          hover:shadow-lg
+          ${!data._runningStatus && 'hover:shadow-lg'}
           ${data._runningStatus === NodeRunningStatus.Running && '!border-primary-500'}
           ${data._runningStatus === NodeRunningStatus.Succeeded && '!border-[#12B76A]'}
           ${data._runningStatus === NodeRunningStatus.Failed && '!border-[#F04438]'}

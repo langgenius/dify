@@ -21,6 +21,8 @@ const translation = {
     currentDraft: '当前草稿',
     latestPublished: '最新发布',
     restore: '恢复',
+    addTitle: '添加标题...',
+    addDescription: '添加描述...',
   },
   singleRun: {
     testRun: '测试运行 ',

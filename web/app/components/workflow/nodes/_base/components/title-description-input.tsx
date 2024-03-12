@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import Textarea from 'rc-textarea'
+import { useTranslation } from 'react-i18next'
 
 type InputProps = {
   value: string
@@ -14,6 +15,8 @@ export const TitleInput = memo(({
   value,
   onChange,
 }: InputProps) => {
+  const { t } = useTranslation()
+
   return (
     <input
       value={value}
@@ -23,7 +26,7 @@ export const TitleInput = memo(({
         hover:bg-gray-50 
         focus:border-gray-300 focus:shadow-xs focus:bg-white caret-[#295EFF]
       `}
-      placeholder='Add title...'
+      placeholder={t('workflow.common.addTitle') || ''}
     />
   )
 })
@@ -33,6 +36,7 @@ export const DescriptionInput = memo(({
   value,
   onChange,
 }: InputProps) => {
+  const { t } = useTranslation()
   const [focus, setFocus] = useState(false)
   const handleFocus = useCallback(() => {
     setFocus(true)
@@ -60,7 +64,7 @@ export const DescriptionInput = memo(({
           appearance-none outline-none resize-none
           placeholder:text-gray-400 caret-[#295EFF]
         `}
-        placeholder='Add description...'
+        placeholder={t('workflow.common.addDescription') || ''}
         autoSize
       />
     </div>

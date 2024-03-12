@@ -171,6 +171,57 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.Tool
 }
 
-export const getVariables = (currentNodeId: string) => {
+export const getTreeLeafNodes = (nodes: Node[], edges: Edge[]) => {
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
+  if (!startNode)
+    return []
+
+  const list: Node[] = []
+  const preOrder = (root: Node, callback: (node: Node) => void) => {
+    const outgoers = getOutgoers(root, nodes, edges)
+
+    if (outgoers.length) {
+      outgoers.forEach((outgoer) => {
+        preOrder(outgoer, callback)
+      })
+    }
+    else {
+      callback(root)
+    }
+  }
+  preOrder(startNode, (node) => {
+    list.push(node)
+  })
+
+  return list
+}
+
+export const getBeforeNodesInSameBranch = (nodeId: string, targetHandle: string, nodes: Node[], edges: Edge[]) => {
+  const currentNode = nodes.find(node => node.id === nodeId)!
+  const list: Node[] = []
+
+  const traverse = (root: Node, callback: (node: Node) => void) => {
+    const connectedEdges = getConnectedEdges([root], edges)
+    const sourceEdge = connectedEdges.filter(edge => edge.targetHandle === targetHandle)
+    const sourceEdgeLength = sourceEdge.length
+
+    if (sourceEdgeLength === 1) {
+      const before = nodes.find(node => node.id === sourceEdge[0].source)
+
+      if (before) {
+        callback(before)
+        traverse(before, callback)
+      }
+    }
+  }
+  traverse(currentNode, (node) => {
+    list.push(node)
+  })
+
+  const length = list.length
+  if (length && list[length - 1].data.type === BlockEnum.Start)
+    return list.reverse()
+
+  return []
 }

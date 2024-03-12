@@ -30,7 +30,9 @@ import {
   NODE_WIDTH_X_OFFSET,
   Y_OFFSET,
 } from './constants'
-import { getLayoutByDagre } from './utils'
+import {
+  getLayoutByDagre,
+} from './utils'
 import { useStore } from './store'
 import type { ToolDefaultValue } from './block-selector/types'
 import { syncWorkflowDraft } from '@/service/workflow'
