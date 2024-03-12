@@ -27,7 +27,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputs.model.mode
       if (isModeChange)
-        draft.prompt = model.mode === 'chat' ? [{ role: PromptRole.system, text: '' }] : { text: '' }
+        draft.prompt_template = model.mode === 'chat' ? [{ role: PromptRole.system, text: '' }] : { text: '' }
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -65,7 +65,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.prompt = newPrompt
+      draft.prompt_template = newPrompt
     })
     setInputs(newInputs)
   }, [inputs, setInputs])

@@ -160,7 +160,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <ConfigPrompt
             readOnly={readOnly}
             isChatModel={isChatModel}
-            payload={inputs.prompt}
+            payload={inputs.prompt_template}
             variables={inputs.variables.map(item => item.variable)}
             onChange={handlePromptChange}
           />

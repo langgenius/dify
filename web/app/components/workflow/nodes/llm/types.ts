@@ -4,7 +4,7 @@ import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Va
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
   variables: Variable[]
-  prompt: PromptItem[] | PromptItem
+  prompt_template: PromptItem[] | PromptItem
   memory: Memory
   context: {
     enabled: boolean

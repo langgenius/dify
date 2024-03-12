@@ -12,7 +12,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       },
     },
     variables: [],
-    prompt: [{
+    prompt_template: [{
       role: PromptRole.system,
       text: '',
     }],
