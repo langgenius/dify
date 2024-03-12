@@ -15,6 +15,16 @@ MAX_STRING_LENGTH = 1000
 MAX_STRING_ARRAY_LENGTH = 30
 MAX_NUMBER_ARRAY_LENGTH = 1000
 
+JAVASCRIPT_DEFAULT_CODE = """function main({args1, args2}) {
+    return {
+        result: args1 + args2
+    }
+}"""
+
+PYTHON_DEFAULT_CODE = """def main(args1: int, args2: int) -> dict:
+    return {
+        "result": args1 + args2,
+    }"""
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
@@ -42,9 +52,7 @@ class CodeNode(BaseNode):
                         }
                     ],
                     "code_language": "javascript",
-                    "code": "async function main(arg1, arg2) {\n    return new Promise((resolve, reject) => {"
-                            "\n    	if (true) {\n	        resolve({\n	            \"result\": arg1 + arg2"
-                            "\n        	});\n        } else {\n        	reject(\"e\");\n    }\n    });\n}",
+                    "code": JAVASCRIPT_DEFAULT_CODE,
                     "outputs": [
                         {
                             "variable": "result",
@@ -68,8 +76,7 @@ class CodeNode(BaseNode):
                     }
                 ],
                 "code_language": "python3",
-                "code": "def main(\n    arg1: int,\n    arg2: int,\n) -> int:\n    return {\n        \"result\": arg1 "
-                        "+ arg2\n    }",
+                "code": PYTHON_DEFAULT_CODE,
                 "outputs": [
                     {
                         "variable": "result",

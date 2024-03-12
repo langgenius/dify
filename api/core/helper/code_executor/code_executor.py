@@ -4,6 +4,7 @@ from typing import Literal, Optional
 from httpx import post
 from pydantic import BaseModel
 from yarl import URL
+from core.helper.code_executor.javascript_transformer import NodeJsTemplateTransformer
 
 from core.helper.code_executor.jina2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python_transformer import PythonTemplateTransformer
@@ -39,17 +40,20 @@ class CodeExecutor:
             template_transformer = PythonTemplateTransformer
         elif language == 'jinja2':
             template_transformer = Jinja2TemplateTransformer
+        elif language == 'javascript':
+            template_transformer = NodeJsTemplateTransformer
         else:
             raise CodeExecutionException('Unsupported language')
 
         runner = template_transformer.transform_caller(code, inputs)
-
         url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'run'
         headers = {
             'X-Api-Key': CODE_EXECUTION_API_KEY
         }
         data = {
-            'language': language if language != 'jinja2' else 'python3',
+            'language': 'python3' if language == 'jinja2' else
+                        'nodejs' if language == 'javascript' else
+                        'python3' if language == 'python3' else None,
             'code': runner,
         }
 
