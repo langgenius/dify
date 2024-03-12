@@ -27,7 +27,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const { handleVarListChange: handleOutputVarListChange, handleAddVariable: handleAddOutputVariable } = useOutputVarList<CodeNodeType>({
+  const { handleVarsChange, handleAddVariable: handleAddOutputVariable } = useOutputVarList<CodeNodeType>({
     inputs,
     setInputs,
   })
@@ -68,7 +68,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     handleAddVariable,
     handleCodeChange,
     handleCodeLanguageChange,
-    handleOutputVarListChange,
+    handleVarsChange,
     handleAddOutputVariable,
     // single run
     isShowSingleRun,

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import produce from 'immer'
-import type { OutputVar } from '../../code/types'
+import { type OutputVar, OutputVarType } from '../../code/types'
 type Params<T> = {
   inputs: T
   setInputs: (newInputs: T) => void
@@ -11,25 +11,28 @@ function useOutputVarList<T>({
   setInputs,
   varKey = 'outputs',
 }: Params<T>) {
-  const handleVarListChange = useCallback((newList: OutputVar[]) => {
+  const handleVarsChange = useCallback((newVars: OutputVar) => {
     const newInputs = produce(inputs, (draft: any) => {
-      draft[varKey] = newList
+      draft[varKey] = newVars
     })
     setInputs(newInputs)
   }, [inputs, setInputs, varKey])
 
   const handleAddVariable = useCallback(() => {
     const newInputs = produce(inputs, (draft: any) => {
-      draft[varKey].push({
-        variable: '',
-        variable_type: 'string',
-      })
+      draft[varKey] = {
+        ...draft[varKey],
+        [`var-${Object.keys(draft[varKey]).length + 1}`]: {
+          type: OutputVarType.string,
+          children: null,
+        },
+      }
     })
     setInputs(newInputs)
   }, [inputs, setInputs, varKey])
 
   return {
-    handleVarListChange,
+    handleVarsChange,
     handleAddVariable,
   }
 }

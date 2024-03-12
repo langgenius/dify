@@ -2,45 +2,56 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
-import type { OutputVar } from '../../../code/types'
+import type { OutputVar, OutputVarType } from '../../../code/types'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
 
 type Props = {
   readonly: boolean
-  list: OutputVar[]
-  onChange: (list: OutputVar[]) => void
+  outputs: OutputVar
+  onChange: (payload: OutputVar) => void
 }
 
 const OutputVarList: FC<Props> = ({
   readonly,
-  list,
+  outputs,
   onChange,
 }) => {
+  const list = (Object.keys(outputs)).map((key) => {
+    return {
+      variable: key,
+      variable_type: outputs[key].type,
+    }
+  })
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newList = produce(list, (draft) => {
-        draft[index].variable = e.target.value
+      const oldKey = list[index].variable
+      const newOutputs = produce(outputs, (draft) => {
+        const newKey = e.target.value
+        draft[newKey] = draft[oldKey]
+        delete draft[oldKey]
       })
-      onChange(newList)
+      onChange(newOutputs)
     }
   }, [list, onChange])
 
-  const handleVarChange = useCallback((index: number) => {
+  const handleVarTypeChange = useCallback((index: number) => {
     return (value: string) => {
-      const newList = produce(list, (draft) => {
-        draft[index].variable_type = value
+      const key = list[index].variable
+      const newOutputs = produce(outputs, (draft) => {
+        draft[key].type = value as OutputVarType
       })
-      onChange(newList)
+      onChange(newOutputs)
     }
   }, [list, onChange])
 
   const handleVarRemove = useCallback((index: number) => {
     return () => {
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
+      const key = list[index].variable
+      const newOutputs = produce(outputs, (draft) => {
+        delete draft[key]
       })
-      onChange(newList)
+      onChange(newOutputs)
     }
   }, [list, onChange])
 
@@ -57,7 +68,7 @@ const OutputVarList: FC<Props> = ({
           <VarTypePicker
             readonly={readonly}
             value={item.variable_type}
-            onChange={handleVarChange(index)}
+            onChange={handleVarTypeChange(index)}
           />
           <RemoveButton
             className='!p-2 !bg-gray-100 hover:!bg-gray-200'

@@ -39,7 +39,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     handleAddVariable,
     handleCodeChange,
     handleCodeLanguageChange,
-    handleOutputVarListChange,
+    handleVarsChange,
     handleAddOutputVariable,
     // single run
     isShowSingleRun,
@@ -91,8 +91,8 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         >
           <OutputVarList
             readonly={readOnly}
-            list={inputs.outputs}
-            onChange={handleOutputVarListChange}
+            outputs={inputs.outputs}
+            onChange={handleVarsChange}
           />
         </Field>
       </div>

@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useWorkflow } from '@/app/components/workflow/hooks'
 import type { CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
 import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
+import Toast from '@/app/components/base/toast'
 
 type Params<T> = {
   id: string
@@ -13,6 +15,8 @@ type Params<T> = {
 }
 
 const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => true }: Params<T>) => {
+  const { t } = useTranslation()
+
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
 
@@ -38,9 +42,30 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
         _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
-
-    const res = await singleNodeRun(appId!, id, { inputs: runInputData })
-    console.log(res)
+    try {
+      const res = await singleNodeRun(appId!, id, { inputs: runInputData })
+    }
+    catch (e) {
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _singleRunningStatus: NodeRunningStatus.Failed,
+        },
+      })
+      return false
+    }
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _singleRunningStatus: NodeRunningStatus.Succeeded,
+      },
+    })
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.success'),
+    })
   }
 
   const handleStop = () => {
