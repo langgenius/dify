@@ -14,6 +14,7 @@ import type { WorkflowRunningStatus } from './types'
 type State = {
   mode: Mode
   taskId: string
+  currentSequenceNumber: number
   workflowRunId: string
   showRunHistory: boolean
   showFeaturesPanel: boolean
@@ -32,6 +33,7 @@ type State = {
 type Action = {
   setMode: (mode: Mode) => void
   setTaskId: (taskId: string) => void
+  setCurrentSequenceNumber: (currentSequenceNumber: number) => void
   setWorkflowRunId: (workflowRunId: string) => void
   setShowRunHistory: (showRunHistory: boolean) => void
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
@@ -51,6 +53,8 @@ export const useStore = create<State & Action>(set => ({
   mode: Mode.Editing,
   taskId: '',
   setTaskId: taskId => set(() => ({ taskId })),
+  currentSequenceNumber: 0,
+  setCurrentSequenceNumber: currentSequenceNumber => set(() => ({ currentSequenceNumber })),
   workflowRunId: '',
   setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
   setMode: mode => set(() => ({ mode })),

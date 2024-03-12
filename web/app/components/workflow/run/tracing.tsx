@@ -28,7 +28,7 @@ const Tracing: FC<TracingProps> = ({ runID }) => {
         url: `/apps/${appID}/workflow-runs/${runID}/node-executions`,
       })
       const collapseState = nodeList.map(node => node.status === 'succeeded')
-      setList(nodeList)
+      setList(nodeList.reverse())
       setCollapseState(collapseState)
       setLoading(false)
     }

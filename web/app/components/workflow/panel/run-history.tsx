@@ -48,7 +48,11 @@ const RunHistory = () => {
                 'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
                 item.id === workflowRunId && 'bg-primary-50',
               )}
-              onClick={() => useRunHistoryStore.setState({ workflowRunId: item.id, runningStatus: item.status as WorkflowRunningStatus })}
+              onClick={() => useRunHistoryStore.setState({
+                currentSequenceNumber: item.sequence_number,
+                workflowRunId: item.id,
+                runningStatus: item.status as WorkflowRunningStatus,
+              })}
             >
               {
                 appDetail?.mode === 'workflow' && item.status === WorkflowRunningStatus.Failed && (

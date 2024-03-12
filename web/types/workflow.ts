@@ -50,6 +50,7 @@ export type NodeTracingListResponse = {
 export type WorkflowStartedResponse = {
   task_id: string
   workflow_run_id: string
+  sequence_number: number
   event: string
   data: {
     id: string

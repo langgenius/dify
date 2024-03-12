@@ -21,7 +21,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
 
   const getTime = (time: number) => {
     if (time < 1)
-      return `${time * 1000} ms`
+      return `${(time * 1000).toFixed(3)} ms`
     if (time > 60)
       return `${parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
   }
@@ -53,7 +53,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
           />
           <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} />
           <div className='grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate' title={nodeInfo.title}>{nodeInfo.title}</div>
-          <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time)} · ${getTokenCount(nodeInfo.execution_metadata.total_tokens)} tokens`}</div>
+          <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time)} · ${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens`}</div>
           {nodeInfo.status === 'succeeded' && (
             <CheckCircle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#12B76A]' />
           )}
@@ -73,34 +73,45 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
         {!collapsed && (
           <div className='pb-2'>
             <div className='px-[10px] py-1'>
-              {/* ###TODO### no data */}
               {nodeInfo.status === 'stopped' && (
-                <div className='px-3 py-[10px] bg-[#fffaeb] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#dc6803] shadow-xs'>{t('workflow.tracing.stopBy', { user: 'Evan' })}</div>
+                <div className='px-3 py-[10px] bg-[#fffaeb] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#dc6803] shadow-xs'>{t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}</div>
               )}
               {nodeInfo.status === 'failed' && (
                 <div className='px-3 py-[10px] bg-[#fef3f2] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#d92d20] shadow-xs'>{nodeInfo.error}</div>
               )}
             </div>
             <div className='px-[10px] py-1'>
-              {/* ###TODO### value */}
               <CodeEditor
                 readOnly
                 title={<div>INPUT</div>}
                 language={CodeLanguage.json}
-                value={''}
+                value={JSON.stringify(nodeInfo.inputs)}
                 onChange={() => {}}
               />
             </div>
-            <div className='px-[10px] py-1'>
-              {/* ###TODO### value */}
-              <CodeEditor
-                readOnly
-                title={<div>OUTPUT</div>}
-                language={CodeLanguage.json}
-                value={''}
-                onChange={() => {}}
-              />
-            </div>
+            {/* ###TODO### conditions by type */}
+            {nodeInfo.process_data && (
+              <div className='px-[10px] py-1'>
+                <CodeEditor
+                  readOnly
+                  title={<div>PROCESS DATA</div>}
+                  language={CodeLanguage.json}
+                  value={JSON.stringify(nodeInfo.process_data)}
+                  onChange={() => {}}
+                />
+              </div>
+            )}
+            {nodeInfo.outputs && (
+              <div className='px-[10px] py-1'>
+                <CodeEditor
+                  readOnly
+                  title={<div>OUTPUT</div>}
+                  language={CodeLanguage.json}
+                  value={JSON.stringify(nodeInfo.outputs)}
+                  onChange={() => {}}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
