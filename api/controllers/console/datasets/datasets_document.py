@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from flask import request
@@ -883,35 +884,44 @@ class DocumentRecoverApi(DocumentResource):
         return {'result': 'success'}, 204
 
 
-
 class DocumentRetryApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id, document_id):
+    def post(self, dataset_id):
         """retry document."""
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('document_ids', type=list, required=True, nullable=False,
+                            location='json')
+        args = parser.parse_args()
         dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id)
-        if not dataset:
-            raise NotFound('Dataset not found.')
+        for document_id in args['document_ids']:
+            try:
+                document_id = str(document_id)
+                dataset = DatasetService.get_dataset(dataset_id)
+                if not dataset:
+                    raise NotFound('Dataset not found.')
 
-        document = DocumentService.get_document(dataset.id, document_id)
+                document = DocumentService.get_document(dataset.id, document_id)
 
-        # 404 if document not found
-        if document is None:
-            raise NotFound("Document Not Exists.")
+                # 404 if document not found
+                if document is None:
+                    raise NotFound("Document Not Exists.")
 
-        # 403 if document is archived
-        if DocumentService.check_archived(document):
-            raise ArchivedDocumentImmutableError()
+                # 403 if document is archived
+                if DocumentService.check_archived(document):
+                    raise ArchivedDocumentImmutableError()
 
-        # 400 if document is completed
-        if document.indexing_status == 'completed':
-            raise DocumentAlreadyFinishedError()
+                # 400 if document is completed
+                if document.indexing_status == 'completed':
+                    raise DocumentAlreadyFinishedError()
 
-        # retry document
-        DocumentService.retry_document(document)
+                # retry document
+                DocumentService.retry_document(document)
+            except Exception as e:
+                logging.error(f"Document {document_id} retry failed: {str(e)}")
+                continue
 
         return {'result': 'success'}, 204
 
@@ -941,3 +951,4 @@ api.add_resource(DocumentStatusApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/status/<string:action>')
 api.add_resource(DocumentPauseApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause')
 api.add_resource(DocumentRecoverApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume')
+api.add_resource(DocumentRetryApi, '/datasets/<uuid:dataset_id>/retry')
