@@ -7,9 +7,9 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base_node import BaseNode, UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.direct_answer.direct_answer_node import DirectAnswerNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
@@ -24,13 +24,12 @@ from extensions.ext_database import db
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionStatus,
-    WorkflowType,
 )
 
 node_classes = {
     NodeType.START: StartNode,
     NodeType.END: EndNode,
-    NodeType.DIRECT_ANSWER: DirectAnswerNode,
+    NodeType.ANSWER: AnswerNode,
     NodeType.LLM: LLMNode,
     NodeType.KNOWLEDGE_RETRIEVAL: KnowledgeRetrievalNode,
     NodeType.IF_ELSE: IfElseNode,
@@ -156,7 +155,7 @@ class WorkflowEngineManager:
                     callbacks=callbacks
                 )
 
-                if next_node.node_type == NodeType.END:
+                if next_node.node_type in [NodeType.END, NodeType.ANSWER]:
                     break
 
                 predecessor_node = next_node
@@ -402,10 +401,16 @@ class WorkflowEngineManager:
         # add to workflow_nodes_and_results
         workflow_run_state.workflow_nodes_and_results.append(workflow_nodes_and_result)
 
-        # run node, result must have inputs, process_data, outputs, execution_metadata
-        node_run_result = node.run(
-            variable_pool=workflow_run_state.variable_pool
-        )
+        try:
+            # run node, result must have inputs, process_data, outputs, execution_metadata
+            node_run_result = node.run(
+                variable_pool=workflow_run_state.variable_pool
+            )
+        except Exception as e:
+            node_run_result = NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(e)
+            )
 
         if node_run_result.status == WorkflowNodeExecutionStatus.FAILED:
             # node run failed
@@ -419,9 +424,6 @@ class WorkflowEngineManager:
                     )
 
             raise ValueError(f"Node {node.node_data.title} run failed: {node_run_result.error}")
-
-        # set end node output if in chat
-        self._set_end_node_output_if_in_chat(workflow_run_state, node, node_run_result)
 
         workflow_nodes_and_result.result = node_run_result
 
@@ -453,29 +455,6 @@ class WorkflowEngineManager:
 
         db.session.close()
 
-    def _set_end_node_output_if_in_chat(self, workflow_run_state: WorkflowRunState,
-                                        node: BaseNode,
-                                        node_run_result: NodeRunResult) -> None:
-        """
-        Set end node output if in chat
-        :param workflow_run_state: workflow run state
-        :param node: current node
-        :param node_run_result: node run result
-        :return:
-        """
-        if workflow_run_state.workflow_type == WorkflowType.CHAT and node.node_type == NodeType.END:
-            workflow_nodes_and_result_before_end = workflow_run_state.workflow_nodes_and_results[-2]
-            if workflow_nodes_and_result_before_end:
-                if workflow_nodes_and_result_before_end.node.node_type == NodeType.LLM:
-                    if not node_run_result.outputs:
-                        node_run_result.outputs = {}
-
-                    node_run_result.outputs['text'] = workflow_nodes_and_result_before_end.result.outputs.get('text')
-                elif workflow_nodes_and_result_before_end.node.node_type == NodeType.DIRECT_ANSWER:
-                    if not node_run_result.outputs:
-                        node_run_result.outputs = {}
-
-                    node_run_result.outputs['text'] = workflow_nodes_and_result_before_end.result.outputs.get('answer')
 
     def _append_variables_recursively(self, variable_pool: VariablePool,
                                       node_id: str,

@@ -30,17 +30,12 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    ImagePromptMessageContent,
-    PromptMessage,
-    PromptMessageContentType,
-    PromptMessageRole,
-    TextPromptMessageContent,
 )
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.moderation.output_moderation import ModerationRule, OutputModeration
-from core.prompt.simple_prompt_transform import ModelMode
+from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.tools.tool_file_manager import ToolFileManager
 from events.message_event import message_was_created
@@ -438,7 +433,10 @@ class EasyUIBasedGenerateTaskPipeline:
         self._message = db.session.query(Message).filter(Message.id == self._message.id).first()
         self._conversation = db.session.query(Conversation).filter(Conversation.id == self._conversation.id).first()
 
-        self._message.message = self._prompt_messages_to_prompt_for_saving(self._task_state.llm_result.prompt_messages)
+        self._message.message = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+            self._model_config.mode,
+            self._task_state.llm_result.prompt_messages
+        )
         self._message.message_tokens = usage.prompt_tokens
         self._message.message_unit_price = usage.prompt_unit_price
         self._message.message_price_unit = usage.prompt_price_unit
@@ -581,77 +579,6 @@ class EasyUIBasedGenerateTaskPipeline:
         :return:
         """
         return "data: " + json.dumps(response) + "\n\n"
-
-    def _prompt_messages_to_prompt_for_saving(self, prompt_messages: list[PromptMessage]) -> list[dict]:
-        """
-        Prompt messages to prompt for saving.
-        :param prompt_messages: prompt messages
-        :return:
-        """
-        prompts = []
-        if self._model_config.mode == ModelMode.CHAT.value:
-            for prompt_message in prompt_messages:
-                if prompt_message.role == PromptMessageRole.USER:
-                    role = 'user'
-                elif prompt_message.role == PromptMessageRole.ASSISTANT:
-                    role = 'assistant'
-                elif prompt_message.role == PromptMessageRole.SYSTEM:
-                    role = 'system'
-                else:
-                    continue
-
-                text = ''
-                files = []
-                if isinstance(prompt_message.content, list):
-                    for content in prompt_message.content:
-                        if content.type == PromptMessageContentType.TEXT:
-                            content = cast(TextPromptMessageContent, content)
-                            text += content.data
-                        else:
-                            content = cast(ImagePromptMessageContent, content)
-                            files.append({
-                                "type": 'image',
-                                "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
-                                "detail": content.detail.value
-                            })
-                else:
-                    text = prompt_message.content
-
-                prompts.append({
-                    "role": role,
-                    "text": text,
-                    "files": files
-                })
-        else:
-            prompt_message = prompt_messages[0]
-            text = ''
-            files = []
-            if isinstance(prompt_message.content, list):
-                for content in prompt_message.content:
-                    if content.type == PromptMessageContentType.TEXT:
-                        content = cast(TextPromptMessageContent, content)
-                        text += content.data
-                    else:
-                        content = cast(ImagePromptMessageContent, content)
-                        files.append({
-                            "type": 'image',
-                            "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
-                            "detail": content.detail.value
-                        })
-            else:
-                text = prompt_message.content
-
-            params = {
-                "role": 'user',
-                "text": text,
-            }
-
-            if files:
-                params['files'] = files
-
-            prompts.append(params)
-
-        return prompts
 
     def _init_output_moderation(self) -> Optional[OutputModeration]:
         """

@@ -1,6 +1,5 @@
-from typing import Optional
+from typing import Optional, Union
 
-from core.app.app_config.entities import AdvancedCompletionPromptTemplateEntity, PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -12,6 +11,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -22,11 +22,12 @@ class AdvancedPromptTransform(PromptTransform):
     Advanced Prompt Transform for Workflow LLM Node.
     """
 
-    def get_prompt(self, prompt_template_entity: PromptTemplateEntity,
+    def get_prompt(self, prompt_template: Union[list[ChatModelMessage], CompletionModelPromptTemplate],
                    inputs: dict,
                    query: str,
                    files: list[FileObj],
                    context: Optional[str],
+                   memory_config: Optional[MemoryConfig],
                    memory: Optional[TokenBufferMemory],
                    model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
         prompt_messages = []
@@ -34,21 +35,23 @@ class AdvancedPromptTransform(PromptTransform):
         model_mode = ModelMode.value_of(model_config.mode)
         if model_mode == ModelMode.COMPLETION:
             prompt_messages = self._get_completion_model_prompt_messages(
-                prompt_template_entity=prompt_template_entity,
+                prompt_template=prompt_template,
                 inputs=inputs,
                 query=query,
                 files=files,
                 context=context,
+                memory_config=memory_config,
                 memory=memory,
                 model_config=model_config
             )
         elif model_mode == ModelMode.CHAT:
             prompt_messages = self._get_chat_model_prompt_messages(
-                prompt_template_entity=prompt_template_entity,
+                prompt_template=prompt_template,
                 inputs=inputs,
                 query=query,
                 files=files,
                 context=context,
+                memory_config=memory_config,
                 memory=memory,
                 model_config=model_config
             )
@@ -56,17 +59,18 @@ class AdvancedPromptTransform(PromptTransform):
         return prompt_messages
 
     def _get_completion_model_prompt_messages(self,
-                                              prompt_template_entity: PromptTemplateEntity,
+                                              prompt_template: CompletionModelPromptTemplate,
                                               inputs: dict,
                                               query: Optional[str],
                                               files: list[FileObj],
                                               context: Optional[str],
+                                              memory_config: Optional[MemoryConfig],
                                               memory: Optional[TokenBufferMemory],
                                               model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
         """
         Get completion model prompt messages.
         """
-        raw_prompt = prompt_template_entity.advanced_completion_prompt_template.prompt
+        raw_prompt = prompt_template.text
 
         prompt_messages = []
 
@@ -75,15 +79,17 @@ class AdvancedPromptTransform(PromptTransform):
 
         prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
 
-        role_prefix = prompt_template_entity.advanced_completion_prompt_template.role_prefix
-        prompt_inputs = self._set_histories_variable(
-            memory=memory,
-            raw_prompt=raw_prompt,
-            role_prefix=role_prefix,
-            prompt_template=prompt_template,
-            prompt_inputs=prompt_inputs,
-            model_config=model_config
-        )
+        if memory and memory_config:
+            role_prefix = memory_config.role_prefix
+            prompt_inputs = self._set_histories_variable(
+                memory=memory,
+                memory_config=memory_config,
+                raw_prompt=raw_prompt,
+                role_prefix=role_prefix,
+                prompt_template=prompt_template,
+                prompt_inputs=prompt_inputs,
+                model_config=model_config
+            )
 
         if query:
             prompt_inputs = self._set_query_variable(query, prompt_template, prompt_inputs)
@@ -104,17 +110,18 @@ class AdvancedPromptTransform(PromptTransform):
         return prompt_messages
 
     def _get_chat_model_prompt_messages(self,
-                                        prompt_template_entity: PromptTemplateEntity,
+                                        prompt_template: list[ChatModelMessage],
                                         inputs: dict,
                                         query: Optional[str],
                                         files: list[FileObj],
                                         context: Optional[str],
+                                        memory_config: Optional[MemoryConfig],
                                         memory: Optional[TokenBufferMemory],
                                         model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
         """
-        raw_prompt_list = prompt_template_entity.advanced_chat_prompt_template.messages
+        raw_prompt_list = prompt_template
 
         prompt_messages = []
 
@@ -137,8 +144,8 @@ class AdvancedPromptTransform(PromptTransform):
             elif prompt_item.role == PromptMessageRole.ASSISTANT:
                 prompt_messages.append(AssistantPromptMessage(content=prompt))
 
-        if memory:
-            prompt_messages = self._append_chat_histories(memory, prompt_messages, model_config)
+        if memory and memory_config:
+            prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
 
             if files:
                 prompt_message_contents = [TextPromptMessageContent(data=query)]
@@ -195,8 +202,9 @@ class AdvancedPromptTransform(PromptTransform):
         return prompt_inputs
 
     def _set_histories_variable(self, memory: TokenBufferMemory,
+                                memory_config: MemoryConfig,
                                 raw_prompt: str,
-                                role_prefix: AdvancedCompletionPromptTemplateEntity.RolePrefixEntity,
+                                role_prefix: MemoryConfig.RolePrefix,
                                 prompt_template: PromptTemplateParser,
                                 prompt_inputs: dict,
                                 model_config: ModelConfigWithCredentialsEntity) -> dict:
@@ -213,6 +221,7 @@ class AdvancedPromptTransform(PromptTransform):
 
                 histories = self._get_history_messages_from_memory(
                     memory=memory,
+                    memory_config=memory_config,
                     max_token_limit=rest_tokens,
                     human_prefix=role_prefix.user,
                     ai_prefix=role_prefix.assistant

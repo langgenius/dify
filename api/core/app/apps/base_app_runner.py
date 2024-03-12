@@ -23,7 +23,8 @@ from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.simple_prompt_transform import SimplePromptTransform
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from models.model import App, AppMode, Message, MessageAnnotation
 
 
@@ -155,13 +156,39 @@ class AppRunner:
                 model_config=model_config
             )
         else:
+            memory_config = MemoryConfig(
+                window=MemoryConfig.WindowConfig(
+                    enabled=False
+                )
+            )
+
+            model_mode = ModelMode.value_of(model_config.mode)
+            if model_mode == ModelMode.COMPLETION:
+                advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
+                prompt_template = CompletionModelPromptTemplate(
+                    text=advanced_completion_prompt_template.prompt
+                )
+
+                memory_config.role_prefix = MemoryConfig.RolePrefix(
+                    user=advanced_completion_prompt_template.role_prefix.user,
+                    assistant=advanced_completion_prompt_template.role_prefix.assistant
+                )
+            else:
+                prompt_template = []
+                for message in prompt_template_entity.advanced_chat_prompt_template.messages:
+                    prompt_template.append(ChatModelMessage(
+                        text=message.text,
+                        role=message.role
+                    ))
+
             prompt_transform = AdvancedPromptTransform()
             prompt_messages = prompt_transform.get_prompt(
-                prompt_template_entity=prompt_template_entity,
+                prompt_template=prompt_template,
                 inputs=inputs,
                 query=query if query else '',
                 files=files,
                 context=context,
+                memory_config=memory_config,
                 memory=memory,
                 model_config=model_config
             )
