@@ -25,13 +25,6 @@ type Props = {
   onChange: (value: ValueSelector) => void
 }
 
-// const toShowVarType = (type: string) => {
-//   if (['text-input', 'paragraph', 'select', 'url'].includes(type))
-//     return 'String'
-
-//   return type.charAt(0).toUpperCase() + type.substring(1)
-// }
-
 export const getNodeInfoById = (nodes: any, id: string) => {
   return nodes.find((node: any) => node.id === id)
 }
@@ -45,15 +38,12 @@ const VarReferencePicker: FC<Props> = ({
   onChange,
 }) => {
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
-  // console.log(getBeforeNodesInSameBranch(nodeId), getTreeLeafNodes())
   const availableNodes = getBeforeNodesInSameBranch(nodeId)
   const outputVars = toNodeOutputVars(availableNodes)
-  // console.log(outputVars)
   const [open, setOpen] = useState(false)
   const hasValue = value.length > 0
   const outputVarNodeId = hasValue ? value[0] : ''
   const outputVarNode = hasValue ? getNodeInfoById(availableNodes, outputVarNodeId)?.data : null
-  // console.log(hasValue, value, outputVarNode)
   const varName = hasValue ? value[value.length - 1] : ''
 
   const getVarType = () => {

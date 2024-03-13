@@ -8,6 +8,7 @@ import {
 import { getLayoutByDagre } from '../utils'
 import type { Node } from '../types'
 import { BlockEnum } from '../types'
+import { SUPPORT_OUTPUT_VARS_NODE } from '../constants'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useIsChatMode = () => {
@@ -105,13 +106,7 @@ export const useWorkflow = () => {
     const length = list.length
     if (length && list.some(item => item.data.type === BlockEnum.Start)) {
       return list.reverse().filter((item) => {
-        if (item.data.type === BlockEnum.IfElse)
-          return false
-
-        if (item.data.type === BlockEnum.QuestionClassifier)
-          return false
-
-        return true
+        return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
       })
     }
 
