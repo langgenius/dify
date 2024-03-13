@@ -75,6 +75,28 @@ model_credential_schema:
           value: llm
       default: '4096'
       type: text-input
+    - variable: function_calling_type
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Function calling
+      type: select
+      required: false
+      default: no_call
+      options:
+        - value: function_call
+          label:
+            en_US: Support
+            zh_Hans: 支持
+#        - value: tool_call
+#          label:
+#            en_US: Tool Call
+#            zh_Hans: Tool Call
+        - value: no_call
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
     - variable: stream_mode_delimiter
       label:
         zh_Hans: 流模式返回结果的分隔符

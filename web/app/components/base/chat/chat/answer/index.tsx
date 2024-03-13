@@ -25,7 +25,7 @@ type AnswerProps = {
   index: number
   config?: ChatConfig
   answerIcon?: ReactNode
-  responsing?: boolean
+  responding?: boolean
   allToolIcons?: Record<string, string | Emoji>
 }
 const Answer: FC<AnswerProps> = ({
@@ -34,7 +34,7 @@ const Answer: FC<AnswerProps> = ({
   index,
   config,
   answerIcon,
-  responsing,
+  responding,
   allToolIcons,
 }) => {
   const { t } = useTranslation()
@@ -58,7 +58,7 @@ const Answer: FC<AnswerProps> = ({
           )
         }
         {
-          responsing && (
+          responding && (
             <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
               <LoadingAnim type='avatar' />
             </div>
@@ -70,7 +70,7 @@ const Answer: FC<AnswerProps> = ({
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div className='group relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900'>
             {
-              !responsing && (
+              !responding && (
                 <Operation
                   item={item}
                   question={question}
@@ -79,7 +79,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              responsing && !content && !hasAgentThoughts && (
+              responding && !content && !hasAgentThoughts && (
                 <div className='flex items-center justify-center w-6 h-5'>
                   <LoadingAnim type='text' />
                 </div>
@@ -94,7 +94,7 @@ const Answer: FC<AnswerProps> = ({
               hasAgentThoughts && (
                 <AgentContent
                   item={item}
-                  responsing={responsing}
+                  responding={responding}
                   allToolIcons={allToolIcons}
                 />
               )
@@ -109,7 +109,7 @@ const Answer: FC<AnswerProps> = ({
             }
             <SuggestedQuestions item={item} />
             {
-              !!citation?.length && config?.retriever_resource?.enabled && !responsing && (
+              !!citation?.length && config?.retriever_resource?.enabled && !responding && (
                 <Citation data={citation} showHitInfo={config.supportCitationHitInfo} />
               )
             }

@@ -3,6 +3,7 @@ beautifulsoup4==4.12.2
 flask~=3.0.1
 Flask-SQLAlchemy~=3.0.5
 SQLAlchemy~=1.4.28
+Flask-Compress~=1.14
 flask-login~=0.6.3
 flask-migrate~=4.0.5
 flask-restful~=0.3.10
@@ -10,7 +11,7 @@ flask-cors~=4.0.0
 gunicorn~=21.2.0
 gevent~=23.9.1
 langchain==0.0.250
-openai~=1.3.6
+openai~=1.13.3
 tiktoken~=0.5.2
 psycopg2-binary~=2.9.6
 pycryptodome==3.19.1
@@ -31,7 +32,7 @@ celery==5.2.7
 redis~=4.5.4
 openpyxl==3.1.2
 chardet~=5.1.0
-docx2txt==0.8
+python-docx~=1.1.0
 pypdfium2==4.16.0
 resend~=0.7.0
 pyjwt~=2.8.0
@@ -68,3 +69,6 @@ gmpy2~=2.1.5
 numexpr~=2.9.0
 duckduckgo-search==4.4.3
 arxiv==2.1.0
+yarl~=1.9.4
+twilio==9.0.0
+qrcode~=7.4.2

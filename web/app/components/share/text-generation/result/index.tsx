@@ -60,10 +60,10 @@ const Result: FC<IResultProps> = ({
   visionConfig,
   completionFiles,
 }) => {
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
+  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   useEffect(() => {
     if (controlStopResponding)
-      setResponsingFalse()
+      setRespondingFalse()
   }, [controlStopResponding])
 
   const [completionRes, doSetCompletionRes] = useState('')
@@ -130,7 +130,7 @@ const Result: FC<IResultProps> = ({
   }
 
   const handleSend = async () => {
-    if (isResponsing) {
+    if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
@@ -165,13 +165,13 @@ const Result: FC<IResultProps> = ({
     if (!isPC)
       onShowRes()
 
-    setResponsingTrue()
+    setRespondingTrue()
     const startTime = Date.now()
     let isTimeout = false
     const runId = setInterval(() => {
       if (Date.now() - startTime > 1000 * 60) { // 1min timeout
         clearInterval(runId)
-        setResponsingFalse()
+        setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)
         isTimeout = true
       }
@@ -186,7 +186,7 @@ const Result: FC<IResultProps> = ({
         if (isTimeout)
           return
 
-        setResponsingFalse()
+        setRespondingFalse()
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
         clearInterval(runId)
@@ -199,7 +199,7 @@ const Result: FC<IResultProps> = ({
         if (isTimeout)
           return
 
-        setResponsingFalse()
+        setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)
         clearInterval(runId)
       },
@@ -234,7 +234,7 @@ const Result: FC<IResultProps> = ({
       isMobile={isMobile}
       isInstalledApp={isInstalledApp}
       installedAppId={installedAppInfo?.id}
-      isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
+      isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
       taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
       controlClearMoreLikeThis={controlClearMoreLikeThis}
       isShowTextToSpeech={isShowTextToSpeech}
@@ -244,7 +244,7 @@ const Result: FC<IResultProps> = ({
   return (
     <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
       {!isCallBatchAPI && (
-        (isResponsing && !completionRes)
+        (isResponding && !completionRes)
           ? (
             <div className='flex h-full w-full justify-center items-center'>
               <Loading type='area' />

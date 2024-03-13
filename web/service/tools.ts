@@ -12,6 +12,11 @@ export const fetchBuiltInToolList = (collectionName: string) => {
 export const fetchCustomToolList = (collectionName: string) => {
   return get<Tool[]>(`/workspaces/current/tool-provider/api/tools?provider=${collectionName}`)
 }
+
+export const fetchModelToolList = (collectionName: string) => {
+  return get<Tool[]>(`/workspaces/current/tool-provider/model/tools?provider=${collectionName}`)
+}
+
 export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {
   return get<ToolCredential[]>(`/workspaces/current/tool-provider/builtin/${collectionName}/credentials_schema`)
 }

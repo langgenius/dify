@@ -11,12 +11,12 @@ import type { Emoji } from '@/app/components/tools/types'
 
 type AgentContentProps = {
   item: ChatItem
-  responsing?: boolean
+  responding?: boolean
   allToolIcons?: Record<string, string | Emoji>
 }
 const AgentContent: FC<AgentContentProps> = ({
   item,
-  responsing,
+  responding,
   allToolIcons,
 }) => {
   const {
@@ -46,7 +46,7 @@ const AgentContent: FC<AgentContentProps> = ({
             <Thought
               thought={thought}
               allToolIcons={allToolIcons || {}}
-              isFinished={!!thought.observation || !responsing}
+              isFinished={!!thought.observation || !responding}
             />
           )}
 

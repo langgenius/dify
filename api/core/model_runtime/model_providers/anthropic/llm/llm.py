@@ -424,8 +424,25 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         if isinstance(message, UserPromptMessage):
             message_text = f"{human_prompt} {content}"
+            if not isinstance(message.content, list):
+                message_text = f"{ai_prompt} {content}"
+            else:
+                message_text = ""
+                for sub_message in message.content:
+                    if sub_message.type == PromptMessageContentType.TEXT:
+                        message_text += f"{human_prompt} {sub_message.data}"
+                    elif sub_message.type == PromptMessageContentType.IMAGE:
+                        message_text += f"{human_prompt} [IMAGE]"
         elif isinstance(message, AssistantPromptMessage):
-            message_text = f"{ai_prompt} {content}"
+            if not isinstance(message.content, list):
+                message_text = f"{ai_prompt} {content}"
+            else:
+                message_text = ""
+                for sub_message in message.content:
+                    if sub_message.type == PromptMessageContentType.TEXT:
+                        message_text += f"{ai_prompt} {sub_message.data}"
+                    elif sub_message.type == PromptMessageContentType.IMAGE:
+                        message_text += f"{ai_prompt} [IMAGE]"
         elif isinstance(message, SystemPromptMessage):
             message_text = content
         else:

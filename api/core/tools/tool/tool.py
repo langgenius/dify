@@ -174,7 +174,18 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
+    def invoke(self, user_id: str, tool_parameters: Union[dict[str, Any], str]) -> list[ToolInvokeMessage]:
+        # check if tool_parameters is a string
+        if isinstance(tool_parameters, str):
+            # check if this tool has only one parameter
+            parameters = [parameter for parameter in self.parameters if parameter.form == ToolParameter.ToolParameterForm.LLM]
+            if parameters and len(parameters) == 1:
+                tool_parameters = {
+                    parameters[0].name: tool_parameters
+                }
+            else:
+                raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
+
         # update tool_parameters
         if self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
@@ -254,6 +265,40 @@ class Tool(BaseModel, ABC):
             :return: the runtime parameters
         """
         return self.parameters
+    
+    def get_all_runtime_parameters(self) -> list[ToolParameter]:
+        """
+            get all runtime parameters
+
+            :return: all runtime parameters
+        """
+        parameters = self.parameters or []
+        parameters = parameters.copy()
+        user_parameters = self.get_runtime_parameters() or []
+        user_parameters = user_parameters.copy()
+
+        # override parameters
+        for parameter in user_parameters:
+            # check if parameter in tool parameters
+            found = False
+            for tool_parameter in parameters:
+                if tool_parameter.name == parameter.name:
+                    found = True
+                    break
+
+            if found:
+                # override parameter
+                tool_parameter.type = parameter.type
+                tool_parameter.form = parameter.form
+                tool_parameter.required = parameter.required
+                tool_parameter.default = parameter.default
+                tool_parameter.options = parameter.options
+                tool_parameter.llm_description = parameter.llm_description
+            else:
+                # add new parameter
+                parameters.append(parameter)
+
+        return parameters
     
     def is_tool_available(self) -> bool:
         """
