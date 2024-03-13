@@ -7,22 +7,22 @@ const translation = {
     header: {
       source: 'Nguồn',
       text: 'Văn bản',
-      time: 'Thời gian'
-    }
+      time: 'Thời gian',
+    },
   },
   input: {
     title: 'Văn bản nguồn',
     placeholder: 'Vui lòng nhập một văn bản, một câu khẳng định ngắn được khuyến nghị.',
     countWarning: 'Tối đa 200 ký tự.',
     indexWarning: 'Chỉ có trong Kiến thức chất lượng cao.',
-    testing: 'Kiểm tra'
+    testing: 'Kiểm tra',
   },
   hit: {
-    title: 'CÁC ĐOẠN TRUY VẤN',
-    emptyTip: 'Kết quả Kiểm Tra Truy Vấn sẽ hiển thị ở đây'
+    title: 'RETRIEVAL PARAGRAPHS',
+    emptyTip: 'Kết quả Kiểm Tra Truy Vấn sẽ hiển thị ở đây',
   },
   noRecentTip: 'Không có kết quả truy vấn gần đây ở đây',
-  viewChart: 'Xem BIỂU ĐỒ VECTOR'
+  viewChart: 'Xem VECTOR CHART',
 }
 
 export default translation
