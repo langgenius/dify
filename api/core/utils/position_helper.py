@@ -24,8 +24,10 @@ def get_position_map(
 
         with open(position_file_name, encoding='utf-8') as f:
             positions = yaml.safe_load(f)
-            position_map = {position: index for index, position in enumerate(positions)}
-
+        position_map = {}
+        for index, name in enumerate(positions):
+            if name and isinstance(name, str):
+                position_map[name.strip()] = index
         return position_map
     except:
         logging.warning(f'Failed to load the YAML position file {folder_path}/{file_name}.')
