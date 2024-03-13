@@ -2,7 +2,14 @@ import type { CodeNodeType } from '../../../code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, LLM_OUTPUT_STRUCT, SUPPORT_OUTPUT_VARS_NODE, TEMPLATE_TRANSFORM_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
+import {
+  CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
+  COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
+  KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
+  LLM_OUTPUT_STRUCT,
+  SUPPORT_OUTPUT_VARS_NODE,
+  TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
+} from '@/app/components/workflow/constants'
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   if (type === InputVarType.number)
@@ -11,7 +18,7 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return VarType.string
 }
 
-const formatItem = (item: any): NodeOutPutVar => {
+const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
   const { id, data } = item
   const res: NodeOutPutVar = {
     nodeId: id,
@@ -59,10 +66,15 @@ const formatItem = (item: any): NodeOutPutVar => {
       res.vars = TEMPLATE_TRANSFORM_OUTPUT_STRUCT
       break
     }
+
+    case BlockEnum.QuestionClassifier: {
+      res.vars = isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT
+      break
+    }
   }
 
   return res
 }
-export const toNodeOutputVars = (nodes: any[]): NodeOutPutVar[] => {
-  return nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)).map(formatItem)
+export const toNodeOutputVars = (nodes: any[], isChatMode: boolean): NodeOutPutVar[] => {
+  return nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)).map(node => formatItem(node, isChatMode))
 }

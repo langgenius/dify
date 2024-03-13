@@ -14,7 +14,10 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import {
+  useIsChatMode,
+  useWorkflow,
+} from '@/app/components/workflow/hooks'
 
 type Props = {
   className?: string
@@ -37,9 +40,11 @@ const VarReferencePicker: FC<Props> = ({
   value,
   onChange,
 }) => {
+  const isChatMode = useIsChatMode()
+
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = getBeforeNodesInSameBranch(nodeId)
-  const outputVars = toNodeOutputVars(availableNodes)
+  const outputVars = toNodeOutputVars(availableNodes, isChatMode)
   const [open, setOpen] = useState(false)
   const hasValue = value.length > 0
   const outputVarNodeId = hasValue ? value[0] : ''
