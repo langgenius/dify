@@ -55,6 +55,36 @@ def test_get(setup_http_mock):
     assert 'X-Header: 123' in data
 
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
+def test_no_auth(setup_http_mock):
+    node = HttpRequestNode(config={
+        'id': '1',
+        'data': {
+            'title': 'http',
+            'desc': '',
+            'variables': [{
+                'variable': 'args1',
+                'value_selector': ['1', '123', 'args1'],
+            }],
+            'method': 'get',
+            'url': 'http://example.com',
+            'authorization': {
+                'type': 'no-auth',
+                'config': None,
+            },
+            'headers': 'X-Header:123',
+            'params': 'A:b',
+            'body': None,
+        }
+    }, **BASIC_NODE_DATA)
+
+    result = node.run(pool)
+
+    data = result.process_data.get('request', '')
+
+    assert '?A=b' in data
+    assert 'X-Header: 123' in data
+
+@pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_template(setup_http_mock):
     node = HttpRequestNode(config={
         'id': '1',
