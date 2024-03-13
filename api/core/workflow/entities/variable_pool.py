@@ -13,7 +13,10 @@ class ValueType(Enum):
     STRING = "string"
     NUMBER = "number"
     OBJECT = "object"
-    ARRAY = "array"
+    ARRAY_STRING = "array[string]"
+    ARRAY_NUMBER = "array[number]"
+    ARRAY_OBJECT = "array[object]"
+    ARRAY_FILE = "array[file]"
     FILE = "file"
 
 
@@ -78,7 +81,10 @@ class VariablePool:
             elif target_value_type == ValueType.OBJECT:
                 if not isinstance(value, dict):
                     raise ValueError('Invalid value type: object')
-            elif target_value_type == ValueType.ARRAY:
+            elif target_value_type in [ValueType.ARRAY_STRING,
+                                       ValueType.ARRAY_NUMBER,
+                                       ValueType.ARRAY_OBJECT,
+                                       ValueType.ARRAY_FILE]:
                 if not isinstance(value, list):
                     raise ValueError('Invalid value type: array')
 
