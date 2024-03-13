@@ -1,4 +1,3 @@
-import time
 from typing import cast
 
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -32,14 +31,49 @@ class AnswerNode(BaseNode):
 
             variable_values[variable_selector.variable] = value
 
+        variable_keys = list(variable_values.keys())
+
         # format answer template
         template_parser = PromptTemplateParser(node_data.answer)
-        answer = template_parser.format(variable_values)
+        template_variable_keys = template_parser.variable_keys
 
-        # publish answer as stream
-        for word in answer:
-            self.publish_text_chunk(word)
-            time.sleep(10)  # TODO for debug
+        # Take the intersection of variable_keys and template_variable_keys
+        variable_keys = list(set(variable_keys) & set(template_variable_keys))
+
+        template = node_data.answer
+        for var in variable_keys:
+            template = template.replace(f'{{{{{var}}}}}', f'Ω{{{{{var}}}}}Ω')
+
+        split_template = [
+            {
+                "type": "var" if self._is_variable(part, variable_keys) else "text",
+                "value": part.replace('Ω', '') if self._is_variable(part, variable_keys) else part
+            }
+            for part in template.split('Ω') if part
+        ]
+
+        answer = []
+        for part in split_template:
+            if part["type"] == "var":
+                value = variable_values.get(part["value"].replace('{{', '').replace('}}', ''))
+                answer_part = {
+                    "type": "text",
+                    "text": value
+                }
+                # TODO File
+            else:
+                answer_part = {
+                    "type": "text",
+                    "text": part["value"]
+                }
+
+            if len(answer) > 0 and answer[-1]["type"] == "text" and answer_part["type"] == "text":
+                answer[-1]["text"] += answer_part["text"]
+            else:
+                answer.append(answer_part)
+
+        if len(answer) == 1 and answer[0]["type"] == "text":
+            answer = answer[0]["text"]
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -48,6 +82,10 @@ class AnswerNode(BaseNode):
                 "answer": answer
             }
         )
+
+    def _is_variable(self, part, variable_keys):
+        cleaned_part = part.replace('{{', '').replace('}}', '')
+        return part.startswith('{{') and cleaned_part in variable_keys
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
