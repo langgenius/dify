@@ -80,10 +80,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSiderbarExpand(isMobile ? mode : localeMode)
-      if (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
+      if ((appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
         setAppSiderbarExpand('collapse')
     }
-  }, [appDetail, isMobile, setAppSiderbarExpand])
+  }, [appDetail, isMobile])
 
   useEffect(() => {
     setAppDetail()
@@ -100,7 +100,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         setNavigation(getNavigations(appId, isCurrentWorkspaceManager, res.mode))
       }
     })
-  }, [appId, getNavigations, isCurrentWorkspaceManager, pathname, router, setAppDetail])
+  }, [appId, isCurrentWorkspaceManager])
 
   if (!appDetail) {
     return (
