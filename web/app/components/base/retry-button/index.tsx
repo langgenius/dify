@@ -28,7 +28,7 @@ const indexStateReducer = (state: IIndexState, action: IAction) => {
     case 'retry':
       return {
         ...state,
-        value: 'retrying',
+        value: 'retry',
       }
     case 'success':
       return {
@@ -82,7 +82,7 @@ const RetryButton: FC<Props> = (
       className={
         classNames(
           'text-primary-600 font-semibold text-sm cursor-pointer',
-          indexState.value === 'retrying' && 'text-gray-500 cursor-not-allowed',
+          indexState.value === 'retry' && '!text-gray-500 !cursor-not-allowed',
         )
       }
       onClick={indexState.value === 'error' ? onRetryErrorDocs : undefined}
