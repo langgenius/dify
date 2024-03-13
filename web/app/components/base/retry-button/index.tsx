@@ -20,37 +20,25 @@ type Props = {
 type IIndexState = {
   value: string
 }
+type ActionType = 'retry' | 'success' | 'error'
+
 type IAction = {
-  type: string
+  type: ActionType
 }
 const indexStateReducer = (state: IIndexState, action: IAction) => {
-  switch (action.type) {
-    case 'retry':
-      return {
-        ...state,
-        value: 'retry',
-      }
-    case 'success':
-      return {
-        ...state,
-        value: 'success',
-      }
-    case 'error':
-      return {
-        ...state,
-        value: 'error',
-      }
-    default:
-      return {
-        ...state,
-        value: 'success',
-      }
+  const actionMap = {
+    retry: 'retry',
+    success: 'success',
+    error: 'error',
+  }
+
+  return {
+    ...state,
+    value: actionMap[action.type] || state.value,
   }
 }
 
-const RetryButton: FC<Props> = (
-  { datasetId },
-) => {
+const RetryButton: FC<Props> = ({ datasetId }) => {
   const { t } = useTranslation()
   const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
   const { data: errorDocs } = useSWR({ datasetId }, getErrorDocs)
@@ -74,19 +62,24 @@ const RetryButton: FC<Props> = (
 
   if (indexState.value === 'success')
     return null
-  return <div className={classNames('inline-flex justify-center items-center gap-2', s.retryBtn)}>
-    <WarningIcon />
-    <span className='flex shrink-0 text-sm text-gray-500'>{errorDocs?.total} {t('dataset.docsFailedNotice')}</span>
-    <Divider type='vertical' className='!h-4' />
-    <span
-      className={
-        classNames(
+
+  return (
+    <div className={classNames('inline-flex justify-center items-center gap-2', s.retryBtn)}>
+      <WarningIcon />
+      <span className='flex shrink-0 text-sm text-gray-500'>
+        {errorDocs?.total} {t('dataset.docsFailedNotice')}
+      </span>
+      <Divider type='vertical' className='!h-4' />
+      <span
+        className={classNames(
           'text-primary-600 font-semibold text-sm cursor-pointer',
           indexState.value === 'retry' && '!text-gray-500 !cursor-not-allowed',
-        )
-      }
-      onClick={indexState.value === 'error' ? onRetryErrorDocs : undefined}
-    >{t('dataset.retry')}</span>
-  </div>
+        )}
+        onClick={indexState.value === 'error' ? onRetryErrorDocs : undefined}
+      >
+        {t('dataset.retry')}
+      </span>
+    </div>
+  )
 }
 export default RetryButton
