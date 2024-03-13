@@ -126,6 +126,7 @@ export enum VarType {
   array = 'Array',
   arrayString = 'Array[string]',
   arrayNumber = 'Array[number]',
+  arrayObject = 'Array[object]',
 }
 
 export type Var = {

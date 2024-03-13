@@ -249,3 +249,10 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
     ],
   },
 ]
+
+export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'result',
+    type: VarType.arrayObject,
+  },
+]
