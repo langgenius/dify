@@ -2,7 +2,7 @@ import json
 
 from models.model import AppModelConfig
 
-languages = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'uk-UA']
+languages = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'uk-UA', 'vi-VN']
 
 language_timezone_mapping = {
     'en-US': 'America/New_York',
@@ -16,6 +16,7 @@ language_timezone_mapping = {
     'ru-RU': 'Europe/Moscow',
     'it-IT': 'Europe/Rome',
     'uk-UA': 'Europe/Kyiv',
+    'vi-VN': 'Asia/Ho_Chi_Minh',
 }
 
 
@@ -73,6 +74,16 @@ user_input_form_template = {
         {
             "paragraph": {
                 "label": "Запит",
+                "variable": "default_input",
+                "required": False,
+                "default": ""
+            }
+        }
+    ],
+     "vi-VN": [
+        {
+            "paragraph": {
+                "label": "Nội dung truy vấn",
                 "variable": "default_input",
                 "required": False,
                 "default": ""
@@ -208,7 +219,6 @@ demo_model_templates = {
             )
         }
     ],
-
     'zh-Hans': [
         {
             'name': '翻译助手',
@@ -335,91 +345,92 @@ demo_model_templates = {
             )
         }
     ],
-    'uk-UA': [{
-        "name": "Помічник перекладу",
-        "icon": "",
-        "icon_background": "",
-        "description": "Багатомовний перекладач, який надає можливості перекладу різними мовами, перекладаючи введені користувачем дані на потрібну мову.",
-        "mode": "completion",
-        "model_config": AppModelConfig(
-            provider="openai",
-            model_id="gpt-3.5-turbo-instruct",
-            configs={
-                "prompt_template": "Будь ласка, перекладіть наступний текст на {{target_language}}:\n",
-                "prompt_variables": [
-                    {
-                        "key": "target_language",
-                        "name": "Цільова мова",
-                        "description": "Мова, на яку ви хочете перекласти.",
-                        "type": "select",
-                        "default": "Ukrainian",
-                        "options": [
-                            "Chinese",
-                            "English",
-                            "Japanese",
-                            "French",
-                            "Russian",
-                            "German",
-                            "Spanish",
-                            "Korean",
-                            "Italian",
-                        ],
+    'uk-UA': [
+        {
+            "name": "Помічник перекладу",
+            "icon": "",
+            "icon_background": "",
+            "description": "Багатомовний перекладач, який надає можливості перекладу різними мовами, перекладаючи введені користувачем дані на потрібну мову.",
+            "mode": "completion",
+            "model_config": AppModelConfig(
+                provider="openai",
+                model_id="gpt-3.5-turbo-instruct",
+                configs={
+                    "prompt_template": "Будь ласка, перекладіть наступний текст на {{target_language}}:\n",
+                    "prompt_variables": [
+                        {
+                            "key": "target_language",
+                            "name": "Цільова мова",
+                            "description": "Мова, на яку ви хочете перекласти.",
+                            "type": "select",
+                            "default": "Ukrainian",
+                            "options": [
+                                "Chinese",
+                                "English",
+                                "Japanese",
+                                "French",
+                                "Russian",
+                                "German",
+                                "Spanish",
+                                "Korean",
+                                "Italian",
+                            ],
+                        },
+                    ],
+                    "completion_params": {
+                        "max_token": 1000,
+                        "temperature": 0,
+                        "top_p": 0,
+                        "presence_penalty": 0.1,
+                        "frequency_penalty": 0.1,
                     },
-                ],
-                "completion_params": {
-                    "max_token": 1000,
-                    "temperature": 0,
-                    "top_p": 0,
-                    "presence_penalty": 0.1,
-                    "frequency_penalty": 0.1,
                 },
-            },
-            opening_statement="",
-            suggested_questions=None,
-            pre_prompt="Будь ласка, перекладіть наступний текст на {{target_language}}:\n{{query}}\ntranslate:",
-            model=json.dumps({
-                "provider": "openai",
-                "name": "gpt-3.5-turbo-instruct",
-                "mode": "completion",
-                "completion_params": {
-                    "max_tokens": 1000,
-                    "temperature": 0,
-                    "top_p": 0,
-                    "presence_penalty": 0.1,
-                    "frequency_penalty": 0.1,
-                },
-            }),
-            user_input_form=json.dumps([
-                {
-                    "select": {
-                        "label": "Цільова мова",
-                        "variable": "target_language",
-                        "description": "Мова, на яку ви хочете перекласти.",
-                        "default": "Chinese",
-                        "required": True,
-                        'options': [
-                            'Chinese',
-                            'English',
-                            'Japanese',
-                            'French',
-                            'Russian',
-                            'German',
-                            'Spanish',
-                            'Korean',
-                            'Italian',
-                        ]
+                opening_statement="",
+                suggested_questions=None,
+                pre_prompt="Будь ласка, перекладіть наступний текст на {{target_language}}:\n{{query}}\ntranslate:",
+                model=json.dumps({
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo-instruct",
+                    "mode": "completion",
+                    "completion_params": {
+                        "max_tokens": 1000,
+                        "temperature": 0,
+                        "top_p": 0,
+                        "presence_penalty": 0.1,
+                        "frequency_penalty": 0.1,
+                    },
+                }),
+                user_input_form=json.dumps([
+                    {
+                        "select": {
+                            "label": "Цільова мова",
+                            "variable": "target_language",
+                            "description": "Мова, на яку ви хочете перекласти.",
+                            "default": "Chinese",
+                            "required": True,
+                            'options': [
+                                'Chinese',
+                                'English',
+                                'Japanese',
+                                'French',
+                                'Russian',
+                                'German',
+                                'Spanish',
+                                'Korean',
+                                'Italian',
+                            ]
+                        }
+                    }, {
+                        "paragraph": {
+                            "label": "Запит",
+                            "variable": "query",
+                            "required": True,
+                            "default": ""
+                        }
                     }
-                }, {
-                    "paragraph": {
-                        "label": "Запит",
-                        "variable": "query",
-                        "required": True,
-                        "default": ""
-                    }
-                }
-            ])
-        )
-    },
+                ])
+            )
+        },
         {
             "name": "AI інтерв’юер фронтенду",
             "icon": "",
@@ -460,5 +471,132 @@ demo_model_templates = {
             ),
         }
     ],
-
+    'vi-VN': [
+        {
+            'name': 'Trợ lý dịch thuật',
+            'icon': '',
+            'icon_background': '',
+            'description': 'Trình dịch đa ngôn ngữ cung cấp khả năng dịch bằng nhiều ngôn ngữ, dịch thông tin đầu vào của người dùng sang ngôn ngữ họ cần.',
+            'mode': 'completion',
+            'model_config': AppModelConfig(
+                provider='openai',
+                model_id='gpt-3.5-turbo-instruct',
+                configs={
+                    'prompt_template': "Hãy dịch đoạn văn bản sau sang ngôn ngữ {{target_language}}:\n",
+                    'prompt_variables': [
+                        {
+                            "key": "target_language",
+                            "name": "Ngôn ngữ đích",
+                            "description": "Ngôn ngữ bạn muốn dịch sang.",
+                            "type": "select",
+                            "default": "Vietnamese",
+                            'options': [
+                                'Chinese',
+                                'English',
+                                'Japanese',
+                                'French',
+                                'Russian',
+                                'German',
+                                'Spanish',
+                                'Korean',
+                                'Italian',
+                                'Vietnamese',
+                            ]
+                        }
+                    ],
+                    'completion_params': {
+                        'max_token': 1000,
+                        'temperature': 0,
+                        'top_p': 0,
+                        'presence_penalty': 0.1,
+                        'frequency_penalty': 0.1,
+                    }
+                },
+                opening_statement='',
+                suggested_questions=None,
+                pre_prompt="Hãy dịch đoạn văn bản sau sang {{target_language}}:\n{{query}}\ndịch:",
+                model=json.dumps({
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo-instruct",
+                    "mode": "completion",
+                    "completion_params": {
+                        "max_tokens": 1000,
+                        "temperature": 0,
+                        "top_p": 0,
+                        "presence_penalty": 0.1,
+                        "frequency_penalty": 0.1
+                    }
+                }),
+                user_input_form=json.dumps([
+                    {
+                        "select": {
+                            "label": "Ngôn ngữ đích",
+                            "variable": "target_language",
+                            "description": "Ngôn ngữ bạn muốn dịch sang.",
+                            "default": "Vietnamese",
+                            "required": True,
+                            'options': [
+                                'Chinese',
+                                'English',
+                                'Japanese',
+                                'French',
+                                'Russian',
+                                'German',
+                                'Spanish',
+                                'Korean',
+                                'Italian',
+                                'Vietnamese',
+                            ]
+                        }
+                    }, {
+                        "paragraph": {
+                            "label": "Query",
+                            "variable": "query",
+                            "required": True,
+                            "default": ""
+                        }
+                    }
+                ])
+            )
+        },
+        {
+            'name': 'Phỏng vấn front-end AI',
+            'icon': '',
+            'icon_background': '',
+            'description': 'Một người phỏng vấn front-end mô phỏng để kiểm tra mức độ kỹ năng phát triển front-end thông qua việc đặt câu hỏi.',
+            'mode': 'chat',
+            'model_config': AppModelConfig(
+                provider='openai',
+                model_id='gpt-3.5-turbo',
+                configs={
+                    'introduction': 'Xin chào, chào mừng đến với cuộc phỏng vấn của chúng tôi. Tôi là người phỏng vấn cho công ty công nghệ này và tôi sẽ kiểm tra kỹ năng phát triển web front-end của bạn. Tiếp theo, tôi sẽ hỏi bạn một số câu hỏi kỹ thuật. Hãy trả lời chúng càng kỹ lưỡng càng tốt. ',
+                    'prompt_template': "Bạn sẽ đóng vai người phỏng vấn cho một công ty công nghệ, kiểm tra kỹ năng phát triển web front-end của người dùng và đặt ra 5-10 câu hỏi kỹ thuật sắc bén.\n\nXin lưu ý:\n- Mỗi lần chỉ hỏi một câu hỏi.\n - Sau khi người dùng trả lời một câu hỏi, hãy hỏi trực tiếp câu hỏi tiếp theo mà không cố gắng sửa bất kỳ lỗi nào mà thí sinh mắc phải.\n- Nếu bạn cho rằng người dùng đã không trả lời đúng cho một số câu hỏi liên tiếp, hãy hỏi ít câu hỏi hơn.\n- Sau đặt câu hỏi cuối cùng, bạn có thể hỏi câu hỏi này: Tại sao bạn lại rời bỏ công việc cuối cùng của mình? Sau khi người dùng trả lời câu hỏi này, vui lòng bày tỏ sự hiểu biết và ủng hộ của bạn.\n",
+                    'prompt_variables': [],
+                    'completion_params': {
+                        'max_token': 300,
+                        'temperature': 0.8,
+                        'top_p': 0.9,
+                        'presence_penalty': 0.1,
+                        'frequency_penalty': 0.1,
+                    }
+                },
+                opening_statement='Xin chào, chào mừng đến với cuộc phỏng vấn của chúng tôi. Tôi là người phỏng vấn cho công ty công nghệ này và tôi sẽ kiểm tra kỹ năng phát triển web front-end của bạn. Tiếp theo, tôi sẽ hỏi bạn một số câu hỏi kỹ thuật. Hãy trả lời chúng càng kỹ lưỡng càng tốt. ',
+                suggested_questions=None,
+                pre_prompt="Bạn sẽ đóng vai người phỏng vấn cho một công ty công nghệ, kiểm tra kỹ năng phát triển web front-end của người dùng và đặt ra 5-10 câu hỏi kỹ thuật sắc bén.\n\nXin lưu ý:\n- Mỗi lần chỉ hỏi một câu hỏi.\n - Sau khi người dùng trả lời một câu hỏi, hãy hỏi trực tiếp câu hỏi tiếp theo mà không cố gắng sửa bất kỳ lỗi nào mà thí sinh mắc phải.\n- Nếu bạn cho rằng người dùng đã không trả lời đúng cho một số câu hỏi liên tiếp, hãy hỏi ít câu hỏi hơn.\n- Sau đặt câu hỏi cuối cùng, bạn có thể hỏi câu hỏi này: Tại sao bạn lại rời bỏ công việc cuối cùng của mình? Sau khi người dùng trả lời câu hỏi này, vui lòng bày tỏ sự hiểu biết và ủng hộ của bạn.\n",
+                model=json.dumps({
+                    "provider": "openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {
+                        "max_tokens": 300,
+                        "temperature": 0.8,
+                        "top_p": 0.9,
+                        "presence_penalty": 0.1,
+                        "frequency_penalty": 0.1
+                    }
+                }),
+                user_input_form=None
+            )
+        }
+    ],
 }
