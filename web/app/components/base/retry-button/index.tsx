@@ -56,6 +56,7 @@ const RetryButton: FC<Props> = (
   const { data: errorDocs } = useSWR({ datasetId }, getErrorDocs)
 
   const onRetryErrorDocs = async () => {
+    dispatch({ type: 'retry' })
     const document_ids = errorDocs?.data.map((doc: IndexingStatusResponse) => doc.id) || []
     const res = await retryErrorDocs({ datasetId, document_ids })
     if (res.result === 'success')
