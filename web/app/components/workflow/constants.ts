@@ -256,3 +256,10 @@ export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [
     type: VarType.arrayObject,
   },
 ]
+
+export const TEMPLATE_TRANSFORM_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'output',
+    type: VarType.string,
+  },
+]

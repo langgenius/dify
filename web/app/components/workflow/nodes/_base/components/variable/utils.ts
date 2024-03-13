@@ -2,7 +2,7 @@ import type { CodeNodeType } from '../../../code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, LLM_OUTPUT_STRUCT, SUPPORT_OUTPUT_VARS_NODE } from '@/app/components/workflow/constants'
+import { KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, LLM_OUTPUT_STRUCT, SUPPORT_OUTPUT_VARS_NODE, TEMPLATE_TRANSFORM_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   if (type === InputVarType.number)
@@ -52,6 +52,11 @@ const formatItem = (item: any): NodeOutPutVar => {
           type: outputs[key].type,
         }
       })
+      break
+    }
+
+    case BlockEnum.TemplateTransform: {
+      res.vars = TEMPLATE_TRANSFORM_OUTPUT_STRUCT
       break
     }
   }
