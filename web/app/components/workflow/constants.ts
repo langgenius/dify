@@ -297,3 +297,18 @@ export const COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
   },
   ...QUESTION_CLASSIFIER_OUTPUT_STRUCT_COMMON,
 ]
+
+export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'body',
+    type: VarType.string,
+  },
+  {
+    variable: 'status_code',
+    type: VarType.string,
+  },
+  {
+    variable: 'headers',
+    type: VarType.string,
+  },
+]

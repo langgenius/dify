@@ -5,6 +5,7 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import {
   CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
+  HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
@@ -69,6 +70,11 @@ const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
 
     case BlockEnum.QuestionClassifier: {
       res.vars = isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.HttpRequest: {
+      res.vars = HTTP_REQUEST_OUTPUT_STRUCT
       break
     }
   }
