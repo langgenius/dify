@@ -93,13 +93,15 @@ export const useWorkflow = () => {
       return list
 
     const traverse = (root: Node, callback: (node: Node) => void) => {
-      const incomers = getIncomers(root, nodes, edges)
+      if (root) {
+        const incomers = getIncomers(root, nodes, edges)
 
-      if (incomers.length) {
-        incomers.forEach((node) => {
-          callback(node)
-          traverse(node, callback)
-        })
+        if (incomers.length) {
+          incomers.forEach((node) => {
+            callback(node)
+            traverse(node, callback)
+          })
+        }
       }
     }
     traverse(currentNode, (node) => {
@@ -107,7 +109,7 @@ export const useWorkflow = () => {
     })
 
     const length = list.length
-    if (length && list.some(item => item.data.type === BlockEnum.Start)) {
+    if (length) {
       return list.reverse().filter((item) => {
         return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
       })
