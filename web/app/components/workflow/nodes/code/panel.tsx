@@ -13,7 +13,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 const i18nPrefix = 'workflow.nodes.code'
 
 const codeLanguages = [
@@ -113,7 +113,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          result={<span className='text-gray-900'>{JSON.stringify(runResult, null, 2)}</span>}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div>

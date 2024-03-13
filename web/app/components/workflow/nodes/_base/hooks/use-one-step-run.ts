@@ -64,7 +64,9 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
       })
       return false
     }
-    setRunResult(res)
+    finally {
+      setRunResult(res)
+    }
     handleNodeDataUpdate({
       id,
       data: {

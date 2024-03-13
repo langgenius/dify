@@ -79,12 +79,11 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           </div>
 
           {isFinished && (
-            <div className='px-4'>
+            <>
               {result}
-            </div>
+            </>
           )}
         </div>
-
       </div>
     </div>
   )
