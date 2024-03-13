@@ -50,6 +50,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           }
         >
           <VarList
+            nodeId={id}
             readonly={readOnly}
             list={inputs.variables}
             onChange={handleVarListChange}
