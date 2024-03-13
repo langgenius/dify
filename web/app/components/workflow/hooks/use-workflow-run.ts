@@ -116,10 +116,10 @@ export const useWorkflowRun = () => {
         body: params,
       },
       {
-        onWorkflowStarted: ({ task_id, workflow_run_id, sequence_number }) => {
+        onWorkflowStarted: ({ task_id, workflow_run_id, data }) => {
           useStore.setState({ runningStatus: WorkflowRunningStatus.Running })
           useStore.setState({ taskId: task_id })
-          useStore.setState({ currentSequenceNumber: sequence_number })
+          useStore.setState({ currentSequenceNumber: data.sequence_number })
           useStore.setState({ workflowRunId: workflow_run_id })
           const newNodes = produce(getNodes(), (draft) => {
             draft.forEach((node) => {

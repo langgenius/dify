@@ -86,7 +86,7 @@ const MetaData: FC<Props> = ({
               <div className='my-[5px] w-[48px] h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{`${tokens} Tokens`}</span>
+              <span>{`${tokens || 0} Tokens`}</span>
             )}
           </div>
         </div>
