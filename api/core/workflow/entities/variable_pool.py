@@ -86,6 +86,6 @@ class VariablePool:
                                        ValueType.ARRAY_OBJECT,
                                        ValueType.ARRAY_FILE]:
                 if not isinstance(value, list):
-                    raise ValueError('Invalid value type: array')
+                    raise ValueError(f'Invalid value type: {target_value_type.value}')
 
         return value
