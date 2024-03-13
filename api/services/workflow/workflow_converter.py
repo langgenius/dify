@@ -531,10 +531,10 @@ class WorkflowConverter:
             "data": {
                 "title": "END",
                 "type": NodeType.END.value,
-                "outputs": {
+                "outputs": [{
                     "variable": "result",
                     "value_selector": ["llm", "text"]
-                }
+                }]
             }
         }
 

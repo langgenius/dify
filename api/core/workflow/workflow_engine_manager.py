@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Optional
 
@@ -40,6 +41,8 @@ node_classes = {
     NodeType.TOOL: ToolNode,
     NodeType.VARIABLE_ASSIGNER: VariableAssignerNode,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowEngineManager:
@@ -407,6 +410,7 @@ class WorkflowEngineManager:
                 variable_pool=workflow_run_state.variable_pool
             )
         except Exception as e:
+            logger.exception(f"Node {node.node_data.title} run failed: {str(e)}")
             node_run_result = NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e)

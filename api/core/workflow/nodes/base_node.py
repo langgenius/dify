@@ -6,7 +6,6 @@ from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class UserFrom(Enum):
@@ -80,16 +79,9 @@ class BaseNode(ABC):
         :param variable_pool: variable pool
         :return:
         """
-        try:
-            result = self._run(
-                variable_pool=variable_pool
-            )
-        except Exception as e:
-            # process unhandled exception
-            result = NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                error=str(e)
-            )
+        result = self._run(
+            variable_pool=variable_pool
+        )
 
         self.node_run_result = result
         return result

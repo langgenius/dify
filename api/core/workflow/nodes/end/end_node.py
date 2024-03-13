@@ -2,9 +2,9 @@ from typing import cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import ValueType, VariablePool
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.end.entities import EndNodeData, EndNodeDataOutputs
+from core.workflow.nodes.end.entities import EndNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -20,34 +20,14 @@ class EndNode(BaseNode):
         """
         node_data = self.node_data
         node_data = cast(self._node_data_cls, node_data)
-        outputs_config = node_data.outputs
+        output_variables = node_data.outputs
 
-        outputs = None
-        if outputs_config:
-            if outputs_config.type == EndNodeDataOutputs.OutputType.PLAIN_TEXT:
-                plain_text_selector = outputs_config.plain_text_selector
-                if plain_text_selector:
-                    outputs = {
-                        'text': variable_pool.get_variable_value(
-                            variable_selector=plain_text_selector,
-                            target_value_type=ValueType.STRING
-                        )
-                    }
-                else:
-                    outputs = {
-                        'text': ''
-                    }
-            elif outputs_config.type == EndNodeDataOutputs.OutputType.STRUCTURED:
-                structured_variables = outputs_config.structured_variables
-                if structured_variables:
-                    outputs = {}
-                    for variable_selector in structured_variables:
-                        variable_value = variable_pool.get_variable_value(
-                            variable_selector=variable_selector.value_selector
-                        )
-                        outputs[variable_selector.variable] = variable_value
-                else:
-                    outputs = {}
+        outputs = {}
+        for variable_selector in output_variables:
+            variable_value = variable_pool.get_variable_value(
+                variable_selector=variable_selector.value_selector
+            )
+            outputs[variable_selector.variable] = variable_value
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
