@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import produce from 'immer'
 import type {
   NodeDragHandler,
@@ -29,17 +29,17 @@ export const useNodesInteractions = () => {
   const store = useStoreApi()
   const nodesInitialData = useNodesInitialData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
 
-  const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
+  const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     const {
       runningStatus,
-      setIsDragging,
     } = useStore.getState()
 
     if (runningStatus)
       return
 
-    setIsDragging(true)
+    dragNodeStartPosition.current = { x: node.position.x, y: node.position.y }
   }, [])
 
   const handleNodeDrag = useCallback<NodeDragHandler>((e, node: Node) => {
@@ -147,10 +147,9 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
   }, [store])
 
-  const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
+  const handleNodeDragStop = useCallback<NodeDragHandler>((_, node) => {
     const {
       runningStatus,
-      setIsDragging,
       setHelpLineHorizontal,
       setHelpLineVertical,
     } = useStore.getState()
@@ -158,10 +157,12 @@ export const useNodesInteractions = () => {
     if (runningStatus)
       return
 
-    setIsDragging(false)
-    setHelpLineHorizontal()
-    setHelpLineVertical()
-    handleSyncWorkflowDraft()
+    const { x, y } = dragNodeStartPosition.current
+    if (!(x === node.position.x && y === node.position.y)) {
+      setHelpLineHorizontal()
+      setHelpLineVertical()
+      handleSyncWorkflowDraft()
+    }
   }, [handleSyncWorkflowDraft])
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
@@ -236,10 +237,9 @@ export const useNodesInteractions = () => {
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
     const {
       runningStatus,
-      isDragging,
     } = useStore.getState()
 
-    if (runningStatus || isDragging)
+    if (runningStatus)
       return
 
     handleNodeSelect(node.id)

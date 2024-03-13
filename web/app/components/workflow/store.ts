@@ -18,7 +18,6 @@ type State = {
   workflowRunId: string
   showRunHistory: boolean
   showFeaturesPanel: boolean
-  isDragging: boolean
   helpLineHorizontal?: HelpLineHorizontalPosition
   helpLineVertical?: HelpLineVerticalPosition
   toolsets: CollectionWithExpanded[]
@@ -37,7 +36,6 @@ type Action = {
   setWorkflowRunId: (workflowRunId: string) => void
   setShowRunHistory: (showRunHistory: boolean) => void
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
-  setIsDragging: (isDragging: boolean) => void
   setHelpLineHorizontal: (helpLineHorizontal?: HelpLineHorizontalPosition) => void
   setHelpLineVertical: (helpLineVertical?: HelpLineVerticalPosition) => void
   setToolsets: (toolsets: CollectionWithExpanded[]) => void
@@ -62,8 +60,6 @@ export const useStore = create<State & Action>(set => ({
   setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
   showFeaturesPanel: false,
   setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
-  isDragging: false,
-  setIsDragging: isDragging => set(() => ({ isDragging })),
   helpLineHorizontal: undefined,
   setHelpLineHorizontal: helpLineHorizontal => set(() => ({ helpLineHorizontal })),
   helpLineVertical: undefined,
