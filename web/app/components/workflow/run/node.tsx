@@ -89,7 +89,6 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
                 onChange={() => {}}
               />
             </div>
-            {/* ###TODO### conditions by type */}
             {nodeInfo.process_data && (
               <div className='px-[10px] py-1'>
                 <CodeEditor

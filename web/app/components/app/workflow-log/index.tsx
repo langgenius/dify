@@ -9,13 +9,11 @@ import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
 import Filter from './filter'
-import DetailPanel from './detail'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchWorkflowLogs } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
 import type { App, AppMode } from '@/types/app'
-import Drawer from '@/app/components/base/drawer'
 
 export type ILogsProps = {
   appDetail: App
@@ -50,12 +48,6 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 }
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
-  // ###TODO###
-  const [showDrawer, setShowDrawer] = useState<boolean>(true)
-  const onCloseDrawer = () => {
-    setShowDrawer(false)
-  }
-
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all' })
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -81,7 +73,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <h1 className='text-md font-semibold text-gray-900' onClick={() => setShowDrawer(true)}>{t('appLog.workflowTitle')}</h1>
+      <h1 className='text-md font-semibold text-gray-900'>{t('appLog.workflowTitle')}</h1>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.workflowSubtitle')}</p>
       <div className='flex flex-col py-4 flex-1'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
@@ -126,15 +118,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           </Pagination>
           : null}
       </div>
-      <Drawer
-        isOpen={showDrawer}
-        onClose={onCloseDrawer}
-        mask={false}
-        footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-gray-200'
-      >
-        <DetailPanel onClose={onCloseDrawer} runID={'fakerRunID'} />
-      </Drawer>
     </div>
   )
 }
