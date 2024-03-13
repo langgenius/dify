@@ -411,7 +411,7 @@ class DocumentService:
     def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
         documents = db.session.query(Document).filter(
             Document.dataset_id == dataset_id,
-            Document.indexing_status == 'error' or Document.indexing_status == 'paused'
+            Document.indexing_status == 'error' or Document.indexing_status == 'paused' or Document.indexing_status == 'waiting'
         ).all()
 
         return documents
@@ -490,7 +490,7 @@ class DocumentService:
         retry_indexing_cache_key = 'document_{}_is_retried'.format(document.id)
         redis_client.setex(retry_indexing_cache_key, 600, 1)
         # trigger async task
-        retry_document_indexing_task.delay(document.dataset_id, [document.id])
+        retry_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
     def get_documents_position(dataset_id):

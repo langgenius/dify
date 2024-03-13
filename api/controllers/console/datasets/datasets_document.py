@@ -896,13 +896,13 @@ class DocumentRetryApi(DocumentResource):
                             location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
         for document_id in args['document_ids']:
             try:
                 document_id = str(document_id)
-                dataset = DatasetService.get_dataset(dataset_id)
-                if not dataset:
-                    raise NotFound('Dataset not found.')
-
+                
                 document = DocumentService.get_document(dataset.id, document_id)
 
                 # 404 if document not found
