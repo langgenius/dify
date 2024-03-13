@@ -628,7 +628,7 @@ TTS_BASE_MODELS = [
                     },
                 ],
                 ModelPropertyKey.WORD_LIMIT: 120,
-                ModelPropertyKey.AUDOI_TYPE: 'mp3',
+                ModelPropertyKey.AUDIO_TYPE: 'mp3',
                 ModelPropertyKey.MAX_WORKERS: 5
             },
             pricing=PriceConfig(
@@ -682,7 +682,7 @@ TTS_BASE_MODELS = [
                     },
                 ],
                 ModelPropertyKey.WORD_LIMIT: 120,
-                ModelPropertyKey.AUDOI_TYPE: 'mp3',
+                ModelPropertyKey.AUDIO_TYPE: 'mp3',
                 ModelPropertyKey.MAX_WORKERS: 5
             },
             pricing=PriceConfig(
