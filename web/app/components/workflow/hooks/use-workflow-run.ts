@@ -22,6 +22,23 @@ export const useWorkflowRun = () => {
   const reactflow = useReactFlow()
   const workflowContainerRef = useRef<HTMLDivElement>(null)
 
+  const handleBackupDraft = useCallback(() => {
+    const {
+      getNodes,
+      getEdges,
+      getViewport,
+    } = reactflow
+    const {
+      setBackupDraft,
+    } = useStore.getState()
+
+    setBackupDraft({
+      nodes: getNodes(),
+      edges: getEdges(),
+      viewport: getViewport(),
+    })
+  }, [reactflow])
+
   const handleLoadBackupDraft = useCallback(() => {
     const {
       setNodes,
@@ -55,9 +72,10 @@ export const useWorkflowRun = () => {
       handleLoadBackupDraft()
     }
     else {
+      handleBackupDraft()
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((node) => {
-          node.data._runningStatus = shouldClear ? undefined : NodeRunningStatus.Waiting
+          node.data._runningStatus = NodeRunningStatus.Waiting
         })
       })
       setNodes(newNodes)
@@ -68,7 +86,7 @@ export const useWorkflowRun = () => {
       })
       setEdges(newEdges)
     }
-  }, [store, handleLoadBackupDraft])
+  }, [store, handleLoadBackupDraft, handleBackupDraft])
 
   const handleRun = useCallback((params: any, callback?: IOtherOptions) => {
     const {
@@ -77,8 +95,6 @@ export const useWorkflowRun = () => {
       edges,
       setEdges,
     } = store.getState()
-    const { getViewport } = reactflow
-    const { setBackupDraft } = useStore.getState()
     const appDetail = useAppStore.getState().appDetail
     const workflowContainer = document.getElementById('workflow-container')
 
@@ -86,12 +102,6 @@ export const useWorkflowRun = () => {
       clientWidth,
       clientHeight,
     } = workflowContainer!
-
-    setBackupDraft({
-      nodes: getNodes(),
-      edges,
-      viewport: getViewport(),
-    })
 
     let url = ''
     if (appDetail?.mode === 'advanced-chat')
@@ -164,6 +174,7 @@ export const useWorkflowRun = () => {
   }, [store, reactflow])
 
   return {
+    handleBackupDraft,
     handleRunSetting,
     handleRun,
     workflowContainerRef,

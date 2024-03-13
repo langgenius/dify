@@ -1,4 +1,8 @@
-import { memo } from 'react'
+import {
+  memo,
+  useCallback,
+  useState,
+} from 'react'
 import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
@@ -29,6 +33,10 @@ const CustomEdge = ({
     targetY,
     targetPosition: Position.Left,
   })
+  const [open, setOpen] = useState(false)
+  const handleOpenChange = useCallback((v: boolean) => {
+    setOpen(v)
+  }, [])
 
   return (
     <>
@@ -41,23 +49,25 @@ const CustomEdge = ({
         }}
       />
       <EdgeLabelRenderer>
-        {
-          data?._hovering && (
-            <div
-              className='nopan nodrag'
-              style={{
-                position: 'absolute',
-                transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                pointerEvents: 'all',
-              }}
-            >
-              <BlockSelector
-                asChild
-                onSelect={() => {}}
-              />
-            </div>
-          )
-        }
+        <div
+          className={`
+            nopan nodrag
+            ${data?._hovering ? 'block' : 'hidden'}
+            ${open && '!block'}
+          `}
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+        >
+          <BlockSelector
+            open={open}
+            onOpenChange={handleOpenChange}
+            asChild
+            onSelect={() => {}}
+          />
+        </div>
       </EdgeLabelRenderer>
     </>
   )
