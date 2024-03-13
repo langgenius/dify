@@ -2,6 +2,7 @@ import type { CodeNodeType } from '../../../code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
   CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
@@ -76,6 +77,18 @@ const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
     case BlockEnum.HttpRequest: {
       res.vars = HTTP_REQUEST_OUTPUT_STRUCT
       break
+    }
+
+    case BlockEnum.VariableAssigner: {
+      const {
+        output_type,
+      } = data as VariableAssignerNodeType
+      res.vars = [
+        {
+          variable: 'output',
+          type: output_type,
+        },
+      ]
     }
   }
 

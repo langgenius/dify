@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import cn from 'classnames'
+import { isArray } from 'lodash-es'
 import VarReferencePopup from './var-reference-popup'
 import { toNodeOutputVars } from './utils'
 import type { ValueSelector } from '@/app/components/workflow/types'
@@ -29,6 +30,9 @@ type Props = {
 }
 
 export const getNodeInfoById = (nodes: any, id: string) => {
+  if (!isArray(nodes))
+    return
+
   return nodes.find((node: any) => node.id === id)
 }
 
