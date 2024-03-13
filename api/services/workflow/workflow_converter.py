@@ -19,7 +19,6 @@ from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.workflow.entities.node_entities import NodeType
-from core.workflow.nodes.end.entities import EndNodeOutputType
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
@@ -149,10 +148,13 @@ class WorkflowConverter:
 
         graph = self._append_node(graph, llm_node)
 
-        # convert to end node by app mode
-        end_node = self._convert_to_end_node(app_model=app_model)
-
-        graph = self._append_node(graph, end_node)
+        if new_app_mode == AppMode.WORKFLOW:
+            # convert to end node by app mode
+            end_node = self._convert_to_end_node()
+            graph = self._append_node(graph, end_node)
+        else:
+            answer_node = self._convert_to_answer_node()
+            graph = self._append_node(graph, answer_node)
 
         app_model_config_dict = app_config.app_model_config_dict
 
@@ -517,35 +519,44 @@ class WorkflowConverter:
             }
         }
 
-    def _convert_to_end_node(self, app_model: App) -> dict:
+    def _convert_to_end_node(self) -> dict:
         """
         Convert to End Node
-        :param app_model: App instance
         :return:
         """
-        if app_model.mode == AppMode.CHAT.value:
-            return {
-                "id": "end",
-                "position": None,
-                "data": {
-                    "title": "END",
-                    "type": NodeType.END.value,
+        # for original completion app
+        return {
+            "id": "end",
+            "position": None,
+            "data": {
+                "title": "END",
+                "type": NodeType.END.value,
+                "outputs": {
+                    "variable": "result",
+                    "value_selector": ["llm", "text"]
                 }
             }
-        elif app_model.mode == AppMode.COMPLETION.value:
-            # for original completion app
-            return {
-                "id": "end",
-                "position": None,
-                "data": {
-                    "title": "END",
-                    "type": NodeType.END.value,
-                    "outputs": {
-                        "type": EndNodeOutputType.PLAIN_TEXT.value,
-                        "plain_text_selector": ["llm", "text"]
-                    }
-                }
+        }
+
+    def _convert_to_answer_node(self) -> dict:
+        """
+        Convert to Answer Node
+        :return:
+        """
+        # for original chat app
+        return {
+            "id": "answer",
+            "position": None,
+            "data": {
+                "title": "ANSWER",
+                "type": NodeType.ANSWER.value,
+                "variables": {
+                    "variable": "text",
+                    "value_selector": ["llm", "text"]
+                },
+                "answer": "{{text}}"
             }
+        }
 
     def _create_edge(self, source: str, target: str) -> dict:
         """
@@ -582,7 +593,7 @@ class WorkflowConverter:
         if app_model.mode == AppMode.COMPLETION.value:
             return AppMode.WORKFLOW
         else:
-            return AppMode.value_of(app_model.mode)
+            return AppMode.ADVANCED_CHAT
 
     def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
         """
