@@ -15,6 +15,7 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -55,7 +56,10 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     varInputs,
     inputVarValues,
     setInputVarValues,
+    runResult,
   } = useConfig(id, data)
+
+  // console.log(inputs)
 
   return (
     <div className='mt-2'>
@@ -67,6 +71,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           }
         >
           <VarList
+            nodeId={id}
             readonly={readOnly}
             list={inputs.variables}
             onChange={handleVarListChange}
@@ -173,6 +178,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div >

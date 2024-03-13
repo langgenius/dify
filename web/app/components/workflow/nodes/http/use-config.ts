@@ -75,6 +75,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   } = useOneStepRun<HttpNodeType>({
     id,
     data: inputs,
@@ -129,6 +130,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     varInputs,
     inputVarValues,
     setInputVarValues,
+    runResult,
   }
 }
 
