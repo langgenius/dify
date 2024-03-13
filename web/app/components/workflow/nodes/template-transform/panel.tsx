@@ -13,6 +13,7 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.templateTransform'
 
@@ -37,6 +38,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
     varInputs,
     inputVarValues,
     setInputVarValues,
+    runResult,
   } = useConfig(id, data)
 
   return (
@@ -105,6 +107,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div>

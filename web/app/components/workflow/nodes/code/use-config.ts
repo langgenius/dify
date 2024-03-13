@@ -43,22 +43,13 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     handleStop,
     runInputData,
     setRunInputData,
-    runResult: unformattedRunResult,
+    runResult,
   } = useOneStepRun<CodeNodeType>({
     id,
     data: inputs,
     defaultRunInputData: {},
   })
 
-  const runResult = (() => {
-    if (!unformattedRunResult)
-      return {}
-
-    return {
-      ...unformattedRunResult,
-      created_by: unformattedRunResult.created_by_account?.name || '',
-    }
-  })()
   const varInputs = toVarInputs(inputs.variables)
 
   const inputVarValues = (() => {

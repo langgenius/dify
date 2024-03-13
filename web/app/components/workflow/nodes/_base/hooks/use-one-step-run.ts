@@ -5,7 +5,7 @@ import type { CommonNodeType, InputVar, Variable } from '@/app/components/workfl
 import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
-import Toast from '@/app/components/base/toast'
+// import Toast from '@/app/components/base/toast'
 
 type Params<T> = {
   id: string
@@ -51,10 +51,10 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
         throw new Error(res.error)
     }
     catch (e: any) {
-      Toast.notify({
-        type: 'error',
-        message: e.toString(),
-      })
+      // Toast.notify({
+      //   type: 'error',
+      //   message: e.toString(),
+      // })
       handleNodeDataUpdate({
         id,
         data: {
@@ -65,7 +65,10 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
       return false
     }
     finally {
-      setRunResult(res)
+      setRunResult({
+        ...res,
+        created_by: res.created_by_account?.name || '',
+      })
     }
     handleNodeDataUpdate({
       id,
@@ -74,10 +77,10 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
         _singleRunningStatus: NodeRunningStatus.Succeeded,
       },
     })
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.success'),
-    })
+    // Toast.notify({
+    //   type: 'success',
+    //   message: t('common.api.success'),
+    // })
   }
 
   const handleStop = () => {

@@ -29,6 +29,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   } = useOneStepRun<TemplateTransformNodeType>({
     id,
     data: inputs,
@@ -63,6 +64,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     varInputs,
     inputVarValues,
     setInputVarValues,
+    runResult,
   }
 }
 
