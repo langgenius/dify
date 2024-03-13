@@ -232,3 +232,7 @@ export const fetchSupportFileTypes: Fetcher<FileTypesRes, { url: string }> = ({ 
 export const getErrorDocs: Fetcher<ErrorDocsResponse, { datasetId: string }> = ({ datasetId }) => {
   return get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`)
 }
+
+export const retryErrorDocs: Fetcher<CommonResponse, { datasetId: string; document_ids: string[] }> = ({ datasetId, document_ids }) => {
+  return post<CommonResponse>(`/datasets/${datasetId}/retry`, { body: { document_ids } })
+}

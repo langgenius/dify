@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
 import useSWR from 'swr'
 import s from './style.module.css'
 import Divider from '@/app/components/base/divider'
-import { getErrorDocs } from '@/service/datasets'
+import { getErrorDocs, retryErrorDocs } from '@/service/datasets'
+import type { IndexingStatusResponse } from '@/models/datasets'
 
 const WarningIcon = () =>
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000 /svg">
@@ -16,17 +17,75 @@ const WarningIcon = () =>
 type Props = {
   datasetId: string
 }
+type IIndexState = {
+  value: string
+}
+type IAction = {
+  type: string
+}
+const indexStateReducer = (state: IIndexState, action: IAction) => {
+  switch (action.type) {
+    case 'retry':
+      return {
+        ...state,
+        value: 'retrying',
+      }
+    case 'success':
+      return {
+        ...state,
+        value: 'success',
+      }
+    case 'error':
+      return {
+        ...state,
+        value: 'error',
+      }
+    default:
+      return {
+        ...state,
+        value: 'success',
+      }
+  }
+}
 
 const RetryButton: FC<Props> = (
   { datasetId },
 ) => {
   const { t } = useTranslation()
+  const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
   const { data: errorDocs } = useSWR({ datasetId }, getErrorDocs)
+
+  const onRetryErrorDocs = async () => {
+    const document_ids = errorDocs?.data.map((doc: IndexingStatusResponse) => doc.id) || []
+    const res = await retryErrorDocs({ datasetId, document_ids })
+    if (res.result === 'success')
+      dispatch({ type: 'success' })
+    else
+      dispatch({ type: 'error' })
+  }
+
+  useEffect(() => {
+    if (errorDocs?.total === 0)
+      dispatch({ type: 'success' })
+    else
+      dispatch({ type: 'error' })
+  }, [errorDocs?.total])
+
+  if (indexState.value === 'success')
+    return null
   return <div className={classNames('inline-flex justify-center items-center gap-2', s.retryBtn)}>
     <WarningIcon />
     <span className='flex shrink-0 text-sm text-gray-500'>{errorDocs?.total} {t('dataset.docsFailedNotice')}</span>
     <Divider type='vertical' className='!h-4' />
-    <span className='text-primary-600 font-semibold text-sm'>{t('dataset.retry')}</span>
+    <span
+      className={
+        classNames(
+          'text-primary-600 font-semibold text-sm cursor-pointer',
+          indexState.value === 'retrying' && 'text-gray-500 cursor-not-allowed',
+        )
+      }
+      onClick={indexState.value === 'error' ? onRetryErrorDocs : undefined}
+    >{t('dataset.retry')}</span>
   </div>
 }
 export default RetryButton

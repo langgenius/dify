@@ -413,6 +413,6 @@ export enum DocForm {
 }
 
 export type ErrorDocsResponse = {
-  data: any[]
+  data: IndexingStatusResponse[]
   total: number
 }
