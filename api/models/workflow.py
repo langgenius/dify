@@ -123,11 +123,11 @@ class Workflow(db.Model):
 
     @property
     def graph_dict(self):
-        return self.graph if not self.graph else json.loads(self.graph)
+        return json.loads(self.graph) if self.graph else None
 
     @property
     def features_dict(self):
-        return self.features if not self.features else json.loads(self.features)
+        return json.loads(self.features) if self.features else None
 
     def user_input_form(self) -> list:
         # get start node from graph
@@ -270,15 +270,15 @@ class WorkflowRun(db.Model):
 
     @property
     def graph_dict(self):
-        return self.graph if not self.graph else json.loads(self.graph)
+        return json.loads(self.graph) if self.graph else None
 
     @property
     def inputs_dict(self):
-        return self.inputs if not self.inputs else json.loads(self.inputs)
+        return json.loads(self.inputs) if self.inputs else None
 
     @property
     def outputs_dict(self):
-        return self.outputs if not self.outputs else json.loads(self.outputs)
+        return json.loads(self.outputs) if self.outputs else None
 
 
 class WorkflowNodeExecutionTriggeredFrom(Enum):
@@ -419,19 +419,19 @@ class WorkflowNodeExecution(db.Model):
 
     @property
     def inputs_dict(self):
-        return self.inputs if not self.inputs else json.loads(self.inputs)
+        return json.loads(self.inputs) if self.inputs else None
 
     @property
     def outputs_dict(self):
-        return self.outputs if not self.outputs else json.loads(self.outputs)
+        return json.loads(self.outputs) if self.outputs else None
 
     @property
     def process_data_dict(self):
-        return self.process_data if not self.process_data else json.loads(self.process_data)
+        return json.loads(self.process_data) if self.process_data else None
 
     @property
     def execution_metadata_dict(self):
-        return self.execution_metadata if not self.execution_metadata else json.loads(self.execution_metadata)
+        return json.loads(self.execution_metadata) if self.execution_metadata else None
 
 
 class WorkflowAppLogCreatedFrom(Enum):
