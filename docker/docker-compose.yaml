@@ -293,9 +293,12 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:latest
     restart: always
+    cap_add:
+      - SYS_ADMIN
     environment:
       # The DifySandbox configurations
       API_KEY: dify-sandbox
+      GIN_MODE: release
     ports:
       - "8194:8194"
 
