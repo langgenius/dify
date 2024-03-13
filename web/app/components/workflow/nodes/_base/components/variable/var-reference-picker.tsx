@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import cn from 'classnames'
-import { mockNodeOutputVars, mockNodesData } from '../../../mock'
 import VarReferencePopup from './var-reference-popup'
+import { toNodeOutputVars } from './utils'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -31,9 +31,8 @@ type Props = {
 //   return type.charAt(0).toUpperCase() + type.substring(1)
 // }
 
-// TODO: get data from context
-export const getNodeInfoById = (id: string) => {
-  return mockNodesData[id]
+export const getNodeInfoById = (nodes: any, id: string) => {
+  return nodes.find((node: any) => node.id === id)
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -46,9 +45,14 @@ const VarReferencePicker: FC<Props> = ({
 }) => {
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   // console.log(getBeforeNodesInSameBranch(nodeId), getTreeLeafNodes())
+  const availableNodes = getBeforeNodesInSameBranch(nodeId)
+  const outputVars = toNodeOutputVars(availableNodes)
+  // console.log(outputVars)
   const [open, setOpen] = useState(false)
   const hasValue = value.length > 0
-  const node = hasValue ? getNodeInfoById(value[0]) : null
+  const outputVarNodeId = hasValue ? value[0] : ''
+  const outputVarNode = hasValue ? getNodeInfoById(availableNodes, outputVarNodeId)?.data : null
+  console.log(hasValue, value, outputVarNode)
   const varName = hasValue ? value[value.length - 1] : ''
   // TODO: get var type through node and  value
   const getVarType = () => {
@@ -72,10 +76,10 @@ const VarReferencePicker: FC<Props> = ({
                       <div className='p-[1px]'>
                         <VarBlockIcon
                           className='!text-gray-900'
-                          type={node?.type}
+                          type={outputVarNode?.type}
                         />
                       </div>
-                      <div className='mx-0.5 text-xs font-medium text-gray-700'>{node?.title}</div>
+                      <div className='mx-0.5 text-xs font-medium text-gray-700'>{outputVarNode?.title}</div>
                       <Line3 className='mr-0.5'></Line3>
                     </div>
                   )}
@@ -94,7 +98,7 @@ const VarReferencePicker: FC<Props> = ({
           minWidth: 227,
         }}>
           <VarReferencePopup
-            vars={mockNodeOutputVars}
+            vars={outputVars}
             onChange={(value) => {
               onChange(value)
               setOpen(false)
