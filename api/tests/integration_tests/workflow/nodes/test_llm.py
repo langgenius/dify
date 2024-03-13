@@ -36,7 +36,7 @@ def test_execute_llm(setup_openai_mock):
                 'type': 'llm',
                 'model': {
                     'provider': 'openai',
-                    'name': 'gpt-3.5.turbo',
+                    'name': 'gpt-3.5-turbo',
                     'mode': 'chat',
                     'completion_params': {}
                 },

@@ -55,7 +55,9 @@ class BaseWorkflowCallback(ABC):
     def on_workflow_node_execute_failed(self, node_id: str,
                                         node_type: NodeType,
                                         node_data: BaseNodeData,
-                                        error: str) -> None:
+                                        error: str,
+                                        inputs: Optional[dict] = None,
+                                        process_data: Optional[dict] = None) -> None:
         """
         Workflow node execute failed
         """

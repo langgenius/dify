@@ -420,7 +420,9 @@ class WorkflowEngineManager:
                         node_id=node.node_id,
                         node_type=node.node_type,
                         node_data=node.node_data,
-                        error=node_run_result.error
+                        error=node_run_result.error,
+                        inputs=node_run_result.inputs,
+                        process_data=node_run_result.process_data,
                     )
 
             raise ValueError(f"Node {node.node_data.title} run failed: {node_run_result.error}")
