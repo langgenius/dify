@@ -9,7 +9,6 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.model_providers.azure_openai._constant import AZURE_OPENAI_API_VERSION
 
 
 class _CommonAzureOpenAI:
@@ -18,7 +17,7 @@ class _CommonAzureOpenAI:
         credentials_kwargs = {
             "api_key": credentials['openai_api_key'],
             "azure_endpoint": credentials['openai_api_base'],
-            "api_version": AZURE_OPENAI_API_VERSION,
+            "api_version": credentials['openai_api_version'],
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "max_retries": 1,
         }
