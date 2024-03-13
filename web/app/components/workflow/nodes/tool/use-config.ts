@@ -114,6 +114,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setRunInputData,
     handleRun,
     handleStop,
+    runResult,
   } = useOneStepRun<ToolNodeType>({
     id,
     data: inputs,
@@ -171,6 +172,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     runningStatus,
     handleRun,
     handleStop,
+    runResult,
   }
 }
 

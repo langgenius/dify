@@ -13,6 +13,7 @@ import ConfigCredential from '@/app/components/tools/setting/build-in/config-cre
 import Loading from '@/app/components/base/loading'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -43,7 +44,10 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     runningStatus,
     handleRun,
     handleStop,
+    runResult,
   } = useConfig(id, data)
+
+  // console.log(inputs)
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -158,6 +162,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div>
