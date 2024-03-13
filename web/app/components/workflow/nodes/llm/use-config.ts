@@ -99,6 +99,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   } = useOneStepRun<LLMNodeType>({
     id,
     data: inputs,
@@ -170,6 +171,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     runningStatus,
     handleRun,
     handleStop,
+    runResult,
   }
 }
 

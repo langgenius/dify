@@ -10,6 +10,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -35,6 +36,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     handleStop,
     query,
     setQuery,
+    runResult,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -108,6 +110,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div>

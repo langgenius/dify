@@ -17,6 +17,7 @@ import { Resolution } from '@/types/app'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -52,6 +53,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleRun,
     handleStop,
     varInputs,
+    runResult,
   } = useConfig(id, data)
 
   const isChatApp = true // TODO: get from app context
@@ -221,6 +223,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
     </div>

@@ -12,6 +12,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
@@ -36,6 +37,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     handleStop,
     query,
     setQuery,
+    runResult,
   } = useConfig(id, data)
 
   return (
@@ -139,6 +141,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
             runningStatus={runningStatus}
             onRun={handleRun}
             onStop={handleStop}
+            result={<ResultPanel {...runResult} showSteps={false} />}
           />
         )}
       </div>

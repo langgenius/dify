@@ -63,6 +63,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   } = useOneStepRun<QuestionClassifierNodeType>({
     id,
     data: inputs,
@@ -94,6 +95,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleStop,
     query,
     setQuery,
+    runResult,
   }
 }
 

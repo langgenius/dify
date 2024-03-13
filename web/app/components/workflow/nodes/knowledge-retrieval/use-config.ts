@@ -64,6 +64,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleStop,
     runInputData,
     setRunInputData,
+    runResult,
   } = useOneStepRun<KnowledgeRetrievalNodeType>({
     id,
     data: inputs,
@@ -94,6 +95,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleStop,
     query,
     setQuery,
+    runResult,
   }
 }
 
