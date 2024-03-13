@@ -118,9 +118,19 @@ export type Memory = {
   }
 }
 
+export enum VarType {
+  string = 'String',
+  number = 'Number',
+  boolean = 'Boolean',
+  object = 'Object',
+  array = 'Array',
+  arrayString = 'Array[string]',
+  arrayNumber = 'Array[number]',
+}
+
 export type Var = {
   variable: string
-  type: string
+  type: VarType
   children?: Var[] // if type is obj, has the children struct
 }
 

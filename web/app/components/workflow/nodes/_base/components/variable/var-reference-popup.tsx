@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useRef } from 'react'
 import { useHover } from 'ahooks'
 import cn from 'classnames'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
@@ -30,7 +30,7 @@ const Item: FC<ItemProps> = ({
   itemData,
   onChange,
 }) => {
-  const isObj = itemData.type === 'object'
+  const isObj = itemData.type === VarType.object
   const itemRef = useRef(null)
   const isItemHovering = useHover(itemRef)
   const handleChosen = (e: React.MouseEvent) => {

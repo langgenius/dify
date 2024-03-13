@@ -1,6 +1,14 @@
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { LLM_OUTPUT_STRUCT, SUPPORT_OUTPUT_VARS_NODE } from '@/app/components/workflow/constants'
+
+const inputVarTypeToVarType = (type: InputVarType): VarType => {
+  if (type === InputVarType.number)
+    return VarType.number
+
+  return VarType.string
+}
 
 const formatItem = (item: any): NodeOutPutVar => {
   const { id, data } = item
@@ -17,19 +25,20 @@ const formatItem = (item: any): NodeOutPutVar => {
       res.vars = variables.map((v) => {
         return {
           variable: v.variable,
-          type: v.type,
+          type: inputVarTypeToVarType(v.type),
         }
       })
       break
     }
 
-    // default:
-    //   // throw new Error('unknown type')
-    //   break
+    case BlockEnum.LLM: {
+      res.vars = LLM_OUTPUT_STRUCT
+      break
+    }
   }
 
   return res
 }
 export const toNodeOutputVars = (nodes: any[]): NodeOutPutVar[] => {
-  return nodes.map(formatItem)
+  return nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)).map(formatItem)
 }

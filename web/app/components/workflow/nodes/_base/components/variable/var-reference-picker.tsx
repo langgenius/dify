@@ -5,6 +5,7 @@ import cn from 'classnames'
 import VarReferencePopup from './var-reference-popup'
 import { toNodeOutputVars } from './utils'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -54,9 +55,26 @@ const VarReferencePicker: FC<Props> = ({
   const outputVarNode = hasValue ? getNodeInfoById(availableNodes, outputVarNodeId)?.data : null
   // console.log(hasValue, value, outputVarNode)
   const varName = hasValue ? value[value.length - 1] : ''
-  // TODO: get var type through node and  value
+
   const getVarType = () => {
-    return 'string'
+    const targetVar = outputVars.find(v => v.nodeId === outputVarNodeId)
+    if (!targetVar)
+      return 'undefined'
+
+    let type: VarType = VarType.string
+    let curr: any = targetVar.vars
+    value.slice(1).forEach((key, i) => {
+      const isLast = i === value.length - 2
+      curr = curr.find((v: any) => v.variable === key)
+      if (isLast) {
+        type = curr.type
+      }
+      else {
+        if (curr.type === VarType.object)
+          curr = curr.children
+      }
+    })
+    return type
   }
 
   return (

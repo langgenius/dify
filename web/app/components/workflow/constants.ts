@@ -1,4 +1,5 @@
-import { BlockEnum } from './types'
+import type { Var } from './types'
+import { BlockEnum, VarType } from './types'
 import StartNodeDefault from './nodes/start/default'
 import DirectAnswerDefault from './nodes/direct-answer/default'
 import LLMDefault from './nodes/llm/default'
@@ -178,3 +179,73 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
     "score": ""
   }
 }`
+
+export const SUPPORT_OUTPUT_VARS_NODE = [
+  BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
+  BlockEnum.QuestionClassifier, BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner,
+]
+
+export const LLM_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'text',
+    type: VarType.string,
+  },
+  {
+    variable: 'usage',
+    type: VarType.object,
+    children: [
+      {
+        variable: 'prompt_tokens',
+        type: VarType.number,
+      },
+      {
+        variable: 'prompt_unit_price',
+        type: VarType.number,
+      },
+      {
+        variable: 'prompt_price_unit',
+        type: VarType.number,
+      },
+      {
+        variable: 'prompt_price',
+        type: VarType.number,
+      },
+      {
+        variable: 'completion_tokens',
+        type: VarType.number,
+      },
+      {
+        variable: 'completion_unit_price',
+        type: VarType.number,
+      },
+      {
+        variable: 'completion_price_unit',
+        type: VarType.number,
+      },
+      {
+        variable: 'completion_unit_price',
+        type: VarType.number,
+      },
+      {
+        variable: 'completion_price',
+        type: VarType.number,
+      },
+      {
+        variable: 'total_tokens',
+        type: VarType.number,
+      },
+      {
+        variable: 'total_price',
+        type: VarType.number,
+      },
+      {
+        variable: 'currency',
+        type: VarType.string,
+      },
+      {
+        variable: 'latency',
+        type: VarType.number,
+      },
+    ],
+  },
+]
