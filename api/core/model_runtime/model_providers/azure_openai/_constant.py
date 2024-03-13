@@ -1,19 +1,14 @@
-from pydantic import BaseModel
-
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import (
-    AIModelEntity,
-    DefaultParameterName,
-    FetchFrom,
-    I18nObject,
-    ModelFeature,
-    ModelPropertyKey,
-    ModelType,
-    ParameterRule,
-    PriceConfig,
-)
-
+from core.model_runtime.entities.model_entities import (AIModelEntity,
+                                                        DefaultParameterName,
+                                                        FetchFrom, I18nObject,
+                                                        ModelFeature,
+                                                        ModelPropertyKey,
+                                                        ModelType,
+                                                        ParameterRule,
+                                                        PriceConfig)
+from pydantic import BaseModel
 
 
 def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
