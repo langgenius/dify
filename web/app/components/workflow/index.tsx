@@ -100,7 +100,10 @@ const Workflow: FC<WorkflowProps> = memo(({
   useKeyPress('Backspace', handleEdgeDelete)
 
   return (
-    <div className='relative w-full h-full bg-[#F0F2F7]'>
+    <div
+      id='workflow-container'
+      className='relative w-full min-w-[960px] h-full bg-[#F0F2F7]'
+    >
       <Header />
       <Panel />
       <Operator />

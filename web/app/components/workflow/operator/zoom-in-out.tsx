@@ -100,7 +100,7 @@ const ZoomInOut: FC = () => {
         <div className={`
           flex items-center px-2 h-8 cursor-pointer text-[13px] hover:bg-gray-50 rounded-lg
           ${open && 'bg-gray-50'}
-          ${runningStatus && '!cursor-not-allowed'}
+          ${runningStatus && '!cursor-not-allowed opacity-50'}
         `}>
           <SearchLg className='mr-1 w-4 h-4' />
           <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>

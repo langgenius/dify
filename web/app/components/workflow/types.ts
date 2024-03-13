@@ -38,6 +38,7 @@ export type CommonNodeType<T = {}> = {
 export type CommonEdgeType = {
   _hovering: boolean
   _connectedNodeIsHovering: boolean
+  _runned?: boolean
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>

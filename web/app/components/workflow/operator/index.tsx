@@ -35,7 +35,7 @@ const Operator = () => {
           <div
             className={`
               ml-[1px] flex items-center justify-center w-8 h-8 cursor-pointer hover:bg-black/5 rounded-lg
-              ${runningStatus && '!cursor-not-allowed'}
+              ${runningStatus && '!cursor-not-allowed opacity-50'}
             `}
             onClick={goLayout}
           >

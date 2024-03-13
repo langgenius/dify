@@ -5,7 +5,9 @@ import Workflow from '@/app/components/workflow'
 
 const Page = () => {
   return (
-    <Workflow />
+    <div className='w-full h-full overflow-x-auto'>
+      <Workflow />
+    </div>
   )
 }
 export default memo(Page)

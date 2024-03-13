@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { Viewport } from 'reactflow'
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
@@ -9,7 +10,11 @@ import type {
   ToolsMap,
 } from './block-selector/types'
 import { Mode } from './types'
-import type { WorkflowRunningStatus } from './types'
+import type {
+  Edge,
+  Node,
+  WorkflowRunningStatus,
+} from './types'
 
 type State = {
   mode: Mode
@@ -27,6 +32,11 @@ type State = {
   runningStatus?: WorkflowRunningStatus
   showInputsPanel: boolean
   inputs: Record<string, string>
+  backupDraft?: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
+  }
 }
 
 type Action = {
@@ -45,6 +55,7 @@ type Action = {
   setRunningStatus: (runningStatus?: WorkflowRunningStatus) => void
   setShowInputsPanel: (showInputsPanel: boolean) => void
   setInputs: (inputs: Record<string, string>) => void
+  setBackupDraft: (backupDraft?: State['backupDraft']) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -78,4 +89,6 @@ export const useStore = create<State & Action>(set => ({
   setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
   inputs: {},
   setInputs: inputs => set(() => ({ inputs })),
+  backupDraft: undefined,
+  setBackupDraft: backupDraft => set(() => ({ backupDraft })),
 }))

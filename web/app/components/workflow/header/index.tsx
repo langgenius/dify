@@ -27,8 +27,11 @@ const Header: FC = () => {
   const { handleRunSetting } = useWorkflowRun()
 
   const handleShowFeatures = useCallback(() => {
+    if (runningStatus)
+      return
+
     useStore.setState({ showFeaturesPanel: true })
-  }, [])
+  }, [runningStatus])
 
   const handleGoBackToEdit = useCallback(() => {
     handleRunSetting(true)
@@ -77,6 +80,7 @@ const Header: FC = () => {
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
+                ${runningStatus && '!cursor-not-allowed opacity-50'}
               `}
               onClick={handleShowFeatures}
             >

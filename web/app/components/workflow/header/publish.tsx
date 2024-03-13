@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore } from '../store'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -9,6 +10,7 @@ import {
 
 const Publish = () => {
   const { t } = useTranslation()
+  const runningStatus = useStore(s => s.runningStatus)
   const [open, setOpen] = useState(false)
 
   return (
@@ -21,10 +23,18 @@ const Publish = () => {
         crossAxis: -5,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger onClick={() => {
+        if (runningStatus)
+          return
+
+        setOpen(v => !v)
+      }}>
         <Button
           type='primary'
-          className='px-3 py-0 h-8 text-[13px] font-medium'
+          className={`
+            px-3 py-0 h-8 text-[13px] font-medium
+            ${runningStatus && 'cursor-not-allowed opacity-50'}
+          `}
         >
           {t('workflow.common.publish')}
         </Button>
