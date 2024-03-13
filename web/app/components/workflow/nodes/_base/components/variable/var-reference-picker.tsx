@@ -52,7 +52,7 @@ const VarReferencePicker: FC<Props> = ({
   const hasValue = value.length > 0
   const outputVarNodeId = hasValue ? value[0] : ''
   const outputVarNode = hasValue ? getNodeInfoById(availableNodes, outputVarNodeId)?.data : null
-  console.log(hasValue, value, outputVarNode)
+  // console.log(hasValue, value, outputVarNode)
   const varName = hasValue ? value[value.length - 1] : ''
   // TODO: get var type through node and  value
   const getVarType = () => {
