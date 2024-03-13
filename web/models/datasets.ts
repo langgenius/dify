@@ -411,3 +411,8 @@ export enum DocForm {
   TEXT = 'text_model',
   QA = 'qa_model',
 }
+
+export type ErrorDocsResponse = {
+  data: any[]
+  total: number
+}

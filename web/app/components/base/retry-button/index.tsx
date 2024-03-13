@@ -1,10 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
+import useSWR from 'swr'
 import s from './style.module.css'
 import Divider from '@/app/components/base/divider'
-import { get } from '@/service/base'
+import { getErrorDocs } from '@/service/datasets'
 
 const WarningIcon = () =>
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000 /svg">
@@ -18,16 +20,13 @@ type Props = {
 const RetryButton: FC<Props> = (
   { datasetId },
 ) => {
-  useEffect(() => {
-    get(`/datasets/${datasetId}/error-docs`).then((res) => {
-      console.log(res)
-    })
-  }, [])
+  const { t } = useTranslation()
+  const { data: errorDocs } = useSWR({ datasetId }, getErrorDocs)
   return <div className={classNames('inline-flex justify-center items-center gap-2', s.retryBtn)}>
     <WarningIcon />
-    <span className='flex shrink-0 text-sm text-gray-500'>3 docs embeddings failed</span>
+    <span className='flex shrink-0 text-sm text-gray-500'>{errorDocs?.total} {t('dataset.docsFailedNotice')}</span>
     <Divider type='vertical' className='!h-4' />
-    <span className='text-primary-600 font-semibold text-sm'>RETRY</span>
+    <span className='text-primary-600 font-semibold text-sm'>{t('dataset.retry')}</span>
   </div>
 }
 export default RetryButton

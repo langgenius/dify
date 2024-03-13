@@ -7,6 +7,7 @@ import type {
   DataSetListResponse,
   DocumentDetailResponse,
   DocumentListResponse,
+  ErrorDocsResponse,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
@@ -226,4 +227,8 @@ type FileTypesRes = {
 
 export const fetchSupportFileTypes: Fetcher<FileTypesRes, { url: string }> = ({ url }) => {
   return get<FileTypesRes>(url)
+}
+
+export const getErrorDocs: Fetcher<ErrorDocsResponse, { datasetId: string }> = ({ datasetId }) => {
+  return get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`)
 }

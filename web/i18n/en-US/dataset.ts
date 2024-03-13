@@ -42,6 +42,8 @@ const translation = {
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
   },
+  docsFailedNotice: 'documents failed to be indexed',
+  retry: 'Retry',
 }
 
 export default translation

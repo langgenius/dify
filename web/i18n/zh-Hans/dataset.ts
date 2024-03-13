@@ -42,6 +42,8 @@ const translation = {
     change: '更改',
     changeRetrievalMethod: '更改检索方法',
   },
+  docsFailedNotice: '文档无法被索引',
+  retry: '重试',
 }
 
 export default translation
