@@ -3,7 +3,6 @@ from typing import Any, Union
 import httpx
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.provider.builtin.wecom.tools.constants import supported_msgtypes
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 
