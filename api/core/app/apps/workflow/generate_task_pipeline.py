@@ -195,6 +195,7 @@ class WorkflowAppGenerateTaskPipeline(WorkflowBasedGenerateTaskPipeline):
                     'data': {
                         'id': workflow_run.id,
                         'workflow_id': workflow_run.workflow_id,
+                        'sequence_number': workflow_run.sequence_number,
                         'created_at': int(workflow_run.created_at.timestamp())
                     }
                 }
