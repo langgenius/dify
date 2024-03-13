@@ -66,7 +66,5 @@ def sort_to_dict_by_position_map(
     :param data: the data to be sorted
     :return: an OrderedDict with the sorted pairs of name and object
     """
-    result_dict = OrderedDict[str, Any]()
-    for item in sort_by_position_map(position_map, data, name_func):
-        result_dict.update({name_func(item): item})
-    return result_dict
+    sorted_items = sort_by_position_map(position_map, data, name_func)
+    return OrderedDict([(name_func(item), item) for item in sorted_items])
