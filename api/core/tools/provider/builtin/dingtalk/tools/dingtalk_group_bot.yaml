@@ -37,6 +37,26 @@ parameters:
       zh_Hans: 加签秘钥
       pt_BR: secret key for signing
     form: form
+  - name: msgtype
+    type: select
+    required: true
+    default: text
+    options:
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本类型
+      - value: markdown
+        label:
+          en_US: Markdown
+          zh_Hans: markdown类型
+    label:
+      en_US: Message Type
+      zh_Hans: 消息类型
+    human_description:
+      en_US: Message Type
+      zh_Hans: 消息类型
+    form: form
   - name: content
     type: string
     required: true
