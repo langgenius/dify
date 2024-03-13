@@ -1,28 +1,28 @@
 const translation = {
-  title: 'Retrieval Testing',
-  desc: 'Test the hitting effect of the Knowledge based on the given query text.',
+  title: 'Kiểm Tra Truy Vấn',
+  desc: 'Kiểm tra hiệu ứng đánh trúng của Kiến thức dựa trên văn bản truy vấn đã cho.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Recents',
+  recents: 'Gần đây',
   table: {
     header: {
-      source: 'Source',
-      text: 'Text',
-      time: 'Time',
-    },
+      source: 'Nguồn',
+      text: 'Văn bản',
+      time: 'Thời gian'
+    }
   },
   input: {
-    title: 'Source text',
-    placeholder: 'Please enter a text, a short declarative sentence is recommended.',
-    countWarning: 'Up to 200 characters.',
-    indexWarning: 'High quality Knowledge only.',
-    testing: 'Testing',
+    title: 'Văn bản nguồn',
+    placeholder: 'Vui lòng nhập một văn bản, một câu khẳng định ngắn được khuyến nghị.',
+    countWarning: 'Tối đa 200 ký tự.',
+    indexWarning: 'Chỉ có trong Kiến thức chất lượng cao.',
+    testing: 'Kiểm tra'
   },
   hit: {
-    title: 'RETRIEVAL PARAGRAPHS',
-    emptyTip: 'Retrieval Testing results will show here',
+    title: 'CÁC ĐOẠN TRUY VẤN',
+    emptyTip: 'Kết quả Kiểm Tra Truy Vấn sẽ hiển thị ở đây'
   },
-  noRecentTip: 'No recent query results here',
-  viewChart: 'View VECTOR CHART',
+  noRecentTip: 'Không có kết quả truy vấn gần đây ở đây',
+  viewChart: 'Xem BIỂU ĐỒ VECTOR'
 }
 
 export default translation
