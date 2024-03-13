@@ -25,6 +25,26 @@ parameters:
       zh_Hans: 群机器人webhook的key
       pt_BR: Wecom Group bot webhook key
     form: form
+  - name: msgtype
+    type: select
+    required: true
+    default: text
+    options:
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本类型
+      - value: markdown
+        label:
+          en_US: Markdown
+          zh_Hans: markdown类型
+    label:
+      en_US: Message Type
+      zh_Hans: 消息类型
+    human_description:
+      en_US: Message Type
+      zh_Hans: 消息类型
+    form: form
   - name: content
     type: string
     required: true
@@ -36,5 +56,5 @@ parameters:
       en_US: Content to sent to the group.
       zh_Hans: 群消息文本
       pt_BR: Content to sent to the group.
-    llm_description: Content of the message
+    llm_description: Text content of the message. If the message type is text, the content should be plain text. If the message type is markdown, the content should be in markdown format.
     form: llm
