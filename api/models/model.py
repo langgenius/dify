@@ -726,6 +726,7 @@ class MessageFile(db.Model):
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
+
 class MessageAnnotation(db.Model):
     __tablename__ = 'message_annotations'
     __table_args__ = (

@@ -44,7 +44,7 @@ class AudioApi(Resource):
             response = AudioService.transcript_asr(
                 tenant_id=app_model.tenant_id,
                 file=file,
-                end_user=end_user
+                end_user=end_user.get_id()
             )
 
             return response
@@ -75,7 +75,7 @@ class AudioApi(Resource):
 
 
 class TextApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
         parser.add_argument('text', type=str, required=True, nullable=False, location='json')
@@ -86,8 +86,8 @@ class TextApi(Resource):
             response = AudioService.transcript_tts(
                 tenant_id=app_model.tenant_id,
                 text=args['text'],
-                end_user=end_user,
-                voice=args['voice'] if args['voice'] else app_model.app_model_config.text_to_speech_dict.get('voice'),
+                end_user=end_user.get_id(),
+                voice=app_model.app_model_config.text_to_speech_dict.get('voice'),
                 streaming=args['streaming']
             )
 
