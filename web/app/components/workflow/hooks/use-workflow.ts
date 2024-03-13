@@ -86,8 +86,11 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
-    const currentNode = nodes.find(node => node.id === nodeId)!
+    const currentNode = nodes.find(node => node.id === nodeId)
     const list: Node[] = []
+
+    if (!currentNode)
+      return list
 
     const traverse = (root: Node, callback: (node: Node) => void) => {
       const incomers = getIncomers(root, nodes, edges)

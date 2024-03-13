@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react'
 import {
   useCallback,
+  useEffect,
   useState,
 } from 'react'
 import type { NodeProps } from 'reactflow'
@@ -15,6 +16,7 @@ import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
 import type { ToolDefaultValue } from '../../../block-selector/types'
 import { useNodesInteractions } from '../../../hooks'
+import { useStore } from '../../../store'
 
 type NodeHandleProps = {
   handleId: string
@@ -87,10 +89,12 @@ export const NodeTargetHandle = ({
 
 export const NodeSourceHandle = ({
   id,
+  data,
   handleId,
   handleClassName,
   nodeSelectorClassName,
 }: NodeHandleProps) => {
+  const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
   const [open, setOpen] = useState(false)
   const { handleNodeAddNext } = useNodesInteractions()
   const edges = useEdges()
@@ -107,6 +111,11 @@ export const NodeSourceHandle = ({
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAddNext(id, type, handleId, toolDefaultValue)
   }, [handleNodeAddNext, id, handleId])
+
+  useEffect(() => {
+    if (notInitialWorkflow && data.type === BlockEnum.Start)
+      setOpen(true)
+  }, [notInitialWorkflow, data.type])
 
   return (
     <>

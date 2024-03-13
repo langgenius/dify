@@ -37,6 +37,7 @@ type State = {
     edges: Edge[]
     viewport: Viewport
   }
+  notInitialWorkflow: boolean
 }
 
 type Action = {
@@ -56,6 +57,7 @@ type Action = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   setInputs: (inputs: Record<string, string>) => void
   setBackupDraft: (backupDraft?: State['backupDraft']) => void
+  setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -91,4 +93,6 @@ export const useStore = create<State & Action>(set => ({
   setInputs: inputs => set(() => ({ inputs })),
   backupDraft: undefined,
   setBackupDraft: backupDraft => set(() => ({ backupDraft })),
+  notInitialWorkflow: false,
+  setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
 }))

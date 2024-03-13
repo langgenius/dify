@@ -38,6 +38,7 @@ import {
   initialEdges,
   initialNodes,
 } from './utils'
+import { START_INITIAL_POSITION } from './constants'
 import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
@@ -168,11 +169,11 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     return {
       id: `${Date.now()}`,
       type: 'custom',
-      data: nodesInitialData.start,
-      position: {
-        x: 100,
-        y: 200,
+      data: {
+        ...nodesInitialData.start,
+        selected: true,
       },
+      position: START_INITIAL_POSITION,
     }
   }, [nodesInitialData])
 
@@ -214,6 +215,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   if (error && error.json && !error.bodyUsed && appDetail) {
     error.json().then((err: any) => {
       if (err.code === 'draft_workflow_not_exist') {
+        useStore.setState({ notInitialWorkflow: true })
         syncWorkflowDraft({
           url: `/apps/${appDetail.id}/workflows/draft`,
           params: {
