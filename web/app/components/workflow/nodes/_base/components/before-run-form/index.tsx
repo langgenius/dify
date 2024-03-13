@@ -10,6 +10,7 @@ import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAn
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -77,7 +78,9 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
               <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
             </Button>
           </div>
-
+          {isRunning && (
+            <ResultPanel status='running' showSteps={false} />
+          )}
           {isFinished && (
             <>
               {result}

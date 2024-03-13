@@ -14,9 +14,9 @@ type ResultPanelProps = {
   elapsed_time?: number
   total_tokens?: number
   created_at?: number
-  created_by: string
+  created_by?: string
   finished_at?: number
-  steps: number
+  steps?: number
   showSteps?: boolean
 }
 
@@ -60,7 +60,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             onChange={() => {}}
           />
         )}
-        {outputs && (
+        {(outputs || status === 'running') && (
           <CodeEditor
             readOnly
             title={<div>OUTPUT</div>}
