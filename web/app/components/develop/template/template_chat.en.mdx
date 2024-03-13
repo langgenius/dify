@@ -71,8 +71,8 @@ Chat applications support session persistence, allowing previous chat history to
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
-      Auto-generate title, default is `false`.
-      Can achieve async title generation by calling the conversation rename API and setting `auto_generate` to true.
+      Auto-generate title, default is `true`.
+      If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
     </Properties>
 
@@ -419,6 +419,53 @@ Chat applications support session persistence, allowing previous chat history to
     ```json {{ title: 'Response' }}
     {
       "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/suggested'
+  method='GET'
+  title='next suggested questions'
+  name='#suggested'
+/>
+<Row>
+  <Col>
+    Get next questions suggestions for the current message
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        Message ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success",
+      "data": [
+            "a",
+            "b",
+            "c"
+        ]
     }
     ```
     </CodeGroup>

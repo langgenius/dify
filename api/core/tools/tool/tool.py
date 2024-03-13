@@ -266,6 +266,40 @@ class Tool(BaseModel, ABC):
         """
         return self.parameters
     
+    def get_all_runtime_parameters(self) -> list[ToolParameter]:
+        """
+            get all runtime parameters
+
+            :return: all runtime parameters
+        """
+        parameters = self.parameters or []
+        parameters = parameters.copy()
+        user_parameters = self.get_runtime_parameters() or []
+        user_parameters = user_parameters.copy()
+
+        # override parameters
+        for parameter in user_parameters:
+            # check if parameter in tool parameters
+            found = False
+            for tool_parameter in parameters:
+                if tool_parameter.name == parameter.name:
+                    found = True
+                    break
+
+            if found:
+                # override parameter
+                tool_parameter.type = parameter.type
+                tool_parameter.form = parameter.form
+                tool_parameter.required = parameter.required
+                tool_parameter.default = parameter.default
+                tool_parameter.options = parameter.options
+                tool_parameter.llm_description = parameter.llm_description
+            else:
+                # add new parameter
+                parameters.append(parameter)
+
+        return parameters
+    
     def is_tool_available(self) -> bool:
         """
             check if the tool is available

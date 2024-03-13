@@ -57,7 +57,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         try:
             response = post(url, headers=headers, data=dumps(data))
         except Exception as e:
-            raise InvokeConnectionError(e)
+            raise InvokeConnectionError(str(e))
         
         if response.status_code != 200:
             try:

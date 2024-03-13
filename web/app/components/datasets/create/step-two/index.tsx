@@ -838,7 +838,7 @@ const StepTwo = ({
             {!isSetting
               ? (
                 <div className='flex items-center mt-8 py-2'>
-                  <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.lastStep')}</Button>
+                  <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.previousStep')}</Button>
                   <div className={s.divider} />
                   <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
                 </div>

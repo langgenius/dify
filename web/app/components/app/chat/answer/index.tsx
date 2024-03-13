@@ -49,7 +49,7 @@ export type IAnswerProps = {
   onQueryChange: (query: string) => void
   onFeedback?: FeedbackFunc
   displayScene: DisplayScene
-  isResponsing?: boolean
+  isResponding?: boolean
   answerIcon?: ReactNode
   citation?: CitationItem[]
   dataSets?: DataSet[]
@@ -74,7 +74,7 @@ const Answer: FC<IAnswerProps> = ({
   isHideFeedbackEdit = false,
   onFeedback,
   displayScene = 'web',
-  isResponsing,
+  isResponding,
   answerIcon,
   citation,
   isShowCitation,
@@ -229,7 +229,7 @@ const Answer: FC<IAnswerProps> = ({
             <Thought
               thought={item}
               allToolIcons={allToolIcons || {}}
-              isFinished={!!item.observation || !isResponsing}
+              isFinished={!!item.observation || !isResponding}
             />
           )}
 
@@ -248,7 +248,7 @@ const Answer: FC<IAnswerProps> = ({
         {
           answerIcon || (
             <div className={`${s.answerIcon} w-10 h-10 shrink-0`}>
-              {isResponsing
+              {isResponding
                 && <div className={s.typeingIcon}>
                   <LoadingAnim type='avatar' />
                 </div>
@@ -260,7 +260,7 @@ const Answer: FC<IAnswerProps> = ({
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
-                {(isResponsing && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
+                {(isResponding && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
                       <LoadingAnim type='text' />
@@ -314,7 +314,7 @@ const Answer: FC<IAnswerProps> = ({
                     </div>
                   )}
                 {
-                  !!citation?.length && isShowCitation && !isResponsing && (
+                  !!citation?.length && isShowCitation && !isResponding && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
                   )
                 }

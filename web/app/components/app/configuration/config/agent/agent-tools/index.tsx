@@ -34,7 +34,7 @@ const AgentTools: FC = () => {
   const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>(undefined)
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
-    const collection = collectionList.find(collection => collection.id === item.provider_id)
+    const collection = collectionList.find(collection => collection.id === item.provider_id && collection.type === item.provider_type)
     const icon = collection?.icon
     return {
       ...item,

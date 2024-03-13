@@ -1,0 +1,12 @@
+identity:
+  author: Bowen Liang
+  name: qrcode
+  label:
+    en_US: QRCode
+    zh_Hans: 二维码工具
+    pt_BR: QRCode
+  description:
+    en_US: A tool for generating QR code (quick-response code) image.
+    zh_Hans: 一个二维码工具
+    pt_BR: A tool for generating QR code (quick-response code) image.
+  icon: icon.svg

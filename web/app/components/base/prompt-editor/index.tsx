@@ -32,6 +32,7 @@ import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
 import OnBlurBlock from './plugins/on-blur-block'
+import UpdateBlock from './plugins/update-block'
 import { textToEditorState } from './utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
@@ -222,6 +223,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <VariableValueBlock />
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} />
+        <UpdateBlock />
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

@@ -62,8 +62,10 @@ const ActivateForm = () => {
       showErrorMessage(t('login.error.passwordEmpty'))
       return false
     }
-    if (!validPassword.test(password))
+    if (!validPassword.test(password)) {
       showErrorMessage(t('login.error.passwordInvalid'))
+      return false
+    }
 
     return true
   }, [name, password, showErrorMessage, t])

@@ -89,7 +89,7 @@ const translation = {
     other: 'e outros ',
     fileUnit: ' arquivos',
     notionUnit: ' páginas',
-    lastStep: 'Última etapa',
+    previousStep: 'Passo anterior',
     nextStep: 'Salvar e Processar',
     save: 'Salvar e Processar',
     cancel: 'Cancelar',

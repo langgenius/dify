@@ -9,7 +9,7 @@ identity:
     en_US: Bing Search
     zh_Hans: Bing 搜索
     pt_BR: Bing Search
-  icon: icon.png
+  icon: icon.svg
 credentials_for_provider:
   subscription_key:
     type: secret-input

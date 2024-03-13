@@ -1,0 +1,76 @@
+identity:
+  name: qrcode_generator
+  author: Bowen Liang
+  label:
+    en_US: Generate QR Code
+    zh_Hans: 生成二维码
+    pt_BR: Generate QR Code
+description:
+  human:
+    en_US: A tool for generating QR code image
+    zh_Hans: 一个用于生成二维码的工具
+    pt_BR: A tool for generating QR code image
+  llm: A tool for generating QR code image
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content text for QR code
+      zh_Hans: 二维码文本内容
+      pt_BR: content text for QR code
+    human_description:
+      en_US: content text for QR code
+      zh_Hans: 二维码文本内容
+      pt_BR: 二维码文本内容
+    form: llm
+  - name: error_correction
+    type: select
+    required: true
+    default: M
+    label:
+      en_US: Error Correction
+      zh_Hans: 容错等级
+      pt_BR: Error Correction
+    human_description:
+      en_US: Error Correction in L, M, Q or H, from low to high, the bigger size of generated QR code with the better error correction effect
+      zh_Hans: 容错等级，可设置为低、中、偏高或高，从低到高，生成的二维码越大且容错效果越好
+      pt_BR: Error Correction in L, M, Q or H, from low to high, the bigger size of generated QR code with the better error correction effect
+    options:
+      - value: L
+        label:
+          en_US: Low
+          zh_Hans: 低
+          pt_BR: Low
+      - value: M
+        label:
+          en_US: Medium
+          zh_Hans: 中
+          pt_BR: Medium
+      - value: Q
+        label:
+          en_US: Quartile
+          zh_Hans: 偏高
+          pt_BR: Quartile
+      - value: H
+        label:
+          en_US: High
+          zh_Hans: 高
+          pt_BR: High
+    form: form
+  - name: border
+    type: number
+    required: true
+    default: 2
+    min: 0
+    max: 100
+    label:
+      en_US: border size
+      zh_Hans: 边框粗细
+      pt_BR: border size
+    human_description:
+      en_US: border size（default to 2）
+      zh_Hans: 边框粗细的格数（默认为2）
+      pt_BR: border size（default to 2）
+    llm: border size, default to 2
+    form: form

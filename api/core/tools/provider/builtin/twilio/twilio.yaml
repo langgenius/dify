@@ -1,0 +1,46 @@
+identity:
+  author: Yash Parmar
+  name: twilio
+  label:
+    en_US: Twilio
+    zh_Hans: Twilio
+    pt_BR: Twilio
+  description:
+    en_US: Send messages through SMS or Twilio Messaging Channels.
+    zh_Hans: 通过SMS或Twilio消息通道发送消息。
+    pt_BR: Send messages through SMS or Twilio Messaging Channels.
+  icon: icon.svg
+credentials_for_provider:
+  account_sid:
+    type: secret-input
+    required: true
+    label:
+      en_US: Account SID
+      zh_Hans: 账户SID
+      pt_BR: Account SID
+    placeholder:
+      en_US: Please input your Twilio Account SID
+      zh_Hans: 请输入您的Twilio账户SID
+      pt_BR: Please input your Twilio Account SID
+  auth_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Auth Token
+      zh_Hans: 认证令牌
+      pt_BR: Auth Token
+    placeholder:
+      en_US: Please input your Twilio Auth Token
+      zh_Hans: 请输入您的Twilio认证令牌
+      pt_BR: Please input your Twilio Auth Token
+  from_number:
+    type: secret-input
+    required: true
+    label:
+      en_US: From Number
+      zh_Hans: 发信号码
+      pt_BR: De Número
+    placeholder:
+      en_US: Please input your Twilio phone number
+      zh_Hans: 请输入您的Twilio电话号码
+      pt_BR: Please input your Twilio phone number
