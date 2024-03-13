@@ -10,7 +10,7 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import { useWorkflow } from '../hooks'
+import { useNodesSyncDraft } from '../hooks'
 import { useStore } from '../store'
 import {
   PortalToFollowElem,
@@ -29,7 +29,7 @@ const ZoomInOut: FC = () => {
     fitView,
   } = useReactFlow()
   const { zoom } = useViewport()
-  const { handleSyncWorkflowDraft } = useWorkflow()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [open, setOpen] = useState(false)
   const runningStatus = useStore(s => s.runningStatus)
 

@@ -14,7 +14,7 @@ import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
 import type { ToolDefaultValue } from '../../../block-selector/types'
-import { useWorkflow } from '../../../hooks'
+import { useNodesInteractions } from '../../../hooks'
 
 type NodeHandleProps = {
   handleId: string
@@ -30,7 +30,7 @@ export const NodeTargetHandle = ({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
-  const { handleNodeAddPrev } = useWorkflow()
+  const { handleNodeAddPrev } = useNodesInteractions()
   const edges = useEdges()
   const connectedEdges = getConnectedEdges([{ id } as Node], edges)
   const connected = connectedEdges.find(edge => edge.targetHandle === handleId && edge.target === id)
@@ -92,7 +92,7 @@ export const NodeSourceHandle = ({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
-  const { handleNodeAddNext } = useWorkflow()
+  const { handleNodeAddNext } = useNodesInteractions()
   const edges = useEdges()
   const connectedEdges = getConnectedEdges([{ id } as Node], edges)
   const connected = connectedEdges.find(edge => edge.sourceHandle === handleId && edge.source === id)

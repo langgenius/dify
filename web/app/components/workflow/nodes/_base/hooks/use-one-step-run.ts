@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import type { CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
 import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -21,7 +21,7 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const [runResult, setRunResult] = useState<any>(null)
 
-  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useWorkflow()
+  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const isShowSingleRun = data._isSingleRun
   const hideSingleRun = () => {
     handleNodeDataUpdate({

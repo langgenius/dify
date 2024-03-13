@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import {
   useIsChatMode,
-  useWorkflow,
+  useWorkflowRun,
 } from '../hooks'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
@@ -24,15 +24,15 @@ const Header: FC = () => {
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const isChatMode = useIsChatMode()
   const runningStatus = useStore(s => s.runningStatus)
-  const { handleRunInit } = useWorkflow()
+  const { handleRunSetting } = useWorkflowRun()
 
   const handleShowFeatures = useCallback(() => {
     useStore.setState({ showFeaturesPanel: true })
   }, [])
 
   const handleGoBackToEdit = useCallback(() => {
-    handleRunInit(true)
-  }, [handleRunInit])
+    handleRunSetting(true)
+  }, [handleRunSetting])
 
   return (
     <div

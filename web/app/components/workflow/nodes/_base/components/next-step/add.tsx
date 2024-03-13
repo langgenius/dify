@@ -3,7 +3,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
@@ -19,7 +19,7 @@ const Add = ({
   branchName,
 }: AddProps) => {
   const { t } = useTranslation()
-  const { handleNodeAddNext } = useWorkflow()
+  const { handleNodeAddNext } = useNodesInteractions()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeAddNext(nodeId, type, sourceHandle, toolDefaultValue)

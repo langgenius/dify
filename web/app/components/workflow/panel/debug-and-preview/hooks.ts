@@ -17,7 +17,7 @@ export const useChat = (
 ) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const run = useWorkflowRun()
+  const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
   const connversationId = useRef('')
   const taskIdRef = useRef('')
@@ -126,7 +126,7 @@ export const useChat = (
 
     let hasSetResponseId = false
 
-    run(
+    handleRun(
       params,
       {
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
@@ -179,7 +179,7 @@ export const useChat = (
         },
       },
     )
-  }, [run, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA])
+  }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA])
 
   return {
     conversationId: connversationId.current,

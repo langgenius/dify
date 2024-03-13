@@ -18,7 +18,10 @@ import {
   XClose,
 } from '@/app/components/base/icons/src/vender/line/general'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import {
+  useNodeDataUpdate,
+  useNodesInteractions,
+} from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/development'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
@@ -36,18 +39,20 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
+  const { handleNodeSelect } = useNodesInteractions()
   const {
-    handleNodeSelect,
     handleNodeDataUpdate,
-  } = useWorkflow()
+    handleNodeDataUpdateWithSyncDraft,
+  } = useNodeDataUpdate()
+
   const handleTitleChange = useCallback((title: string) => {
     if (!title)
       return
-    handleNodeDataUpdate({ id, data: { ...data, title } })
-  }, [handleNodeDataUpdate, id, data])
+    handleNodeDataUpdateWithSyncDraft({ id, data: { ...data, title } })
+  }, [handleNodeDataUpdateWithSyncDraft, id, data])
   const handleDescriptionChange = useCallback((desc: string) => {
-    handleNodeDataUpdate({ id, data: { ...data, desc } })
-  }, [handleNodeDataUpdate, id, data])
+    handleNodeDataUpdateWithSyncDraft({ id, data: { ...data, desc } })
+  }, [handleNodeDataUpdateWithSyncDraft, id, data])
 
   return (
     <div className='w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'>

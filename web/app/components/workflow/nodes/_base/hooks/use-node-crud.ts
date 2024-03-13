@@ -1,10 +1,10 @@
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
-  const { handleNodeDataUpdate } = useWorkflow()
+  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
   const setInputs = (newInputs: CommonNodeType<T>) => {
-    handleNodeDataUpdate({
+    handleNodeDataUpdateWithSyncDraft({
       id,
       data: newInputs,
     })

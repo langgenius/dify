@@ -1,162 +1,34 @@
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { useDebounceFn } from 'ahooks'
 import type {
-  EdgeMouseHandler,
   NodeDragHandler,
   NodeMouseHandler,
   OnConnect,
-  OnEdgesChange,
-  Viewport,
 } from 'reactflow'
 import {
   Position,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
-  useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { Node } from './types'
+import type { ToolDefaultValue } from '../block-selector/types'
+import type {
+  Node,
+} from '../types'
+import { BlockEnum } from '../types'
+import { useStore } from '../store'
 import {
-  BlockEnum,
-  NodeRunningStatus,
-  WorkflowRunningStatus,
-} from './types'
-import {
-  NODES_EXTRA_DATA,
-  NODES_INITIAL_DATA,
   NODE_WIDTH_X_OFFSET,
   Y_OFFSET,
-} from './constants'
-import {
-  getLayoutByDagre,
-} from './utils'
-import { useStore } from './store'
-import type { ToolDefaultValue } from './block-selector/types'
-import { syncWorkflowDraft } from '@/service/workflow'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { ssePost } from '@/service/base'
-import type { IOtherOptions } from '@/service/base'
+} from '../constants'
+import { useNodesInitialData } from './use-nodes-data'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
-export const useIsChatMode = () => {
-  const appDetail = useAppStore(s => s.appDetail)
-
-  return appDetail?.mode === 'advanced-chat'
-}
-
-export const useNodesInitialData = () => {
-  const { t } = useTranslation()
-
-  return produce(NODES_INITIAL_DATA, (draft) => {
-    Object.keys(draft).forEach((key) => {
-      draft[key as BlockEnum].title = t(`workflow.blocks.${key}`)
-    })
-  })
-}
-
-export const useNodesExtraData = () => {
-  const { t } = useTranslation()
-
-  return produce(NODES_EXTRA_DATA, (draft) => {
-    Object.keys(draft).forEach((key) => {
-      draft[key as BlockEnum].about = t(`workflow.blocksAbout.${key}`)
-    })
-  })
-}
-
-export const useWorkflow = () => {
+export const useNodesInteractions = () => {
   const store = useStoreApi()
-  const reactFlow = useReactFlow()
   const nodesInitialData = useNodesInitialData()
-  const featuresStore = useFeaturesStore()
-
-  const shouldDebouncedSyncWorkflowDraft = useCallback(() => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const { getViewport } = reactFlow
-    const appId = useAppStore.getState().appDetail?.id
-
-    if (appId) {
-      const features = featuresStore!.getState().features
-      const producedNodes = produce(getNodes(), (draft) => {
-        draft.forEach((node) => {
-          Object.keys(node.data).forEach((key) => {
-            if (key.startsWith('_'))
-              delete node.data[key]
-          })
-        })
-      })
-      const producedEdges = produce(edges, (draft) => {
-        draft.forEach((edge) => {
-          delete edge.data
-        })
-      })
-      syncWorkflowDraft({
-        url: `/apps/${appId}/workflows/draft`,
-        params: {
-          graph: {
-            nodes: producedNodes,
-            edges: producedEdges,
-            viewport: getViewport(),
-          },
-          features: {
-            opening_statement: features.opening.opening_statement,
-            suggested_questions: features.opening.suggested_questions,
-            suggested_questions_after_answer: features.suggested,
-            text_to_speech: features.text2speech,
-            speech_to_text: features.speech2text,
-            retriever_resource: features.citation,
-            sensitive_word_avoidance: features.moderation,
-          },
-        },
-      }).then((res) => {
-        useStore.setState({ draftUpdatedAt: res.updated_at })
-      })
-    }
-  }, [store, reactFlow, featuresStore])
-
-  const { run: debouncedSyncWorkflowDraft } = useDebounceFn(shouldDebouncedSyncWorkflowDraft, {
-    wait: 2000,
-    trailing: true,
-  })
-
-  const handleSyncWorkflowDraft = useCallback((shouldDelay?: boolean) => {
-    if (shouldDelay)
-      debouncedSyncWorkflowDraft()
-    else
-      shouldDebouncedSyncWorkflowDraft()
-  }, [debouncedSyncWorkflowDraft, shouldDebouncedSyncWorkflowDraft])
-
-  const handleLayout = useCallback(async () => {
-    const {
-      getNodes,
-      edges,
-      setNodes,
-    } = store.getState()
-
-    const layout = getLayoutByDagre(getNodes(), edges)
-
-    const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach((node) => {
-        const nodeWithPosition = layout.node(node.id)
-        node.position = {
-          x: nodeWithPosition.x,
-          y: nodeWithPosition.y,
-        }
-      })
-    })
-    setNodes(newNodes)
-  }, [store])
-
-  const handleSetViewport = useCallback((viewPort: Viewport) => {
-    reactFlow.setViewport(viewPort)
-    handleSyncWorkflowDraft()
-  }, [reactFlow, handleSyncWorkflowDraft])
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
     const {
@@ -164,8 +36,10 @@ export const useWorkflow = () => {
       setIsDragging,
     } = useStore.getState()
 
-    if (!runningStatus)
-      setIsDragging(true)
+    if (runningStatus)
+      return
+
+    setIsDragging(true)
   }, [])
 
   const handleNodeDrag = useCallback<NodeDragHandler>((e, node: Node) => {
@@ -433,25 +307,6 @@ export const useWorkflow = () => {
     handleSyncWorkflowDraft()
   }, [store, handleSyncWorkflowDraft])
 
-  const handleNodeDataUpdate = useCallback(({ id, data }: { id: string; data: Record<string, any> }) => {
-    const { runningStatus } = useStore.getState()
-
-    if (runningStatus)
-      return
-
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      const currentNode = draft.find(node => node.id === id)!
-
-      currentNode.data = { ...currentNode.data, ...data }
-    })
-    setNodes(newNodes)
-    handleSyncWorkflowDraft(true)
-  }, [store, handleSyncWorkflowDraft])
-
   const handleNodeAddNext = useCallback((
     currentNodeId: string,
     nodeType: BlockEnum,
@@ -636,196 +491,7 @@ export const useWorkflow = () => {
     }
   }, [store, nodesInitialData, handleSyncWorkflowDraft])
 
-  const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
-    const { runningStatus } = useStore.getState()
-
-    if (runningStatus)
-      return
-
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const currentEdge = draft.find(e => e.id === edge.id)!
-
-      currentEdge.data = { ...currentEdge.data, _hovering: true }
-    })
-    setEdges(newEdges)
-  }, [store])
-
-  const handleEdgeLeave = useCallback<EdgeMouseHandler>((_, edge) => {
-    const { runningStatus } = useStore.getState()
-
-    if (runningStatus)
-      return
-
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const currentEdge = draft.find(e => e.id === edge.id)!
-
-      currentEdge.data = { ...currentEdge.data, _hovering: false }
-    })
-    setEdges(newEdges)
-  }, [store])
-
-  const handleEdgeDeleteByDeleteBranch = useCallback((nodeId: string, branchId: string) => {
-    const { runningStatus } = useStore.getState()
-
-    if (runningStatus)
-      return
-
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const index = draft.findIndex(edge => edge.source === nodeId && edge.sourceHandle === branchId)
-
-      if (index > -1)
-        draft.splice(index, 1)
-    })
-    setEdges(newEdges)
-    handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
-
-  const handleEdgeDelete = useCallback(() => {
-    const { runningStatus } = useStore.getState()
-
-    if (runningStatus)
-      return
-
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const index = draft.findIndex(edge => edge.selected)
-
-      if (index > -1)
-        draft.splice(index, 1)
-    })
-    setEdges(newEdges)
-    handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
-
-  const handleEdgesChange = useCallback<OnEdgesChange>((changes) => {
-    const { runningStatus } = useStore.getState()
-
-    if (runningStatus)
-      return
-
-    const {
-      edges,
-      setEdges,
-    } = store.getState()
-
-    const newEdges = produce(edges, (draft) => {
-      changes.forEach((change) => {
-        if (change.type === 'select')
-          draft.find(edge => edge.id === change.id)!.selected = change.selected
-      })
-    })
-    setEdges(newEdges)
-  }, [store])
-
-  const handleRunInit = useCallback((shouldClear?: boolean) => {
-    useStore.setState({ runningStatus: shouldClear ? undefined : WorkflowRunningStatus.Waiting })
-    const { setNodes, getNodes } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach((node) => {
-        node.data._runningStatus = shouldClear ? undefined : NodeRunningStatus.Waiting
-      })
-    })
-    setNodes(newNodes)
-  }, [store])
-
-  const getTreeLeafNodes = useCallback(() => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
-    const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-
-    if (!startNode)
-      return []
-
-    const list: Node[] = []
-    const preOrder = (root: Node, callback: (node: Node) => void) => {
-      const outgoers = getOutgoers(root, nodes, edges)
-
-      if (outgoers.length) {
-        outgoers.forEach((outgoer) => {
-          preOrder(outgoer, callback)
-        })
-      }
-      else {
-        callback(root)
-      }
-    }
-    preOrder(startNode, (node) => {
-      list.push(node)
-    })
-
-    return list.filter((item) => {
-      if (item.data.type === BlockEnum.IfElse)
-        return false
-
-      if (item.data.type === BlockEnum.QuestionClassifier)
-        return false
-
-      return true
-    })
-  }, [store])
-
-  const getBeforeNodesInSameBranch = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
-    const currentNode = nodes.find(node => node.id === nodeId)!
-    const list: Node[] = []
-
-    const traverse = (root: Node, callback: (node: Node) => void) => {
-      const incomers = getIncomers(root, nodes, edges)
-
-      if (incomers.length) {
-        incomers.forEach((node) => {
-          callback(node)
-          traverse(node, callback)
-        })
-      }
-    }
-    traverse(currentNode, (node) => {
-      list.push(node)
-    })
-
-    const length = list.length
-    if (length && list.some(item => item.data.type === BlockEnum.Start)) {
-      return list.reverse().filter((item) => {
-        if (item.data.type === BlockEnum.IfElse)
-          return false
-
-        if (item.data.type === BlockEnum.QuestionClassifier)
-          return false
-
-        return true
-      })
-    }
-
-    return []
-  }, [store])
-
   return {
-    handleSyncWorkflowDraft,
-    handleLayout,
-    handleSetViewport,
-
     handleNodeDragStart,
     handleNodeDrag,
     handleNodeDragStop,
@@ -835,94 +501,8 @@ export const useWorkflow = () => {
     handleNodeClick,
     handleNodeConnect,
     handleNodeDelete,
-    handleNodeDataUpdate,
     handleNodeAddNext,
     handleNodeAddPrev,
     handleNodeChange,
-
-    handleEdgeEnter,
-    handleEdgeLeave,
-    handleEdgeDeleteByDeleteBranch,
-    handleEdgeDelete,
-    handleEdgesChange,
-
-    handleRunInit,
-    getTreeLeafNodes,
-    getBeforeNodesInSameBranch,
   }
-}
-
-export const useWorkflowRun = () => {
-  const store = useStoreApi()
-  const reactflow = useReactFlow()
-
-  const run = useCallback((params: any, callback?: IOtherOptions) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const appDetail = useAppStore.getState().appDetail
-
-    let url = ''
-    if (appDetail?.mode === 'advanced-chat')
-      url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
-
-    if (appDetail?.mode === 'workflow')
-      url = `/apps/${appDetail.id}/workflows/draft/run`
-
-    ssePost(
-      url,
-      {
-        body: params,
-      },
-      {
-        onWorkflowStarted: ({ task_id, workflow_run_id, sequence_number }) => {
-          useStore.setState({ runningStatus: WorkflowRunningStatus.Running })
-          useStore.setState({ taskId: task_id })
-          useStore.setState({ currentSequenceNumber: sequence_number })
-          useStore.setState({ workflowRunId: workflow_run_id })
-          const newNodes = produce(getNodes(), (draft) => {
-            draft.forEach((node) => {
-              node.data._runningStatus = NodeRunningStatus.Waiting
-            })
-          })
-          setNodes(newNodes)
-        },
-        onWorkflowFinished: ({ data }) => {
-          useStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
-        },
-        onNodeStarted: ({ data }) => {
-          const nodes = getNodes()
-          const {
-            getViewport,
-            setViewport,
-          } = reactflow
-          const viewport = getViewport()
-          const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
-          const position = nodes[currentNodeIndex].position
-          const zoom = 1
-          setViewport({
-            zoom,
-            x: 200 / viewport.zoom - position.x,
-            y: 200 / viewport.zoom - position.y,
-          })
-          const newNodes = produce(nodes, (draft) => {
-            draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
-          })
-          setNodes(newNodes)
-        },
-        onNodeFinished: ({ data }) => {
-          const newNodes = produce(getNodes(), (draft) => {
-            const currentNode = draft.find(node => node.id === data.node_id)!
-
-            currentNode.data._runningStatus = data.status
-          })
-          setNodes(newNodes)
-        },
-        ...callback,
-      },
-    )
-  }, [store, reactflow])
-
-  return run
 }

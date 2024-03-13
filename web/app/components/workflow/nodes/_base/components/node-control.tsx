@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '../../../hooks'
+import { useNodeDataUpdate } from '../../../hooks'
 import type { Node } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
@@ -22,7 +22,7 @@ const NodeControl: FC<NodeControlProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const { handleNodeDataUpdate } = useWorkflow()
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)

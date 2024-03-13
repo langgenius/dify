@@ -9,7 +9,7 @@ import type {
 } from '@/app/components/workflow/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useWorkflow } from '@/app/components/workflow/hooks'
+import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
 
 type ItemProps = {
@@ -25,7 +25,7 @@ const Item = ({
   data,
 }: ItemProps) => {
   const { t } = useTranslation()
-  const { handleNodeChange } = useWorkflow()
+  const { handleNodeChange } = useNodesInteractions()
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
   }, [nodeId, sourceHandle, handleNodeChange])

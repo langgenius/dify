@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from '../store'
 import {
   useIsChatMode,
-  useWorkflow,
+  useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
@@ -54,11 +54,11 @@ RunMode.displayName = 'RunMode'
 
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
-  const { handleRunInit } = useWorkflow()
+  const { handleRunSetting } = useWorkflowRun()
   const runningStatus = useStore(s => s.runningStatus)
 
   const handleClick = () => {
-    handleRunInit()
+    handleRunSetting()
   }
 
   return (

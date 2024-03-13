@@ -7,10 +7,7 @@ import { useNodes } from 'reactflow'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
 import { BlockEnum } from '../types'
 import { useStore } from '../store'
-import {
-  useWorkflow,
-  useWorkflowRun,
-} from '../hooks'
+import { useWorkflowRun } from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
 import Button from '@/app/components/base/button'
 
@@ -18,8 +15,10 @@ const InputsPanel = () => {
   const { t } = useTranslation()
   const nodes = useNodes<StartNodeType>()
   const inputs = useStore(s => s.inputs)
-  const run = useWorkflowRun()
-  const { handleRunInit } = useWorkflow()
+  const {
+    handleRun,
+    handleRunSetting,
+  } = useWorkflowRun()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
 
@@ -34,10 +33,10 @@ const InputsPanel = () => {
     useStore.setState({ showInputsPanel: false })
   }, [])
 
-  const handleRun = () => {
+  const doRun = () => {
     handleCancel()
-    handleRunInit()
-    run({ inputs })
+    handleRunSetting()
+    handleRun({ inputs })
   }
 
   return (
@@ -72,7 +71,7 @@ const InputsPanel = () => {
         <Button
           type='primary'
           className='py-0 w-[190px] h-8 rounded-lg text-[13px] font-medium'
-          onClick={handleRun}
+          onClick={doRun}
         >
           {t('workflow.singleRun.startRun')}
         </Button>

@@ -20,8 +20,10 @@ import type {
   Node,
 } from './types'
 import {
+  useEdgesInteractions,
   useNodesInitialData,
-  useWorkflow,
+  useNodesInteractions,
+  useNodesSyncDraft,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -65,6 +67,7 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const runningStatus = useStore(s => s.runningStatus)
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -75,8 +78,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   }, [])
 
   const {
-    handleSyncWorkflowDraft,
-
     handleNodeDragStart,
     handleNodeDrag,
     handleNodeDragStop,
@@ -84,12 +85,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeLeave,
     handleNodeClick,
     handleNodeConnect,
-
+  } = useNodesInteractions()
+  const {
     handleEdgeEnter,
     handleEdgeLeave,
     handleEdgeDelete,
     handleEdgesChange,
-  } = useWorkflow()
+  } = useEdgesInteractions()
 
   useOnViewportChange({
     onEnd: () => handleSyncWorkflowDraft(),

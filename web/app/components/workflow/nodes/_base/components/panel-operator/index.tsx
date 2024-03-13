@@ -14,7 +14,7 @@ import ChangeBlock from './change-block'
 import { useStore } from '@/app/components/workflow/store'
 import {
   useNodesExtraData,
-  useWorkflow,
+  useNodesInteractions,
 } from '@/app/components/workflow/hooks'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -52,7 +52,7 @@ const PanelOperator = ({
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const edges = useEdges()
-  const { handleNodeDelete } = useWorkflow()
+  const { handleNodeDelete } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
   const toolsets = useStore(s => s.toolsets)
   const toolsMap = useStore(s => s.toolsMap)

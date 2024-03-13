@@ -4,7 +4,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from './store'
-import { useWorkflow } from './hooks'
+import { useNodesSyncDraft } from './hooks'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import {
   FeaturesChoose,
@@ -14,7 +14,7 @@ import {
 const Features = () => {
   const { t } = useTranslation()
   const setShowFeaturesPanel = useStore(state => state.setShowFeaturesPanel)
-  const { handleSyncWorkflowDraft } = useWorkflow()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleFeaturesChange = useCallback(() => {
     handleSyncWorkflowDraft()

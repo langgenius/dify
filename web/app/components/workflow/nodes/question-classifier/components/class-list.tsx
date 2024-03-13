@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '../../../hooks'
+import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
@@ -22,7 +22,7 @@ const ClassList: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { handleEdgeDeleteByDeleteBranch } = useWorkflow()
+  const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
