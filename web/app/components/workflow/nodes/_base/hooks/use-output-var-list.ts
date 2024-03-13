@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import produce from 'immer'
-import { type OutputVar, OutputVarType } from '../../code/types'
+import { type OutputVar } from '../../code/types'
+import { VarType } from '@/app/components/workflow/types'
+
 type Params<T> = {
   inputs: T
   setInputs: (newInputs: T) => void
@@ -23,7 +25,7 @@ function useOutputVarList<T>({
       draft[varKey] = {
         ...draft[varKey],
         [`var-${Object.keys(draft[varKey]).length + 1}`]: {
-          type: OutputVarType.string,
+          type: VarType.string,
           children: null,
         },
       }

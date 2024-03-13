@@ -9,6 +9,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { VarType } from '@/app/components/workflow/types'
 
 type Props = {
   className?: string
@@ -17,7 +18,7 @@ type Props = {
   onChange: (value: string) => void
 }
 
-const TYPES = ['string', 'number']
+const TYPES = [VarType.string, VarType.number, VarType.arrayNumber, VarType.arrayString, VarType.object]
 const VarReferencePicker: FC<Props> = ({
   readonly,
   className,

@@ -30,7 +30,7 @@ const Item: FC<ItemProps> = ({
   itemData,
   onChange,
 }) => {
-  const isObj = itemData.type === VarType.object
+  const isObj = itemData.type === VarType.object && itemData.children && itemData.children.length > 0
   const itemRef = useRef(null)
   const isItemHovering = useHover(itemRef)
   const handleChosen = (e: React.MouseEvent) => {
@@ -78,7 +78,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
     <div className='absolute right-[248px] top-[-2px] bg-white rounded-lg border border-gray-200 shadow-lg space-y-1'>
       <div className='flex items-center h-[22px] px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
       {
-        data.map((v, i) => (
+        data?.map((v, i) => (
           <Item
             key={i}
             nodeId={nodeId}

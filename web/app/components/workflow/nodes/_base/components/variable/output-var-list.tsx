@@ -2,9 +2,10 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
-import type { OutputVar, OutputVarType } from '../../../code/types'
+import type { OutputVar } from '../../../code/types'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
+import type { VarType } from '@/app/components/workflow/types'
 
 type Props = {
   readonly: boolean
@@ -39,7 +40,7 @@ const OutputVarList: FC<Props> = ({
     return (value: string) => {
       const key = list[index].variable
       const newOutputs = produce(outputs, (draft) => {
-        draft[key].type = value as OutputVarType
+        draft[key].type = value as VarType
       })
       onChange(newOutputs)
     }

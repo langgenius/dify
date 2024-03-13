@@ -95,7 +95,7 @@ const VarReferencePicker: FC<Props> = ({
                     <Variable02 className='w-3.5 h-3.5' />
                     <div className='ml-0.5 text-xs font-medium'>{varName}</div>
                   </div>
-                  <div className='ml-0.5 text-xs font-normal text-gray-500'>{getVarType()}</div>
+                  <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize'>{getVarType()}</div>
                 </>
               )}
             </div>

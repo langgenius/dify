@@ -119,14 +119,14 @@ export type Memory = {
 }
 
 export enum VarType {
-  string = 'String',
-  number = 'Number',
-  boolean = 'Boolean',
-  object = 'Object',
-  array = 'Array',
-  arrayString = 'Array[string]',
-  arrayNumber = 'Array[number]',
-  arrayObject = 'Array[object]',
+  string = 'string',
+  number = 'number',
+  boolean = 'boolean',
+  object = 'object',
+  array = 'array',
+  arrayString = 'array[string]',
+  arrayNumber = 'array[number]',
+  arrayObject = 'array[object]',
 }
 
 export type Var = {

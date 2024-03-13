@@ -1,3 +1,4 @@
+import type { CodeNodeType } from '../../../code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
@@ -38,6 +39,19 @@ const formatItem = (item: any): NodeOutPutVar => {
 
     case BlockEnum.KnowledgeRetrieval: {
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.Code: {
+      const {
+        outputs,
+      } = data as CodeNodeType
+      res.vars = Object.keys(outputs).map((key) => {
+        return {
+          variable: key,
+          type: outputs[key].type,
+        }
+      })
       break
     }
   }
