@@ -12,6 +12,7 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import Loading from '@/app/components/base/loading'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -109,6 +110,45 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           isHideRemoveBtn
         />
       )}
+
+      <div className='px-4 pt-4 pb-2'>
+        <OutputVars>
+          <>
+            <VarItem
+              name='text'
+              type='Array[Object]'
+              description={t(`${i18nPrefix}.outputVars.text`)}
+            />
+            <VarItem
+              name='files'
+              type='Array[File]'
+              description={t(`${i18nPrefix}.outputVars.files.title`)}
+              subItems={[
+                {
+                  name: 'type',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.files.type`),
+                },
+                {
+                  name: 'transfer_method',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.files.transfer_method`),
+                },
+                {
+                  name: 'url',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.files.url`),
+                },
+                {
+                  name: 'upload_file_id',
+                  type: 'string',
+                  description: t(`${i18nPrefix}.outputVars.files.upload_file_id`),
+                },
+              ]}
+            />
+          </>
+        </OutputVars>
+      </div>
 
       {isShowSingleRun && (
         <BeforeRunForm

@@ -245,6 +245,16 @@ const translation = {
     tool: {
       toAuthorize: '授权',
       inputVars: '输入变量',
+      outputVars: {
+        text: '工具生成的内容',
+        files: {
+          title: '工具生成的文件',
+          type: '支持类型。现在只支持图片',
+          transfer_method: '传输方式。值为 remote_url 或 local_file',
+          url: '图片链接',
+          upload_file_id: '上传文件ID',
+        },
+      },
     },
     questionClassifiers: {
       model: '模型',

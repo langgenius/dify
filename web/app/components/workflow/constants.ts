@@ -312,3 +312,14 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
     type: VarType.string,
   },
 ]
+
+export const TOOL_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'text',
+    type: VarType.string,
+  },
+  {
+    variable: 'files',
+    type: VarType.arrayFile,
+  },
+]

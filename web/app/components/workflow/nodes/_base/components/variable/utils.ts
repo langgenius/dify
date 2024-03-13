@@ -11,6 +11,7 @@ import {
   LLM_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
+  TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
@@ -89,6 +90,12 @@ const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
           type: output_type,
         },
       ]
+      break
+    }
+
+    case BlockEnum.Tool: {
+      res.vars = TOOL_OUTPUT_STRUCT
+      break
     }
   }
 
