@@ -4,8 +4,13 @@ import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
 import type { InputVar } from '@/app/components/workflow/types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import {
+  useIsChatMode,
+} from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: StartNodeType) => {
+  const isChatMode = useIsChatMode()
+
   const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
 
   const [isShowAddVarModal, {
@@ -27,6 +32,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
   return {
+    isChatMode,
     inputs,
     isShowAddVarModal,
     showAddVarModal,

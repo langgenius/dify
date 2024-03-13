@@ -20,6 +20,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
   const { t } = useTranslation()
   const readOnly = false
   const {
+    isChatMode,
     inputs,
     isShowAddVarModal,
     showAddVarModal,
@@ -50,16 +51,17 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
         </Field>
       </div>
       <Split />
-
-      <div className='px-4 pt-4 pb-2'>
-        <OutputVars title={t(`${i18nPrefix}.builtInVar`)!}>
-          <>
-            <VarItem
-              name='sys.query'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.query`)}
-            />
-            <VarItem
+      {isChatMode && (
+        <div className='px-4 pt-4 pb-2'>
+          <OutputVars title={t(`${i18nPrefix}.builtInVar`)!}>
+            <>
+              <VarItem
+                name='sys.query'
+                type='string'
+                description={t(`${i18nPrefix}.outputVars.query`)}
+              />
+              {/* Now not support sys.memories */}
+              {/* <VarItem
               name='sys.memories'
               type='array[Object]'
               description={t(`${i18nPrefix}.outputVars.memories.des`)}
@@ -75,15 +77,17 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                   description: t(`${i18nPrefix}.outputVars.memories.content`),
                 },
               ]}
-            />
-            <VarItem
-              name='sys.files'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.files`)}
-            />
-          </>
-        </OutputVars>
-      </div>
+            /> */}
+              <VarItem
+                name='sys.files'
+                type='string'
+                description={t(`${i18nPrefix}.outputVars.files`)}
+              />
+            </>
+          </OutputVars>
+        </div>
+      )}
+
       {isShowAddVarModal && (
         <ConfigVarModal
           isCreate

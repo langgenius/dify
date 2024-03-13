@@ -39,6 +39,17 @@ const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
           type: inputVarTypeToVarType(v.type),
         }
       })
+      if (isChatMode) {
+        res.vars.push({
+          variable: 'sys.query',
+          type: VarType.string,
+        })
+
+        res.vars.push({
+          variable: 'sys.files',
+          type: VarType.arrayFile,
+        })
+      }
       break
     }
 
