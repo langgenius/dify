@@ -95,7 +95,7 @@ class IfElseNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=node_inputs,
-                process_datas=process_datas,
+                process_data=process_datas,
                 error=str(e)
             )
 
@@ -107,7 +107,7 @@ class IfElseNode(BaseNode):
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=node_inputs,
-            process_datas=process_datas,
+            process_data=process_datas,
             edge_source_handle="false" if not compare_result else "true",
             outputs={
                 "result": compare_result
