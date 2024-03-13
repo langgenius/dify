@@ -70,3 +70,14 @@ parameters:
       pt_BR: Content to sent to the group.
     llm_description: Content of the message
     form: llm
+  - name: title
+    type: string
+    required: false
+    label:
+      en_US: Title of message (Required for markdown message type)
+      zh_Hans: 消息标题(Markdown类型消息时为必须)
+    human_description:
+      en_US: Title of message (Required for markdown message type)
+      zh_Hans: 消息标题(Markdown类型消息时为必须)
+    llm_description: Title of the message. If the message type is markdown, this field is required.
+    form: llm

@@ -4,7 +4,7 @@ import hmac
 import logging
 import time
 import urllib.parse
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -13,16 +13,25 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class DingTalkGroupBotTool(BuiltinTool):
+    """
+    invoke tools
+    Dingtalk custom group robot API docs:
+    https://open.dingtalk.com/document/orgapp/custom-robot-access
+    """
+
+    MSGTYPE_TEXT = 'text'
+    MSGTYPE_MARKDOWN = 'markdown'
+    supported_msgtypes = [MSGTYPE_TEXT, MSGTYPE_MARKDOWN]
+
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]
                 ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
-        """
-            invoke tools
-            Dingtalk custom group robot API docs:
-            https://open.dingtalk.com/document/orgapp/custom-robot-access
-        """
+
         content = tool_parameters.get('content')
         if not content:
             return self.create_text_message('Invalid parameter content')
+
+        # title for markdown message
+        title = tool_parameters.get('title')
 
         access_token = tool_parameters.get('access_token')
         if not access_token:
@@ -49,14 +58,9 @@ class DingTalkGroupBotTool(BuiltinTool):
 
         self._apply_security_mechanism(params, sign_secret)
 
-        payload = {
-            "msgtype": msgtype,
-            "text": {
-                "content": content,
-            }
-        }
-
         try:
+            payload = self.assemble_payload(msgtype, content, title)
+
             res = httpx.post(api_url, headers=headers, params=params, json=payload)
             if res.is_success:
                 return self.create_text_message("Text message sent successfully")
@@ -81,3 +85,27 @@ class DingTalkGroupBotTool(BuiltinTool):
         except Exception:
             msg = "Failed to apply security mechanism to the request."
             logging.exception(msg)
+
+    def assemble_payload(self, msgtype: str, content: str, title: Optional[str]) -> dict[str, Any]:
+        # doc ref:
+        # https://open.dingtalk.com/document/orgapp/custom-robot-access#title-72m-8ag-pqw
+        match msgtype:
+            case self.MSGTYPE_TEXT:
+                payload = {
+                    'msgtype': msgtype,
+                    'text': {
+                        'content': content,
+                    }
+                }
+            case self.MSGTYPE_MARKDOWN:
+                payload = {
+                    'msgtype': msgtype,
+                    'markdown': {
+                        'title': title or 'New Message',
+                        'text': content,
+                    }
+                }
+            case _:
+                raise ValueError(f"Unsupported msgtype: {msgtype}")
+
+        return payload
