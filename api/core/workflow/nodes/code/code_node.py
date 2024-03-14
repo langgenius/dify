@@ -53,12 +53,12 @@ class CodeNode(BaseNode):
                     ],
                     "code_language": "javascript",
                     "code": JAVASCRIPT_DEFAULT_CODE,
-                    "outputs": [
-                        {
-                            "variable": "result",
-                            "variable_type": "number"
+                    "outputs": {
+                        "result": {
+                            "type": "number",
+                            "children": None
                         }
-                    ]
+                    }
                 }
             }
 
@@ -77,12 +77,12 @@ class CodeNode(BaseNode):
                 ],
                 "code_language": "python3",
                 "code": PYTHON_DEFAULT_CODE,
-                "outputs": [
-                    {
-                        "variable": "result",
-                        "variable_type": "number"
+                "outputs": {
+                    "result": {
+                        "type": "number",
+                        "children": None
                     }
-                ]
+                }
             }
         }
 
