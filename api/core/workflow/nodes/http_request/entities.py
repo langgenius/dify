@@ -33,7 +33,7 @@ class HttpRequestNodeData(BaseNodeData):
                 return v
 
     class Body(BaseModel):
-        type: Literal[None, 'form-data', 'x-www-form-urlencoded', 'raw', 'json']
+        type: Literal['none', 'form-data', 'x-www-form-urlencoded', 'raw', 'json']
         data: Union[None, str]
 
     variables: list[VariableSelector]

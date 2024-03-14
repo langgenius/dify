@@ -131,8 +131,6 @@ class HttpExecutor:
                 self.headers['Content-Type'] = 'application/json'
             elif node_data.body.type == 'x-www-form-urlencoded':
                 self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-            # elif node_data.body.type == 'form-data':
-            #    self.headers['Content-Type'] = 'multipart/form-data'
 
             if node_data.body.type in ['form-data', 'x-www-form-urlencoded']:
                 body = {}
@@ -152,8 +150,10 @@ class HttpExecutor:
                     }
                 else:
                     self.body = urlencode(body)
-            else:
+            elif node_data.body.type in ['json', 'raw']:
                 self.body = original_body
+            elif node_data.body.type == 'none':
+                self.body = ''
                 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.authorization)

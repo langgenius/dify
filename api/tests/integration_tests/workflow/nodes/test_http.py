@@ -85,6 +85,41 @@ def test_no_auth(setup_http_mock):
     assert 'X-Header: 123' in data
 
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
+def test_custom_authorization_header(setup_http_mock):
+    node = HttpRequestNode(config={
+        'id': '1',
+        'data': {
+            'title': 'http',
+            'desc': '',
+            'variables': [{
+                'variable': 'args1',
+                'value_selector': ['1', '123', 'args1'],
+            }],
+            'method': 'get',
+            'url': 'http://example.com',
+            'authorization': {
+                'type': 'api-key',
+                'config': {
+                    'type': 'custom',
+                    'api_key': 'Auth',
+                    'header': 'X-Auth',
+                },
+            },
+            'headers': 'X-Header:123',
+            'params': 'A:b',
+            'body': None,
+        }
+    }, **BASIC_NODE_DATA)
+
+    result = node.run(pool)
+
+    data = result.process_data.get('request', '')
+
+    assert '?A=b' in data
+    assert 'X-Header: 123' in data
+    assert 'X-Auth: Auth' in data
+
+@pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_template(setup_http_mock):
     node = HttpRequestNode(config={
         'id': '1',
@@ -237,3 +272,42 @@ def test_form_data(setup_http_mock):
     assert '2' in data
     assert 'api-key: Basic ak-xxx' in data
     assert 'X-Header: 123' in data
+
+def test_none_data(setup_http_mock):
+    node = HttpRequestNode(config={
+        'id': '1',
+        'data': {
+            'title': 'http',
+            'desc': '',
+            'variables': [{
+                'variable': 'args1',
+                'value_selector': ['1', '123', 'args1'],
+            }, {
+                'variable': 'args2',
+                'value_selector': ['1', '123', 'args2'],
+            }],
+            'method': 'post',
+            'url': 'http://example.com',
+            'authorization': {
+                'type': 'api-key',
+                'config': {
+                    'type': 'basic',
+                    'api_key':'ak-xxx',
+                    'header': 'api-key',
+                }
+            },
+            'headers': 'X-Header:123',
+            'params': 'A:b',
+            'body': {
+                'type': 'none',
+                'data': '123123123'
+            },
+        }
+    }, **BASIC_NODE_DATA)
+
+    result = node.run(pool)
+    data = result.process_data.get('request', '')
+
+    assert 'api-key: Basic ak-xxx' in data
+    assert 'X-Header: 123' in data
+    assert '123123123' not in data
