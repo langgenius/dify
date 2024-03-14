@@ -62,7 +62,13 @@ async function main() {
       return result
     }, {})
 
-    console.log('Comparison:', comparison)
+    console.log(comparison)
+
+    // Print missing keys
+    languages.forEach((language, index) => {
+      const missingKeys = targetKeys.filter(key => !languagesKeys[index].includes(key))
+      console.log(`Missing keys in ${language}:`, missingKeys)
+    })
   }
 
   compareKeysCount()
