@@ -13,6 +13,18 @@ const nodeDefault: NodeDefault<EndNodeType> = {
   getAvailableNextNodes() {
     return []
   },
+  checkValid(payload: EndNodeType) {
+    let isValid = true
+    let errorMessages = ''
+    if (payload.type) {
+      isValid = true
+      errorMessages = ''
+    }
+    return {
+      isValid,
+      errorMessage: errorMessages,
+    }
+  },
 }
 
 export default nodeDefault

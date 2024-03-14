@@ -14,6 +14,11 @@ const nodeDefault: NodeDefault<StartNodeType> = {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
   },
+  checkValid() {
+    return {
+      isValid: true,
+    }
+  },
 }
 
 export default nodeDefault

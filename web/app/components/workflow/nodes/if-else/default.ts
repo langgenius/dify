@@ -25,6 +25,18 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
   },
+  checkValid(payload: IfElseNodeType) {
+    let isValid = true
+    let errorMessages = ''
+    if (payload.type) {
+      isValid = true
+      errorMessages = ''
+    }
+    return {
+      isValid,
+      errorMessage: errorMessages,
+    }
+  },
 }
 
 export default nodeDefault

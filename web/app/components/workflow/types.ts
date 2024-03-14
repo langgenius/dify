@@ -159,6 +159,7 @@ export type NodeDefault<T> = {
   defaultValue: Partial<T>
   getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
+  checkValid: (payload: T) => { isValid: boolean; errorMessage?: string }
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void

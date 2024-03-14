@@ -1,10 +1,10 @@
-import type { NodeDefault } from '../../types'
+import { type NodeDefault, VarType } from '../../types'
 import type { VariableAssignerNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
 const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
   defaultValue: {
-    output_type: 'string',
+    output_type: VarType.string,
     variables: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
@@ -14,6 +14,18 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
+  },
+  checkValid(payload: VariableAssignerNodeType) {
+    let isValid = true
+    let errorMessages = ''
+    if (payload.type) {
+      isValid = true
+      errorMessages = ''
+    }
+    return {
+      isValid,
+      errorMessage: errorMessages,
+    }
   },
 }
 

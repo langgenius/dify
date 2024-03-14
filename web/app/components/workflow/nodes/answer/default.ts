@@ -14,6 +14,18 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
   getAvailableNextNodes() {
     return []
   },
+  checkValid(payload: AnswerNodeType) {
+    let isValid = true
+    let errorMessages = ''
+    if (payload.type) {
+      isValid = true
+      errorMessages = ''
+    }
+    return {
+      isValid,
+      errorMessage: errorMessages,
+    }
+  },
 }
 
 export default nodeDefault
