@@ -47,7 +47,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     runResult,
   } = useConfig(id, data)
 
-  // console.log(inputs)
+  console.log(inputs)
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -80,7 +80,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 readOnly={readOnly}
                 nodeId={id}
                 schema={toolInputVarSchema as any}
-                value={inputs.tool_inputs}
+                value={inputs.tool_parameters}
                 onChange={setInputVar}
               />
             </Field>

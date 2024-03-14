@@ -3,8 +3,8 @@ import type { ToolNodeType } from './types'
 
 const nodeDefault: NodeDefault<ToolNodeType> = {
   defaultValue: {
-    tool_inputs: [],
-    tool_parameters: {},
+    tool_parameters: [],
+    tool_configurations: {},
   },
   getAvailablePrevNodes() {
     return []

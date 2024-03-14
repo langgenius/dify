@@ -8,7 +8,7 @@ import type { NodeProps } from '@/app/components/workflow/types'
 const Node: FC<NodeProps<ToolNodeType>> = ({
   data,
 }) => {
-  const { tool_inputs } = data
+  const { tool_parameters: tool_inputs } = data
 
   return (
     <div className='px-3'>

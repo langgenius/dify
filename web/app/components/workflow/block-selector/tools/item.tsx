@@ -106,6 +106,7 @@ const Item = ({
               provider_type: data.type,
               provider_name: data.name,
               tool_name: tool.name,
+              tool_label: tool.label[language],
               title: tool.label[language],
             })}
           >

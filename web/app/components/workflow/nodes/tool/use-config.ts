@@ -23,8 +23,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const setToolsMap = useStore(s => s.setToolsMap)
 
   const { inputs, setInputs } = useNodeCrud<ToolNodeType>(id, payload)
-  const toolInputs = inputs.tool_inputs
-  const { provider_id, provider_name, provider_type, tool_name, tool_parameters } = inputs
+  const toolInputs = inputs.tool_parameters
+  const { provider_id, provider_name, provider_type, tool_name, tool_configurations: tool_parameters } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const [currCollection, setCurrCollection] = useState<Collection | null | undefined>(null)
   const fetchCurrCollection = useCallback(async () => {
@@ -72,7 +72,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const setToolSettingValue = useCallback((value: Record<string, any>) => {
     setInputs({
       ...inputs,
-      tool_parameters: value,
+      tool_configurations: value,
     })
   }, [inputs, setInputs])
 
@@ -81,7 +81,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const setInputVar = useCallback((value: ToolVarInput[]) => {
     setInputs({
       ...inputs,
-      tool_inputs: value,
+      tool_parameters: value,
     })
   }, [inputs, setInputs])
 

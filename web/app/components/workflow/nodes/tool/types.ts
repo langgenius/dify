@@ -18,6 +18,6 @@ export type ToolNodeType = CommonNodeType & {
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_inputs: ToolVarInput[]
-  tool_parameters: Record<string, any>
+  tool_parameters: ToolVarInput[]
+  tool_configurations: Record<string, any>
 }

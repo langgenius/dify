@@ -30,5 +30,6 @@ export type ToolDefaultValue = {
   provider_type: string
   provider_name: string
   tool_name: string
+  tool_label: string
   title: string
 }
