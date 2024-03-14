@@ -25,6 +25,7 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
+  isWorkflow?: boolean
   className?: string
   isError: boolean
   onRetry: () => void
@@ -75,6 +76,7 @@ export const copyIcon = (
 )
 
 const GenerationItem: FC<IGenerationItemProps> = ({
+  isWorkflow,
   className,
   isError,
   onRetry,
@@ -137,6 +139,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isInstalledApp,
     installedAppId,
     controlClearMoreLikeThis,
+    isWorkflow,
   }
 
   const handleMoreLikeThis = async () => {
@@ -191,7 +194,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const ratingContent = (
     <>
-      {!isError && messageId && !feedback?.rating && (
+      {!isWorkflow && !isError && messageId && !feedback?.rating && (
         <SimpleBtn className="!px-0">
           <>
             <div
@@ -215,7 +218,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           </>
         </SimpleBtn>
       )}
-      {!isError && messageId && feedback?.rating === 'like' && (
+      {!isWorkflow && !isError && messageId && feedback?.rating === 'like' && (
         <div
           onClick={() => {
             onFeedback?.({
@@ -226,7 +229,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           <HandThumbUpIcon width={16} height={16} />
         </div>
       )}
-      {!isError && messageId && feedback?.rating === 'dislike' && (
+      {!isWorkflow && !isError && messageId && feedback?.rating === 'dislike' && (
         <div
           onClick={() => {
             onFeedback?.({
@@ -308,14 +311,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </SimpleBtn>
                 {isInWebApp && (
                   <>
-                    <SimpleBtn
-                      isDisabled={isError || !messageId}
-                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                      onClick={() => { onSave?.(messageId as string) }}
-                    >
-                      <Bookmark className='w-3.5 h-3.5' />
-                      {!isMobile && <div>{t('common.operation.save')}</div>}
-                    </SimpleBtn>
+                    {!isWorkflow && (
+                      <SimpleBtn
+                        isDisabled={isError || !messageId}
+                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                        onClick={() => { onSave?.(messageId as string) }}
+                      >
+                        <Bookmark className='w-3.5 h-3.5' />
+                        {!isMobile && <div>{t('common.operation.save')}</div>}
+                      </SimpleBtn>
+                    )}
                     {(moreLikeThis && depth < MAX_DEPTH) && (
                       <SimpleBtn
                         isDisabled={isError || !messageId}
@@ -324,15 +329,20 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       >
                         <Stars02 className='w-3.5 h-3.5' />
                         {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
-                      </SimpleBtn>)}
-                    {isError && <SimpleBtn
-                      onClick={onRetry}
-                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                    >
-                      <RefreshCcw01 className='w-3.5 h-3.5' />
-                      {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
-                    </SimpleBtn>}
-                    {!isError && messageId && <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>}
+                      </SimpleBtn>
+                    )}
+                    {isError && (
+                      <SimpleBtn
+                        onClick={onRetry}
+                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                      >
+                        <RefreshCcw01 className='w-3.5 h-3.5' />
+                        {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
+                      </SimpleBtn>
+                    )}
+                    {!isError && messageId && !isWorkflow && (
+                      <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
+                    )}
                     {ratingContent}
                   </>
                 )}

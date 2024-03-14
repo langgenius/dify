@@ -348,7 +348,6 @@ const TextGeneration: FC<IMainProps> = ({
 
   useEffect(() => {
     (async () => {
-      console.log('isWorkflow', isWorkflow)
       const [appData, appParams]: any = await fetchInitData()
       const { app_id: appId, site: siteInfo, can_replace_logo } = appData
       setAppId(appId)
@@ -395,6 +394,7 @@ const TextGeneration: FC<IMainProps> = ({
 
   const renderRes = (task?: Task) => (<Res
     key={task?.id}
+    isWorkflow={isWorkflow}
     isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
     isMobile={isMobile}
@@ -534,18 +534,20 @@ const TextGeneration: FC<IMainProps> = ({
             items={[
               { id: 'create', name: t('share.generation.tabs.create') },
               { id: 'batch', name: t('share.generation.tabs.batch') },
-              {
-                id: 'saved',
-                name: t('share.generation.tabs.saved'),
-                isRight: true,
-                extra: savedMessages.length > 0
-                  ? (
-                    <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
-                      {savedMessages.length}
-                    </div>
-                  )
-                  : null,
-              },
+              ...(!isWorkflow
+                ? [{
+                  id: 'saved',
+                  name: t('share.generation.tabs.saved'),
+                  isRight: true,
+                  extra: savedMessages.length > 0
+                    ? (
+                      <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
+                        {savedMessages.length}
+                      </div>
+                    )
+                    : null,
+                }]
+                : []),
             ]}
             value={currTab}
             onChange={setCurrTab}

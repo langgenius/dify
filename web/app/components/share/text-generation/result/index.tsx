@@ -7,7 +7,7 @@ import cn from 'classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
-import { sendCompletionMessage, updateFeedback } from '@/service/share'
+import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
@@ -16,6 +16,7 @@ import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 
 export type IResultProps = {
+  isWorkflow: boolean
   isCallBatchAPI: boolean
   isPC: boolean
   isMobile: boolean
@@ -40,6 +41,7 @@ export type IResultProps = {
 }
 
 const Result: FC<IResultProps> = ({
+  isWorkflow,
   isCallBatchAPI,
   isPC,
   isMobile,
@@ -176,34 +178,71 @@ const Result: FC<IResultProps> = ({
         isTimeout = true
       }
     }, 1000)
-    sendCompletionMessage(data, {
-      onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
-        tempMessageId = messageId
-        res.push(data)
-        setCompletionRes(res.join(''))
-      },
-      onCompleted: () => {
-        if (isTimeout)
-          return
 
-        setRespondingFalse()
-        setMessageId(tempMessageId)
-        onCompleted(getCompletionRes(), taskId, true)
-        clearInterval(runId)
-      },
-      onMessageReplace: (messageReplace) => {
-        res = [messageReplace.answer]
-        setCompletionRes(res.join(''))
-      },
-      onError() {
-        if (isTimeout)
-          return
-
-        setRespondingFalse()
-        onCompleted(getCompletionRes(), taskId, false)
-        clearInterval(runId)
-      },
-    }, isInstalledApp, installedAppInfo?.id)
+    if (isWorkflow) {
+      // ###TODO###
+      sendWorkflowMessage(
+        data,
+        {
+          onWorkflowStarted: ({ workflow_run_id }) => {
+            tempMessageId = workflow_run_id
+          },
+          onTextChunk: ({ data }) => {
+            res.push(data.text)
+            setCompletionRes(res.join(''))
+          },
+          onWorkflowFinished: () => {
+            if (isTimeout)
+              return
+            setRespondingFalse()
+            setMessageId(tempMessageId)
+            onCompleted(getCompletionRes(), taskId, true)
+            clearInterval(runId)
+          },
+          onTextReplace: ({ data }) => {
+            res = [data.text]
+            setCompletionRes(res.join(''))
+          },
+          onError() {
+            if (isTimeout)
+              return
+            setRespondingFalse()
+            onCompleted(getCompletionRes(), taskId, false)
+            clearInterval(runId)
+          },
+        },
+        isInstalledApp,
+        installedAppInfo?.id,
+      )
+    }
+    else {
+      sendCompletionMessage(data, {
+        onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
+          tempMessageId = messageId
+          res.push(data)
+          setCompletionRes(res.join(''))
+        },
+        onCompleted: () => {
+          if (isTimeout)
+            return
+          setRespondingFalse()
+          setMessageId(tempMessageId)
+          onCompleted(getCompletionRes(), taskId, true)
+          clearInterval(runId)
+        },
+        onMessageReplace: (messageReplace) => {
+          res = [messageReplace.answer]
+          setCompletionRes(res.join(''))
+        },
+        onError() {
+          if (isTimeout)
+            return
+          setRespondingFalse()
+          onCompleted(getCompletionRes(), taskId, false)
+          clearInterval(runId)
+        },
+      }, isInstalledApp, installedAppInfo?.id)
+    }
   }
 
   const [controlClearMoreLikeThis, setControlClearMoreLikeThis] = useState(0)
@@ -221,6 +260,7 @@ const Result: FC<IResultProps> = ({
 
   const renderTextGenerationRes = () => (
     <TextGenerationRes
+      isWorkflow={isWorkflow}
       className='mt-3'
       isError={isError}
       onRetry={handleSend}
