@@ -7,12 +7,13 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import './style.css'
 
 type Props = {
-  value: string
-  onChange: (value: string) => void
+  value?: string | object
+  onChange?: (value: string) => void
   title: JSX.Element
   language: CodeLanguage
   headerRight?: JSX.Element
   readOnly?: boolean
+  isJSONStringifyBeauty?: boolean
 }
 
 const languageMap = {
@@ -22,12 +23,13 @@ const languageMap = {
 }
 
 const CodeEditor: FC<Props> = ({
-  value,
-  onChange,
+  value = '',
+  onChange = () => { },
   title,
   headerRight,
   language,
   readOnly,
+  isJSONStringifyBeauty,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
 
@@ -64,11 +66,22 @@ const CodeEditor: FC<Props> = ({
     })
   }
 
+  const outPutValue = (() => {
+    if (!isJSONStringifyBeauty)
+      return value as string
+    try {
+      return JSON.stringify(value as object, null, 2)
+    }
+    catch (e) {
+      return value as string
+    }
+  })()
+
   return (
     <div>
       <Base
         title={title}
-        value={value}
+        value={outPutValue}
         headerRight={headerRight}
         isFocus={isFocus}
         minHeight={200}
@@ -79,7 +92,7 @@ const CodeEditor: FC<Props> = ({
           // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
           language={languageMap[language] || 'javascript'}
           theme={isFocus ? 'focus-theme' : 'blur-theme'}
-          value={value}
+          value={outPutValue}
           onChange={handleEditorChange}
           // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
           options={{

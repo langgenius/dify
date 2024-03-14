@@ -48,16 +48,16 @@ const ResultPanel: FC<ResultPanelProps> = ({
           readOnly
           title={<div>INPUT</div>}
           language={CodeLanguage.json}
-          value={JSON.stringify(inputs)}
-          onChange={() => {}}
+          value={inputs}
+          isJSONStringifyBeauty
         />
         {process_data && (
           <CodeEditor
             readOnly
             title={<div>PROCESS DATA</div>}
             language={CodeLanguage.json}
-            value={JSON.stringify(process_data)}
-            onChange={() => {}}
+            value={process_data}
+            isJSONStringifyBeauty
           />
         )}
         {(outputs || status === 'running') && (
@@ -65,13 +65,13 @@ const ResultPanel: FC<ResultPanelProps> = ({
             readOnly
             title={<div>OUTPUT</div>}
             language={CodeLanguage.json}
-            value={JSON.stringify(outputs)}
-            onChange={() => {}}
+            value={outputs}
+            isJSONStringifyBeauty
           />
         )}
       </div>
       <div className='px-4 py-2'>
-        <div className='h-[0.5px] bg-black opacity-5'/>
+        <div className='h-[0.5px] bg-black opacity-5' />
       </div>
       <div className='px-4 py-2'>
         <MetaData
