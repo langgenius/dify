@@ -11,7 +11,8 @@
     "eslint-fix": "eslint --fix",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.js",
-    "uglify-embed": "node ./bin/uglify-embed"
+    "uglify-embed": "node ./bin/uglify-embed",
+    "check-i18n": "node ./i18n/script.js"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
