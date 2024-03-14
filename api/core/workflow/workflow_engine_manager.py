@@ -54,10 +54,7 @@ class WorkflowEngineManager:
         for node_type, node_class in node_classes.items():
             default_config = node_class.get_default_config()
             if default_config:
-                default_block_configs.append({
-                    'type': node_type.value,
-                    'config': default_config
-                })
+                default_block_configs.append(default_config)
 
         return default_block_configs
 
