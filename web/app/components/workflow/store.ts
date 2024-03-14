@@ -38,6 +38,7 @@ type State = {
     viewport: Viewport
   }
   notInitialWorkflow: boolean
+  nodesDefaultConfigs: Record<string, any>
 }
 
 type Action = {
@@ -58,6 +59,7 @@ type Action = {
   setInputs: (inputs: Record<string, string>) => void
   setBackupDraft: (backupDraft?: State['backupDraft']) => void
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
+  setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -95,4 +97,6 @@ export const useStore = create<State & Action>(set => ({
   setBackupDraft: backupDraft => set(() => ({ backupDraft })),
   notInitialWorkflow: false,
   setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
+  nodesDefaultConfigs: {},
+  setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
 }))

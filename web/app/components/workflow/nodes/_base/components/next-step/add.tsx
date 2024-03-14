@@ -19,11 +19,20 @@ const Add = ({
   branchName,
 }: AddProps) => {
   const { t } = useTranslation()
-  const { handleNodeAddNext } = useNodesInteractions()
+  const { handleNodeAdd } = useNodesInteractions()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
-    handleNodeAddNext(nodeId, type, sourceHandle, toolDefaultValue)
-  }, [nodeId, sourceHandle, handleNodeAddNext])
+    handleNodeAdd(
+      {
+        nodeType: type,
+        toolDefaultValue,
+      },
+      {
+        prevNodeId: nodeId,
+        prevNodeSourceHandle: sourceHandle,
+      },
+    )
+  }, [nodeId, sourceHandle, handleNodeAdd])
 
   const renderTrigger = useCallback((open: boolean) => {
     return (

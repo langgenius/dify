@@ -162,8 +162,6 @@ export type WorkflowRunHistoryResponse = {
 }
 
 export type NodesDefaultConfigsResponse = {
-  blocks: {
-    type: string
-    config: any
-  }[]
-}
+  type: string
+  config: any
+}[]

@@ -109,7 +109,7 @@ export const MODEL_TYPE_MAPS = {
 }
 
 export const useModelList = (type: ModelTypeIndex) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/models/model-types/${MODEL_TYPE_MAPS[type]}`, fetchModelList)
+  const { data, mutate, isLoading } = useSWR(`/workspaces/current/models/model-types/${MODEL_TYPE_MAPS[type]}`, fetchModelList, { revalidateOnFocus: true })
 
   return {
     data: data?.data || [],
@@ -119,7 +119,7 @@ export const useModelList = (type: ModelTypeIndex) => {
 }
 
 export const useDefaultModel = (type: ModelTypeIndex) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/default-model?model_type=${MODEL_TYPE_MAPS[type]}`, fetchDefaultModal)
+  const { data, mutate, isLoading } = useSWR(`/workspaces/current/default-model?model_type=${MODEL_TYPE_MAPS[type]}`, fetchDefaultModal, { revalidateOnFocus: true })
 
   return {
     data: data?.data,

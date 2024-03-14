@@ -1,15 +1,34 @@
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useEffect,
+} from 'react'
+import useSWR from 'swr'
 import produce from 'immer'
 import {
   getIncomers,
   getOutgoers,
   useStoreApi,
 } from 'reactflow'
-import { getLayoutByDagre } from '../utils'
+import type { ToolsMap } from '../block-selector/types'
+import {
+  generateNewNode,
+  getLayoutByDagre,
+} from '../utils'
 import type { Node } from '../types'
 import { BlockEnum } from '../types'
-import { SUPPORT_OUTPUT_VARS_NODE } from '../constants'
+import { useStore } from '../store'
+import {
+  START_INITIAL_POSITION,
+  SUPPORT_OUTPUT_VARS_NODE,
+} from '../constants'
+import { useNodesInitialData } from './use-nodes-data'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import {
+  fetchNodesDefaultConfigs,
+  fetchWorkflowDraft,
+  syncWorkflowDraft,
+} from '@/service/workflow'
+import { fetchCollectionList } from '@/service/tools'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -155,4 +174,73 @@ export const useWorkflow = () => {
     getBeforeNodesInSameBranch,
     getAfterNodesInSameBranch,
   }
+}
+
+export const useWorkflowInit = () => {
+  const nodesInitialData = useNodesInitialData()
+  const appDetail = useAppStore(state => state.appDetail)!
+  const { data, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
+
+  const handleFetchPreloadData = async () => {
+    try {
+      const toolsets = await fetchCollectionList()
+      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
+
+      useStore.setState({
+        toolsets,
+        toolsMap: toolsets.reduce((acc, toolset) => {
+          acc[toolset.id] = []
+          return acc
+        }, {} as ToolsMap),
+      })
+      useStore.setState({
+        nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
+          if (!acc[block.type])
+            acc[block.type] = block.config
+          return acc
+        }, {} as Record<string, any>),
+      })
+    }
+    catch (e) {
+
+    }
+  }
+
+  useEffect(() => {
+    handleFetchPreloadData()
+  }, [])
+
+  useEffect(() => {
+    if (data)
+      useStore.setState({ draftUpdatedAt: data.updated_at })
+  }, [data])
+
+  if (error && error.json && !error.bodyUsed && appDetail) {
+    error.json().then((err: any) => {
+      if (err.code === 'draft_workflow_not_exist') {
+        useStore.setState({ notInitialWorkflow: true })
+        syncWorkflowDraft({
+          url: `/apps/${appDetail.id}/workflows/draft`,
+          params: {
+            graph: {
+              nodes: [generateNewNode({
+                data: {
+                  ...nodesInitialData.start,
+                  selected: true,
+                },
+                position: START_INITIAL_POSITION,
+              })],
+              edges: [],
+            },
+            features: {},
+          },
+        }).then((res) => {
+          useStore.setState({ draftUpdatedAt: res.updated_at })
+          mutate()
+        })
+      }
+    })
+  }
+
+  return data
 }

@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
 } from 'react'
-import useSWR from 'swr'
 import { setAutoFreeze } from 'immer'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
@@ -14,16 +13,15 @@ import ReactFlow, {
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
-import type { ToolsMap } from './block-selector/types'
 import type {
   Edge,
   Node,
 } from './types'
 import {
   useEdgesInteractions,
-  useNodesInitialData,
   useNodesInteractions,
   useNodesSyncDraft,
+  useWorkflowInit,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -38,17 +36,9 @@ import {
   initialEdges,
   initialNodes,
 } from './utils'
-import { START_INITIAL_POSITION } from './constants'
-import {
-  fetchNodesDefaultConfigs,
-  fetchWorkflowDraft,
-  syncWorkflowDraft,
-} from '@/service/workflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import { fetchCollectionList } from '@/service/tools'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -157,27 +147,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
   nodes,
   edges,
 }) => {
-  const appDetail = useAppStore(state => state.appDetail)
-  const { data, isLoading, error, mutate } = useSWR(appDetail?.id ? `/apps/${appDetail.id}/workflows/draft` : null, fetchWorkflowDraft)
-  const { data: nodesDefaultConfigs } = useSWR(appDetail?.id ? `/apps/${appDetail?.id}/workflows/default-workflow-block-configs` : null, fetchNodesDefaultConfigs)
-  const nodesInitialData = useNodesInitialData()
-
-  useEffect(() => {
-    if (data)
-      useStore.setState({ draftUpdatedAt: data.updated_at })
-  }, [data])
-
-  const startNode = useMemo(() => {
-    return {
-      id: `${Date.now()}`,
-      type: 'custom',
-      data: {
-        ...nodesInitialData.start,
-        selected: true,
-      },
-      position: START_INITIAL_POSITION,
-    }
-  }, [nodesInitialData])
+  const data = useWorkflowInit()
 
   const nodesData = useMemo(() => {
     if (nodes)
@@ -186,8 +156,8 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     if (data)
       return initialNodes(data.graph.nodes, data.graph.edges)
 
-    return [startNode]
-  }, [data, nodes, startNode])
+    return []
+  }, [data, nodes])
   const edgesData = useMemo(() => {
     if (edges)
       return edges
@@ -198,44 +168,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     return []
   }, [data, edges])
 
-  const handleFetchCollectionList = async () => {
-    const toolsets = await fetchCollectionList()
-
-    useStore.setState({
-      toolsets,
-      toolsMap: toolsets.reduce((acc, toolset) => {
-        acc[toolset.id] = []
-        return acc
-      }, {} as ToolsMap),
-    })
-  }
-
-  useEffect(() => {
-    handleFetchCollectionList()
-  }, [])
-
-  if (error && error.json && !error.bodyUsed && appDetail) {
-    error.json().then((err: any) => {
-      if (err.code === 'draft_workflow_not_exist') {
-        useStore.setState({ notInitialWorkflow: true })
-        syncWorkflowDraft({
-          url: `/apps/${appDetail.id}/workflows/draft`,
-          params: {
-            graph: {
-              nodes: [startNode],
-              edges: [],
-            },
-            features: {},
-          },
-        }).then((res) => {
-          useStore.setState({ draftUpdatedAt: res.updated_at })
-          mutate()
-        })
-      }
-    })
-  }
-
-  if (isLoading) {
+  if (!data) {
     return (
       <div className='flex justify-center items-center relative w-full h-full bg-[#F0F2F7]'>
         <Loading />
@@ -243,10 +176,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
     )
   }
 
-  if (!data)
-    return null
-
-  const features = data?.features || {}
+  const features = data.features || {}
   const initialFeatures: FeaturesData = {
     opening: {
       enabled: !!features.opening_statement,
