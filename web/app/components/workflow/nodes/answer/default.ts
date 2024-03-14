@@ -1,7 +1,7 @@
 import type { NodeDefault } from '../../types'
-import type { DirectAnswerNodeType } from './types'
+import type { AnswerNodeType } from './types'
 
-const nodeDefault: NodeDefault<DirectAnswerNodeType> = {
+const nodeDefault: NodeDefault<AnswerNodeType> = {
   defaultValue: {
     variables: [],
     answer: '',

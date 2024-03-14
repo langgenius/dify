@@ -15,7 +15,7 @@
 				"type": "element",
 				"name": "g",
 				"attributes": {
-					"id": "icons/direct-answer"
+					"id": "icons/answer"
 				},
 				"children": [
 					{
@@ -34,5 +34,5 @@
 			}
 		]
 	},
-	"name": "DirectAnswer"
+	"name": "Answer"
 }

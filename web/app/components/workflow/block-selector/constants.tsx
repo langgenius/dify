@@ -21,7 +21,7 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Default,
-    type: BlockEnum.DirectAnswer,
+    type: BlockEnum.Answer,
     title: 'Direct Answer',
   },
   {

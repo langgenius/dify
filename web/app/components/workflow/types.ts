@@ -8,7 +8,7 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 export enum BlockEnum {
   Start = 'start',
   End = 'end',
-  DirectAnswer = 'direct-answer',
+  Answer = 'answer',
   LLM = 'llm',
   KnowledgeRetrieval = 'knowledge-retrieval',
   QuestionClassifier = 'question-classifier',

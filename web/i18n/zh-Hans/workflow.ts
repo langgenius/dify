@@ -44,7 +44,7 @@ const translation = {
   blocks: {
     'start': '开始',
     'end': '结束',
-    'direct-answer': '直接回复',
+    'answer': '直接回复',
     'llm': 'LLM',
     'knowledge-retrieval': '知识检索',
     'question-classifier': '问题分类器',
@@ -57,7 +57,7 @@ const translation = {
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
     'end': '定义一个 workflow 流程的结束和结果类型',
-    'direct-answer': '指定一段自定义的文本回复',
+    'answer': '定义一个聊天对话的回复内容',
     'llm': '调用大语言模型回答问题或者对自然语言进行处理',
     'knowledge-retrieval': '允许你从知识库中查询与用户问题相关的文本内容',
     'question-classifier': '定义用户问题的分类条件，LLM 能够根据分类描述定义对话的进展方式',
@@ -129,9 +129,9 @@ const translation = {
         'structured': '结构化',
       },
     },
-    directAnswer: {
+    answer: {
       answer: '回复',
-      inputVars: '输入变量',
+      outputVars: '输出变量',
     },
     llm: {
       model: '模型',

@@ -3,8 +3,8 @@ import { memo } from 'react'
 import { BlockEnum } from './types'
 import { useStore } from './store'
 import {
+  Answer,
   Code,
-  DirectAnswer,
   End,
   Home,
   Http,
@@ -35,7 +35,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.End]: <End className={className} />,
     [BlockEnum.IfElse]: <IfElse className={className} />,
     [BlockEnum.HttpRequest]: <Http className={className} />,
-    [BlockEnum.DirectAnswer]: <DirectAnswer className={className} />,
+    [BlockEnum.Answer]: <Answer className={className} />,
     [BlockEnum.KnowledgeRetrieval]: <KnowledgeRetrieval className={className} />,
     [BlockEnum.QuestionClassifier]: <QuestionClassifier className={className} />,
     [BlockEnum.TemplateTransform]: <TemplatingTransform className={className} />,
@@ -50,7 +50,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.End]: 'bg-[#F79009]',
   [BlockEnum.IfElse]: 'bg-[#06AED4]',
   [BlockEnum.HttpRequest]: 'bg-[#875BF7]',
-  [BlockEnum.DirectAnswer]: 'bg-[#F79009]',
+  [BlockEnum.Answer]: 'bg-[#F79009]',
   [BlockEnum.KnowledgeRetrieval]: 'bg-[#16B364]',
   [BlockEnum.QuestionClassifier]: 'bg-[#16B364]',
   [BlockEnum.TemplateTransform]: 'bg-[#2E90FA]',

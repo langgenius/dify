@@ -1,13 +1,13 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
-import type { DirectAnswerNodeType } from './types'
+import type { AnswerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
-const useConfig = (id: string, payload: DirectAnswerNodeType) => {
-  const { inputs, setInputs } = useNodeCrud<DirectAnswerNodeType>(id, payload)
+const useConfig = (id: string, payload: AnswerNodeType) => {
+  const { inputs, setInputs } = useNodeCrud<AnswerNodeType>(id, payload)
   // variables
-  const { handleVarListChange, handleAddVariable } = useVarList<DirectAnswerNodeType>({
+  const { handleVarListChange, handleAddVariable } = useVarList<AnswerNodeType>({
     inputs,
     setInputs,
   })

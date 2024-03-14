@@ -1,7 +1,7 @@
 import type { Var } from './types'
 import { BlockEnum, VarType } from './types'
 import StartNodeDefault from './nodes/start/default'
-import DirectAnswerDefault from './nodes/direct-answer/default'
+import AnswerDefault from './nodes/answer/default'
 import LLMDefault from './nodes/llm/default'
 import KnowledgeRetrievalDefault from './nodes/knowledge-retrieval/default'
 import QuestionClassifierDefault from './nodes/question-classifier/default'
@@ -22,7 +22,7 @@ export const NODES_EXTRA_DATA = {
     author: 'Dify',
     about: '',
   },
-  [BlockEnum.DirectAnswer]: {
+  [BlockEnum.Answer]: {
     author: 'Dify',
     about: '',
   },
@@ -77,11 +77,11 @@ export const NODES_INITIAL_DATA = {
     desc: '',
     ...EndNodeDefault.defaultValue,
   },
-  [BlockEnum.DirectAnswer]: {
-    type: BlockEnum.DirectAnswer,
+  [BlockEnum.Answer]: {
+    type: BlockEnum.Answer,
     title: '',
     desc: '',
-    ...DirectAnswerDefault.defaultValue,
+    ...AnswerDefault.defaultValue,
   },
   [BlockEnum.LLM]: {
     type: BlockEnum.LLM,

@@ -32,7 +32,7 @@ const Blocks = ({
   const groups = useMemo(() => {
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
       const list = groupBy(blocks, 'classification')[classification].filter((block) => {
-        if (block.type === BlockEnum.DirectAnswer && !isChatMode)
+        if (block.type === BlockEnum.Answer && !isChatMode)
           return false
 
         return block.title.toLowerCase().includes(searchText.toLowerCase())

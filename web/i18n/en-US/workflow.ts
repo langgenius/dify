@@ -44,7 +44,7 @@ const translation = {
   blocks: {
     'start': 'Start',
     'end': 'End',
-    'direct-answer': 'Direct Answer',
+    'answer': 'Answer',
     'llm': 'LLM',
     'knowledge-retrieval': 'Knowledge Retrieval',
     'question-classifier': 'Question Classifier',
@@ -57,7 +57,7 @@ const translation = {
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
     'end': 'Define the end and result type of a workflow',
-    'direct-answer': 'Specify a custom text reply',
+    'answer': 'Define the reply content of a chat conversation',
     'llm': 'Invoking large language models to answer questions or process natural language',
     'knowledge-retrieval': 'Allows you to query text content related to user questions from the Knowledge',
     'question-classifier': 'Define the classification conditions of user questions, LLM can define how the conversation progresses based on the classification description',
@@ -129,9 +129,9 @@ const translation = {
         'structured': 'Structured',
       },
     },
-    directAnswer: {
+    answer: {
       answer: 'Answer',
-      inputVars: 'Input Variables',
+      outputVars: 'Output Variables',
     },
     llm: {
       model: 'model',

@@ -25,7 +25,7 @@ const translation = {
         'structured': '结构化',
       },
     },
-    directAnswer: {
+    answer: {
       answer: '回复',
       inputVars: '输入变量',
     },

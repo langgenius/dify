@@ -26,7 +26,7 @@ const translation = {
         'structured': 'Structured',
       },
     },
-    directAnswer: {
+    answer: {
       answer: 'Answer',
       inputVars: 'Input Variables',
     },

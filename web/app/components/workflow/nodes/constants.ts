@@ -4,8 +4,8 @@ import StartNode from './start/node'
 import StartPanel from './start/panel'
 import EndNode from './end/node'
 import EndPanel from './end/panel'
-import DirectAnswerNode from './direct-answer/node'
-import DirectAnswerPanel from './direct-answer/panel'
+import AnswerNode from './answer/node'
+import AnswerPanel from './answer/panel'
 import LLMNode from './llm/node'
 import LLMPanel from './llm/panel'
 import KnowledgeRetrievalNode from './knowledge-retrieval/node'
@@ -28,7 +28,7 @@ import VariableAssignerPanel from './variable-assigner/panel'
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
   [BlockEnum.End]: EndNode,
-  [BlockEnum.DirectAnswer]: DirectAnswerNode,
+  [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalNode,
   [BlockEnum.QuestionClassifier]: QuestionClassifierNode,
@@ -43,7 +43,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
 export const PanelComponentMap: Record<string, ComponentType> = {
   [BlockEnum.Start]: StartPanel,
   [BlockEnum.End]: EndPanel,
-  [BlockEnum.DirectAnswer]: DirectAnswerPanel,
+  [BlockEnum.Answer]: AnswerPanel,
   [BlockEnum.LLM]: LLMPanel,
   [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrievalPanel,
   [BlockEnum.QuestionClassifier]: QuestionClassifierPanel,
