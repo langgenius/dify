@@ -136,12 +136,12 @@ class ToolNode(BaseNode):
 
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         """
         return {
             k.variable: k.value_selector
-            for k in cast(ToolNodeData, node_data).tool_parameters
+            for k in node_data.tool_parameters
             if k.variable_type == 'selector'
         }
