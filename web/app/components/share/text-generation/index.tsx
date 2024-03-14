@@ -55,11 +55,13 @@ type Task = {
 export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
+  isWorkflow?: boolean
 }
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   installedAppInfo,
+  isWorkflow = false,
 }) => {
   const { notify } = Toast
 
@@ -346,6 +348,7 @@ const TextGeneration: FC<IMainProps> = ({
 
   useEffect(() => {
     (async () => {
+      console.log('isWorkflow', isWorkflow)
       const [appData, appParams]: any = await fetchInitData()
       const { app_id: appId, site: siteInfo, can_replace_logo } = appData
       setAppId(appId)

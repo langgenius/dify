@@ -60,9 +60,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   }
 
   const getWebAppType = (appType: AppMode) => {
-    if (appType === 'completion' || appType === 'workflow')
-      return 'completion'
-    return 'chat'
+    if (appType !== 'completion' && appType !== 'workflow')
+      return 'chat'
+    return appType
   }
 
   const { data: workflowLogs, mutate } = useSWR({
