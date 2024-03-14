@@ -1,13 +1,9 @@
 import type { NodeDefault } from '../../types'
-import { type EndNodeType, EndVarType } from './types'
+import { type EndNodeType } from './types'
 
 const nodeDefault: NodeDefault<EndNodeType> = {
   defaultValue: {
-    outputs: {
-      type: EndVarType.none,
-      plain_text_selector: [],
-      structured_variables: [],
-    },
+    outputs: [],
   },
   getAvailablePrevNodes() {
     return []
