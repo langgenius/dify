@@ -78,7 +78,7 @@ class ToolNode(BaseNode):
             messages=messages,
             user_id=self.user_id,
             tenant_id=self.tenant_id,
-            conversation_id='',
+            conversation_id=None,
         )
         # extract plain text and files
         files = self._extract_tool_response_binary(messages)
