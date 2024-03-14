@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -18,6 +18,7 @@ import { InputVarType, type NodePanelProps } from '@/app/components/workflow/typ
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -27,6 +28,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const readOnly = false
+  const {
+    currentProvider,
+    currentModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(1)
 
   const {
     inputs,
@@ -107,6 +112,15 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
 
     return forms
   })()
+
+  useEffect(() => {
+    if (currentProvider?.provider && currentModel?.model && !model.provider) {
+      handleModelChanged({
+        provider: currentProvider?.provider,
+        modelId: currentModel?.model,
+      })
+    }
+  }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
   return (
     <div className='mt-2'>

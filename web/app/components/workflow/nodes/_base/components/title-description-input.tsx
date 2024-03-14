@@ -6,36 +6,52 @@ import {
 import Textarea from 'rc-textarea'
 import { useTranslation } from 'react-i18next'
 
-type InputProps = {
+type TitleInputProps = {
   value: string
-  onChange: (value: string) => void
+  onBlur: (value: string) => void
 }
 
 export const TitleInput = memo(({
   value,
-  onChange,
-}: InputProps) => {
+  onBlur,
+}: TitleInputProps) => {
   const { t } = useTranslation()
+  const [localValue, setLocalValue] = useState(value)
+
+  const handleBlur = () => {
+    if (!localValue) {
+      setLocalValue(value)
+      onBlur(value)
+      return
+    }
+
+    onBlur(localValue)
+  }
 
   return (
     <input
-      value={value}
-      onChange={e => onChange(e.target.value)}
+      value={localValue}
+      onChange={e => setLocalValue(e.target.value)}
       className={`
         grow mr-2 px-1 h-6 text-base text-gray-900 font-semibold rounded-lg border border-transparent appearance-none outline-none
         hover:bg-gray-50 
         focus:border-gray-300 focus:shadow-xs focus:bg-white caret-[#295EFF]
       `}
       placeholder={t('workflow.common.addTitle') || ''}
+      onBlur={handleBlur}
     />
   )
 })
 TitleInput.displayName = 'TitleInput'
 
+type DescriptionInputProps = {
+  value: string
+  onChange: (value: string) => void
+}
 export const DescriptionInput = memo(({
   value,
   onChange,
-}: InputProps) => {
+}: DescriptionInputProps) => {
   const { t } = useTranslation()
   const [focus, setFocus] = useState(false)
   const handleFocus = useCallback(() => {

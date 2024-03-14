@@ -62,6 +62,10 @@ export const useEdgesInteractions = () => {
       setEdges,
     } = store.getState()
     const currentEdgeIndex = edges.findIndex(edge => edge.source === nodeId && edge.sourceHandle === branchId)
+
+    if (currentEdgeIndex < 0)
+      return
+
     const currentEdge = edges[currentEdgeIndex]
     const newNodes = produce(getNodes(), (draft: Node[]) => {
       const sourceNode = draft.find(node => node.id === currentEdge.source)
@@ -94,10 +98,13 @@ export const useEdgesInteractions = () => {
       setEdges,
     } = store.getState()
     const currentEdgeIndex = edges.findIndex(edge => edge.selected)
+
+    if (currentEdgeIndex < 0)
+      return
     const currentEdge = edges[currentEdgeIndex]
     const newNodes = produce(getNodes(), (draft: Node[]) => {
-      const sourceNode = draft.find(node => node.id === currentEdge.source)
-      const targetNode = draft.find(node => node.id === currentEdge.target)
+      const sourceNode = draft.find(node => node.id === currentEdge?.source)
+      const targetNode = draft.find(node => node.id === currentEdge?.target)
 
       if (sourceNode)
         sourceNode.data._connectedSourceHandleIds = sourceNode.data._connectedSourceHandleIds?.filter(handleId => handleId !== currentEdge.sourceHandle)

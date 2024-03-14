@@ -45,14 +45,12 @@ const BasePanel: FC<BasePanelProps> = ({
     handleNodeDataUpdateWithSyncDraft,
   } = useNodeDataUpdate()
 
-  const handleTitleChange = useCallback((title: string) => {
-    if (!title)
-      return
-    handleNodeDataUpdateWithSyncDraft({ id, data: { ...data, title } })
-  }, [handleNodeDataUpdateWithSyncDraft, id, data])
+  const handleTitleBlur = useCallback((title: string) => {
+    handleNodeDataUpdateWithSyncDraft({ id, data: { title } })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
   const handleDescriptionChange = useCallback((desc: string) => {
-    handleNodeDataUpdateWithSyncDraft({ id, data: { ...data, desc } })
-  }, [handleNodeDataUpdateWithSyncDraft, id, data])
+    handleNodeDataUpdateWithSyncDraft({ id, data: { desc } })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   return (
     <div className='w-[420px] h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'>
@@ -66,7 +64,7 @@ const BasePanel: FC<BasePanelProps> = ({
           />
           <TitleInput
             value={data.title || ''}
-            onChange={handleTitleChange}
+            onBlur={handleTitleBlur}
           />
           <div className='shrink-0 flex items-center text-gray-500'>
             {
