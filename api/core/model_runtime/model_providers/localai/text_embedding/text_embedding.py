@@ -1,9 +1,9 @@
 import time
 from json import JSONDecodeError, dumps
-from yarl import URL
 from typing import Optional
 
 from requests import post
+from yarl import URL
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType

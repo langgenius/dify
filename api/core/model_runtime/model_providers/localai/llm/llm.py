@@ -1,6 +1,5 @@
 from collections.abc import Generator
 from typing import cast
-from yarl import URL
 
 from httpx import Timeout
 from openai import (
@@ -19,6 +18,7 @@ from openai import (
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.completion import Completion
+from yarl import URL
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
