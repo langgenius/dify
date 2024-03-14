@@ -40,6 +40,7 @@ import {
 } from './utils'
 import { START_INITIAL_POSITION } from './constants'
 import {
+  fetchNodesDefaultConfigs,
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
@@ -158,6 +159,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
 }) => {
   const appDetail = useAppStore(state => state.appDetail)
   const { data, isLoading, error, mutate } = useSWR(appDetail?.id ? `/apps/${appDetail.id}/workflows/draft` : null, fetchWorkflowDraft)
+  const { data: nodesDefaultConfigs } = useSWR(appDetail?.id ? `/apps/${appDetail?.id}/workflows/default-workflow-block-configs` : null, fetchNodesDefaultConfigs)
   const nodesInitialData = useNodesInitialData()
 
   useEffect(() => {

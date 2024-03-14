@@ -118,9 +118,41 @@ export const useWorkflow = () => {
     return []
   }, [store])
 
+  const getAfterNodesInSameBranch = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)!
+
+    if (!currentNode)
+      return []
+    const list: Node[] = [currentNode]
+
+    const traverse = (root: Node, callback: (node: Node) => void) => {
+      if (root) {
+        const outgoers = getOutgoers(root, nodes, edges)
+
+        if (outgoers.length) {
+          outgoers.forEach((node) => {
+            callback(node)
+            traverse(node, callback)
+          })
+        }
+      }
+    }
+    traverse(currentNode, (node) => {
+      list.push(node)
+    })
+
+    return list
+  }, [store])
+
   return {
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
+    getAfterNodesInSameBranch,
   }
 }

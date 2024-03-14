@@ -1,4 +1,5 @@
 import {
+  Position,
   getConnectedEdges,
   getOutgoers,
 } from 'reactflow'
@@ -176,8 +177,60 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
 }
 
 type ConnectedSourceOrTargetNodesChange = {
-  type: 'add' | 'remove'
+  type: string
   edge: Edge
 }[]
-export const getConnectedSourceOrTargetNodesChangeList = (changes: ConnectedSourceOrTargetNodesChange, nodes: Node[], edges: Edge[]) => {
+export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSourceOrTargetNodesChange, nodes: Node[]) => {
+  const nodesConnectedSourceOrTargetHandleIdsMap = {} as Record<string, any>
+
+  changes.forEach((change) => {
+    const {
+      edge,
+      type,
+    } = change
+    const sourceNode = nodes.find(node => node.id === edge.source)
+    const sourceNodeConnectedSourceHandleIds = sourceNode?.data._connectedSourceHandleIds || []
+    const targetNode = nodes.find(node => node.id === edge.target)
+    const targetNodeConnectedTargetHandleIds = targetNode?.data._connectedTargetHandleIds || []
+
+    if (sourceNode) {
+      const newSourceNodeConnectedSourceHandleIds = type === 'remove'
+        ? sourceNodeConnectedSourceHandleIds.filter(handleId => handleId !== edge.sourceHandle)
+        : sourceNodeConnectedSourceHandleIds.concat(edge.sourceHandle || 'source')
+      if (!nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]) {
+        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id] = {
+          _connectedSourceHandleIds: newSourceNodeConnectedSourceHandleIds,
+        }
+      }
+      else {
+        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds = newSourceNodeConnectedSourceHandleIds
+      }
+    }
+    if (targetNode) {
+      const newTargetNodeConnectedTargetHandleIds = type === 'remove'
+        ? targetNodeConnectedTargetHandleIds.filter(handleId => handleId !== edge.targetHandle)
+        : targetNodeConnectedTargetHandleIds.concat(edge.targetHandle || 'target')
+      if (!nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]) {
+        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] = {
+          _connectedTargetHandleIds: newTargetNodeConnectedTargetHandleIds,
+        }
+      }
+      else {
+        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds = newTargetNodeConnectedTargetHandleIds
+      }
+    }
+  })
+
+  return nodesConnectedSourceOrTargetHandleIdsMap
+}
+
+export const generateNewNode = ({ data, position }: Pick<Node, 'data' | 'position'>) => {
+  return {
+    id: `${Date.now()}`,
+    type: 'custom',
+    data,
+    position,
+    targetPosition: Position.Left,
+    sourcePosition: Position.Right,
+  } as Node
 }

@@ -10,11 +10,17 @@ import {
   Position,
   getSimpleBezierPath,
 } from 'reactflow'
+import { useNodesInteractions } from './hooks'
 import BlockSelector from './block-selector'
+import type { OnSelectBlock } from './types'
 
 const CustomEdge = ({
   id,
   data,
+  source,
+  sourceHandleId,
+  target,
+  targetHandleId,
   sourceX,
   sourceY,
   targetX,
@@ -34,9 +40,25 @@ const CustomEdge = ({
     targetPosition: Position.Left,
   })
   const [open, setOpen] = useState(false)
+  const { handleNodeAdd } = useNodesInteractions()
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
+
+  const handleInsert = useCallback<OnSelectBlock>((nodeType, toolDefaultValue) => {
+    handleNodeAdd(
+      {
+        nodeType,
+        toolDefaultValue,
+      },
+      {
+        prevNodeId: source,
+        prevNodeSourceHandle: sourceHandleId || 'source',
+        nextNodeId: target,
+        nextNodeTargetHandle: targetHandleId || 'target',
+      },
+    )
+  }, [handleNodeAdd, source, sourceHandleId, target, targetHandleId])
 
   return (
     <>
@@ -65,7 +87,7 @@ const CustomEdge = ({
             open={open}
             onOpenChange={handleOpenChange}
             asChild
-            onSelect={() => {}}
+            onSelect={handleInsert}
           />
         </div>
       </EdgeLabelRenderer>

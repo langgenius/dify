@@ -180,3 +180,18 @@ export enum NodeRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
 }
+
+export type OnNodeAdd = (
+  newNodePayload: {
+    nodeType: BlockEnum
+    sourceHandle?: string
+    targetHandle?: string
+    toolDefaultValue?: ToolDefaultValue
+  },
+  oldNodesPayload: {
+    prevNodeId?: string
+    prevNodeSourceHandle?: string
+    nextNodeId?: string
+    nextNodeTargetHandle?: string
+  }
+) => void

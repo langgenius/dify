@@ -30,7 +30,7 @@ export const NodeTargetHandle = memo(({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
-  const { handleNodeAddPrev } = useNodesInteractions()
+  const { handleNodeAdd } = useNodesInteractions()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
 
   const handleOpenChange = useCallback((v: boolean) => {
@@ -42,8 +42,17 @@ export const NodeTargetHandle = memo(({
       setOpen(v => !v)
   }, [connected])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
-    handleNodeAddPrev(id, type, handleId, toolDefaultValue)
-  }, [handleNodeAddPrev, id, handleId])
+    handleNodeAdd(
+      {
+        nodeType: type,
+        toolDefaultValue,
+      },
+      {
+        nextNodeId: id,
+        nextNodeTargetHandle: handleId,
+      },
+    )
+  }, [handleNodeAdd, id, handleId])
 
   return (
     <>
@@ -93,7 +102,7 @@ export const NodeSourceHandle = memo(({
 }: NodeHandleProps) => {
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
   const [open, setOpen] = useState(false)
-  const { handleNodeAddNext } = useNodesInteractions()
+  const { handleNodeAdd } = useNodesInteractions()
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
@@ -104,8 +113,17 @@ export const NodeSourceHandle = memo(({
       setOpen(v => !v)
   }, [connected])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
-    handleNodeAddNext(id, type, handleId, toolDefaultValue)
-  }, [handleNodeAddNext, id, handleId])
+    handleNodeAdd(
+      {
+        nodeType: type,
+        toolDefaultValue,
+      },
+      {
+        prevNodeId: id,
+        prevNodeSourceHandle: handleId,
+      },
+    )
+  }, [handleNodeAdd, id, handleId])
 
   useEffect(() => {
     if (notInitialWorkflow && data.type === BlockEnum.Start)
