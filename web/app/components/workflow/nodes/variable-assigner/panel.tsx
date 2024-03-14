@@ -9,6 +9,7 @@ import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 import AddButton from '@/app/components/base/button/add-button'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
@@ -26,10 +27,10 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
   } = useConfig(id, data)
 
   const typeOptions = [
-    { label: t(`${i18nPrefix}.type.string`), value: 'string' },
-    { label: t(`${i18nPrefix}.type.number`), value: 'number' },
-    { label: t(`${i18nPrefix}.type.object`), value: 'object' },
-    { label: t(`${i18nPrefix}.type.array`), value: 'array' },
+    { label: t(`${i18nPrefix}.type.string`), value: VarType.string },
+    { label: t(`${i18nPrefix}.type.number`), value: VarType.number },
+    { label: t(`${i18nPrefix}.type.object`), value: VarType.object },
+    { label: t(`${i18nPrefix}.type.array`), value: VarType.array },
   ]
 
   return (
@@ -64,6 +65,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             nodeId={id}
             list={inputs.variables}
             onChange={handleVarListChange}
+            onlyLeafNodeVar
+            onlyVarType={inputs.output_type}
           />
         </Field>
       </div>

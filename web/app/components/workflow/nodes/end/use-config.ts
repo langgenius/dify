@@ -13,9 +13,9 @@ const useConfig = (id: string, payload: EndNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handelPlainTextSelectorChange = useCallback((newList: string[]) => {
+  const handelPlainTextSelectorChange = useCallback((newList: string[] | string) => {
     const newInputs = produce(inputs, (draft: any) => {
-      draft.outputs.plain_text_selector = newList
+      draft.outputs.plain_text_selector = newList as string[]
     })
     setInputs(newInputs)
   }

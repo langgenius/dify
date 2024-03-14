@@ -23,6 +23,7 @@ const translation = {
     restore: '恢复',
     addTitle: '添加标题...',
     addDescription: '添加描述...',
+    noVar: '没有变量',
   },
   singleRun: {
     testRun: '测试运行 ',

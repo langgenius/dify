@@ -5,13 +5,15 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import RemoveButton from '../../../_base/components/remove-button'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector, VarType } from '@/app/components/workflow/types'
 
 type Props = {
   readonly: boolean
   nodeId: string
   list: ValueSelector[]
   onChange: (list: ValueSelector[]) => void
+  onlyLeafNodeVar?: boolean
+  onlyVarType?: VarType
 }
 
 const VarList: FC<Props> = ({
@@ -19,12 +21,14 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
+  onlyLeafNodeVar,
+  onlyVarType,
 }) => {
   const { t } = useTranslation()
   const handleVarReferenceChange = useCallback((index: number) => {
-    return (value: ValueSelector) => {
+    return (value: ValueSelector | string) => {
       const newList = produce(list, (draft) => {
-        draft[index] = value
+        draft[index] = value as ValueSelector
       })
       onChange(newList)
     }
@@ -58,6 +62,9 @@ const VarList: FC<Props> = ({
             className='grow'
             value={item}
             onChange={handleVarReferenceChange(index)}
+            onlyLeafNodeVar={onlyLeafNodeVar}
+            onlyVarType={onlyVarType}
+            width={350}
           />
           <RemoveButton
             className='!p-2 !bg-gray-100 hover:!bg-gray-200'

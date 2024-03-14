@@ -21,7 +21,7 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return VarType.string
 }
 
-const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
+const formatItem = (item: any, isChatMode: boolean, varType?: VarType): NodeOutPutVar => {
   const { id, data } = item
   const res: NodeOutPutVar = {
     nodeId: id,
@@ -109,9 +109,15 @@ const formatItem = (item: any, isChatMode: boolean): NodeOutPutVar => {
       break
     }
   }
+  if (varType)
+    res.vars = res.vars.filter(v => v.type === varType)
 
   return res
 }
-export const toNodeOutputVars = (nodes: any[], isChatMode: boolean): NodeOutPutVar[] => {
-  return nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)).map(node => formatItem(node, isChatMode))
+export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, varType?: VarType): NodeOutPutVar[] => {
+  const res = nodes
+    .filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type))
+    .map(node => formatItem(node, isChatMode, varType))
+    .filter(item => item.vars.length > 0)
+  return res
 }

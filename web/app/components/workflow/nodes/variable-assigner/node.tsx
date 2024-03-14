@@ -34,7 +34,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
         <>
           <div className='space-y-0.5'>
             {variables.map((item, index) => {
-              const node = getNodeInfoById(item[0])
+              const node = getNodeInfoById([], item[0]) // TODO: can not get all nodes
               const varName = item[item.length - 1]
               return (
                 <div key={index} className='relative flex items-center h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700' >

@@ -23,6 +23,7 @@ const translation = {
     restore: 'Restore',
     addTitle: 'Add title...',
     addDescription: 'Add description...',
+    noVar: 'No variable',
   },
   singleRun: {
     testRun: 'Test Run ',

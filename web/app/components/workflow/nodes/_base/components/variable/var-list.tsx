@@ -4,7 +4,7 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
-import { type ValueSelector, type Variable } from '@/app/components/workflow/types'
+import { type ValueSelector, type VarType, type Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 type Props = {
@@ -13,6 +13,8 @@ type Props = {
   list: Variable[]
   onChange: (list: Variable[]) => void
   isSupportConstantValue?: boolean
+  onlyLeafNodeVar?: boolean
+  onlyVarType?: VarType
 }
 
 const VarList: FC<Props> = ({
@@ -21,6 +23,8 @@ const VarList: FC<Props> = ({
   list,
   onChange,
   isSupportConstantValue,
+  onlyLeafNodeVar,
+  onlyVarType,
 }) => {
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +84,8 @@ const VarList: FC<Props> = ({
             isSupportConstantValue={isSupportConstantValue}
             onChange={handleVarReferenceChange(index)}
             defaultVarKindType={item.variable_type}
+            onlyLeafNodeVar={onlyLeafNodeVar}
+            onlyVarType={onlyVarType}
           />
           <RemoveButton
             className='!p-2 !bg-gray-100 hover:!bg-gray-200'

@@ -33,6 +33,8 @@ type Props = {
   onChange: (value: ValueSelector | string, varKindType: VarKindType) => void
   isSupportConstantValue?: boolean
   defaultVarKindType?: VarKindType
+  onlyLeafNodeVar?: boolean
+  onlyVarType?: VarType
 }
 
 export const getNodeInfoById = (nodes: any, id: string) => {
@@ -52,13 +54,15 @@ const VarReferencePicker: FC<Props> = ({
   onChange,
   isSupportConstantValue,
   defaultVarKindType = VarKindType.static,
+  onlyLeafNodeVar,
+  onlyVarType,
 }) => {
   const isChatMode = useIsChatMode()
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.static
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
-  const availableNodes = getBeforeNodesInSameBranch(nodeId)
-  const outputVars = toNodeOutputVars(availableNodes, isChatMode)
+  const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes() : getBeforeNodesInSameBranch(nodeId)
+  const outputVars = toNodeOutputVars(availableNodes, isChatMode, onlyVarType)
   const [open, setOpen] = useState(false)
   const hasValue = !isConstant && value.length > 0
   const outputVarNodeId = hasValue ? value[0] : ''
@@ -128,12 +132,13 @@ const VarReferencePicker: FC<Props> = ({
         onOpenChange={setOpen}
         placement='bottom-start'
       >
-        <PortalToFollowElemTrigger onClick={() => !isConstant && setOpen(!open)} className='!flex'>
+        <PortalToFollowElemTrigger onClick={() => !isConstant ? setOpen(!open) : setControlFocus(Date.now())} className='!flex'>
           <div className={cn((open || isFocus) && 'border border-gray-300', 'flex items-center w-full h-8 p-1 rounded-lg bg-gray-100')}>
             {isSupportConstantValue
               ? <div onClick={(e) => {
                 e.stopPropagation()
                 setOpen(false)
+                setControlFocus(Date.now())
               }} className='mr-1 flex items-center space-x-1'>
                 <TypeSelector
                   noLeft

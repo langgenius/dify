@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useRef } from 'react'
 import { useHover } from 'ahooks'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -90,7 +91,8 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
     }}>
       <div className='flex items-center h-[22px] px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
       {
-        data?.map((v, i) => (
+        (data && data.length > 0)
+        && data.map((v, i) => (
           <Item
             key={i}
             nodeId={nodeId}
@@ -115,26 +117,30 @@ const VarReferencePopup: FC<Props> = ({
   onChange,
   itemWidth,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
       width: itemWidth || 228,
     }}>
-      {vars.map((item, i) => (
-        <div key={i}>
-          <div className='flex items-center h-[22px] px-3 text-xs font-medium text-gray-500 uppercase'>{item.title}</div>
-          {item.vars.map((v, j) => (
-            <Item
-              key={j}
-              title={item.title}
-              nodeId={item.nodeId}
-              objPath={[]}
-              itemData={v}
-              onChange={onChange}
-              itemWidth={itemWidth}
-            />
-          ))}
-        </div>
-      ))}
+      {vars.length > 0
+        ? vars.map((item, i) => (
+          <div key={i}>
+            <div className='flex items-center h-[22px] px-3 text-xs font-medium text-gray-500 uppercase'>{item.title}</div>
+            {item.vars.map((v, j) => (
+              <Item
+                key={j}
+                title={item.title}
+                nodeId={item.nodeId}
+                objPath={[]}
+                itemData={v}
+                onChange={onChange}
+                itemWidth={itemWidth}
+              />
+            ))}
+          </div>
+        ))
+        : <div className='pl-3 leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t('workflow.common.noVar')}</div>}
     </div>
   )
 }
