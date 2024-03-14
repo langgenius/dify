@@ -47,8 +47,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     runResult,
   } = useConfig(id, data)
 
-  console.log(inputs)
-
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
       <Loading />

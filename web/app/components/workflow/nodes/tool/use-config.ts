@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import { useStore } from '../../store'
-import { type ToolNodeType, type ToolVarInput } from './types'
+import { type ToolNodeType, type ToolVarInput, VarType } from './types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
@@ -67,6 +67,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const [currTool, setCurrTool] = useState<Tool | null>(null)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
+  const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
   // use setting
   const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
   const toolSettingValue = (() => {
@@ -82,11 +83,20 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   useEffect(() => {
     if (!currTool)
       return
-    setToolSettingValue(addDefaultValue(tool_configurations, toolSettingSchema))
+    const inputsWithDefaultValue = produce(inputs, (draft) => {
+      draft.tool_configurations = addDefaultValue(tool_configurations, toolSettingSchema)
+      draft.tool_parameters = toolInputVarSchema.map((item: any) => {
+        return {
+          variable: item.variable,
+          variable_type: VarType.static,
+          value: '',
+        }
+      })
+    })
+    setInputs(inputsWithDefaultValue)
   }, [currTool])
 
   // setting when call
-  const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
   const setInputVar = useCallback((value: ToolVarInput[]) => {
     setInputs({
       ...inputs,
