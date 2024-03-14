@@ -3,13 +3,12 @@ import React, { useState } from 'react'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
-import { fetchAppDetail } from '@/service/apps'
 import type { PeriodParams } from '@/app/components/app/overview/appChart'
 import { AvgResponseTime, AvgSessionInteractions, ConversationsChart, CostChart, EndUsersChart, TokenPerSecond, UserSatisfactionRate } from '@/app/components/app/overview/appChart'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { TIME_PERIOD_LIST } from '@/app/components/app/log/filter'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 dayjs.extend(quarterOfYear)
 
@@ -22,10 +21,9 @@ export type IChartViewProps = {
 }
 
 export default function ChartView({ appId }: IChartViewProps) {
-  const detailParams = { url: '/apps', id: appId }
-  const { data: response } = useSWR(detailParams, fetchAppDetail)
-  const isChatApp = response?.mode === 'chat'
   const { t } = useTranslation()
+  const { appDetail } = useAppStore()
+  const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').format(queryDateFormat), end: today.format(queryDateFormat) } })
 
   const onSelect = (item: Item) => {
@@ -42,7 +40,7 @@ export default function ChartView({ appId }: IChartViewProps) {
     }
   }
 
-  if (!response)
+  if (!appDetail)
     return null
 
   return (
