@@ -113,6 +113,7 @@ If you need to customize the configuration, please refer to the comments in our 
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Flanggenius%2Fdify.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Flanggenius%2Fdify?ref=badge_shield)
 
 ## Contributing
 
@@ -155,3 +156,6 @@ To protect your privacy, please avoid posting security issues on GitHub. Instead
 ## License
 
 This repository is available under the [Dify Open Source License](LICENSE), which is essentially Apache 2.0 with a few additional restrictions.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Flanggenius%2Fdify.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Flanggenius%2Fdify?ref=badge_large)
