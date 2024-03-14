@@ -47,6 +47,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           ${data._runningStatus === NodeRunningStatus.Running && '!border-primary-500'}
           ${data._runningStatus === NodeRunningStatus.Succeeded && '!border-[#12B76A]'}
           ${data._runningStatus === NodeRunningStatus.Failed && '!border-[#F04438]'}
+          ${data._runningStatus === NodeRunningStatus.Waiting && 'opacity-70'}
         `}
       >
         {

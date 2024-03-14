@@ -6,6 +6,7 @@ import type {
 } from 'reactflow'
 import { useStoreApi } from 'reactflow'
 import { useStore } from '../store'
+import type { Node } from '../types'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useEdgesInteractions = () => {
@@ -55,14 +56,26 @@ export const useEdgesInteractions = () => {
       return
 
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const index = draft.findIndex(edge => edge.source === nodeId && edge.sourceHandle === branchId)
+    const currentEdgeIndex = edges.findIndex(edge => edge.source === nodeId && edge.sourceHandle === branchId)
+    const currentEdge = edges[currentEdgeIndex]
+    const newNodes = produce(getNodes(), (draft: Node[]) => {
+      const sourceNode = draft.find(node => node.id === currentEdge.source)
+      const targetNode = draft.find(node => node.id === currentEdge.target)
 
-      if (index > -1)
-        draft.splice(index, 1)
+      if (sourceNode)
+        sourceNode.data._connectedSourceHandleIds = sourceNode.data._connectedSourceHandleIds?.filter(handleId => handleId !== currentEdge.sourceHandle)
+
+      if (targetNode)
+        targetNode.data._connectedTargetHandleIds = targetNode.data._connectedTargetHandleIds?.filter(handleId => handleId !== currentEdge.targetHandle)
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      draft.splice(currentEdgeIndex, 1)
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
@@ -75,14 +88,26 @@ export const useEdgesInteractions = () => {
       return
 
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
-    const newEdges = produce(edges, (draft) => {
-      const index = draft.findIndex(edge => edge.selected)
+    const currentEdgeIndex = edges.findIndex(edge => edge.selected)
+    const currentEdge = edges[currentEdgeIndex]
+    const newNodes = produce(getNodes(), (draft: Node[]) => {
+      const sourceNode = draft.find(node => node.id === currentEdge.source)
+      const targetNode = draft.find(node => node.id === currentEdge.target)
 
-      if (index > -1)
-        draft.splice(index, 1)
+      if (sourceNode)
+        sourceNode.data._connectedSourceHandleIds = sourceNode.data._connectedSourceHandleIds?.filter(handleId => handleId !== currentEdge.sourceHandle)
+
+      if (targetNode)
+        targetNode.data._connectedTargetHandleIds = targetNode.data._connectedTargetHandleIds?.filter(handleId => handleId !== currentEdge.targetHandle)
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      draft.splice(currentEdgeIndex, 1)
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()

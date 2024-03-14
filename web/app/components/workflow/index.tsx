@@ -182,7 +182,7 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       return nodes
 
     if (data)
-      return initialNodes(data.graph.nodes)
+      return initialNodes(data.graph.nodes, data.graph.edges)
 
     return [startNode]
   }, [data, nodes, startNode])

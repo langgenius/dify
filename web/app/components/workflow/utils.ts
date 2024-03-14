@@ -80,9 +80,13 @@ export const nodesLevelOrderTraverse = (
   }
 }
 
-export const initialNodes = (nodes: Node[]) => {
+export const initialNodes = (nodes: Node[], edges: Edge[]) => {
   return nodes.map((node) => {
     node.type = 'custom'
+
+    const connectedEdges = getConnectedEdges([node], edges)
+    node.data._connectedSourceHandleIds = connectedEdges.filter(edge => edge.source === node.id).map(edge => edge.sourceHandle || 'source')
+    node.data._connectedTargetHandleIds = connectedEdges.filter(edge => edge.target === node.id).map(edge => edge.targetHandle || 'target')
 
     if (node.data.type === BlockEnum.IfElse) {
       node.data._targetBranches = [
@@ -169,4 +173,11 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
     || nodeType === BlockEnum.Tool
+}
+
+type ConnectedSourceOrTargetNodesChange = {
+  type: 'add' | 'remove'
+  edge: Edge
+}[]
+export const getConnectedSourceOrTargetNodesChangeList = (changes: ConnectedSourceOrTargetNodesChange, nodes: Node[], edges: Edge[]) => {
 }

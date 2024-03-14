@@ -1,15 +1,13 @@
 import type { MouseEvent } from 'react'
 import {
+  memo,
   useCallback,
   useEffect,
   useState,
 } from 'react'
-import type { NodeProps } from 'reactflow'
 import {
   Handle,
   Position,
-  getConnectedEdges,
-  useEdges,
 } from 'reactflow'
 import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
@@ -22,9 +20,9 @@ type NodeHandleProps = {
   handleId: string
   handleClassName?: string
   nodeSelectorClassName?: string
-} & Pick<NodeProps, 'id' | 'data'>
+} & Pick<Node, 'id' | 'data'>
 
-export const NodeTargetHandle = ({
+export const NodeTargetHandle = memo(({
   id,
   data,
   handleId,
@@ -33,9 +31,7 @@ export const NodeTargetHandle = ({
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
   const { handleNodeAddPrev } = useNodesInteractions()
-  const edges = useEdges()
-  const connectedEdges = getConnectedEdges([{ id } as Node], edges)
-  const connected = connectedEdges.find(edge => edge.targetHandle === handleId && edge.target === id)
+  const connected = data._connectedTargetHandleIds?.includes(handleId)
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
@@ -85,9 +81,10 @@ export const NodeTargetHandle = ({
       </Handle>
     </>
   )
-}
+})
+NodeTargetHandle.displayName = 'NodeTargetHandle'
 
-export const NodeSourceHandle = ({
+export const NodeSourceHandle = memo(({
   id,
   data,
   handleId,
@@ -97,9 +94,7 @@ export const NodeSourceHandle = ({
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
   const [open, setOpen] = useState(false)
   const { handleNodeAddNext } = useNodesInteractions()
-  const edges = useEdges()
-  const connectedEdges = getConnectedEdges([{ id } as Node], edges)
-  const connected = connectedEdges.find(edge => edge.sourceHandle === handleId && edge.source === id)
+  const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
@@ -150,4 +145,5 @@ export const NodeSourceHandle = ({
       </Handle>
     </>
   )
-}
+})
+NodeSourceHandle.displayName = 'NodeSourceHandle'

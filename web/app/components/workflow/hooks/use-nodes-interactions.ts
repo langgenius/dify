@@ -260,9 +260,8 @@ export const useNodesInteractions = () => {
       edges,
       setEdges,
     } = store.getState()
-
     const newEdges = produce(edges, (draft) => {
-      const filtered = draft.filter(edge => edge.source !== source && edge.target !== target)
+      const filtered = draft.filter(edge => (edge.source !== source && edge.sourceHandle !== sourceHandle) || (edge.target !== target && edge.targetHandle !== targetHandle))
 
       filtered.push({
         id: `${source}-${target}`,
@@ -292,14 +291,25 @@ export const useNodesInteractions = () => {
       setEdges,
     } = store.getState()
 
-    const newNodes = produce(getNodes(), (draft) => {
-      const index = draft.findIndex(node => node.id === nodeId)
+    const nodes = getNodes()
+    const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
+    const currentNode = nodes[currentNodeIndex]
+    const incomersIds = getIncomers(currentNode, nodes, edges).map(incomer => incomer.id)
+    const outgoersIds = getOutgoers(currentNode, nodes, edges).map(outgoer => outgoer.id)
+    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
+    const sourceEdgesHandleIds = connectedEdges.filter(edge => edge.target === nodeId).map(edge => edge.sourceHandle)
+    const targetEdgesHandleIds = connectedEdges.filter(edge => edge.source === nodeId).map(edge => edge.targetHandle)
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (incomersIds.includes(node.id))
+          node.data._connectedSourceHandleIds = node.data._connectedSourceHandleIds?.filter(handleId => !sourceEdgesHandleIds.includes(handleId))
 
-      if (index > -1)
-        draft.splice(index, 1)
+        if (outgoersIds.includes(node.id))
+          node.data._connectedTargetHandleIds = node.data._connectedTargetHandleIds?.filter(handleId => !targetEdgesHandleIds.includes(handleId))
+      })
+      draft.splice(currentNodeIndex, 1)
     })
     setNodes(newNodes)
-    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
     const newEdges = produce(edges, (draft) => {
       return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
     })
@@ -325,7 +335,8 @@ export const useNodesInteractions = () => {
       setEdges,
     } = store.getState()
     const nodes = getNodes()
-    const currentNode = nodes.find(node => node.id === currentNodeId)!
+    const currentNodeIndex = nodes.findIndex(node => node.id === currentNodeId)
+    const currentNode = nodes[currentNodeIndex]
     const outgoers = getOutgoers(currentNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
     const lastOutgoer = outgoers[outgoers.length - 1]
     const nextNode: Node = {
@@ -334,6 +345,7 @@ export const useNodesInteractions = () => {
       data: {
         ...nodesInitialData[nodeType],
         ...(toolDefaultValue || {}),
+        _connectedTargetHandleIds: ['target'],
         selected: true,
       },
       position: {
@@ -350,9 +362,12 @@ export const useNodesInteractions = () => {
       target: nextNode.id,
       targetHandle: 'target',
     }
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node, index) => {
         node.data.selected = false
+
+        if (index === currentNodeIndex)
+          node.data._connectedSourceHandleIds?.push(sourceHandle)
       })
       draft.push(nextNode)
     })

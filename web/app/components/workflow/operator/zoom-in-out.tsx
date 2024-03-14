@@ -94,7 +94,10 @@ const ZoomInOut: FC = () => {
       placement='top-start'
       open={open}
       onOpenChange={setOpen}
-      offset={4}
+      offset={{
+        mainAxis: 4,
+        crossAxis: -2,
+      }}
     >
       <PortalToFollowElemTrigger asChild onClick={handleTrigger}>
         <div className={`

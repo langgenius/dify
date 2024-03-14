@@ -25,6 +25,8 @@ export type Branch = {
 }
 
 export type CommonNodeType<T = {}> = {
+  _connectedSourceHandleIds?: string[]
+  _connectedTargetHandleIds?: string[]
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
