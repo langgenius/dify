@@ -42,7 +42,7 @@ class HttpRequestNode(BaseNode):
             inputs=variables,
             outputs={
                 'status_code': response.status_code,
-                'body': response,
+                'body': response.body,
                 'headers': response.headers
             },
             process_data={
