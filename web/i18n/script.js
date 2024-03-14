@@ -2,36 +2,70 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const transpile = require('typescript').transpile
-const folderPath = path.join(__dirname, 'en-US')
 
-fs.readdir(folderPath, (err, files) => {
-  if (err) {
-    console.error('Error reading folder:', err)
-    return
+const targetLanguage = 'en-US'
+const languages = ['zh-Hans', 'fr-FR', 'ja-JP', 'pt-BR', 'uk-UA', 'vi-VN']
+
+async function getKeysFromLanuage(language) {
+  return new Promise((resolve, reject) => {
+    const folderPath = path.join(__dirname, language)
+    let allKeys = []
+    fs.readdir(folderPath, (err, files) => {
+      if (err) {
+        console.error('Error reading folder:', err)
+        reject(err)
+        return
+      }
+
+      files.forEach((file) => {
+        const filePath = path.join(folderPath, file)
+        const fileName = file.replace(/\.[^/.]+$/, '') // Remove file extension
+        const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) =>
+          c.toUpperCase(),
+        ) // Convert to camel case
+        // console.log(camelCaseFileName)
+        const content = fs.readFileSync(filePath, 'utf8')
+        const translation = eval(transpile(content))
+        const keys = Object.keys(translation)
+        const nestedKeys = []
+        const iterateKeys = (obj, prefix = '') => {
+          for (const key in obj) {
+            const nestedKey = prefix ? `${prefix}.${key}` : key
+            nestedKeys.push(nestedKey)
+            if (typeof obj[key] === 'object')
+              iterateKeys(obj[key], nestedKey)
+          }
+        }
+        iterateKeys(translation)
+
+        allKeys = [...keys, ...nestedKeys].map(
+          key => `${camelCaseFileName}.${key}`,
+        )
+      })
+      resolve(allKeys)
+    })
+  })
+}
+
+async function main() {
+  const compareKeysCount = async () => {
+    const targetKeys = await getKeysFromLanuage(targetLanguage)
+    const languagesKeys = await Promise.all(languages.map(language => getKeysFromLanuage(language)))
+
+    const keysCount = languagesKeys.map(keys => keys.length)
+    const targetKeysCount = targetKeys.length
+
+    const comparison = languages.reduce((result, language, index) => {
+      const languageKeysCount = keysCount[index]
+      const difference = targetKeysCount - languageKeysCount
+      result[language] = difference
+      return result
+    }, {})
+
+    console.log('Comparison:', comparison)
   }
 
-  files.forEach((file) => {
-    const filePath = path.join(folderPath, file)
-    const fileName = file.replace(/\.[^/.]+$/, '') // Remove file extension
-    const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) => c.toUpperCase()) // Convert to camel case
-    console.log(camelCaseFileName)
+  compareKeysCount()
+}
 
-    const content = fs.readFileSync(filePath, 'utf8')
-    const translation = eval(transpile(content))
-    const keys = Object.keys(translation)
-    const nestedKeys = []
-
-    const iterateKeys = (obj, prefix = '') => {
-      for (const key in obj) {
-        const nestedKey = prefix ? `${prefix}.${key}` : key
-        nestedKeys.push(nestedKey)
-        if (typeof obj[key] === 'object')
-          iterateKeys(obj[key], nestedKey)
-      }
-    }
-    iterateKeys(translation)
-
-    const allKeys = [...keys, ...nestedKeys].map(key => `${camelCaseFileName}.${key}`)
-    console.log(allKeys)
-  })
-})
+main()
