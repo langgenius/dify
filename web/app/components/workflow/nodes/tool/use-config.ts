@@ -23,8 +23,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const setToolsMap = useStore(s => s.setToolsMap)
 
   const { inputs, setInputs } = useNodeCrud<ToolNodeType>(id, payload)
-  const toolInputs = inputs.tool_parameters
-  const { provider_id, provider_name, provider_type, tool_name, tool_configurations: tool_parameters } = inputs
+  /*
+  * tool_configurations: tool setting, not dynamic setting
+  * tool_parameters: tool dynamic setting(by user)
+  */
+  const { provider_id, provider_name, provider_type, tool_name, tool_configurations, tool_parameters: toolInputs } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const [currCollection, setCurrCollection] = useState<Collection | null | undefined>(null)
   const fetchCurrCollection = useCallback(async () => {
@@ -67,7 +70,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   // use setting
   const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
   const toolSettingValue = (() => {
-    return addDefaultValue(tool_parameters, toolSettingSchema)
+    return addDefaultValue(tool_configurations, toolSettingSchema)
   })()
   const setToolSettingValue = useCallback((value: Record<string, any>) => {
     setInputs({
@@ -75,6 +78,12 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       tool_configurations: value,
     })
   }, [inputs, setInputs])
+
+  useEffect(() => {
+    if (!currTool)
+      return
+    setToolSettingValue(addDefaultValue(tool_configurations, toolSettingSchema))
+  }, [currTool])
 
   // setting when call
   const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
