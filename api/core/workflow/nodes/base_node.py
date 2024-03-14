@@ -86,17 +86,22 @@ class BaseNode(ABC):
         self.node_run_result = result
         return result
 
-    def publish_text_chunk(self, text: str) -> None:
+    def publish_text_chunk(self, text: str, value_selector: list[str] = None) -> None:
         """
         Publish text chunk
         :param text: chunk text
+        :param value_selector: value selector
         :return:
         """
         if self.callbacks:
             for callback in self.callbacks:
                 callback.on_node_text_chunk(
                     node_id=self.node_id,
-                    text=text
+                    text=text,
+                    metadata={
+                        "node_type": self.node_type,
+                        "value_selector": value_selector
+                    }
                 )
 
     @classmethod
