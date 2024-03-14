@@ -3,6 +3,7 @@ import type {
   Node as ReactFlowNode,
 } from 'reactflow'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -57,6 +58,8 @@ export type ValueSelector = string[] // [nodeId, key | obj key path]
 export type Variable = {
   variable: string
   value_selector: ValueSelector
+  variable_type?: VarKindType
+  value?: string
 }
 
 export type VariableWithValue = {

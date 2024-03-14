@@ -11,6 +11,8 @@ type Item = {
 }
 type Props = {
   trigger?: JSX.Element
+  DropDownIcon?: any
+  noLeft?: boolean
   options: Item[]
   value: string
   onChange: (value: any) => void
@@ -24,6 +26,8 @@ type Props = {
 
 const TypeSelector: FC<Props> = ({
   trigger,
+  DropDownIcon = ChevronSelectorVertical,
+  noLeft,
   options: list,
   value,
   onChange,
@@ -41,7 +45,7 @@ const TypeSelector: FC<Props> = ({
     setHide()
   }, ref)
   return (
-    <div className={cn(!trigger && 'left-[-8px]', 'relative')} ref={ref}>
+    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative')} ref={ref}>
       {trigger
         ? (
           <div
@@ -55,7 +59,7 @@ const TypeSelector: FC<Props> = ({
             onClick={toggleShow}
             className={cn(showOption && 'bg-black/5', 'flex items-center h-5 pl-1 pr-0.5 rounded-md text-xs font-semibold text-gray-700 cursor-pointer hover:bg-black/5')}>
             <div className={cn(triggerClassName, 'text-sm font-semibold', uppercase && 'uppercase')}>{item?.label}</div>
-            <ChevronSelectorVertical className='w-3 h-3 ' />
+            <DropDownIcon className='w-3 h-3 ' />
           </div>
         )}
 

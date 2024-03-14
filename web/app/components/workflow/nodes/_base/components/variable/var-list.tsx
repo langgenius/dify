@@ -4,13 +4,15 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
-import type { ValueSelector, Variable } from '@/app/components/workflow/types'
+import { type ValueSelector, type Variable } from '@/app/components/workflow/types'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 type Props = {
   nodeId: string
   readonly: boolean
   list: Variable[]
   onChange: (list: Variable[]) => void
+  isSupportConstantValue?: boolean
 }
 
 const VarList: FC<Props> = ({
@@ -18,6 +20,7 @@ const VarList: FC<Props> = ({
   readonly,
   list,
   onChange,
+  isSupportConstantValue,
 }) => {
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,11 +32,21 @@ const VarList: FC<Props> = ({
   }, [list, onChange])
 
   const handleVarReferenceChange = useCallback((index: number) => {
-    return (value: ValueSelector) => {
+    return (value: ValueSelector | string, varKindType: VarKindType) => {
       const newList = produce(list, (draft) => {
-        draft[index].value_selector = value
-        if (!draft[index].variable)
-          draft[index].variable = value[value.length - 1]
+        if (!isSupportConstantValue || varKindType === VarKindType.selector) {
+          draft[index].value_selector = value as ValueSelector
+          if (isSupportConstantValue)
+            draft[index].variable_type = VarKindType.selector
+
+          if (!draft[index].variable)
+            draft[index].variable = value[value.length - 1]
+        }
+        else {
+          draft[index].variable_type = VarKindType.static
+          draft[index].value_selector = value as ValueSelector
+          draft[index].value = value as string
+        }
       })
       onChange(newList)
     }
@@ -63,8 +76,10 @@ const VarList: FC<Props> = ({
             readonly={readonly}
             isShowNodeName
             className='grow'
-            value={item.value_selector}
+            value={item.variable_type === VarKindType.static ? (item.value || '') : (item.value_selector || [])}
+            isSupportConstantValue={isSupportConstantValue}
             onChange={handleVarReferenceChange(index)}
+            defaultVarKindType={item.variable_type}
           />
           <RemoveButton
             className='!p-2 !bg-gray-100 hover:!bg-gray-200'

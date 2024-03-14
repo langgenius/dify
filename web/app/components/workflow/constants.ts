@@ -249,7 +249,7 @@ export const LLM_OUTPUT_STRUCT: Var[] = [
     variable: 'text',
     type: VarType.string,
   },
-
+  USAGE,
 ]
 
 export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [

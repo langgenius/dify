@@ -13,6 +13,7 @@ type ObjectChildrenProps = {
   data: Var[]
   objPath: string[]
   onChange: (value: ValueSelector) => void
+  itemWidth?: number
 }
 
 type ItemProps = {
@@ -21,6 +22,7 @@ type ItemProps = {
   objPath: string[]
   itemData: Var
   onChange: (value: ValueSelector) => void
+  itemWidth?: number
 }
 
 const Item: FC<ItemProps> = ({
@@ -29,6 +31,7 @@ const Item: FC<ItemProps> = ({
   objPath,
   itemData,
   onChange,
+  itemWidth,
 }) => {
   const isObj = itemData.type === VarType.object && itemData.children && itemData.children.length > 0
   const itemRef = useRef(null)
@@ -40,7 +43,11 @@ const Item: FC<ItemProps> = ({
   return (
     <div
       ref={itemRef}
-      className={cn(isObj ? 'hover:bg-primary-50 pr-1' : 'hover:bg-gray-50 pr-[18px]', 'relative flex items-center h-6 w-[252px] pl-3  rounded-md cursor-pointer')}
+      className={cn(
+        isObj ? 'hover:bg-primary-50 pr-1' : 'hover:bg-gray-50 pr-[18px]',
+        'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
+      }
+      // style={{ width: itemWidth || 252 }}
       onClick={handleChosen}
     >
       <div className='flex items-center w-0 grow'>
@@ -59,6 +66,7 @@ const Item: FC<ItemProps> = ({
           objPath={[...objPath, itemData.variable]}
           data={itemData.children as Var[]}
           onChange={onChange}
+          itemWidth={itemWidth}
         />
       )}
     </div>
@@ -71,11 +79,15 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   objPath,
   data,
   onChange,
+  itemWidth,
 }) => {
   const currObjPath = objPath
 
   return (
-    <div className='absolute right-[248px] top-[-2px] bg-white rounded-lg border border-gray-200 shadow-lg space-y-1'>
+    <div className='absolute top-[-2px] bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
+      right: itemWidth ? itemWidth - 4 : 215,
+      minWidth: 252,
+    }}>
       <div className='flex items-center h-[22px] px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
       {
         data?.map((v, i) => (
@@ -96,14 +108,17 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
 type Props = {
   vars: NodeOutPutVar[]
   onChange: (value: ValueSelector) => void
+  itemWidth?: number
 }
 const VarReferencePopup: FC<Props> = ({
-
   vars,
   onChange,
+  itemWidth,
 }) => {
   return (
-    <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1'>
+    <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
+      width: itemWidth || 228,
+    }}>
       {vars.map((item, i) => (
         <div key={i}>
           <div className='flex items-center h-[22px] px-3 text-xs font-medium text-gray-500 uppercase'>{item.title}</div>
@@ -115,6 +130,7 @@ const VarReferencePopup: FC<Props> = ({
               objPath={[]}
               itemData={v}
               onChange={onChange}
+              itemWidth={itemWidth}
             />
           ))}
         </div>

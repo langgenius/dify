@@ -82,6 +82,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 schema={toolInputVarSchema as any}
                 value={inputs.tool_parameters}
                 onChange={setInputVar}
+                isSupportConstantValue
               />
             </Field>
           )}

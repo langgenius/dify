@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import type { ToolVarInput } from '../types'
-import { VarType } from '../types'
+import { VarType as VarKindType } from '../types'
+import { type ValueSelector } from '@/app/components/workflow/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -15,6 +16,7 @@ type Props = {
   schema: CredentialFormSchema[]
   value: ToolVarInput[]
   onChange: (value: ToolVarInput[]) => void
+  isSupportConstantValue?: boolean
 }
 
 const InputVarList: FC<Props> = ({
@@ -23,6 +25,7 @@ const InputVarList: FC<Props> = ({
   schema,
   value,
   onChange,
+  isSupportConstantValue,
 }) => {
   const language = useLanguage()
 
@@ -35,17 +38,26 @@ const InputVarList: FC<Props> = ({
   })()
 
   const handleChange = useCallback((variable: string) => {
-    return (varValue: any) => {
+    return (varValue: ValueSelector | string, varKindType: VarKindType) => {
       const newValue = produce(value, (draft: ToolVarInput[]) => {
         const target = draft.find(item => item.variable === variable)
         if (target) {
-          target.value_selector = varValue // TODO: support constant value
+          if (!isSupportConstantValue || varKindType === VarKindType.selector) {
+            if (isSupportConstantValue)
+              target.variable_type = VarKindType.selector
+
+            target.value_selector = varValue as ValueSelector
+          }
+          else {
+            target.variable_type = VarKindType.static
+            target.value = varValue as string
+          }
         }
         else {
           draft.push({
             variable,
-            variable_type: VarType.selector, // TODO: support constant value
-            value_selector: varValue,
+            variable_type: VarKindType.static,
+            value: '',
           })
         }
       })
@@ -74,9 +86,12 @@ const InputVarList: FC<Props> = ({
               <VarReferencePicker
                 readonly={readOnly}
                 isShowNodeName
+                width={372}
                 nodeId={nodeId}
-                value={varInput?.value_selector || []} // TODO: support constant value
+                value={varInput?.variable_type === VarKindType.static ? (varInput?.value || '') : (varInput?.value_selector || [])}
                 onChange={handleChange(variable)}
+                isSupportConstantValue={isSupportConstantValue}
+                defaultVarKindType={varInput?.variable_type}
               />
               {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
