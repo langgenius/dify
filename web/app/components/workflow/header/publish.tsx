@@ -7,11 +7,22 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { publishWorkflow } from '@/service/workflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const Publish = () => {
   const { t } = useTranslation()
   const runningStatus = useStore(s => s.runningStatus)
   const [open, setOpen] = useState(false)
+
+  const handlePublish = async () => {
+    const appId = useAppStore.getState().appDetail?.id
+    try {
+      await publishWorkflow(`/apps/${appId}/workflows/publish`)
+    }
+    catch (e) {
+    }
+  }
 
   return (
     <PortalToFollowElem
@@ -51,6 +62,7 @@ const Publish = () => {
             <Button
               type='primary'
               className='mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium'
+              onClick={handlePublish}
             >
               {t('workflow.common.publish')}
             </Button>

@@ -25,3 +25,7 @@ export const fetchWorkflowRunHistory: Fetcher<WorkflowRunHistoryResponse, string
 export const singleNodeRun = (appId: string, nodeId: string, params: object) => {
   return post(`apps/${appId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
 }
+
+export const publishWorkflow = (url: string) => {
+  return post<CommonResponse>(url)
+}
