@@ -15,7 +15,7 @@ import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
-import type { App } from '@/types/app'
+import type { App, AppMode } from '@/types/app'
 export type ILogsProps = {
   appDetail: App
 }
@@ -67,6 +67,12 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(queryParams, ['period']),
   }
 
+  const getWebAppType = (appType: AppMode) => {
+    if (appType === 'completion' || appType === 'workflow')
+      return 'completion'
+    return 'chat'
+  }
+
   // Get the app type first
   const isChatMode = appDetail.mode !== 'completion'
 
@@ -96,7 +102,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${appDetail.mode}/${appDetail.site.access_token}`} />
+            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
