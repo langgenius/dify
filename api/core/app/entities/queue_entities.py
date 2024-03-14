@@ -17,6 +17,7 @@ class QueueEvent(Enum):
     AGENT_MESSAGE = "agent_message"
     MESSAGE_REPLACE = "message_replace"
     MESSAGE_END = "message_end"
+    ADVANCED_CHAT_MESSAGE_END = "advanced_chat_message_end"
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
@@ -53,6 +54,7 @@ class QueueTextChunkEvent(AppQueueEvent):
     """
     event = QueueEvent.TEXT_CHUNK
     text: str
+    metadata: Optional[dict] = None
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
@@ -92,7 +94,14 @@ class QueueMessageEndEvent(AppQueueEvent):
     QueueMessageEndEvent entity
     """
     event = QueueEvent.MESSAGE_END
-    llm_result: LLMResult
+    llm_result: Optional[LLMResult] = None
+
+
+class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
+    """
+    QueueAdvancedChatMessageEndEvent entity
+    """
+    event = QueueEvent.ADVANCED_CHAT_MESSAGE_END
 
 
 class QueueWorkflowStartedEvent(AppQueueEvent):

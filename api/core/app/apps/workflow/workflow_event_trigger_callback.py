@@ -112,7 +112,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
             PublishFrom.APPLICATION_MANAGER
         )
 
-    def on_node_text_chunk(self, node_id: str, text: str) -> None:
+    def on_node_text_chunk(self, node_id: str, text: str, metadata: Optional[dict] = None) -> None:
         """
         Publish text chunk
         """

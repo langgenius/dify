@@ -169,7 +169,7 @@ class LLMNode(BaseNode):
             text = result.delta.message.content
             full_text += text
 
-            self.publish_text_chunk(text=text)
+            self.publish_text_chunk(text=text, value_selector=[self.node_id, 'text'])
 
             if not model:
                 model = result.model
