@@ -1,0 +1,42 @@
+identity:
+  name: weekday
+  author: Bowen Liang
+  label:
+    en_US: Weekday Calculator
+    zh_Hans: 星期几计算器
+description:
+  human:
+    en_US: A tool for calculating the weekday of a given date.
+    zh_Hans: 计算指定日期为星期几的工具。
+  llm: A tool for calculating the weekday of a given date by year, month and day.
+parameters:
+  - name: year
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Year
+      zh_Hans: 年
+    human_description:
+      en_US: Year
+      zh_Hans: 年
+  - name: month
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Month
+      zh_Hans: 月
+    human_description:
+      en_US: Month
+      zh_Hans: 月
+  - name: day
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: day
+      zh_Hans: 日
+    human_description:
+      en_US: day
+      zh_Hans: 日
