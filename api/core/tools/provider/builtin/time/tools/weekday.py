@@ -25,7 +25,7 @@ class WeekdayTool(BuiltinTool):
         weekday_name = calendar.day_name[date_obj.weekday()]
         month_name = calendar.month_name[month]
         readable_date = f"{month_name} {date_obj.day}, {date_obj.year}"
-        self.create_text_message(f'{readable_date} is {weekday_name}.')
+        return self.create_text_message(f'{readable_date} is {weekday_name}.')
 
     @staticmethod
     def convert_datetime(year, month, day) -> datetime | None:
