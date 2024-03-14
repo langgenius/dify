@@ -4,6 +4,7 @@ import {
   getOutgoers,
 } from 'reactflow'
 import dagre from 'dagre'
+import { cloneDeep } from 'lodash-es'
 import type {
   Edge,
   Node,
@@ -145,7 +146,9 @@ export const getNodesPositionMap = (nodes: Node[], edges: Edge[]) => {
   return positionMap
 }
 
-export const getLayoutByDagre = (nodes: Node[], edges: Edge[]) => {
+export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
+  const nodes = cloneDeep(originNodes)
+  const edges = cloneDeep(originEdges)
   const dagreGraph = new dagre.graphlib.Graph()
   dagreGraph.setGraph({
     rankdir: 'LR',

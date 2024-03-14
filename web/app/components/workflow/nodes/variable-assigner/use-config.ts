@@ -15,6 +15,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   }, [inputs, setInputs])
 
   const { handleVarListChange, handleAddVariable } = useVarList({
+    id,
     inputs,
     setInputs,
   })

@@ -12,10 +12,10 @@ import {
 } from 'reactflow'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type {
-  BlockEnum,
   Node,
   OnNodeAdd,
 } from '../types'
+import { BlockEnum } from '../types'
 import { useStore } from '../store'
 import {
   NODE_WIDTH_X_OFFSET,
@@ -362,6 +362,9 @@ export const useNodesInteractions = () => {
     if (runningStatus)
       return
 
+    if (nodeType === BlockEnum.VariableAssigner)
+      targetHandle = 'varNotSet'
+
     const {
       getNodes,
       setNodes,
@@ -369,9 +372,11 @@ export const useNodesInteractions = () => {
       setEdges,
     } = store.getState()
     const nodes = getNodes()
+    const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const newNode = generateNewNode({
       data: {
         ...nodesInitialData[nodeType],
+        title: nodesWithSameType.length > 0 ? `${nodesInitialData[nodeType].title} ${nodesWithSameType.length + 1}` : nodesInitialData[nodeType].title,
         ...(toolDefaultValue || {}),
         selected: true,
       },
@@ -386,6 +391,7 @@ export const useNodesInteractions = () => {
       const outgoers = getOutgoers(prevNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
       const lastOutgoer = outgoers[outgoers.length - 1]
       newNode.data._connectedTargetHandleIds = [targetHandle]
+      newNode.data._connectedSourceHandleIds = []
       newNode.position = {
         x: lastOutgoer ? lastOutgoer.position.x : prevNode.position.x + NODE_WIDTH_X_OFFSET,
         y: lastOutgoer ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET : prevNode.position.y,
@@ -418,6 +424,7 @@ export const useNodesInteractions = () => {
       const nextNodeIndex = nodes.findIndex(node => node.id === nextNodeId)
       const nextNode = nodes[nextNodeIndex]!
       newNode.data._connectedSourceHandleIds = [sourceHandle]
+      newNode.data._connectedTargetHandleIds = []
       newNode.position = {
         x: nextNode.position.x,
         y: nextNode.position.y,
@@ -534,10 +541,14 @@ export const useNodesInteractions = () => {
     const nodes = getNodes()
     const currentNode = nodes.find(node => node.id === currentNodeId)!
     const connectedEdges = getConnectedEdges([currentNode], edges)
+    const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const newCurrentNode = generateNewNode({
       data: {
         ...nodesInitialData[nodeType],
+        title: nodesWithSameType.length > 0 ? `${nodesInitialData[nodeType].title} ${nodesWithSameType.length + 1}` : nodesInitialData[nodeType].title,
         ...(toolDefaultValue || {}),
+        _connectedSourceHandleIds: [],
+        _connectedTargetHandleIds: [],
         selected: currentNode.data.selected,
       },
       position: {

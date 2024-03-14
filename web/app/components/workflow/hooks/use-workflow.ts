@@ -45,10 +45,10 @@ export const useWorkflow = () => {
       edges,
       setNodes,
     } = store.getState()
+    const nodes = getNodes()
+    const layout = getLayoutByDagre(nodes, edges)
 
-    const layout = getLayoutByDagre(getNodes(), edges)
-
-    const newNodes = produce(getNodes(), (draft) => {
+    const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         const nodeWithPosition = layout.node(node.id)
         node.position = {
@@ -168,11 +168,21 @@ export const useWorkflow = () => {
     return list
   }, [store])
 
+  const getIncomersNodes = useCallback((currentNode: Node) => {
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+
+    return getIncomers(currentNode, getNodes(), edges)
+  }, [store])
+
   return {
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getAfterNodesInSameBranch,
+    getIncomersNodes,
   }
 }
 

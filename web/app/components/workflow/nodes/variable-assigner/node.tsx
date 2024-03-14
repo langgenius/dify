@@ -13,8 +13,9 @@ const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
   const { data } = props
-  const { variables, output_type } = data
+  const { variables: originVariables, output_type } = data
 
+  const variables = originVariables.filter(item => item.length > 0)
   // TODO: get var type through node and  value
   const getVarType = () => {
     return 'string'
@@ -25,8 +26,13 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
       <div className='mb-0.5 leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.title`)}</div>
       {
         variables.length === 0 && (
-          <div className='flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-400 uppercase'>
+          <div className='relative flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-400 uppercase'>
             {t(`${i18nPrefix}.varNotSet`)}
+            <NodeTargetHandle
+              {...props}
+              handleId='varNotSet'
+              handleClassName='!top-1/2 !-translate-y-1/2 !-left-[21px]'
+            />
           </div>
         )
       }
@@ -36,12 +42,13 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
             {variables.map((item, index) => {
               const node = getNodeInfoById([], item[0]) // TODO: can not get all nodes
               const varName = item[item.length - 1]
+
               return (
                 <div key={index} className='relative flex items-center h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700' >
                   <NodeTargetHandle
                     {...props}
-                    handleId={varName}
-                    handleClassName='!top-1 !-left-[21px]'
+                    handleId={item[0]}
+                    handleClassName='!top-1/2 !-translate-y-1/2 !-left-[21px]'
                   />
                   <div className='flex items-center'>
                     <div className='p-[1px]'>
