@@ -16,7 +16,6 @@ from core.model_runtime.entities.model_entities import (
 
 AZURE_OPENAI_API_VERSION = '2024-02-15-preview'
 
-
 def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
     rule = ParameterRule(
         name='max_tokens',
