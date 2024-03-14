@@ -44,7 +44,7 @@ class ToolNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters,
-                error=f'Failed to invoke tool: {str(e)}'
+                error=f'Failed to invoke tool: {str(e)}',
             )
 
         # convert tool messages
@@ -56,6 +56,7 @@ class ToolNode(BaseNode):
                 'text': plain_text,
                 'files': files
             },
+            inputs=parameters
         )
     
     def _generate_parameters(self, variable_pool: VariablePool, node_data: ToolNodeData) -> dict:
