@@ -47,8 +47,8 @@ const Node: FC<NodeProps<EndNodeType>> = ({
   }
   const { outputs } = data
   return (
-    <div className='px-3'>
-      {(outputs as Variable[]).map(({ value_selector }, index) => {
+    <div className='px-3 space-y-0.5'>
+      {(outputs as Variable[]).filter(({ value_selector }) => value_selector.length > 0).map(({ value_selector }, index) => {
         const node = getNode(value_selector[0])
         const varName = value_selector[value_selector.length - 1]
         return (
