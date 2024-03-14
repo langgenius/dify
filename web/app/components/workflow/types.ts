@@ -157,8 +157,8 @@ export type Block = {
 
 export type NodeDefault<T> = {
   defaultValue: Partial<T>
-  getAvailablePrevNodes: () => BlockEnum[]
-  getAvailableNextNodes: () => BlockEnum[]
+  getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
+  getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void

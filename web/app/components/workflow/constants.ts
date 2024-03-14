@@ -64,6 +64,9 @@ export const NODES_EXTRA_DATA = {
   },
 }
 
+export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End) as BlockEnum[]
+export const ALL_COMPLETION_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.Answer) as BlockEnum[]
+
 export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {
     type: BlockEnum.Start,

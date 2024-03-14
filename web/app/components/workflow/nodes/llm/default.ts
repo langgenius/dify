@@ -1,5 +1,6 @@
 import { type NodeDefault, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
+import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
 const nodeDefault: NodeDefault<LLMNodeType> = {
   defaultValue: {
@@ -24,11 +25,13 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       enabled: false,
     },
   },
-  getAvailablePrevNodes() {
-    return []
+  getAvailablePrevNodes(isChatMode: boolean) {
+    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
+    return nodes
   },
-  getAvailableNextNodes() {
-    return []
+  getAvailableNextNodes(isChatMode: boolean) {
+    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
+    return nodes
   },
 }
 
