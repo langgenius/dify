@@ -1,7 +1,8 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
-import { type Memory, PromptRole, type ValueSelector } from '../../types'
+import { PromptRole, VarType } from '../../types'
+import type { Memory, ValueSelector, Var } from '../../types'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -89,6 +90,10 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const filterVar = useCallback((varPayload: Var) => {
+    return [VarType.arrayObject, VarType.string].includes(varPayload.type)
+  }, [])
+
   // single run
   const {
     isShowSingleRun,
@@ -156,6 +161,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleVarListChange,
     handleAddVariable,
     handleContextVarChange,
+    filterVar,
     handlePromptChange,
     handleMemoryChange,
     handleVisionResolutionChange,

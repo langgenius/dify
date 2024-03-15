@@ -43,6 +43,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleVarListChange,
     handleAddVariable,
     handleContextVarChange,
+    filterVar,
     handlePromptChange,
     handleMemoryChange,
     handleVisionResolutionChange,
@@ -168,6 +169,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             isShowNodeName
             value={inputs.context?.variable_selector || []}
             onChange={handleContextVarChange}
+            filterVar={filterVar}
+            width={370}
           />
 
         </Field>
