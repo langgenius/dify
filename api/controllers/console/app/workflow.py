@@ -1,9 +1,6 @@
 import json
 import logging
-from collections.abc import Generator
-from typing import Union
 
-from flask import Response, stream_with_context
 from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -13,12 +10,15 @@ from controllers.console.app.error import ConversationCompletedError, DraftWorkf
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.workflow_fields import workflow_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
+from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
+from services.app_generate_service import AppGenerateService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -87,16 +87,16 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         args = parser.parse_args()
 
-        workflow_service = WorkflowService()
         try:
-            response = workflow_service.run_advanced_chat_draft_workflow(
+            response = AppGenerateService.generate(
                 app_model=app_model,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.DEBUGGER
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -121,17 +121,16 @@ class DraftWorkflowRunApi(Resource):
         parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        workflow_service = WorkflowService()
-
         try:
-            response = workflow_service.run_draft_workflow(
+            response = AppGenerateService.generate(
                 app_model=app_model,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.DEBUGGER
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -148,12 +147,7 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        workflow_service = WorkflowService()
-        workflow_service.stop_workflow_task(
-            task_id=task_id,
-            user=current_user,
-            invoke_from=InvokeFrom.DEBUGGER
-        )
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {
             "result": "success"
@@ -282,16 +276,6 @@ class ConvertToWorkflowApi(Resource):
         # return workflow
         return workflow
 
-
-def compact_response(response: Union[dict, Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')

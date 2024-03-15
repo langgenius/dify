@@ -13,8 +13,10 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskSt
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
+from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db
@@ -32,7 +34,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                  args: dict,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
-            -> Union[dict, Generator]:
+            -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -93,12 +95,17 @@ class WorkflowAppGenerator(BaseAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        return self._handle_response(
+        response = self._handle_response(
             application_generate_entity=application_generate_entity,
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
             stream=stream
+        )
+
+        return WorkflowAppGenerateResponseConverter.convert(
+            response=response,
+            invoke_from=invoke_from
         )
 
     def _generate_worker(self, flask_app: Flask,
@@ -141,7 +148,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                          workflow: Workflow,
                          queue_manager: AppQueueManager,
                          user: Union[Account, EndUser],
-                         stream: bool = False) -> Union[dict, Generator]:
+                         stream: bool = False) -> Union[
+        WorkflowAppBlockingResponse,
+        Generator[WorkflowAppStreamResponse, None, None]
+    ]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

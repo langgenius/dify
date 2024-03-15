@@ -1,10 +1,6 @@
-import json
 import logging
-from collections.abc import Generator
 from datetime import datetime
-from typing import Union
 
-from flask import Response, stream_with_context
 from flask_login import current_user
 from flask_restful import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -26,8 +22,9 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from libs import helper
 from libs.helper import uuid_value
-from services.completion_service import CompletionService
+from services.app_generate_service import AppGenerateService
 
 
 # define completion api for user
@@ -53,7 +50,7 @@ class CompletionApi(InstalledAppResource):
         db.session.commit()
 
         try:
-            response = CompletionService.completion(
+            response = AppGenerateService.generate(
                 app_model=app_model,
                 user=current_user,
                 args=args,
@@ -61,7 +58,7 @@ class CompletionApi(InstalledAppResource):
                 streaming=streaming
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -117,7 +114,7 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
-            response = CompletionService.completion(
+            response = AppGenerateService.generate(
                 app_model=app_model,
                 user=current_user,
                 args=args,
@@ -125,7 +122,7 @@ class ChatApi(InstalledAppResource):
                 streaming=streaming
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -157,17 +154,6 @@ class ChatStopApi(InstalledAppResource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {'result': 'success'}, 200
-
-
-def compact_response(response: Union[dict, Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 api.add_resource(CompletionApi, '/installed-apps/<uuid:installed_app_id>/completion-messages', endpoint='installed_app_completion')

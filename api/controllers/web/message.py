@@ -1,9 +1,5 @@
-import json
 import logging
-from collections.abc import Generator
-from typing import Union
 
-from flask import Response, stream_with_context
 from flask_restful import fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -26,8 +22,9 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields
+from libs import helper
 from libs.helper import TimestampField, uuid_value
-from services.completion_service import CompletionService
+from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -127,7 +124,7 @@ class MessageMoreLikeThisApi(WebApiResource):
         streaming = args['response_mode'] == 'streaming'
 
         try:
-            response = CompletionService.generate_more_like_this(
+            response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=end_user,
                 message_id=message_id,
@@ -135,7 +132,7 @@ class MessageMoreLikeThisApi(WebApiResource):
                 streaming=streaming
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
         except MoreLikeThisDisabledError:
@@ -153,17 +150,6 @@ class MessageMoreLikeThisApi(WebApiResource):
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
-
-
-def compact_response(response: Union[dict, Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 class MessageSuggestedQuestionApi(WebApiResource):

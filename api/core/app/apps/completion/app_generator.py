@@ -12,6 +12,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.app.apps.completion.app_runner import CompletionAppRunner
+from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
@@ -32,7 +33,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                  args: Any,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
-            -> Union[dict, Generator]:
+            -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -133,12 +134,18 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        return self._handle_response(
+        response = self._handle_response(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
+            user=user,
             stream=stream
+        )
+
+        return CompletionAppGenerateResponseConverter.convert(
+            response=response,
+            invoke_from=invoke_from
         )
 
     def _generate_worker(self, flask_app: Flask,
@@ -189,7 +196,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                                 user: Union[Account, EndUser],
                                 invoke_from: InvokeFrom,
                                 stream: bool = True) \
-            -> Union[dict, Generator]:
+            -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -289,5 +296,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
+            user=user,
             stream=stream
         )
