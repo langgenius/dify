@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
-import type { ValueSelector } from '../../types'
+import type { ValueSelector, Var } from '../../types'
+import { BlockEnum, VarType } from '../../types'
+import { useIsChatMode, useWorkflow } from '../../hooks'
 import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
@@ -9,10 +11,14 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
+  const isChatMode = useIsChatMode()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
+  const startNodeId = startNode?.id
   const { inputs, setInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
-  const handleQueryVarChange = useCallback((newVar: ValueSelector) => {
+  const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.query_variable_selector = newVar
+      draft.query_variable_selector = newVar as ValueSelector
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -45,7 +51,18 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       })
       setInputs(newInputs)
     })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (inputs._isReady) {
+      if (isChatMode && inputs.query_variable_selector.length === 0 && startNodeId) {
+        handleQueryVarChange(
+          [startNodeId, 'sys.query'],
+        )
+      }
+    }
+  }, [inputs._isReady])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
     const newInputs = produce(inputs, (draft) => {
@@ -54,6 +71,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
     setSelectedDatasets(newDatasets)
   }, [inputs, setInputs])
+
+  const filterVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.string
+  }, [])
 
   // single run
   const {
@@ -84,6 +105,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   return {
     inputs,
     handleQueryVarChange,
+    filterVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     selectedDatasets,

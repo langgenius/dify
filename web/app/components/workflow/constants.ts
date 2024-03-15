@@ -230,8 +230,12 @@ export const NODE_WIDTH = 220
 export const X_OFFSET = 64
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
-export const TREE_DEEPTH = 20
+export const TREE_DEEPTH = 30
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
+export const AUTO_LAYOUT_OFFSET = {
+  x: -42,
+  y: 243,
+}
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",

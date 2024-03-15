@@ -318,10 +318,17 @@ export const useChat = (
                 const requestion = draft[index - 1]
                 draft[index - 1] = {
                   ...requestion,
-                  log: newResponseItem.message,
                 }
                 draft[index] = {
                   ...draft[index],
+                  log: [
+                    ...newResponseItem.message,
+                    {
+                      role: 'assistant',
+                      text: newResponseItem.answer,
+                      files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                    },
+                  ],
                   more: {
                     time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
                     tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,

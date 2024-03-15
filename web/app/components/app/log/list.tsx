@@ -80,7 +80,6 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
-      log: item.message as any,
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
     })
     newChatList.push({
@@ -92,6 +91,15 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       feedbackDisabled: false,
       isAnswer: true,
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+      log: [
+        ...item.message,
+        {
+          role: 'assistant',
+          text: item.answer,
+          files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+        },
+      ],
+      workflow_run_id: item.workflow_run_id,
       more: {
         time: dayjs.unix(item.created_at).format('hh:mm A'),
         tokens: item.answer_tokens + item.message_tokens,
@@ -175,7 +183,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   }
 
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode === 'completion')
+    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion')
       fetchData()
   }, [appDetail?.id, detail.id, appDetail?.mode])
 

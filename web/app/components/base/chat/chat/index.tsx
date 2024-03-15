@@ -174,6 +174,7 @@ const Chat: FC<ChatProps> = ({
                       answerIcon={answerIcon}
                       responding={isLast && isResponding}
                       allToolIcons={allToolIcons}
+                      showPromptLog={showPromptLog}
                     />
                   )
                 }
@@ -181,9 +182,7 @@ const Chat: FC<ChatProps> = ({
                   <Question
                     key={item.id}
                     item={item}
-                    showPromptLog={showPromptLog}
                     questionIcon={questionIcon}
-                    isResponding={isResponding}
                   />
                 )
               })
