@@ -89,7 +89,7 @@ const ConfigPrompt: FC<Props> = ({
 
   return (
     <div>
-      {isChatModel
+      {(isChatModel && Array.isArray(payload))
         ? (
           <div>
             <div className='space-y-2'>

@@ -236,7 +236,7 @@ export const useWorkflowInit = () => {
       workflowStore.setState({
         nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
           if (!acc[block.type])
-            acc[block.type] = { ...block.config, _isReady: true }
+            acc[block.type] = { ...block.config }
           return acc
         }, {} as Record<string, any>),
       })

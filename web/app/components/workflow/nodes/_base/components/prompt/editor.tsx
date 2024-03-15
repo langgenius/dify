@@ -61,7 +61,7 @@ const Editor: FC<Props> = ({
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
             <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
             <div className='flex items-center'>
-              <div className='leading-[18px] text-xs font-medium text-gray-500'>{value.length}</div>
+              <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>

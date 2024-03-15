@@ -141,7 +141,7 @@ const MemoryConfig: FC<Props> = ({
                 disabled={readonly}
               />
               <input
-                value={payload.window?.size as number}
+                value={(payload.window?.size || '') as number}
                 className='shrink-0 block ml-4 pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
                 type='number'
                 min={WINDOW_SIZE_MIN}
