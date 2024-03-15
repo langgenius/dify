@@ -29,6 +29,27 @@ workflow_run_for_list_fields = {
     "finished_at": TimestampField
 }
 
+advanced_chat_workflow_run_for_list_fields = {
+    "id": fields.String,
+    "conversation_id": fields.String,
+    "message_id": fields.String,
+    "sequence_number": fields.Integer,
+    "version": fields.String,
+    "status": fields.String,
+    "elapsed_time": fields.Float,
+    "total_tokens": fields.Integer,
+    "total_steps": fields.Integer,
+    "created_by_account": fields.Nested(simple_account_fields, attribute='created_by_account', allow_null=True),
+    "created_at": TimestampField,
+    "finished_at": TimestampField
+}
+
+advanced_chat_workflow_run_pagination_fields = {
+    'limit': fields.Integer(attribute='limit'),
+    'has_more': fields.Boolean(attribute='has_more'),
+    'data': fields.List(fields.Nested(advanced_chat_workflow_run_for_list_fields), attribute='data')
+}
+
 workflow_run_pagination_fields = {
     'limit': fields.Integer(attribute='limit'),
     'has_more': fields.Boolean(attribute='has_more'),
