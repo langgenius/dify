@@ -12,8 +12,9 @@ type Props = {
   nodeId: string
   list: ValueSelector[]
   onChange: (list: ValueSelector[]) => void
+  onOpen?: (index: number) => void
   onlyLeafNodeVar?: boolean
-  filterVar?: (payload: Var) => boolean
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
 const VarList: FC<Props> = ({
@@ -21,6 +22,7 @@ const VarList: FC<Props> = ({
   nodeId,
   list,
   onChange,
+  onOpen = () => { },
   onlyLeafNodeVar,
   filterVar,
 }) => {
@@ -43,6 +45,10 @@ const VarList: FC<Props> = ({
     }
   }, [list, onChange])
 
+  const handleOpen = useCallback((index: number) => {
+    return () => onOpen(index)
+  }, [onOpen])
+
   if (list.length === 0) {
     return (
       <div className='flex rounded-md bg-gray-50 items-center h-[42px] justify-center leading-[18px] text-xs font-normal text-gray-500'>
@@ -62,6 +68,7 @@ const VarList: FC<Props> = ({
             className='grow'
             value={item}
             onChange={handleVarReferenceChange(index)}
+            onOpen={handleOpen(index)}
             onlyLeafNodeVar={onlyLeafNodeVar}
             filterVar={filterVar}
             width={350}

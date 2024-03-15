@@ -12,7 +12,6 @@ const useConfig = (id: string, payload: EndNodeType) => {
     },
     varKey: 'outputs',
   })
-  console.log(inputs)
 
   return {
     inputs,

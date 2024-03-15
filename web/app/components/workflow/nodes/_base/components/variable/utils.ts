@@ -1,7 +1,7 @@
 import type { CodeNodeType } from '../../../code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
   CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
@@ -21,24 +21,25 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return VarType.string
 }
 
-const findExceptVarInObject = (obj: any, filterVar: (payload: Var) => boolean): Var => {
+const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: ValueSelector) => boolean, value_selector: ValueSelector): Var => {
   const { children } = obj
   const res: Var = {
     variable: obj.variable,
     type: VarType.object,
     children: children.filter((item: Var) => {
       const { children } = item
+      const currSelector = [...value_selector, item.variable]
       if (!children)
-        return filterVar(item)
+        return filterVar(item, currSelector)
 
-      const obj = findExceptVarInObject(item, filterVar)
+      const obj = findExceptVarInObject(item, filterVar, currSelector)
       return obj.children && obj.children?.length > 0
     }),
   }
   return res
 }
 
-const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: any) => boolean): NodeOutPutVar => {
+const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, selector: ValueSelector) => boolean): NodeOutPutVar => {
   const { id, data } = item
   const res: NodeOutPutVar = {
     nodeId: id,
@@ -127,24 +128,25 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: any) =>
     }
   }
 
+  const selector = [id]
   res.vars = res.vars.filter((v) => {
     const { children } = v
     if (!children)
-      return filterVar(v)
+      return filterVar(v, selector)
 
-    const obj = findExceptVarInObject(v, filterVar)
+    const obj = findExceptVarInObject(v, filterVar, selector)
     return obj?.children && obj?.children.length > 0
   }).map((v) => {
     const { children } = v
     if (!children)
       return v
 
-    return findExceptVarInObject(v, filterVar)
+    return findExceptVarInObject(v, filterVar, selector)
   })
 
   return res
 }
-export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = (_payload: Var) => true): NodeOutPutVar[] => {
+export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = (_payload: Var, _selector: ValueSelector) => true): NodeOutPutVar[] => {
   const res = nodes
     .filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type))
     .map(node => formatItem(node, isChatMode, filterVar))

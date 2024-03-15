@@ -15,7 +15,7 @@ type Props = {
   onChange: (list: Variable[]) => void
   isSupportConstantValue?: boolean
   onlyLeafNodeVar?: boolean
-  filterVar?: (payload: Var) => boolean
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
 const VarList: FC<Props> = ({

@@ -32,10 +32,11 @@ type Props = {
   readonly: boolean
   value: ValueSelector | string
   onChange: (value: ValueSelector | string, varKindType: VarKindType) => void
+  onOpen?: () => void
   isSupportConstantValue?: boolean
   defaultVarKindType?: VarKindType
   onlyLeafNodeVar?: boolean
-  filterVar?: (payload: Var) => boolean
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
 export const getNodeInfoById = (nodes: any, id: string) => {
@@ -52,6 +53,7 @@ const VarReferencePicker: FC<Props> = ({
   className,
   isShowNodeName,
   value,
+  onOpen = () => { },
   onChange,
   isSupportConstantValue,
   defaultVarKindType = VarKindType.static,
@@ -67,6 +69,10 @@ const VarReferencePicker: FC<Props> = ({
   const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
   const outputVars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
   const [open, setOpen] = useState(false)
+  useEffect(() => {
+    onOpen()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
   const hasValue = !isConstant && value.length > 0
   const outputVarNodeId = hasValue ? value[0] : ''
   const outputVarNode = hasValue ? getNodeInfoById(availableNodes, outputVarNodeId)?.data : null
