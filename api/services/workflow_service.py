@@ -131,6 +131,7 @@ class WorkflowService:
 
         # commit db session changes
         db.session.add(workflow)
+        db.session.flush()
         db.session.commit()
 
         app_model.workflow_id = workflow.id

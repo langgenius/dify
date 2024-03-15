@@ -206,10 +206,11 @@ class PublishedWorkflowApi(Resource):
         Publish workflow
         """
         workflow_service = WorkflowService()
-        workflow_service.publish_workflow(app_model=app_model, account=current_user)
+        workflow = workflow_service.publish_workflow(app_model=app_model, account=current_user)
 
         return {
-            "result": "success"
+            "result": "success",
+            "created_at": TimestampField().format(workflow.created_at)
         }
 
 
