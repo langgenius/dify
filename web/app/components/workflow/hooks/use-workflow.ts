@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
 } from 'react'
+import { uniqBy } from 'lodash-es'
 import useSWR from 'swr'
 import produce from 'immer'
 import {
@@ -100,7 +101,7 @@ export const useWorkflow = () => {
 
     list.push(...incomers)
 
-    return list.filter((item) => {
+    return uniqBy(list, 'id').filter((item) => {
       return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
   }, [store])
@@ -135,7 +136,7 @@ export const useWorkflow = () => {
 
     const length = list.length
     if (length) {
-      return list.reverse().filter((item) => {
+      return uniqBy(list, 'id').reverse().filter((item) => {
         return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
       })
     }
@@ -171,7 +172,7 @@ export const useWorkflow = () => {
       list.push(node)
     })
 
-    return list
+    return uniqBy(list, 'id')
   }, [store])
 
   const isValidConnection = useCallback(({ source, target }: Connection) => {

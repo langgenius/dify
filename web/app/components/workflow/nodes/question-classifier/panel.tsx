@@ -51,6 +51,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
       handleModelChanged({
         provider: currentProvider?.provider,
         modelId: currentModel?.model,
+        mode: currentModel?.model_properties?.mode as string,
       })
     }
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
