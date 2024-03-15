@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Union
+from typing import Optional, Union
 
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -279,6 +279,14 @@ class WorkflowRun(db.Model):
     @property
     def outputs_dict(self):
         return json.loads(self.outputs) if self.outputs else None
+
+    @property
+    def message(self) -> Optional['Message']:
+        from models.model import Message
+        return db.session.query(Message).filter(
+            Message.app_id == self.app_id,
+            Message.workflow_run_id == self.id
+        ).first()
 
 
 class WorkflowNodeExecutionTriggeredFrom(Enum):
