@@ -52,6 +52,9 @@ class ModelConfigResource(Resource):
         masked_parameter_map = {}
         tool_map = {}
         for tool in agent_mode.get('tools') or []:
+            if not isinstance(tool, dict) or len(tool.keys()) <= 3:
+                continue
+            
             agent_tool_entity = AgentToolEntity(**tool)
             # get tool
             try:
