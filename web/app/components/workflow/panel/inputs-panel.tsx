@@ -44,41 +44,43 @@ const InputsPanel = () => {
   }
 
   return (
-    <div className='absolute top-0 right-2 w-[420px] pb-2 rounded-2xl border-[0.5px] border-gray-200 bg-white shadow-xl z-[11]'>
-      <div className='flex items-center pt-3 px-4 h-[44px] text-base font-semibold text-gray-900'>
-        {t('workflow.singleRun.testRun')}
-      </div>
-      <div className='px-4 pb-2'>
-        {
-          variables.map(variable => (
-            <div
-              key={variable.variable}
-              className='mb-2 last-of-type:mb-0'
-            >
-              <FormItem
-                className='!block'
-                payload={variable}
-                value={inputs[variable.variable]}
-                onChange={v => handleValueChange(variable.variable, v)}
-              />
-            </div>
-          ))
-        }
-      </div>
-      <div className='flex items-center justify-between px-4 py-2'>
-        <Button
-          className='py-0 w-[190px] h-8 rounded-lg border-[0.5px] border-gray-200 shadow-xs text-[13px] font-medium text-gray-700'
-          onClick={handleCancel}
-        >
-          {t('common.operation.cancel')}
-        </Button>
-        <Button
-          type='primary'
-          className='py-0 w-[190px] h-8 rounded-lg text-[13px] font-medium'
-          onClick={doRun}
-        >
-          {t('workflow.singleRun.startRun')}
-        </Button>
+    <div className='absolute top-0 right-2 w-[420px] h-full z-[11] overflow-y-auto'>
+      <div className='pb-2 rounded-2xl border-[0.5px] border-gray-200 bg-white shadow-xl'>
+        <div className='flex items-center pt-3 px-4 h-[44px] text-base font-semibold text-gray-900'>
+          {t('workflow.singleRun.testRun')}
+        </div>
+        <div className='px-4 pb-2'>
+          {
+            variables.map(variable => (
+              <div
+                key={variable.variable}
+                className='mb-2 last-of-type:mb-0'
+              >
+                <FormItem
+                  className='!block'
+                  payload={variable}
+                  value={inputs[variable.variable]}
+                  onChange={v => handleValueChange(variable.variable, v)}
+                />
+              </div>
+            ))
+          }
+        </div>
+        <div className='flex items-center justify-between px-4 py-2'>
+          <Button
+            className='py-0 w-[190px] h-8 rounded-lg border-[0.5px] border-gray-200 shadow-xs text-[13px] font-medium text-gray-700'
+            onClick={handleCancel}
+          >
+            {t('common.operation.cancel')}
+          </Button>
+          <Button
+            type='primary'
+            className='py-0 w-[190px] h-8 rounded-lg text-[13px] font-medium'
+            onClick={doRun}
+          >
+            {t('workflow.singleRun.startRun')}
+          </Button>
+        </div>
       </div>
     </div>
   )
