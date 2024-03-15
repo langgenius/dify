@@ -4,7 +4,7 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import type { ToolVarInput } from '../types'
 import { VarType as VarKindType } from '../types'
-import { type ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -17,6 +17,7 @@ type Props = {
   value: ToolVarInput[]
   onChange: (value: ToolVarInput[]) => void
   isSupportConstantValue?: boolean
+  filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
 const InputVarList: FC<Props> = ({
@@ -26,6 +27,7 @@ const InputVarList: FC<Props> = ({
   value,
   onChange,
   isSupportConstantValue,
+  filterVar,
 }) => {
   const language = useLanguage()
 
@@ -92,6 +94,7 @@ const InputVarList: FC<Props> = ({
                 onChange={handleChange(variable)}
                 isSupportConstantValue={isSupportConstantValue}
                 defaultVarKindType={varInput?.variable_type}
+                filterVar={filterVar}
               />
               {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
