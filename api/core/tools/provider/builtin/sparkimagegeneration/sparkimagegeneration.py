@@ -1,8 +1,7 @@
 import json
+
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.sparkimagegeneration.tools.sparkimggen import (
-    spark_response,
-)
+from core.tools.provider.builtin.sparkimagegeneration.tools.sparkimggen import spark_response
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 

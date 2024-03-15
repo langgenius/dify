@@ -1,16 +1,18 @@
+import base64
+import hashlib
+import hmac
+import json
 from base64 import b64decode
+from datetime import datetime
+from time import mktime
 from typing import Any, Union
+from urllib.parse import urlencode
+from wsgiref.handlers import format_date_time
+
+import requests
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-import requests
-from datetime import datetime
-from wsgiref.handlers import format_date_time
-from time import mktime
-import hashlib
-import base64
-import hmac
-from urllib.parse import urlencode
-import json
 
 
 class AssembleHeaderException(Exception):
@@ -63,10 +65,8 @@ def assemble_ws_auth_url(requset_url, method="GET", api_key="", api_secret=""):
         digestmod=hashlib.sha256,
     ).digest()
     signature_sha = base64.b64encode(signature_sha).decode(encoding="utf-8")
-    authorization_origin = (
-        'api_key="%s", algorithm="%s", headers="%s", signature="%s"'
-        % (api_key, "hmac-sha256", "host date request-line", signature_sha)
-    )
+    authorization_origin = f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha}"'
+
     authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
         encoding="utf-8"
     )
