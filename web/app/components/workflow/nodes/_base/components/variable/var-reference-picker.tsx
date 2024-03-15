@@ -67,6 +67,7 @@ const VarReferencePicker: FC<Props> = ({
   const isConstant = isSupportConstantValue && varKindType === VarKindType.static
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
+  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
   const outputVars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -82,7 +83,7 @@ const VarReferencePicker: FC<Props> = ({
     if (isConstant)
       return 'undefined'
 
-    const targetVar = outputVars.find(v => v.nodeId === outputVarNodeId)
+    const targetVar = allOutputVars.find(v => v.nodeId === outputVarNodeId)
     if (!targetVar)
       return 'undefined'
 
