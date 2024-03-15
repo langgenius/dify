@@ -6,27 +6,16 @@ import {
   NODES_EXTRA_DATA,
   NODES_INITIAL_DATA,
 } from '../constants'
-import { useStore } from '../store'
 import { useIsChatMode } from './use-workflow'
 
 export const useNodesInitialData = () => {
   const { t } = useTranslation()
-  const nodesDefaultConfigs = useStore(s => s.nodesDefaultConfigs)
 
   return useMemo(() => produce(NODES_INITIAL_DATA, (draft) => {
     Object.keys(draft).forEach((key) => {
       draft[key as BlockEnum].title = t(`workflow.blocks.${key}`)
-      if (nodesDefaultConfigs[key as BlockEnum]) {
-        draft[key as BlockEnum] = {
-          ...draft[key as BlockEnum],
-          ...nodesDefaultConfigs[key as BlockEnum],
-        }
-      }
-      else {
-        draft[key as BlockEnum]._isReady = true
-      }
     })
-  }), [t, nodesDefaultConfigs])
+  }), [t])
 }
 
 export const useNodesExtraData = () => {
