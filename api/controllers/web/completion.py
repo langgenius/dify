@@ -20,8 +20,8 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.wraps import WebApiResource
-from core.application_queue_manager import ApplicationQueueManager
-from core.entities.application_entities import InvokeFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
@@ -84,7 +84,7 @@ class CompletionStopApi(WebApiResource):
         if app_model.mode != 'completion':
             raise NotCompletionAppError()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
         return {'result': 'success'}, 200
 
@@ -144,7 +144,7 @@ class ChatStopApi(WebApiResource):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
         return {'result': 'success'}, 200
 

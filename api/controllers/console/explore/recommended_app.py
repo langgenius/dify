@@ -1,15 +1,12 @@
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with
-from sqlalchemy import and_
+from flask_restful import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError
-from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import login_required
-from models.model import App, InstalledApp, RecommendedApp
-from services.account_service import TenantService
+from models.model import App, RecommendedApp
+from services.app_service import AppService
 
 app_fields = {
     'id': fields.String,
@@ -27,11 +24,7 @@ recommended_app_fields = {
     'privacy_policy': fields.String,
     'category': fields.String,
     'position': fields.Integer,
-    'is_listed': fields.Boolean,
-    'install_count': fields.Integer,
-    'installed': fields.Boolean,
-    'editable': fields.Boolean,
-    'is_agent': fields.Boolean
+    'is_listed': fields.Boolean
 }
 
 recommended_app_list_fields = {
@@ -41,11 +34,19 @@ recommended_app_list_fields = {
 
 
 class RecommendedAppListApi(Resource):
-    @login_required
-    @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
-        language_prefix = current_user.interface_language if current_user.interface_language else languages[0]
+        # language args
+        parser = reqparse.RequestParser()
+        parser.add_argument('language', type=str, location='args')
+        args = parser.parse_args()
+
+        if args.get('language') and args.get('language') in languages:
+            language_prefix = args.get('language')
+        elif current_user and current_user.interface_language:
+            language_prefix = current_user.interface_language
+        else:
+            language_prefix = languages[0]
 
         recommended_apps = db.session.query(RecommendedApp).filter(
             RecommendedApp.is_listed == True,
@@ -53,16 +54,8 @@ class RecommendedAppListApi(Resource):
         ).all()
 
         categories = set()
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         recommended_apps_result = []
         for recommended_app in recommended_apps:
-            installed = db.session.query(InstalledApp).filter(
-                and_(
-                    InstalledApp.app_id == recommended_app.app_id,
-                    InstalledApp.tenant_id == current_user.current_tenant_id
-                )
-            ).first() is not None
-
             app = recommended_app.app
             if not app or not app.is_public:
                 continue
@@ -80,11 +73,7 @@ class RecommendedAppListApi(Resource):
                 'privacy_policy': site.privacy_policy,
                 'category': recommended_app.category,
                 'position': recommended_app.position,
-                'is_listed': recommended_app.is_listed,
-                'install_count': recommended_app.install_count,
-                'installed': installed,
-                'editable': current_user.role in ['owner', 'admin'],
-                "is_agent": app.is_agent
+                'is_listed': recommended_app.is_listed
             }
             recommended_apps_result.append(recommended_app_result)
 
@@ -94,29 +83,6 @@ class RecommendedAppListApi(Resource):
 
 
 class RecommendedAppApi(Resource):
-    model_config_fields = {
-        'opening_statement': fields.String,
-        'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
-        'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
-        'more_like_this': fields.Raw(attribute='more_like_this_dict'),
-        'model': fields.Raw(attribute='model_dict'),
-        'user_input_form': fields.Raw(attribute='user_input_form_list'),
-        'pre_prompt': fields.String,
-        'agent_mode': fields.Raw(attribute='agent_mode_dict'),
-    }
-
-    app_simple_detail_fields = {
-        'id': fields.String,
-        'name': fields.String,
-        'icon': fields.String,
-        'icon_background': fields.String,
-        'mode': fields.String,
-        'app_model_config': fields.Nested(model_config_fields),
-    }
-
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_simple_detail_fields)
     def get(self, app_id):
         app_id = str(app_id)
 
@@ -130,11 +96,21 @@ class RecommendedAppApi(Resource):
             raise AppNotFoundError
 
         # get app detail
-        app = db.session.query(App).filter(App.id == app_id).first()
-        if not app or not app.is_public:
+        app_model = db.session.query(App).filter(App.id == app_id).first()
+        if not app_model or not app_model.is_public:
             raise AppNotFoundError
 
-        return app
+        app_service = AppService()
+        export_str = app_service.export_app(app_model)
+
+        return {
+            'id': app_model.id,
+            'name': app_model.name,
+            'icon': app_model.icon,
+            'icon_background': app_model.icon_background,
+            'mode': app_model.mode,
+            'export_data': export_str
+        }
 
 
 api.add_resource(RecommendedAppListApi, '/explore/apps')

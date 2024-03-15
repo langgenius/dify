@@ -21,8 +21,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from core.application_queue_manager import ApplicationQueueManager
-from core.entities.application_entities import InvokeFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
@@ -90,7 +90,7 @@ class CompletionStopApi(InstalledAppResource):
         if app_model.mode != 'completion':
             raise NotCompletionAppError()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {'result': 'success'}, 200
 
@@ -154,7 +154,7 @@ class ChatStopApi(InstalledAppResource):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {'result': 'success'}, 200
 

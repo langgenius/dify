@@ -50,6 +50,19 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
     ports:
       - "8080:8080"
+  
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:latest
+    restart: always
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      # The DifySandbox configurations
+      API_KEY: dify-sandbox
+      GIN_MODE: 'release'
+    ports:
+      - "8194:8194"
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.

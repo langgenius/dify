@@ -10,7 +10,6 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
-from controllers.console.app import _get_app
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -19,14 +18,16 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.application_queue_manager import ApplicationQueueManager
-from core.entities.application_entities import InvokeFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from libs.login import login_required
+from models.model import AppMode
 from services.completion_service import CompletionService
 
 
@@ -36,12 +37,8 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'completion')
-
+    @get_app_model(mode=AppMode.COMPLETION)
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, location='json', default='')
@@ -62,8 +59,7 @@ class CompletionMessageApi(Resource):
                 user=account,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
-                streaming=streaming,
-                is_model_config_override=True
+                streaming=streaming
             )
 
             return compact_response(response)
@@ -93,15 +89,11 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id, task_id):
-        app_id = str(app_id)
-
-        # get app info
-        _get_app(app_id, 'completion')
-
+    @get_app_model(mode=AppMode.COMPLETION)
+    def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 
@@ -110,12 +102,8 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'chat')
-
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, required=True, location='json')
@@ -137,8 +125,7 @@ class ChatMessageApi(Resource):
                 user=account,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
-                streaming=streaming,
-                is_model_config_override=True
+                streaming=streaming
             )
 
             return compact_response(response)
@@ -179,15 +166,11 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id, task_id):
-        app_id = str(app_id)
-
-        # get app info
-        _get_app(app_id, 'chat')
-
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
+    def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 
