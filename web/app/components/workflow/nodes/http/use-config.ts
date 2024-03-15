@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
+import { VarType } from '../../types'
+import type { Var } from '../../types'
 import type { Authorization, Body, HttpNodeType, Method } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -21,14 +23,14 @@ const useConfig = (id: string, payload: HttpNodeType) => {
       draft.method = method
     })
     setInputs(newInputs)
-  }, [])
+  }, [inputs, setInputs])
 
   const handleUrlChange = useCallback((url: string) => {
     const newInputs = produce(inputs, (draft: HttpNodeType) => {
       draft.url = url
     })
     setInputs(newInputs)
-  }, [])
+  }, [inputs, setInputs])
 
   const {
     list: headers,
@@ -66,6 +68,10 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const filterVar = useCallback((varPayload: Var) => {
+    return [VarType.string, VarType.number].includes(varPayload.type)
+  }, [])
+
   // single run
   const {
     isShowSingleRun,
@@ -95,12 +101,13 @@ const useConfig = (id: string, payload: HttpNodeType) => {
 
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
     setRunInputData(newPayload)
-  }, [runInputData, setRunInputData])
+  }, [setRunInputData])
 
   return {
     inputs,
     handleVarListChange,
     handleAddVariable,
+    filterVar,
     handleMethodChange,
     handleUrlChange,
     // headers
