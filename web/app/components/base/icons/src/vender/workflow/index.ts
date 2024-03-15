@@ -1,5 +1,5 @@
-export { default as Code } from './Code'
 export { default as Answer } from './Answer'
+export { default as Code } from './Code'
 export { default as End } from './End'
 export { default as Home } from './Home'
 export { default as Http } from './Http'

@@ -10,7 +10,10 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
-import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import {
+  Play,
+  StopCircle,
+} from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -18,6 +21,7 @@ import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 const RunMode = memo(() => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const { handleStopRun } = useWorkflowRun()
   const runningStatus = useStore(s => s.runningStatus)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const isRunning = runningStatus === WorkflowRunningStatus.Running
@@ -27,31 +31,43 @@ const RunMode = memo(() => {
   }
 
   return (
-    <div
-      className={`
-        flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600
-        hover:bg-primary-50 cursor-pointer
-        ${showInputsPanel && 'bg-primary-50'}
-        ${isRunning && 'bg-primary-50 !cursor-not-allowed'}
-      `}
-      onClick={() => !isRunning && handleClick()}
-    >
+    <>
+      <div
+        className={`
+          flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600
+          hover:bg-primary-50 cursor-pointer
+          ${showInputsPanel && 'bg-primary-50'}
+          ${isRunning && 'bg-primary-50 !cursor-not-allowed'}
+        `}
+        onClick={() => !isRunning && handleClick()}
+      >
+        {
+          isRunning
+            ? (
+              <>
+                <Loading02 className='mr-1 w-4 h-4 animate-spin' />
+                {t('workflow.common.running')}
+              </>
+            )
+            : (
+              <>
+                <Play className='mr-1 w-4 h-4' />
+                {t('workflow.common.run')}
+              </>
+            )
+        }
+      </div>
       {
-        isRunning
-          ? (
-            <>
-              <Loading02 className='mr-1 w-4 h-4 animate-spin' />
-              {t('workflow.common.running')}
-            </>
-          )
-          : (
-            <>
-              <Play className='mr-1 w-4 h-4' />
-              {t('workflow.common.run')}
-            </>
-          )
+        isRunning && (
+          <div
+            className='flex items-center justify-center ml-0.5 w-7 h-7 cursor-pointer hover:bg-black/5 rounded-md'
+            onClick={handleStopRun}
+          >
+            <StopCircle className='w-4 h-4 text-gray-500' />
+          </div>
+        )
       }
-    </div>
+    </>
   )
 })
 RunMode.displayName = 'RunMode'
@@ -116,7 +132,7 @@ const RunAndHistory: FC = () => {
             flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
             ${showRunHistory && 'bg-primary-50'}
           `}
-          onClick={() => workflowStore.setState({ showRunHistory: true })}
+          onClick={() => workflowStore.setState({ showRunHistory: !showRunHistory })}
         >
           <ClockPlay className={`w-4 h-4 ${showRunHistory ? 'text-primary-600' : 'text-gray-500'}`} />
         </div>

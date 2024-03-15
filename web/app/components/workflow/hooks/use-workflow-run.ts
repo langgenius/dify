@@ -1,7 +1,4 @@
-import {
-  useCallback,
-  useRef,
-} from 'react'
+import { useCallback } from 'react'
 import {
   useReactFlow,
   useStoreApi,
@@ -16,12 +13,12 @@ import { NODE_WIDTH } from '../constants'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
 import { ssePost } from '@/service/base'
+import { stopWorkflowRun } from '@/service/workflow'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
-  const workflowContainerRef = useRef<HTMLDivElement>(null)
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -62,6 +59,9 @@ export const useWorkflowRun = () => {
 
   const handleRunSetting = useCallback((shouldClear?: boolean) => {
     workflowStore.setState({ runningStatus: shouldClear ? undefined : WorkflowRunningStatus.Waiting })
+    workflowStore.setState({ taskId: '' })
+    workflowStore.setState({ currentSequenceNumber: 0 })
+    workflowStore.setState({ workflowRunId: '' })
     const {
       setNodes,
       getNodes,
@@ -174,10 +174,17 @@ export const useWorkflowRun = () => {
     )
   }, [store, reactflow, workflowStore])
 
+  const handleStopRun = useCallback(() => {
+    const appId = useAppStore.getState().appDetail?.id
+    const taskId = workflowStore.getState().taskId
+
+    stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+  }, [workflowStore])
+
   return {
     handleBackupDraft,
     handleRunSetting,
     handleRun,
-    workflowContainerRef,
+    handleStopRun,
   }
 }
