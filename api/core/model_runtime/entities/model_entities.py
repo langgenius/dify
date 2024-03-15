@@ -133,7 +133,7 @@ class ModelPropertyKey(Enum):
     DEFAULT_VOICE = "default_voice"
     VOICES = "voices"
     WORD_LIMIT = "word_limit"
-    AUDOI_TYPE = "audio_type"
+    AUDIO_TYPE = "audio_type"
     MAX_WORKERS = "max_workers"
 
 

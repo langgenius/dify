@@ -205,7 +205,7 @@ const translation = {
     intendedAudience: 'Who is the intended audience?',
     intendedAudiencePlaceHolder: 'e.g. Student',
     solveProblem: 'What problems do they hope AI can solve for them?',
-    solveProblemPlaceHolder: 'e.g. Assessing academic performance',
+    solveProblemPlaceHolder: 'e.g. Extract insights and summarize information from long reports and articles',
     generate: 'Generate',
     audiencesRequired: 'Audiences required',
     problemRequired: 'Problem required',

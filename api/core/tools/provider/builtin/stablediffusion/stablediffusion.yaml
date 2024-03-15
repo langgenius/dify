@@ -33,3 +33,8 @@ credentials_for_provider:
       en_US: Please input your model
       zh_Hans: 请输入你的模型名称
       pt_BR: Please input your model
+    help:
+      en_US: The model name of the StableDiffusion server
+      zh_Hans: StableDiffusion服务器的模型名称
+      pt_BR: The model name of the StableDiffusion server
+    url: https://docs.dify.ai/tutorials/tool-configuration/stable-diffusion
