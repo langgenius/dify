@@ -32,7 +32,7 @@ const AdvancedSetting: FC<Props> = ({
         placeholder={t(`${i18nPrefix}.instructionPlaceholder`)!}
         headerRight={(
           <div className='flex items-center h-full'>
-            <div className='text-xs font-medium text-gray-500'>{instruction.length}</div>
+            <div className='text-xs font-medium text-gray-500'>{instruction?.length || 0}</div>
             <div className='mx-3 h-3 w-px bg-gray-200'></div>
           </div>
         )}
