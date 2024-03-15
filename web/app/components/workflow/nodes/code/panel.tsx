@@ -41,6 +41,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     handleCodeLanguageChange,
     handleVarsChange,
     handleAddOutputVariable,
+    filterVar,
     // single run
     isShowSingleRun,
     hideSingleRun,
@@ -67,6 +68,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
             nodeId={id}
             list={inputs.variables}
             onChange={handleVarListChange}
+            filterVar={filterVar}
           />
         </Field>
         <Split />

@@ -1,5 +1,7 @@
 import { useCallback } from 'react'
 import produce from 'immer'
+import type { Var } from '../../types'
+import { VarType } from '../../types'
 import { ComparisonOperator, LogicalOperator } from './types'
 import type { Condition, IfElseNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -12,7 +14,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
       draft.conditions = newConditions
     })
     setInputs(newInputs)
-  }, [])
+  }, [inputs, setInputs])
 
   const handleAddCondition = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
@@ -24,20 +26,25 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
       })
     })
     setInputs(newInputs)
-  }, [inputs])
+  }, [inputs, setInputs])
 
   const handleLogicalOperatorToggle = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
       draft.logical_operator = draft.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
     })
     setInputs(newInputs)
-  }, [inputs])
+  }, [inputs, setInputs])
+
+  const filterVar = useCallback((varPayload: Var) => {
+    return varPayload.type !== VarType.arrayFile
+  }, [])
 
   return {
     inputs,
     handleConditionsChange,
     handleAddCondition,
     handleLogicalOperatorToggle,
+    filterVar,
   }
 }
 

@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import cn from 'classnames'
+import type { Var } from '../../../types'
 import Item from './condition-item'
 import type { Condition, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 
@@ -14,6 +15,7 @@ type Props = {
   onChange: (newList: Condition[]) => void
   logicalOperator: LogicalOperator
   onLogicalOperatorToggle: () => void
+  filterVar: (varPayload: Var) => boolean
 }
 
 const ConditionList: FC<Props> = ({
@@ -24,6 +26,7 @@ const ConditionList: FC<Props> = ({
   onChange,
   logicalOperator,
   onLogicalOperatorToggle,
+  filterVar,
 }) => {
   const handleItemChange = useCallback((index: number) => {
     return (newItem: Condition) => {
@@ -59,6 +62,7 @@ const ConditionList: FC<Props> = ({
         onRemove={handleItemRemove(0)}
         logicalOperator={logicalOperator}
         onLogicalOperatorToggle={onLogicalOperatorToggle}
+        filterVar={filterVar}
       />
       {
         list.length > 1 && (
@@ -74,6 +78,7 @@ const ConditionList: FC<Props> = ({
               isShowLogicalOperator
               logicalOperator={logicalOperator}
               onLogicalOperatorToggle={onLogicalOperatorToggle}
+              filterVar={filterVar}
             />
           )))
       }

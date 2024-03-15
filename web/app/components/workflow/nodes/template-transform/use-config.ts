@@ -1,6 +1,8 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
+import type { Var } from '../../types'
+import { VarType } from '../../types'
 import type { TemplateTransformNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
@@ -17,7 +19,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
       draft.template = template
     })
     setInputs(newInputs)
-  }, [setInputs])
+  }, [inputs, setInputs])
 
   // single run
   const {
@@ -48,13 +50,18 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
 
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
     setRunInputData(newPayload)
-  }, [runInputData, setRunInputData])
+  }, [setRunInputData])
+
+  const filterVar = useCallback((varPayload: Var) => {
+    return [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
+  }, [])
 
   return {
     inputs,
     handleVarListChange,
     handleAddVariable,
     handleCodeChange,
+    filterVar,
     // single run
     isShowSingleRun,
     hideSingleRun,

@@ -29,6 +29,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
     handleVarListChange,
     handleAddVariable,
     handleCodeChange,
+    filterVar,
     // single run
     isShowSingleRun,
     hideSingleRun,
@@ -56,6 +57,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
             readonly={readOnly}
             list={inputs.variables}
             onChange={handleVarListChange}
+            filterVar={filterVar}
           />
         </Field>
         <Split />
