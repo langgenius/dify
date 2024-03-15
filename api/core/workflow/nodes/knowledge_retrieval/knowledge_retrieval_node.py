@@ -42,16 +42,14 @@ class KnowledgeRetrievalNode(BaseNode):
         node_data: KnowledgeRetrievalNodeData = cast(self._node_data_cls, self.node_data)
 
         # extract variables
+        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
         variables = {
-            variable_selector.variable: variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector)
-            for variable_selector in node_data.variables
+            'query': query
         }
-
         # retrieve knowledge
         try:
             outputs = self._fetch_dataset_retriever(
-                node_data=node_data, variables=variables
+                node_data=node_data, query=query
             )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -68,12 +66,12 @@ class KnowledgeRetrievalNode(BaseNode):
                 error=str(e)
             )
 
-    def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]) -> list[
+    def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[
         dict[str, Any]]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param node_data: node data
-        :param variables: variables
+        :param query: query
         """
         tools = []
         available_datasets = []
@@ -97,9 +95,9 @@ class KnowledgeRetrievalNode(BaseNode):
             available_datasets.append(dataset)
         all_documents = []
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
-            all_documents = self._single_retrieve(available_datasets, node_data, variables)
+            all_documents = self._single_retrieve(available_datasets, node_data, query)
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
-            all_documents = self._multiple_retrieve(available_datasets, node_data, variables)
+            all_documents = self._multiple_retrieve(available_datasets, node_data, query)
 
         document_score_list = {}
         for item in all_documents:
@@ -169,7 +167,7 @@ class KnowledgeRetrievalNode(BaseNode):
             variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
         }
 
-    def _single_retrieve(self, available_datasets, node_data, variables):
+    def _single_retrieve(self, available_datasets, node_data, query):
         tools = []
         for dataset in available_datasets:
             description = dataset.description
@@ -191,7 +189,7 @@ class KnowledgeRetrievalNode(BaseNode):
         model_instance, model_config = self._fetch_model_config(node_data)
         prompt_messages = [
             SystemPromptMessage(content='You are a helpful AI assistant.'),
-            UserPromptMessage(content=variables['#query#'])
+            UserPromptMessage(content=query)
         ]
         result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
@@ -227,7 +225,7 @@ class KnowledgeRetrievalNode(BaseNode):
                     score_threshold = retrieval_model_config.get("score_threshold")
 
                 results = RetrievalService.retrieve(retrival_method=retrival_method, dataset_id=dataset.id,
-                                                    query=variables['#query#'],
+                                                    query=query,
                                                     top_k=top_k, score_threshold=score_threshold,
                                                     reranking_model=reranking_model)
                 return results
@@ -303,7 +301,7 @@ class KnowledgeRetrievalNode(BaseNode):
             stop=stop,
         )
 
-    def _multiple_retrieve(self, available_datasets, node_data, variables):
+    def _multiple_retrieve(self, available_datasets, node_data, query):
         threads = []
         all_documents = []
         dataset_ids = [dataset.id for dataset in available_datasets]
@@ -311,7 +309,7 @@ class KnowledgeRetrievalNode(BaseNode):
             retrieval_thread = threading.Thread(target=self._retriever, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset.id,
-                'query': variables['#query#'],
+                'query': query,
                 'top_k': node_data.multiple_retrieval_config.top_k,
                 'all_documents': all_documents,
             })
@@ -329,7 +327,7 @@ class KnowledgeRetrievalNode(BaseNode):
         )
 
         rerank_runner = RerankRunner(rerank_model_instance)
-        all_documents = rerank_runner.run(variables['#query#'], all_documents,
+        all_documents = rerank_runner.run(query, all_documents,
                                           node_data.multiple_retrieval_config.score_threshold,
                                           node_data.multiple_retrieval_config.top_k)
 
