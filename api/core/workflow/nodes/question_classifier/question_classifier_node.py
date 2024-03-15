@@ -40,7 +40,7 @@ class QuestionClassifierNode(BaseNode):
         # extract variables
         query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
         variables = {
-            'query': query
+            '_query': query
         }
         # fetch model config
         model_instance, model_config = self._fetch_model_config(node_data)
@@ -95,13 +95,12 @@ class QuestionClassifierNode(BaseNode):
                 error=str(e)
             )
 
-
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+        node_data = node_data
         node_data = cast(cls._node_data_cls, node_data)
-        return {
-            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
-        }
+        variable_mapping = {'_query': node_data.query_variable_selector}
+        return variable_mapping
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:

@@ -45,7 +45,8 @@ class QuestionClassifierNodeData(BaseNodeData):
     """
     query_variable_selector: list[str]
     title: str
-    description: str
+    desc: str
+    type: str = 'question-classifier'
     model: ModelConfig
     classes: list[ClassConfig]
     instruction: str
