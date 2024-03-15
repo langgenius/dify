@@ -24,6 +24,16 @@ const translation = {
     addTitle: 'Add title...',
     addDescription: 'Add description...',
     noVar: 'No variable',
+    variableNamePlaceholder: 'Variable name',
+    setVarValuePlaceholder: 'Set variable',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} is required',
+    fields: {
+      variable: 'Variable Name',
+      variableValue: 'Variable Value',
+      code: 'Code',
+    },
   },
   singleRun: {
     testRun: 'Test Run ',

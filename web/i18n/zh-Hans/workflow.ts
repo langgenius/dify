@@ -24,6 +24,16 @@ const translation = {
     addTitle: '添加标题...',
     addDescription: '添加描述...',
     noVar: '没有变量',
+    variableNamePlaceholder: '变量名',
+    setVarValuePlaceholder: '设置变量值',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} 不能为空',
+    fields: {
+      variable: '变量名',
+      variableValue: '变量值',
+      code: '代码',
+    },
   },
   singleRun: {
     testRun: '测试运行 ',

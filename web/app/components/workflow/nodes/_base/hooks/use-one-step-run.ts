@@ -1,28 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import type { CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
-import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
+import type { CheckValidRes, CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
-// import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
+import CodeDefault from '@/app/components/workflow/nodes/code/default'
+import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+const { checkValid: checkCodeValid } = CodeDefault
+
+const checkValidFns: Record<BlockEnum, Function> = {
+  [BlockEnum.Code]: checkCodeValid,
+  [BlockEnum.HttpRequest]: HTTPDefault.checkValid,
+} as any
 
 type Params<T> = {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
-  isInvalid?: () => boolean
+  beforeRunCheckValid?: () => CheckValidRes
 }
 
-const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => true }: Params<T>) => {
+const useOneStepRun = <T>({
+  id,
+  data,
+  defaultRunInputData,
+  beforeRunCheckValid = () => ({ isValid: true }),
+}: Params<T>) => {
   const { t } = useTranslation()
-
+  const checkValid = checkValidFns[data.type]
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const [runResult, setRunResult] = useState<any>(null)
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
-  const isShowSingleRun = data._isSingleRun
+  const [canShowSingleRun, setCanShowSingleRun] = useState(false)
+  const isShowSingleRun = data._isSingleRun && canShowSingleRun
+  useEffect(() => {
+    if (data._isSingleRun) {
+      const { isValid, errorMessage } = checkValid(data, t)
+      setCanShowSingleRun(isValid)
+      if (!isValid) {
+        handleNodeDataUpdate({
+          id,
+          data: {
+            ...data,
+            _isSingleRun: false,
+          },
+        })
+        Toast.notify({
+          type: 'error',
+          message: errorMessage,
+        })
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data._isSingleRun])
   const hideSingleRun = () => {
     handleNodeDataUpdate({
       id,
@@ -35,8 +69,14 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
   const handleRun = async () => {
-    if (!isInvalid())
-      return
+    const { isValid, errorMessage } = beforeRunCheckValid()
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: errorMessage!,
+      })
+      return false
+    }
     handleNodeDataUpdate({
       id,
       data: {
@@ -77,10 +117,6 @@ const useOneStepRun = <T>({ id, data, defaultRunInputData, isInvalid = () => tru
         _singleRunningStatus: NodeRunningStatus.Succeeded,
       },
     })
-    // Toast.notify({
-    //   type: 'success',
-    //   message: t('common.api.success'),
-    // })
   }
 
   const handleStop = () => {

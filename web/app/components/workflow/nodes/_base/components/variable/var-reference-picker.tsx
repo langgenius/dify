@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { isArray } from 'lodash-es'
 import VarReferencePopup from './var-reference-popup'
@@ -57,6 +58,8 @@ const VarReferencePicker: FC<Props> = ({
   onlyLeafNodeVar,
   onlyVarType,
 }) => {
+  const { t } = useTranslation()
+
   const isChatMode = useIsChatMode()
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.static
@@ -110,7 +113,8 @@ const VarReferencePicker: FC<Props> = ({
       onChange('', value)
     else
       onChange([], value)
-  }, [varKindType])
+  }, [onChange])
+
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
   const [controlFocus, setControlFocus] = useState(0)
@@ -166,27 +170,29 @@ const VarReferencePicker: FC<Props> = ({
               )
               : (
                 <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
-                  {hasValue && (
-                    <>
-                      {isShowNodeName && (
-                        <div className='flex items-center'>
-                          <div className='p-[1px]'>
-                            <VarBlockIcon
-                              className='!text-gray-900'
-                              type={outputVarNode?.type}
-                            />
+                  {hasValue
+                    ? (
+                      <>
+                        {isShowNodeName && (
+                          <div className='flex items-center'>
+                            <div className='p-[1px]'>
+                              <VarBlockIcon
+                                className='!text-gray-900'
+                                type={outputVarNode?.type}
+                              />
+                            </div>
+                            <div className='mx-0.5 text-xs font-medium text-gray-700'>{outputVarNode?.title}</div>
+                            <Line3 className='mr-0.5'></Line3>
                           </div>
-                          <div className='mx-0.5 text-xs font-medium text-gray-700'>{outputVarNode?.title}</div>
-                          <Line3 className='mr-0.5'></Line3>
+                        )}
+                        <div className='flex items-center text-primary-600'>
+                          <Variable02 className='w-3.5 h-3.5' />
+                          <div className='ml-0.5 text-xs font-medium'>{varName}</div>
                         </div>
-                      )}
-                      <div className='flex items-center text-primary-600'>
-                        <Variable02 className='w-3.5 h-3.5' />
-                        <div className='ml-0.5 text-xs font-medium'>{varName}</div>
-                      </div>
-                      <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize'>{getVarType()}</div>
-                    </>
-                  )}
+                        <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize'>{getVarType()}</div>
+                      </>
+                    )
+                    : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
                 </div>
               )}
           </div>

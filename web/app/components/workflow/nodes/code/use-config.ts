@@ -48,6 +48,12 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {},
+    beforeRunCheckValid: () => {
+      return {
+        isValid: true,
+        // errorMessage: 'xxxx',
+      }
+    },
   })
 
   const varInputs = toVarInputs(inputs.variables)
@@ -63,7 +69,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
 
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
     setRunInputData(newPayload)
-  }, [runInputData, setRunInputData])
+  }, [setRunInputData])
 
   return {
     inputs,
