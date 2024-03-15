@@ -16,12 +16,14 @@ export const useNodesInitialData = () => {
   return useMemo(() => produce(NODES_INITIAL_DATA, (draft) => {
     Object.keys(draft).forEach((key) => {
       draft[key as BlockEnum].title = t(`workflow.blocks.${key}`)
-      draft[key as BlockEnum]._isReady = true
       if (nodesDefaultConfigs[key as BlockEnum]) {
         draft[key as BlockEnum] = {
           ...draft[key as BlockEnum],
           ...nodesDefaultConfigs[key as BlockEnum],
         }
+      }
+      else {
+        draft[key as BlockEnum]._isReady = true
       }
     })
   }), [t, nodesDefaultConfigs])
