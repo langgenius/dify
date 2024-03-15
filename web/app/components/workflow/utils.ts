@@ -146,10 +146,12 @@ export const getNodesPositionMap = (nodes: Node[], edges: Edge[]) => {
   return positionMap
 }
 
+const dagreGraph = new dagre.graphlib.Graph()
+dagreGraph.setDefaultEdgeLabel(() => ({}))
+
 export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
   const nodes = cloneDeep(originNodes)
   const edges = cloneDeep(originEdges)
-  const dagreGraph = new dagre.graphlib.Graph()
   dagreGraph.setGraph({
     rankdir: 'LR',
     align: 'UL',

@@ -8,6 +8,7 @@ import produce from 'immer'
 import {
   getIncomers,
   getOutgoers,
+  useReactFlow,
   useStoreApi,
 } from 'reactflow'
 import type { Connection } from 'reactflow'
@@ -20,6 +21,7 @@ import type { Node } from '../types'
 import { BlockEnum } from '../types'
 import { useWorkflowStore } from '../store'
 import {
+  AUTO_LAYOUT_OFFSET,
   START_INITIAL_POSITION,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
@@ -27,6 +29,7 @@ import {
   useNodesExtraData,
   useNodesInitialData,
 } from './use-nodes-data'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchNodesDefaultConfigs,
@@ -43,7 +46,9 @@ export const useIsChatMode = () => {
 
 export const useWorkflow = () => {
   const store = useStoreApi()
+  const reactflow = useReactFlow()
   const nodesExtraData = useNodesExtraData()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleLayout = useCallback(async () => {
     const {
@@ -51,6 +56,7 @@ export const useWorkflow = () => {
       edges,
       setNodes,
     } = store.getState()
+    const { setViewport } = reactflow
     const nodes = getNodes()
     const layout = getLayoutByDagre(nodes, edges)
 
@@ -58,13 +64,19 @@ export const useWorkflow = () => {
       draft.forEach((node) => {
         const nodeWithPosition = layout.node(node.id)
         node.position = {
-          x: nodeWithPosition.x,
-          y: nodeWithPosition.y,
+          x: nodeWithPosition.x + AUTO_LAYOUT_OFFSET.x,
+          y: nodeWithPosition.y + AUTO_LAYOUT_OFFSET.y,
         }
       })
     })
     setNodes(newNodes)
-  }, [store])
+    setViewport({
+      x: 0,
+      y: 0,
+      zoom: 0.8,
+    })
+    setTimeout(() => handleSyncWorkflowDraft())
+  }, [store, reactflow, handleSyncWorkflowDraft])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
