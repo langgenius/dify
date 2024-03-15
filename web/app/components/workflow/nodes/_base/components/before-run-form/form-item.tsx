@@ -91,6 +91,17 @@ const FormItem: FC<Props> = ({
         }
 
         {
+          type === InputVarType.json && (
+            <CodeEditor
+              value={value}
+              title={<span>JSON</span>}
+              language={CodeLanguage.json}
+              onChange={onChange}
+            />
+          )
+        }
+
+        {
           type === InputVarType.files && (
             <TextGenerationImageUploader
               settings={{

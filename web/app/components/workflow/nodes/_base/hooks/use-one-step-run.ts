@@ -7,7 +7,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
-import type { CheckValidRes, CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
@@ -25,7 +25,7 @@ type Params<T> = {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
-  beforeRunCheckValid?: () => CheckValidRes
+  // beforeRunCheckValid?: () => CheckValidRes // has checked before run button clicked
 }
 
 const varTypeToInputVarType = (type: VarType, {
@@ -53,7 +53,7 @@ const useOneStepRun = <T>({
   id,
   data,
   defaultRunInputData,
-  beforeRunCheckValid = () => ({ isValid: true }),
+  // beforeRunCheckValid = () => ({ isValid: true }),
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -91,6 +91,11 @@ const useOneStepRun = <T>({
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
   const isShowSingleRun = data._isSingleRun && canShowSingleRun
   useEffect(() => {
+    if (!checkValid) {
+      setCanShowSingleRun(true)
+      return
+    }
+
     if (data._isSingleRun) {
       const { isValid, errorMessage } = checkValid(data, t)
       setCanShowSingleRun(isValid)
@@ -122,14 +127,14 @@ const useOneStepRun = <T>({
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
   const handleRun = async () => {
-    const { isValid, errorMessage } = beforeRunCheckValid()
-    if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage!,
-      })
-      return false
-    }
+    // const { isValid, errorMessage } = beforeRunCheckValid()
+    // if (!isValid) {
+    //   Toast.notify({
+    //     type: 'error',
+    //     message: errorMessage!,
+    //   })
+    //   return false
+    // }
     handleNodeDataUpdate({
       id,
       data: {

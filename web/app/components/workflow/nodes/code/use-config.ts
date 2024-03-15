@@ -48,12 +48,6 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {},
-    beforeRunCheckValid: () => {
-      return {
-        isValid: true,
-        // errorMessage: 'xxxx',
-      }
-    },
   })
 
   const varInputs = toVarInputs(inputs.variables)

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import type { Props as FormProps } from './form'
@@ -9,8 +9,9 @@ import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -36,6 +37,26 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
   const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
   const isRunning = runningStatus === NodeRunningStatus.Running
+
+  const handleRun = useCallback(() => {
+    let errMsg = ''
+    forms.forEach((form) => {
+      form.inputs.forEach((input) => {
+        const value = form.values[input.variable]
+        if (!errMsg && input.required && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
+          errMsg = t('workflow.errorMsg.fieldRequired', { field: input.label })
+      })
+    })
+    if (errMsg) {
+      Toast.notify({
+        message: errMsg,
+        type: 'error',
+      })
+      return
+    }
+
+    onRun()
+  }, [forms, onRun, t])
   return (
     <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{
       backgroundColor: 'rgba(16, 24, 40, 0.20)',
@@ -73,7 +94,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
                 <StopCircle className='w-4 h-4 text-gray-500' />
               </div>
             )}
-            <Button disabled={isRunning} type='primary' className='w-0 grow !h-8 flex items-center space-x-2' onClick={onRun}>
+            <Button disabled={isRunning} type='primary' className='w-0 grow !h-8 flex items-center space-x-2' onClick={handleRun}>
               {isRunning && <Loading02 className='animate-spin w-4 h-4 text-white' />}
               <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
             </Button>
