@@ -1,0 +1,27 @@
+name: Deploy to Server
+
+on:
+  workflow_run:
+    workflows: ["Build and Push API Image", "Build and Push WEB Image"]
+    branches:
+      - "deploy/dev"
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ${{ secrets.SSH_SCRIPT }}
