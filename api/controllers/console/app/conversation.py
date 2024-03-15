@@ -147,7 +147,7 @@ class ChatConversationApi(Resource):
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == 'chat')
+        query = db.select(Conversation).where(Conversation.app_id == app_model.id)
 
         if args['keyword']:
             query = query.join(

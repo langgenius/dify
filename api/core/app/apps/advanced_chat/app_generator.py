@@ -10,11 +10,13 @@ from pydantic import ValidationError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
+from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGenerateTaskPipeline
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from extensions.ext_database import db
@@ -32,7 +34,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                  args: dict,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
-            -> Union[dict, Generator]:
+            -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -123,7 +125,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        return self._handle_advanced_chat_response(
+        response = self._handle_advanced_chat_response(
             application_generate_entity=application_generate_entity,
             workflow=workflow,
             queue_manager=queue_manager,
@@ -131,6 +133,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream
+        )
+
+        return AdvancedChatAppGenerateResponseConverter.convert(
+            response=response,
+            invoke_from=invoke_from
         )
 
     def _generate_worker(self, flask_app: Flask,
@@ -185,7 +192,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                                        conversation: Conversation,
                                        message: Message,
                                        user: Union[Account, EndUser],
-                                       stream: bool = False) -> Union[dict, Generator]:
+                                       stream: bool = False) \
+            -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
         Handle response.
         :param application_generate_entity: application generate entity

@@ -10,6 +10,41 @@ from models.workflow import (
 
 
 class WorkflowRunService:
+    def get_paginate_advanced_chat_workflow_runs(self, app_model: App, args: dict) -> InfiniteScrollPagination:
+        """
+        Get advanced chat app workflow run list
+        Only return triggered_from == advanced_chat
+
+        :param app_model: app model
+        :param args: request args
+        """
+        class WorkflowWithMessage:
+            message_id: str
+            conversation_id: str
+
+            def __init__(self, workflow_run: WorkflowRun):
+                self._workflow_run = workflow_run
+
+            def __getattr__(self, item):
+                return getattr(self._workflow_run, item)
+
+        pagination = self.get_paginate_workflow_runs(app_model, args)
+
+        with_message_workflow_runs = []
+        for workflow_run in pagination.data:
+            message = workflow_run.message
+            with_message_workflow_run = WorkflowWithMessage(
+                workflow_run=workflow_run
+            )
+            if message:
+                with_message_workflow_run.message_id = message.id
+                with_message_workflow_run.conversation_id = message.conversation_id
+
+            with_message_workflow_runs.append(with_message_workflow_run)
+
+        pagination.data = with_message_workflow_runs
+        return pagination
+
     def get_paginate_workflow_runs(self, app_model: App, args: dict) -> InfiniteScrollPagination:
         """
         Get debug workflow run list

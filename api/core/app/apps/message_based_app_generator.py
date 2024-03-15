@@ -8,7 +8,6 @@ from sqlalchemy import and_
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException
-from core.app.apps.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
@@ -17,6 +16,13 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
     InvokeFrom,
 )
+from core.app.entities.task_entities import (
+    ChatbotAppBlockingResponse,
+    ChatbotAppStreamResponse,
+    CompletionAppBlockingResponse,
+    CompletionAppStreamResponse,
+)
+from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from models.account import Account
@@ -30,21 +36,28 @@ logger = logging.getLogger(__name__)
 class MessageBasedAppGenerator(BaseAppGenerator):
 
     def _handle_response(self, application_generate_entity: Union[
-                                   ChatAppGenerateEntity,
-                                   CompletionAppGenerateEntity,
-                                   AgentChatAppGenerateEntity,
-                                   AdvancedChatAppGenerateEntity
-                               ],
+        ChatAppGenerateEntity,
+        CompletionAppGenerateEntity,
+        AgentChatAppGenerateEntity,
+        AdvancedChatAppGenerateEntity
+    ],
                          queue_manager: AppQueueManager,
                          conversation: Conversation,
                          message: Message,
-                         stream: bool = False) -> Union[dict, Generator]:
+                         user: Union[Account, EndUser],
+                         stream: bool = False) \
+            -> Union[
+                ChatbotAppBlockingResponse,
+                CompletionAppBlockingResponse,
+                Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]
+            ]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
         :param conversation: conversation
         :param message: message
+        :param user: user
         :param stream: is stream
         :return:
         """
@@ -53,11 +66,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation=conversation,
-            message=message
+            message=message,
+            user=user,
+            stream=stream
         )
 
         try:
-            return generate_task_pipeline.process(stream=stream)
+            return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

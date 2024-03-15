@@ -1,22 +1,17 @@
 import json
 import time
-from collections.abc import Generator
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode
 from models.workflow import (
     CreatedByRole,
     Workflow,
@@ -136,6 +131,7 @@ class WorkflowService:
 
         # commit db session changes
         db.session.add(workflow)
+        db.session.flush()
         db.session.commit()
 
         app_model.workflow_id = workflow.id
@@ -166,63 +162,6 @@ class WorkflowService:
         # return default block config
         workflow_engine_manager = WorkflowEngineManager()
         return workflow_engine_manager.get_default_config(node_type, filters)
-
-    def run_advanced_chat_draft_workflow(self, app_model: App,
-                                         user: Union[Account, EndUser],
-                                         args: dict,
-                                         invoke_from: InvokeFrom) -> Union[dict, Generator]:
-        """
-        Run advanced chatbot draft workflow
-        """
-        # fetch draft workflow by app_model
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
-
-        if not draft_workflow:
-            raise ValueError('Workflow not initialized')
-
-        # run draft workflow
-        app_generator = AdvancedChatAppGenerator()
-        response = app_generator.generate(
-            app_model=app_model,
-            workflow=draft_workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            stream=True
-        )
-
-        return response
-
-    def run_draft_workflow(self, app_model: App,
-                           user: Union[Account, EndUser],
-                           args: dict,
-                           invoke_from: InvokeFrom) -> Union[dict, Generator]:
-        # fetch draft workflow by app_model
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
-
-        if not draft_workflow:
-            raise ValueError('Workflow not initialized')
-
-        # run draft workflow
-        app_generator = WorkflowAppGenerator()
-        response = app_generator.generate(
-            app_model=app_model,
-            workflow=draft_workflow,
-            user=user,
-            args=args,
-            invoke_from=invoke_from,
-            stream=True
-        )
-
-        return response
-
-    def stop_workflow_task(self, task_id: str,
-                           user: Union[Account, EndUser],
-                           invoke_from: InvokeFrom) -> None:
-        """
-        Stop workflow task
-        """
-        AppQueueManager.set_stop_flag(task_id, invoke_from, user.id)
 
     def run_draft_workflow_node(self, app_model: App,
                                 node_id: str,
