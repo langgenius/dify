@@ -12,7 +12,12 @@ import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import type { VisionFile } from '@/types/app'
 
+type GetAbortController = (abortController: AbortController) => void
+type SendCallback = {
+  onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
+}
 export const useChat = (
+  config: any,
   prevChatList?: ChatItem[],
 ) => {
   const { t } = useTranslation()
@@ -20,13 +25,11 @@ export const useChat = (
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
   const connversationId = useRef('')
-  const taskIdRef = useRef('')
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
-  const stopAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -49,6 +52,9 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
     handleResponding(false)
+
+    if (suggestedQuestionsAbortControllerRef.current)
+      suggestedQuestionsAbortControllerRef.current.abort()
   }, [handleResponding])
 
   const updateCurrentQA = useCallback(({
@@ -73,7 +79,12 @@ export const useChat = (
     handleUpdateChatList(newListWithAnswer)
   }, [handleUpdateChatList])
 
-  const handleSend = useCallback((params: any) => {
+  const handleSend = useCallback((
+    params: any,
+    {
+      onGetSuggestedQuestions,
+    }: SendCallback,
+  ) => {
     if (isRespondingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
@@ -129,7 +140,7 @@ export const useChat = (
     handleRun(
       params,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId }: any) => {
           responseItem.content = responseItem.content + message
 
           if (messageId && !hasSetResponseId) {
@@ -140,7 +151,6 @@ export const useChat = (
           if (isFirstMessage && newConversationId)
             connversationId.current = newConversationId
 
-          taskIdRef.current = taskId
           if (messageId)
             responseItem.id = messageId
 
@@ -153,6 +163,17 @@ export const useChat = (
         },
         async onCompleted(hasError?: boolean) {
           handleResponding(false)
+
+          if (hasError)
+            return
+
+          if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+            const { data }: any = await onGetSuggestedQuestions(
+              responseItem.id,
+              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+            )
+            setSuggestQuestions(data)
+          }
         },
         onMessageEnd: (messageEnd) => {
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
@@ -179,7 +200,7 @@ export const useChat = (
         },
       },
     )
-  }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA])
+  }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled])
 
   return {
     conversationId: connversationId.current,

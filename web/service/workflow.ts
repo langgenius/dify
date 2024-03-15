@@ -30,3 +30,7 @@ export const singleNodeRun = (appId: string, nodeId: string, params: object) => 
 export const publishWorkflow = (url: string) => {
   return post<CommonResponse>(url)
 }
+
+export const stopWorkflowRun = (url: string) => {
+  return post<CommonResponse>(url)
+}
