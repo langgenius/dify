@@ -3,23 +3,25 @@ import React from 'react'
 import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { NodeTargetHandle } from '../_base/components/node-handle'
+import { BlockEnum } from '../../types'
 import type { VariableAssignerNodeType } from './types'
-import { getNodeInfoById } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import {
+  useWorkflow,
+} from '@/app/components/workflow/hooks'
+
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 
 const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
-  const { data } = props
+  const { id, data } = props
   const { variables: originVariables, output_type } = data
+  const { getTreeLeafNodes } = useWorkflow()
 
+  const availableNodes = getTreeLeafNodes(id)
   const variables = originVariables.filter(item => item.length > 0)
-  // TODO: get var type through node and  value
-  const getVarType = () => {
-    return 'string'
-  }
 
   return (
     <div className='px-3'>
@@ -40,7 +42,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
         <>
           <div className='space-y-0.5'>
             {variables.map((item, index) => {
-              const node = getNodeInfoById([], item[0]) // TODO: can not get all nodes
+              const node = availableNodes.find(node => node.id === item[0])
               const varName = item[item.length - 1]
 
               return (
@@ -54,17 +56,17 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
                     <div className='p-[1px]'>
                       <VarBlockIcon
                         className='!text-gray-900'
-                        type={node?.type}
+                        type={(node?.data.type as BlockEnum) || BlockEnum.Start}
                       />
                     </div>
-                    <div className='mx-0.5 text-xs font-medium text-gray-700'>{node?.title}</div>
+                    <div className='mx-0.5 text-xs font-medium text-gray-700'>{node?.data.title}</div>
                     <Line3 className='mr-0.5'></Line3>
                   </div>
                   <div className='flex items-center text-primary-600'>
                     <Variable02 className='w-3.5 h-3.5' />
                     <div className='ml-0.5 text-xs font-medium'>{varName}</div>
                   </div>
-                  <div className='ml-0.5 text-xs font-normal text-gray-500'>{getVarType()}</div>
+                  {/* <div className='ml-0.5 text-xs font-normal text-gray-500'>{output_type}</div> */}
                 </div>
               )
             },
