@@ -60,7 +60,7 @@ export const useWorkflow = () => {
     setNodes(newNodes)
   }, [store])
 
-  const getTreeLeafNodes = useCallback(() => {
+  const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
       getNodes,
       edges,
@@ -73,6 +73,8 @@ export const useWorkflow = () => {
 
     const list: Node[] = []
     const preOrder = (root: Node, callback: (node: Node) => void) => {
+      if (root.id === nodeId)
+        return
       const outgoers = getOutgoers(root, nodes, edges)
 
       if (outgoers.length) {
@@ -81,7 +83,8 @@ export const useWorkflow = () => {
         })
       }
       else {
-        callback(root)
+        if (root.id !== nodeId)
+          callback(root)
       }
     }
     preOrder(startNode, (node) => {
