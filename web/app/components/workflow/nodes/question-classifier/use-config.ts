@@ -74,7 +74,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
         ...defaultConfig,
         query_variable_selector: inputs.query_variable_selector.length > 0 ? inputs.query_variable_selector : query_variable_selector,
       })
-      console.log(query_variable_selector)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])

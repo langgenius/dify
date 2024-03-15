@@ -12,10 +12,9 @@ import { fetchBuiltInToolList, fetchCollectionList, fetchCustomToolList, updateB
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { InputVarType } from '@/app/components/workflow/types'
-import type { InputVar } from '@/app/components/workflow/types'
+import { InputVarType, VarType as VarVarType } from '@/app/components/workflow/types'
+import type { InputVar, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-
 const useConfig = (id: string, payload: ToolNodeType) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -27,7 +26,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   * tool_configurations: tool setting, not dynamic setting
   * tool_parameters: tool dynamic setting(by user)
   */
-  const { provider_id, provider_name, provider_type, tool_name, tool_configurations, tool_parameters: toolInputs } = inputs
+  const { provider_id, provider_name, provider_type, tool_name, tool_configurations } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const [currCollection, setCurrCollection] = useState<Collection | null | undefined>(null)
   const fetchCurrCollection = useCallback(async () => {
@@ -43,6 +42,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return
 
     fetchCurrCollection()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider_id])
 
   // Auth
@@ -63,7 +63,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
     await fetchCurrCollection()
     hideSetAuthModal()
-  }, [currCollection])
+  }, [currCollection?.name, fetchCurrCollection, hideSetAuthModal, t])
 
   const [currTool, setCurrTool] = useState<Tool | null>(null)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
@@ -94,6 +94,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       })
     })
     setInputs(inputsWithDefaultValue)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
 
   // setting when call
@@ -103,6 +104,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       tool_parameters: value,
     })
   }, [inputs, setInputs])
+
+  // TODO: dynamic setting as the current var type
+  const filterVar = useCallback((varPayload: Var) => {
+    return varPayload.type !== VarVarType.arrayFile
+  }, [])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -123,6 +129,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       if (currTool)
         setCurrTool(currTool)
     })()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider_name])
 
   // single run
@@ -149,13 +156,13 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const singleRunForms = (() => {
     const formInputs: InputVar[] = []
     toolInputVarSchema.forEach((item: any) => {
-      const targetItem = toolInputs.find(input => input.variable === item.variable)
+      // const targetItem = toolInputs.find(input => input.variable === item.variable)
       // TODO: support selector
       // if (targetItem?.variable_type === VarType.selector) {
       formInputs.push({
         label: item.label[language] || item.label.en_US,
         variable: item.variable,
-        type: InputVarType.textInput,
+        type: InputVarType.textInput, // TODO: to form input
         required: item.required,
       })
       // }
@@ -176,6 +183,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
+    filterVar,
     currCollection,
     isShowAuthBtn,
     showSetAuth,

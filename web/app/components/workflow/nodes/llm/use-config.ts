@@ -1,11 +1,13 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
-import { PromptRole, VarType } from '../../types'
+import { VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
+import { useStore } from '../../store'
+import { useIsChatMode } from '../../hooks'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
@@ -13,25 +15,83 @@ import type { PromptItem } from '@/models/debug'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
-  const { inputs, setInputs } = useNodeCrud<LLMNodeType>(id, payload)
+  const isChatMode = useIsChatMode()
 
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const { inputs, setInputs } = useNodeCrud<LLMNodeType>(id, payload)
+  const inputRef = useRef(inputs)
+  useEffect(() => {
+    inputRef.current = inputs
+  }, [inputs])
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
   const isChatModel = modelMode === 'chat'
   const isCompletionModel = !isChatModel
 
+  const appendDefaultPromptConfig = useCallback((draft: LLMNodeType, defaultConfig: any, passInIsChatMode?: boolean) => {
+    const promptTemplates = defaultConfig.prompt_templates
+    if (passInIsChatMode === undefined ? isChatModel : passInIsChatMode) {
+      draft.prompt_template = promptTemplates.chat_model.prompts
+    }
+    else {
+      draft.prompt_template = promptTemplates.completion_model.prompt
+      if (!draft.memory) {
+        draft.memory = {
+          role_prefix: {
+            user: '',
+            assistant: '',
+          },
+          window: {
+            enabled: false,
+            size: '',
+          },
+        }
+      }
+
+      draft.memory.role_prefix = {
+        user: promptTemplates.completion_model.conversation_histories_role.user_prefix,
+        assistant: promptTemplates.completion_model.conversation_histories_role.assistant_prefix,
+      }
+    }
+  }, [isChatModel])
+  useEffect(() => {
+    const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
+    if (isReady) {
+      const newInputs = produce(inputs, (draft) => {
+        appendDefaultPromptConfig(draft, defaultConfig)
+      })
+      setInputs(newInputs)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultConfig, isChatModel])
+
+  const {
+    currentProvider,
+    currentModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(1)
+
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!
-      const isModeChange = model.mode !== inputs.model.mode
-      if (isModeChange)
-        draft.prompt_template = model.mode === 'chat' ? [{ role: PromptRole.system, text: '' }] : { text: '' }
+      const isModeChange = model.mode !== inputRef.current.model.mode
+      if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs, defaultConfig, appendDefaultPromptConfig])
+
+  useEffect(() => {
+    if (currentProvider?.provider && currentModel?.model && !model.provider) {
+      handleModelChanged({
+        provider: currentProvider?.provider,
+        modelId: currentModel?.model,
+        mode: currentModel?.model_properties?.mode as string,
+      })
+    }
+  }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
     const newInputs = produce(inputs, (draft) => {
@@ -152,6 +212,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const varInputs = toVarInputs(inputs.variables)
 
   return {
+    isChatMode,
     inputs,
     isChatModel,
     isCompletionModel,

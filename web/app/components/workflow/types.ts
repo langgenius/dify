@@ -33,7 +33,6 @@ export type CommonNodeType<T = {}> = {
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
   _singleRunningStatus?: NodeRunningStatus
-  _isReady?: boolean
   selected?: boolean
   title: string
   desc: string

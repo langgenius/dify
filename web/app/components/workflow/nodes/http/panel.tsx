@@ -30,6 +30,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     inputs,
     handleVarListChange,
     handleAddVariable,
+    filterVar,
     handleMethodChange,
     handleUrlChange,
     headers,
@@ -75,6 +76,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             readonly={readOnly}
             list={inputs.variables}
             onChange={handleVarListChange}
+            filterVar={filterVar}
           />
         </Field>
         <Field
