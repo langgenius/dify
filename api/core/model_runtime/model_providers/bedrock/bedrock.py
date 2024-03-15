@@ -1,4 +1,5 @@
 import logging
+import os
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -18,9 +19,13 @@ class BedrockProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            # Use `gemini-pro` model for validate,
+            default_bedrock_validate_model_name = 'amazon.titan-text-lite-v1'
+            bedrock_validate_model_name = os.getenv('AWS_BEDROCK_VALIDATE_MODEL')
+            if bedrock_validate_model_name == "":
+                bedrock_validate_model_name = default_bedrock_validate_model_name
+
             model_instance.validate_credentials(
-                model='amazon.titan-text-lite-v1',
+                model=bedrock_validate_model_name,
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:
