@@ -32,6 +32,9 @@ build-all: build-web build-api
 # Push all images
 push-all: push-web push-api
 
+build-push-api: build-api push-api
+build-push-web: build-web push-web
+
 # Build and push all images
 build-push-all: build-all push-all
 	@echo "All Docker images have been built and pushed."
