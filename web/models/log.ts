@@ -77,8 +77,7 @@ export type MessageContent = {
   conversation_id: string
   query: string
   inputs: Record<string, any>
-  // message: Record<string, any>
-  message: string
+  message: { role: string; text: string; files?: VisionFile[] }[]
   message_tokens: number
   answer_tokens: number
   answer: string
@@ -101,6 +100,8 @@ export type MessageContent = {
     from_end_user_id?: string
   }>
   message_files: VisionFile[]
+  agent_thoughts: any[] // TODO
+  workflow_run_id: string
 }
 
 export type CompletionConversationGeneralDetail = {

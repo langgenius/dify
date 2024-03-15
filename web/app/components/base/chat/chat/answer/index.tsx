@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo } from 'react'
+import { memo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
@@ -27,6 +27,7 @@ type AnswerProps = {
   answerIcon?: ReactNode
   responding?: boolean
   allToolIcons?: Record<string, string | Emoji>
+  showPromptLog?: boolean
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -36,8 +37,10 @@ const Answer: FC<AnswerProps> = ({
   answerIcon,
   responding,
   allToolIcons,
+  showPromptLog,
 }) => {
   const { t } = useTranslation()
+  const ref = useRef(null)
   const {
     content,
     citation,
@@ -48,7 +51,7 @@ const Answer: FC<AnswerProps> = ({
   const hasAgentThoughts = !!agent_thoughts?.length
 
   return (
-    <div className='flex mb-2 last:mb-0'>
+    <div className='flex mb-2 last:mb-0' ref={ref}>
       <div className='shrink-0 relative w-10 h-10'>
         {
           answerIcon || (
@@ -75,6 +78,8 @@ const Answer: FC<AnswerProps> = ({
                   item={item}
                   question={question}
                   index={index}
+                  showPromptLog={showPromptLog}
+                  containerRef={ref}
                 />
               )
             }

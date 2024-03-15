@@ -1,13 +1,13 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
 import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
-import { EditIconSolid, RatingIcon } from '../icon-component'
+import { RatingIcon } from '../icon-component'
 import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
@@ -26,16 +26,8 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import type { Emoji } from '@/app/components/tools/types'
 import type { VisionFile } from '@/types/app'
 import ImageGallery from '@/app/components/base/image-gallery'
+import Log from '@/app/components/app/chat/log'
 
-const Divider: FC<{ name: string }> = ({ name }) => {
-  const { t } = useTranslation()
-  return <div className='flex items-center my-2'>
-    <span className='text-xs text-gray-500 inline-flex items-center mr-2'>
-      <EditIconSolid className='mr-1' />{t('appLog.detail.annotationTip', { user: name })}
-    </span>
-    <div className='h-[1px] bg-gray-200 flex-1'></div>
-  </div>
-}
 const IconWrapper: FC<{ children: React.ReactNode | string }> = ({ children }) => {
   return <div className={'rounded-lg h-6 w-6 flex items-center justify-center hover:bg-gray-100'}>
     {children}
@@ -64,6 +56,7 @@ export type IAnswerProps = {
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
   allToolIcons?: Record<string, string | Emoji>
+  isShowPromptLog?: boolean
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -87,12 +80,11 @@ const Answer: FC<IAnswerProps> = ({
   onAnnotationAdded,
   onAnnotationRemoved,
   allToolIcons,
+  isShowPromptLog,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation, agent_thoughts } = item
   const isAgentMode = !!agent_thoughts && agent_thoughts.length > 0
   const hasAnnotation = !!annotation?.id
-  const [showEdit, setShowEdit] = useState(false)
-  const [loading, setLoading] = useState(false)
   // const [annotation, setAnnotation] = useState<Annotation | undefined | null>(initAnnotation)
   // const [inputValue, setInputValue] = useState<string>(initAnnotation?.content ?? '')
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
@@ -241,9 +233,11 @@ const Answer: FC<IAnswerProps> = ({
     </div>
   )
 
+  const ref = useRef(null)
+
   return (
     // data-id for debug the item message is right
-    <div key={id} data-id={id}>
+    <div key={id} data-id={id} ref={ref}>
       <div className='flex items-start'>
         {
           answerIcon || (
@@ -257,7 +251,7 @@ const Answer: FC<IAnswerProps> = ({
           )
         }
         <div className={cn(s.answerWrapWrap, 'chat-answer-container group')}>
-          <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
+          <div className={s.answerWrap}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
                 {(isResponding && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
@@ -326,11 +320,21 @@ const Answer: FC<IAnswerProps> = ({
                     className={cn(s.copyBtn, 'mr-1')}
                   />
                 )}
-                {!item.isOpeningStatement && isShowTextToSpeech && (
-                  <AudioBtn
-                    value={content}
-                    className={cn(s.playBtn, 'mr-1')}
-                  />
+                {((isShowPromptLog && !isResponding) || (!item.isOpeningStatement && isShowTextToSpeech)) && (
+                  <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
+                    {isShowPromptLog && !isResponding && (
+                      <Log runID={item.workflow_run_id} log={item.log!} containerRef={ref} />
+                    )}
+                    {!item.isOpeningStatement && isShowTextToSpeech && (
+                      <>
+                        <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
+                        <AudioBtn
+                          value={content}
+                          className={cn(s.playBtn)}
+                        />
+                      </>
+                    )}
+                  </div>
                 )}
                 {(!item.isOpeningStatement && supportAnnotation) && (
                   <AnnotationCtrlBtn

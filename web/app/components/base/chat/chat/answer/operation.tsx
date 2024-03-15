@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, RefObject } from 'react'
 import {
   memo,
   useMemo,
@@ -17,16 +17,21 @@ import {
   ThumbsUp,
 } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Log from '@/app/components/app/chat/log'
 
 type OperationProps = {
   item: ChatItem
   question: string
   index: number
+  showPromptLog?: boolean
+  containerRef: RefObject<HTMLElement>
 }
 const Operation: FC<OperationProps> = ({
   item,
   question,
   index,
+  showPromptLog,
+  containerRef,
 }) => {
   const { t } = useTranslation()
   const {
@@ -65,22 +70,29 @@ const Operation: FC<OperationProps> = ({
 
   return (
     <div className='absolute top-[-14px] right-[-14px] flex justify-end gap-1'>
-      {
-        !isOpeningStatement && (
-          <CopyBtn
-            value={content}
-            className='hidden group-hover:block'
-          />
-        )
-      }
-
-      {(!isOpeningStatement && config?.text_to_speech?.enabled) && (
-        <AudioBtn
+      {!isOpeningStatement && (
+        <CopyBtn
           value={content}
-          voice={config?.text_to_speech?.voice}
           className='hidden group-hover:block'
         />
       )}
+
+      <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
+        {showPromptLog && (
+          <Log runID={item.workflow_run_id} log={item.log!} containerRef={containerRef} />
+        )}
+        {(!isOpeningStatement && config?.text_to_speech?.enabled) && (
+          <>
+            <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
+            <AudioBtn
+              value={content}
+              voice={config?.text_to_speech?.voice}
+              className='hidden group-hover:block'
+            />
+          </>
+        )}
+      </div>
+
       {(!isOpeningStatement && config?.supportAnnotation && config.annotation_reply?.enabled) && (
         <AnnotationCtrlBtn
           appId={config?.appId || ''}

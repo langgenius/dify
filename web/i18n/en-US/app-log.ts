@@ -76,6 +76,8 @@ const translation = {
     title: 'Conversation Log',
     workflowTitle: 'Log Detail',
   },
+  promptLog: 'Prompt Log',
+  viewLog: 'View Log',
 }
 
 export default translation
