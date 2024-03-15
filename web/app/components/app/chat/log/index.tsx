@@ -1,8 +1,6 @@
-import type { Dispatch, FC, ReactNode, RefObject, SetStateAction } from 'react'
-import { useEffect, useState } from 'react'
+import type { Dispatch, FC, ReactNode, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import { File02 } from '@/app/components/base/icons/src/vender/line/files'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
 
 export type LogData = {
   role: string
@@ -10,29 +8,16 @@ export type LogData = {
 }
 
 type LogProps = {
-  containerRef: RefObject<HTMLElement>
-  log: LogData[]
   runID?: string
+  setShowModal: Dispatch<SetStateAction<boolean>>
   children?: (v: Dispatch<SetStateAction<boolean>>) => ReactNode
 }
 const Log: FC<LogProps> = ({
-  containerRef,
   children,
-  log,
   runID,
+  setShowModal,
 }) => {
   const { t } = useTranslation()
-  const [showModal, setShowModal] = useState(false)
-  const [width, setWidth] = useState(0)
-
-  const adjustModalWidth = () => {
-    if (containerRef.current)
-      setWidth(document.body.clientWidth - (containerRef.current?.clientWidth + 56 + 16))
-  }
-
-  useEffect(() => {
-    adjustModalWidth()
-  }, [])
 
   return (
     <>
@@ -51,15 +36,6 @@ const Log: FC<LogProps> = ({
               <div className='text-xs leading-4 text-gray-500'>{runID ? t('appLog.viewLog') : t('appLog.promptLog')}</div>
             </div>
           )
-      }
-      {
-        showModal && (
-          <PromptLogModal
-            width={width}
-            log={log}
-            onCancel={() => setShowModal(false)}
-          />
-        )
       }
     </>
   )

@@ -1,6 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
@@ -27,6 +27,7 @@ import type { Emoji } from '@/app/components/tools/types'
 import type { VisionFile } from '@/types/app'
 import ImageGallery from '@/app/components/base/image-gallery'
 import Log from '@/app/components/app/chat/log'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
 
 const IconWrapper: FC<{ children: React.ReactNode | string }> = ({ children }) => {
   return <div className={'rounded-lg h-6 w-6 flex items-center justify-center hover:bg-gray-100'}>
@@ -233,7 +234,19 @@ const Answer: FC<IAnswerProps> = ({
     </div>
   )
 
-  const ref = useRef(null)
+  const [showPromptLogModal, setShowPromptLogModal] = useState(false)
+  const [width, setWidth] = useState(0)
+
+  const ref = useRef<HTMLDivElement>(null)
+
+  const adjustModalWidth = () => {
+    if (ref.current)
+      setWidth(document.body.clientWidth - (ref.current?.clientWidth + 56 + 16))
+  }
+
+  useEffect(() => {
+    adjustModalWidth()
+  }, [])
 
   return (
     // data-id for debug the item message is right
@@ -323,7 +336,7 @@ const Answer: FC<IAnswerProps> = ({
                 {((isShowPromptLog && !isResponding) || (!item.isOpeningStatement && isShowTextToSpeech)) && (
                   <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
                     {isShowPromptLog && !isResponding && (
-                      <Log runID={item.workflow_run_id} log={item.log!} containerRef={ref} />
+                      <Log runID={item.workflow_run_id} setShowModal={setShowPromptLogModal} />
                     )}
                     {!item.isOpeningStatement && isShowTextToSpeech && (
                       <>
@@ -373,7 +386,13 @@ const Answer: FC<IAnswerProps> = ({
                 {!feedbackDisabled && renderFeedbackRating(feedback?.rating, !isHideFeedbackEdit, displayScene !== 'console')}
               </div>
             </div>
-
+            {showPromptLogModal && (
+              <PromptLogModal
+                width={width}
+                log={item.log || []}
+                onCancel={() => setShowPromptLogModal(false)}
+              />
+            )}
             {more && <MoreInfo className='invisible group-hover:visible' more={more} isQuestion={false} />}
           </div>
         </div>
