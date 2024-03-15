@@ -5,7 +5,6 @@ from typing import Any
 from langchain.schema import BaseOutputParser
 
 from core.llm_generator.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
-from core.model_runtime.errors.invoke import InvokeError
 
 
 class SuggestedQuestionsAfterAnswerOutputParser(BaseOutputParser):

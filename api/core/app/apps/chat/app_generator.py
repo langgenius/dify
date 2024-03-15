@@ -12,6 +12,7 @@ from core.app.app_config.features.file_upload.manager import FileUploadConfigMan
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.chat.app_runner import ChatAppRunner
+from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
@@ -30,7 +31,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                  args: Any,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
-            -> Union[dict, Generator]:
+            -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -141,12 +142,18 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        return self._handle_response(
+        response = self._handle_response(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
+            user=user,
             stream=stream
+        )
+
+        return ChatAppGenerateResponseConverter.convert(
+            response=response,
+            invoke_from=invoke_from
         )
 
     def _generate_worker(self, flask_app: Flask,

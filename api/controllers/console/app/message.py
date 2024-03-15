@@ -1,9 +1,5 @@
-import json
 import logging
-from collections.abc import Generator
-from typing import Union
 
-from flask import Response, stream_with_context
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
@@ -177,17 +173,6 @@ class MessageAnnotationCountApi(Resource):
         ).count()
 
         return {'count': count}
-
-
-def compact_response(response: Union[dict, Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 class MessageSuggestedQuestionApi(Resource):
