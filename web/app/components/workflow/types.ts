@@ -26,6 +26,7 @@ export type Branch = {
 }
 
 export type CommonNodeType<T = {}> = {
+  _isInvalidConnection?: boolean
   _connectedSourceHandleIds?: string[]
   _connectedTargetHandleIds?: string[]
   _targetBranches?: Branch[]

@@ -36,7 +36,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     <div
       className={`
         flex border-[2px] rounded-2xl
-        ${(data.selected && !data._runningStatus) ? 'border-primary-600' : 'border-transparent'}
+        ${(data.selected && !data._runningStatus && !data._isInvalidConnection) ? 'border-primary-600' : 'border-transparent'}
       `}
     >
       <div
@@ -48,6 +48,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           ${data._runningStatus === NodeRunningStatus.Succeeded && '!border-[#12B76A]'}
           ${data._runningStatus === NodeRunningStatus.Failed && '!border-[#F04438]'}
           ${data._runningStatus === NodeRunningStatus.Waiting && 'opacity-70'}
+          ${data._isInvalidConnection && '!border-[#F04438]'}
         `}
       >
         {

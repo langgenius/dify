@@ -1,9 +1,11 @@
 import { useCallback, useRef } from 'react'
 import produce from 'immer'
 import type {
+  HandleType,
   NodeDragHandler,
   NodeMouseHandler,
   OnConnect,
+  OnConnectStart,
 } from 'reactflow'
 import {
   getConnectedEdges,
@@ -25,16 +27,21 @@ import {
   generateNewNode,
   getNodesConnectedSourceOrTargetHandleIdsMap,
 } from '../utils'
-import { useNodesInitialData } from './use-nodes-data'
+import {
+  useNodesExtraData,
+  useNodesInitialData,
+} from './use-nodes-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useWorkflow } from './use-workflow'
 
 export const useNodesInteractions = () => {
   const store = useStoreApi()
   const nodesInitialData = useNodesInitialData()
+  const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getAfterNodesInSameBranch } = useWorkflow()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
+  const connectingNodeRef = useRef<{ nodeId: string; handleType: HandleType } | null>(null)
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     const {
@@ -177,9 +184,27 @@ export const useNodesInteractions = () => {
       return
 
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
+    const nodes = getNodes()
+
+    if (connectingNodeRef.current && connectingNodeRef.current.nodeId !== node.id) {
+      const connectingNode: Node = nodes.find(n => n.id === connectingNodeRef.current!.nodeId)!
+      const handleType = connectingNodeRef.current.handleType
+      const currentNodeIndex = nodes.findIndex(n => n.id === node.id)
+      const availablePrevNodes = nodesExtraData[connectingNode.data.type].availablePrevNodes
+      const availableNextNodes = nodesExtraData[connectingNode.data.type].availableNextNodes
+      const availableNodes = handleType === 'source' ? availableNextNodes : [...availablePrevNodes, BlockEnum.Start]
+
+      const newNodes = produce(nodes, (draft) => {
+        if (!availableNodes.includes(draft[currentNodeIndex].data.type))
+          draft[currentNodeIndex].data._isInvalidConnection = true
+      })
+      setNodes(newNodes)
+    }
     const newEdges = produce(edges, (draft) => {
       const connectedEdges = getConnectedEdges([node], edges)
 
@@ -190,7 +215,7 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, nodesExtraData])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>(() => {
     const { runningStatus } = useStore.getState()
@@ -199,9 +224,17 @@ export const useNodesInteractions = () => {
       return
 
     const {
+      getNodes,
+      setNodes,
       edges,
       setEdges,
     } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      draft.forEach((node) => {
+        node.data._isInvalidConnection = false
+      })
+    })
+    setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
         edge.data = { ...edge.data, _connectedNodeIsHovering: false }
@@ -306,6 +339,19 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
     handleSyncWorkflowDraft()
   }, [store, handleSyncWorkflowDraft])
+
+  const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType }) => {
+    if (nodeId && handleType) {
+      connectingNodeRef.current = {
+        nodeId,
+        handleType,
+      }
+    }
+  }, [])
+
+  const handleNodeConnectEnd = useCallback(() => {
+    connectingNodeRef.current = null
+  }, [])
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     const { runningStatus } = useStore.getState()
@@ -596,6 +642,8 @@ export const useNodesInteractions = () => {
     handleNodeSelect,
     handleNodeClick,
     handleNodeConnect,
+    handleNodeConnectStart,
+    handleNodeConnectEnd,
     handleNodeDelete,
     handleNodeChange,
     handleNodeAdd,

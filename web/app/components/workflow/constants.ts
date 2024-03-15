@@ -255,7 +255,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 
 export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
-  BlockEnum.QuestionClassifier, BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner,
+  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner,
 ]
 
 const USAGE = {

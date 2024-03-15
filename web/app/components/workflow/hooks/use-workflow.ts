@@ -9,6 +9,7 @@ import {
   getOutgoers,
   useStoreApi,
 } from 'reactflow'
+import type { Connection } from 'reactflow'
 import type { ToolsMap } from '../block-selector/types'
 import {
   generateNewNode,
@@ -21,7 +22,10 @@ import {
   START_INITIAL_POSITION,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
-import { useNodesInitialData } from './use-nodes-data'
+import {
+  useNodesExtraData,
+  useNodesInitialData,
+} from './use-nodes-data'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchNodesDefaultConfigs,
@@ -38,6 +42,7 @@ export const useIsChatMode = () => {
 
 export const useWorkflow = () => {
   const store = useStoreApi()
+  const nodesExtraData = useNodesExtraData()
 
   const handleLayout = useCallback(async () => {
     const {
@@ -169,9 +174,24 @@ export const useWorkflow = () => {
     return list
   }, [store])
 
-  const isValidConnection = useCallback(() => {
+  const isValidConnection = useCallback(({ source, target }: Connection) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const sourceNode: Node = nodes.find(node => node.id === source)!
+    const targetNode: Node = nodes.find(node => node.id === target)!
+
+    if (sourceNode && targetNode) {
+      const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
+      const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
+      if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
+        return false
+
+      if (!targetNodeAvailablePrevNodes.includes(sourceNode.data.type))
+        return false
+    }
+
     return true
-  }, [])
+  }, [store, nodesExtraData])
 
   return {
     handleLayout,

@@ -10,7 +10,6 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   useOnViewportChange,
-  useStoreApi,
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -62,7 +61,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const runningStatus = useStore(s => s.runningStatus)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const store = useStoreApi()
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -80,6 +78,8 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeLeave,
     handleNodeClick,
     handleNodeConnect,
+    handleNodeConnectStart,
+    handleNodeConnectEnd,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -108,6 +108,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       }
       <HelpLine />
       <ReactFlow
+        className='workflow-inner'
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         nodes={nodes}
@@ -119,6 +120,8 @@ const Workflow: FC<WorkflowProps> = memo(({
         onNodeMouseLeave={handleNodeLeave}
         onNodeClick={handleNodeClick}
         onConnect={handleNodeConnect}
+        onConnectStart={handleNodeConnectStart}
+        onConnectEnd={handleNodeConnectEnd}
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
