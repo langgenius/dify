@@ -24,6 +24,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     handleOutputTypeChange,
     handleVarListChange,
     handleAddVariable,
+    filterVar,
   } = useConfig(id, data)
 
   const typeOptions = [
@@ -66,7 +67,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             list={inputs.variables}
             onChange={handleVarListChange}
             onlyLeafNodeVar
-            onlyVarType={inputs.output_type}
+            filterVar={filterVar}
           />
         </Field>
       </div>

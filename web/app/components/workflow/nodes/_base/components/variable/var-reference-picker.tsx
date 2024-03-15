@@ -6,7 +6,7 @@ import cn from 'classnames'
 import { isArray } from 'lodash-es'
 import VarReferencePopup from './var-reference-popup'
 import { toNodeOutputVars } from './utils'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -35,7 +35,7 @@ type Props = {
   isSupportConstantValue?: boolean
   defaultVarKindType?: VarKindType
   onlyLeafNodeVar?: boolean
-  onlyVarType?: VarType
+  filterVar?: (payload: Var) => boolean
 }
 
 export const getNodeInfoById = (nodes: any, id: string) => {
@@ -56,7 +56,7 @@ const VarReferencePicker: FC<Props> = ({
   isSupportConstantValue,
   defaultVarKindType = VarKindType.static,
   onlyLeafNodeVar,
-  onlyVarType,
+  filterVar = () => true,
 }) => {
   const { t } = useTranslation()
 
@@ -65,7 +65,7 @@ const VarReferencePicker: FC<Props> = ({
   const isConstant = isSupportConstantValue && varKindType === VarKindType.static
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
-  const outputVars = toNodeOutputVars(availableNodes, isChatMode, onlyVarType)
+  const outputVars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
   const [open, setOpen] = useState(false)
   const hasValue = !isConstant && value.length > 0
   const outputVarNodeId = hasValue ? value[0] : ''

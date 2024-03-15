@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
-import { type ValueSelector, type VarType, type Variable } from '@/app/components/workflow/types'
+import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
   onChange: (list: Variable[]) => void
   isSupportConstantValue?: boolean
   onlyLeafNodeVar?: boolean
-  onlyVarType?: VarType
+  filterVar?: (payload: Var) => boolean
 }
 
 const VarList: FC<Props> = ({
@@ -25,7 +25,7 @@ const VarList: FC<Props> = ({
   onChange,
   isSupportConstantValue,
   onlyLeafNodeVar,
-  onlyVarType,
+  filterVar,
 }) => {
   const { t } = useTranslation()
 
@@ -90,7 +90,7 @@ const VarList: FC<Props> = ({
             onChange={handleVarReferenceChange(index)}
             defaultVarKindType={item.variable_type}
             onlyLeafNodeVar={onlyLeafNodeVar}
-            onlyVarType={onlyVarType}
+            filterVar={filterVar}
           />
           <RemoveButton
             className='!p-2 !bg-gray-100 hover:!bg-gray-200'

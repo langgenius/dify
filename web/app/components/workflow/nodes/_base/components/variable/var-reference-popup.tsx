@@ -86,7 +86,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
 
   return (
     <div className='absolute top-[-2px] bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
-      right: itemWidth ? itemWidth - 4 : 215,
+      right: itemWidth ? itemWidth - 10 : 215,
       minWidth: 252,
     }}>
       <div className='flex items-center h-[22px] px-3 text-xs font-normal text-gray-700'><span className='text-gray-500'>{title}.</span>{currObjPath.join('.')}</div>
