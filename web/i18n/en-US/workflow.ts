@@ -29,6 +29,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
+    invalidJson: '{{field}} is invalid JSON',
     fields: {
       variable: 'Variable Name',
       variableValue: 'Variable Value',

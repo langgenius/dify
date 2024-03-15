@@ -18,11 +18,25 @@ const i18nPrefix = 'workflow.singleRun'
 type BeforeRunFormProps = {
   nodeName: string
   onHide: () => void
-  onRun: () => void
+  onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
   result?: JSX.Element
   forms: FormProps[]
+}
+
+function formatValue(value: string | any, type: InputVarType) {
+  if (type === InputVarType.number)
+    return parseFloat(value)
+  if (type === InputVarType.json)
+    return JSON.parse(value)
+  if (type === InputVarType.contexts) {
+    return value.map((item: any) => {
+      return JSON.parse(item)
+    })
+  }
+
+  return value
 }
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
@@ -55,7 +69,28 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       return
     }
 
-    onRun()
+    const submitData: Record<string, any> = {}
+    let parseErrorJsonField = ''
+    forms.forEach((form) => {
+      form.inputs.forEach((input) => {
+        try {
+          const value = formatValue(form.values[input.variable], input.type)
+          submitData[input.variable] = value
+        }
+        catch (e) {
+          parseErrorJsonField = input.variable
+        }
+      })
+    })
+    if (parseErrorJsonField) {
+      Toast.notify({
+        message: t('workflow.errorMsg.invalidJson', { field: parseErrorJsonField }),
+        type: 'error',
+      })
+      return
+    }
+
+    onRun(submitData)
   }, [forms, onRun, t])
   return (
     <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{

@@ -126,15 +126,9 @@ const useOneStepRun = <T>({
   }
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
-  const handleRun = async () => {
-    // const { isValid, errorMessage } = beforeRunCheckValid()
-    // if (!isValid) {
-    //   Toast.notify({
-    //     type: 'error',
-    //     message: errorMessage!,
-    //   })
-    //   return false
-    // }
+
+  const handleRun = async (submitData: Record<string, any>) => {
+    console.log(submitData)
     handleNodeDataUpdate({
       id,
       data: {
@@ -144,7 +138,7 @@ const useOneStepRun = <T>({
     })
     let res: any
     try {
-      res = await singleNodeRun(appId!, id, { inputs: runInputData }) as any
+      res = await singleNodeRun(appId!, id, { inputs: submitData }) as any
       if (res.error)
         throw new Error(res.error)
     }

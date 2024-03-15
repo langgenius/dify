@@ -29,6 +29,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
+    invalidJson: '{{field}} 是非法的 JSON',
     fields: {
       variable: '变量名',
       variableValue: '变量值',
