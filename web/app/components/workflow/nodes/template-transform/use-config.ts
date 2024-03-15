@@ -1,18 +1,35 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import type { Var } from '../../types'
 import { VarType } from '../../types'
+import { useStore } from '../../store'
 import type { TemplateTransformNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+
   const { inputs, setInputs } = useNodeCrud<TemplateTransformNodeType>(id, payload)
   const { handleVarListChange, handleAddVariable } = useVarList<TemplateTransformNodeType>({
     inputs,
     setInputs,
   })
+
+  useEffect(() => {
+    if (inputs.template)
+      return
+
+    const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
+    if (isReady) {
+      setInputs({
+        ...inputs,
+        ...defaultConfig,
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultConfig])
 
   const handleCodeChange = useCallback((template: string) => {
     const newInputs = produce(inputs, (draft: any) => {
