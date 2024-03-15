@@ -5,13 +5,14 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const reactFlow = useReactFlow()
   const featuresStore = useFeaturesStore()
 
@@ -57,10 +58,10 @@ export const useNodesSyncDraft = () => {
           },
         },
       }).then((res) => {
-        useStore.setState({ draftUpdatedAt: res.updated_at })
+        workflowStore.setState({ draftUpdatedAt: res.updated_at })
       })
     }
-  }, [store, reactFlow, featuresStore])
+  }, [store, reactFlow, featuresStore, workflowStore])
 
   const { run: debouncedSyncWorkflowDraft } = useDebounceFn(shouldDebouncedSyncWorkflowDraft, {
     wait: 2000,
@@ -68,7 +69,7 @@ export const useNodesSyncDraft = () => {
   })
 
   const handleSyncWorkflowDraft = useCallback((shouldDelay?: boolean) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -77,7 +78,7 @@ export const useNodesSyncDraft = () => {
       debouncedSyncWorkflowDraft()
     else
       shouldDebouncedSyncWorkflowDraft()
-  }, [debouncedSyncWorkflowDraft, shouldDebouncedSyncWorkflowDraft])
+  }, [debouncedSyncWorkflowDraft, shouldDebouncedSyncWorkflowDraft, workflowStore])
 
   return {
     handleSyncWorkflowDraft,

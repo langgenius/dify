@@ -1,7 +1,10 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '../store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import {
   useIsChatMode,
   useWorkflowRun,
@@ -14,12 +17,13 @@ import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const runningStatus = useStore(s => s.runningStatus)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const isRunning = runningStatus === WorkflowRunningStatus.Running
 
   const handleClick = () => {
-    useStore.setState({ showInputsPanel: true })
+    workflowStore.setState({ showInputsPanel: true })
   }
 
   return (
@@ -91,6 +95,7 @@ PreviewMode.displayName = 'PreviewMode'
 
 const RunAndHistory: FC = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()
   const showRunHistory = useStore(state => state.showRunHistory)
 
@@ -111,7 +116,7 @@ const RunAndHistory: FC = () => {
             flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
             ${showRunHistory && 'bg-primary-50'}
           `}
-          onClick={() => useStore.setState({ showRunHistory: true })}
+          onClick={() => workflowStore.setState({ showRunHistory: true })}
         >
           <ClockPlay className={`w-4 h-4 ${showRunHistory ? 'text-primary-600' : 'text-gray-500'}`} />
         </div>

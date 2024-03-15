@@ -7,7 +7,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import produce from 'immer'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import {
   NodeRunningStatus,
   WorkflowRunningStatus,
@@ -19,6 +19,7 @@ import { ssePost } from '@/service/base'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const workflowContainerRef = useRef<HTMLDivElement>(null)
 
@@ -30,14 +31,14 @@ export const useWorkflowRun = () => {
     } = reactflow
     const {
       setBackupDraft,
-    } = useStore.getState()
+    } = workflowStore.getState()
 
     setBackupDraft({
       nodes: getNodes(),
       edges: getEdges(),
       viewport: getViewport(),
     })
-  }, [reactflow])
+  }, [reactflow, workflowStore])
 
   const handleLoadBackupDraft = useCallback(() => {
     const {
@@ -45,7 +46,7 @@ export const useWorkflowRun = () => {
       setEdges,
     } = store.getState()
     const { setViewport } = reactflow
-    const { backupDraft } = useStore.getState()
+    const { backupDraft } = workflowStore.getState()
 
     if (backupDraft) {
       const {
@@ -57,10 +58,10 @@ export const useWorkflowRun = () => {
       setEdges(edges)
       setViewport(viewport)
     }
-  }, [store, reactflow])
+  }, [store, reactflow, workflowStore])
 
   const handleRunSetting = useCallback((shouldClear?: boolean) => {
-    useStore.setState({ runningStatus: shouldClear ? undefined : WorkflowRunningStatus.Waiting })
+    workflowStore.setState({ runningStatus: shouldClear ? undefined : WorkflowRunningStatus.Waiting })
     const {
       setNodes,
       getNodes,
@@ -86,7 +87,7 @@ export const useWorkflowRun = () => {
       })
       setEdges(newEdges)
     }
-  }, [store, handleLoadBackupDraft, handleBackupDraft])
+  }, [store, handleLoadBackupDraft, handleBackupDraft, workflowStore])
 
   const handleRun = useCallback((params: any, callback?: IOtherOptions) => {
     const {
@@ -117,10 +118,10 @@ export const useWorkflowRun = () => {
       },
       {
         onWorkflowStarted: ({ task_id, workflow_run_id, data }) => {
-          useStore.setState({ runningStatus: WorkflowRunningStatus.Running })
-          useStore.setState({ taskId: task_id })
-          useStore.setState({ currentSequenceNumber: data.sequence_number })
-          useStore.setState({ workflowRunId: workflow_run_id })
+          workflowStore.setState({ runningStatus: WorkflowRunningStatus.Running })
+          workflowStore.setState({ taskId: task_id })
+          workflowStore.setState({ currentSequenceNumber: data.sequence_number })
+          workflowStore.setState({ workflowRunId: workflow_run_id })
           const newNodes = produce(getNodes(), (draft) => {
             draft.forEach((node) => {
               node.data._runningStatus = NodeRunningStatus.Waiting
@@ -129,7 +130,7 @@ export const useWorkflowRun = () => {
           setNodes(newNodes)
         },
         onWorkflowFinished: ({ data }) => {
-          useStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
+          workflowStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
         },
         onNodeStarted: ({ data }) => {
           const nodes = getNodes()
@@ -171,7 +172,7 @@ export const useWorkflowRun = () => {
         ...callback,
       },
     )
-  }, [store, reactflow])
+  }, [store, reactflow, workflowStore])
 
   return {
     handleBackupDraft,

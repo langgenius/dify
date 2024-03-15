@@ -17,6 +17,7 @@ import type {
   Edge,
   Node,
 } from './types'
+import { WorkflowContextProvider } from './context'
 import {
   useEdgesInteractions,
   useNodesInteractions,
@@ -151,30 +152,21 @@ const Workflow: FC<WorkflowProps> = memo(({
 
 Workflow.displayName = 'Workflow'
 
-const WorkflowWrap: FC<WorkflowProps> = ({
-  nodes,
-  edges,
-}) => {
+const WorkflowWrap = memo(() => {
   const data = useWorkflowInit()
 
   const nodesData = useMemo(() => {
-    if (nodes)
-      return nodes
-
     if (data)
       return initialNodes(data.graph.nodes, data.graph.edges)
 
     return []
-  }, [data, nodes])
+  }, [data])
   const edgesData = useMemo(() => {
-    if (edges)
-      return edges
-
     if (data)
       return initialEdges(data.graph.edges)
 
     return []
-  }, [data, edges])
+  }, [data])
 
   if (!data) {
     return (
@@ -209,6 +201,15 @@ const WorkflowWrap: FC<WorkflowProps> = ({
       </FeaturesProvider>
     </ReactFlowProvider>
   )
+})
+WorkflowWrap.displayName = 'WorkflowWrap'
+
+const WorkflowContainer = () => {
+  return (
+    <WorkflowContextProvider>
+      <WorkflowWrap />
+    </WorkflowContextProvider>
+  )
 }
 
-export default memo(WorkflowWrap)
+export default memo(WorkflowContainer)

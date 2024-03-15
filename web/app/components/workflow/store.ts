@@ -1,5 +1,9 @@
-import { create } from 'zustand'
+import {
+  create,
+  useStore as useZustandStore,
+} from 'zustand'
 import type { Viewport } from 'reactflow'
+import { useContext } from 'react'
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
@@ -15,6 +19,7 @@ import type {
   Node,
   WorkflowRunningStatus,
 } from './types'
+import { WorkflowContext } from './context'
 
 type State = {
   mode: Mode
@@ -62,41 +67,55 @@ type Action = {
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
 }
 
-export const useStore = create<State & Action>(set => ({
-  mode: Mode.Editing,
-  taskId: '',
-  setTaskId: taskId => set(() => ({ taskId })),
-  currentSequenceNumber: 0,
-  setCurrentSequenceNumber: currentSequenceNumber => set(() => ({ currentSequenceNumber })),
-  workflowRunId: '',
-  setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
-  setMode: mode => set(() => ({ mode })),
-  showRunHistory: false,
-  setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
-  showFeaturesPanel: false,
-  setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
-  helpLineHorizontal: undefined,
-  setHelpLineHorizontal: helpLineHorizontal => set(() => ({ helpLineHorizontal })),
-  helpLineVertical: undefined,
-  setHelpLineVertical: helpLineVertical => set(() => ({ helpLineVertical })),
-  toolsets: [],
-  setToolsets: toolsets => set(() => ({ toolsets })),
-  toolsMap: {},
-  setToolsMap: toolsMap => set(() => ({ toolsMap })),
-  draftUpdatedAt: 0,
-  setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt })),
-  publishedAt: 0,
-  setPublishedAt: publishedAt => set(() => ({ publishedAt })),
-  runningStatus: undefined,
-  setRunningStatus: runningStatus => set(() => ({ runningStatus })),
-  showInputsPanel: false,
-  setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
-  inputs: {},
-  setInputs: inputs => set(() => ({ inputs })),
-  backupDraft: undefined,
-  setBackupDraft: backupDraft => set(() => ({ backupDraft })),
-  notInitialWorkflow: false,
-  setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
-  nodesDefaultConfigs: {},
-  setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
-}))
+export const createWorkflowStore = () => {
+  return create<State & Action>(set => ({
+    mode: Mode.Editing,
+    taskId: '',
+    setTaskId: taskId => set(() => ({ taskId })),
+    currentSequenceNumber: 0,
+    setCurrentSequenceNumber: currentSequenceNumber => set(() => ({ currentSequenceNumber })),
+    workflowRunId: '',
+    setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
+    setMode: mode => set(() => ({ mode })),
+    showRunHistory: false,
+    setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
+    showFeaturesPanel: false,
+    setShowFeaturesPanel: showFeaturesPanel => set(() => ({ showFeaturesPanel })),
+    helpLineHorizontal: undefined,
+    setHelpLineHorizontal: helpLineHorizontal => set(() => ({ helpLineHorizontal })),
+    helpLineVertical: undefined,
+    setHelpLineVertical: helpLineVertical => set(() => ({ helpLineVertical })),
+    toolsets: [],
+    setToolsets: toolsets => set(() => ({ toolsets })),
+    toolsMap: {},
+    setToolsMap: toolsMap => set(() => ({ toolsMap })),
+    draftUpdatedAt: 0,
+    setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt })),
+    publishedAt: 0,
+    setPublishedAt: publishedAt => set(() => ({ publishedAt })),
+    runningStatus: undefined,
+    setRunningStatus: runningStatus => set(() => ({ runningStatus })),
+    showInputsPanel: false,
+    setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
+    inputs: {},
+    setInputs: inputs => set(() => ({ inputs })),
+    backupDraft: undefined,
+    setBackupDraft: backupDraft => set(() => ({ backupDraft })),
+    notInitialWorkflow: false,
+    setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
+    nodesDefaultConfigs: {},
+    setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
+  }))
+}
+
+export function useStore<T>(selector: (state: State & Action) => T): T {
+  const store = useContext(WorkflowContext)
+  if (!store)
+    throw new Error('Missing WorkflowContext.Provider in the tree')
+
+  return useZustandStore(store, selector)
+}
+
+export const useWorkflowStore = () => {
+  return useContext(WorkflowContext)!
+}

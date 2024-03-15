@@ -18,7 +18,7 @@ import type {
   OnNodeAdd,
 } from '../types'
 import { BlockEnum } from '../types'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import {
   NODE_WIDTH_X_OFFSET,
   Y_OFFSET,
@@ -36,6 +36,7 @@ import { useWorkflow } from './use-workflow'
 
 export const useNodesInteractions = () => {
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const nodesInitialData = useNodesInitialData()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -46,16 +47,16 @@ export const useNodesInteractions = () => {
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     const {
       runningStatus,
-    } = useStore.getState()
+    } = workflowStore.getState()
 
     if (runningStatus)
       return
 
     dragNodeStartPosition.current = { x: node.position.x, y: node.position.y }
-  }, [])
+  }, [workflowStore])
 
   const handleNodeDrag = useCallback<NodeDragHandler>((e, node: Node) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -67,7 +68,7 @@ export const useNodesInteractions = () => {
     const {
       setHelpLineHorizontal,
       setHelpLineVertical,
-    } = useStore.getState()
+    } = workflowStore.getState()
     e.stopPropagation()
 
     const nodes = getNodes()
@@ -157,14 +158,14 @@ export const useNodesInteractions = () => {
     })
 
     setNodes(newNodes)
-  }, [store])
+  }, [store, workflowStore])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>((_, node) => {
     const {
       runningStatus,
       setHelpLineHorizontal,
       setHelpLineVertical,
-    } = useStore.getState()
+    } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -175,10 +176,10 @@ export const useNodesInteractions = () => {
       setHelpLineVertical()
       handleSyncWorkflowDraft()
     }
-  }, [handleSyncWorkflowDraft])
+  }, [handleSyncWorkflowDraft, workflowStore])
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -215,10 +216,10 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-  }, [store, nodesExtraData])
+  }, [store, nodesExtraData, workflowStore])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>(() => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -241,10 +242,10 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, workflowStore])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -270,18 +271,18 @@ export const useNodesInteractions = () => {
     })
     setNodes(newNodes)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
+  }, [store, handleSyncWorkflowDraft, workflowStore])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
     const {
       runningStatus,
-    } = useStore.getState()
+    } = workflowStore.getState()
 
     if (runningStatus)
       return
 
     handleNodeSelect(node.id)
-  }, [handleNodeSelect])
+  }, [handleNodeSelect, workflowStore])
 
   const handleNodeConnect = useCallback<OnConnect>(({
     source,
@@ -289,7 +290,7 @@ export const useNodesInteractions = () => {
     target,
     targetHandle,
   }) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -338,7 +339,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
+  }, [store, handleSyncWorkflowDraft, workflowStore])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType }) => {
     if (nodeId && handleType) {
@@ -354,7 +355,7 @@ export const useNodesInteractions = () => {
   }, [])
 
   const handleNodeDelete = useCallback((nodeId: string) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -387,7 +388,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
+  }, [store, handleSyncWorkflowDraft, workflowStore])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
     {
@@ -403,7 +404,7 @@ export const useNodesInteractions = () => {
       nextNodeTargetHandle,
     },
   ) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -565,7 +566,7 @@ export const useNodesInteractions = () => {
       setEdges(newEdges)
     }
     handleSyncWorkflowDraft()
-  }, [store, nodesInitialData, handleSyncWorkflowDraft, getAfterNodesInSameBranch])
+  }, [store, nodesInitialData, handleSyncWorkflowDraft, getAfterNodesInSameBranch, workflowStore])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -573,7 +574,7 @@ export const useNodesInteractions = () => {
     sourceHandle: string,
     toolDefaultValue?: ToolDefaultValue,
   ) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -631,7 +632,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, nodesInitialData, handleSyncWorkflowDraft])
+  }, [store, nodesInitialData, handleSyncWorkflowDraft, workflowStore])
 
   return {
     handleNodeDragStart,

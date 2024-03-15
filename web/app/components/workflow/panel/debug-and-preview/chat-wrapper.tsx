@@ -3,7 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useStore } from '../../store'
+import { useWorkflowStore } from '../../store'
 import UserInput from './user-input'
 import { useChat } from './hooks'
 import Chat from '@/app/components/base/chat/chat'
@@ -19,6 +19,7 @@ const ChatWrapper = () => {
     suggestedQuestions,
     handleSend,
   } = useChat()
+  const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const features = featuresStore!.getState().features
 
@@ -38,10 +39,10 @@ const ChatWrapper = () => {
     handleSend({
       query,
       files,
-      inputs: useStore.getState().inputs,
+      inputs: workflowStore.getState().inputs,
       conversationId,
     })
-  }, [conversationId, handleSend])
+  }, [conversationId, handleSend, workflowStore])
 
   return (
     <Chat

@@ -6,13 +6,17 @@ import useSWR from 'swr'
 import { WorkflowRunningStatus } from '../types'
 import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import { useStore as useRunHistoryStore } from '@/app/components/workflow/store'
+import {
+  useStore as useRunHistoryStore,
+  useWorkflowStore,
+} from '@/app/components/workflow/store'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchWorkflowRunHistory } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
 
 const RunHistory = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(state => state.appDetail)
   const workflowRunId = useRunHistoryStore(state => state.workflowRunId)
   const { data, isLoading } = useSWR(appDetail ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
@@ -26,7 +30,7 @@ const RunHistory = () => {
         {t('workflow.common.runHistory')}
         <div
           className='flex items-center justify-center w-6 h-6 cursor-pointer'
-          onClick={() => useRunHistoryStore.setState({ showRunHistory: false })}
+          onClick={() => workflowStore.setState({ showRunHistory: false })}
         >
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
@@ -47,7 +51,7 @@ const RunHistory = () => {
                 'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
                 item.id === workflowRunId && 'bg-primary-50',
               )}
-              onClick={() => useRunHistoryStore.setState({
+              onClick={() => workflowStore.setState({
                 currentSequenceNumber: item.sequence_number,
                 workflowRunId: item.id,
                 runningStatus: item.status as WorkflowRunningStatus,

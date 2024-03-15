@@ -6,13 +6,17 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
 import { BlockEnum } from '../types'
-import { useStore } from '../store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import { useWorkflowRun } from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
 import Button from '@/app/components/base/button'
 
 const InputsPanel = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const nodes = useNodes<StartNodeType>()
   const inputs = useStore(s => s.inputs)
   const {
@@ -23,15 +27,15 @@ const InputsPanel = () => {
   const variables = startNode?.data.variables || []
 
   const handleValueChange = (variable: string, v: string) => {
-    useStore.getState().setInputs({
+    workflowStore.getState().setInputs({
       ...inputs,
       [variable]: v,
     })
   }
 
   const handleCancel = useCallback(() => {
-    useStore.setState({ showInputsPanel: false })
-  }, [])
+    workflowStore.setState({ showInputsPanel: false })
+  }, [workflowStore])
 
   const doRun = () => {
     handleCancel()

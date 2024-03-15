@@ -4,7 +4,10 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '../store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import {
   useIsChatMode,
   useWorkflowRun,
@@ -20,6 +23,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 
 const Header: FC = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const isChatMode = useIsChatMode()
@@ -30,8 +34,8 @@ const Header: FC = () => {
     if (runningStatus)
       return
 
-    useStore.setState({ showFeaturesPanel: true })
-  }, [runningStatus])
+    workflowStore.setState({ showFeaturesPanel: true })
+  }, [runningStatus, workflowStore])
 
   const handleGoBackToEdit = useCallback(() => {
     handleRunSetting(true)

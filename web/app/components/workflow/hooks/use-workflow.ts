@@ -17,7 +17,7 @@ import {
 } from '../utils'
 import type { Node } from '../types'
 import { BlockEnum } from '../types'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import {
   START_INITIAL_POSITION,
   SUPPORT_OUTPUT_VARS_NODE,
@@ -203,6 +203,7 @@ export const useWorkflow = () => {
 }
 
 export const useWorkflowInit = () => {
+  const workflowStore = useWorkflowStore()
   const nodesInitialData = useNodesInitialData()
   const appDetail = useAppStore(state => state.appDetail)!
   const { data, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
@@ -212,14 +213,14 @@ export const useWorkflowInit = () => {
       const toolsets = await fetchCollectionList()
       const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
 
-      useStore.setState({
+      workflowStore.setState({
         toolsets,
         toolsMap: toolsets.reduce((acc, toolset) => {
           acc[toolset.id] = []
           return acc
         }, {} as ToolsMap),
       })
-      useStore.setState({
+      workflowStore.setState({
         nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
           if (!acc[block.type])
             acc[block.type] = block.config
@@ -238,13 +239,13 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     if (data)
-      useStore.setState({ draftUpdatedAt: data.updated_at })
-  }, [data])
+      workflowStore.setState({ draftUpdatedAt: data.updated_at })
+  }, [data, workflowStore])
 
   if (error && error.json && !error.bodyUsed && appDetail) {
     error.json().then((err: any) => {
       if (err.code === 'draft_workflow_not_exist') {
-        useStore.setState({ notInitialWorkflow: true })
+        workflowStore.setState({ notInitialWorkflow: true })
         syncWorkflowDraft({
           url: `/apps/${appDetail.id}/workflows/draft`,
           params: {
@@ -261,7 +262,7 @@ export const useWorkflowInit = () => {
             features: {},
           },
         }).then((res) => {
-          useStore.setState({ draftUpdatedAt: res.updated_at })
+          workflowStore.setState({ draftUpdatedAt: res.updated_at })
           mutate()
         })
       }

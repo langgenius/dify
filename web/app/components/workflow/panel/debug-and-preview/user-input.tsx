@@ -6,12 +6,16 @@ import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import FormItem from '../../nodes/_base/components/before-run-form/form-item'
 import { BlockEnum } from '../../types'
-import { useStore } from '../../store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../../store'
 import type { StartNodeType } from '../../nodes/start/types'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const UserInput = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const [expanded, setExpanded] = useState(true)
   const inputs = useStore(s => s.inputs)
   const nodes = useNodes<StartNodeType>()
@@ -19,7 +23,7 @@ const UserInput = () => {
   const variables = startNode?.data.variables || []
 
   const handleValueChange = (variable: string, v: string) => {
-    useStore.getState().setInputs({
+    workflowStore.getState().setInputs({
       ...inputs,
       [variable]: v,
     })

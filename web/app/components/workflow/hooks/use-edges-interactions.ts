@@ -8,7 +8,7 @@ import {
   getConnectedEdges,
   useStoreApi,
 } from 'reactflow'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import type {
   Edge,
   Node,
@@ -18,10 +18,11 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useEdgesInteractions = () => {
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleEdgeEnter = useCallback<EdgeMouseHandler>((_, edge) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -36,10 +37,10 @@ export const useEdgesInteractions = () => {
       currentEdge.data = { ...currentEdge.data, _hovering: true }
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, workflowStore])
 
   const handleEdgeLeave = useCallback<EdgeMouseHandler>((_, edge) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -54,10 +55,10 @@ export const useEdgesInteractions = () => {
       currentEdge.data = { ...currentEdge.data, _hovering: false }
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, workflowStore])
 
   const handleEdgeDeleteByDeleteBranch = useCallback((nodeId: string, branchId: string) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -90,10 +91,10 @@ export const useEdgesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
+  }, [store, handleSyncWorkflowDraft, workflowStore])
 
   const handleEdgeDelete = useCallback(() => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -125,10 +126,10 @@ export const useEdgesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft])
+  }, [store, workflowStore, handleSyncWorkflowDraft])
 
   const handleEdgesChange = useCallback<OnEdgesChange>((changes) => {
-    const { runningStatus } = useStore.getState()
+    const { runningStatus } = workflowStore.getState()
 
     if (runningStatus)
       return
@@ -145,7 +146,7 @@ export const useEdgesInteractions = () => {
       })
     })
     setEdges(newEdges)
-  }, [store])
+  }, [store, workflowStore])
 
   const handleVariableAssignerEdgesChange = useCallback((nodeId: string, variables: any) => {
     const {
