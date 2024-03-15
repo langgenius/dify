@@ -26,6 +26,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   const {
     inputs,
     handleQueryVarChange,
+    filterVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     selectedDatasets,
@@ -52,6 +53,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
             isShowNodeName
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
+            filterVar={filterVar}
+            width={370}
           />
         </Field>
 
