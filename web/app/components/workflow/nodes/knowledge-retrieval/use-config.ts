@@ -12,6 +12,7 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const isChatMode = useIsChatMode()
+  console.log()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
@@ -55,14 +56,16 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [])
 
   useEffect(() => {
-    if (inputs._isReady) {
-      if (isChatMode && inputs.query_variable_selector.length === 0 && startNodeId) {
-        handleQueryVarChange(
-          [startNodeId, 'sys.query'],
-        )
-      }
-    }
-  }, [inputs._isReady])
+    let query_variable_selector: ValueSelector = []
+    if (isChatMode && inputs.query_variable_selector.length === 0 && startNodeId)
+      query_variable_selector = [startNodeId, 'sys.query']
+
+    setInputs({
+      ...inputs,
+      query_variable_selector,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
     const newInputs = produce(inputs, (draft) => {

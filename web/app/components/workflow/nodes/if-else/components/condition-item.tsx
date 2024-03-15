@@ -7,7 +7,7 @@ import VarReferencePicker from '../../_base/components/variable/var-reference-pi
 import { isComparisonOperatorNeedTranslate } from '../utils'
 import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
@@ -73,6 +73,7 @@ type ItemProps = {
   isShowLogicalOperator?: boolean
   logicalOperator: LogicalOperator
   onLogicalOperatorToggle: () => void
+  filterVar: (varPayload: Var) => boolean
 }
 
 const Item: FC<ItemProps> = ({
@@ -85,14 +86,15 @@ const Item: FC<ItemProps> = ({
   isShowLogicalOperator,
   logicalOperator,
   onLogicalOperatorToggle,
+  filterVar,
 }) => {
   const { t } = useTranslation()
   const isValueReadOnly = [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(payload.comparison_operator)
 
-  const handleVarReferenceChange = useCallback((value: ValueSelector) => {
+  const handleVarReferenceChange = useCallback((value: ValueSelector | string) => {
     onChange({
       ...payload,
-      variable_selector: value,
+      variable_selector: value as ValueSelector,
     })
     // TODO: handle value type change will effect the comparisonOperators
   }, [onChange, payload])
@@ -140,6 +142,7 @@ const Item: FC<ItemProps> = ({
           className='grow'
           value={payload.variable_selector}
           onChange={handleVarReferenceChange}
+          filterVar={filterVar}
         />
 
         <Selector

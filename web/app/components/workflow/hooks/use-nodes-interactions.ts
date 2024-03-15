@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type {
   HandleType,
@@ -20,6 +21,7 @@ import type {
 import { BlockEnum } from '../types'
 import { useWorkflowStore } from '../store'
 import {
+  NODES_INITIAL_DATA,
   NODE_WIDTH_X_OFFSET,
   Y_OFFSET,
 } from '../constants'
@@ -27,17 +29,14 @@ import {
   generateNewNode,
   getNodesConnectedSourceOrTargetHandleIdsMap,
 } from '../utils'
-import {
-  useNodesExtraData,
-  useNodesInitialData,
-} from './use-nodes-data'
+import { useNodesExtraData } from './use-nodes-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useWorkflow } from './use-workflow'
 
 export const useNodesInteractions = () => {
+  const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const nodesInitialData = useNodesInitialData()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getAfterNodesInSameBranch } = useWorkflow()
@@ -422,8 +421,8 @@ export const useNodesInteractions = () => {
     const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const newNode = generateNewNode({
       data: {
-        ...nodesInitialData[nodeType],
-        title: nodesWithSameType.length > 0 ? `${nodesInitialData[nodeType].title} ${nodesWithSameType.length + 1}` : nodesInitialData[nodeType].title,
+        ...NODES_INITIAL_DATA[nodeType],
+        title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
         ...(toolDefaultValue || {}),
         selected: true,
       },
@@ -566,7 +565,7 @@ export const useNodesInteractions = () => {
       setEdges(newEdges)
     }
     handleSyncWorkflowDraft()
-  }, [store, nodesInitialData, handleSyncWorkflowDraft, getAfterNodesInSameBranch, workflowStore])
+  }, [store, handleSyncWorkflowDraft, getAfterNodesInSameBranch, workflowStore, t])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -591,8 +590,8 @@ export const useNodesInteractions = () => {
     const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const newCurrentNode = generateNewNode({
       data: {
-        ...nodesInitialData[nodeType],
-        title: nodesWithSameType.length > 0 ? `${nodesInitialData[nodeType].title} ${nodesWithSameType.length + 1}` : nodesInitialData[nodeType].title,
+        ...NODES_INITIAL_DATA[nodeType],
+        title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
         ...(toolDefaultValue || {}),
         _connectedSourceHandleIds: [],
         _connectedTargetHandleIds: [],
@@ -632,7 +631,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, nodesInitialData, handleSyncWorkflowDraft, workflowStore])
+  }, [store, handleSyncWorkflowDraft, workflowStore, t])
 
   return {
     handleNodeDragStart,

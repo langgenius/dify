@@ -4,9 +4,10 @@ import { useClickAway } from 'ahooks'
 import Card from './card'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import type { VisionFile } from '@/types/app'
 
 type PromptLogModalProps = {
-  log: { role: string; text: string }[]
+  log: { role: string; text: string; files?: VisionFile[] }[]
   width: number
   onCancel: () => void
 }
@@ -19,8 +20,10 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
   const [mounted, setMounted] = useState(false)
 
   useClickAway(() => {
-    if (mounted)
+    if (mounted) {
+      console.log(111)
       onCancel()
+    }
   }, ref)
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
@@ -11,7 +11,6 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -21,10 +20,6 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const readOnly = false
-  const {
-    currentProvider,
-    currentModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(1)
 
   const {
     inputs,
@@ -42,19 +37,10 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     query,
     setQuery,
     runResult,
+    filterVar,
   } = useConfig(id, data)
 
   const model = inputs.model
-
-  useEffect(() => {
-    if (currentProvider?.provider && currentModel?.model && !model.provider) {
-      handleModelChanged({
-        provider: currentProvider?.provider,
-        modelId: currentModel?.model,
-        mode: currentModel?.model_properties?.mode as string,
-      })
-    }
-  }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
   return (
     <div>
@@ -68,6 +54,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             nodeId={id}
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
+            filterVar={filterVar}
           />
         </Field>
         <Field

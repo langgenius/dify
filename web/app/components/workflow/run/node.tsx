@@ -24,6 +24,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
       return `${(time * 1000).toFixed(3)} ms`
     if (time > 60)
       return `${parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
+    return `${time.toFixed(3)} s`
   }
 
   const getTokenCount = (tokens: number) => {

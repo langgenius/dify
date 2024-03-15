@@ -1,4 +1,4 @@
-import type { FC, RefObject } from 'react'
+import type { Dispatch, FC, SetStateAction } from 'react'
 import {
   memo,
   useMemo,
@@ -24,14 +24,14 @@ type OperationProps = {
   question: string
   index: number
   showPromptLog?: boolean
-  containerRef: RefObject<HTMLElement>
+  setShowPromptLogModal: Dispatch<SetStateAction<boolean>>
 }
 const Operation: FC<OperationProps> = ({
   item,
   question,
   index,
   showPromptLog,
-  containerRef,
+  setShowPromptLogModal,
 }) => {
   const { t } = useTranslation()
   const {
@@ -79,7 +79,7 @@ const Operation: FC<OperationProps> = ({
 
       <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
         {showPromptLog && (
-          <Log runID={item.workflow_run_id} log={item.log!} containerRef={containerRef} />
+          <Log runID={item.workflow_run_id} setShowModal={setShowPromptLogModal} />
         )}
         {(!isOpeningStatement && config?.text_to_speech?.enabled) && (
           <>

@@ -4,6 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { useWorkflowStore } from '../../store'
+import { useWorkflowRun } from '../../hooks'
 import UserInput from './user-input'
 import { useChat } from './hooks'
 import Chat from '@/app/components/base/chat/chat'
@@ -11,11 +12,11 @@ import type { OnSend } from '@/app/components/base/chat/types'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { fetchConvesationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { stopWorkflowRun } from '@/service/workflow'
 
 const ChatWrapper = () => {
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
+  const { handleStopRun } = useWorkflowRun()
   const features = featuresStore!.getState().features
 
   const config = useMemo(() => {
@@ -58,12 +59,9 @@ const ChatWrapper = () => {
   }, [conversationId, handleSend, workflowStore])
 
   const doStop = useCallback(() => {
-    const appId = useAppStore.getState().appDetail?.id
-    const taskId = workflowStore.getState().taskId
-
     handleStop()
-    stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
-  }, [handleStop, workflowStore])
+    handleStopRun()
+  }, [handleStop, handleStopRun])
 
   return (
     <Chat

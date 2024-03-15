@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import useOutputVarList from '../_base/hooks/use-output-var-list'
+import { VarType } from '../../types'
+import type { Var } from '../../types'
 import type { CodeLanguage, CodeNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
@@ -31,6 +33,10 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     inputs,
     setInputs,
   })
+
+  const filterVar = useCallback((varPayload: Var) => {
+    return [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
+  }, [])
 
   // single run
   const {
@@ -72,6 +78,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     handleCodeChange,
     handleCodeLanguageChange,
     handleVarsChange,
+    filterVar,
     handleAddOutputVariable,
     // single run
     isShowSingleRun,
