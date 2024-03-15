@@ -20,6 +20,7 @@ import {
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   useNodeDataUpdate,
+  useNodesExtraData,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
@@ -27,7 +28,6 @@ import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/develop
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 type BasePanelProps = {
   children: ReactElement
@@ -40,6 +40,9 @@ const BasePanel: FC<BasePanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { handleNodeSelect } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
+  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+
   const {
     handleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft,
@@ -102,7 +105,7 @@ const BasePanel: FC<BasePanelProps> = ({
         {cloneElement(children, { id, data })}
       </div>
       {
-        data.type !== BlockEnum.End && (
+        !!availableNextNodes.length && (
           <div className='p-4 border-t-[0.5px] border-t-black/5'>
             <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
               <GitBranch01 className='mr-1 w-4 h-4' />

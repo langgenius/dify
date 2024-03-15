@@ -3,23 +3,33 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodesInteractions } from '@/app/components/workflow/hooks'
+import {
+  useNodesExtraData,
+  useNodesInteractions,
+} from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
-import type { OnSelectBlock } from '@/app/components/workflow/types'
+import type {
+  BlockEnum,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
 
 type AddProps = {
   nodeId: string
+  nodeType: BlockEnum
   sourceHandle: string
   branchName?: string
 }
 const Add = ({
   nodeId,
+  nodeType,
   sourceHandle,
   branchName,
 }: AddProps) => {
   const { t } = useTranslation()
   const { handleNodeAdd } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
+  const availableNextNodes = nodesExtraData[nodeType].availableNextNodes
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeAdd(
@@ -65,6 +75,7 @@ const Add = ({
       offset={0}
       trigger={renderTrigger}
       popupClassName='!w-[328px]'
+      availableBlocksTypes={availableNextNodes}
     />
   )
 }

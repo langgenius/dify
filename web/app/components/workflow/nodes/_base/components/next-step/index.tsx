@@ -51,6 +51,7 @@ const NextStep = ({
           !nodeWithBranches && !outgoers.length && (
             <Add
               nodeId={selectedNode!.id}
+              nodeType={selectedNode!.data.type}
               sourceHandle='source'
             />
           )
@@ -81,6 +82,7 @@ const NextStep = ({
                       <Add
                         key={branch.id}
                         nodeId={selectedNode!.id}
+                        nodeType={selectedNode!.data.type}
                         sourceHandle={branch.id}
                         branchName={branch.name}
                       />

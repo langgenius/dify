@@ -96,13 +96,7 @@ export const useWorkflow = () => {
     list.push(...incomers)
 
     return list.filter((item) => {
-      if (item.data.type === BlockEnum.IfElse)
-        return false
-
-      if (item.data.type === BlockEnum.QuestionClassifier)
-        return false
-
-      return true
+      return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
   }, [store])
 
@@ -175,21 +169,16 @@ export const useWorkflow = () => {
     return list
   }, [store])
 
-  const getIncomersNodes = useCallback((currentNode: Node) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-
-    return getIncomers(currentNode, getNodes(), edges)
-  }, [store])
+  const isValidConnection = useCallback(() => {
+    return true
+  }, [])
 
   return {
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getAfterNodesInSameBranch,
-    getIncomersNodes,
+    isValidConnection,
   }
 }
 

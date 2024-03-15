@@ -3,13 +3,17 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { union } from 'lodash-es'
 import type {
   CommonNodeType,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useNodesInteractions } from '@/app/components/workflow/hooks'
+import {
+  useNodesExtraData,
+  useNodesInteractions,
+} from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
 
 type ItemProps = {
@@ -26,6 +30,9 @@ const Item = ({
 }: ItemProps) => {
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
+  const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
+  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
   }, [nodeId, sourceHandle, handleNodeChange])
@@ -68,6 +75,7 @@ const Item = ({
         }}
         trigger={renderTrigger}
         popupClassName='!w-[328px]'
+        availableBlocksTypes={union(availablePrevNodes, availableNextNodes)}
       />
     </div>
   )

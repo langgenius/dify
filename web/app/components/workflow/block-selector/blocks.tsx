@@ -19,10 +19,12 @@ import Tooltip from '@/app/components/base/tooltip'
 type BlocksProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  availableBlocksTypes?: BlockEnum[]
 }
 const Blocks = ({
   searchText,
   onSelect,
+  availableBlocksTypes = [],
 }: BlocksProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -35,7 +37,7 @@ const Blocks = ({
         if (block.type === BlockEnum.Answer && !isChatMode)
           return false
 
-        return block.title.toLowerCase().includes(searchText.toLowerCase())
+        return block.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.type)
       })
 
       return {
@@ -43,7 +45,7 @@ const Blocks = ({
         [classification]: list,
       }
     }, {} as Record<string, typeof blocks>)
-  }, [blocks, isChatMode, searchText])
+  }, [blocks, isChatMode, searchText, availableBlocksTypes])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: string) => {

@@ -10,6 +10,7 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   useOnViewportChange,
+  useStoreApi,
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -21,6 +22,7 @@ import {
   useEdgesInteractions,
   useNodesInteractions,
   useNodesSyncDraft,
+  useWorkflow,
   useWorkflowInit,
 } from './hooks'
 import Header from './header'
@@ -60,6 +62,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const runningStatus = useStore(s => s.runningStatus)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const store = useStoreApi()
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -84,6 +87,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeDelete,
     handleEdgesChange,
   } = useEdgesInteractions()
+  const { isValidConnection } = useWorkflow()
 
   useOnViewportChange({
     onEnd: () => handleSyncWorkflowDraft(),
@@ -130,6 +134,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         zoomOnPinch={!runningStatus}
         zoomOnScroll={!runningStatus}
         zoomOnDoubleClick={!runningStatus}
+        isValidConnection={isValidConnection}
       >
         <Background
           gap={[14, 14]}

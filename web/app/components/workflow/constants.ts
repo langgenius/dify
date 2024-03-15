@@ -13,59 +13,128 @@ import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
 import EndNodeDefault from './nodes/end/default'
 
-export const NODES_EXTRA_DATA = {
+type NodesExtraData = {
+  author: string
+  about: string
+  availablePrevNodes: BlockEnum[]
+  availableNextNodes: BlockEnum[]
+  getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
+  getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
+  checkValid: any
+}
+export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
   [BlockEnum.Start]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: StartNodeDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: StartNodeDefault.getAvailableNextNodes,
+    checkValid: StartNodeDefault.checkValid,
   },
   [BlockEnum.End]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: EndNodeDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: EndNodeDefault.getAvailableNextNodes,
+    checkValid: EndNodeDefault.checkValid,
   },
   [BlockEnum.Answer]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: AnswerDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: AnswerDefault.getAvailableNextNodes,
+    checkValid: AnswerDefault.checkValid,
   },
   [BlockEnum.LLM]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: LLMDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: LLMDefault.getAvailableNextNodes,
+    checkValid: LLMDefault.checkValid,
   },
   [BlockEnum.KnowledgeRetrieval]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: KnowledgeRetrievalDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: KnowledgeRetrievalDefault.getAvailableNextNodes,
+    checkValid: KnowledgeRetrievalDefault.checkValid,
   },
   [BlockEnum.IfElse]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: IfElseDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: IfElseDefault.getAvailableNextNodes,
+    checkValid: IfElseDefault.checkValid,
   },
   [BlockEnum.Code]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: CodeDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: CodeDefault.getAvailableNextNodes,
+    checkValid: CodeDefault.checkValid,
   },
   [BlockEnum.TemplateTransform]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: TemplateTransformDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: TemplateTransformDefault.getAvailableNextNodes,
+    checkValid: TemplateTransformDefault.checkValid,
   },
   [BlockEnum.QuestionClassifier]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: QuestionClassifierDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: QuestionClassifierDefault.getAvailableNextNodes,
+    checkValid: QuestionClassifierDefault.checkValid,
   },
   [BlockEnum.HttpRequest]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: HttpRequestDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
+    checkValid: HttpRequestDefault.checkValid,
   },
   [BlockEnum.VariableAssigner]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: VariableAssignerDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
+    checkValid: VariableAssignerDefault.checkValid,
   },
   [BlockEnum.Tool]: {
     author: 'Dify',
     about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: ToolDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: ToolDefault.getAvailableNextNodes,
+    checkValid: ToolDefault.checkValid,
   },
 }
 
-export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End) as BlockEnum[]
-export const ALL_COMPLETION_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.Answer) as BlockEnum[]
+export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End && key !== BlockEnum.Start) as BlockEnum[]
+export const ALL_COMPLETION_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.Answer && key !== BlockEnum.Start) as BlockEnum[]
 
 export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {

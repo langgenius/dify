@@ -13,10 +13,12 @@ import Blocks from './blocks'
 export type TabsProps = {
   searchText: string
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  availableBlocksTypes?: BlockEnum[]
 }
 const Tabs: FC<TabsProps> = ({
   searchText,
   onSelect,
+  availableBlocksTypes,
 }) => {
   const tabs = useTabs()
   const [activeTab, setActiveTab] = useState(tabs[0].key)
@@ -46,6 +48,7 @@ const Tabs: FC<TabsProps> = ({
           <Blocks
             searchText={searchText}
             onSelect={onSelect}
+            availableBlocksTypes={availableBlocksTypes}
           />
         )
       }

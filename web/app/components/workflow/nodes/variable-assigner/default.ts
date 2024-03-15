@@ -1,4 +1,5 @@
 import { type NodeDefault, VarType } from '../../types'
+import { BlockEnum } from '../../types'
 import type { VariableAssignerNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
@@ -9,7 +10,7 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
+    return nodes.filter(type => type !== BlockEnum.IfElse && type !== BlockEnum.QuestionClassifier)
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS

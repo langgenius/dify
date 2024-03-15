@@ -12,6 +12,7 @@ import type {
   OffsetOptions,
   Placement,
 } from '@floating-ui/react'
+import type { BlockEnum, OnSelectBlock } from '../types'
 import Tabs from './tabs'
 import {
   PortalToFollowElem,
@@ -22,7 +23,6 @@ import {
   Plus02,
   SearchLg,
 } from '@/app/components/base/icons/src/vender/line/general'
-import type { OnSelectBlock } from '@/app/components/workflow/types'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type NodeSelectorProps = {
@@ -36,6 +36,7 @@ type NodeSelectorProps = {
   triggerClassName?: (open: boolean) => string
   popupClassName?: string
   asChild?: boolean
+  availableBlocksTypes?: BlockEnum[]
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -48,6 +49,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   triggerStyle,
   popupClassName,
   asChild,
+  availableBlocksTypes,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -125,6 +127,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
           <Tabs
             onSelect={handleSelect}
             searchText={searchText}
+            availableBlocksTypes={availableBlocksTypes}
           />
         </div>
       </PortalToFollowElemContent>

@@ -129,6 +129,7 @@ const PanelOperator = ({
               data.type !== BlockEnum.Start && (
                 <ChangeBlock
                   nodeId={id}
+                  nodeType={data.type}
                   sourceHandle={edge?.sourceHandle || 'source'}
                 />
               )

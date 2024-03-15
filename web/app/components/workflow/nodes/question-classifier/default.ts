@@ -1,4 +1,5 @@
 import type { NodeDefault } from '../../types'
+import { BlockEnum } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
@@ -21,7 +22,7 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
+    return nodes.filter(type => type !== BlockEnum.VariableAssigner)
   },
   checkValid(payload: QuestionClassifierNodeType) {
     let isValid = true

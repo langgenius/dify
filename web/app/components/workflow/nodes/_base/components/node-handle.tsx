@@ -13,7 +13,10 @@ import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
 import type { ToolDefaultValue } from '../../../block-selector/types'
-import { useNodesInteractions } from '../../../hooks'
+import {
+  useNodesExtraData,
+  useNodesInteractions,
+} from '../../../hooks'
 import { useStore } from '../../../store'
 
 type NodeHandleProps = {
@@ -31,7 +34,10 @@ export const NodeTargetHandle = memo(({
 }: NodeHandleProps) => {
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
+  const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
+  const isConnectable = !!availablePrevNodes.length
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
@@ -67,11 +73,11 @@ export const NodeTargetHandle = memo(({
           ${data.type === BlockEnum.Start && 'opacity-0'}
           ${handleClassName}
         `}
-        isConnectable={data.type !== BlockEnum.Start}
+        isConnectable={isConnectable}
         onClick={handleHandleClick}
       >
         {
-          !connected && data.type !== BlockEnum.Start && (
+          !connected && isConnectable && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -84,6 +90,7 @@ export const NodeTargetHandle = memo(({
                 group-hover:flex
                 ${open && '!flex'}
               `}
+              availableBlocksTypes={availablePrevNodes}
             />
           )
         }
@@ -103,6 +110,9 @@ export const NodeSourceHandle = memo(({
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
+  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+  const isConnectable = !!availableNextNodes.length
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
@@ -142,10 +152,11 @@ export const NodeSourceHandle = memo(({
           ${!connected && 'after:opacity-0'}
           ${handleClassName}
         `}
+        isConnectable={isConnectable}
         onClick={handleHandleClick}
       >
         {
-          !connected && (
+          !connected && isConnectable && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -157,6 +168,7 @@ export const NodeSourceHandle = memo(({
                 group-hover:flex
                 ${open && '!flex'}
               `}
+              availableBlocksTypes={availableNextNodes}
             />
           )
         }

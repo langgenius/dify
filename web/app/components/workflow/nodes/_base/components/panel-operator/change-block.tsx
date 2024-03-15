@@ -3,20 +3,32 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { union } from 'lodash-es'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { useNodesInteractions } from '@/app/components/workflow/hooks'
-import type { OnSelectBlock } from '@/app/components/workflow/types'
+import {
+  useNodesExtraData,
+  useNodesInteractions,
+} from '@/app/components/workflow/hooks'
+import type {
+  BlockEnum,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
 
 type ChangeBlockProps = {
   nodeId: string
+  nodeType: BlockEnum
   sourceHandle: string
 }
 const ChangeBlock = ({
   nodeId,
+  nodeType,
   sourceHandle,
 }: ChangeBlockProps) => {
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
+  const availablePrevNodes = nodesExtraData[nodeType].availablePrevNodes
+  const availableNextNodes = nodesExtraData[nodeType].availableNextNodes
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
@@ -39,6 +51,7 @@ const ChangeBlock = ({
       }}
       onSelect={handleSelect}
       trigger={renderTrigger}
+      availableBlocksTypes={union(availablePrevNodes, availableNextNodes)}
     />
   )
 }
