@@ -39,7 +39,7 @@ const Form: FC<Props> = ({
       draft[key].push(RETRIEVAL_OUTPUT_STRUCT)
     })
     onChange(newValues)
-  }, [values, onChange])
+  }, [values, onChange, inputs])
   return (
     <div className={cn(className, 'space-y-2')}>
       {label && (

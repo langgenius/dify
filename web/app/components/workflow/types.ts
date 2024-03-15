@@ -61,6 +61,9 @@ export type Variable = {
   value_selector: ValueSelector
   variable_type?: VarKindType
   value?: string
+  options?: string[]
+  required?: boolean
+  isParagraph?: boolean
 }
 
 export type VariableWithValue = {
@@ -75,6 +78,7 @@ export enum InputVarType {
   number = 'number',
   url = 'url',
   files = 'files',
+  json = 'json', // obj, array
   contexts = 'contexts', // knowledge retrieval
 }
 
@@ -141,6 +145,10 @@ export type Var = {
   variable: string
   type: VarType
   children?: Var[] // if type is obj, has the children struct
+  isParagraph?: boolean
+  isSelect?: boolean
+  options?: string[]
+  required?: boolean
 }
 
 export type NodeOutPutVar = {

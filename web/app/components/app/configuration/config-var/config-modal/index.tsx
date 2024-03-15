@@ -60,7 +60,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
       return
     }
-    if (isStringInput) {
+    if (isStringInput || type === InputVarType.number) {
       onConfirm(tempPayload)
     }
     else {

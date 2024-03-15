@@ -55,6 +55,10 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
         return {
           variable: v.variable,
           type: inputVarTypeToVarType(v.type),
+          isParagraph: v.type === InputVarType.paragraph,
+          isSelect: v.type === InputVarType.select,
+          options: v.options,
+          required: v.required,
         }
       })
       if (isChatMode) {

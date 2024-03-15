@@ -93,7 +93,7 @@ const VarReferencePicker: FC<Props> = ({
       const isLast = i === value.length - 2
       curr = curr.find((v: any) => v.variable === key)
       if (isLast) {
-        type = curr.type
+        type = curr?.type
       }
       else {
         if (curr.type === VarType.object)

@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import type { CheckValidRes, CommonNodeType, InputVar, Variable } from '@/app/components/workflow/types'
-import { BlockEnum, InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
+import {
+  useIsChatMode,
+  useNodeDataUpdate,
+  useWorkflow,
+} from '@/app/components/workflow/hooks'
+import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+
+import type { CheckValidRes, CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
@@ -22,6 +28,27 @@ type Params<T> = {
   beforeRunCheckValid?: () => CheckValidRes
 }
 
+const varTypeToInputVarType = (type: VarType, {
+  isSelect,
+  isParagraph,
+}: {
+  isSelect: boolean
+  isParagraph: boolean
+}) => {
+  if (isSelect)
+    return InputVarType.select
+  if (isParagraph)
+    return InputVarType.paragraph
+  if (type === VarType.number)
+    return InputVarType.number
+  if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
+    return InputVarType.json
+  if (type === VarType.arrayFile)
+    return InputVarType.files
+
+  return InputVarType.textInput
+}
+
 const useOneStepRun = <T>({
   id,
   data,
@@ -29,6 +56,32 @@ const useOneStepRun = <T>({
   beforeRunCheckValid = () => ({ isValid: true }),
 }: Params<T>) => {
   const { t } = useTranslation()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const isChatMode = useIsChatMode()
+
+  const allOutputVars = toNodeOutputVars(getBeforeNodesInSameBranch(id), isChatMode)
+  const getVar = (valueSelector: ValueSelector): Var | undefined => {
+    let res: Var | undefined
+    const targetVar = allOutputVars.find(v => v.nodeId === valueSelector[0])
+    if (!targetVar)
+      return undefined
+
+    let curr: any = targetVar.vars
+    valueSelector.slice(1).forEach((key, i) => {
+      const isLast = i === valueSelector.length - 2
+      curr = curr.find((v: any) => v.variable === key)
+      if (isLast) {
+        res = curr
+      }
+      else {
+        if (curr.type === VarType.object)
+          curr = curr.children
+      }
+    })
+
+    return res
+  }
+
   const checkValid = checkValidFns[data.type]
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
@@ -91,10 +144,6 @@ const useOneStepRun = <T>({
         throw new Error(res.error)
     }
     catch (e: any) {
-      // Toast.notify({
-      //   type: 'error',
-      //   message: e.toString(),
-      // })
       handleNodeDataUpdate({
         id,
         data: {
@@ -133,14 +182,25 @@ const useOneStepRun = <T>({
     if (!variables)
       return []
 
-    const varInputs = variables.map((item, i) => {
-      const allVarTypes = [InputVarType.textInput, InputVarType.paragraph, InputVarType.number, InputVarType.select, InputVarType.files]
+    const varInputs = variables.map((item) => {
+      const originalVar = getVar(item.value_selector)
+      if (!originalVar) {
+        return {
+          label: item.variable,
+          variable: item.variable,
+          type: InputVarType.textInput,
+          required: true,
+        }
+      }
       return {
         label: item.variable,
         variable: item.variable,
-        type: allVarTypes[i % allVarTypes.length], // TODO: dynamic get var type
-        required: true, // TODO
-        options: ['a', 'b', 'c'], // TODO
+        type: varTypeToInputVarType(originalVar.type, {
+          isSelect: !!originalVar.isSelect,
+          isParagraph: !!originalVar.isParagraph,
+        }),
+        required: item.required !== false,
+        options: originalVar.options,
       }
     })
 
