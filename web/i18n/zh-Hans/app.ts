@@ -29,6 +29,7 @@ const translation = {
     completionWarning: '该类型不久后将不再支持创建',
     agentDescription: '构建一个智能Agent，可以自主选择工具来完成任务',
     workflowDescription: 'Description text here',
+    workflowWarning: '正在进行 Beta 测试',
     chatbotType: '聊天助手编排方法',
     basic: '基础编排',
     basicFor: '新手适用',

@@ -165,7 +165,7 @@ const AppForm = ({
                 <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
                 <div className='flex items-center text-indigo-600'>
                   <InfoCircle className='w-3 h-3 mr-1'/>
-                  <div>{t('app.newApp.completionWarning')}</div>
+                  <div>{t('app.newApp.workflowWarning')}</div>
                 </div>
               </div>
             }

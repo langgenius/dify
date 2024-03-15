@@ -30,6 +30,7 @@ const translation = {
     completionWarning: 'This type of app will no longer be supported.',
     agentDescription: 'Build an intelligent Agent which can autonomously choose tools to complete the tasks',
     workflowDescription: 'Description text here',
+    workflowWarning: 'Currently in beta',
     chatbotType: 'Chatbot orchestrate method',
     basic: 'Basic Orchestrate',
     basicFor: 'FOR BEGINNERS',
