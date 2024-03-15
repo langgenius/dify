@@ -91,6 +91,10 @@ export const useWorkflow = () => {
       list.push(node)
     })
 
+    const incomers = getIncomers({ id: nodeId } as Node, nodes, edges)
+
+    list.push(...incomers)
+
     return list.filter((item) => {
       if (item.data.type === BlockEnum.IfElse)
         return false
