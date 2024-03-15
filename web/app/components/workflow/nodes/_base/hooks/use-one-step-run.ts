@@ -128,7 +128,6 @@ const useOneStepRun = <T>({
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
-    console.log(submitData)
     handleNodeDataUpdate({
       id,
       data: {

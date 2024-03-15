@@ -118,7 +118,7 @@ const VarReferencePopup: FC<Props> = ({
   itemWidth,
 }) => {
   const { t } = useTranslation()
-
+  // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
       width: itemWidth || 228,

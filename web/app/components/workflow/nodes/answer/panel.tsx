@@ -24,6 +24,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
     handleVarListChange,
     handleAddVariable,
     handleAnswerChange,
+    filterVar,
   } = useConfig(id, data)
 
   return (
@@ -39,6 +40,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
           readonly={readOnly}
           list={inputs.variables}
           onChange={handleVarListChange}
+          filterVar={filterVar}
         />
       </Field>
       <Split />
