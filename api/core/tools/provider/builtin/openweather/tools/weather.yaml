@@ -1,17 +1,17 @@
 identity:
-  name: open_weather
+  name: weather
   author: Onelevenvy
   label:
-    en_US: Weather Forecast
+    en_US: Open Weather Query
     zh_Hans: 天气查询
     pt_BR: Previsão do tempo
-  icon: icon.svg
+  icon: icon.png
 description:
   human:
     en_US: Weather forecast inquiry
-    zh_Hans: 天气预报查询。
-    pt_BR: Inquérito sobre previsão meteorológica.
-  llm: A tool when you want to ask about the weather or weather-related question.
+    zh_Hans: 天气查询
+    pt_BR: Inquérito sobre previsão meteorológica
+  llm: A tool when you want to ask about the weather or weather-related question
 parameters:
   - name: city
     type: string
@@ -21,10 +21,14 @@ parameters:
       zh_Hans: 城市
       pt_BR: cidade
     human_description:
-      en_US: Target city for weather forecast query.
-      zh_Hans: 天气预报查询的目标城市。
-      pt_BR: Cidade de destino para consulta de previsão do tempo.
-    llm_description: If you don't know you can extract the city name from the question or you can reply：Please tell me your city. You have to extract the Chinese city name from the question.如果输入的地区是中国的中文字符，就换成对应的英文名称，如北京市，正确的输入应该为"beijing"
+      en_US: Target city for weather forecast query
+      zh_Hans: 天气预报查询的目标城市
+      pt_BR: Cidade de destino para consulta de previsão do tempo
+    llm_description: If you don't know you can extract the city name from the
+      question or you can reply：Please tell me your city. You have to extract
+      the Chinese city name from the question.If the input region is in Chinese
+      characters for China, it should be replaced with the corresponding English
+      name, such as '北京' for correct input is 'Beijing'
     form: llm
   - name: lang
     type: select

@@ -17,7 +17,7 @@ class OpenweatherProvider(BuiltinToolProviderController):
         try:
             if "api_key" not in credentials or not credentials.get("api_key"):
                 raise ToolProviderCredentialValidationError(
-                    "Openweather API key is required."
+                    "Open weather API key is required."
                 )
             apikey = credentials.get("api_key")
             try:
@@ -30,7 +30,7 @@ class OpenweatherProvider(BuiltinToolProviderController):
                     )
             except Exception as e:
                 raise ToolProviderCredentialValidationError(
-                    "Openweather API Key is invalid. {}".format(e)
+                    "Open weather API Key is invalid. {}".format(e)
                 )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

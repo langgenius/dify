@@ -25,7 +25,6 @@ class Url:
         this.host = host
         this.path = path
         this.schema = schema
-        pass
 
 
 # calculate sha256 and encode to base64
@@ -48,8 +47,6 @@ def parse_url(requset_url):
     u = Url(host, path, schema)
     return u
 
-
-# 生成鉴权url
 def assemble_ws_auth_url(requset_url, method="GET", api_key="", api_secret=""):
     u = parse_url(requset_url)
     host = u.host
@@ -75,8 +72,7 @@ def assemble_ws_auth_url(requset_url, method="GET", api_key="", api_secret=""):
     return requset_url + "?" + urlencode(values)
 
 
-# 生成请求body体
-def getBody(appid, text):
+def get_body(appid, text):
     body = {
         "header": {"app_id": appid, "uid": "123456789"},
         "parameter": {
@@ -92,7 +88,7 @@ def spark_response(text, appid, apikey, apisecret):
     url = assemble_ws_auth_url(
         host, method="POST", api_key=apikey, api_secret=apisecret
     )
-    content = getBody(appid, text)
+    content = get_body(appid, text)
     response = requests.post(
         url, json=content, headers={"content-type": "application/json"}
     ).text

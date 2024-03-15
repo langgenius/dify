@@ -1,7 +1,7 @@
 import json
 
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.sparkimagegeneration.tools.sparkimggen import spark_response
+from core.tools.provider.builtin.spark.tools.spark_img_generation import spark_response
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
@@ -18,7 +18,7 @@ class SparkText2picProvider(BuiltinToolProviderController):
             appid = credentials.get("APPID")
             apisecret = credentials.get("APISecret")
             apikey = credentials.get("APIKey")
-            prompt = "a small black dog"
+            prompt = "a cute black dog"
 
             try:
                 response = spark_response(prompt, appid, apikey, apisecret)

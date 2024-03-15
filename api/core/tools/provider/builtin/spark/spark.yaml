@@ -1,19 +1,18 @@
 identity:
   author: Onelevenvy
-  name: sparkimagegeneration
+  name: spark
   label:
-    en_US: Sparktex2img
-    zh_Hans: 讯飞星火图片生成
-    pt_BR: Sparktex2img
+    en_US: Spark
+    zh_Hans: 讯飞星火
+    pt_BR: Spark
   description:
-    en_US: Sparktex2img art
-    zh_Hans: 根据用户输入的文本绘制精美的图片，是文本到图片的工具，由讯飞星火提供图片生成api
-    pt_BR: Sparktex2img art
+    en_US: Spark Platform Toolkit
+    zh_Hans: 讯飞星火平台工具
+    pt_BR: Pacote de Ferramentas da Plataforma Spark
   icon: icon.png
 credentials_for_provider:
   APPID:
     type: secret-input
-    # type: text-input
     required: true
     label:
       en_US: Spark APPID
@@ -29,7 +28,6 @@ credentials_for_provider:
       pt_BR: Please input your APPID
   APISecret:
     type: secret-input
-    # type: text-input
     required: true
     label:
       en_US: Spark APISecret
@@ -45,7 +43,6 @@ credentials_for_provider:
       pt_BR: Please input your Spark APISecret
   APIKey:
     type: secret-input
-    # type: text-input
     required: true
     label:
       en_US: Spark APIKey
