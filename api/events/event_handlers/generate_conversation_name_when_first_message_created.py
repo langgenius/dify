@@ -27,5 +27,6 @@ def handle(sender, **kwargs):
                 conversation.name = name
             except:
                 pass
-
+                
+            db.session.merge(conversation)
             db.session.commit()

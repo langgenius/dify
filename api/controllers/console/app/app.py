@@ -115,29 +115,34 @@ class AppApi(Resource):
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             for tool in agent_mode.get('tools') or []:
+                if not isinstance(tool, dict) or len(tool.keys()) <= 3:
+                    continue
                 agent_tool_entity = AgentToolEntity(**tool)
                 # get tool
-                tool_runtime = ToolManager.get_agent_tool_runtime(
-                    tenant_id=current_user.current_tenant_id,
-                    agent_tool=agent_tool_entity,
-                    agent_callback=None
-                )
-                manager = ToolParameterConfigurationManager(
-                    tenant_id=current_user.current_tenant_id,
-                    tool_runtime=tool_runtime,
-                    provider_name=agent_tool_entity.provider_id,
-                    provider_type=agent_tool_entity.provider_type,
-                )
+                try:
+                    tool_runtime = ToolManager.get_agent_tool_runtime(
+                        tenant_id=current_user.current_tenant_id,
+                        agent_tool=agent_tool_entity,
+                        agent_callback=None
+                    )
+                    manager = ToolParameterConfigurationManager(
+                        tenant_id=current_user.current_tenant_id,
+                        tool_runtime=tool_runtime,
+                        provider_name=agent_tool_entity.provider_id,
+                        provider_type=agent_tool_entity.provider_type,
+                    )
 
-                # get decrypted parameters
-                if agent_tool_entity.tool_parameters:
-                    parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
-                    masked_parameter = manager.mask_tool_parameters(parameters or {})
-                else:
-                    masked_parameter = {}
+                    # get decrypted parameters
+                    if agent_tool_entity.tool_parameters:
+                        parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
+                        masked_parameter = manager.mask_tool_parameters(parameters or {})
+                    else:
+                        masked_parameter = {}
 
-                # override tool parameters
-                tool['tool_parameters'] = masked_parameter
+                    # override tool parameters
+                    tool['tool_parameters'] = masked_parameter
+                except Exception as e:
+                    pass
 
             # override agent mode
             model_config.agent_mode = json.dumps(agent_mode)

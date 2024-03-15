@@ -70,7 +70,7 @@ class AudioApi(Resource):
 
 
 class TextApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
         parser.add_argument('text', type=str, required=True, nullable=False, location='json')

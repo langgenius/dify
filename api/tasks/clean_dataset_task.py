@@ -44,6 +44,10 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
 
+        if documents is None or len(documents) == 0:
+            logging.info(click.style('No documents found for dataset: {}'.format(dataset_id), fg='green'))
+            return
+
         index_processor = IndexProcessorFactory(doc_form).init_index_processor()
         index_processor.clean(dataset, None)
 

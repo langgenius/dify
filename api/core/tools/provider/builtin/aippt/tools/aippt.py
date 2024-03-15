@@ -455,7 +455,7 @@ class AIPPTGenerateTool(BuiltinTool):
         :return: Tuple[list[dict[id, color]], list[dict[id, style]]
         """
         if not self.runtime.credentials.get('aippt_access_key') or not self.runtime.credentials.get('aippt_secret_key'):
-            return [], []
+            raise Exception('Please provide aippt credentials')
 
         return self._get_styles(credentials=self.runtime.credentials, user_id=user_id)
     

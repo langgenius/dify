@@ -14,11 +14,11 @@ class SuggestedQuestionsAfterAnswerOutputParser(BaseOutputParser):
         return SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
     def parse(self, text: str) -> Any:
-        json_string = text.strip()
-        action_match = re.search(r".*(\[\".+\"\]).*", json_string, re.DOTALL)
+        action_match = re.search(r"\[.*?\]", text.strip(), re.DOTALL)
         if action_match is not None:
-            json_obj = json.loads(action_match.group(1).strip(), strict=False)
+            json_obj = json.loads(action_match.group(0).strip())
         else:
-            raise InvokeError("Could not parse LLM output: {text}")
+            json_obj= []
+            print(f"Could not parse LLM output: {text}")
 
         return json_obj
