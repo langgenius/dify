@@ -22,7 +22,7 @@ const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
   const store = useStoreApi()
-  const branches = selectedNode.data._targetBranches
+  const branches = selectedNode.data._targetBranches || []
   const nodeWithBranches = selectedNode.data.type === BlockEnum.IfElse || selectedNode.data.type === BlockEnum.QuestionClassifier
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
@@ -36,7 +36,7 @@ const NextStep = ({
           toolProviderId={selectedNode!.data.provider_id}
         />
       </div>
-      <Line linesNumber={branches ? branches.length : 1} />
+      <Line linesNumber={nodeWithBranches ? branches.length : 1} />
       <div className='grow'>
         {
           !nodeWithBranches && !!outgoers.length && (

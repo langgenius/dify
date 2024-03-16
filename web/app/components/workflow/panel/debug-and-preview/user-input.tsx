@@ -29,6 +29,9 @@ const UserInput = () => {
     })
   }
 
+  if (!variables.length)
+    return null
+
   return (
     <div
       className={`

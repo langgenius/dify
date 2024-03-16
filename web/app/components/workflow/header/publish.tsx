@@ -1,6 +1,12 @@
-import { useState } from 'react'
+import {
+  memo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '../store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -12,13 +18,17 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 
 const Publish = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const runningStatus = useStore(s => s.runningStatus)
   const [open, setOpen] = useState(false)
 
   const handlePublish = async () => {
     const appId = useAppStore.getState().appDetail?.id
     try {
-      await publishWorkflow(`/apps/${appId}/workflows/publish`)
+      const res = await publishWorkflow(`/apps/${appId}/workflows/publish`)
+
+      if (res)
+        workflowStore.setState({ publishedAt: res.created_at })
     }
     catch (e) {
     }
@@ -86,4 +96,4 @@ const Publish = () => {
   )
 }
 
-export default Publish
+export default memo(Publish)

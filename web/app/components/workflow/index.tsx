@@ -13,6 +13,7 @@ import ReactFlow, {
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
+import './style.css'
 import type {
   Edge,
   Node,
@@ -61,6 +62,7 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const runningStatus = useStore(s => s.runningStatus)
+  const nodeAnimation = useStore(s => s.nodeAnimation)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   useEffect(() => {
@@ -99,7 +101,11 @@ const Workflow: FC<WorkflowProps> = memo(({
   return (
     <div
       id='workflow-container'
-      className='relative w-full min-w-[960px] h-full bg-[#F0F2F7]'
+      className={`
+        relative w-full min-w-[960px] h-full bg-[#F0F2F7]
+        ${runningStatus && 'workflow-panel-animation'}
+        ${nodeAnimation && 'workflow-node-animation'}
+      `}
     >
       <Header />
       <Panel />
@@ -109,7 +115,6 @@ const Workflow: FC<WorkflowProps> = memo(({
       }
       <HelpLine />
       <ReactFlow
-        className='workflow-inner'
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         nodes={nodes}

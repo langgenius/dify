@@ -1,4 +1,4 @@
-import React from 'react'
+import { memo } from 'react'
 import type { ConnectionLineComponentProps } from 'reactflow'
 import {
   Position,
@@ -36,4 +36,4 @@ const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponen
   )
 }
 
-export default CustomConnectionLine
+export default memo(CustomConnectionLine)
