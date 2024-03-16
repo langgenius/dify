@@ -2,6 +2,9 @@ model: anthropic.claude-3-sonnet-20240229-v1:0
 label:
   en_US: Claude3 Sonnet
 model_type: llm
+features:
+  - agent-thought
+  - vision
 model_properties:
   mode: chat
   context_size: 200000
