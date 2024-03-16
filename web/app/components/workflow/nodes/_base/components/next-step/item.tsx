@@ -55,7 +55,10 @@ const Item = ({
     >
       {
         branchName && (
-          <div className='absolute left-1 -top-[7.5px] flex items-center px-0.5 h-3 bg-white text-[10px] text-gray-500 font-semibold rounded-[5px]'>
+          <div
+            className='absolute left-1 right-1 -top-[7.5px] flex items-center px-0.5 h-3 bg-white text-[10px] text-gray-500 font-semibold rounded-[5px] truncate'
+            title={branchName.toLocaleUpperCase()}
+          >
             {branchName.toLocaleUpperCase()}
           </div>
         )

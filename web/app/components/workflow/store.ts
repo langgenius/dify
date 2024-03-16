@@ -13,7 +13,6 @@ import type {
   ToolInWorkflow,
   ToolsMap,
 } from './block-selector/types'
-import { Mode } from './types'
 import type {
   Edge,
   Node,
@@ -22,7 +21,6 @@ import type {
 import { WorkflowContext } from './context'
 
 type State = {
-  mode: Mode
   taskId: string
   currentSequenceNumber: number
   workflowRunId: string
@@ -44,10 +42,10 @@ type State = {
   }
   notInitialWorkflow: boolean
   nodesDefaultConfigs: Record<string, any>
+  nodeAnimation: boolean
 }
 
 type Action = {
-  setMode: (mode: Mode) => void
   setTaskId: (taskId: string) => void
   setCurrentSequenceNumber: (currentSequenceNumber: number) => void
   setWorkflowRunId: (workflowRunId: string) => void
@@ -65,18 +63,17 @@ type Action = {
   setBackupDraft: (backupDraft?: State['backupDraft']) => void
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
+  setNodeAnimation: (nodeAnimation: boolean) => void
 }
 
 export const createWorkflowStore = () => {
   return create<State & Action>(set => ({
-    mode: Mode.Editing,
     taskId: '',
     setTaskId: taskId => set(() => ({ taskId })),
     currentSequenceNumber: 0,
     setCurrentSequenceNumber: currentSequenceNumber => set(() => ({ currentSequenceNumber })),
     workflowRunId: '',
     setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
-    setMode: mode => set(() => ({ mode })),
     showRunHistory: false,
     setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
     showFeaturesPanel: false,
@@ -105,6 +102,8 @@ export const createWorkflowStore = () => {
     setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
     nodesDefaultConfigs: {},
     setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
+    nodeAnimation: false,
+    setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
   }))
 }
 

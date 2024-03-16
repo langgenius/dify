@@ -9,7 +9,6 @@ import {
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from '../types'
-import { NODE_WIDTH } from '../constants'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
 import { ssePost } from '@/service/base'
@@ -135,19 +134,17 @@ export const useWorkflowRun = () => {
         onNodeStarted: ({ data }) => {
           const nodes = getNodes()
           const {
-            getViewport,
             setViewport,
           } = reactflow
-
-          const viewport = getViewport()
           const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
           const currentNode = nodes[currentNodeIndex]
           const position = currentNode.position
-          const zoom = 0.5
+          const zoom = 1
+
           setViewport({
+            x: (clientWidth - 400 - currentNode.width!) / 2 - position.x,
+            y: (clientHeight - currentNode.height!) / 2 - position.y,
             zoom,
-            x: (((clientWidth - 400) / 2 - NODE_WIDTH / 2) / viewport.zoom - position.x) * zoom,
-            y: ((clientHeight / 2 - currentNode.height! / 2) / viewport.zoom - position.y) * zoom,
           })
           const newNodes = produce(nodes, (draft) => {
             draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running

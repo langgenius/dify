@@ -40,7 +40,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.VariableAssigner]: VariableAssignerNode,
 }
 
-export const PanelComponentMap: Record<string, ComponentType> = {
+export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartPanel,
   [BlockEnum.End]: EndPanel,
   [BlockEnum.Answer]: AnswerPanel,

@@ -1,9 +1,9 @@
-import type { FC } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../../store'
 import ChatWrapper from './chat-wrapper'
 
-const DebugAndPreview: FC = () => {
+const DebugAndPreview = () => {
   const { t } = useTranslation()
   const showRunHistory = useStore(s => s.showRunHistory)
 
@@ -28,4 +28,4 @@ const DebugAndPreview: FC = () => {
   )
 }
 
-export default DebugAndPreview
+export default memo(DebugAndPreview)

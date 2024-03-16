@@ -59,7 +59,7 @@ export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
     rankdir: 'LR',
     align: 'UL',
     nodesep: 64,
-    ranksep: 64,
+    ranksep: 40,
   })
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: node.width, height: node.height })

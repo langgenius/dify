@@ -44,6 +44,7 @@ export const useNodesInteractions = () => {
   const connectingNodeRef = useRef<{ nodeId: string; handleType: HandleType } | null>(null)
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
+    workflowStore.setState({ nodeAnimation: false })
     const {
       runningStatus,
     } = workflowStore.getState()

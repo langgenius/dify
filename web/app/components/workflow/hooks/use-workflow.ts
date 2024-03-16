@@ -47,10 +47,12 @@ export const useIsChatMode = () => {
 export const useWorkflow = () => {
   const store = useStoreApi()
   const reactflow = useReactFlow()
+  const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleLayout = useCallback(async () => {
+    workflowStore.setState({ nodeAnimation: true })
     const {
       getNodes,
       edges,
@@ -70,13 +72,16 @@ export const useWorkflow = () => {
       })
     })
     setNodes(newNodes)
+    const zoom = 0.7
     setViewport({
       x: 0,
       y: 0,
-      zoom: 0.8,
+      zoom,
     })
-    setTimeout(() => handleSyncWorkflowDraft())
-  }, [store, reactflow, handleSyncWorkflowDraft])
+    setTimeout(() => {
+      handleSyncWorkflowDraft()
+    })
+  }, [store, reactflow, handleSyncWorkflowDraft, workflowStore])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {

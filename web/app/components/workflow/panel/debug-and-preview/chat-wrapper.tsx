@@ -10,7 +10,7 @@ import { useChat } from './hooks'
 import Chat from '@/app/components/base/chat/chat'
 import type { OnSend } from '@/app/components/base/chat/types'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { fetchConvesationMessages } from '@/service/debug'
+import { fetchSuggestedQuestions } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 const ChatWrapper = () => {
@@ -49,10 +49,10 @@ const ChatWrapper = () => {
           query,
           files,
           inputs: workflowStore.getState().inputs,
-          conversationId,
+          conversation_id: conversationId,
         },
         {
-          onGetSuggestedQuestions: (conversationId, getAbortController) => fetchConvesationMessages(appId, conversationId, getAbortController),
+          onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appId, messageId, getAbortController),
         },
       )
     }

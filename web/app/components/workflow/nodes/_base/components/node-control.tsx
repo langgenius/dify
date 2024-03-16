@@ -5,7 +5,10 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodeDataUpdate } from '../../../hooks'
+import {
+  useNodeDataUpdate,
+  useNodesInteractions,
+} from '../../../hooks'
 import type { Node } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
@@ -23,6 +26,7 @@ const NodeControl: FC<NodeControlProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const { handleNodeSelect } = useNodesInteractions()
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
@@ -51,6 +55,7 @@ const NodeControl: FC<NodeControlProps> = ({
                     _isSingleRun: !data._isSingleRun,
                   },
                 })
+                handleNodeSelect(id)
               }}
             >
               {
