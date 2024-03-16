@@ -24,7 +24,7 @@ from services.app_generate_service import AppGenerateService
 logger = logging.getLogger(__name__)
 
 
-class WorkflowRunApi(InstalledAppResource):
+class InstalledAppWorkflowRunApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp):
         """
         Run workflow
@@ -64,7 +64,7 @@ class WorkflowRunApi(InstalledAppResource):
             raise InternalServerError()
 
 
-class WorkflowTaskStopApi(InstalledAppResource):
+class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
     def post(self, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task
@@ -81,5 +81,5 @@ class WorkflowTaskStopApi(InstalledAppResource):
         }
 
 
-api.add_resource(WorkflowRunApi, '/installed-apps/<uuid:installed_app_id>/workflows/run')
-api.add_resource(WorkflowTaskStopApi, '/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop')
+api.add_resource(InstalledAppWorkflowRunApi, '/installed-apps/<uuid:installed_app_id>/workflows/run')
+api.add_resource(InstalledAppWorkflowTaskStopApi, '/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop')
