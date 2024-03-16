@@ -3,12 +3,9 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
 from controllers.console import api
-from controllers.console.app.error import AppNotFoundError
 from controllers.console.wraps import account_initialization_required
-from extensions.ext_database import db
 from libs.login import login_required
-from models.model import App, RecommendedApp
-from services.app_service import AppService
+from services.recommended_app_service import RecommendedAppService
 
 app_fields = {
     'id': fields.String,
@@ -52,38 +49,7 @@ class RecommendedAppListApi(Resource):
         else:
             language_prefix = languages[0]
 
-        recommended_apps = db.session.query(RecommendedApp).filter(
-            RecommendedApp.is_listed == True,
-            RecommendedApp.language == language_prefix
-        ).all()
-
-        categories = set()
-        recommended_apps_result = []
-        for recommended_app in recommended_apps:
-            app = recommended_app.app
-            if not app or not app.is_public:
-                continue
-
-            site = app.site
-            if not site:
-                continue
-
-            recommended_app_result = {
-                'id': recommended_app.id,
-                'app': app,
-                'app_id': recommended_app.app_id,
-                'description': site.description,
-                'copyright': site.copyright,
-                'privacy_policy': site.privacy_policy,
-                'category': recommended_app.category,
-                'position': recommended_app.position,
-                'is_listed': recommended_app.is_listed
-            }
-            recommended_apps_result.append(recommended_app_result)
-
-            categories.add(recommended_app.category)  # add category to categories
-
-        return {'recommended_apps': recommended_apps_result, 'categories': list(categories)}
+        return RecommendedAppService.get_recommended_apps_and_categories(language_prefix)
 
 
 class RecommendedAppApi(Resource):
@@ -91,32 +57,7 @@ class RecommendedAppApi(Resource):
     @account_initialization_required
     def get(self, app_id):
         app_id = str(app_id)
-
-        # is in public recommended list
-        recommended_app = db.session.query(RecommendedApp).filter(
-            RecommendedApp.is_listed == True,
-            RecommendedApp.app_id == app_id
-        ).first()
-
-        if not recommended_app:
-            raise AppNotFoundError
-
-        # get app detail
-        app_model = db.session.query(App).filter(App.id == app_id).first()
-        if not app_model or not app_model.is_public:
-            raise AppNotFoundError
-
-        app_service = AppService()
-        export_str = app_service.export_app(app_model)
-
-        return {
-            'id': app_model.id,
-            'name': app_model.name,
-            'icon': app_model.icon,
-            'icon_background': app_model.icon_background,
-            'mode': app_model.mode,
-            'export_data': export_str
-        }
+        return RecommendedAppService.get_recommend_app_detail(app_id)
 
 
 api.add_resource(RecommendedAppListApi, '/explore/apps')

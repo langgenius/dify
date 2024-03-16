@@ -49,7 +49,8 @@ DEFAULTS = {
     'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
     'HOSTED_MODERATION_ENABLED': 'False',
     'HOSTED_MODERATION_PROVIDERS': '',
-    'HOSTED_EXPOSE_APP_TEMPLATES': 'False',
+    'HOSTED_FETCH_APP_TEMPLATES_MODE': 'remote',
+    'HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN': 'https://tmpl.dify.ai',
     'CLEAN_DAY_SETTING': 30,
     'UPLOAD_FILE_SIZE_LIMIT': 15,
     'UPLOAD_FILE_BATCH_LIMIT': 5,
@@ -291,7 +292,9 @@ class Config:
         self.HOSTED_MODERATION_ENABLED = get_bool_env('HOSTED_MODERATION_ENABLED')
         self.HOSTED_MODERATION_PROVIDERS = get_env('HOSTED_MODERATION_PROVIDERS')
 
-        self.HOSTED_EXPOSE_APP_TEMPLATES = get_bool_env('HOSTED_EXPOSE_APP_TEMPLATES')
+        # fetch app templates mode, remote, builtin, db(only for dify SaaS), default: remote
+        self.HOSTED_FETCH_APP_TEMPLATES_MODE = get_env('HOSTED_FETCH_APP_TEMPLATES_MODE')
+        self.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = get_env('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN')
 
         self.ETL_TYPE = get_env('ETL_TYPE')
         self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')

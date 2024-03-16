@@ -97,6 +97,7 @@ class AppService:
             else:
                 default_model_dict = default_model_config['model']
 
+            default_model_dict = default_model_dict.copy()
             default_model_config['model'] = json.dumps(default_model_dict)
 
         app = App(**app_template['app'])
