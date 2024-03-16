@@ -272,7 +272,6 @@ class WorkflowEngineManager:
 
         return node_instance, node_run_result
 
-
     def _workflow_run_success(self, callbacks: list[BaseWorkflowCallback] = None) -> None:
         """
         Workflow run success
@@ -337,7 +336,8 @@ class WorkflowEngineManager:
 
             # fetch target node id from outgoing edges
             outgoing_edge = None
-            source_handle = predecessor_node.node_run_result.edge_source_handle
+            source_handle = predecessor_node.node_run_result.edge_source_handle \
+                if predecessor_node.node_run_result else None
             if source_handle:
                 for edge in outgoing_edges:
                     if edge.get('source_handle') and edge.get('source_handle') == source_handle:
@@ -463,7 +463,6 @@ class WorkflowEngineManager:
             workflow_run_state.total_tokens += int(node_run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS))
 
         db.session.close()
-
 
     def _append_variables_recursively(self, variable_pool: VariablePool,
                                       node_id: str,

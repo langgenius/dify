@@ -28,7 +28,7 @@ class WorkflowRunState:
 
     total_tokens: int = 0
 
-    workflow_nodes_and_results: list[WorkflowNodeAndResult] = []
+    workflow_nodes_and_results: list[WorkflowNodeAndResult]
 
     def __init__(self, workflow: Workflow,
                  start_at: float,
@@ -44,3 +44,6 @@ class WorkflowRunState:
 
         self.start_at = start_at
         self.variable_pool = variable_pool
+
+        self.total_tokens = 0
+        self.workflow_nodes_and_results = []
