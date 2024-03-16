@@ -13,6 +13,12 @@ class NotChatAppError(BaseHTTPException):
     code = 400
 
 
+class NotWorkflowAppError(BaseHTTPException):
+    error_code = 'not_workflow_app'
+    description = "Only support workflow app."
+    code = 400
+
+
 class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
     error_code = 'app_suggested_questions_after_answer_disabled'
     description = "Function Suggested questions after answer disabled."

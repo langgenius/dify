@@ -119,6 +119,7 @@ class DraftWorkflowRunApi(Resource):
         """
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('files', type=list, required=False, location='json')
         args = parser.parse_args()
 
         try:
