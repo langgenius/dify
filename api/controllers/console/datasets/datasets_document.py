@@ -897,6 +897,7 @@ class DocumentRetryApi(DocumentResource):
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
+        retry_documents = []
         if not dataset:
             raise NotFound('Dataset not found.')
         for document_id in args['document_ids']:
@@ -916,12 +917,12 @@ class DocumentRetryApi(DocumentResource):
                 # 400 if document is completed
                 if document.indexing_status == 'completed':
                     raise DocumentAlreadyFinishedError()
-
-                # retry document
-                DocumentService.retry_document(document)
+                retry_documents.append(document)
             except Exception as e:
                 logging.error(f"Document {document_id} retry failed: {str(e)}")
                 continue
+        # retry document
+        DocumentService.retry_document(dataset_id, retry_documents)
 
         return {'result': 'success'}, 204
 

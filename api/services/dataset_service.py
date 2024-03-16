@@ -481,16 +481,18 @@ class DocumentService:
         recover_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
-    def retry_document(document):
-        # retry document indexing
-        document.indexing_status = 'waiting'
-        db.session.add(document)
-        db.session.commit()
-        # add retry flag
-        retry_indexing_cache_key = 'document_{}_is_retried'.format(document.id)
-        redis_client.setex(retry_indexing_cache_key, 600, 1)
+    def retry_document(dataset_id: str, documents: list[Document]):
+        for document in documents:
+            # retry document indexing
+            document.indexing_status = 'waiting'
+            db.session.add(document)
+            db.session.commit()
+            # add retry flag
+            retry_indexing_cache_key = 'document_{}_is_retried'.format(document.id)
+            redis_client.setex(retry_indexing_cache_key, 600, 1)
         # trigger async task
-        retry_document_indexing_task.delay(document.dataset_id, document.id)
+        document_ids = [document.id for document in documents]
+        retry_document_indexing_task.delay(dataset_id, document_ids)
 
     @staticmethod
     def get_documents_position(dataset_id):
