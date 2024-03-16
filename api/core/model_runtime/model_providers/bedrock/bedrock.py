@@ -18,12 +18,7 @@ class BedrockProvider(ModelProvider):
         """
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
-
-            default_bedrock_validate_model_name = 'amazon.titan-text-lite-v1'
-            bedrock_validate_model_name = os.getenv('AWS_BEDROCK_VALIDATE_MODEL')
-            if bedrock_validate_model_name == "":
-                bedrock_validate_model_name = default_bedrock_validate_model_name
-
+            bedrock_validate_model_name = credentials.get('model_for_validation', 'amazon.titan-text-lite-v1')
             model_instance.validate_credentials(
                 model=bedrock_validate_model_name,
                 credentials=credentials
