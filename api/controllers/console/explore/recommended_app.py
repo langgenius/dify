@@ -4,7 +4,9 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError
+from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
+from libs.login import login_required
 from models.model import App, RecommendedApp
 from services.app_service import AppService
 
@@ -34,6 +36,8 @@ recommended_app_list_fields = {
 
 
 class RecommendedAppListApi(Resource):
+    @login_required
+    @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
@@ -83,6 +87,8 @@ class RecommendedAppListApi(Resource):
 
 
 class RecommendedAppApi(Resource):
+    @login_required
+    @account_initialization_required
     def get(self, app_id):
         app_id = str(app_id)
 
