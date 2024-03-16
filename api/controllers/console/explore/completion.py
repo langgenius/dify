@@ -24,6 +24,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs import helper
 from libs.helper import uuid_value
+from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
 
@@ -95,7 +96,8 @@ class CompletionStopApi(InstalledAppResource):
 class ChatApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -148,7 +150,8 @@ class ChatApi(InstalledAppResource):
 class ChatStopApi(InstalledAppResource):
     def post(self, installed_app, task_id):
         app_model = installed_app.app
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)

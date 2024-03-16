@@ -15,7 +15,7 @@ class NotCompletionAppError(BaseHTTPException):
 
 class NotChatAppError(BaseHTTPException):
     error_code = 'not_chat_app'
-    description = "Please check if your Chat app mode matches the right API route."
+    description = "Please check if your app mode matches the right API route."
     code = 400
 
 

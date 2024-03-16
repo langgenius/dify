@@ -22,6 +22,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
+from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 
 
@@ -88,7 +89,8 @@ class CompletionStopApi(WebApiResource):
 
 class ChatApi(WebApiResource):
     def post(self, app_model, end_user):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -138,7 +140,8 @@ class ChatApi(WebApiResource):
 
 class ChatStopApi(WebApiResource):
     def post(self, app_model, end_user, task_id):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)

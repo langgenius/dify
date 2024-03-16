@@ -26,6 +26,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
 from libs.helper import uuid_value
+from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -38,7 +39,8 @@ class MessageListApi(InstalledAppResource):
     def get(self, installed_app):
         app_model = installed_app.app
 
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -118,8 +120,9 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
         app_model = installed_app.app
-        if app_model.mode != 'chat':
-            raise NotCompletionAppError()
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+            raise NotChatAppError()
 
         message_id = str(message_id)
 
