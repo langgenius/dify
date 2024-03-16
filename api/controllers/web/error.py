@@ -19,6 +19,12 @@ class NotChatAppError(BaseHTTPException):
     code = 400
 
 
+class NotWorkflowAppError(BaseHTTPException):
+    error_code = 'not_workflow_app'
+    description = "Please check if your Workflow app mode matches the right API route."
+    code = 400
+
+
 class ConversationCompletedError(BaseHTTPException):
     error_code = 'conversation_completed'
     description = "The conversation has ended. Please start a new conversation."

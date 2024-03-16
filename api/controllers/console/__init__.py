@@ -16,6 +16,7 @@ from .billing import billing
 # Import datasets controllers
 from .datasets import data_source, datasets, datasets_document, datasets_segments, file, hit_testing
 # Import explore controllers
-from .explore import audio, completion, conversation, installed_app, message, parameter, recommended_app, saved_message
+from .explore import (audio, completion, conversation, installed_app, message, parameter, recommended_app,
+                      saved_message, workflow)
 # Import workspace controllers
 from .workspace import account, members, model_providers, models, tool_providers, workspace
