@@ -1,20 +1,13 @@
 import base64
-import mimetypes
 import json
 import logging
+import mimetypes
 import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
 import boto3
-from botocore.config import Config
-from botocore.exceptions import (
-    ClientError,
-    EndpointConnectionError,
-    NoRegionError,
-    ServiceNotInRegionError,
-    UnknownServiceError,
-)
+import requests
 from anthropic import AnthropicBedrock, Stream
 from anthropic.types import (
     ContentBlockDeltaEvent,
@@ -24,9 +17,15 @@ from anthropic.types import (
     MessageStopEvent,
     MessageStreamEvent,
 )
-import requests
+from botocore.config import Config
+from botocore.exceptions import (
+    ClientError,
+    EndpointConnectionError,
+    NoRegionError,
+    ServiceNotInRegionError,
+    UnknownServiceError,
+)
 
-from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -38,6 +37,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
