@@ -8,7 +8,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField, uuid_value
-from models.model import App, EndUser
+from models.model import App, AppMode, EndUser
 from services.message_service import MessageService
 
 
@@ -71,7 +71,8 @@ class MessageListApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -110,7 +111,8 @@ class MessageSuggestedApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         try:

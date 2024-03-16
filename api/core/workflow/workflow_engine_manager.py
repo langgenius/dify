@@ -137,6 +137,12 @@ class WorkflowEngineManager:
                 if not next_node:
                     break
 
+                # check is already ran
+                if next_node.node_id in [node_and_result.node.node_id
+                                         for node_and_result in workflow_run_state.workflow_nodes_and_results]:
+                    predecessor_node = next_node
+                    continue
+
                 has_entry_node = True
 
                 # max steps 30 reached

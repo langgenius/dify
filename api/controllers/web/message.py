@@ -24,6 +24,7 @@ from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
+from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -76,7 +77,8 @@ class MessageListApi(WebApiResource):
 
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -154,7 +156,8 @@ class MessageMoreLikeThisApi(WebApiResource):
 
 class MessageSuggestedQuestionApi(WebApiResource):
     def get(self, app_model, end_user, message_id):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotCompletionAppError()
 
         message_id = str(message_id)

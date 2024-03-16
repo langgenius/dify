@@ -10,13 +10,11 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.model import App, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
-from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import (
     FirstMessageNotExistsError,
     LastMessageNotExistsError,
     MessageNotExistsError,
-    SuggestedQuestionsAfterAnswerDisabledError,
 )
 
 
@@ -204,9 +202,6 @@ class MessageService:
                 AppModelConfig.id == conversation.app_model_config_id,
                 AppModelConfig.app_id == app_model.id
             ).first()
-
-            if not app_model_config:
-                raise AppModelConfigBrokenError()
         else:
             conversation_override_model_configs = json.loads(conversation.override_model_configs)
             app_model_config = AppModelConfig(
@@ -216,19 +211,21 @@ class MessageService:
 
             app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
 
-        suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
-
-        if check_enabled and suggested_questions_after_answer.get("enabled", False) is False:
-            raise SuggestedQuestionsAfterAnswerDisabledError()
-
         # get memory of conversation (read-only)
         model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=app_model.tenant_id,
-            provider=app_model_config.model_dict['provider'],
-            model_type=ModelType.LLM,
-            model=app_model_config.model_dict['name']
-        )
+
+        if app_model_config:
+            model_instance = model_manager.get_model_instance(
+                tenant_id=app_model.tenant_id,
+                provider=app_model_config.model_dict['provider'],
+                model_type=ModelType.LLM,
+                model=app_model_config.model_dict['name']
+            )
+        else:
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=app_model.tenant_id,
+                model_type=ModelType.LLM
+            )
 
         memory = TokenBufferMemory(
             conversation=conversation,

@@ -3,7 +3,6 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.variable_entities import VariableSelector
 
 
 class RerankingModelConfig(BaseModel):
@@ -44,7 +43,10 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
     """
-    variables: list[VariableSelector]
+    title: str
+    desc: str
+    type: str = 'knowledge-retrieval'
+    query_variable_selector: list[str]
     dataset_ids: list[str]
     retrieval_mode: Literal['single', 'multiple']
     multiple_retrieval_config: MultipleRetrievalConfig
