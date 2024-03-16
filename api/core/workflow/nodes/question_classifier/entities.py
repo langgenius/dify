@@ -1,9 +1,8 @@
-from typing import Any, Literal, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.variable_entities import VariableSelector
 
 
 class ModelConfig(BaseModel):

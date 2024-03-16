@@ -1,16 +1,18 @@
 import json
-from typing import Optional, cast, Union
 from collections.abc import Generator
+from typing import Optional, Union, cast
+
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
-from core.errors.error import ProviderTokenNotInitError, ModelCurrentlyNotSupportError, QuotaExceededError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
@@ -20,14 +22,18 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType, System
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
-from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_SYSTEM_PROMPT, \
-    QUESTION_CLASSIFIER_USER_PROMPT_1, QUESTION_CLASSIFIER_USER_PROMPT_2, QUESTION_CLASSIFIER_USER_PROMPT_3, \
-    QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1, QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2, \
-    QUESTION_CLASSIFIER_COMPLETION_PROMPT
+from core.workflow.nodes.question_classifier.template_prompts import (
+    QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1,
+    QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2,
+    QUESTION_CLASSIFIER_COMPLETION_PROMPT,
+    QUESTION_CLASSIFIER_SYSTEM_PROMPT,
+    QUESTION_CLASSIFIER_USER_PROMPT_1,
+    QUESTION_CLASSIFIER_USER_PROMPT_2,
+    QUESTION_CLASSIFIER_USER_PROMPT_3,
+)
 from extensions.ext_database import db
 from models.model import Conversation
-from models.provider import ProviderType, Provider
-from core.model_runtime.utils.encoders import jsonable_encoder
+from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
 
 

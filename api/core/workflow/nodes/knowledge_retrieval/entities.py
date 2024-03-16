@@ -3,7 +3,6 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.variable_entities import VariableSelector
 
 
 class RerankingModelConfig(BaseModel):
