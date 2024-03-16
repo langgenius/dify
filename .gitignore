@@ -156,3 +156,15 @@ sdks/python-client/dify_client.egg-info
 .vscode/*
 !.vscode/launch.json
 pyrightconfig.json
+
+.devcontainer
+.github
+images
+AUTHORS
+CONTRIBUTING.md
+LICENSE
+README_ES.md
+README_FR.md
+README_JA.md
+README_KL.md
+README.md
