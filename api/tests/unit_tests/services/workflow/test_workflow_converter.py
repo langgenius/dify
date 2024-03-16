@@ -206,9 +206,18 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
         )
     )
 
+    model_config = ModelConfigEntity(
+        provider='openai',
+        model='gpt-4',
+        mode='chat',
+        parameters={},
+        stop=[]
+    )
+
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
         new_app_mode=new_app_mode,
-        dataset_config=dataset_config
+        dataset_config=dataset_config,
+        model_config=model_config
     )
 
     assert node["data"]["type"] == "knowledge-retrieval"
@@ -240,9 +249,18 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
         )
     )
 
+    model_config = ModelConfigEntity(
+        provider='openai',
+        model='gpt-4',
+        mode='chat',
+        parameters={},
+        stop=[]
+    )
+
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
         new_app_mode=new_app_mode,
-        dataset_config=dataset_config
+        dataset_config=dataset_config,
+        model_config=model_config
     )
 
     assert node["data"]["type"] == "knowledge-retrieval"

@@ -131,7 +131,8 @@ class WorkflowConverter:
         if app_config.dataset:
             knowledge_retrieval_node = self._convert_to_knowledge_retrieval_node(
                 new_app_mode=new_app_mode,
-                dataset_config=app_config.dataset
+                dataset_config=app_config.dataset,
+                model_config=app_config.model
             )
 
             if knowledge_retrieval_node:
@@ -359,12 +360,15 @@ class WorkflowConverter:
 
         return nodes
 
-    def _convert_to_knowledge_retrieval_node(self, new_app_mode: AppMode, dataset_config: DatasetEntity) \
+    def _convert_to_knowledge_retrieval_node(self, new_app_mode: AppMode,
+                                             dataset_config: DatasetEntity,
+                                             model_config: ModelConfigEntity) \
             -> Optional[dict]:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
         :param dataset_config: dataset
+        :param model_config: model config
         :return:
         """
         retrieve_config = dataset_config.retrieve_config
@@ -385,6 +389,19 @@ class WorkflowConverter:
                 "query_variable_selector": query_variable_selector,
                 "dataset_ids": dataset_config.dataset_ids,
                 "retrieval_mode": retrieve_config.retrieve_strategy.value,
+                "single_retrieval_config": {
+                    "model": {
+                        "provider": model_config.provider,
+                        "name": model_config.model,
+                        "mode": model_config.mode,
+                        "completion_params": {
+                            **model_config.parameters,
+                            "stop": model_config.stop,
+                        }
+                    }
+                }
+                if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE
+                else None,
                 "multiple_retrieval_config": {
                     "top_k": retrieve_config.top_k,
                     "score_threshold": retrieve_config.score_threshold,
