@@ -19,8 +19,8 @@ function useVarList({
     const newInputs = produce(inputs, (draft) => {
       draft.variables = newList
     })
-    handleVariableAssignerEdgesChange(id, newList)
     setInputs(newInputs)
+    handleVariableAssignerEdgesChange(id, newList)
   }, [inputs, setInputs, id, handleVariableAssignerEdgesChange])
 
   const handleAddVariable = useCallback(() => {

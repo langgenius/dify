@@ -3,6 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { union } from 'lodash-es'
 import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
@@ -10,9 +11,15 @@ import {
   Position,
   getSimpleBezierPath,
 } from 'reactflow'
-import { useNodesInteractions } from './hooks'
+import {
+  useNodesExtraData,
+  useNodesInteractions,
+} from './hooks'
 import BlockSelector from './block-selector'
-import type { OnSelectBlock } from './types'
+import type {
+  Edge,
+  OnSelectBlock,
+} from './types'
 
 const CustomEdge = ({
   id,
@@ -41,6 +48,9 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
+  const nodesExtraData = useNodesExtraData()
+  const availablePrevNodes = nodesExtraData[(data as Edge['data'])!.targetType].availablePrevNodes
+  const availableNextNodes = nodesExtraData[(data as Edge['data'])!.sourceType].availableNextNodes
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
@@ -88,6 +98,7 @@ const CustomEdge = ({
             onOpenChange={handleOpenChange}
             asChild
             onSelect={handleInsert}
+            availableBlocksTypes={union(availablePrevNodes, availableNextNodes)}
           />
         </div>
       </EdgeLabelRenderer>

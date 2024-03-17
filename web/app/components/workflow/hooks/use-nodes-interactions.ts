@@ -212,7 +212,7 @@ export const useNodesInteractions = () => {
       connectedEdges.forEach((edge) => {
         const currentEdge = draft.find(e => e.id === edge.id)
         if (currentEdge)
-          currentEdge.data = { ...currentEdge.data, _connectedNodeIsHovering: true }
+          currentEdge.data._connectedNodeIsHovering = true
       })
     })
     setEdges(newEdges)
@@ -238,7 +238,7 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
-        edge.data = { ...edge.data, _connectedNodeIsHovering: false }
+        edge.data._connectedNodeIsHovering = false
       })
     })
     setEdges(newEdges)
@@ -301,6 +301,7 @@ export const useNodesInteractions = () => {
       edges,
       setEdges,
     } = store.getState()
+    const nodes = getNodes()
     const needDeleteEdges = edges.filter(edge => (edge.source === source && edge.sourceHandle === sourceHandle) || (edge.target === target && edge.targetHandle === targetHandle))
     const needDeleteEdgesIds = needDeleteEdges.map(edge => edge.id)
     const newEdge = {
@@ -310,8 +311,11 @@ export const useNodesInteractions = () => {
       target: target!,
       sourceHandle,
       targetHandle,
+      data: {
+        sourceType: nodes.find(node => node.id === source)!.data.type,
+        targetType: nodes.find(node => node.id === target)!.data.type,
+      },
     }
-    const nodes = getNodes()
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
         ...needDeleteEdges.map(edge => ({ type: 'remove', edge })),
@@ -451,6 +455,10 @@ export const useNodesInteractions = () => {
         sourceHandle: prevNodeSourceHandle,
         target: newNode.id,
         targetHandle,
+        data: {
+          sourceType: prevNode.data.type,
+          targetType: newNode.data.type,
+        },
       }
       const newNodes = produce(nodes, (draft: Node[]) => {
         draft.forEach((node) => {
@@ -484,6 +492,10 @@ export const useNodesInteractions = () => {
         sourceHandle,
         target: nextNodeId,
         targetHandle: nextNodeTargetHandle,
+        data: {
+          sourceType: newNode.data.type,
+          targetType: nextNode.data.type,
+        },
       }
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
       const afterNodesInSameBranchIds = afterNodesInSameBranch.map(node => node.id)
@@ -506,6 +518,7 @@ export const useNodesInteractions = () => {
       setEdges(newEdges)
     }
     if (prevNodeId && nextNodeId) {
+      const prevNode = nodes.find(node => node.id === prevNodeId)!
       const nextNode = nodes.find(node => node.id === nextNodeId)!
       newNode.data._connectedTargetHandleIds = [targetHandle]
       newNode.data._connectedSourceHandleIds = [sourceHandle]
@@ -522,6 +535,10 @@ export const useNodesInteractions = () => {
         sourceHandle: prevNodeSourceHandle,
         target: newNode.id,
         targetHandle,
+        data: {
+          sourceType: prevNode.data.type,
+          targetType: newNode.data.type,
+        },
       }
       const newNextEdge = {
         id: `${newNode.id}-${nextNodeId}`,
@@ -530,6 +547,10 @@ export const useNodesInteractions = () => {
         sourceHandle,
         target: nextNodeId,
         targetHandle: nextNodeTargetHandle,
+        data: {
+          sourceType: newNode.data.type,
+          targetType: nextNode.data.type,
+        },
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
         [

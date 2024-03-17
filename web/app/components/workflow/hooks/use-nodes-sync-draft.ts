@@ -36,7 +36,10 @@ export const useNodesSyncDraft = () => {
       })
       const producedEdges = produce(edges, (draft) => {
         draft.forEach((edge) => {
-          delete edge.data
+          Object.keys(edge.data).forEach((key) => {
+            if (key.startsWith('_'))
+              delete edge.data[key]
+          })
         })
       })
       syncWorkflowDraft({
