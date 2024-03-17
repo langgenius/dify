@@ -160,6 +160,22 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._save_message()
 
                 return self._to_blocking_response()
+            elif isinstance(event, QueueTextChunkEvent):
+                delta_text = event.text
+                if delta_text is None:
+                    continue
+
+                if not self._is_stream_out_support(
+                        event=event
+                ):
+                    continue
+
+                # handle output moderation chunk
+                should_direct_answer = self._handle_output_moderation_chunk(delta_text)
+                if should_direct_answer:
+                    continue
+
+                self._task_state.answer += delta_text
             else:
                 continue
 
