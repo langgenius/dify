@@ -104,14 +104,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         response = client.messages.create(
             model=model,
-            max_tokens=model_parameters.get("max_tokens_to_sample"),
             messages=prompt_message_dicts,
-            system=system,
             stop_sequences=stop if stop else [],
-            temperature=model_parameters.get("temperature"),
-            top_p=model_parameters.get("top_p"),
-            top_k=model_parameters.get("top_k"),
             stream=stream,
+            **model_parameters,
         )
 
         if stream is False:
