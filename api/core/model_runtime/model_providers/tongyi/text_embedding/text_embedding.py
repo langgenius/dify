@@ -82,11 +82,7 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
 
             dashscope.api_key = credentials_kwargs["dashscope_api_key"]
             # call embedding model
-            self.embed_documents(
-                model=model,
-                texts=["ping"],
-                text_type='document'
-            )
+            self.embed_documents(model=model, texts=["ping"], text_type="document")
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -106,26 +102,13 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
 
         for text in texts:
             response = dashscope.TextEmbedding.call(
-                model=model,
-                input=text,
-                text_type='document'
+                model=model, input=text, text_type="document"
             )
             data = response.output["embeddings"][0]
             embeddings.append(data["embedding"])
             embedding_used_tokens += response.usage["total_tokens"]
 
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
-
-    def embed_query(self, text: str) -> list[float]:
-        """Call out to Tongyi's embedding endpoint.
-
-        Args:
-            text: The text to embed.
-
-        Returns:
-            Embeddings for the text.
-        """
-        return self.embed_documents([text])[0]
 
     def _calc_response_usage(
         self, model: str, credentials: dict, tokens: int
