@@ -1,3 +1,5 @@
+import json
+
 from models.model import AppMode
 
 default_app_templates = {
@@ -8,6 +10,35 @@ default_app_templates = {
             'enable_site': True,
             'enable_api': True
         }
+    },
+
+    # completion default mode
+    AppMode.COMPLETION: {
+        'app': {
+            'mode': AppMode.COMPLETION.value,
+            'enable_site': True,
+            'enable_api': True
+        },
+        'model_config': {
+            'model': {
+                "provider": "openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": {}
+            },
+            'user_input_form': json.dumps([
+                {
+                    "paragraph": {
+                        "label": "Query",
+                        "variable": "query",
+                        "required": True,
+                        "default": ""
+                    }
+                }
+            ]),
+            'pre_prompt': '{{query}}'
+        },
+
     },
 
     # chat default mode

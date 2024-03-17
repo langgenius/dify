@@ -150,10 +150,10 @@ class AppService:
             if not workflow:
                 raise ValueError("Missing workflow in data argument "
                                  "when app mode is advanced-chat or workflow")
-        elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT]:
+        elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION]:
             if not model_config_data:
                 raise ValueError("Missing model_config in data argument "
-                                 "when app mode is chat or agent-chat")
+                                 "when app mode is chat, agent-chat or completion")
         else:
             raise ValueError("Invalid app mode")
 
