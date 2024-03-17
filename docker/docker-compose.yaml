@@ -307,9 +307,7 @@ services:
     image: nginx:latest
     restart: always
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/proxy.conf:/etc/nginx/proxy.conf
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - api
       - web
