@@ -477,6 +477,9 @@ class WorkflowCycleManage:
         :param outputs_dict: node outputs dict
         :return:
         """
+        if not outputs_dict:
+            return []
+
         files = []
         for output_var, output_value in outputs_dict.items():
             file_vars = self._fetch_files_from_variable_value(output_value)
@@ -491,6 +494,9 @@ class WorkflowCycleManage:
         :param value: variable value
         :return:
         """
+        if not value:
+            return []
+
         files = []
         if isinstance(value, list):
             for item in value:
@@ -510,6 +516,9 @@ class WorkflowCycleManage:
         :param value: variable value
         :return:
         """
+        if not value:
+            return None
+
         if isinstance(value, dict):
             if '__variant' in value and value['__variant'] == FileVar.__class__.__name__:
                 return value
