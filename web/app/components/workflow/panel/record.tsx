@@ -15,7 +15,7 @@ const Record = () => {
       ${isChatMode ? 'w-[320px]' : 'w-[400px]'}
     `}>
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
-        {`Test Run#${currentSequenceNumber}`}
+        {`Test ${isChatMode ? 'Chat' : 'Run'}#${currentSequenceNumber}`}
       </div>
       {
         isChatMode

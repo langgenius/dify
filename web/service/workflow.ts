@@ -2,6 +2,7 @@ import type { Fetcher } from 'swr'
 import { get, post } from './base'
 import type { CommonResponse } from '@/models/common'
 import type {
+  ChatRunHistoryResponse,
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
   WorkflowRunHistoryResponse,
@@ -21,6 +22,10 @@ export const fetchNodesDefaultConfigs: Fetcher<NodesDefaultConfigsResponse, stri
 
 export const fetchWorkflowRunHistory: Fetcher<WorkflowRunHistoryResponse, string> = (url) => {
   return get<WorkflowRunHistoryResponse>(url)
+}
+
+export const fetcChatRunHistory: Fetcher<ChatRunHistoryResponse, string> = (url) => {
+  return get<ChatRunHistoryResponse>(url)
 }
 
 export const singleNodeRun = (appId: string, nodeId: string, params: object) => {
