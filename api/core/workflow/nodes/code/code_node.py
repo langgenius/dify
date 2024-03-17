@@ -15,13 +15,13 @@ MAX_STRING_LENGTH = 1000
 MAX_STRING_ARRAY_LENGTH = 30
 MAX_NUMBER_ARRAY_LENGTH = 1000
 
-JAVASCRIPT_DEFAULT_CODE = """function main({args1, args2}) {
+JAVASCRIPT_DEFAULT_CODE = """function main({arg1, arg2}) {
     return {
         result: args1 + args2
     }
 }"""
 
-PYTHON_DEFAULT_CODE = """def main(args1: int, args2: int) -> dict:
+PYTHON_DEFAULT_CODE = """def main(arg1: int, arg2: int) -> dict:
     return {
         "result": args1 + args2,
     }"""

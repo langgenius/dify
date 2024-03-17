@@ -22,7 +22,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.tool_manager import ToolManager
 
 
-ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow']
+ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
 
 
 class AppListApi(Resource):
