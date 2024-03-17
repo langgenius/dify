@@ -11,7 +11,7 @@ const Log: FC<LogProps> = ({
   logItem,
 }) => {
   const { t } = useTranslation()
-  const { setCurrentLogItem, setShowPromptLogModal } = useAppStore()
+  const { setCurrentLogItem, setShowPromptLogModal, setShowMessageLogModal } = useAppStore()
   const { workflow_run_id: runID } = logItem
 
   return (
@@ -21,7 +21,10 @@ const Log: FC<LogProps> = ({
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
         setCurrentLogItem(logItem)
-        setShowPromptLogModal(true)
+        if (runID)
+          setShowMessageLogModal(true)
+        else
+          setShowPromptLogModal(true)
       }}
     >
       <File02 className='mr-1 w-4 h-4 text-gray-500' />

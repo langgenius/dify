@@ -27,6 +27,7 @@ import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import MessageLogModal from '@/app/components/base/message-log-modal'
 
 export type ChatProps = {
   chatList: ChatItem[]
@@ -75,7 +76,7 @@ const Chat: FC<ChatProps> = ({
   onFeedback,
 }) => {
   const { t } = useTranslation()
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const [width, setWidth] = useState(0)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const chatContainerInnerRef = useRef<HTMLDivElement>(null)
@@ -230,6 +231,17 @@ const Chat: FC<ChatProps> = ({
             onCancel={() => {
               setCurrentLogItem()
               setShowPromptLogModal(false)
+            }}
+          />
+        )}
+        {showMessageLogModal && (
+          <MessageLogModal
+            fixedWidth
+            width={width}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowMessageLogModal(false)
             }}
           />
         )}

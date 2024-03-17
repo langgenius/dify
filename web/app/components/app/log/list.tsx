@@ -36,6 +36,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 type IConversationList = {
@@ -143,7 +144,7 @@ type IDetailPanel<T> = {
 
 function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -388,6 +389,16 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           onCancel={() => {
             setCurrentLogItem()
             setShowPromptLogModal(false)
+          }}
+        />
+      )}
+      {showMessageLogModal && (
+        <MessageLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowMessageLogModal(false)
           }}
         />
       )}

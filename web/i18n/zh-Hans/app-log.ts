@@ -72,6 +72,10 @@ const translation = {
   },
   workflowTitle: '日志',
   workflowSubtitle: '日志记录了应用的执行情况',
+  runDetail: {
+    title: '对话日志',
+    workflowTitle: '日志详情',
+  },
   promptLog: 'Prompt 日志',
   viewLog: '查看日志',
 }
