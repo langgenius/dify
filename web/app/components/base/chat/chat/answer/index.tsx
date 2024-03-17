@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
@@ -18,7 +18,6 @@ import LoadingAnim from '@/app/components/app/chat/loading-anim'
 import Citation from '@/app/components/app/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { Emoji } from '@/app/components/tools/types'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
 
 type AnswerProps = {
   item: ChatItem
@@ -50,22 +49,8 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
-  const [showPromptLogModal, setShowPromptLogModal] = useState(false)
-  const [width, setWidth] = useState(0)
-
-  const ref = useRef<HTMLDivElement>(null)
-
-  const adjustModalWidth = () => {
-    if (ref.current)
-      setWidth(document.body.clientWidth - (ref.current?.clientWidth + 56 + 16))
-  }
-
-  useEffect(() => {
-    adjustModalWidth()
-  }, [])
-
   return (
-    <div className='flex mb-2 last:mb-0' ref={ref}>
+    <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
         {
           answerIcon || (
@@ -93,7 +78,6 @@ const Answer: FC<AnswerProps> = ({
                   question={question}
                   index={index}
                   showPromptLog={showPromptLog}
-                  setShowPromptLogModal={setShowPromptLogModal}
                 />
               )
             }
@@ -136,13 +120,6 @@ const Answer: FC<AnswerProps> = ({
         </div>
         <More more={more} />
       </div>
-      {showPromptLogModal && (
-        <PromptLogModal
-          width={width}
-          log={item.log || []}
-          onCancel={() => setShowPromptLogModal(false)}
-        />
-      )}
     </div>
   )
 }
