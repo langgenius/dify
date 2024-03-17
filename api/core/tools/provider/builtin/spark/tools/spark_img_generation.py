@@ -95,7 +95,7 @@ def spark_response(text, appid, apikey, apisecret):
     return response
 
 
-class SparkTool(BuiltinTool):
+class SparkImgGeneratorTool(BuiltinTool):
     def _invoke(
         self,
         user_id: str,

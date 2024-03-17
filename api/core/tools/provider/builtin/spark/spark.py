@@ -5,7 +5,7 @@ from core.tools.provider.builtin.spark.tools.spark_img_generation import spark_r
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
-class SparkText2picProvider(BuiltinToolProviderController):
+class SparkProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             if "APPID" not in credentials or not credentials.get("APPID"):
