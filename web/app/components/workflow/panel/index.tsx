@@ -30,9 +30,9 @@ const Panel: FC = () => {
     return {
       showWorkflowInfoPanel: !isChatMode && !selectedNode && !runningStatus,
       showNodePanel: !!selectedNode && !runningStatus,
-      showDebugAndPreviewPanel: isChatMode && runningStatus,
+      showDebugAndPreviewPanel: isChatMode && runningStatus && !showRunHistory,
     }
-  }, [selectedNode, isChatMode, runningStatus])
+  }, [selectedNode, isChatMode, runningStatus, showRunHistory])
 
   return (
     <div
@@ -48,6 +48,11 @@ const Panel: FC = () => {
       }
       {
         runningStatus && !isChatMode && workflowRunId && (
+          <Record />
+        )
+      }
+      {
+        runningStatus && isChatMode && showRunHistory && (
           <Record />
         )
       }
