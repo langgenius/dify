@@ -104,18 +104,18 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         response = client.messages.create(
             model=model,
-            max_tokens=model_parameters.pop('max_tokens_to_sample'),
+            max_tokens=model_parameters.get("max_tokens_to_sample"),
             messages=prompt_message_dicts,
-            system= system,
-            stop_sequences= stop if stop else [],
-            temperature=model_parameters['temperature'],
-            top_p=model_parameters['top_p'],
-            top_k=model_parameters['top_k'],
+            system=system,
+            stop_sequences=stop if stop else [],
+            temperature=model_parameters.get("temperature"),
+            top_p=model_parameters.get("top_p"),
+            top_k=model_parameters.get("top_k"),
             stream=stream,
         )
 
         if stream is False:
-            return self._handle_claude3_response(model, credentials, response, prompt_messages, model_parameters, stop)
+            return self._handle_claude3_response(model, credentials, response, prompt_messages)
         else:
             return self._handle_claude3_stream_response(model, credentials, response, prompt_messages)
 
@@ -218,7 +218,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise InvokeError(str(ex))
 
-
     def _calc_claude3_response_usage(self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int) -> LLMUsage:
         """
         Calculate response usage
@@ -262,7 +261,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         )
 
         return usage
-
 
     def _convert_claude3_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
         """
@@ -382,7 +380,19 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param credentials: model credentials
         :return:
         """
-        
+
+        if "anthropic.claude-3" in model:
+            try:
+                self._invoke_claude3(model=model,
+                                        credentials=credentials,
+                                        prompt_messages=[{"role": "user", "content": "ping"}],
+                                        model_parameters={},
+                                        stop=None,
+                                        stream=False)
+
+            except Exception as ex:
+                raise CredentialsValidateFailedError(str(ex))
+
         try:
             ping_message = UserPromptMessage(content="ping")
             self._generate(model=model,
