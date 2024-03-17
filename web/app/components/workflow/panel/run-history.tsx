@@ -82,7 +82,7 @@ const RunHistory = () => {
                     item.id === workflowRunId && 'text-primary-600',
                   )}
                 >
-                  {`Test ${isChatMode ? 'Chat' : 'Run'} Run#${item.sequence_number}`}
+                  {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}
                 </div>
                 <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
                   {item.created_by_account.name} · {dayjs((item.finished_at || item.created_at) * 1000).fromNow()}
