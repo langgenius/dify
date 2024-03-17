@@ -5,7 +5,7 @@ from typing import Optional
 
 from core.app.app_config.entities import PromptTemplateEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file.file_obj import FileObj
+from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     PromptMessage,
@@ -50,7 +50,7 @@ class SimplePromptTransform(PromptTransform):
                    prompt_template_entity: PromptTemplateEntity,
                    inputs: dict,
                    query: str,
-                   files: list[FileObj],
+                   files: list[FileVar],
                    context: Optional[str],
                    memory: Optional[TokenBufferMemory],
                    model_config: ModelConfigWithCredentialsEntity) -> \
@@ -161,7 +161,7 @@ class SimplePromptTransform(PromptTransform):
                                         inputs: dict,
                                         query: str,
                                         context: Optional[str],
-                                        files: list[FileObj],
+                                        files: list[FileVar],
                                         memory: Optional[TokenBufferMemory],
                                         model_config: ModelConfigWithCredentialsEntity) \
             -> tuple[list[PromptMessage], Optional[list[str]]]:
@@ -204,7 +204,7 @@ class SimplePromptTransform(PromptTransform):
                                               inputs: dict,
                                               query: str,
                                               context: Optional[str],
-                                              files: list[FileObj],
+                                              files: list[FileVar],
                                               memory: Optional[TokenBufferMemory],
                                               model_config: ModelConfigWithCredentialsEntity) \
             -> tuple[list[PromptMessage], Optional[list[str]]]:
@@ -253,7 +253,7 @@ class SimplePromptTransform(PromptTransform):
 
         return [self.get_last_user_message(prompt, files)], stops
 
-    def get_last_user_message(self, prompt: str, files: list[FileObj]) -> UserPromptMessage:
+    def get_last_user_message(self, prompt: str, files: list[FileVar]) -> UserPromptMessage:
         if files:
             prompt_message_contents = [TextPromptMessageContent(data=prompt)]
             for file in files:

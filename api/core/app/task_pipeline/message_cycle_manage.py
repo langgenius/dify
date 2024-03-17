@@ -97,6 +97,11 @@ class MessageCycleManage:
         )
 
         if message_file:
+            # get tool file id
+            tool_file_id = message_file.url.split('/')[-1]
+            # trim extension
+            tool_file_id = tool_file_id.split('.')[0]
+
             # get extension
             if '.' in message_file.url:
                 extension = f'.{message_file.url.split(".")[-1]}'
@@ -105,7 +110,7 @@ class MessageCycleManage:
             else:
                 extension = '.bin'
             # add sign url
-            url = ToolFileManager.sign_file(file_id=message_file.id, extension=extension)
+            url = ToolFileManager.sign_file(tool_file_id=tool_file_id, extension=extension)
 
             return MessageFileStreamResponse(
                 task_id=self._application_generate_entity.task_id,

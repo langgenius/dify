@@ -21,6 +21,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
     WorkflowTaskState,
 )
+from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, SystemVariable
 from extensions.ext_database import db
@@ -93,7 +94,7 @@ class WorkflowCycleManage:
                               start_at: float,
                               total_tokens: int,
                               total_steps: int,
-                              outputs: Optional[dict] = None) -> WorkflowRun:
+                              outputs: Optional[str] = None) -> WorkflowRun:
         """
         Workflow run success
         :param workflow_run: workflow run
@@ -218,7 +219,11 @@ class WorkflowCycleManage:
 
     def _workflow_node_execution_failed(self, workflow_node_execution: WorkflowNodeExecution,
                                         start_at: float,
-                                        error: str) -> WorkflowNodeExecution:
+                                        error: str,
+                                        inputs: Optional[dict] = None,
+                                        process_data: Optional[dict] = None,
+                                        outputs: Optional[dict] = None,
+                                        ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
         :param workflow_node_execution: workflow node execution
@@ -230,6 +235,9 @@ class WorkflowCycleManage:
         workflow_node_execution.error = error
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
         workflow_node_execution.finished_at = datetime.utcnow()
+        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
+        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
+        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
 
         db.session.commit()
         db.session.refresh(workflow_node_execution)
@@ -237,7 +245,8 @@ class WorkflowCycleManage:
 
         return workflow_node_execution
 
-    def _workflow_start_to_stream_response(self, task_id: str, workflow_run: WorkflowRun) -> WorkflowStartStreamResponse:
+    def _workflow_start_to_stream_response(self, task_id: str,
+                                           workflow_run: WorkflowRun) -> WorkflowStartStreamResponse:
         """
         Workflow start to stream response.
         :param task_id: task id
@@ -255,7 +264,8 @@ class WorkflowCycleManage:
             )
         )
 
-    def _workflow_finish_to_stream_response(self, task_id: str, workflow_run: WorkflowRun) -> WorkflowFinishStreamResponse:
+    def _workflow_finish_to_stream_response(self, task_id: str,
+                                            workflow_run: WorkflowRun) -> WorkflowFinishStreamResponse:
         """
         Workflow finish to stream response.
         :param task_id: task id
@@ -276,7 +286,8 @@ class WorkflowCycleManage:
                 total_tokens=workflow_run.total_tokens,
                 total_steps=workflow_run.total_steps,
                 created_at=int(workflow_run.created_at.timestamp()),
-                finished_at=int(workflow_run.finished_at.timestamp())
+                finished_at=int(workflow_run.finished_at.timestamp()),
+                files=self._fetch_files_from_node_outputs(workflow_run.outputs_dict)
             )
         )
 
@@ -303,7 +314,7 @@ class WorkflowCycleManage:
         )
 
     def _workflow_node_finish_to_stream_response(self, task_id: str, workflow_node_execution: WorkflowNodeExecution) \
-        -> NodeFinishStreamResponse:
+            -> NodeFinishStreamResponse:
         """
         Workflow node finish to stream response.
         :param task_id: task id
@@ -327,7 +338,8 @@ class WorkflowCycleManage:
                 elapsed_time=workflow_node_execution.elapsed_time,
                 execution_metadata=workflow_node_execution.execution_metadata_dict,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
-                finished_at=int(workflow_node_execution.finished_at.timestamp())
+                finished_at=int(workflow_node_execution.finished_at.timestamp()),
+                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict)
             )
         )
 
@@ -402,7 +414,10 @@ class WorkflowCycleManage:
             workflow_node_execution = self._workflow_node_execution_failed(
                 workflow_node_execution=workflow_node_execution,
                 start_at=current_node_execution.start_at,
-                error=event.error
+                error=event.error,
+                inputs=event.inputs,
+                process_data=event.process_data,
+                outputs=event.outputs
             )
 
         db.session.close()
@@ -455,3 +470,48 @@ class WorkflowCycleManage:
         db.session.close()
 
         return workflow_run
+
+    def _fetch_files_from_node_outputs(self, outputs_dict: dict) -> list[dict]:
+        """
+        Fetch files from node outputs
+        :param outputs_dict: node outputs dict
+        :return:
+        """
+        files = []
+        for output_var, output_value in outputs_dict.items():
+            file_vars = self._fetch_files_from_variable_value(output_value)
+            if file_vars:
+                files.extend(file_vars)
+
+        return files
+
+    def _fetch_files_from_variable_value(self, value: Union[dict, list]) -> list[dict]:
+        """
+        Fetch files from variable value
+        :param value: variable value
+        :return:
+        """
+        files = []
+        if isinstance(value, list):
+            for item in value:
+                file_var = self._get_file_var_from_value(item)
+                if file_var:
+                    files.append(file_var)
+        elif isinstance(value, dict):
+            file_var = self._get_file_var_from_value(value)
+            if file_var:
+                files.append(file_var)
+
+        return files
+
+    def _get_file_var_from_value(self, value: Union[dict, list]) -> Optional[dict]:
+        """
+        Get file var from value
+        :param value: variable value
+        :return:
+        """
+        if isinstance(value, dict):
+            if '__variant' in value and value['__variant'] == FileVar.__class__.__name__:
+                return value
+
+        return None

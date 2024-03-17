@@ -11,19 +11,19 @@ MAX_NUMBER = 2 ** 63 - 1
 MIN_NUMBER = -2 ** 63
 MAX_PRECISION = 20
 MAX_DEPTH = 5
-MAX_STRING_LENGTH = 1000
+MAX_STRING_LENGTH = 5000
 MAX_STRING_ARRAY_LENGTH = 30
 MAX_NUMBER_ARRAY_LENGTH = 1000
 
 JAVASCRIPT_DEFAULT_CODE = """function main({arg1, arg2}) {
     return {
-        result: args1 + args2
+        result: arg1 + arg2
     }
 }"""
 
 PYTHON_DEFAULT_CODE = """def main(arg1: int, arg2: int) -> dict:
     return {
-        "result": args1 + args2,
+        "result": arg1 + arg2,
     }"""
 
 class CodeNode(BaseNode):

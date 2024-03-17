@@ -59,7 +59,7 @@ message_detail_fields = {
     'query': fields.String,
     'message': fields.Raw,
     'message_tokens': fields.Integer,
-    'answer': fields.String,
+    'answer': fields.String(attribute='re_sign_file_url_answer'),
     'answer_tokens': fields.Integer,
     'provider_response_latency': fields.Float,
     'from_source': fields.String,

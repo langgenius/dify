@@ -1,11 +1,11 @@
 from typing import Optional
 
-from core.app.app_config.entities import FileUploadEntity
+from core.app.app_config.entities import FileExtraConfig
 
 
 class FileUploadConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[FileUploadEntity]:
+    def convert(cls, config: dict) -> Optional[FileExtraConfig]:
         """
         Convert model config to model config
 
@@ -15,7 +15,7 @@ class FileUploadConfigManager:
         if file_upload_dict:
             if 'image' in file_upload_dict and file_upload_dict['image']:
                 if 'enabled' in file_upload_dict['image'] and file_upload_dict['image']['enabled']:
-                    return FileUploadEntity(
+                    return FileExtraConfig(
                         image_config={
                             'number_limits': file_upload_dict['image']['number_limits'],
                             'detail': file_upload_dict['image']['detail'],

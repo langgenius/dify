@@ -14,7 +14,7 @@ from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChu
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
-from core.file.file_obj import FileObj
+from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
@@ -33,7 +33,7 @@ class AppRunner:
                                       model_config: ModelConfigWithCredentialsEntity,
                                       prompt_template_entity: PromptTemplateEntity,
                                       inputs: dict[str, str],
-                                      files: list[FileObj],
+                                      files: list[FileVar],
                                       query: Optional[str] = None) -> int:
         """
         Get pre calculate rest tokens
@@ -125,7 +125,7 @@ class AppRunner:
                                  model_config: ModelConfigWithCredentialsEntity,
                                  prompt_template_entity: PromptTemplateEntity,
                                  inputs: dict[str, str],
-                                 files: list[FileObj],
+                                 files: list[FileVar],
                                  query: Optional[str] = None,
                                  context: Optional[str] = None,
                                  memory: Optional[TokenBufferMemory] = None) \

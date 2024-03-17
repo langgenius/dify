@@ -45,14 +45,14 @@ class TokenBufferMemory:
             files = message.message_files
             if files:
                 if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
-                    file_upload_entity = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+                    file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
                 else:
-                    file_upload_entity = FileUploadConfigManager.convert(message.workflow_run.workflow.features_dict)
+                    file_extra_config = FileUploadConfigManager.convert(message.workflow_run.workflow.features_dict)
 
-                if file_upload_entity:
+                if file_extra_config:
                     file_objs = message_file_parser.transform_message_files(
                         files,
-                        file_upload_entity
+                        file_extra_config
                     )
                 else:
                     file_objs = []

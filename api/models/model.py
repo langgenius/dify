@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from enum import Enum
 from typing import Optional
@@ -611,6 +612,71 @@ class Message(db.Model):
     workflow_run_id = db.Column(UUID)
 
     @property
+    def re_sign_file_url_answer(self) -> str:
+        if not self.answer:
+            return self.answer
+
+        pattern = r'\[!?.*?\]\((((http|https):\/\/[\w.-]+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)'
+        matches = re.findall(pattern, self.answer)
+
+        if not matches:
+            return self.answer
+
+        urls = [match[0] for match in matches]
+
+        # remove duplicate urls
+        urls = list(set(urls))
+
+        if not urls:
+            return self.answer
+
+        re_sign_file_url_answer = self.answer
+        for url in urls:
+            if 'files/tools' in url:
+                # get tool file id
+                tool_file_id_pattern = r'\/files\/tools\/([\.\w-]+)?\?timestamp='
+                result = re.search(tool_file_id_pattern, url)
+                if not result:
+                    continue
+
+                tool_file_id = result.group(1)
+
+                # get extension
+                if '.' in tool_file_id:
+                    split_result = tool_file_id.split('.')
+                    extension = f'.{split_result[-1]}'
+                    if len(extension) > 10:
+                        extension = '.bin'
+                    tool_file_id = split_result[0]
+                else:
+                    extension = '.bin'
+
+                if not tool_file_id:
+                    continue
+
+                sign_url = ToolFileParser.get_tool_file_manager().sign_file(
+                    tool_file_id=tool_file_id,
+                    extension=extension
+                )
+            else:
+                # get upload file id
+                upload_file_id_pattern = r'\/files\/([\w-]+)\/image-preview?\?timestamp='
+                result = re.search(upload_file_id_pattern, url)
+                if not result:
+                    continue
+
+                upload_file_id = result.group(1)
+
+                if not upload_file_id:
+                    continue
+
+                sign_url = UploadFileParser.get_signed_temp_image_url(upload_file_id)
+
+            re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
+
+        return re_sign_file_url_answer
+
+    @property
     def user_feedback(self):
         feedback = db.session.query(MessageFeedback).filter(MessageFeedback.message_id == self.id,
                                                             MessageFeedback.from_source == 'user').first()
@@ -680,7 +746,7 @@ class Message(db.Model):
                 if message_file.transfer_method == 'local_file':
                     upload_file = (db.session.query(UploadFile)
                                    .filter(
-                        UploadFile.id == message_file.upload_file_id
+                        UploadFile.id == message_file.related_id
                     ).first())
 
                     url = UploadFileParser.get_image_data(
@@ -688,6 +754,11 @@ class Message(db.Model):
                         force_url=True
                     )
                 if message_file.transfer_method == 'tool_file':
+                    # get tool file id
+                    tool_file_id = message_file.url.split('/')[-1]
+                    # trim extension
+                    tool_file_id = tool_file_id.split('.')[0]
+
                     # get extension
                     if '.' in message_file.url:
                         extension = f'.{message_file.url.split(".")[-1]}'
@@ -696,7 +767,7 @@ class Message(db.Model):
                     else:
                         extension = '.bin'
                     # add sign url
-                    url = ToolFileParser.get_tool_file_manager().sign_file(file_id=message_file.id, extension=extension)
+                    url = ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=tool_file_id, extension=extension)
 
             files.append({
                 'id': message_file.id,

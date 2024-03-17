@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Generator
@@ -11,7 +12,6 @@ from core.app.entities.queue_entities import (
     QueueAdvancedChatMessageEndEvent,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
-    QueueMessageFileEvent,
     QueueMessageReplaceEvent,
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
@@ -34,6 +34,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
+from core.file.file_obj import FileVar
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.answer.answer_node import AnswerNode
@@ -260,10 +261,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 annotation = self._handle_annotation_reply(event)
                 if annotation:
                     self._task_state.answer = annotation.content
-            elif isinstance(event, QueueMessageFileEvent):
-                response = self._message_file_to_stream_response(event)
-                if response:
-                    yield response
+            # elif isinstance(event, QueueMessageFileEvent):
+            #     response = self._message_file_to_stream_response(event)
+            #     if response:
+            #         yield response
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
                 if delta_text is None:
@@ -464,10 +465,22 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     text = None
                     if isinstance(value, str | int | float):
                         text = str(value)
-                    elif isinstance(value, object):  # TODO FILE
-                        # convert file to markdown
-                        text = f'![]({value.get("url")})'
-                        pass
+                    elif isinstance(value, dict | list):
+                        # handle files
+                        file_vars = self._fetch_files_from_variable_value(value)
+                        for file_var in file_vars:
+                            try:
+                                file_var_obj = FileVar(**file_var)
+                            except Exception as e:
+                                logger.error(f'Error creating file var: {e}')
+                                continue
+
+                            # convert file to markdown
+                            text = file_var_obj.to_markdown()
+
+                        if not text:
+                            # other types
+                            text = json.dumps(value, ensure_ascii=False)
 
                     if text:
                         for token in text:

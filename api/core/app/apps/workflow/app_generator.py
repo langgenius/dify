@@ -50,11 +50,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # parse files
         files = args['files'] if 'files' in args and args['files'] else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
-        file_upload_entity = FileUploadConfigManager.convert(workflow.features_dict)
-        if file_upload_entity:
+        file_extra_config = FileUploadConfigManager.convert(workflow.features_dict)
+        if file_extra_config:
             file_objs = message_file_parser.validate_and_transform_files_arg(
                 files,
-                file_upload_entity,
+                file_extra_config,
                 user
             )
         else:

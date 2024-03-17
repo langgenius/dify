@@ -48,7 +48,7 @@ class PythonTemplateTransformer(TemplateTransformer):
         :return:
         """
         # extract result
-        result = re.search(r'<<RESULT>>(.*)<<RESULT>>', response, re.DOTALL)
+        result = re.search(r'<<RESULT>>(.*?)<<RESULT>>', response, re.DOTALL)
         if not result:
             raise ValueError('Failed to parse result')
         result = result.group(1)

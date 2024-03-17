@@ -1,9 +1,10 @@
 from enum import Enum
 from typing import Any, Optional, Union
 
+from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
-VariableValue = Union[str, int, float, dict, list]
+VariableValue = Union[str, int, float, dict, list, FileVar]
 
 
 class ValueType(Enum):
