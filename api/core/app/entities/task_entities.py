@@ -204,6 +204,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         total_steps: int
         created_at: int
         finished_at: int
+        files: Optional[list[dict]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -253,6 +254,7 @@ class NodeFinishStreamResponse(StreamResponse):
         execution_metadata: Optional[dict] = None
         created_at: int
         finished_at: int
+        files: Optional[list[dict]] = []
 
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str

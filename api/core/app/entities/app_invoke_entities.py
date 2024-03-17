@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from core.file.file_obj import FileObj
+from core.file.file_obj import FileVar
 from core.model_runtime.entities.model_entities import AIModelEntity
 
 
@@ -73,7 +73,7 @@ class AppGenerateEntity(BaseModel):
     app_config: AppConfig
 
     inputs: dict[str, str]
-    files: list[FileObj] = []
+    files: list[FileVar] = []
     user_id: str
 
     # extras

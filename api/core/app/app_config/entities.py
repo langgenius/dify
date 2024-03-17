@@ -183,7 +183,7 @@ class TextToSpeechEntity(BaseModel):
     language: Optional[str] = None
 
 
-class FileUploadEntity(BaseModel):
+class FileExtraConfig(BaseModel):
     """
     File Upload Entity.
     """
@@ -191,7 +191,7 @@ class FileUploadEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: Optional[FileUploadEntity] = None
+    file_upload: Optional[FileExtraConfig] = None
     opening_statement: Optional[str] = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False

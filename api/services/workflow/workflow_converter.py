@@ -6,7 +6,7 @@ from core.app.app_config.entities import (
     DatasetRetrieveConfigEntity,
     EasyUIBasedAppConfig,
     ExternalDataVariableEntity,
-    FileUploadEntity,
+    FileExtraConfig,
     ModelConfigEntity,
     PromptTemplateEntity,
     VariableEntity,
@@ -416,7 +416,7 @@ class WorkflowConverter:
                              graph: dict,
                              model_config: ModelConfigEntity,
                              prompt_template: PromptTemplateEntity,
-                             file_upload: Optional[FileUploadEntity] = None) -> dict:
+                             file_upload: Optional[FileExtraConfig] = None) -> dict:
         """
         Convert to LLM Node
         :param new_app_mode: new app mode

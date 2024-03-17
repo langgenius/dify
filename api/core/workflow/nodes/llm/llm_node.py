@@ -5,7 +5,7 @@ from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEnti
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.file.file_obj import FileObj
+from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -51,15 +51,10 @@ class LLMNode(BaseNode):
             }
 
             # fetch files
-            files: list[FileObj] = self._fetch_files(node_data, variable_pool)
+            files: list[FileVar] = self._fetch_files(node_data, variable_pool)
 
             if files:
-                node_inputs['#files#'] = [{
-                    'type': file.type.value,
-                    'transfer_method': file.transfer_method.value,
-                    'url': file.url,
-                    'upload_file_id': file.upload_file_id,
-                } for file in files]
+                node_inputs['#files#'] = [file.to_dict() for file in files]
 
             # fetch context value
             context = self._fetch_context(node_data, variable_pool)
@@ -202,7 +197,7 @@ class LLMNode(BaseNode):
 
         return inputs
 
-    def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list[FileObj]:
+    def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list[FileVar]:
         """
         Fetch files
         :param node_data: node data
@@ -350,7 +345,7 @@ class LLMNode(BaseNode):
 
     def _fetch_prompt_messages(self, node_data: LLMNodeData,
                                inputs: dict[str, str],
-                               files: list[FileObj],
+                               files: list[FileVar],
                                context: Optional[str],
                                memory: Optional[TokenBufferMemory],
                                model_config: ModelConfigWithCredentialsEntity) \
