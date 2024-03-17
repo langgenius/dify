@@ -19,12 +19,14 @@ type SendCallback = {
 export const useChat = (
   config: any,
   prevChatList?: ChatItem[],
+  stopChat?: (taskId: string) => void,
 ) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
   const connversationId = useRef('')
+  const taskIdRef = useRef('')
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const [isResponding, setIsResponding] = useState(false)
@@ -52,10 +54,33 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
     handleResponding(false)
+    if (stopChat && taskIdRef.current)
+      stopChat(taskIdRef.current)
 
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [handleResponding])
+  }, [handleResponding, stopChat])
+
+  const handleRestart = useCallback(() => {
+    connversationId.current = ''
+    taskIdRef.current = ''
+    handleStop()
+    const newChatList = config?.opening_statement
+      ? [{
+        id: `${Date.now()}`,
+        content: config.opening_statement,
+        isAnswer: true,
+        isOpeningStatement: true,
+        suggestedQuestions: config.suggested_questions,
+      }]
+      : []
+    handleUpdateChatList(newChatList)
+    setSuggestQuestions([])
+  }, [
+    config,
+    handleStop,
+    handleUpdateChatList,
+  ])
 
   const updateCurrentQA = useCallback(({
     responseItem,
@@ -140,7 +165,7 @@ export const useChat = (
     handleRun(
       params,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId }: any) => {
+        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           responseItem.content = responseItem.content + message
 
           if (messageId && !hasSetResponseId) {
@@ -151,6 +176,7 @@ export const useChat = (
           if (isFirstMessage && newConversationId)
             connversationId.current = newConversationId
 
+          taskIdRef.current = taskId
           if (messageId)
             responseItem.id = messageId
 
@@ -207,6 +233,7 @@ export const useChat = (
     chatList,
     handleSend,
     handleStop,
+    handleRestart,
     isResponding,
     suggestedQuestions,
   }

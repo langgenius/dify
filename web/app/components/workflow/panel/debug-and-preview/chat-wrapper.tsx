@@ -1,19 +1,26 @@
 import {
+  forwardRef,
   memo,
   useCallback,
+  useImperativeHandle,
   useMemo,
 } from 'react'
 import { useWorkflowStore } from '../../store'
 import { useWorkflowRun } from '../../hooks'
 import UserInput from './user-input'
 import { useChat } from './hooks'
+import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
 import type { OnSend } from '@/app/components/base/chat/types'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { fetchSuggestedQuestions } from '@/service/debug'
+import {
+  fetchSuggestedQuestions,
+  stopChatMessageResponding,
+} from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-const ChatWrapper = () => {
+const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
+  const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const { handleStopRun } = useWorkflowRun()
@@ -38,30 +45,37 @@ const ChatWrapper = () => {
     isResponding,
     suggestedQuestions,
     handleSend,
-  } = useChat(config)
+    handleRestart,
+  } = useChat(
+    config,
+    [],
+    taskId => stopChatMessageResponding(appDetail!.id, taskId),
+  )
 
   const doSend = useCallback<OnSend>((query, files) => {
-    const appId = useAppStore.getState().appDetail?.id
-
-    if (appId) {
-      handleSend(
-        {
-          query,
-          files,
-          inputs: workflowStore.getState().inputs,
-          conversation_id: conversationId,
-        },
-        {
-          onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appId, messageId, getAbortController),
-        },
-      )
-    }
-  }, [conversationId, handleSend, workflowStore])
+    handleSend(
+      {
+        query,
+        files,
+        inputs: workflowStore.getState().inputs,
+        conversation_id: conversationId,
+      },
+      {
+        onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
+      },
+    )
+  }, [conversationId, handleSend, workflowStore, appDetail])
 
   const doStop = useCallback(() => {
     handleStop()
     handleStopRun()
   }, [handleStop, handleStopRun])
+
+  useImperativeHandle(ref, () => {
+    return {
+      handleRestart,
+    }
+  }, [handleRestart])
 
   return (
     <Chat
@@ -79,6 +93,8 @@ const ChatWrapper = () => {
       suggestedQuestions={suggestedQuestions}
     />
   )
-}
+})
+
+ChatWrapper.displayName = 'ChatWrapper'
 
 export default memo(ChatWrapper)
