@@ -184,6 +184,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
+                logger.exception("Bad Request when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
                 logger.exception("Unknown Error when generating")
@@ -291,11 +292,16 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # return response or stream generator
-        return self._handle_response(
+        response = self._handle_response(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
             conversation=conversation,
             message=message,
             user=user,
             stream=stream
+        )
+
+        return CompletionAppGenerateResponseConverter.convert(
+            response=response,
+            invoke_from=invoke_from
         )
