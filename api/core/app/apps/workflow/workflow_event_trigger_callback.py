@@ -96,6 +96,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
                                         node_data: BaseNodeData,
                                         error: str,
                                         inputs: Optional[dict] = None,
+                                        outputs: Optional[dict] = None,
                                         process_data: Optional[dict] = None) -> None:
         """
         Workflow node execute failed
@@ -106,6 +107,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
                 node_type=node_type,
                 node_data=node_data,
                 inputs=inputs,
+                outputs=outputs,
                 process_data=process_data,
                 error=error
             ),

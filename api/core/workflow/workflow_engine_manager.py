@@ -429,6 +429,7 @@ class WorkflowEngineManager:
                         node_data=node.node_data,
                         error=node_run_result.error,
                         inputs=node_run_result.inputs,
+                        outputs=node_run_result.outputs,
                         process_data=node_run_result.process_data,
                     )
 

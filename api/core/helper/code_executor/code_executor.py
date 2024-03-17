@@ -72,7 +72,7 @@ class CodeExecutor:
             response = response.json()
         except:
             raise CodeExecutionException('Failed to parse response')
-
+        
         response = CodeExecutionResponse(**response)
 
         if response.code != 0:

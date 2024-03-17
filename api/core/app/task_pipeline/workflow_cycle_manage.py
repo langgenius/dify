@@ -218,7 +218,11 @@ class WorkflowCycleManage:
 
     def _workflow_node_execution_failed(self, workflow_node_execution: WorkflowNodeExecution,
                                         start_at: float,
-                                        error: str) -> WorkflowNodeExecution:
+                                        error: str,
+                                        inputs: Optional[dict] = None,
+                                        process_data: Optional[dict] = None,
+                                        outputs: Optional[dict] = None,
+                                        ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
         :param workflow_node_execution: workflow node execution
@@ -230,6 +234,9 @@ class WorkflowCycleManage:
         workflow_node_execution.error = error
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
         workflow_node_execution.finished_at = datetime.utcnow()
+        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
+        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
+        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
 
         db.session.commit()
         db.session.refresh(workflow_node_execution)
@@ -402,7 +409,10 @@ class WorkflowCycleManage:
             workflow_node_execution = self._workflow_node_execution_failed(
                 workflow_node_execution=workflow_node_execution,
                 start_at=current_node_execution.start_at,
-                error=event.error
+                error=event.error,
+                inputs=event.inputs,
+                process_data=event.process_data,
+                outputs=event.outputs
             )
 
         db.session.close()

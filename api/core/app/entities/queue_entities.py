@@ -168,6 +168,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     node_data: BaseNodeData
 
     inputs: Optional[dict] = None
+    outputs: Optional[dict] = None
     process_data: Optional[dict] = None
 
     error: str
