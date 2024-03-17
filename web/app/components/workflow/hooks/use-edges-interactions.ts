@@ -34,7 +34,7 @@ export const useEdgesInteractions = () => {
     const newEdges = produce(edges, (draft) => {
       const currentEdge = draft.find(e => e.id === edge.id)!
 
-      currentEdge.data = { ...currentEdge.data, _hovering: true }
+      currentEdge.data._hovering = true
     })
     setEdges(newEdges)
   }, [store, workflowStore])
@@ -52,7 +52,7 @@ export const useEdgesInteractions = () => {
     const newEdges = produce(edges, (draft) => {
       const currentEdge = draft.find(e => e.id === edge.id)!
 
-      currentEdge.data = { ...currentEdge.data, _hovering: false }
+      currentEdge.data._hovering = false
     })
     setEdges(newEdges)
   }, [store, workflowStore])

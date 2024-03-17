@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { WorkflowRunningStatus } from '../types'
+import { useIsChatMode } from '../hooks'
 import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
@@ -11,15 +12,21 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { fetchWorkflowRunHistory } from '@/service/workflow'
+import { fetcChatRunHistory, fetchWorkflowRunHistory } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
 
 const RunHistory = () => {
   const { t } = useTranslation()
-  const workflowStore = useWorkflowStore()
+  const isChatMode = useIsChatMode()
   const appDetail = useAppStore(state => state.appDetail)
+  const workflowStore = useWorkflowStore()
   const workflowRunId = useRunHistoryStore(state => state.workflowRunId)
-  const { data, isLoading } = useSWR(appDetail ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
+  const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
+
+  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetcChatRunHistory)
+
+  const data = isChatMode ? chatList : runList
+  const isLoading = isChatMode ? chatListLoading : runListLoading
 
   if (!appDetail)
     return null
@@ -54,16 +61,17 @@ const RunHistory = () => {
               onClick={() => workflowStore.setState({
                 currentSequenceNumber: item.sequence_number,
                 workflowRunId: item.id,
+                currentConversationID: item.conversation_id,
                 runningStatus: item.status as WorkflowRunningStatus,
               })}
             >
               {
-                appDetail?.mode === 'workflow' && item.status === WorkflowRunningStatus.Failed && (
+                !isChatMode && item.status === WorkflowRunningStatus.Failed && (
                   <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
                 )
               }
               {
-                appDetail?.mode === 'workflow' && item.status === WorkflowRunningStatus.Succeeded && (
+                !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
                   <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
                 )
               }
@@ -74,7 +82,7 @@ const RunHistory = () => {
                     item.id === workflowRunId && 'text-primary-600',
                   )}
                 >
-                  Test Run#{item.sequence_number}
+                  {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}
                 </div>
                 <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
                   {item.created_by_account.name} · {dayjs((item.finished_at || item.created_at) * 1000).fromNow()}

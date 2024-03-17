@@ -137,6 +137,8 @@ export type WorkflowRunHistory = {
   id: string
   sequence_number: number
   version: string
+  conversation_id?: string
+  message_id?: string
   graph: {
     nodes: Node[]
     edges: Edge[]
@@ -158,6 +160,10 @@ export type WorkflowRunHistory = {
   }
 }
 export type WorkflowRunHistoryResponse = {
+  data: WorkflowRunHistory[]
+}
+
+export type ChatRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 

@@ -24,6 +24,7 @@ type State = {
   taskId: string
   currentSequenceNumber: number
   workflowRunId: string
+  currentConversationID: string
   showRunHistory: boolean
   showFeaturesPanel: boolean
   helpLineHorizontal?: HelpLineHorizontalPosition
@@ -49,6 +50,7 @@ type Action = {
   setTaskId: (taskId: string) => void
   setCurrentSequenceNumber: (currentSequenceNumber: number) => void
   setWorkflowRunId: (workflowRunId: string) => void
+  setCurrentConversationID: (currentConversationID: string) => void
   setShowRunHistory: (showRunHistory: boolean) => void
   setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   setHelpLineHorizontal: (helpLineHorizontal?: HelpLineHorizontalPosition) => void
@@ -74,6 +76,8 @@ export const createWorkflowStore = () => {
     setCurrentSequenceNumber: currentSequenceNumber => set(() => ({ currentSequenceNumber })),
     workflowRunId: '',
     setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
+    currentConversationID: '',
+    setCurrentConversationID: currentConversationID => set(() => ({ currentConversationID })),
     showRunHistory: false,
     setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
     showFeaturesPanel: false,

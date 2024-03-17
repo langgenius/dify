@@ -40,9 +40,11 @@ export type CommonNodeType<T = {}> = {
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
-  _hovering: boolean
-  _connectedNodeIsHovering: boolean
+  _hovering?: boolean
+  _connectedNodeIsHovering?: boolean
   _runned?: boolean
+  sourceType: BlockEnum
+  targetType: BlockEnum
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
