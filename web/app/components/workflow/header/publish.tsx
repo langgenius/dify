@@ -79,7 +79,11 @@ const Publish = () => {
             ${runningStatus && 'cursor-not-allowed opacity-50'}
           `}
         >
-          {t('workflow.common.publish')}
+          {
+            published
+              ? t('workflow.common.published')
+              : t('workflow.common.publish')
+          }
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>

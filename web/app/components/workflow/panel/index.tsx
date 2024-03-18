@@ -24,6 +24,7 @@ const Panel: FC = () => {
   const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const showInputsPanel = useStore(s => s.showInputsPanel)
+  const currentConversationID = useStore(s => s.currentConversationID)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const {
     showWorkflowInfoPanel,
@@ -33,9 +34,9 @@ const Panel: FC = () => {
     return {
       showWorkflowInfoPanel: !isChatMode && !selectedNode && !runningStatus,
       showNodePanel: !!selectedNode && !runningStatus,
-      showDebugAndPreviewPanel: isChatMode && runningStatus && !showRunHistory,
+      showDebugAndPreviewPanel: isChatMode && runningStatus && !currentConversationID,
     }
-  }, [selectedNode, isChatMode, runningStatus, showRunHistory])
+  }, [selectedNode, isChatMode, runningStatus, currentConversationID])
 
   return (
     <div
@@ -68,7 +69,7 @@ const Panel: FC = () => {
         )
       }
       {
-        runningStatus && isChatMode && showRunHistory && (
+        runningStatus && isChatMode && showRunHistory && currentConversationID && (
           <Record />
         )
       }
