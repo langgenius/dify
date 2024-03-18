@@ -102,7 +102,7 @@ class ToolNode(BaseNode):
                 filename = response.save_as or url.split('/')[-1]
 
                 # get tool file id
-                tool_file_id = url.split('/')[-1]
+                tool_file_id = url.split('/')[-1].split('.')[0]
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
@@ -114,7 +114,7 @@ class ToolNode(BaseNode):
                 ))
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 # get tool file id
-                tool_file_id = response.message.split('/')[-1]
+                tool_file_id = response.message.split('/')[-1].split('.')[0]
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
