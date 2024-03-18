@@ -222,7 +222,7 @@ class WorkflowService:
                 title=node_instance.node_data.title,
                 inputs=json.dumps(node_run_result.inputs) if node_run_result.inputs else None,
                 process_data=json.dumps(node_run_result.process_data) if node_run_result.process_data else None,
-                outputs=json.dumps(node_run_result.outputs) if node_run_result.outputs else None,
+                outputs=json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None,
                 execution_metadata=(json.dumps(jsonable_encoder(node_run_result.metadata))
                                     if node_run_result.metadata else None),
                 status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
