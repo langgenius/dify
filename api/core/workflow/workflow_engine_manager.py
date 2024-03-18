@@ -161,7 +161,7 @@ class WorkflowEngineManager:
                     callbacks=callbacks
                 )
 
-                if next_node.node_type in [NodeType.END, NodeType.ANSWER]:
+                if next_node.node_type in [NodeType.END]:
                     break
 
                 predecessor_node = next_node
