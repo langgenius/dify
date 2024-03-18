@@ -366,7 +366,6 @@ const TextGeneration: FC<IMainProps> = ({
         ...file_upload.image,
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
       })
-      // ###TODO###
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for feture

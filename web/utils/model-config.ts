@@ -1,10 +1,6 @@
 import type { UserInputFormItem } from '@/types/app'
 import type { PromptVariable } from '@/models/debug'
 
-export const workflowUserInputsToPromptVariables = () => {
-  // TODO
-}
-
 export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] | null, dataset_query_variable?: string) => {
   if (!useInputs)
     return []
