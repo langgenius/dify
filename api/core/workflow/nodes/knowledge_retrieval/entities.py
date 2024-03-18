@@ -10,7 +10,7 @@ class RerankingModelConfig(BaseModel):
     Reranking Model Config.
     """
     provider: str
-    mode: str
+    model: str
 
 
 class MultipleRetrievalConfig(BaseModel):
