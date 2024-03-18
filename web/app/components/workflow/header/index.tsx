@@ -12,6 +12,7 @@ import { useWorkflowRun } from '../hooks'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
+import RestoringTitle from './restoring-title'
 import Publish from './publish'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
@@ -24,7 +25,11 @@ const Header: FC = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const runningStatus = useStore(s => s.runningStatus)
-  const { handleRunSetting } = useWorkflowRun()
+  const isRestoring = useStore(s => s.isRestoring)
+  const {
+    handleRunSetting,
+    handleRestoreFromPublishedWorkflow,
+  } = useWorkflowRun()
 
   const handleShowFeatures = useCallback(() => {
     if (runningStatus)
@@ -36,6 +41,15 @@ const Header: FC = () => {
   const handleGoBackToEdit = useCallback(() => {
     handleRunSetting(true)
   }, [handleRunSetting])
+
+  const handleCancelRestore = useCallback(() => {
+    workflowStore.setState({ isRestoring: false })
+  }, [workflowStore])
+
+  const handleRestore = useCallback(() => {
+    handleRestoreFromPublishedWorkflow()
+    workflowStore.setState({ isRestoring: false })
+  }, [handleRestoreFromPublishedWorkflow, workflowStore])
 
   return (
     <div
@@ -51,42 +65,80 @@ const Header: FC = () => {
           )
         }
         {
-          !runningStatus && <EditingTitle />
+          !runningStatus && !isRestoring && <EditingTitle />
         }
         {
-          runningStatus && <RunningTitle />
+          runningStatus && !isRestoring && <RunningTitle />
+        }
+        {
+          isRestoring && <RestoringTitle />
         }
       </div>
-      <div className='flex items-center'>
-        {
-          runningStatus && (
+      {
+        !isRestoring && (
+          <div className='flex items-center'>
+            {
+              runningStatus && (
+                <Button
+                  className={`
+                    mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
+                    border-[0.5px] border-gray-200 shadow-xs
+                  `}
+                  onClick={handleGoBackToEdit}
+                >
+                  <ArrowNarrowLeft className='mr-1 w-4 h-4' />
+                  {t('workflow.common.goBackToEdit')}
+                </Button>
+              )
+            }
+            <RunAndHistory />
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
               className={`
-                mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
+                mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
+                ${runningStatus && '!cursor-not-allowed opacity-50'}
               `}
-              onClick={handleGoBackToEdit}
+              onClick={handleShowFeatures}
             >
-              <ArrowNarrowLeft className='mr-1 w-4 h-4' />
-              {t('workflow.common.goBackToEdit')}
+              <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
+              {t('workflow.common.features')}
             </Button>
-          )
-        }
-        <RunAndHistory />
-        <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
-        <Button
-          className={`
-            mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
-            border-[0.5px] border-gray-200 shadow-xs
-            ${runningStatus && '!cursor-not-allowed opacity-50'}
-          `}
-          onClick={handleShowFeatures}
-        >
-          <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
-          {t('workflow.common.features')}
-        </Button>
-        <Publish />
-      </div>
+            <Publish />
+          </div>
+        )
+      }
+      {
+        isRestoring && (
+          <div className='flex items-center'>
+            <Button
+              className={`
+                px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
+                border-[0.5px] border-gray-200 shadow-xs
+                ${runningStatus && '!cursor-not-allowed opacity-50'}
+              `}
+              onClick={handleShowFeatures}
+            >
+              <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
+              {t('workflow.common.features')}
+            </Button>
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <Button
+              className='mr-2 px-3 py-0 h-8 bg-white text-[13px] text-gray-700 font-medium border-[0.5px] border-gray-200 shadow-xs'
+              onClick={handleCancelRestore}
+            >
+              {t('common.operation.cancel')}
+            </Button>
+            <Button
+              className='px-3 py-0 h-8 text-[13px] font-medium shadow-xs'
+              onClick={handleRestore}
+              type='primary'
+            >
+              {t('workflow.common.restore')}
+            </Button>
+          </div>
+        )
+      }
     </div>
   )
 }

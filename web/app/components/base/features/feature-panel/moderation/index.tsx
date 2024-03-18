@@ -16,9 +16,11 @@ import I18n from '@/context/i18n'
 
 type ModerationProps = {
   onChange?: OnFeaturesChange
+  disabled?: boolean
 }
 const Moderation = ({
   onChange,
+  disabled,
 }: ModerationProps) => {
   const { t } = useTranslation()
   const { setShowModerationSettingModal } = useModalContext()
@@ -32,6 +34,9 @@ const Moderation = ({
   )
 
   const handleOpenModerationSettingModal = () => {
+    if (disabled)
+      return
+
     const {
       features,
       setFeatures,
@@ -89,6 +94,7 @@ const Moderation = ({
         className={`
           shrink-0 flex items-center px-3 h-7 cursor-pointer rounded-md
           text-xs text-gray-700 font-medium hover:bg-gray-200
+          ${disabled && '!cursor-not-allowed'}
         `}
         onClick={handleOpenModerationSettingModal}
       >

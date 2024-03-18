@@ -12,12 +12,17 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
 import { ssePost } from '@/service/base'
-import { stopWorkflowRun } from '@/service/workflow'
+import {
+  fetchPublishedWorkflow,
+  stopWorkflowRun,
+} from '@/service/workflow'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const featuresStore = useFeaturesStore()
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -178,10 +183,34 @@ export const useWorkflowRun = () => {
     stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
   }, [workflowStore])
 
+  const handleRestoreFromPublishedWorkflow = useCallback(async () => {
+    const appDetail = useAppStore.getState().appDetail
+    const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
+
+    if (publishedWorkflow) {
+      const {
+        setNodes,
+        setEdges,
+      } = store.getState()
+      const { setViewport } = reactflow
+      const nodes = publishedWorkflow.graph.nodes
+      const edges = publishedWorkflow.graph.edges
+      const viewport = publishedWorkflow.graph.viewport
+
+      setNodes(nodes)
+      setEdges(edges)
+      if (viewport)
+        setViewport(viewport)
+      featuresStore?.setState({ features: publishedWorkflow.features })
+      workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
+    }
+  }, [store, reactflow, featuresStore, workflowStore])
+
   return {
     handleBackupDraft,
     handleRunSetting,
     handleRun,
     handleStopRun,
+    handleRestoreFromPublishedWorkflow,
   }
 }

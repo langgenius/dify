@@ -9,9 +9,11 @@ import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
 
 type ChooseFeatureProps = {
   onChange?: OnFeaturesChange
+  disabled?: boolean
 }
 const ChooseFeature = ({
   onChange,
+  disabled,
 }: ChooseFeatureProps) => {
   const { t } = useTranslation()
   const showFeaturesModal = useFeatures(s => s.showFeaturesModal)
@@ -19,8 +21,11 @@ const ChooseFeature = ({
   return (
     <>
       <Button
-        className='px-3 py-0 h-8 rounded-lg border border-primary-100 bg-primary-25 shadow-xs text-xs font-semibold text-primary-600'
-        onClick={() => setShowFeaturesModal(true)}
+        className={`
+          px-3 py-0 h-8 rounded-lg border border-primary-100 bg-primary-25 shadow-xs text-xs font-semibold text-primary-600
+          ${disabled && 'cursor-not-allowed opacity-50'}
+        `}
+        onClick={() => !disabled && setShowFeaturesModal(true)}
       >
         <Plus02 className='mr-1 w-4 h-4' />
         {t('appDebug.operation.addFeature')}

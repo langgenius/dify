@@ -45,6 +45,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
       </Field>
       <Split />
       <Editor
+        justVar
         title={t(`${i18nPrefix}.answer`)!}
         value={inputs.answer}
         onChange={handleAnswerChange}

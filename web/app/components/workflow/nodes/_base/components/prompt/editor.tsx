@@ -21,9 +21,12 @@ type Props = {
   readOnly?: boolean
   showRemove?: boolean
   onRemove?: () => void
-  isChatModel: boolean
-  isChatApp: boolean
-  hasSetBlockStatus: {
+  justVar?: boolean
+  isChatModel?: boolean
+  isChatApp?: boolean
+  isShowContext?: boolean
+  hasSetBlockStatus?: {
+    context: boolean
     history: boolean
     query: boolean
   }
@@ -37,8 +40,10 @@ const Editor: FC<Props> = ({
   readOnly,
   showRemove,
   onRemove,
+  justVar,
   isChatModel,
   isChatApp,
+  isShowContext,
   hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
@@ -112,8 +117,8 @@ const Editor: FC<Props> = ({
               style={isExpand ? { height: editorExpandHeight - 5 } : {}}
               value={value}
               contextBlock={{
-                show: false,
-                selectable: true,
+                show: justVar ? false : isShowContext,
+                selectable: !hasSetBlockStatus?.context,
                 datasets: [],
                 onAddContext: () => { },
               }}
@@ -126,7 +131,7 @@ const Editor: FC<Props> = ({
                 onAddExternalTool: () => { },
               }}
               historyBlock={{
-                show: isShowHistory,
+                show: justVar ? false : isShowHistory,
                 selectable: !hasSetBlockStatus?.history,
                 history: {
                   user: 'Human',
@@ -135,7 +140,7 @@ const Editor: FC<Props> = ({
                 onEditRole: () => { },
               }}
               queryBlock={{
-                show: isShowQuery,
+                show: justVar ? false : isShowQuery,
                 selectable: !hasSetBlockStatus?.query,
               }}
               onChange={onChange}

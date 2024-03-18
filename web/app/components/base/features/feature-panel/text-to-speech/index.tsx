@@ -13,9 +13,11 @@ import AudioBtn from '@/app/components/base/audio-btn'
 
 type TextToSpeechProps = {
   onChange?: OnFeaturesChange
+  disabled?: boolean
 }
 const TextToSpeech = ({
   onChange,
+  disabled,
 }: TextToSpeechProps) => {
   const { t } = useTranslation()
   const textToSpeech = useFeatures(s => s.features.text2speech)
@@ -50,7 +52,7 @@ const TextToSpeech = ({
         )}
       </div>
       <div className='shrink-0 flex items-center'>
-        <ParamsConfig onChange={onChange} />
+        <ParamsConfig onChange={onChange} disabled={disabled} />
       </div>
     </div>
   )

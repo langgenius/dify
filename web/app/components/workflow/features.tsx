@@ -17,7 +17,8 @@ import {
 const Features = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const setShowFeaturesPanel = useStore(state => state.setShowFeaturesPanel)
+  const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
+  const isRestoring = useStore(s => s.isRestoring)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleFeaturesChange = useCallback(() => {
@@ -32,7 +33,10 @@ const Features = () => {
           {
             isChatMode && (
               <>
-                <FeaturesChoose onChange={handleFeaturesChange} />
+                <FeaturesChoose
+                  disabled={isRestoring}
+                  onChange={handleFeaturesChange}
+                />
                 <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
               </>
             )
@@ -47,6 +51,7 @@ const Features = () => {
       </div>
       <div className='p-4'>
         <FeaturesPanel
+          disabled={isRestoring}
           onChange={handleFeaturesChange}
           openingStatementProps={{
             onAutoAddPromptVariable: () => {},

@@ -8,6 +8,7 @@ import {
 import { useStore } from '../../store'
 import UserInput from './user-input'
 import Chat from '@/app/components/base/chat/chat'
+import type { ChatItem } from '@/app/components/base/chat/types'
 import { fetchConvesationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
@@ -19,7 +20,7 @@ const ChatRecord = () => {
   const currentConversationID = useStore(s => s.currentConversationID)
 
   const chatMessageList = useMemo(() => {
-    const res: any = []
+    const res: ChatItem[] = []
     if (chatList.length) {
       chatList.forEach((item: any) => {
         res.push({
@@ -35,10 +36,11 @@ const ChatRecord = () => {
           isAnswer: true,
           citation: item.retriever_resources,
           message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+          workflow_run_id: item.workflow_run_id,
         })
       })
     }
-    return res as any
+    return res
   }, [chatList])
 
   const handleFetchConvesationMessages = useCallback(async () => {

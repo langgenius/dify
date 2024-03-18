@@ -1,9 +1,9 @@
+import { useContext } from 'react'
 import {
   create,
   useStore as useZustandStore,
 } from 'zustand'
 import type { Viewport } from 'reactflow'
-import { useContext } from 'react'
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
@@ -44,6 +44,7 @@ type State = {
   notInitialWorkflow: boolean
   nodesDefaultConfigs: Record<string, any>
   nodeAnimation: boolean
+  isRestoring: boolean
 }
 
 type Action = {
@@ -66,6 +67,7 @@ type Action = {
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   setNodeAnimation: (nodeAnimation: boolean) => void
+  setIsRestoring: (isRestoring: boolean) => void
 }
 
 export const createWorkflowStore = () => {
@@ -91,9 +93,9 @@ export const createWorkflowStore = () => {
     toolsMap: {},
     setToolsMap: toolsMap => set(() => ({ toolsMap })),
     draftUpdatedAt: 0,
-    setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt })),
+    setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt: draftUpdatedAt ? draftUpdatedAt * 1000 : 0 })),
     publishedAt: 0,
-    setPublishedAt: publishedAt => set(() => ({ publishedAt })),
+    setPublishedAt: publishedAt => set(() => ({ publishedAt: publishedAt ? publishedAt * 1000 : 0 })),
     runningStatus: undefined,
     setRunningStatus: runningStatus => set(() => ({ runningStatus })),
     showInputsPanel: false,
@@ -108,6 +110,8 @@ export const createWorkflowStore = () => {
     setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
     nodeAnimation: false,
     setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
+    isRestoring: false,
+    setIsRestoring: isRestoring => set(() => ({ isRestoring })),
   }))
 }
 

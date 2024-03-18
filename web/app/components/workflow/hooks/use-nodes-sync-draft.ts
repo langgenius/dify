@@ -62,7 +62,7 @@ export const useNodesSyncDraft = () => {
           },
         },
       }).then((res) => {
-        workflowStore.setState({ draftUpdatedAt: res.updated_at })
+        workflowStore.getState().setDraftUpdatedAt(res.updated_at)
       })
     }
   }, [store, reactFlow, featuresStore, workflowStore])
@@ -73,9 +73,12 @@ export const useNodesSyncDraft = () => {
   })
 
   const handleSyncWorkflowDraft = useCallback((shouldDelay?: boolean) => {
-    const { runningStatus } = workflowStore.getState()
+    const {
+      runningStatus,
+      isRestoring,
+    } = workflowStore.getState()
 
-    if (runningStatus)
+    if (runningStatus || isRestoring)
       return
 
     if (shouldDelay)

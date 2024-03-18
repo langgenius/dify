@@ -40,6 +40,12 @@ export type FetchWorkflowDraftResponse = {
     viewport?: Viewport
   }
   features?: any
+  created_at: number
+  created_by: {
+    id: string
+    name: string
+    email: string
+  }
   updated_at: number
 }
 
