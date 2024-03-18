@@ -230,6 +230,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 if not self._task_state.current_stream_generate_state and event.node_id in self._stream_generate_routes:
                     self._task_state.current_stream_generate_state = self._stream_generate_routes[event.node_id]
 
+                    # generate stream outputs when node started
+                    yield from self._generate_stream_outputs_when_node_started()
+
                 yield self._workflow_node_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
@@ -422,6 +425,37 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             start_node_id = self._get_answer_start_at_node_id(graph, source_node_id)
 
         return start_node_id
+
+    def _generate_stream_outputs_when_node_started(self) -> Generator:
+        """
+        Generate stream outputs.
+        :return:
+        """
+        if self._task_state.current_stream_generate_state:
+            route_chunks = self._task_state.current_stream_generate_state.generate_route[
+                           self._task_state.current_stream_generate_state.current_route_position:]
+
+            for route_chunk in route_chunks:
+                if route_chunk.type == 'text':
+                    route_chunk = cast(TextGenerateRouteChunk, route_chunk)
+                    for token in route_chunk.text:
+                        # handle output moderation chunk
+                        should_direct_answer = self._handle_output_moderation_chunk(token)
+                        if should_direct_answer:
+                            continue
+
+                        self._task_state.answer += token
+                        yield self._message_to_stream_response(token, self._message.id)
+                        time.sleep(0.01)
+                else:
+                    break
+
+                self._task_state.current_stream_generate_state.current_route_position += 1
+
+            # all route chunks are generated
+            if self._task_state.current_stream_generate_state.current_route_position == len(
+                    self._task_state.current_stream_generate_state.generate_route):
+                self._task_state.current_stream_generate_state = None
 
     def _generate_stream_outputs_when_node_finished(self) -> None:
         """
