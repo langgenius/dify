@@ -171,6 +171,7 @@ class ToolProviderCredentials(BaseModel):
         SECRET_INPUT = "secret-input"
         TEXT_INPUT = "text-input"
         SELECT = "select"
+        BOOLEAN = "boolean"
 
         @classmethod
         def value_of(cls, value: str) -> "ToolProviderCredentials.CredentialsType":
@@ -192,7 +193,7 @@ class ToolProviderCredentials(BaseModel):
     name: str = Field(..., description="The name of the credentials")
     type: CredentialsType = Field(..., description="The type of the credentials")
     required: bool = False
-    default: Optional[str] = None
+    default: Optional[Union[int, str]] = None
     options: Optional[list[ToolCredentialsOption]] = None
     label: Optional[I18nObject] = None
     help: Optional[I18nObject] = None

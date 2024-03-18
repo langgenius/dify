@@ -10,53 +10,23 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class BingSearchTool(BuiltinTool):
     url = 'https://api.bing.microsoft.com/v7.0/search'
 
-    def _invoke(self, 
-                user_id: str,
-               tool_parameters: dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke_bing(self, 
+                     user_id: str,
+                     subscription_key: str, query: str, limit: int, 
+                     result_type: str, market: str, lang: str, 
+                     filters: list[str]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+            invoke bing search
         """
-
-        key = self.runtime.credentials.get('subscription_key', None)
-        if not key:
-            raise Exception('subscription_key is required')
-        
-        server_url = self.runtime.credentials.get('server_url', None)
-        if not server_url:
-            server_url = self.url
-        
-        query = tool_parameters.get('query', None)
-        if not query:
-            raise Exception('query is required')
-        
-        limit = min(tool_parameters.get('limit', 5), 10)
-        result_type = tool_parameters.get('result_type', 'text') or 'text'
-        
-        market = tool_parameters.get('market', 'US')
-        lang = tool_parameters.get('language', 'en')
-        filter = []
-
-        if tool_parameters.get('enable_computation', False):
-            filter.append('Computation')
-        if tool_parameters.get('enable_entities', False):
-            filter.append('Entities')
-        if tool_parameters.get('enable_news', False):
-            filter.append('News')
-        if tool_parameters.get('enable_related_search', False):
-            filter.append('RelatedSearches')
-        if tool_parameters.get('enable_webpages', False):
-            filter.append('WebPages')
-
         market_code = f'{lang}-{market}'
         accept_language = f'{lang},{market_code};q=0.9'
         headers = {
-            'Ocp-Apim-Subscription-Key': key,
+            'Ocp-Apim-Subscription-Key': subscription_key,
             'Accept-Language': accept_language
         }
 
         query = quote(query)
-        server_url = f'{server_url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filter)}'
+        server_url = f'{self.url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filters)}'
         response = get(server_url, headers=headers)
 
         if response.status_code != 200:
@@ -124,3 +94,105 @@ class BingSearchTool(BuiltinTool):
                     text += f'{related["displayText"]} - {related["webSearchUrl"]}\n'
 
             return self.create_text_message(text=self.summary(user_id=user_id, content=text))
+        
+
+    def validate_credentials(self, credentials: dict[str, Any], tool_parameters: dict[str, Any]) -> None:
+        key = credentials.get('subscription_key', None)
+        if not key:
+            raise Exception('subscription_key is required')
+        
+        server_url = credentials.get('server_url', None)
+        if not server_url:
+            server_url = self.url
+
+        query = tool_parameters.get('query', None)
+        if not query:
+            raise Exception('query is required')
+        
+        limit = min(tool_parameters.get('limit', 5), 10)
+        result_type = tool_parameters.get('result_type', 'text') or 'text'
+
+        market = tool_parameters.get('market', 'US')
+        lang = tool_parameters.get('language', 'en')
+        filter = []
+
+        if credentials.get('allow_entities', False):
+            filter.append('Entities')
+
+        if credentials.get('allow_computation', False):
+            filter.append('Computation')
+
+        if credentials.get('allow_news', False):
+            filter.append('News')
+
+        if credentials.get('allow_related_searches', False):
+            filter.append('RelatedSearches')
+
+        if credentials.get('allow_web_pages', False):
+            filter.append('WebPages')
+
+        if not filter:
+            raise Exception('At least one filter is required')
+        
+        self._invoke_bing(
+            user_id='test',
+            subscription_key=key,
+            query=query,
+            limit=limit,
+            result_type=result_type,
+            market=market,
+            lang=lang,
+            filters=filter
+        )
+        
+    def _invoke(self, 
+                user_id: str,
+               tool_parameters: dict[str, Any], 
+        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+        """
+            invoke tools
+        """
+
+        key = self.runtime.credentials.get('subscription_key', None)
+        if not key:
+            raise Exception('subscription_key is required')
+        
+        server_url = self.runtime.credentials.get('server_url', None)
+        if not server_url:
+            server_url = self.url
+        
+        query = tool_parameters.get('query', None)
+        if not query:
+            raise Exception('query is required')
+        
+        limit = min(tool_parameters.get('limit', 5), 10)
+        result_type = tool_parameters.get('result_type', 'text') or 'text'
+        
+        market = tool_parameters.get('market', 'US')
+        lang = tool_parameters.get('language', 'en')
+        filter = []
+
+        if tool_parameters.get('enable_computation', False):
+            filter.append('Computation')
+        if tool_parameters.get('enable_entities', False):
+            filter.append('Entities')
+        if tool_parameters.get('enable_news', False):
+            filter.append('News')
+        if tool_parameters.get('enable_related_search', False):
+            filter.append('RelatedSearches')
+        if tool_parameters.get('enable_webpages', False):
+            filter.append('WebPages')
+
+        if not filter:
+            raise Exception('At least one filter is required')
+        
+        return self._invoke_bing(
+            user_id=user_id,
+            subscription_key=key,
+            query=query,
+            limit=limit,
+            result_type=result_type,
+            market=market,
+            lang=lang,
+            filters=filter
+        )
