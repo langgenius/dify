@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { BlockEnum } from './types'
-import { useStore } from './store'
 import {
   Answer,
   Code,
@@ -21,7 +20,7 @@ type BlockIconProps = {
   type: BlockEnum
   size?: string
   className?: string
-  toolProviderId?: string
+  toolIcon?: string | { content: string; background: string }
 }
 const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   sm: 'w-5 h-5 rounded-md shadow-xs',
@@ -60,17 +59,14 @@ const BlockIcon: FC<BlockIconProps> = ({
   type,
   size = 'sm',
   className,
-  toolProviderId,
+  toolIcon,
 }) => {
-  const toolsets = useStore(s => s.toolsets)
-  const icon = toolsets.find(toolset => toolset.id === toolProviderId)?.icon
-
   return (
     <div className={`
       flex items-center justify-center border-[0.5px] border-white/[0.02] text-white
       ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]} 
       ${ICON_CONTAINER_BG_COLOR_MAP[type]}
-      ${icon && '!shadow-none'}
+      ${toolIcon && '!shadow-none'}
       ${className}
     `}
     >
@@ -80,15 +76,15 @@ const BlockIcon: FC<BlockIconProps> = ({
         )
       }
       {
-        type === BlockEnum.Tool && icon && (
+        type === BlockEnum.Tool && toolIcon && (
           <>
             {
-              typeof icon === 'string'
+              typeof toolIcon === 'string'
                 ? (
                   <div
                     className='shrink-0 w-full h-full bg-cover bg-center rounded-md'
                     style={{
-                      backgroundImage: `url(${icon})`,
+                      backgroundImage: `url(${toolIcon})`,
                     }}
                   ></div>
                 )
@@ -96,8 +92,8 @@ const BlockIcon: FC<BlockIconProps> = ({
                   <AppIcon
                     className='shrink-0 !w-full !h-full'
                     size='tiny'
-                    icon={icon?.content}
-                    background={icon?.background}
+                    icon={toolIcon?.content}
+                    background={toolIcon?.background}
                   />
                 )
             }

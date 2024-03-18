@@ -37,11 +37,19 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
 
   return (
     <div
-      className={cn('fixed bottom-2 flex flex-col py-3 bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10')}
+      className={cn('relative flex flex-col py-3 bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10')}
       style={{
-        width: fixedWidth ? 400 : width,
-        top: fixedWidth ? 56 + 56 : 56 + 8,
-        left: fixedWidth ? `${8 + width - 400 - 200}px` : '8px',
+        width,
+        ...(!fixedWidth
+          ? {
+            position: 'fixed',
+            top: 56 + 8,
+            left: 8,
+            bottom: 16,
+          }
+          : {
+            marginRight: 8,
+          }),
       }}
       ref={ref}
     >

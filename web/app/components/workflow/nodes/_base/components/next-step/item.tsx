@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { union } from 'lodash-es'
@@ -15,6 +16,8 @@ import {
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type ItemProps = {
   nodeId: string
@@ -31,6 +34,11 @@ const Item = ({
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
+  const toolsets = useStore(s => s.toolsets)
+  const toolIcon = useMemo(() => {
+    if (data.type === BlockEnum.Tool)
+      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
+  }, [data, toolsets])
   const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
@@ -65,7 +73,7 @@ const Item = ({
       }
       <BlockIcon
         type={data.type}
-        toolProviderId={data.provider_id}
+        toolIcon={toolIcon}
         className='shrink-0 mr-1.5'
       />
       <div className='grow'>{data.title}</div>
