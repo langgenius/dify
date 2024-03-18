@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -46,5 +46,5 @@ class QuestionClassifierNodeData(BaseNodeData):
     type: str = 'question-classifier'
     model: ModelConfig
     classes: list[ClassConfig]
-    instruction: str
-    memory: MemoryConfig
+    instruction: Optional[str]
+    memory: Optional[MemoryConfig]

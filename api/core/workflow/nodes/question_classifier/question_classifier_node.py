@@ -68,7 +68,7 @@ class QuestionClassifierNode(BaseNode):
             stop=stop
         )
         try:
-            result_text_json = json.loads(result_text)
+            result_text_json = json.loads(result_text.strip('```JSON\n'))
             categories = result_text_json.get('categories', [])
             process_data = {
                 'model_mode': model_config.mode,
