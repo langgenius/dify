@@ -31,9 +31,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   const {
     inputs,
     isChatModel,
+    isChatMode,
     isCompletionModel,
     isShowVisionConfig,
     handleModelChanged,
+    hasSetBlockStatus,
     handleCompletionParamsChange,
     handleVarListChange,
     handleAddVariable,
@@ -164,9 +166,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <ConfigPrompt
             readOnly={readOnly}
             isChatModel={isChatModel}
+            isChatApp={isChatMode}
             payload={inputs.prompt_template}
             variables={inputs.variables.map(item => item.variable)}
             onChange={handlePromptChange}
+            hasSetBlockStatus={hasSetBlockStatus}
           />
         )}
 

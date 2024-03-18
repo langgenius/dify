@@ -58,6 +58,7 @@ export const useNodesSyncDraft = () => {
             speech_to_text: features.speech2text,
             retriever_resource: features.citation,
             sensitive_word_avoidance: features.moderation,
+            file_upload: features.file,
           },
         },
       }).then((res) => {

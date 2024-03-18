@@ -16,17 +16,24 @@ const i18nPrefix = 'workflow.nodes.llm'
 type Props = {
   readOnly: boolean
   isChatModel: boolean
+  isChatApp: boolean
   payload: PromptItem | PromptItem[]
   variables: string[]
   onChange: (payload: PromptItem | PromptItem[]) => void
+  hasSetBlockStatus: {
+    history: boolean
+    query: boolean
+  }
 }
 
 const ConfigPrompt: FC<Props> = ({
   readOnly,
   isChatModel,
+  isChatApp,
   payload,
   variables,
   onChange,
+  hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
 
@@ -122,6 +129,9 @@ const ConfigPrompt: FC<Props> = ({
                       readOnly={readOnly}
                       showRemove={(payload as PromptItem[]).length > 1}
                       onRemove={handleRemove(index)}
+                      isChatModel={isChatModel}
+                      isChatApp={isChatApp}
+                      hasSetBlockStatus={hasSetBlockStatus}
                     />
                   )
                 })
@@ -143,6 +153,9 @@ const ConfigPrompt: FC<Props> = ({
               onChange={handleCompletionPromptChange}
               variables={variables}
               readOnly={readOnly}
+              isChatModel={isChatModel}
+              isChatApp={isChatApp}
+              hasSetBlockStatus={hasSetBlockStatus}
             />
           </div>
         )}

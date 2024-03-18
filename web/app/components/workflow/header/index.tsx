@@ -8,10 +8,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import {
-  useIsChatMode,
-  useWorkflowRun,
-} from '../hooks'
+import { useWorkflowRun } from '../hooks'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
@@ -26,7 +23,6 @@ const Header: FC = () => {
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
-  const isChatMode = useIsChatMode()
   const runningStatus = useStore(s => s.runningStatus)
   const { handleRunSetting } = useWorkflowRun()
 
@@ -78,21 +74,17 @@ const Header: FC = () => {
         }
         <RunAndHistory />
         <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
-        {
-          isChatMode && (
-            <Button
-              className={`
-                mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
-                border-[0.5px] border-gray-200 shadow-xs
-                ${runningStatus && '!cursor-not-allowed opacity-50'}
-              `}
-              onClick={handleShowFeatures}
-            >
-              <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
-              {t('workflow.common.features')}
-            </Button>
-          )
-        }
+        <Button
+          className={`
+            mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
+            border-[0.5px] border-gray-200 shadow-xs
+            ${runningStatus && '!cursor-not-allowed opacity-50'}
+          `}
+          onClick={handleShowFeatures}
+        >
+          <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
+          {t('workflow.common.features')}
+        </Button>
         <Publish />
       </div>
     </div>

@@ -183,6 +183,13 @@ const WorkflowWrap = memo(() => {
 
   const features = data.features || {}
   const initialFeatures: FeaturesData = {
+    file: {
+      image: {
+        enabled: !!features.file_upload.image.enabled,
+        number_limits: features.file_upload.image.number_limits || 3,
+        transfer_methods: features.file_upload.image.transfer_methods || ['local_file', 'remote_url'],
+      },
+    },
     opening: {
       enabled: !!features.opening_statement,
       opening_statement: features.opening_statement,
