@@ -136,9 +136,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._handle_retriever_resources(event)
             elif isinstance(event, QueueAnnotationReplyEvent):
-                annotation = self._handle_annotation_reply(event)
-                if annotation:
-                    self._task_state.answer = annotation.content
+                self._handle_annotation_reply(event)
             elif isinstance(event, QueueWorkflowStartedEvent):
                 self._handle_workflow_start()
             elif isinstance(event, QueueNodeStartedEvent):
@@ -148,7 +146,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
 
-                if workflow_run.status != WorkflowRunStatus.SUCCEEDED.value:
+                if workflow_run and workflow_run.status == WorkflowRunStatus.FAILED.value:
                     raise self._handle_error(QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}')))
 
                 # handle output moderation
@@ -249,21 +247,27 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
+                if workflow_run:
+                    if workflow_run.status == WorkflowRunStatus.FAILED.value:
+                        err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
+                        yield self._error_to_stream_response(self._handle_error(err_event))
+                        break
 
-                if workflow_run.status != WorkflowRunStatus.SUCCEEDED.value:
-                    err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
-                    yield self._error_to_stream_response(self._handle_error(err_event))
-                    break
+                    yield self._workflow_finish_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run
+                    )
 
-                self._queue_manager.publish(
-                    QueueAdvancedChatMessageEndEvent(),
-                    PublishFrom.TASK_PIPELINE
-                )
+                if isinstance(event, QueueStopEvent):
+                    # Save message
+                    self._save_message()
 
-                yield self._workflow_finish_to_stream_response(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run=workflow_run
-                )
+                    yield self._message_end_to_stream_response()
+                else:
+                    self._queue_manager.publish(
+                        QueueAdvancedChatMessageEndEvent(),
+                        PublishFrom.TASK_PIPELINE
+                    )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
                 if output_moderation_answer:
@@ -277,9 +281,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._handle_retriever_resources(event)
             elif isinstance(event, QueueAnnotationReplyEvent):
-                annotation = self._handle_annotation_reply(event)
-                if annotation:
-                    self._task_state.answer = annotation.content
+                self._handle_annotation_reply(event)
             # elif isinstance(event, QueueMessageFileEvent):
             #     response = self._message_file_to_stream_response(event)
             #     if response:

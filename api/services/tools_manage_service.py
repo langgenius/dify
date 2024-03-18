@@ -138,9 +138,9 @@ class ToolManageService:
             :return: the list of tool providers
         """
         provider = ToolManager.get_builtin_provider(provider_name)
-        return [
-            v.to_dict() for _, v in (provider.credentials_schema or {}).items()
-        ]
+        return json.loads(serialize_base_model_array([
+            v for _, v in (provider.credentials_schema or {}).items()
+        ]))
 
     @staticmethod
     def parser_api_schema(schema: str) -> list[ApiBasedToolBundle]:
