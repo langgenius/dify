@@ -42,9 +42,20 @@ export const initialNodes = (nodes: Node[], edges: Edge[]) => {
   })
 }
 
-export const initialEdges = (edges: Edge[]) => {
+export const initialEdges = (edges: Edge[], nodes: Node[]) => {
+  const nodesMap = nodes.reduce((acc, node) => {
+    acc[node.id] = node
+
+    return acc
+  }, {} as Record<string, Node>)
   return edges.map((edge) => {
     edge.type = 'custom'
+
+    if (!edge.data?.sourceType)
+      edge.data = { ...edge.data, sourceType: nodesMap[edge.source].data.type! } as any
+
+    if (!edge.data?.targetType)
+      edge.data = { ...edge.data, targetType: nodesMap[edge.target].data.type! } as any
 
     return edge
   })
