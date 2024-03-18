@@ -46,6 +46,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
+        {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
         >
