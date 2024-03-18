@@ -1,9 +1,9 @@
+import re
 from copy import deepcopy
+from random import randint
 from typing import Any, Union
 from urllib.parse import urlencode
-from random import randint
 
-import re
 import httpx
 import requests
 
