@@ -21,13 +21,6 @@ parameter_rules:
       zh_Hans: 停止前生成的最大令牌数。请注意，Anthropic Claude 模型可能会在达到 max_tokens 的值之前停止生成令牌。不同的 Anthropic Claude 模型对此参数具有不同的最大值。
       en_US: The maximum number of tokens to generate before stopping. Note that Anthropic Claude models might stop generating tokens before reaching the value of max_tokens. Different Anthropic Claude models have different maximum values for this parameter.
   # docs: https://docs.anthropic.com/claude/docs/system-prompts
-  - name: system
-    type: string
-    required: false
-    default: "Respond only in English."
-    help:
-      zh_Hans: 系统提示请求。系统提示是向 Anthropic Claude 提供上下文和指令的一种方式，例如指定特定目标或角色。
-      en_US: The system prompt for the request. A system prompt is a way of providing context and instructions to Anthropic Claude, such as specifying a particular goal or role.
   - name: temperature
     use_template: temperature
     required: false

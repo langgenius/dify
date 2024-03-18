@@ -106,6 +106,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             model=model,
             messages=prompt_message_dicts,
             stop_sequences=stop if stop else [],
+            system=system,
             stream=stream,
             **model_parameters,
         )
