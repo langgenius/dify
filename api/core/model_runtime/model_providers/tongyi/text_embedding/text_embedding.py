@@ -21,11 +21,11 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
     """
 
     def _invoke(
-        self,
-        model: str,
-        credentials: dict,
-        texts: list[str],
-        user: Optional[str] = None,
+            self,
+            model: str,
+            credentials: dict,
+            texts: list[str],
+            user: Optional[str] = None,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -42,10 +42,8 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
 
         return TextEmbeddingResult(
             embeddings=embeddings,
-            usage=self._calc_response_usage(
-                model, credentials_kwargs, embedding_used_tokens
-            ),
-            model=model,
+            usage=self._calc_response_usage(model, credentials_kwargs, embedding_used_tokens),
+            model=model
         )
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
@@ -95,9 +93,7 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         embeddings = []
         embedding_used_tokens = 0
         for text in texts:
-            response = dashscope.TextEmbedding.call(
-                model=model, input=text, text_type="document"
-            )
+            response = dashscope.TextEmbedding.call(model=model, input=text, text_type="document")
             data = response.output["embeddings"][0]
             embeddings.append(data["embedding"])
             embedding_used_tokens += response.usage["total_tokens"]
@@ -105,7 +101,7 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
 
     def _calc_response_usage(
-        self, model: str, credentials: dict, tokens: int
+            self, model: str, credentials: dict, tokens: int
     ) -> EmbeddingUsage:
         """
         Calculate response usage
@@ -119,7 +115,7 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
             model=model,
             credentials=credentials,
             price_type=PriceType.INPUT,
-            tokens=tokens,
+            tokens=tokens
         )
 
         # transform usage
@@ -130,7 +126,7 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at,
+            latency=time.perf_counter() - self.started_at
         )
 
         return usage
