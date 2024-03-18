@@ -10,7 +10,7 @@ class RerankingModelConfig(BaseModel):
     Reranking Model Config.
     """
     provider: str
-    mode: str
+    model: str
 
 
 class MultipleRetrievalConfig(BaseModel):
@@ -48,4 +48,4 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     dataset_ids: list[str]
     retrieval_mode: Literal['single', 'multiple']
     multiple_retrieval_config: Optional[MultipleRetrievalConfig]
-    singleRetrievalConfig: Optional[SingleRetrievalConfig]
+    single_retrieval_config: Optional[SingleRetrievalConfig]
