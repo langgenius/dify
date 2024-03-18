@@ -3,7 +3,6 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.variable_entities import VariableSelector
 
 
 class ModelConfig(BaseModel):
@@ -43,7 +42,7 @@ class QuestionClassifierNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
     """
-    query_variable_selector: VariableSelector
+    query_variable_selector: list[str]
     type: str = 'question-classifier'
     model: ModelConfig
     classes: list[ClassConfig]
