@@ -20,7 +20,9 @@ type Props = {
   payload: PromptItem | PromptItem[]
   variables: string[]
   onChange: (payload: PromptItem | PromptItem[]) => void
+  isShowContext: boolean
   hasSetBlockStatus: {
+    context: boolean
     history: boolean
     query: boolean
   }
@@ -33,6 +35,7 @@ const ConfigPrompt: FC<Props> = ({
   payload,
   variables,
   onChange,
+  isShowContext,
   hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
@@ -131,6 +134,7 @@ const ConfigPrompt: FC<Props> = ({
                       onRemove={handleRemove(index)}
                       isChatModel={isChatModel}
                       isChatApp={isChatApp}
+                      isShowContext={isShowContext}
                       hasSetBlockStatus={hasSetBlockStatus}
                     />
                   )
@@ -155,6 +159,7 @@ const ConfigPrompt: FC<Props> = ({
               readOnly={readOnly}
               isChatModel={isChatModel}
               isChatApp={isChatApp}
+              isShowContext={isShowContext}
               hasSetBlockStatus={hasSetBlockStatus}
             />
           </div>
