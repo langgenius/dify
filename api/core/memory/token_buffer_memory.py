@@ -47,7 +47,10 @@ class TokenBufferMemory:
                 if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
                     file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
                 else:
-                    file_extra_config = FileUploadConfigManager.convert(message.workflow_run.workflow.features_dict)
+                    file_extra_config = FileUploadConfigManager.convert(
+                        message.workflow_run.workflow.features_dict,
+                        is_vision=False
+                    )
 
                 if file_extra_config:
                     file_objs = message_file_parser.transform_message_files(

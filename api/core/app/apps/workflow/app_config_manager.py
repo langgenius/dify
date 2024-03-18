@@ -20,10 +20,11 @@ class WorkflowAppConfigManager(BaseAppConfigManager):
     def get_app_config(cls, app_model: App, workflow: Workflow) -> WorkflowAppConfig:
         features_dict = workflow.features_dict
 
+        app_mode = AppMode.value_of(app_model.mode)
         app_config = WorkflowAppConfig(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            app_mode=AppMode.value_of(app_model.mode),
+            app_mode=app_mode,
             workflow_id=workflow.id,
             sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(
                 config=features_dict
@@ -31,7 +32,7 @@ class WorkflowAppConfigManager(BaseAppConfigManager):
             variables=WorkflowVariablesConfigManager.convert(
                 workflow=workflow
             ),
-            additional_features=cls.convert_features(features_dict)
+            additional_features=cls.convert_features(features_dict, app_mode)
         )
 
         return app_config

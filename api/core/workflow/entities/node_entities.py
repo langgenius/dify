@@ -45,6 +45,19 @@ class SystemVariable(Enum):
     FILES = 'files'
     CONVERSATION = 'conversation'
 
+    @classmethod
+    def value_of(cls, value: str) -> 'SystemVariable':
+        """
+        Get value of given system variable.
+
+        :param value: system variable value
+        :return: system variable
+        """
+        for system_variable in cls:
+            if system_variable.value == value:
+                return system_variable
+        raise ValueError(f'invalid system variable value {value}')
+
 
 class NodeRunMetadataKey(Enum):
     """
