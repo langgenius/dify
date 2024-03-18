@@ -509,6 +509,10 @@ class ToolManager:
             # add provider into providers
             credentials = db_builtin_provider.credentials
             provider_name = db_builtin_provider.provider
+            if provider_name not in result_providers:
+                # the provider has been deleted
+                continue
+
             result_providers[provider_name].is_team_authorization = True
 
             # package builtin tool provider controller
