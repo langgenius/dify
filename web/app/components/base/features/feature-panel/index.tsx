@@ -5,6 +5,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { OnFeaturesChange } from '../types'
 import { useFeatures } from '../hooks'
+import FileUpload from './file-upload'
 import OpeningStatement from './opening-statement'
 import type { OpeningStatementProps } from './opening-statement'
 import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
@@ -34,6 +35,7 @@ const FeaturePanel = ({
 
   return (
     <div className='space-y-3'>
+      <FileUpload onChange={onChange} />
       {
         showAdvanceFeature && (
           <div>

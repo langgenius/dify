@@ -23,6 +23,13 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
   config?: any
 }
 
+export type FileUpload = {
+  image: EnabledOrDisabled & {
+    number_limits: number
+    transfer_methods: string[]
+  }
+}
+
 export enum FeatureEnum {
   opening = 'opening',
   suggested = 'suggested',
@@ -30,6 +37,7 @@ export enum FeatureEnum {
   speech2text = 'speech2text',
   citation = 'citation',
   moderation = 'moderation',
+  file = 'file',
 }
 
 export type Features = {
@@ -39,6 +47,7 @@ export type Features = {
   [FeatureEnum.speech2text]: SpeechToText
   [FeatureEnum.citation]: RetrieverResource
   [FeatureEnum.moderation]: SensitiveWordAvoidance
+  [FeatureEnum.file]: FileUpload
 }
 
 export type OnFeaturesChange = (features: Features) => void

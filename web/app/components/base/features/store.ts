@@ -39,6 +39,13 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       moderation: {
         enabled: false,
       },
+      file: {
+        image: {
+          enabled: false,
+          number_limits: 3,
+          transfer_methods: ['local_file', 'remote_url'],
+        },
+      },
     },
   }
   return createStore<FeatureStoreState>()(set => ({
