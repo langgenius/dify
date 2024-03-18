@@ -5,22 +5,27 @@ from core.app.app_config.entities import FileExtraConfig
 
 class FileUploadConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> Optional[FileExtraConfig]:
+    def convert(cls, config: dict, is_vision: bool = True) -> Optional[FileExtraConfig]:
         """
         Convert model config to model config
 
         :param config: model config args
+        :param is_vision: if True, the feature is vision feature
         """
         file_upload_dict = config.get('file_upload')
         if file_upload_dict:
             if 'image' in file_upload_dict and file_upload_dict['image']:
                 if 'enabled' in file_upload_dict['image'] and file_upload_dict['image']['enabled']:
+                    image_config = {
+                        'number_limits': file_upload_dict['image']['number_limits'],
+                        'transfer_methods': file_upload_dict['image']['transfer_methods']
+                    }
+
+                    if is_vision:
+                        image_config['detail'] = file_upload_dict['image']['detail']
+
                     return FileExtraConfig(
-                        image_config={
-                            'number_limits': file_upload_dict['image']['number_limits'],
-                            'detail': file_upload_dict['image']['detail'],
-                            'transfer_methods': file_upload_dict['image']['transfer_methods']
-                        }
+                        image_config=image_config
                     )
 
         return None

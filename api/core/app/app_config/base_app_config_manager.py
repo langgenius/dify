@@ -10,7 +10,7 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
     SuggestedQuestionsAfterAnswerConfigManager,
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from models.model import AppModelConfig
+from models.model import AppMode, AppModelConfig
 
 
 class BaseAppConfigManager:
@@ -33,11 +33,12 @@ class BaseAppConfigManager:
         return config_dict
 
     @classmethod
-    def convert_features(cls, config_dict: dict) -> AppAdditionalFeatures:
+    def convert_features(cls, config_dict: dict, app_mode: AppMode) -> AppAdditionalFeatures:
         """
         Convert app config to app model config
 
         :param config_dict: app config
+        :param app_mode: app mode
         """
         config_dict = config_dict.copy()
 
@@ -47,7 +48,8 @@ class BaseAppConfigManager:
         )
 
         additional_features.file_upload = FileUploadConfigManager.convert(
-            config=config_dict
+            config=config_dict,
+            is_vision=app_mode in [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT]
         )
 
         additional_features.opening_statement, additional_features.suggested_questions = \

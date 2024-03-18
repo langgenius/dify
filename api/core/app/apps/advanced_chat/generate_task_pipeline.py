@@ -485,63 +485,85 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 value_selector = route_chunk.value_selector
                 route_chunk_node_id = value_selector[0]
 
-                # check chunk node id is before current node id or equal to current node id
-                if route_chunk_node_id not in self._task_state.ran_node_execution_infos:
-                    break
+                if route_chunk_node_id == 'sys':
+                    # system variable
+                    value = self._workflow_system_variables.get(SystemVariable.value_of(value_selector[1]))
+                    # new_value = []
+                    # if isinstance(value, list):
+                    #     for item in value:
+                    #         if isinstance(item, FileVar):
+                    #             new_value.append(item.to_dict())
+                    #
+                    # if new_value:
+                    #     value = new_value
+                else:
+                    # check chunk node id is before current node id or equal to current node id
+                    if route_chunk_node_id not in self._task_state.ran_node_execution_infos:
+                        break
 
-                latest_node_execution_info = self._task_state.latest_node_execution_info
+                    latest_node_execution_info = self._task_state.latest_node_execution_info
 
-                # get route chunk node execution info
-                route_chunk_node_execution_info = self._task_state.ran_node_execution_infos[route_chunk_node_id]
-                if (route_chunk_node_execution_info.node_type == NodeType.LLM
-                        and latest_node_execution_info.node_type == NodeType.LLM):
-                    # only LLM support chunk stream output
-                    self._task_state.current_stream_generate_state.current_route_position += 1
-                    continue
+                    # get route chunk node execution info
+                    route_chunk_node_execution_info = self._task_state.ran_node_execution_infos[route_chunk_node_id]
+                    if (route_chunk_node_execution_info.node_type == NodeType.LLM
+                            and latest_node_execution_info.node_type == NodeType.LLM):
+                        # only LLM support chunk stream output
+                        self._task_state.current_stream_generate_state.current_route_position += 1
+                        continue
 
-                # get route chunk node execution
-                route_chunk_node_execution = db.session.query(WorkflowNodeExecution).filter(
-                    WorkflowNodeExecution.id == route_chunk_node_execution_info.workflow_node_execution_id).first()
+                    # get route chunk node execution
+                    route_chunk_node_execution = db.session.query(WorkflowNodeExecution).filter(
+                        WorkflowNodeExecution.id == route_chunk_node_execution_info.workflow_node_execution_id).first()
 
-                outputs = route_chunk_node_execution.outputs_dict
+                    outputs = route_chunk_node_execution.outputs_dict
 
-                # get value from outputs
-                value = None
-                for key in value_selector[1:]:
-                    if not value:
-                        value = outputs.get(key)
-                    else:
-                        value = value.get(key)
+                    # get value from outputs
+                    value = None
+                    for key in value_selector[1:]:
+                        if not value:
+                            value = outputs.get(key)
+                        else:
+                            value = value.get(key)
 
                 if value:
-                    text = None
+                    text = ''
                     if isinstance(value, str | int | float):
                         text = str(value)
-                    elif isinstance(value, dict | list):
-                        # handle files
-                        file_vars = self._fetch_files_from_variable_value(value)
-                        for file_var in file_vars:
-                            try:
-                                file_var_obj = FileVar(**file_var)
-                            except Exception as e:
-                                logger.error(f'Error creating file var: {e}')
-                                continue
+                    elif isinstance(value, dict):
+                        # other types
+                        text = json.dumps(value, ensure_ascii=False)
+                    elif isinstance(value, FileVar):
+                        # convert file to markdown
+                        text = value.to_markdown()
+                    elif isinstance(value, list):
+                        for item in value:
+                            if isinstance(item, FileVar):
+                                text += item.to_markdown() + ' '
 
-                            # convert file to markdown
-                            text = file_var_obj.to_markdown()
+                        text = text.strip()
 
-                        if not text:
+                        # # handle files
+                        # file_vars = self._fetch_files_from_variable_value(value)
+                        # for file_var in file_vars:
+                        #     try:
+                        #         file_var_obj = FileVar(**file_var)
+                        #     except Exception as e:
+                        #         logger.error(f'Error creating file var: {e}')
+                        #         continue
+                        #
+                        #     # convert file to markdown
+                        #     text = file_var_obj.to_markdown()
+
+                        if not text and value:
                             # other types
                             text = json.dumps(value, ensure_ascii=False)
 
                     if text:
-                        for token in text:
-                            self._queue_manager.publish(
-                                QueueTextChunkEvent(
-                                    text=token
-                                ), PublishFrom.TASK_PIPELINE
-                            )
-                            time.sleep(0.01)
+                        self._queue_manager.publish(
+                            QueueTextChunkEvent(
+                                text=text
+                            ), PublishFrom.TASK_PIPELINE
+                        )
 
             self._task_state.current_stream_generate_state.current_route_position += 1
 

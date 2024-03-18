@@ -67,7 +67,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # parse files
         files = args['files'] if 'files' in args and args['files'] else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
-        file_extra_config = FileUploadConfigManager.convert(workflow.features_dict)
+        file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         if file_extra_config:
             file_objs = message_file_parser.validate_and_transform_files_arg(
                 files,

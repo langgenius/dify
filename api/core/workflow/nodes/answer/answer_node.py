@@ -1,9 +1,11 @@
+import json
 from typing import cast
 
+from core.file.file_obj import FileVar
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import ValueType, VariablePool
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
     GenerateRouteChunk,
@@ -30,43 +32,60 @@ class AnswerNode(BaseNode):
         # generate routes
         generate_routes = self.extract_generate_route_from_node_data(node_data)
 
-        answer = []
+        answer = ''
         for part in generate_routes:
             if part.type == "var":
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
                 value = variable_pool.get_variable_value(
-                    variable_selector=value_selector,
-                    target_value_type=ValueType.STRING
+                    variable_selector=value_selector
                 )
 
-                answer_part = {
-                    "type": "text",
-                    "text": value
-                }
-                # TODO File
+                text = ''
+                if isinstance(value, str | int | float):
+                    text = str(value)
+                elif isinstance(value, dict):
+                    # other types
+                    text = json.dumps(value, ensure_ascii=False)
+                elif isinstance(value, FileVar):
+                    # convert file to markdown
+                    text = value.to_markdown()
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, FileVar):
+                            text += item.to_markdown() + ' '
+
+                    text = text.strip()
+
+                    if not text and value:
+                        # other types
+                        text = json.dumps(value, ensure_ascii=False)
+
+                answer += text
             else:
                 part = cast(TextGenerateRouteChunk, part)
-                answer_part = {
-                    "type": "text",
-                    "text": part.text
-                }
-
-            if len(answer) > 0 and answer[-1]["type"] == "text" and answer_part["type"] == "text":
-                answer[-1]["text"] += answer_part["text"]
-            else:
-                answer.append(answer_part)
-
-        if len(answer) == 1 and answer[0]["type"] == "text":
-            answer = answer[0]["text"]
+                answer += part.text
 
         # re-fetch variable values
         variable_values = {}
         for variable_selector in node_data.variables:
             value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector,
-                target_value_type=ValueType.STRING
+                variable_selector=variable_selector.value_selector
             )
+
+            if isinstance(value, str | int | float):
+                value = str(value)
+            elif isinstance(value, FileVar):
+                value = value.to_dict()
+            elif isinstance(value, list):
+                new_value = []
+                for item in value:
+                    if isinstance(item, FileVar):
+                        new_value.append(item.to_dict())
+                    else:
+                        new_value.append(item)
+
+                value = new_value
 
             variable_values[variable_selector.variable] = value
 

@@ -61,6 +61,7 @@ class FileVar(BaseModel):
     def to_dict(self) -> dict:
         return {
             '__variant': self.__class__.__name__,
+            'tenant_id': self.tenant_id,
             'type': self.type.value,
             'transfer_method': self.transfer_method.value,
             'url': self.preview_url,
@@ -77,9 +78,9 @@ class FileVar(BaseModel):
         """
         preview_url = self.preview_url
         if self.type == FileType.IMAGE:
-            text = f'![{self.filename}]({self.preview_url})'
+            text = f'![{self.filename or ""}]({preview_url})'
         else:
-            text = f'[{self.filename or self.preview_url}]({self.preview_url})'
+            text = f'[{self.filename or preview_url}]({preview_url})'
 
         return text
 

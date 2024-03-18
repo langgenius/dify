@@ -43,10 +43,11 @@ class CompletionAppConfigManager(BaseAppConfigManager):
         else:
             config_dict = override_config_dict
 
+        app_mode = AppMode.value_of(app_model.mode)
         app_config = CompletionAppConfig(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            app_mode=AppMode.value_of(app_model.mode),
+            app_mode=app_mode,
             app_model_config_from=config_from,
             app_model_config_id=app_model_config.id,
             app_model_config_dict=config_dict,
@@ -62,7 +63,7 @@ class CompletionAppConfigManager(BaseAppConfigManager):
             dataset=DatasetConfigManager.convert(
                 config=config_dict
             ),
-            additional_features=cls.convert_features(config_dict)
+            additional_features=cls.convert_features(config_dict, app_mode)
         )
 
         app_config.variables, app_config.external_data_variables = BasicVariablesConfigManager.convert(
