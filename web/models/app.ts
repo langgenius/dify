@@ -79,6 +79,10 @@ export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>
 }
 
+export type WorkflowDailyConversationsResponse = {
+  data: Array<{ date: string; runs: number }>
+}
+
 export type AppStatisticsResponse = {
   data: Array<{ date: string }>
 }

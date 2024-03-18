@@ -333,17 +333,23 @@ const TextGeneration: FC<IMainProps> = ({
     if (!isInstalledApp)
       await checkOrSetAccessToken()
 
-    return Promise.all([isInstalledApp
-      ? {
-        app_id: installedAppInfo?.id,
-        site: {
-          title: installedAppInfo?.app.name,
-          prompt_public: false,
-          copyright: '',
-        },
-        plan: 'basic',
-      }
-      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchSavedMessage()])
+    return Promise.all([
+      isInstalledApp
+        ? {
+          app_id: installedAppInfo?.id,
+          site: {
+            title: installedAppInfo?.app.name,
+            prompt_public: false,
+            copyright: '',
+          },
+          plan: 'basic',
+        }
+        : fetchAppInfo(),
+      fetchAppParams(isInstalledApp, installedAppInfo?.id),
+      !isWorkflow
+        ? fetchSavedMessage()
+        : {},
+    ])
   }
 
   useEffect(() => {
@@ -360,6 +366,7 @@ const TextGeneration: FC<IMainProps> = ({
         ...file_upload.image,
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
       })
+      // ###TODO###
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for feture
