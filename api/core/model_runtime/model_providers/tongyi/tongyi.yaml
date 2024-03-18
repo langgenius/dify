@@ -17,6 +17,7 @@ help:
 supported_model_types:
   - llm
   - tts
+  - text-embedding
 configurate_methods:
   - predefined-model
 provider_credential_schema:

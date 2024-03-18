@@ -1,7 +1,6 @@
 name: Run Tool Pytest
 
 on:
-  workflow_dispatch:
   pull_request:
     branches:
       - main

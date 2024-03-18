@@ -1,7 +1,6 @@
 name: Run Unit Test For SDKs
 
 on:
-  workflow_dispatch:
   pull_request:
     branches:
       - main

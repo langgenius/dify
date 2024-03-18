@@ -1,7 +1,6 @@
 name: Build and Push WEB Image
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - 'main'
