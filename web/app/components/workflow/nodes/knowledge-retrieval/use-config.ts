@@ -17,7 +17,18 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
-  const { inputs, setInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
+  const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
+
+  const setInputs = useCallback((s: KnowledgeRetrievalNodeType) => {
+    const newInputs = produce(s, (draft) => {
+      if (s.retrieval_mode === RETRIEVE_TYPE.multiWay)
+        delete draft.single_retrieval_config
+      else
+        delete draft.multiple_retrieval_config
+    })
+    // not work in pass to draft...
+    doSetInputs(newInputs)
+  }, [doSetInputs])
 
   const inputRef = useRef(inputs)
   useEffect(() => {

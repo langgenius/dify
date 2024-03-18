@@ -62,9 +62,12 @@ const useOneStepRun = <T>({
   const allOutputVars = toNodeOutputVars(getBeforeNodesInSameBranch(id), isChatMode)
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     let res: Var | undefined
-    const targetVar = allOutputVars.find(v => v.nodeId === valueSelector[0])
+    const isSystem = valueSelector[0] === 'sys'
+    const targetVar = isSystem ? allOutputVars.find(item => !!item.isStartNode) : allOutputVars.find(v => v.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
+    if (isSystem)
+      return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
     valueSelector.slice(1).forEach((key, i) => {
