@@ -11,6 +11,7 @@ from core.workflow.nodes.http_request.entities import HttpRequestNodeData
 from core.workflow.nodes.http_request.http_executor import HttpExecutor, HttpExecutorResponse
 from models.workflow import WorkflowNodeExecutionStatus
 
+
 class HttpRequestNode(BaseNode):
     _node_data_cls = HttpRequestNodeData
     node_type = NodeType.HTTP_REQUEST
