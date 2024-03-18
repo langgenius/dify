@@ -3,6 +3,7 @@ import time
 from typing import Optional
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
+from core.file.file_obj import FileVar
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
@@ -494,3 +495,30 @@ class WorkflowEngineManager:
                     variable_key_list=new_key_list,
                     variable_value=value
                 )
+
+    @classmethod
+    def handle_special_values(cls, value: Optional[dict]) -> Optional[dict]:
+        """
+        Handle special values
+        :param value: value
+        :return:
+        """
+        if not value:
+            return None
+
+        new_value = value.copy()
+        if isinstance(new_value, dict):
+            for key, val in new_value.items():
+                if isinstance(val, FileVar):
+                    new_value[key] = val.to_dict()
+                elif isinstance(val, list):
+                    new_val = []
+                    for v in val:
+                        if isinstance(v, FileVar):
+                            new_val.append(v.to_dict())
+                        else:
+                            new_val.append(v)
+
+                    new_value[key] = new_val
+
+        return new_value

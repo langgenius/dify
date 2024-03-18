@@ -24,6 +24,7 @@ from core.app.entities.task_entities import (
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, SystemVariable
+from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
@@ -66,6 +67,11 @@ class WorkflowCycleManage:
                            .scalar() or 0
         new_sequence_number = max_sequence + 1
 
+        inputs = {**user_inputs}
+        for key, value in (system_inputs or {}).items():
+            inputs[f'sys.{key.value}'] = value
+        inputs = WorkflowEngineManager.handle_special_values(inputs)
+
         # init workflow run
         workflow_run = WorkflowRun(
             tenant_id=workflow.tenant_id,
@@ -76,7 +82,7 @@ class WorkflowCycleManage:
             triggered_from=triggered_from.value,
             version=workflow.version,
             graph=workflow.graph,
-            inputs=json.dumps({**user_inputs, **jsonable_encoder(system_inputs)}),
+            inputs=json.dumps(inputs),
             status=WorkflowRunStatus.RUNNING.value,
             created_by_role=(CreatedByRole.ACCOUNT.value
                              if isinstance(user, Account) else CreatedByRole.END_USER.value),
@@ -202,6 +208,9 @@ class WorkflowCycleManage:
         :param execution_metadata: execution metadata
         :return:
         """
+        inputs = WorkflowEngineManager.handle_special_values(inputs)
+        outputs = WorkflowEngineManager.handle_special_values(outputs)
+
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
@@ -231,6 +240,9 @@ class WorkflowCycleManage:
         :param error: error message
         :return:
         """
+        inputs = WorkflowEngineManager.handle_special_values(inputs)
+        outputs = WorkflowEngineManager.handle_special_values(outputs)
+
         workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
         workflow_node_execution.error = error
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
