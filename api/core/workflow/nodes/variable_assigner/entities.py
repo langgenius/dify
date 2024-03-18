@@ -7,8 +7,6 @@ class VariableAssignerNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
     """
-    title: str
-    desc: str
     type: str = 'variable-assigner'
     output_type: str
     variables: list[str]
