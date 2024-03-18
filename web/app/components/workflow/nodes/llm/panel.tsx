@@ -81,12 +81,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           label: t(`${i18nPrefix}.context`)!,
           inputs: [{
             label: '',
-            variable: 'contexts',
+            variable: '#context#',
             type: InputVarType.contexts,
             required: false,
           }],
-          values: { contexts },
-          onChange: keyValue => setContexts((keyValue as any).contexts),
+          values: { '#context#': contexts },
+          onChange: keyValue => setContexts((keyValue as any)['#context#']),
         },
       )
     }
@@ -97,12 +97,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           label: t(`${i18nPrefix}.vision`)!,
           inputs: [{
             label: t(`${i18nPrefix}.files`)!,
-            variable: 'visionFiles',
+            variable: '#files#',
             type: InputVarType.files,
             required: false,
           }],
-          values: { visionFiles },
-          onChange: keyValue => setVisionFiles((keyValue as any).visionFiles),
+          values: { '#files#': visionFiles },
+          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
         },
       )
     }

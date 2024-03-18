@@ -148,6 +148,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const handleContextVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.context.variable_selector = newVar as ValueSelector
+      draft.context.enabled = !!(newVar && newVar.length > 0)
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -198,14 +199,31 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     data: inputs,
     defaultRunInputData: {
       '#context#': [RETRIEVAL_OUTPUT_STRUCT],
-      '#vision#': [],
+      '#files#': [],
     },
   })
+
+  // const handleRun = (submitData: Record<string, any>) => {
+  //   console.log(submitData)
+  //   const res = produce(submitData, (draft) => {
+  //     debugger
+  //     if (draft.contexts) {
+  //       draft['#context#'] = draft.contexts
+  //       delete draft.contexts
+  //     }
+  //     if (draft.visionFiles) {
+  //       draft['#files#'] = draft.visionFiles
+  //       delete draft.visionFiles
+  //     }
+  //   })
+
+  //   doHandleRun(res)
+  // }
 
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
     Object.keys(runInputData)
-      .filter(key => !['#context#', '#vision#'].includes(key))
+      .filter(key => !['#context#', '#files#'].includes(key))
       .forEach((key) => {
         vars[key] = runInputData[key]
       })
@@ -216,7 +234,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     const newVars = {
       ...newPayload,
       '#context#': runInputData['#context#'],
-      '#vision#': runInputData['#vision#'],
+      '#files#': runInputData['#files#'],
     }
     setRunInputData(newVars)
   }, [runInputData, setRunInputData])
@@ -229,11 +247,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     })
   }, [runInputData, setRunInputData])
 
-  const visionFiles = runInputData['#vision']
+  const visionFiles = runInputData['#files#']
   const setVisionFiles = useCallback((newFiles: any[]) => {
     setRunInputData({
       ...runInputData,
-      '#vision#': newFiles,
+      '#files#': newFiles,
     })
   }, [runInputData, setRunInputData])
 

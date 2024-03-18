@@ -26,7 +26,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       text: '',
     }],
     context: {
-      enabled: true,
+      enabled: false,
       variable_selector: [],
     },
     vision: {
