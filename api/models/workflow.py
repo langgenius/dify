@@ -129,7 +129,7 @@ class Workflow(db.Model):
     def features_dict(self):
         return json.loads(self.features) if self.features else {}
 
-    def user_input_form(self) -> list:
+    def user_input_form(self, to_old_structure: bool = False) -> list:
         # get start node from graph
         if not self.graph:
             return []
@@ -143,8 +143,18 @@ class Workflow(db.Model):
             return []
 
         # get user_input_form from start node
-        return start_node.get('data', {}).get('variables', [])
+        variables = start_node.get('data', {}).get('variables', [])
 
+        if to_old_structure:
+            old_structure_variables = []
+            for variable in variables:
+                old_structure_variables.append({
+                    variable['type']: variable
+                })
+
+            return old_structure_variables
+
+        return variables
 
 class WorkflowRunTriggeredFrom(Enum):
     """
