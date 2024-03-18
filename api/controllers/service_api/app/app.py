@@ -54,7 +54,7 @@ class AppParameterApi(Resource):
                 raise AppUnavailableError()
 
             features_dict = workflow.features_dict
-            user_input_form = workflow.user_input_form()
+            user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
             features_dict = app_model_config.to_dict()
