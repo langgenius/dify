@@ -176,6 +176,7 @@ class Document(db.Model):
         db.PrimaryKeyConstraint('id', name='document_pkey'),
         db.Index('document_dataset_id_idx', 'dataset_id'),
         db.Index('document_is_paused_idx', 'is_paused'),
+        db.Index('document_tenant_idx', 'tenant_id'),
     )
 
     # initial fields
@@ -334,6 +335,7 @@ class DocumentSegment(db.Model):
         db.Index('document_segment_tenant_dataset_idx', 'dataset_id', 'tenant_id'),
         db.Index('document_segment_tenant_document_idx', 'document_id', 'tenant_id'),
         db.Index('document_segment_dataset_node_idx', 'dataset_id', 'index_node_id'),
+        db.Index('document_segment_tenant_idx', 'tenant_id'),
     )
 
     # initial fields
