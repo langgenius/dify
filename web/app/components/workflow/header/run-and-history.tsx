@@ -17,6 +17,7 @@ import {
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
@@ -111,6 +112,7 @@ PreviewMode.displayName = 'PreviewMode'
 
 const RunAndHistory: FC = () => {
   const { t } = useTranslation()
+  const { setCurrentLogItem, setShowMessageLogModal } = useAppStore()
   const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()
   const showRunHistory = useStore(state => state.showRunHistory)
@@ -132,7 +134,11 @@ const RunAndHistory: FC = () => {
             flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
             ${showRunHistory && 'bg-primary-50'}
           `}
-          onClick={() => workflowStore.setState({ showRunHistory: !showRunHistory })}
+          onClick={() => {
+            workflowStore.setState({ showRunHistory: !showRunHistory })
+            setCurrentLogItem()
+            setShowMessageLogModal(false)
+          }}
         >
           <ClockPlay className={`w-4 h-4 ${showRunHistory ? 'text-primary-600' : 'text-gray-500'}`} />
         </div>

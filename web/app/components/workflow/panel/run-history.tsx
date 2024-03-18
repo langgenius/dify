@@ -18,7 +18,7 @@ import Loading from '@/app/components/base/loading'
 const RunHistory = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const appDetail = useAppStore(state => state.appDetail)
+  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore()
   const workflowStore = useWorkflowStore()
   const workflowRunId = useRunHistoryStore(state => state.workflowRunId)
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
@@ -37,7 +37,15 @@ const RunHistory = () => {
         {t('workflow.common.runHistory')}
         <div
           className='flex items-center justify-center w-6 h-6 cursor-pointer'
-          onClick={() => workflowStore.setState({ showRunHistory: false, currentConversationID: '' })}
+          onClick={() => {
+            workflowStore.setState({
+              showRunHistory: false,
+              workflowRunId: '',
+              currentConversationID: '',
+            })
+            setCurrentLogItem()
+            setShowMessageLogModal(false)
+          }}
         >
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
