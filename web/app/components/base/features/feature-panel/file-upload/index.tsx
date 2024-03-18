@@ -13,9 +13,11 @@ import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 
 type FileUploadProps = {
   onChange?: OnFeaturesChange
+  disabled?: boolean
 }
 const FileUpload = ({
   onChange,
+  disabled,
 }: FileUploadProps) => {
   const { t } = useTranslation()
   const featuresStore = useFeaturesStore()
@@ -45,11 +47,12 @@ const FileUpload = ({
       </div>
       <div className='grow' />
       <div className='flex items-center'>
-        <ParamConfig onChange={onChange} />
+        <ParamConfig onChange={onChange} disabled={disabled} />
         <div className='ml-4 mr-3 w-[1px] h-3.5 bg-gray-200'></div>
         <Switch
           defaultValue={file.image.enabled}
           onChange={handleSwitch}
+          disabled={disabled}
           size='md'
         />
       </div>

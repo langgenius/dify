@@ -17,10 +17,12 @@ import Moderation from './moderation'
 export type FeaturePanelProps = {
   onChange?: OnFeaturesChange
   openingStatementProps: OpeningStatementProps
+  disabled?: boolean
 }
 const FeaturePanel = ({
   onChange,
   openingStatementProps,
+  disabled,
 }: FeaturePanelProps) => {
   const { t } = useTranslation()
   const features = useFeatures(s => s.features)
@@ -35,7 +37,10 @@ const FeaturePanel = ({
 
   return (
     <div className='space-y-3'>
-      <FileUpload onChange={onChange} />
+      <FileUpload
+        onChange={onChange}
+        disabled={disabled}
+      />
       {
         showAdvanceFeature && (
           <div>
@@ -51,7 +56,11 @@ const FeaturePanel = ({
             <div className='py-2 space-y-2'>
               {
                 features.opening.enabled && (
-                  <OpeningStatement {...openingStatementProps} onChange={onChange} />
+                  <OpeningStatement
+                    {...openingStatementProps}
+                    onChange={onChange}
+                    readonly={disabled}
+                  />
                 )
               }
               {
@@ -61,7 +70,7 @@ const FeaturePanel = ({
               }
               {
                 features.text2speech.enabled && (
-                  <TextToSpeech onChange={onChange} />
+                  <TextToSpeech onChange={onChange} disabled={disabled} />
                 )
               }
               {
@@ -93,7 +102,7 @@ const FeaturePanel = ({
             <div className='py-2 space-y-2'>
               {
                 features.moderation.enabled && (
-                  <Moderation onChange={onChange} />
+                  <Moderation onChange={onChange} disabled={disabled} />
                 )
               }
             </div>

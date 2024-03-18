@@ -14,9 +14,11 @@ import {
 
 type ParamsConfigProps = {
   onChange?: OnFeaturesChange
+  disabled?: boolean
 }
 const ParamsConfig = ({
   onChange,
+  disabled,
 }: ParamsConfigProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -30,8 +32,8 @@ const ParamsConfig = ({
         mainAxis: 4,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className={cn('flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
+      <PortalToFollowElemTrigger onClick={() => !disabled && setOpen(v => !v)}>
+        <div className={cn('flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200', disabled && 'cursor-not-allowed opacity-50')}>
           <Settings01 className='w-3.5 h-3.5 ' />
           <div className='ml-1 leading-[18px] text-xs font-medium '>{t('appDebug.voice.settings')}</div>
         </div>

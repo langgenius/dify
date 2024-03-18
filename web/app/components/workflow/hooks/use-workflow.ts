@@ -2,7 +2,9 @@ import {
   useCallback,
   useEffect,
 } from 'react'
+import dayjs from 'dayjs'
 import { uniqBy } from 'lodash-es'
+import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import produce from 'immer'
 import {
@@ -33,10 +35,12 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchNodesDefaultConfigs,
+  fetchPublishedWorkflow,
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
 import { fetchCollectionList } from '@/service/tools'
+import I18n from '@/context/i18n'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -45,6 +49,7 @@ export const useIsChatMode = () => {
 }
 
 export const useWorkflow = () => {
+  const { locale } = useContext(I18n)
   const store = useStoreApi()
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
@@ -211,12 +216,17 @@ export const useWorkflow = () => {
     return true
   }, [store, nodesExtraData])
 
+  const formatTimeFromNow = useCallback((time: number) => {
+    return dayjs(time).locale(locale === 'zh-Hans' ? 'zh-cn' : locale).fromNow()
+  }, [locale])
+
   return {
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getAfterNodesInSameBranch,
     isValidConnection,
+    formatTimeFromNow,
   }
 }
 
@@ -226,10 +236,11 @@ export const useWorkflowInit = () => {
   const appDetail = useAppStore(state => state.appDetail)!
   const { data, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
 
-  const handleFetchPreloadData = async () => {
+  const handleFetchPreloadData = useCallback(async () => {
     try {
       const toolsets = await fetchCollectionList()
       const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
+      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
 
       workflowStore.setState({
         toolsets,
@@ -245,19 +256,20 @@ export const useWorkflowInit = () => {
           return acc
         }, {} as Record<string, any>),
       })
+      workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
     }
     catch (e) {
 
     }
-  }
+  }, [workflowStore, appDetail])
 
   useEffect(() => {
     handleFetchPreloadData()
-  }, [])
+  }, [handleFetchPreloadData])
 
   useEffect(() => {
     if (data)
-      workflowStore.setState({ draftUpdatedAt: data.updated_at })
+      workflowStore.getState().setDraftUpdatedAt(data.updated_at)
   }, [data, workflowStore])
 
   if (error && error.json && !error.bodyUsed && appDetail) {
@@ -280,7 +292,7 @@ export const useWorkflowInit = () => {
             features: {},
           },
         }).then((res) => {
-          workflowStore.setState({ draftUpdatedAt: res.updated_at })
+          workflowStore.getState().setDraftUpdatedAt(res.updated_at)
           mutate()
         })
       }
