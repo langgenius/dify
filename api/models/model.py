@@ -621,7 +621,7 @@ class Message(db.Model):
         if not self.answer:
             return self.answer
 
-        pattern = r'\[!?.*?\]\((((http|https):\/\/[\w.-]+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)'
+        pattern = r'\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)'
         matches = re.findall(pattern, self.answer)
 
         if not matches:
