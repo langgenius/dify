@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
-import NodePanel from './node'
+import TracingPanel from './tracing-panel'
 import Loading from '@/app/components/base/loading'
 import { fetchTracingList } from '@/service/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -62,16 +62,11 @@ const Tracing: FC<TracingProps> = ({ runID }) => {
   }
 
   return (
-    <div className='bg-gray-50 py-2'>
-      {list.map((node, index) => (
-        <NodePanel
-          key={node.id}
-          nodeInfo={node}
-          collapsed={collapseState[index]}
-          collapseHandle={() => collapseStateChange(index)}
-        />
-      ))}
-    </div>
+    <TracingPanel
+      list={list}
+      collapseState={collapseState}
+      collapseHandle={collapseStateChange}
+    />
   )
 }
 
