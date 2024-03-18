@@ -26,11 +26,12 @@ class FileUploadConfigManager:
         return None
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict, is_vision: bool = True) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for file upload feature
 
         :param config: app model config args
+        :param is_vision: if True, the feature is vision feature
         """
         if not config.get("file_upload"):
             config["file_upload"] = {}
@@ -47,9 +48,10 @@ class FileUploadConfigManager:
             if number_limits < 1 or number_limits > 6:
                 raise ValueError("number_limits must be in [1, 6]")
 
-            detail = config['file_upload']['image']['detail']
-            if detail not in ['high', 'low']:
-                raise ValueError("detail must be in ['high', 'low']")
+            if is_vision:
+                detail = config['file_upload']['image']['detail']
+                if detail not in ['high', 'low']:
+                    raise ValueError("detail must be in ['high', 'low']")
 
             transfer_methods = config['file_upload']['image']['transfer_methods']
             if not isinstance(transfer_methods, list):
