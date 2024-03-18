@@ -4,10 +4,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { isArray } from 'lodash-es'
+import produce from 'immer'
 import VarReferencePopup from './var-reference-popup'
 import { toNodeOutputVars } from './utils'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -39,11 +40,14 @@ type Props = {
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
-export const getNodeInfoById = (nodes: any, id: string) => {
+const getNodeInfoById = (nodes: any, id: string) => {
   if (!isArray(nodes))
     return
-
   return nodes.find((node: any) => node.id === id)
+}
+
+const isSystemVar = (valueSelector: ValueSelector) => {
+  return valueSelector[0]?.startsWith('sys.') || valueSelector[1]?.startsWith('sys.')
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -75,15 +79,27 @@ const VarReferencePicker: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
   const hasValue = !isConstant && value.length > 0
+  const startNode = availableNodes.find((node: any) => {
+    return node.data.type === BlockEnum.Start
+  })
   const outputVarNodeId = hasValue ? value[0] : ''
-  const outputVarNode = hasValue ? getNodeInfoById(availableNodes, outputVarNodeId)?.data : null
+  const outputVarNode = (() => {
+    if (!hasValue || isConstant)
+      return null
+    if (isSystemVar(value as ValueSelector))
+      return startNode?.data
+
+    return getNodeInfoById(availableNodes, outputVarNodeId)?.data
+  })()
   const varName = hasValue ? value[value.length - 1] : ''
 
   const getVarType = () => {
     if (isConstant)
       return 'undefined'
 
-    const targetVar = allOutputVars.find(v => v.nodeId === outputVarNodeId)
+    const targetVarNodeId = isSystemVar(value as ValueSelector) ? startNode?.id : outputVarNodeId
+    const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
+
     if (!targetVar)
       return 'undefined'
 
@@ -131,6 +147,16 @@ const VarReferencePicker: FC<Props> = ({
       setIsFocus(true)
     }
   }, [controlFocus])
+
+  const handleVarReferenceChange = useCallback((value: ValueSelector) => {
+    // sys var not passed to backend
+    const newValue = produce(value, (draft) => {
+      if (draft[1] && draft[1].startsWith('sys.'))
+        draft.shift()
+    })
+    onChange(newValue, varKindType)
+    setOpen(false)
+  }, [onChange, varKindType])
 
   const handleStaticChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value as string, varKindType)
@@ -185,7 +211,7 @@ const VarReferencePicker: FC<Props> = ({
                             <div className='p-[1px]'>
                               <VarBlockIcon
                                 className='!text-gray-900'
-                                type={outputVarNode?.type}
+                                type={outputVarNode?.type || BlockEnum.Start}
                               />
                             </div>
                             <div className='mx-0.5 text-xs font-medium text-gray-700'>{outputVarNode?.title}</div>
@@ -211,10 +237,7 @@ const VarReferencePicker: FC<Props> = ({
           {!isConstant && (
             <VarReferencePopup
               vars={outputVars}
-              onChange={(value) => {
-                onChange(value, varKindType)
-                setOpen(false)
-              }}
+              onChange={handleVarReferenceChange}
               itemWidth={width}
             />
           )}
