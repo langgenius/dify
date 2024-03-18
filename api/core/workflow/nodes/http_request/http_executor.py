@@ -1,8 +1,9 @@
-import re
 from copy import deepcopy
 from typing import Any, Union
 from urllib.parse import urlencode
+from random import randint
 
+import re
 import httpx
 import requests
 
@@ -32,6 +33,7 @@ class HttpExecutor:
     headers: dict[str, Any]
     body: Union[None, str]
     files: Union[None, dict[str, Any]]
+    boundary: str
 
     def __init__(self, node_data: HttpRequestNodeData, variables: dict[str, Any]):
         """
@@ -136,6 +138,8 @@ class HttpExecutor:
                 body = {}
                 kv_paris = original_body.split('\n')
                 for kv in kv_paris:
+                    if not kv.strip():
+                        continue
                     kv = kv.split(':')
                     if len(kv) == 2:
                         body[kv[0]] = kv[1]
@@ -148,6 +152,10 @@ class HttpExecutor:
                     self.files = {
                         k: ('', v) for k, v in body.items()
                     }
+                    random_str = lambda n: ''.join([chr(randint(97, 122)) for _ in range(n)])
+                    self.boundary = f'----WebKitFormBoundary{random_str(16)}'
+
+                    self.headers['Content-Type'] = f'multipart/form-data; boundary={self.boundary}'
                 else:
                     self.body = urlencode(body)
             elif node_data.body.type in ['json', 'raw']:
@@ -258,13 +266,12 @@ class HttpExecutor:
 
         # if files, use multipart/form-data with boundary
         if self.files:
-            boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW'
-            raw_request = f'--{boundary}\n' + raw_request
+            boundary = self.boundary
             for k, v in self.files.items():
                 raw_request += f'Content-Disposition: form-data; name="{k}"; filename="{v[0]}"\n'
                 raw_request += f'Content-Type: {v[1]}\n\n'
                 raw_request += v[1] + '\n'
-                raw_request += f'--{boundary}\n'
+                raw_request += f'{boundary}\n'
             raw_request += '--\n'
         else:
             raw_request += self.body or ''
