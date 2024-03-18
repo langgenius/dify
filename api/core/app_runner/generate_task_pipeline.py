@@ -118,7 +118,7 @@ class GenerateTaskPipeline:
                 try:
                     result = handler(event)
                     if result:
-                        yield result
+                        return result
                 except Exception as e:
                     raise e
             else:
