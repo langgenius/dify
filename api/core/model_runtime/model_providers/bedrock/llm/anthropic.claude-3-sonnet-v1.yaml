@@ -27,7 +27,7 @@ parameter_rules:
     default: "Respond only in English."
     help:
       zh_Hans: 系统提示请求。系统提示是向 Anthropic Claude 提供上下文和指令的一种方式，例如指定特定目标或角色。
-      en_US: The system prompt for the request. A system prompt is a way of providing context and instructions to Anthropic Claude, such as specifying a particular goal or role. 
+      en_US: The system prompt for the request. A system prompt is a way of providing context and instructions to Anthropic Claude, such as specifying a particular goal or role.
   - name: temperature
     use_template: temperature
     required: false
