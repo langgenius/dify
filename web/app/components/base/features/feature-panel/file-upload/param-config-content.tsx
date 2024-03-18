@@ -66,7 +66,7 @@ const ParamConfigContent = ({
   return (
     <div>
       <div>
-        <div className='leading-6 text-base font-semibold text-gray-800'>{t('appDebug.vision.visionSettings.title')}</div>
+        <div className='leading-6 text-base font-semibold text-gray-800'>{t('common.operation.settings')}</div>
         <div className='pt-3 space-y-6'>
           <div>
             <div className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.vision.visionSettings.uploadMethod')}</div>
