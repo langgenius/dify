@@ -463,10 +463,6 @@ class WorkflowCycleManage:
 
         self._task_state.workflow_run_id = workflow_run.id
 
-        if workflow_run.status == WorkflowRunStatus.SUCCEEDED.value:
-            outputs = workflow_run.outputs_dict
-            self._task_state.answer = outputs.get('text', '')
-
         db.session.close()
 
         return workflow_run
