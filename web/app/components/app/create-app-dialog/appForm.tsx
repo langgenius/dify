@@ -16,7 +16,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/line/communication'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+// import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { HelpCircle, InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -115,11 +115,11 @@ const AppForm = ({
             popupContent={
               <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
                 <div className='text-gray-700'>{t('app.newApp.completionDescription')}</div>
-                <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
+                {/* <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
                 <div className='flex items-center text-[#dc6803]'>
                   <AlertTriangle className='w-3 h-3 mr-1'/>
                   <div>{t('app.newApp.completionWarning')}</div>
-                </div>
+                </div> */}
               </div>
             }
           >

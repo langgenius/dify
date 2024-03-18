@@ -27,6 +27,8 @@ const getKey = (
 
     if (activeTab !== 'all')
       params.params.mode = activeTab
+    else
+      delete params.params.mode
 
     return params
   }
@@ -52,7 +54,7 @@ const Apps = () => {
   const options = [
     { value: 'all', text: t('app.types.all') },
     { value: 'chat', text: t('app.types.chatbot') },
-    { value: 'agent', text: t('app.types.agent') },
+    { value: 'agent-chat', text: t('app.types.agent') },
     { value: 'workflow', text: t('app.types.workflow') },
   ]
 
