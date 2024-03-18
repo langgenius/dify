@@ -91,6 +91,9 @@ const Chat: FC<ChatProps> = ({
   }, [])
 
   const handleWindowResize = useCallback(() => {
+    if (chatContainerRef.current)
+      setWidth(document.body.clientWidth - (chatContainerRef.current?.clientWidth + 16) - 8)
+
     if (chatContainerRef.current && chatFooterRef.current)
       chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
 
