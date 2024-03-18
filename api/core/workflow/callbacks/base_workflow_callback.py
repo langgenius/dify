@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from core.app.entities.queue_entities import AppQueueEvent
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 
@@ -68,5 +69,12 @@ class BaseWorkflowCallback(ABC):
     def on_node_text_chunk(self, node_id: str, text: str, metadata: Optional[dict] = None) -> None:
         """
         Publish text chunk
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_event(self, event: AppQueueEvent) -> None:
+        """
+        Publish event
         """
         raise NotImplementedError

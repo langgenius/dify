@@ -133,11 +133,13 @@ class KnowledgeRetrievalNode(BaseNode):
                                                  Document.enabled == True,
                                                  Document.archived == False,
                                                  ).first()
+                resource_number = 1
                 if dataset and document:
 
                     source = {
                         'metadata': {
                             '_source': 'knowledge',
+                            'position': resource_number,
                             'dataset_id': dataset.id,
                             'dataset_name': dataset.name,
                             'document_id': document.id,
@@ -148,14 +150,17 @@ class KnowledgeRetrievalNode(BaseNode):
                             'score': document_score_list.get(segment.index_node_id, None),
                             'segment_hit_count': segment.hit_count,
                             'segment_word_count': segment.word_count,
-                            'segment_position': segment.position
-                        }
+                            'segment_position': segment.position,
+                            'segment_index_node_hash': segment.index_node_hash,
+                        },
+                        'title': document.name
                     }
                     if segment.answer:
                         source['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
                     else:
                         source['content'] = segment.content
                     context_list.append(source)
+                    resource_number += 1
 
         return context_list
 

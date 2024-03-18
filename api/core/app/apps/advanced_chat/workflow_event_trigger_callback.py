@@ -2,6 +2,7 @@ from typing import Optional
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
+    AppQueueEvent,
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -127,4 +128,13 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
                     **metadata
                 }
             ), PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_event(self, event: AppQueueEvent) -> None:
+        """
+        Publish event
+        """
+        self._queue_manager.publish(
+            event,
+            PublishFrom.APPLICATION_MANAGER
         )

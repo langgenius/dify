@@ -2,6 +2,7 @@ from collections.abc import Generator
 from typing import Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -220,8 +221,8 @@ class LLMNode(BaseNode):
         :param variable_pool: variable pool
         :return:
         """
-        if not node_data.context.enabled:
-            return None
+        # if not node_data.context.enabled:
+        #     return None
 
         context_value = variable_pool.get_variable_value(node_data.context.variable_selector)
         if context_value:
@@ -229,13 +230,55 @@ class LLMNode(BaseNode):
                 return context_value
             elif isinstance(context_value, list):
                 context_str = ''
+                original_retriever_resource = []
                 for item in context_value:
                     if 'content' not in item:
                         raise ValueError(f'Invalid context structure: {item}')
 
                     context_str += item['content'] + '\n'
 
+                    retriever_resource = self._convert_to_original_retriever_resource(item)
+                    if retriever_resource:
+                        original_retriever_resource.append(retriever_resource)
+
+                if self.callbacks:
+                    for callback in self.callbacks:
+                        callback.on_event(
+                            event=QueueRetrieverResourcesEvent(
+                                retriever_resources=original_retriever_resource
+                            )
+                        )
+
                 return context_str.strip()
+
+        return None
+
+    def _convert_to_original_retriever_resource(self, context_dict: dict) -> Optional[dict]:
+        """
+        Convert to original retriever resource, temp.
+        :param context_dict: context dict
+        :return:
+        """
+        if '_source' in context_dict and context_dict['_source'] == 'knowledge':
+            metadata = context_dict.get('metadata', {})
+            source = {
+                'position': metadata.get('position'),
+                'dataset_id': metadata.get('dataset_id'),
+                'dataset_name': metadata.get('dataset_name'),
+                'document_id': metadata.get('document_id'),
+                'document_name': metadata.get('document_name'),
+                'data_source_type': metadata.get('document_data_source_type'),
+                'segment_id': metadata.get('segment_id'),
+                'retriever_from': metadata.get('retriever_from'),
+                'score': metadata.get('score'),
+                'hit_count': metadata.get('segment_hit_count'),
+                'word_count': metadata.get('segment_word_count'),
+                'segment_position': metadata.get('segment_position'),
+                'index_node_hash': metadata.get('segment_index_node_hash'),
+                'content': context_dict.get('content'),
+            }
+
+            return source
 
         return None
 
