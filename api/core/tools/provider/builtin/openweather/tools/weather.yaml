@@ -5,7 +5,7 @@ identity:
     en_US: Open Weather Query
     zh_Hans: 天气查询
     pt_BR: Previsão do tempo
-  icon: icon.png
+  icon: icon.svg
 description:
   human:
     en_US: Weather forecast inquiry

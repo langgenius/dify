@@ -9,7 +9,7 @@ identity:
     en_US: Weather query toolkit based on Open Weather
     zh_Hans: 基于open weather的天气查询工具包
     pt_BR: Kit de consulta de clima baseado no Open Weather
-  icon: icon.png
+  icon: icon.svg
 credentials_for_provider:
   api_key:
     type: secret-input

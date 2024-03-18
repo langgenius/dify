@@ -5,7 +5,7 @@ identity:
     en_US: Spark Image Generation
     zh_Hans: 图片生成
     pt_BR: Geração de imagens Spark
-  icon: icon.png
+  icon: icon.svg
   description:
     en_US: Spark Image Generation
     zh_Hans: 图片生成

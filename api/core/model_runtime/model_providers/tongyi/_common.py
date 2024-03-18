@@ -1,4 +1,11 @@
-from core.model_runtime.errors.invoke import InvokeError
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 
 class _CommonTongyi:
@@ -20,4 +27,10 @@ class _CommonTongyi:
 
         :return: Invoke error mapping
         """
-        pass
+        return {
+        InvokeConnectionError: [],
+        InvokeServerUnavailableError: [],
+        InvokeRateLimitError: [],
+        InvokeAuthorizationError: [],
+        InvokeBadRequestError: []
+        }
