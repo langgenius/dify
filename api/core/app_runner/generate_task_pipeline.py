@@ -103,95 +103,26 @@ class GenerateTaskPipeline:
         Process blocking response.
         :return:
         """
+        blocking_event_handlers = {
+            QueueErrorEvent: self._handle_error,
+            QueueRetrieverResourcesEvent: self._handle_retriever_resources,
+            AnnotationReplyEvent: self._handle_annotation_reply,
+            QueueStopEvent: self._handle_stop_event,
+            QueueMessageEndEvent: self._handle_stop_event,
+        }
+
         for queue_message in self._queue_manager.listen():
             event = queue_message.event
-
-            if isinstance(event, QueueErrorEvent):
-                raise self._handle_error(event)
-            elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._task_state.metadata['retriever_resources'] = event.retriever_resources
-            elif isinstance(event, AnnotationReplyEvent):
-                annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
-                if annotation:
-                    account = annotation.account
-                    self._task_state.metadata['annotation_reply'] = {
-                        'id': annotation.id,
-                        'account': {
-                            'id': annotation.account_id,
-                            'name': account.name if account else 'Dify user'
-                        }
-                    }
-
-                    self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
-                if isinstance(event, QueueMessageEndEvent):
-                    self._task_state.llm_result = event.llm_result
-                else:
-                    model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
-                    model = model_config.model
-                    model_type_instance = model_config.provider_model_bundle.model_type_instance
-                    model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-                    # calculate num tokens
-                    prompt_tokens = 0
-                    if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-                        prompt_tokens = model_type_instance.get_num_tokens(
-                            model,
-                            model_config.credentials,
-                            self._task_state.llm_result.prompt_messages
-                        )
-
-                    completion_tokens = 0
-                    if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
-                        completion_tokens = model_type_instance.get_num_tokens(
-                            model,
-                            model_config.credentials,
-                            [self._task_state.llm_result.message]
-                        )
-
-                    credentials = model_config.credentials
-
-                    # transform usage
-                    self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
-                        model,
-                        credentials,
-                        prompt_tokens,
-                        completion_tokens
-                    )
-
-                self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
-
-                # response moderation
-                if self._output_moderation_handler:
-                    self._output_moderation_handler.stop_thread()
-
-                    self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
-                        completion=self._task_state.llm_result.message.content,
-                        public_event=False
-                    )
-
-                # Save message
-                self._save_message(self._task_state.llm_result)
-
-                response = {
-                    'event': 'message',
-                    'task_id': self._application_generate_entity.task_id,
-                    'id': self._message.id,
-                    'message_id': self._message.id,
-                    'mode': self._conversation.mode,
-                    'answer': self._task_state.llm_result.message.content,
-                    'metadata': {},
-                    'created_at': int(self._message.created_at.timestamp())
-                }
-
-                if self._conversation.mode == 'chat':
-                    response['conversation_id'] = self._conversation.id
-
-                if self._task_state.metadata:
-                    response['metadata'] = self._get_response_metadata()
-
-                return response
+            handler = blocking_event_handlers.get(type(event))
+            if handler:
+                try:
+                    result = handler(event)
+                    if result:
+                        yield result
+                except Exception as e:
+                    raise e
             else:
+                logging.exception(f"Unsupported event {event}")
                 continue
 
     def _process_stream_response(self) -> Generator:
@@ -199,6 +130,7 @@ class GenerateTaskPipeline:
         Process stream response.
         :return:
         """
+
         for message in self._queue_manager.listen():
             event = message.event
 
@@ -480,6 +412,7 @@ class GenerateTaskPipeline:
         else:
             return Exception(e.description if getattr(e, 'description', None) is not None else str(e))
 
+
     def _error_to_stream_response_data(self, e: Exception) -> dict:
         """
         Error to stream response.
@@ -651,3 +584,89 @@ class GenerateTaskPipeline:
                 ),
                 on_message_replace_func=self._queue_manager.publish_message_replace
             )
+
+    def _handle_retriever_resources(self,event) -> None:
+        self._task_state.metadata['retriever_resources'] = event.retriever_resources
+
+    def _handle_annotation_reply(self, event) -> None:
+        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
+        if annotation:
+            account = annotation.account
+            self._task_state.metadata['annotation_reply'] = {
+                'id': annotation.id,
+                'account': {
+                    'id': annotation.account_id,
+                    'name': account.name if account else 'Dify user'
+                }
+            }
+
+            self._task_state.llm_result.message.content = annotation.content
+
+    def _handle_stop_event(self, event) -> dict:
+        if isinstance(event, QueueMessageEndEvent):
+            self._task_state.llm_result = event.llm_result
+        else:
+            model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
+            model = model_config.model
+            model_type_instance = model_config.provider_model_bundle.model_type_instance
+            model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
+            # calculate num tokens
+            prompt_tokens = 0
+            if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
+                prompt_tokens = model_type_instance.get_num_tokens(
+                    model,
+                    model_config.credentials,
+                    self._task_state.llm_result.prompt_messages
+                )
+
+            completion_tokens = 0
+            if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
+                completion_tokens = model_type_instance.get_num_tokens(
+                    model,
+                    model_config.credentials,
+                    [self._task_state.llm_result.message]
+                )
+
+            credentials = model_config.credentials
+
+            # transform usage
+            self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
+                model,
+                credentials,
+                prompt_tokens,
+                completion_tokens
+            )
+
+        self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
+
+        # response moderation
+        if self._output_moderation_handler:
+            self._output_moderation_handler.stop_thread()
+
+            self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
+                completion=self._task_state.llm_result.message.content,
+                public_event=False
+            )
+
+        # Save message
+        self._save_message(self._task_state.llm_result)
+
+        response = {
+            'event': 'message',
+            'task_id': self._application_generate_entity.task_id,
+            'id': self._message.id,
+            'message_id': self._message.id,
+            'mode': self._conversation.mode,
+            'answer': self._task_state.llm_result.message.content,
+            'metadata': {},
+            'created_at': int(self._message.created_at.timestamp())
+        }
+
+        if self._conversation.mode == 'chat':
+            response['conversation_id'] = self._conversation.id
+
+        if self._task_state.metadata:
+            response['metadata'] = self._get_response_metadata()
+
+        return response
