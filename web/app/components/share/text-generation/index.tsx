@@ -333,17 +333,23 @@ const TextGeneration: FC<IMainProps> = ({
     if (!isInstalledApp)
       await checkOrSetAccessToken()
 
-    return Promise.all([isInstalledApp
-      ? {
-        app_id: installedAppInfo?.id,
-        site: {
-          title: installedAppInfo?.app.name,
-          prompt_public: false,
-          copyright: '',
-        },
-        plan: 'basic',
-      }
-      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchSavedMessage()])
+    return Promise.all([
+      isInstalledApp
+        ? {
+          app_id: installedAppInfo?.id,
+          site: {
+            title: installedAppInfo?.app.name,
+            prompt_public: false,
+            copyright: '',
+          },
+          plan: 'basic',
+        }
+        : fetchAppInfo(),
+      fetchAppParams(isInstalledApp, installedAppInfo?.id),
+      !isWorkflow
+        ? fetchSavedMessage()
+        : {},
+    ])
   }
 
   useEffect(() => {
