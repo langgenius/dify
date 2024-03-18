@@ -12,6 +12,7 @@ import {
 } from 'reactflow'
 import { useNodesSyncDraft } from '../hooks'
 import { useStore } from '../store'
+import { WorkflowRunningStatus } from '../types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -63,7 +64,7 @@ const ZoomInOut: FC = () => {
   ]
 
   const handleZoom = (type: string) => {
-    if (runningStatus)
+    if (runningStatus === WorkflowRunningStatus.Running)
       return
     if (type === 'in')
       zoomIn()
@@ -84,7 +85,7 @@ const ZoomInOut: FC = () => {
   }
 
   const handleTrigger = useCallback(() => {
-    if (runningStatus)
+    if (runningStatus === WorkflowRunningStatus.Running)
       return
     setOpen(v => !v)
   }, [runningStatus])
@@ -103,7 +104,7 @@ const ZoomInOut: FC = () => {
         <div className={`
           flex items-center px-2 h-8 cursor-pointer text-[13px] hover:bg-gray-50 rounded-lg
           ${open && 'bg-gray-50'}
-          ${runningStatus && '!cursor-not-allowed opacity-50'}
+          ${runningStatus === WorkflowRunningStatus.Running && '!cursor-not-allowed opacity-50'}
         `}>
           <SearchLg className='mr-1 w-4 h-4' />
           <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
