@@ -48,7 +48,7 @@ const getNodeInfoById = (nodes: any, id: string) => {
 }
 
 const isSystemVar = (valueSelector: ValueSelector) => {
-  return valueSelector[0]?.startsWith('sys.') || valueSelector[1]?.startsWith('sys.')
+  return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -152,9 +152,15 @@ const VarReferencePicker: FC<Props> = ({
   const handleVarReferenceChange = useCallback((value: ValueSelector) => {
     // sys var not passed to backend
     const newValue = produce(value, (draft) => {
-      if (draft[1] && draft[1].startsWith('sys.'))
+      if (draft[1] && draft[1].startsWith('sys')) {
         draft.shift()
+        const paths = draft[0].split('.')
+        paths.forEach((p, i) => {
+          draft[i] = p
+        })
+      }
     })
+    console.log(newValue)
     onChange(newValue, varKindType)
     setOpen(false)
   }, [onChange, varKindType])
