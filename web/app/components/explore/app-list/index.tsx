@@ -42,7 +42,9 @@ const Apps = ({
 
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
+    disableSearchParams: pageType !== PageType.EXPLORE,
   })
+
   const {
     data: { categories, allList },
   } = useSWR(
