@@ -152,7 +152,12 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
 export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = (_payload: Var, _selector: ValueSelector) => true): NodeOutPutVar[] => {
   const res = nodes
     .filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type))
-    .map(node => formatItem(node, isChatMode, filterVar))
+    .map((node) => {
+      return {
+        ...formatItem(node, isChatMode, filterVar),
+        isStartNode: node.data.type === BlockEnum.Start,
+      }
+    })
     .filter(item => item.vars.length > 0)
   return res
 }

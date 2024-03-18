@@ -160,7 +160,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             />
             <VarItem
               name='headers'
-              type='sting'
+              type='object'
               description={t(`${i18nPrefix}.outputVars.headers`)}
             />
           </>
