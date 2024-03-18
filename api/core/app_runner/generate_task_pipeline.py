@@ -130,218 +130,37 @@ class GenerateTaskPipeline:
         Process stream response.
         :return:
         """
+        streaming_event_handlers = {
+            QueueErrorEvent: self._stream_handle_error,
+            QueueRetrieverResourcesEvent: self._handle_retriever_resources,
+            AnnotationReplyEvent: self._handle_annotation_reply,
+            QueueStopEvent: self._stream_handle_stop_event,
+            QueueMessageEndEvent: self._stream_handle_stop_event,
+            QueueAgentThoughtEvent: self._stream_handle_agent_thought,
+            QueueMessageFileEvent: self._stream_handle_message_file,
+            QueueMessageEvent: self._stream_handle_message,
+            QueueAgentMessageEvent: self._stream_handle_message,
+            QueueMessageReplaceEvent:self._stream_handle_message_replace,
+            QueuePingEvent:self._stream_handle_ping,
+        }
 
-        for message in self._queue_manager.listen():
-            event = message.event
-
-            if isinstance(event, QueueErrorEvent):
-                data = self._error_to_stream_response_data(self._handle_error(event))
-                yield self._yield_response(data)
-                break
-            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
-                if isinstance(event, QueueMessageEndEvent):
-                    self._task_state.llm_result = event.llm_result
-                else:
-                    model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
-                    model = model_config.model
-                    model_type_instance = model_config.provider_model_bundle.model_type_instance
-                    model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-                    # calculate num tokens
-                    prompt_tokens = 0
-                    if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-                        prompt_tokens = model_type_instance.get_num_tokens(
-                            model,
-                            model_config.credentials,
-                            self._task_state.llm_result.prompt_messages
-                        )
-
-                    completion_tokens = 0
-                    if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
-                        completion_tokens = model_type_instance.get_num_tokens(
-                            model,
-                            model_config.credentials,
-                            [self._task_state.llm_result.message]
-                        )
-
-                    credentials = model_config.credentials
-
-                    # transform usage
-                    self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
-                        model,
-                        credentials,
-                        prompt_tokens,
-                        completion_tokens
-                    )
-
-                self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
-
-                # response moderation
-                if self._output_moderation_handler:
-                    self._output_moderation_handler.stop_thread()
-
-                    self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
-                        completion=self._task_state.llm_result.message.content,
-                        public_event=False
-                    )
-
-                    self._output_moderation_handler = None
-
-                    replace_response = {
-                        'event': 'message_replace',
-                        'task_id': self._application_generate_entity.task_id,
-                        'message_id': self._message.id,
-                        'answer': self._task_state.llm_result.message.content,
-                        'created_at': int(self._message.created_at.timestamp())
-                    }
-
-                    if self._conversation.mode == 'chat':
-                        replace_response['conversation_id'] = self._conversation.id
-
-                    yield self._yield_response(replace_response)
-
-                # Save message
-                self._save_message(self._task_state.llm_result)
-
-                response = {
-                    'event': 'message_end',
-                    'task_id': self._application_generate_entity.task_id,
-                    'id': self._message.id,
-                    'message_id': self._message.id,
-                }
-
-                if self._conversation.mode == 'chat':
-                    response['conversation_id'] = self._conversation.id
-
-                if self._task_state.metadata:
-                    response['metadata'] = self._get_response_metadata()
-
-                yield self._yield_response(response)
-            elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._task_state.metadata['retriever_resources'] = event.retriever_resources
-            elif isinstance(event, AnnotationReplyEvent):
-                annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
-                if annotation:
-                    account = annotation.account
-                    self._task_state.metadata['annotation_reply'] = {
-                        'id': annotation.id,
-                        'account': {
-                            'id': annotation.account_id,
-                            'name': account.name if account else 'Dify user'
-                        }
-                    }
-
-                    self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, QueueAgentThoughtEvent):
-                agent_thought: MessageAgentThought = (
-                    db.session.query(MessageAgentThought)
-                    .filter(MessageAgentThought.id == event.agent_thought_id)
-                    .first()
-                )
-                db.session.refresh(agent_thought)
-                db.session.close()
-
-                if agent_thought:
-                    response = {
-                        'event': 'agent_thought',
-                        'id': agent_thought.id,
-                        'task_id': self._application_generate_entity.task_id,
-                        'message_id': self._message.id,
-                        'position': agent_thought.position,
-                        'thought': agent_thought.thought,
-                        'observation': agent_thought.observation,
-                        'tool': agent_thought.tool,
-                        'tool_labels': agent_thought.tool_labels,
-                        'tool_input': agent_thought.tool_input,
-                        'created_at': int(self._message.created_at.timestamp()),
-                        'message_files': agent_thought.files
-                    }
-
-                    if self._conversation.mode == 'chat':
-                        response['conversation_id'] = self._conversation.id
-
-                    yield self._yield_response(response)
-            elif isinstance(event, QueueMessageFileEvent):
-                message_file: MessageFile = (
-                    db.session.query(MessageFile)
-                    .filter(MessageFile.id == event.message_file_id)
-                    .first()
-                )
-                db.session.close()
-
-                # get extension
-                if '.' in message_file.url:
-                    extension = f'.{message_file.url.split(".")[-1]}'
-                    if len(extension) > 10:
-                        extension = '.bin'
-                else:
-                    extension = '.bin'
-                # add sign url
-                url = ToolFileManager.sign_file(file_id=message_file.id, extension=extension)
-
-                if message_file:
-                    response = {
-                        'event': 'message_file',
-                        'id': message_file.id,
-                        'type': message_file.type,
-                        'belongs_to': message_file.belongs_to or 'user',
-                        'url': url
-                    }
-
-                    if self._conversation.mode == 'chat':
-                        response['conversation_id'] = self._conversation.id
-
-                    yield self._yield_response(response)
-
-            elif isinstance(event, QueueMessageEvent | QueueAgentMessageEvent):
-                chunk = event.chunk
-                delta_text = chunk.delta.message.content
-                if delta_text is None:
-                    continue
-
-                if not self._task_state.llm_result.prompt_messages:
-                    self._task_state.llm_result.prompt_messages = chunk.prompt_messages
-
-                if self._output_moderation_handler:
-                    if self._output_moderation_handler.should_direct_output():
-                        # stop subscribe new token when output moderation should direct output
-                        self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
-                        self._queue_manager.publish_chunk_message(LLMResultChunk(
-                            model=self._task_state.llm_result.model,
-                            prompt_messages=self._task_state.llm_result.prompt_messages,
-                            delta=LLMResultChunkDelta(
-                                index=0,
-                                message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
-                            )
-                        ), PublishFrom.TASK_PIPELINE)
-                        self._queue_manager.publish(
-                            QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
-                            PublishFrom.TASK_PIPELINE
-                        )
-                        continue
-                    else:
-                        self._output_moderation_handler.append_new_token(delta_text)
-
-                self._task_state.llm_result.message.content += delta_text
-                response = self._handle_chunk(delta_text, agent=isinstance(event, QueueAgentMessageEvent))
-                yield self._yield_response(response)
-            elif isinstance(event, QueueMessageReplaceEvent):
-                response = {
-                    'event': 'message_replace',
-                    'task_id': self._application_generate_entity.task_id,
-                    'message_id': self._message.id,
-                    'answer': event.text,
-                    'created_at': int(self._message.created_at.timestamp())
-                }
-
-                if self._conversation.mode == 'chat':
-                    response['conversation_id'] = self._conversation.id
-
-                yield self._yield_response(response)
-            elif isinstance(event, QueuePingEvent):
-                yield "event: ping\n\n"
+        for queue_message in self._queue_manager.listen():
+            event = queue_message.event
+            handler = streaming_event_handlers.get(type(event))
+            if handler:
+                try:
+                    result = handler(event)
+                    if result:
+                        if isinstance(result, str):
+                            yield result
+                        else:
+                            yield self._yield_response(result)
+                except Exception as e:
+                    raise e
             else:
+                logging.exception(f"Unsupported event {event}")
                 continue
+
 
     def _save_message(self, llm_result: LLMResult) -> None:
         """
@@ -412,7 +231,6 @@ class GenerateTaskPipeline:
         else:
             return Exception(e.description if getattr(e, 'description', None) is not None else str(e))
 
-
     def _error_to_stream_response_data(self, e: Exception) -> dict:
         """
         Error to stream response.
@@ -425,7 +243,7 @@ class GenerateTaskPipeline:
             QuotaExceededError: {
                 'code': 'provider_quota_exceeded',
                 'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
-                       "Please go to Settings -> Model Provider to complete your own provider credentials.",
+                           "Please go to Settings -> Model Provider to complete your own provider credentials.",
                 'status': 400
             },
             ModelCurrentlyNotSupportError: {'code': 'model_currently_not_support', 'status': 400},
@@ -443,10 +261,10 @@ class GenerateTaskPipeline:
         else:
             logging.error(e)
             data = {
-                'code': 'internal_server_error', 
+                'code': 'internal_server_error',
                 'message': 'Internal Server Error, please contact support.',
                 'status': 500
-                }
+            }
 
         return {
             'event': 'error',
@@ -585,7 +403,7 @@ class GenerateTaskPipeline:
                 on_message_replace_func=self._queue_manager.publish_message_replace
             )
 
-    def _handle_retriever_resources(self,event) -> None:
+    def _handle_retriever_resources(self, event) -> None:
         self._task_state.metadata['retriever_resources'] = event.retriever_resources
 
     def _handle_annotation_reply(self, event) -> None:
@@ -670,3 +488,203 @@ class GenerateTaskPipeline:
             response['metadata'] = self._get_response_metadata()
 
         return response
+
+
+    def _stream_handle_error(self, event):
+        return self._error_to_stream_response_data(self._handle_error(event))
+
+    def _stream_handle_stop_event(self, event) -> dict:
+        if isinstance(event, QueueMessageEndEvent):
+            self._task_state.llm_result = event.llm_result
+        else:
+            model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
+            model = model_config.model
+            model_type_instance = model_config.provider_model_bundle.model_type_instance
+            model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
+            # calculate num tokens
+            prompt_tokens = 0
+            if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
+                prompt_tokens = model_type_instance.get_num_tokens(
+                    model,
+                    model_config.credentials,
+                    self._task_state.llm_result.prompt_messages
+                )
+
+            completion_tokens = 0
+            if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
+                completion_tokens = model_type_instance.get_num_tokens(
+                    model,
+                    model_config.credentials,
+                    [self._task_state.llm_result.message]
+                )
+
+            credentials = model_config.credentials
+
+            # transform usage
+            self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
+                model,
+                credentials,
+                prompt_tokens,
+                completion_tokens
+            )
+
+        self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
+
+        # response moderation
+        if self._output_moderation_handler:
+            self._output_moderation_handler.stop_thread()
+
+            self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
+                completion=self._task_state.llm_result.message.content,
+                public_event=False
+            )
+
+            self._output_moderation_handler = None
+
+            replace_response = {
+                'event': 'message_replace',
+                'task_id': self._application_generate_entity.task_id,
+                'message_id': self._message.id,
+                'answer': self._task_state.llm_result.message.content,
+                'created_at': int(self._message.created_at.timestamp())
+            }
+
+            if self._conversation.mode == 'chat':
+                replace_response['conversation_id'] = self._conversation.id
+
+            yield self._yield_response(replace_response)
+
+        # Save message
+        self._save_message(self._task_state.llm_result)
+
+        response = {
+            'event': 'message_end',
+            'task_id': self._application_generate_entity.task_id,
+            'id': self._message.id,
+            'message_id': self._message.id,
+        }
+
+        if self._conversation.mode == 'chat':
+            response['conversation_id'] = self._conversation.id
+
+        if self._task_state.metadata:
+            response['metadata'] = self._get_response_metadata()
+
+        return response
+
+    def _stream_handle_agent_thought(self, event) -> dict:
+        agent_thought: MessageAgentThought = (
+            db.session.query(MessageAgentThought)
+            .filter(MessageAgentThought.id == event.agent_thought_id)
+            .first()
+        )
+        db.session.refresh(agent_thought)
+        db.session.close()
+
+        if agent_thought:
+            response = {
+                'event': 'agent_thought',
+                'id': agent_thought.id,
+                'task_id': self._application_generate_entity.task_id,
+                'message_id': self._message.id,
+                'position': agent_thought.position,
+                'thought': agent_thought.thought,
+                'observation': agent_thought.observation,
+                'tool': agent_thought.tool,
+                'tool_labels': agent_thought.tool_labels,
+                'tool_input': agent_thought.tool_input,
+                'created_at': int(self._message.created_at.timestamp()),
+                'message_files': agent_thought.files
+            }
+
+            if self._conversation.mode == 'chat':
+                response['conversation_id'] = self._conversation.id
+
+            return response
+
+    def _stream_handle_message_file(self, event) -> dict:
+
+        message_file: MessageFile = (
+            db.session.query(MessageFile)
+            .filter(MessageFile.id == event.message_file_id)
+            .first()
+        )
+        db.session.close()
+
+        # get extension
+        if '.' in message_file.url:
+            extension = f'.{message_file.url.split(".")[-1]}'
+            if len(extension) > 10:
+                extension = '.bin'
+        else:
+            extension = '.bin'
+        # add sign url
+        url = ToolFileManager.sign_file(file_id=message_file.id, extension=extension)
+
+        if message_file:
+            response = {
+                'event': 'message_file',
+                'id': message_file.id,
+                'type': message_file.type,
+                'belongs_to': message_file.belongs_to or 'user',
+                'url': url
+            }
+
+            if self._conversation.mode == 'chat':
+                response['conversation_id'] = self._conversation.id
+
+            return response
+
+
+    def _stream_handle_message(self, event) -> Optional[dict]:
+
+        chunk = event.chunk
+        delta_text = chunk.delta.message.content
+        if delta_text is None:
+            return None
+
+        if not self._task_state.llm_result.prompt_messages:
+            self._task_state.llm_result.prompt_messages = chunk.prompt_messages
+
+        if self._output_moderation_handler:
+            if self._output_moderation_handler.should_direct_output():
+                # stop subscribe new token when output moderation should direct output
+                self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
+                self._queue_manager.publish_chunk_message(LLMResultChunk(
+                    model=self._task_state.llm_result.model,
+                    prompt_messages=self._task_state.llm_result.prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
+                    )
+                ), PublishFrom.TASK_PIPELINE)
+                self._queue_manager.publish(
+                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
+                    PublishFrom.TASK_PIPELINE
+                )
+                return None
+            else:
+                self._output_moderation_handler.append_new_token(delta_text)
+
+        self._task_state.llm_result.message.content += delta_text
+        response = self._handle_chunk(delta_text, agent=isinstance(event, QueueAgentMessageEvent))
+
+        return response
+
+    def _stream_handle_message_replace(self,event)->dict:
+        response = {
+            'event': 'message_replace',
+            'task_id': self._application_generate_entity.task_id,
+            'message_id': self._message.id,
+            'answer': event.text,
+            'created_at': int(self._message.created_at.timestamp())
+        }
+
+        if self._conversation.mode == 'chat':
+            response['conversation_id'] = self._conversation.id
+
+        return response
+
+    def _stream_handle_ping(self, event) -> str:
+        return "event: ping\n\n"
