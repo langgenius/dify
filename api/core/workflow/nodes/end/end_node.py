@@ -24,10 +24,11 @@ class EndNode(BaseNode):
 
         outputs = {}
         for variable_selector in output_variables:
-            variable_value = variable_pool.get_variable_value(
+            value = variable_pool.get_variable_value(
                 variable_selector=variable_selector.value_selector
             )
-            outputs[variable_selector.variable] = variable_value
+
+            outputs[variable_selector.variable] = value
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
