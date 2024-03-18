@@ -66,12 +66,11 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
           variable: 'sys.query',
           type: VarType.string,
         })
-
-        res.vars.push({
-          variable: 'sys.files',
-          type: VarType.arrayFile,
-        })
       }
+      res.vars.push({
+        variable: 'sys.files',
+        type: VarType.arrayFile,
+      })
       break
     }
 
