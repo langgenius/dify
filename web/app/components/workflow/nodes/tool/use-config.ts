@@ -12,7 +12,7 @@ import { fetchBuiltInToolList, fetchCollectionList, fetchCustomToolList, updateB
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { InputVarType, VarType as VarVarType } from '@/app/components/workflow/types'
+import { VarType as VarVarType } from '@/app/components/workflow/types'
 import type { InputVar, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 const useConfig = (id: string, payload: ToolNodeType) => {
@@ -156,16 +156,12 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const singleRunForms = (() => {
     const formInputs: InputVar[] = []
     toolInputVarSchema.forEach((item: any) => {
-      // const targetItem = toolInputs.find(input => input.variable === item.variable)
-      // TODO: support selector
-      // if (targetItem?.variable_type === VarType.selector) {
       formInputs.push({
         label: item.label[language] || item.label.en_US,
         variable: item.variable,
-        type: InputVarType.textInput, // TODO: to form input
+        type: item.type,
         required: item.required,
       })
-      // }
     })
     const forms: FormProps[] = [{
       inputs: formInputs,

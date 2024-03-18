@@ -49,8 +49,8 @@ const CustomEdge = ({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
-  const availablePrevNodes = nodesExtraData[(data as Edge['data'])!.targetType].availablePrevNodes
-  const availableNextNodes = nodesExtraData[(data as Edge['data'])!.sourceType].availableNextNodes
+  const availablePrevNodes = nodesExtraData[(data as Edge['data'])?.targetType]?.availablePrevNodes || []
+  const availableNextNodes = nodesExtraData[(data as Edge['data'])?.sourceType]?.availableNextNodes || []
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
