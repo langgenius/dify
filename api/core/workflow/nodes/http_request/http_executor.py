@@ -15,15 +15,43 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = (10, 60)
 class HttpExecutorResponse:
     status_code: int
     headers: dict[str, str]
-    body: str
+    body: bytes
 
-    def __init__(self, status_code: int, headers: dict[str, str], body: str):
+    def __init__(self, status_code: int, headers: dict[str, str], body: bytes):
         """
         init
         """
         self.status_code = status_code
         self.headers = headers
         self.body = body
+
+    def get_content_type(self) -> str:
+        """
+        get content type
+        """
+        for key, val in self.headers.items():
+            if key.lower() == 'content-type':
+                return val
+        return ''
+
+    def extract_file(self) -> tuple[str, bytes]:
+        """
+        extract file from response if content type is file related
+        """
+        content_type = self.get_content_type()
+        file_content_types = ['image', 'audio', 'video']
+        for v in file_content_types:
+            if v in content_type:
+                return content_type, self.body
+            
+        return '', b''
+    
+    @property
+    def content(self) -> str:
+        """
+        get content
+        """
+        return self.body.decode('utf-8')
 
 class HttpExecutor:
     server_url: str
@@ -192,14 +220,14 @@ class HttpExecutor:
             for k, v in response.headers.items():
                 headers[k] = v
 
-            return HttpExecutorResponse(response.status_code, headers, response.text)
+            return HttpExecutorResponse(response.status_code, headers, response.content)
         elif isinstance(response, requests.Response):
             # get key-value pairs headers
             headers = {}
             for k, v in response.headers.items():
                 headers[k] = v
 
-            return HttpExecutorResponse(response.status_code, headers, response.text)
+            return HttpExecutorResponse(response.status_code, headers, response.content)
         else:
             raise ValueError(f'Invalid response type {type(response)}')
         

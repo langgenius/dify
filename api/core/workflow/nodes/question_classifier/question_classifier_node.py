@@ -43,9 +43,9 @@ class QuestionClassifierNode(BaseNode):
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: QuestionClassifierNodeData = cast(self._node_data_cls, self.node_data)
         # extract variables
-        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector.value_selector)
+        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
         variables = {
-            node_data.query_variable_selector.variable: query
+            'query': query
         }
         # fetch model config
         model_instance, model_config = self._fetch_model_config(node_data)
@@ -104,7 +104,7 @@ class QuestionClassifierNode(BaseNode):
     def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
         node_data = node_data
         node_data = cast(cls._node_data_cls, node_data)
-        variable_mapping = {node_data.query_variable_selector.variable: node_data.query_variable_selector.value_selector}
+        variable_mapping = {'query': node_data.query_variable_selector}
         return variable_mapping
 
     @classmethod

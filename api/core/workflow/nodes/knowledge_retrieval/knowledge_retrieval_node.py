@@ -43,9 +43,9 @@ class KnowledgeRetrievalNode(BaseNode):
         node_data: KnowledgeRetrievalNodeData = cast(self._node_data_cls, self.node_data)
 
         # extract variables
-        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector.value_selector)
+        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
         variables = {
-            node_data.query_variable_selector.variable: query
+            'query': query
         }
         # retrieve knowledge
         try:
@@ -170,7 +170,7 @@ class KnowledgeRetrievalNode(BaseNode):
         node_data = node_data
         node_data = cast(cls._node_data_cls, node_data)
         variable_mapping = {}
-        variable_mapping[node_data.query_variable_selector.variable] = node_data.query_variable_selector.value_selector
+        variable_mapping['query'] = node_data.query_variable_selector
         return variable_mapping
 
     def _single_retrieve(self, available_datasets, node_data, query):
