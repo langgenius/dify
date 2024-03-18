@@ -13,6 +13,13 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       },
     },
     variables: [],
+    memory: {
+      role_prefix: undefined,
+      window: {
+        enabled: false,
+        size: 50,
+      },
+    },
     prompt_template: [{
       role: PromptRole.system,
       text: '',
