@@ -10,6 +10,7 @@ const i18nPrefix = 'workflow.nodes.questionClassifiers'
 type Props = {
   instruction: string
   onInstructionChange: (instruction: string) => void
+  hideMemorySetting: boolean
   memory: Memory
   onMemoryChange: (memory: Memory) => void
 }
@@ -17,6 +18,7 @@ type Props = {
 const AdvancedSetting: FC<Props> = ({
   instruction,
   onInstructionChange,
+  hideMemorySetting,
   memory,
   onMemoryChange,
 }) => {
@@ -37,13 +39,15 @@ const AdvancedSetting: FC<Props> = ({
           </div>
         )}
       />
-      <MemoryConfig
-        className='mt-4'
-        readonly={false}
-        payload={memory}
-        onChange={onMemoryChange}
-        canSetRoleName={false}
-      />
+      {!hideMemorySetting && (
+        <MemoryConfig
+          className='mt-4'
+          readonly={false}
+          payload={memory}
+          onChange={onMemoryChange}
+          canSetRoleName={false}
+        />
+      )}
     </>
   )
 }

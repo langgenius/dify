@@ -24,6 +24,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   const {
     inputs,
     handleModelChanged,
+    isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,
     handleTopicsChange,
@@ -86,6 +87,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           supportFold
         >
           <AdvancedSetting
+            hideMemorySetting={!isChatModel}
             instruction={inputs.instruction}
             onInstructionChange={handleInstructionChange}
             memory={inputs.memory}

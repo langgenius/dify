@@ -28,6 +28,8 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(1)
 
   const model = inputs.model
+  const modelMode = inputs.model?.mode
+  const isChatModel = modelMode === 'chat'
 
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
@@ -133,6 +135,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   return {
     inputs,
     handleModelChanged,
+    isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,
     filterVar,

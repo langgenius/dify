@@ -168,7 +168,7 @@ const WorkflowWrap = memo(() => {
   }, [data])
   const edgesData = useMemo(() => {
     if (data)
-      return initialEdges(data.graph.edges)
+      return initialEdges(data.graph.edges, data.graph.nodes)
 
     return []
   }, [data])
