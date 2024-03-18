@@ -48,7 +48,10 @@ class WorkflowAppConfigManager(BaseAppConfigManager):
         related_config_keys = []
 
         # file upload validation
-        config, current_related_config_keys = FileUploadConfigManager.validate_and_set_defaults(config)
+        config, current_related_config_keys = FileUploadConfigManager.validate_and_set_defaults(
+            config=config,
+            is_vision=False
+        )
         related_config_keys.extend(current_related_config_keys)
 
         # text_to_speech
