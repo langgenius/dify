@@ -91,7 +91,7 @@ class App(db.Model):
     @property
     def workflow(self):
         if self.workflow_id:
-            from api.models.workflow import Workflow
+            from .workflow import Workflow
             return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
 
         return None
