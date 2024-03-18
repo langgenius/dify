@@ -1,6 +1,6 @@
 model: anthropic.claude-3-sonnet-20240229-v1:0
 label:
-  en_US: Claude3 Sonnet
+  en_US: Claude 3 Sonnet
 model_type: llm
 features:
   - agent-thought
