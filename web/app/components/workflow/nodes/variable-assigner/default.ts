@@ -9,7 +9,9 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     variables: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
+    const nodes = isChatMode
+      ? ALL_CHAT_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.Answer)
+      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
     return nodes.filter(type => type !== BlockEnum.IfElse && type !== BlockEnum.QuestionClassifier)
   },
   getAvailableNextNodes(isChatMode: boolean) {
