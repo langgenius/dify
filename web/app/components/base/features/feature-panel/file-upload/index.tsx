@@ -9,7 +9,7 @@ import {
 } from '../../hooks'
 import ParamConfig from './param-config'
 import Switch from '@/app/components/base/switch'
-import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
+import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 
 type FileUploadProps = {
   onChange?: OnFeaturesChange
@@ -38,7 +38,7 @@ const FileUpload = ({
   return (
     <div className='flex items-center px-3 h-12 bg-gray-50 rounded-xl overflow-hidden'>
       <div className='shrink-0 flex items-center justify-center mr-1 w-6 h-6'>
-        <FileSearch02 className='shrink-0 w-4 h-4 text-[#039855]' />
+        <File05 className='shrink-0 w-4 h-4 text-[#6938EF]' />
       </div>
       <div className='shrink-0 mr-2 whitespace-nowrap text-sm text-gray-800 font-semibold'>
         {t('common.imageUploader.imageUpload')}
