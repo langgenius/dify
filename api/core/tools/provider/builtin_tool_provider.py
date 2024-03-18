@@ -256,6 +256,13 @@ class BuiltinToolProviderController(ToolProviderController):
                         credentials[credential_name] = False
                     else:
                         raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+                elif isinstance(credentials[credential_name], int):
+                    if credentials[credential_name] == 1:
+                        credentials[credential_name] = True
+                    elif credentials[credential_name] == 0:
+                        credentials[credential_name] = False
+                    else:
+                        raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
                 else:
                     raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
 
