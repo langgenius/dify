@@ -2,7 +2,7 @@ import logging
 from collections.abc import Generator
 from typing import Any, Union
 
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
@@ -114,11 +114,6 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
 
-                # handle output moderation
-                output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
-                if output_moderation_answer:
-                    self._task_state.answer = output_moderation_answer
-
                 # save workflow app log
                 self._save_workflow_app_log(workflow_run)
 
@@ -186,10 +181,6 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
 
-                output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
-                if output_moderation_answer:
-                    yield self._text_replace_to_stream_response(output_moderation_answer)
-
                 # save workflow app log
                 self._save_workflow_app_log(workflow_run)
 
@@ -200,11 +191,6 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
                 if delta_text is None:
-                    continue
-
-                # handle output moderation chunk
-                should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-                if should_direct_answer:
                     continue
 
                 self._task_state.answer += delta_text
@@ -268,29 +254,3 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             task_id=self._application_generate_entity.task_id,
             text=TextReplaceStreamResponse.Data(text=text)
         )
-
-    def _handle_output_moderation_chunk(self, text: str) -> bool:
-        """
-        Handle output moderation chunk.
-        :param text: text
-        :return: True if output moderation should direct output, otherwise False
-        """
-        if self._output_moderation_handler:
-            if self._output_moderation_handler.should_direct_output():
-                # stop subscribe new token when output moderation should direct output
-                self._task_state.answer = self._output_moderation_handler.get_final_output()
-                self._queue_manager.publish(
-                    QueueTextChunkEvent(
-                        text=self._task_state.answer
-                    ), PublishFrom.TASK_PIPELINE
-                )
-
-                self._queue_manager.publish(
-                    QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION),
-                    PublishFrom.TASK_PIPELINE
-                )
-                return True
-            else:
-                self._output_moderation_handler.append_new_token(text)
-
-        return False
