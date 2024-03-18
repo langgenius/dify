@@ -4,6 +4,8 @@
 - anthropic.claude-v1
 - anthropic.claude-v2
 - anthropic.claude-v2:1
+- anthropic.claude-3-sonnet-v1:0
+- anthropic.claude-3-haiku-v1:0
 - cohere.command-light-text-v14
 - cohere.command-text-v14
 - meta.llama2-13b-chat-v1
