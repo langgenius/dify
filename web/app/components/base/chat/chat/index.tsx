@@ -4,6 +4,7 @@ import type {
 } from 'react'
 import {
   memo,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -82,22 +83,20 @@ const Chat: FC<ChatProps> = ({
   const chatContainerInnerRef = useRef<HTMLDivElement>(null)
   const chatFooterRef = useRef<HTMLDivElement>(null)
   const chatFooterInnerRef = useRef<HTMLDivElement>(null)
+  const userScrolledRef = useRef(false)
 
-  const handleScrolltoBottom = () => {
-    if (chatContainerRef.current)
+  const handleScrolltoBottom = useCallback(() => {
+    if (chatContainerRef.current && !userScrolledRef.current)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-  }
+  }, [])
 
-  const handleWindowResize = () => {
-    if (chatContainerRef.current)
-      setWidth(document.body.clientWidth - (chatContainerRef.current?.clientWidth + 16) - 8)
-
+  const handleWindowResize = useCallback(() => {
     if (chatContainerRef.current && chatFooterRef.current)
       chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
 
     if (chatContainerInnerRef.current && chatFooterInnerRef.current)
       chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
-  }
+  }, [])
 
   useThrottleEffect(() => {
     handleScrolltoBottom()
@@ -107,7 +106,7 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     window.addEventListener('resize', debounce(handleWindowResize))
     return () => window.removeEventListener('resize', handleWindowResize)
-  }, [])
+  }, [handleWindowResize])
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
@@ -126,7 +125,19 @@ const Chat: FC<ChatProps> = ({
         resizeObserver.disconnect()
       }
     }
-  }, [chatFooterRef, chatContainerRef])
+  }, [handleScrolltoBottom])
+
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current
+    if (chatContainer) {
+      const setUserScrolled = () => {
+        if (chatContainer)
+          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop >= chatContainer.clientHeight + 300
+      }
+      chatContainer.addEventListener('scroll', setUserScrolled)
+      return () => chatContainer.removeEventListener('scroll', setUserScrolled)
+    }
+  }, [])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 

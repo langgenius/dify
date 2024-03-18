@@ -6,20 +6,23 @@ from core.model_runtime.model_providers.__base.model_provider import ModelProvid
 
 logger = logging.getLogger(__name__)
 
-class BedrockProvider(ModelProvider):
+
+class YiProvider(ModelProvider):
+
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials
-
         if validate failed, raise exception
 
         :param credentials: provider credentials, credentials form defined in `provider_credential_schema`.
         """
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
-            bedrock_validate_model_name = credentials.get('model_for_validation', 'amazon.titan-text-lite-v1')
+
+            # Use `yi-34b-chat-0205` model for validate,
+            # no matter what model you pass in, text completion model or chat model
             model_instance.validate_credentials(
-                model=bedrock_validate_model_name,
+                model='yi-34b-chat-0205',
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:
