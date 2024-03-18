@@ -157,6 +157,7 @@ export type NodeOutPutVar = {
   nodeId: string
   title: string
   vars: Var[]
+  isStartNode?: boolean
 }
 
 export type Block = {
