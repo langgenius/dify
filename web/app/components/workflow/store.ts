@@ -16,6 +16,7 @@ import type {
 import type {
   Edge,
   Node,
+  RunFile,
   WorkflowRunningStatus,
 } from './types'
 import { WorkflowContext } from './context'
@@ -36,6 +37,7 @@ type State = {
   runningStatus?: WorkflowRunningStatus
   showInputsPanel: boolean
   inputs: Record<string, string>
+  files: RunFile[]
   backupDraft?: {
     nodes: Node[]
     edges: Edge[]
@@ -63,6 +65,7 @@ type Action = {
   setRunningStatus: (runningStatus?: WorkflowRunningStatus) => void
   setShowInputsPanel: (showInputsPanel: boolean) => void
   setInputs: (inputs: Record<string, string>) => void
+  setFiles: (files: RunFile[]) => void
   setBackupDraft: (backupDraft?: State['backupDraft']) => void
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
@@ -102,6 +105,8 @@ export const createWorkflowStore = () => {
     setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
     inputs: {},
     setInputs: inputs => set(() => ({ inputs })),
+    files: [],
+    setFiles: files => set(() => ({ files })),
     backupDraft: undefined,
     setBackupDraft: backupDraft => set(() => ({ backupDraft })),
     notInitialWorkflow: false,

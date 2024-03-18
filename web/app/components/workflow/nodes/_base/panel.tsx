@@ -6,6 +6,7 @@ import {
   cloneElement,
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import NextStep from './components/next-step'
@@ -23,11 +24,13 @@ import {
   useNodesExtraData,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
+import { useStore } from '@/app/components/workflow/store'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/development'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type BasePanelProps = {
   children: ReactElement
@@ -42,6 +45,12 @@ const BasePanel: FC<BasePanelProps> = ({
   const { handleNodeSelect } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+
+  const toolsets = useStore(s => s.toolsets)
+  const toolIcon = useMemo(() => {
+    if (data.type === BlockEnum.Tool)
+      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
+  }, [data, toolsets])
 
   const {
     handleNodeDataUpdate,
@@ -62,7 +71,7 @@ const BasePanel: FC<BasePanelProps> = ({
           <BlockIcon
             className='shrink-0 mr-1'
             type={data.type}
-            toolProviderId={data.provider_id}
+            toolIcon={toolIcon}
             size='md'
           />
           <TitleInput

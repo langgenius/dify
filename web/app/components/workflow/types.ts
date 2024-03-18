@@ -2,6 +2,7 @@ import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
 } from 'reactflow'
+import type { TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
@@ -210,4 +211,11 @@ export type OnNodeAdd = (
 export type CheckValidRes = {
   isValid: boolean
   errorMessage?: string
+}
+
+export type RunFile = {
+  type: string
+  transfer_method: TransferMethod[]
+  url?: string
+  upload_file_id?: string
 }

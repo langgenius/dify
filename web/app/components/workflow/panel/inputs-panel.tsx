@@ -1,11 +1,15 @@
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
-import { BlockEnum } from '../types'
+import {
+  BlockEnum,
+  InputVarType,
+} from '../types'
 import {
   useStore,
   useWorkflowStore,
@@ -13,24 +17,51 @@ import {
 import { useWorkflowRun } from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
 import Button from '@/app/components/base/button'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 const InputsPanel = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const fileSettings = useFeatures(s => s.features.file)
   const nodes = useNodes<StartNodeType>()
   const inputs = useStore(s => s.inputs)
+  const files = useStore(s => s.files)
   const {
     handleRun,
     handleRunSetting,
   } = useWorkflowRun()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  const variables = startNode?.data.variables || []
+  const startVariables = startNode?.data.variables
 
-  const handleValueChange = (variable: string, v: string) => {
-    workflowStore.getState().setInputs({
-      ...inputs,
-      [variable]: v,
-    })
+  const variables = useMemo(() => {
+    const data = startVariables || []
+    if (fileSettings.image.enabled) {
+      return [
+        ...data,
+        {
+          type: InputVarType.files,
+          variable: '__image',
+          required: true,
+          label: 'files',
+        },
+      ]
+    }
+
+    return data
+  }, [fileSettings.image.enabled, startVariables])
+
+  const handleValueChange = (variable: string, v: any) => {
+    if (variable === '__image') {
+      workflowStore.setState({
+        files: v,
+      })
+    }
+    else {
+      workflowStore.getState().setInputs({
+        ...inputs,
+        [variable]: v,
+      })
+    }
   }
 
   const handleCancel = useCallback(() => {
@@ -40,7 +71,7 @@ const InputsPanel = () => {
   const doRun = () => {
     handleCancel()
     handleRunSetting()
-    handleRun({ inputs })
+    handleRun({ inputs, files })
   }
 
   return (

@@ -5,12 +5,14 @@ import type {
 import {
   cloneElement,
   memo,
+  useMemo,
 } from 'react'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
   NodeRunningStatus,
 } from '../../types'
+import { useStore } from '../../store'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -32,6 +34,12 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const toolsets = useStore(s => s.toolsets)
+  const toolIcon = useMemo(() => {
+    if (data.type === BlockEnum.Tool)
+      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
+  }, [data, toolsets])
+
   return (
     <div
       className={`
@@ -84,7 +92,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             className='shrink-0 mr-2'
             type={data.type}
             size='md'
-            toolProviderId={data.provider_id}
+            toolIcon={toolIcon}
           />
           <div
             title={data.title}

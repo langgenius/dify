@@ -1,3 +1,5 @@
+import type { TransferMethod } from '@/types/app'
+
 export type EnabledOrDisabled = {
   enabled: boolean
 }
@@ -26,7 +28,7 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
 export type FileUpload = {
   image: EnabledOrDisabled & {
     number_limits: number
-    transfer_methods: string[]
+    transfer_methods: TransferMethod[]
   }
 }
 

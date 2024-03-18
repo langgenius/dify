@@ -1,4 +1,7 @@
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import {
   getConnectedEdges,
   getOutgoers,
@@ -6,6 +9,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import BlockIcon from '../../../../block-icon'
+import { useStore } from '../../../../store'
 import type {
   Branch,
   Node,
@@ -21,9 +25,15 @@ type NextStepProps = {
 const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
+  const data = selectedNode.data
+  const toolsets = useStore(s => s.toolsets)
+  const toolIcon = useMemo(() => {
+    if (data.type === BlockEnum.Tool)
+      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
+  }, [data, toolsets])
   const store = useStoreApi()
-  const branches = selectedNode.data._targetBranches || []
-  const nodeWithBranches = selectedNode.data.type === BlockEnum.IfElse || selectedNode.data.type === BlockEnum.QuestionClassifier
+  const branches = data._targetBranches || []
+  const nodeWithBranches = data.type === BlockEnum.IfElse || data.type === BlockEnum.QuestionClassifier
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
@@ -33,7 +43,7 @@ const NextStep = ({
       <div className='shrink-0 relative flex items-center justify-center w-9 h-9 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
         <BlockIcon
           type={selectedNode!.data.type}
-          toolProviderId={selectedNode!.data.provider_id}
+          toolIcon={toolIcon}
         />
       </div>
       <Line linesNumber={nodeWithBranches ? branches.length : 1} />
