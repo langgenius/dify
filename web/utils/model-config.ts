@@ -18,9 +18,9 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item.external_data_tool)
         return [item.external_data_tool.type, item.external_data_tool]
 
-      return ['select', item.select]
+      return ['select', item.select || {}]
     })()
-    const is_context_var = dataset_query_variable === content.variable
+    const is_context_var = dataset_query_variable === content?.variable
 
     if (type === 'string' || type === 'paragraph') {
       promptVariables.push({
