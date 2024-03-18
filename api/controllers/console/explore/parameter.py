@@ -1,4 +1,3 @@
-import json
 
 from flask import current_app
 from flask_restful import fields, marshal_with
@@ -6,9 +5,8 @@ from flask_restful import fields, marshal_with
 from controllers.console import api
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.wraps import InstalledAppResource
-from extensions.ext_database import db
-from models.model import AppMode, AppModelConfig, InstalledApp
-from models.tools import ApiToolProvider
+from models.model import AppMode, InstalledApp
+from services.app_service import AppService
 
 
 class AppParameterApi(InstalledAppResource):
@@ -53,7 +51,7 @@ class AppParameterApi(InstalledAppResource):
                 raise AppUnavailableError()
 
             features_dict = workflow.features_dict
-            user_input_form = workflow.user_input_form
+            user_input_form = workflow.user_input_form()
         else:
             app_model_config = app_model.app_model_config
             features_dict = app_model_config.to_dict()
@@ -88,44 +86,8 @@ class AppParameterApi(InstalledAppResource):
 class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
-        app_model_config: AppModelConfig = installed_app.app.app_model_config
-
-        if not app_model_config:
-            return {
-                'tool_icons': {}
-            }
-
-        agent_config = app_model_config.agent_mode_dict or {}
-        meta = {
-            'tool_icons': {}
-        }
-
-        # get all tools
-        tools = agent_config.get('tools', [])
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                      + "/console/api/workspaces/current/tool-provider/builtin/")
-        for tool in tools:
-            keys = list(tool.keys())
-            if len(keys) >= 4:
-                # current tool standard
-                provider_type = tool.get('provider_type')
-                provider_id = tool.get('provider_id')
-                tool_name = tool.get('tool_name')
-                if provider_type == 'builtin':
-                    meta['tool_icons'][tool_name] = url_prefix + provider_id + '/icon'
-                elif provider_type == 'api':
-                    try:
-                        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
-                            ApiToolProvider.id == provider_id
-                        )
-                        meta['tool_icons'][tool_name] = json.loads(provider.icon)
-                    except:
-                        meta['tool_icons'][tool_name] = {
-                            "background": "#252525",
-                            "content": "\ud83d\ude01"
-                        }
-
-        return meta
+        app_model = installed_app.app
+        return AppService().get_app_meta(app_model)
 
 
 api.add_resource(AppParameterApi, '/installed-apps/<uuid:installed_app_id>/parameters',

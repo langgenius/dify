@@ -9,6 +9,7 @@ from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, AppMode
 from models.tools import ApiToolProvider
+from services.app_service import AppService
 
 
 class AppParameterApi(WebApiResource):
@@ -86,42 +87,8 @@ class AppParameterApi(WebApiResource):
 class AppMeta(WebApiResource):
     def get(self, app_model: App, end_user):
         """Get app meta"""
-        app_model_config: AppModelConfig = app_model.app_model_config
+        return AppService().get_app_meta(app_model)
 
-        if not app_model_config:
-            raise AppUnavailableError()
-
-        agent_config = app_model_config.agent_mode_dict or {}
-        meta = {
-            'tool_icons': {}
-        }
-
-        # get all tools
-        tools = agent_config.get('tools', [])
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                  + "/console/api/workspaces/current/tool-provider/builtin/")
-        for tool in tools:
-            keys = list(tool.keys())
-            if len(keys) >= 4:
-                # current tool standard
-                provider_type = tool.get('provider_type')
-                provider_id = tool.get('provider_id')
-                tool_name = tool.get('tool_name')
-                if provider_type == 'builtin':
-                    meta['tool_icons'][tool_name] = url_prefix + provider_id + '/icon'
-                elif provider_type == 'api':
-                    try:
-                        provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
-                            ApiToolProvider.id == provider_id
-                        )
-                        meta['tool_icons'][tool_name] = json.loads(provider.icon)
-                    except:
-                        meta['tool_icons'][tool_name] =  {
-                            "background": "#252525",
-                            "content": "\ud83d\ude01"
-                        }
-
-        return meta
 
 api.add_resource(AppParameterApi, '/parameters')
 api.add_resource(AppMeta, '/meta')
