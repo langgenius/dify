@@ -481,20 +481,25 @@ class Conversation(db.Model):
     @property
     def model_config(self):
         model_config = {}
-        if self.override_model_configs:
-            override_model_configs = json.loads(self.override_model_configs)
-
-            if 'model' in override_model_configs:
-                app_model_config = AppModelConfig()
-                app_model_config = app_model_config.from_model_config_dict(override_model_configs)
-                model_config = app_model_config.to_dict()
-            else:
-                model_config['configs'] = override_model_configs
+        if self.mode == AppMode.ADVANCED_CHAT.value:
+            if self.override_model_configs:
+                override_model_configs = json.loads(self.override_model_configs)
+                model_config = override_model_configs
         else:
-            app_model_config = db.session.query(AppModelConfig).filter(
-                AppModelConfig.id == self.app_model_config_id).first()
+            if self.override_model_configs:
+                override_model_configs = json.loads(self.override_model_configs)
 
-            model_config = app_model_config.to_dict()
+                if 'model' in override_model_configs:
+                    app_model_config = AppModelConfig()
+                    app_model_config = app_model_config.from_model_config_dict(override_model_configs)
+                    model_config = app_model_config.to_dict()
+                else:
+                    model_config['configs'] = override_model_configs
+            else:
+                app_model_config = db.session.query(AppModelConfig).filter(
+                    AppModelConfig.id == self.app_model_config_id).first()
+
+                model_config = app_model_config.to_dict()
 
         model_config['model_id'] = self.model_id
         model_config['provider'] = self.model_provider
