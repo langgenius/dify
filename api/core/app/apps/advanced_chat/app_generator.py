@@ -97,11 +97,21 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras
         )
 
+        is_first_conversation = False
+        if not conversation:
+            is_first_conversation = True
+
         # init generate records
         (
             conversation,
             message
         ) = self._init_generate_records(application_generate_entity, conversation)
+
+        if is_first_conversation:
+            # update conversation features
+            conversation.override_model_configs = workflow.features
+            db.session.commit()
+            db.session.refresh(conversation)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(

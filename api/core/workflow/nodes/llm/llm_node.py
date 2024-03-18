@@ -147,7 +147,7 @@ class LLMNode(BaseNode):
         )
 
         # deduct quota
-        self._deduct_llm_quota(model_instance=model_instance, usage=usage)
+        self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
         return text, usage
 
@@ -418,9 +418,11 @@ class LLMNode(BaseNode):
 
         return prompt_messages, stop
 
-    def _deduct_llm_quota(self, model_instance: ModelInstance, usage: LLMUsage) -> None:
+    @classmethod
+    def deduct_llm_quota(cls, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
         """
         Deduct LLM quota
+        :param tenant_id: tenant id
         :param model_instance: model instance
         :param usage: usage
         :return:
@@ -457,7 +459,7 @@ class LLMNode(BaseNode):
 
         if used_quota is not None:
             db.session.query(Provider).filter(
-                Provider.tenant_id == self.tenant_id,
+                Provider.tenant_id == tenant_id,
                 Provider.provider_name == model_instance.provider,
                 Provider.provider_type == ProviderType.SYSTEM.value,
                 Provider.quota_type == system_configuration.current_quota_type.value,
