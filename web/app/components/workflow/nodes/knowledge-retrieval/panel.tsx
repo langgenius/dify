@@ -27,6 +27,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     inputs,
     handleQueryVarChange,
     filterVar,
+    handleModelChanged,
+    handleCompletionParamsChange,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     selectedDatasets,
@@ -66,9 +68,13 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 payload={{
                   retrieval_mode: inputs.retrieval_mode,
                   multiple_retrieval_config: inputs.multiple_retrieval_config,
+                  single_retrieval_config: inputs.single_retrieval_config,
                 }}
                 onRetrievalModeChange={handleRetrievalModeChange}
                 onMultipleRetrievalConfigChange={handleMultipleRetrievalConfigChange}
+                singleRetrievalModelConfig={inputs.single_retrieval_config?.model}
+                onSingleRetrievalModelChange={handleModelChanged as any}
+                onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
               />
               <div className='w-px h-3 bg-gray-200'></div>
               <AddKnowledge

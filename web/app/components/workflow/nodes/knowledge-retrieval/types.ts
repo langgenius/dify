@@ -1,4 +1,4 @@
-import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
 import type { RETRIEVE_TYPE } from '@/types/app'
 
 export type MultipleRetrievalConfig = {
@@ -9,9 +9,15 @@ export type MultipleRetrievalConfig = {
     model: string
   }
 }
+
+export type SingleRetrievalConfig = {
+  model: ModelConfig
+}
+
 export type KnowledgeRetrievalNodeType = CommonNodeType & {
   query_variable_selector: ValueSelector
   dataset_ids: string[]
   retrieval_mode: RETRIEVE_TYPE
   multiple_retrieval_config?: MultipleRetrievalConfig
+  single_retrieval_config?: SingleRetrievalConfig
 }

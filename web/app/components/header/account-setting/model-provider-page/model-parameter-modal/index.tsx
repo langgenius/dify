@@ -35,6 +35,7 @@ import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arr
 
 export type ModelParameterModalProps = {
   popupClassName?: string
+  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
   mode: string
   modelId: string
@@ -69,6 +70,7 @@ const stopParameerRule: ModelParameterRule = {
 const PROVIDER_WITH_PRESET_TONE = ['openai', 'azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
+  portalToFollowElemContentClassName,
   isAdvancedMode,
   modelId,
   provider,
@@ -200,7 +202,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[60]'>
+        <PortalToFollowElemContent className={cn(portalToFollowElemContentClassName, 'z-[60]')}>
           <div className={cn(popupClassName, 'w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl')}>
             <div className='max-h-[480px] px-10 pt-6 pb-8 overflow-y-auto'>
               <div className='flex items-center justify-between h-8'>
