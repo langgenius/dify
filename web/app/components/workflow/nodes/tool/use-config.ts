@@ -153,6 +153,17 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setRunInputData(value)
   }
 
+  // fill single run form variable with constant value first time
+  const inputVarValuesWithConstantValue = () => {
+    const res = produce(inputVarValues, (draft) => {
+      inputs.tool_parameters.forEach(({ variable, variable_type, value }: any) => {
+        if (variable_type === VarType.static && (draft[variable] === undefined || draft[variable] === null))
+          draft[variable] = value
+      })
+    })
+    return res
+  }
+
   const singleRunForms = (() => {
     const formInputs: InputVar[] = []
     toolInputVarSchema.forEach((item: any) => {
@@ -165,7 +176,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
     const forms: FormProps[] = [{
       inputs: formInputs,
-      values: inputVarValues,
+      values: inputVarValuesWithConstantValue(),
       onChange: setInputVarValues,
     }]
     return forms
