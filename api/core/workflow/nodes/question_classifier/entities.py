@@ -43,8 +43,6 @@ class QuestionClassifierNodeData(BaseNodeData):
     Knowledge retrieval Node Data.
     """
     query_variable_selector: list[str]
-    title: str
-    desc: str
     type: str = 'question-classifier'
     model: ModelConfig
     classes: list[ClassConfig]

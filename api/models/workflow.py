@@ -127,7 +127,7 @@ class Workflow(db.Model):
 
     @property
     def features_dict(self):
-        return json.loads(self.features) if self.features else None
+        return json.loads(self.features) if self.features else {}
 
     def user_input_form(self) -> list:
         # get start node from graph

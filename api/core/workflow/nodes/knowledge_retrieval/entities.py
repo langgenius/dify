@@ -43,11 +43,9 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
     """
-    title: str
-    desc: str
     type: str = 'knowledge-retrieval'
     query_variable_selector: list[str]
     dataset_ids: list[str]
     retrieval_mode: Literal['single', 'multiple']
-    multiple_retrieval_config: MultipleRetrievalConfig
-    singleRetrievalConfig: SingleRetrievalConfig
+    multiple_retrieval_config: Optional[MultipleRetrievalConfig]
+    singleRetrievalConfig: Optional[SingleRetrievalConfig]

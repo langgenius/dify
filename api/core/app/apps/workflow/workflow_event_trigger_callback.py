@@ -2,6 +2,7 @@ from typing import Optional
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
+    AppQueueEvent,
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -117,5 +118,11 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
     def on_node_text_chunk(self, node_id: str, text: str, metadata: Optional[dict] = None) -> None:
         """
         Publish text chunk
+        """
+        pass
+
+    def on_event(self, event: AppQueueEvent) -> None:
+        """
+        Publish event
         """
         pass
