@@ -340,7 +340,7 @@ class WorkflowEngineManager:
                 if predecessor_node.node_run_result else None
             if source_handle:
                 for edge in outgoing_edges:
-                    if edge.get('source_handle') and edge.get('source_handle') == source_handle:
+                    if edge.get('sourceHandle') and edge.get('sourceHandle') == source_handle:
                         outgoing_edge = edge
                         break
             else:
