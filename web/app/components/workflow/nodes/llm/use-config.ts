@@ -13,6 +13,7 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import type { PromptItem } from '@/models/debug'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
+import { checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const isChatMode = useIsChatMode()
@@ -27,7 +28,30 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const model = inputs.model
   const modelMode = inputs.model?.mode
   const isChatModel = modelMode === 'chat'
+
   const isCompletionModel = !isChatModel
+
+  const hasSetBlockStatus = (() => {
+    const promptTemplate = inputs.prompt_template
+    if (!isChatMode) {
+      return {
+        history: false,
+        query: false,
+      }
+    }
+    if (isChatModel) {
+      return {
+        history: false,
+        query: (promptTemplate as PromptItem[]).some(item => checkHasQueryBlock(item.text)),
+      }
+    }
+    else {
+      return {
+        history: checkHasHistoryBlock((promptTemplate as PromptItem).text),
+        query: checkHasQueryBlock((promptTemplate as PromptItem).text),
+      }
+    }
+  })()
 
   const appendDefaultPromptConfig = useCallback((draft: LLMNodeType, defaultConfig: any, passInIsChatMode?: boolean) => {
     const promptTemplates = defaultConfig.prompt_templates
@@ -216,6 +240,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     inputs,
     isChatModel,
     isCompletionModel,
+    hasSetBlockStatus,
     isShowVisionConfig,
     handleModelChanged,
     handleCompletionParamsChange,

@@ -21,6 +21,12 @@ type Props = {
   readOnly?: boolean
   showRemove?: boolean
   onRemove?: () => void
+  isChatModel: boolean
+  isChatApp: boolean
+  hasSetBlockStatus: {
+    history: boolean
+    query: boolean
+  }
 }
 
 const Editor: FC<Props> = ({
@@ -31,8 +37,14 @@ const Editor: FC<Props> = ({
   readOnly,
   showRemove,
   onRemove,
+  isChatModel,
+  isChatApp,
+  hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
+
+  const isShowHistory = !isChatModel && isChatApp
+  const isShowQuery = isShowHistory
 
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -100,7 +112,7 @@ const Editor: FC<Props> = ({
               style={isExpand ? { height: editorExpandHeight - 5 } : {}}
               value={value}
               contextBlock={{
-                show: true,
+                show: false,
                 selectable: true,
                 datasets: [],
                 onAddContext: () => { },
@@ -109,22 +121,22 @@ const Editor: FC<Props> = ({
                 variables: variables.map(item => ({
                   name: item,
                   value: item,
-                })),
+                })), // add context
                 externalTools: [],
                 onAddExternalTool: () => { },
               }}
               historyBlock={{
-                show: true,
-                selectable: true,
+                show: isShowHistory,
+                selectable: !hasSetBlockStatus?.history,
                 history: {
-                  user: 'user',
-                  assistant: 'xxx',
+                  user: 'Human',
+                  assistant: 'Assistant',
                 },
                 onEditRole: () => { },
               }}
               queryBlock={{
-                show: true,
-                selectable: true,
+                show: isShowQuery,
+                selectable: !hasSetBlockStatus?.query,
               }}
               onChange={onChange}
               onBlur={setBlur}
