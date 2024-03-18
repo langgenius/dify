@@ -62,7 +62,7 @@ const SelectVarType: FC<Props> = ({
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         <div className='bg-white border border-gray-200 shadow-lg rounded-lg min-w-[192px]'>
           <div className='p-1'>
-            <SelectItem type={InputVarType.textInput} value='select' text={t('appDebug.variableConig.select')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.textInput} value='string' text={t('appDebug.variableConig.string')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.paragraph} value='paragraph' text={t('appDebug.variableConig.paragraph')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.select} value='select' text={t('appDebug.variableConig.select')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.number} value='number' text={t('appDebug.variableConig.number')} onClick={handleChange}></SelectItem>
