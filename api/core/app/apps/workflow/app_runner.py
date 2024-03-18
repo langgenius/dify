@@ -1,9 +1,11 @@
 import logging
+import os
 from typing import Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.workflow_event_trigger_callback import WorkflowEventTriggerCallback
+from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
@@ -47,6 +49,14 @@ class WorkflowAppRunner:
 
         db.session.close()
 
+        workflow_callbacks = [WorkflowEventTriggerCallback(
+            queue_manager=queue_manager,
+            workflow=workflow
+        )]
+
+        if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
+            workflow_callbacks.append(WorkflowLoggingCallback())
+
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
@@ -59,10 +69,7 @@ class WorkflowAppRunner:
             system_inputs={
                 SystemVariable.FILES: files
             },
-            callbacks=[WorkflowEventTriggerCallback(
-                queue_manager=queue_manager,
-                workflow=workflow
-            )]
+            callbacks=workflow_callbacks
         )
 
     def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:

@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from typing import Optional, cast
 
@@ -6,6 +7,7 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
+from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -76,6 +78,14 @@ class AdvancedChatAppRunner(AppRunner):
 
         db.session.close()
 
+        workflow_callbacks = [WorkflowEventTriggerCallback(
+            queue_manager=queue_manager,
+            workflow=workflow
+        )]
+
+        if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
+            workflow_callbacks.append(WorkflowLoggingCallback())
+
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
@@ -90,10 +100,7 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.FILES: files,
                 SystemVariable.CONVERSATION: conversation.id,
             },
-            callbacks=[WorkflowEventTriggerCallback(
-                queue_manager=queue_manager,
-                workflow=workflow
-            )]
+            callbacks=workflow_callbacks
         )
 
     def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
