@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import type { MultipleRetrievalConfig } from '../types'
+import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
+import type { ModelConfig } from '../../../types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -23,15 +24,22 @@ type Props = {
   payload: {
     retrieval_mode: RETRIEVE_TYPE
     multiple_retrieval_config?: MultipleRetrievalConfig
+    single_retrieval_config?: SingleRetrievalConfig
   }
   onRetrievalModeChange: (mode: RETRIEVE_TYPE) => void
   onMultipleRetrievalConfigChange: (config: MultipleRetrievalConfig) => void
+  singleRetrievalModelConfig?: ModelConfig
+  onSingleRetrievalModelChange?: (config: ModelConfig) => void
+  onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
 }
 
 const RetrievalConfig: FC<Props> = ({
   payload,
   onRetrievalModeChange,
   onMultipleRetrievalConfigChange,
+  singleRetrievalModelConfig,
+  onSingleRetrievalModelChange,
+  onSingleRetrievalModelParamsChange,
 }) => {
   const { t } = useTranslation()
 
@@ -43,6 +51,7 @@ const RetrievalConfig: FC<Props> = ({
 
   const { multiple_retrieval_config } = payload
   const handleChange = useCallback((configs: DatasetConfigs, isRetrievalModeChange?: boolean) => {
+    console.log(configs, isRetrievalModeChange)
     if (isRetrievalModeChange) {
       onRetrievalModeChange(configs.retrieval_model)
       return
@@ -62,7 +71,7 @@ const RetrievalConfig: FC<Props> = ({
             model: configs.reranking_model?.reranking_model_name,
           }),
     })
-  }, [onRetrievalModeChange, onMultipleRetrievalConfigChange])
+  }, [onMultipleRetrievalConfigChange, payload.retrieval_mode, rerankDefaultModel?.provider?.provider, rerankDefaultModel?.model, onRetrievalModeChange])
 
   return (
     <PortalToFollowElem
@@ -106,6 +115,10 @@ const RetrievalConfig: FC<Props> = ({
               }
             }
             onChange={handleChange}
+            isInWorkflow
+            singleRetrievalModelConfig={singleRetrievalModelConfig}
+            onSingleRetrievalModelChange={onSingleRetrievalModelChange}
+            onSingleRetrievalModelParamsChange={onSingleRetrievalModelParamsChange}
           />
         </div>
       </PortalToFollowElemContent>

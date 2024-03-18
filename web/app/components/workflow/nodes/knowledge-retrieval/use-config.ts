@@ -1,22 +1,29 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
 import type { ValueSelector, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
 import { useIsChatMode, useWorkflow } from '../../hooks'
 import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
-import type { RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { DATASET_DEFAULT } from '@/config'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const isChatMode = useIsChatMode()
-  console.log()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
   const { inputs, setInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
+
+  const inputRef = useRef(inputs)
+  useEffect(() => {
+    inputRef.current = inputs
+  }, [inputs])
+
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.query_variable_selector = newVar as ValueSelector
@@ -24,12 +31,119 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const {
+    currentProvider,
+    currentModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(1)
+
+  const {
+    defaultModel: rerankDefaultModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+
+  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (!draft.single_retrieval_config) {
+        draft.single_retrieval_config = {
+          model: {
+            provider: '',
+            name: '',
+            mode: '',
+            completion_params: {},
+          },
+        }
+      }
+      const draftModel = draft.single_retrieval_config?.model
+      draftModel.provider = model.provider
+      draftModel.name = model.modelId
+      draftModel.mode = model.mode!
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (!draft.single_retrieval_config) {
+        draft.single_retrieval_config = {
+          model: {
+            provider: '',
+            name: '',
+            mode: '',
+            completion_params: {},
+          },
+        }
+      }
+      draft.single_retrieval_config.model.completion_params = newParams
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  // set defaults models
+  useEffect(() => {
+    const inputs = inputRef.current
+    const newInput = produce(inputs, (draft) => {
+      if (currentProvider?.provider && currentModel?.model) {
+        const hasSetModel = draft.single_retrieval_config?.model?.provider
+        if (!hasSetModel) {
+          draft.single_retrieval_config = {
+            model: {
+              provider: currentProvider?.provider,
+              name: currentModel?.model,
+              mode: currentModel?.model_properties?.mode as string,
+              completion_params: {},
+            },
+          }
+        }
+      }
+
+      const multipleRetrievalConfig = draft.multiple_retrieval_config
+      draft.multiple_retrieval_config = {
+        top_k: multipleRetrievalConfig?.top_k || DATASET_DEFAULT.top_k,
+        score_threshold: multipleRetrievalConfig?.score_threshold,
+        reranking_model: payload.retrieval_mode === RETRIEVE_TYPE.oneWay
+          ? undefined
+          : (!multipleRetrievalConfig?.reranking_model?.provider
+            ? {
+              provider: rerankDefaultModel?.provider?.provider || '',
+              model: rerankDefaultModel?.model || '',
+            }
+            : multipleRetrievalConfig?.reranking_model),
+      }
+    })
+    setInputs(newInput)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProvider?.provider, currentModel, rerankDefaultModel])
+
   const handleRetrievalModeChange = useCallback((newMode: RETRIEVE_TYPE) => {
     const newInputs = produce(inputs, (draft) => {
       draft.retrieval_mode = newMode
+      if (newMode === RETRIEVE_TYPE.multiWay) {
+        draft.multiple_retrieval_config = {
+          top_k: draft.multiple_retrieval_config?.top_k || DATASET_DEFAULT.top_k,
+          score_threshold: draft.multiple_retrieval_config?.score_threshold,
+          reranking_model: !draft.multiple_retrieval_config?.reranking_model?.provider
+            ? {
+              provider: rerankDefaultModel?.provider?.provider || '',
+              model: rerankDefaultModel?.model || '',
+            }
+            : draft.multiple_retrieval_config?.reranking_model,
+        }
+      }
+      else {
+        const hasSetModel = draft.single_retrieval_config?.model?.provider
+        if (!hasSetModel) {
+          draft.single_retrieval_config = {
+            model: {
+              provider: currentProvider?.provider || '',
+              name: currentModel?.model || '',
+              mode: currentModel?.model_properties?.mode as string,
+              completion_params: {},
+            },
+          }
+        }
+      }
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [currentModel?.model, currentModel?.model_properties?.mode, currentProvider?.provider, inputs, rerankDefaultModel?.model, rerankDefaultModel?.provider?.provider, setInputs])
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
@@ -111,6 +225,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     filterVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
+    handleModelChanged,
+    handleCompletionParamsChange,
     selectedDatasets,
     handleOnDatasetsChange,
     isShowSingleRun,

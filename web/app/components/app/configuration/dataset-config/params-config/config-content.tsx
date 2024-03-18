@@ -16,15 +16,27 @@ import type {
 
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import type { ModelConfig } from '@/app/components/workflow/types'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   datasetConfigs: DatasetConfigs
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
+  isInWorkflow?: boolean
+  singleRetrievalModelConfig?: ModelConfig
+  onSingleRetrievalModelChange?: (config: ModelConfig) => void
+  onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
 }
 
 const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
+  isInWorkflow,
+  singleRetrievalModelConfig: singleRetrievalConfig = {} as ModelConfig,
+  onSingleRetrievalModelChange = () => { },
+  onSingleRetrievalModelParamsChange = () => { },
 }) => {
   const { t } = useTranslation()
   const type = datasetConfigs.retrieval_model
@@ -77,6 +89,9 @@ const ConfigContent: FC<Props> = ({
       score_threshold_enabled: enable,
     })
   }
+
+  const model = singleRetrievalConfig
+
   return (
     <div>
       <div className='mt-2 space-y-3'>
@@ -122,7 +137,7 @@ const ConfigContent: FC<Props> = ({
               enable={true}
             />
             <ScoreThresholdItem
-              value={datasetConfigs.score_threshold}
+              value={datasetConfigs.score_threshold as number}
               onChange={handleParamChange}
               enable={datasetConfigs.score_threshold_enabled}
               hasSwitch={true}
@@ -131,7 +146,34 @@ const ConfigContent: FC<Props> = ({
           </div>
         </>
       )}
-    </div>
+
+      {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
+        <div className='mt-6'>
+          <div className='flex items-center space-x-0.5'>
+            <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
+            <TooltipPlus
+              popupContent={t('common.modelProvider.systemReasoningModel.tip')}
+            >
+              <HelpCircle className='w-3.5 h-4.5 text-gray-400' />
+            </TooltipPlus>
+          </div>
+          <ModelParameterModal
+            popupClassName='!w-[387px]'
+            portalToFollowElemContentClassName='!z-[1002]'
+            isAdvancedMode={true}
+            mode={model?.mode}
+            provider={model?.provider}
+            completionParams={model?.completion_params}
+            modelId={model?.name}
+            setModel={onSingleRetrievalModelChange as any}
+            onCompletionParamsChange={onSingleRetrievalModelParamsChange as any}
+            hideDebugWithMultipleModel
+            debugWithMultipleModel={false}
+          />
+        </div>
+      )
+      }
+    </div >
   )
 }
 export default React.memo(ConfigContent)
