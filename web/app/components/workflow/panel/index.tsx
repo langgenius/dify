@@ -13,6 +13,8 @@ import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
 import Record from './record'
 import InputsPanel from './inputs-panel'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import MessageLogModal from '@/app/components/base/message-log-modal'
 
 const Panel: FC = () => {
   const nodes = useNodes<CommonNodeType>()
@@ -22,6 +24,7 @@ const Panel: FC = () => {
   const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const showInputsPanel = useStore(s => s.showInputsPanel)
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const {
     showWorkflowInfoPanel,
     showNodePanel,
@@ -44,6 +47,19 @@ const Panel: FC = () => {
       {
         showInputsPanel && (
           <InputsPanel />
+        )
+      }
+      {
+        showMessageLogModal && (
+          <MessageLogModal
+            fixedWidth
+            width={400}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowMessageLogModal(false)
+            }}
+          />
         )
       }
       {
