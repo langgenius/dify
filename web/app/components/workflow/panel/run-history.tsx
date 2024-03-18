@@ -6,6 +6,7 @@ import { WorkflowRunningStatus } from '../types'
 import {
   useIsChatMode,
   useWorkflow,
+  useWorkflowRun,
 } from '../hooks'
 import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
@@ -22,6 +23,7 @@ const RunHistory = () => {
   const isChatMode = useIsChatMode()
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore()
   const { formatTimeFromNow } = useWorkflow()
+  const { handleBackupDraft } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
   const workflowRunId = useRunHistoryStore(state => state.workflowRunId)
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
@@ -69,12 +71,15 @@ const RunHistory = () => {
                 'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
                 item.id === workflowRunId && 'bg-primary-50',
               )}
-              onClick={() => workflowStore.setState({
-                currentSequenceNumber: item.sequence_number,
-                workflowRunId: item.id,
-                currentConversationID: item.conversation_id,
-                runningStatus: item.status as WorkflowRunningStatus,
-              })}
+              onClick={() => {
+                workflowStore.setState({
+                  currentSequenceNumber: item.sequence_number,
+                  workflowRunId: item.id,
+                  currentConversationID: item.conversation_id,
+                  runningStatus: item.status as WorkflowRunningStatus,
+                })
+                handleBackupDraft()
+              }}
             >
               {
                 !isChatMode && item.status === WorkflowRunningStatus.Failed && (

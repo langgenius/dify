@@ -18,6 +18,7 @@ import type {
   Edge,
   Node,
 } from './types'
+import { WorkflowRunningStatus } from './types'
 import { WorkflowContextProvider } from './context'
 import {
   useEdgesInteractions,
@@ -93,7 +94,9 @@ const Workflow: FC<WorkflowProps> = memo(({
   const { isValidConnection } = useWorkflow()
 
   useOnViewportChange({
-    onEnd: () => handleSyncWorkflowDraft(),
+    onEnd: () => {
+      handleSyncWorkflowDraft()
+    },
   })
 
   useKeyPress('Backspace', handleEdgeDelete)
@@ -103,7 +106,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       id='workflow-container'
       className={`
         relative w-full min-w-[960px] h-full bg-[#F0F2F7]
-        ${runningStatus && 'workflow-panel-animation'}
+        ${runningStatus === WorkflowRunningStatus.Running && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
     >
@@ -135,14 +138,14 @@ const Workflow: FC<WorkflowProps> = memo(({
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        panOnDrag={!runningStatus}
         nodesDraggable={!runningStatus}
         nodesConnectable={!runningStatus}
         nodesFocusable={!runningStatus}
         edgesFocusable={!runningStatus}
-        zoomOnPinch={!runningStatus}
-        zoomOnScroll={!runningStatus}
-        zoomOnDoubleClick={!runningStatus}
+        panOnDrag={runningStatus !== WorkflowRunningStatus.Running}
+        zoomOnPinch={runningStatus !== WorkflowRunningStatus.Running}
+        zoomOnScroll={runningStatus !== WorkflowRunningStatus.Running}
+        zoomOnDoubleClick={runningStatus !== WorkflowRunningStatus.Running}
         isValidConnection={isValidConnection}
       >
         <Background
