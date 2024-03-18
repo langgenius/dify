@@ -51,7 +51,6 @@ const RetrievalConfig: FC<Props> = ({
 
   const { multiple_retrieval_config } = payload
   const handleChange = useCallback((configs: DatasetConfigs, isRetrievalModeChange?: boolean) => {
-    console.log(configs, isRetrievalModeChange)
     if (isRetrievalModeChange) {
       onRetrievalModeChange(configs.retrieval_model)
       return
