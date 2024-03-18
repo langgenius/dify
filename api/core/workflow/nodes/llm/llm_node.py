@@ -221,8 +221,11 @@ class LLMNode(BaseNode):
         :param variable_pool: variable pool
         :return:
         """
-        # if not node_data.context.enabled:
-        #     return None
+        if not node_data.context.enabled:
+            return None
+
+        if not node_data.context.variable_selector:
+            return None
 
         context_value = variable_pool.get_variable_value(node_data.context.variable_selector)
         if context_value:
