@@ -37,7 +37,7 @@ const RunHistory = () => {
         {t('workflow.common.runHistory')}
         <div
           className='flex items-center justify-center w-6 h-6 cursor-pointer'
-          onClick={() => workflowStore.setState({ showRunHistory: false })}
+          onClick={() => workflowStore.setState({ showRunHistory: false, currentConversationID: '' })}
         >
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
