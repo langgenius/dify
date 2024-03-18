@@ -135,7 +135,7 @@ const RunAndHistory: FC = () => {
             ${showRunHistory && 'bg-primary-50'}
           `}
           onClick={() => {
-            workflowStore.setState({ showRunHistory: !showRunHistory })
+            workflowStore.setState({ showRunHistory: !showRunHistory, workflowRunId: '' })
             setCurrentLogItem()
             setShowMessageLogModal(false)
           }}
