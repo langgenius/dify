@@ -24,6 +24,7 @@ import {
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   className?: string
@@ -162,6 +163,13 @@ const VarReferencePicker: FC<Props> = ({
     onChange(e.target.value as string, varKindType)
   }, [onChange, varKindType])
 
+  const handleClearVar = useCallback(() => {
+    if (varKindType === VarKindType.static)
+      onChange('', varKindType)
+    else
+      onChange([], varKindType)
+  }, [onChange, varKindType])
+
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
@@ -170,7 +178,7 @@ const VarReferencePicker: FC<Props> = ({
         placement='bottom-start'
       >
         <PortalToFollowElemTrigger onClick={() => !isConstant ? setOpen(!open) : setControlFocus(Date.now())} className='!flex'>
-          <div className={cn((open || isFocus) && 'border border-gray-300', 'flex items-center w-full h-8 p-1 rounded-lg bg-gray-100')}>
+          <div className={cn((open || isFocus) && 'border border-gray-300', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100')}>
             {isSupportConstantValue
               ? <div onClick={(e) => {
                 e.stopPropagation()
@@ -228,6 +236,12 @@ const VarReferencePicker: FC<Props> = ({
                     : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
                 </div>
               )}
+            {hasValue && (<div
+              className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
+              onClick={handleClearVar}
+            >
+              <XClose className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
+            </div>)}
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{
