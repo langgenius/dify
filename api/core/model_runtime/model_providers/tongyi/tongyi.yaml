@@ -24,9 +24,9 @@ provider_credential_schema:
   credential_form_schemas:
     - variable: dashscope_api_key
       label:
-        en_US: APIKey
+        en_US: API Key
       type: secret-input
       required: true
       placeholder:
-        zh_Hans: 在此输入您的 APIKey
-        en_US: Enter your APIKey
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
