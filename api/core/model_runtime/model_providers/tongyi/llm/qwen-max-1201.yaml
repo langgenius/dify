@@ -59,3 +59,8 @@ parameter_rules:
     required: false
   - name: response_format
     use_template: response_format
+pricing:
+  input: '0.12'
+  output: '0.12'
+  unit: '0.001'
+  currency: RMB
