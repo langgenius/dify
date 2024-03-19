@@ -197,6 +197,7 @@ const translation = {
         body: '响应内容',
         statusCode: '响应状态码',
         headers: '响应头列表 JSON',
+        files: '文件列表',
       },
       authorization: {
         'authorization': '鉴权',

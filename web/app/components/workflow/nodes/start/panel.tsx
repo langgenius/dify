@@ -80,7 +80,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
             /> */}
               <VarItem
                 name='sys.files'
-                type='string'
+                type='Array[File]'
                 description={t(`${i18nPrefix}.outputVars.files`)}
               />
             </>

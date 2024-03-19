@@ -163,6 +163,11 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               type='object'
               description={t(`${i18nPrefix}.outputVars.headers`)}
             />
+            <VarItem
+              name='files'
+              type='Array[File]'
+              description={t(`${i18nPrefix}.outputVars.files`)}
+            />
           </>
         </OutputVars>
       </div>

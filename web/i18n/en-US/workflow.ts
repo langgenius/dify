@@ -197,6 +197,7 @@ const translation = {
         body: 'Response Content',
         statusCode: 'Response Status Code',
         headers: 'Response Header List JSON',
+        files: 'Files List',
       },
       authorization: {
         'authorization': 'Authorization',

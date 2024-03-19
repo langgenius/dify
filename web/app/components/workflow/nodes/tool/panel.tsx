@@ -128,28 +128,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               name='files'
               type='Array[File]'
               description={t(`${i18nPrefix}.outputVars.files.title`)}
-              subItems={[
-                {
-                  name: 'type',
-                  type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.files.type`),
-                },
-                {
-                  name: 'transfer_method',
-                  type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.files.transfer_method`),
-                },
-                {
-                  name: 'url',
-                  type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.files.url`),
-                },
-                {
-                  name: 'upload_file_id',
-                  type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.files.upload_file_id`),
-                },
-              ]}
             />
           </>
         </OutputVars>
