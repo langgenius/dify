@@ -213,7 +213,7 @@ class HttpExecutor:
             else:
                 raise ValueError(f'Invalid headers {kv}')
             
-            self.headers[k] = v
+            self.headers[k.strip()] = v.strip()
 
         # extract all template in body
         if node_data.body:
