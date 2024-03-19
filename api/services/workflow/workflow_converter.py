@@ -69,6 +69,10 @@ class WorkflowConverter:
         new_app.is_demo = False
         new_app.is_public = app_model.is_public
         db.session.add(new_app)
+        db.session.flush()
+        db.session.commit()
+
+        workflow.app_id = new_app.id
         db.session.commit()
 
         app_was_created.send(new_app, account=account)

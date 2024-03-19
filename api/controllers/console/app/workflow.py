@@ -270,14 +270,15 @@ class ConvertToWorkflowApi(Resource):
         """
         # convert to workflow mode
         workflow_service = WorkflowService()
-        workflow = workflow_service.convert_to_workflow(
+        new_app_model = workflow_service.convert_to_workflow(
             app_model=app_model,
             account=current_user
         )
 
-        # return workflow
-        return workflow
-
+        # return app id
+        return {
+            'new_app_id': new_app_model.id,
+        }
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')
