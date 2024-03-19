@@ -20,18 +20,21 @@ import { getRedirection } from '@/utils/app-redirection'
 import type { App } from '@/types/app'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import AppIcon from '@/app/components/base/app-icon'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type SwitchAppModalProps = {
   show: boolean
   appDetail: App
   onSuccess?: () => void
   onClose: () => void
+  inAppDetail?: boolean
 }
 
-const SwitchAppModal = ({ show, appDetail, onSuccess, onClose }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClose }: SwitchAppModalProps) => {
   const { push, replace } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { setAppDetail } = useAppStore()
 
   const { isCurrentWorkspaceManager } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
@@ -50,12 +53,17 @@ const SwitchAppModal = ({ show, appDetail, onSuccess, onClose }: SwitchAppModalP
       if (onClose)
         onClose()
       notify({ type: 'success', message: t('app.newApp.appCreated') })
+      if (inAppDetail)
+        setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(
         isCurrentWorkspaceManager,
-        { id: newAppID },
+        {
+          id: newAppID,
+          mode: appDetail.mode === 'completion' ? 'workflow' : 'advanced-chat',
+        },
         removeOriginal ? replace : push,
       )
     }
