@@ -3,6 +3,7 @@ import {
   create,
   useStore as useZustandStore,
 } from 'zustand'
+import { debounce } from 'lodash-es'
 import type { Viewport } from 'reactflow'
 import type {
   HelpLineHorizontalPosition,
@@ -71,6 +72,7 @@ type Action = {
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   setNodeAnimation: (nodeAnimation: boolean) => void
   setIsRestoring: (isRestoring: boolean) => void
+  debouncedSyncWorkflowDraft: (fn: () => void) => void
 }
 
 export const createWorkflowStore = () => {
@@ -117,6 +119,9 @@ export const createWorkflowStore = () => {
     setNodeAnimation: nodeAnimation => set(() => ({ nodeAnimation })),
     isRestoring: false,
     setIsRestoring: isRestoring => set(() => ({ isRestoring })),
+    debouncedSyncWorkflowDraft: debounce((syncWorkflowDraft) => {
+      syncWorkflowDraft()
+    }, 5000),
   }))
 }
 

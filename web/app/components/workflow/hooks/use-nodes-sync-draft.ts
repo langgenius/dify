@@ -1,11 +1,13 @@
 import { useCallback } from 'react'
 import produce from 'immer'
-import { useDebounceFn } from 'ahooks'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { useWorkflowStore } from '../store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -15,8 +17,9 @@ export const useNodesSyncDraft = () => {
   const workflowStore = useWorkflowStore()
   const reactFlow = useReactFlow()
   const featuresStore = useFeaturesStore()
+  const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
 
-  const shouldDebouncedSyncWorkflowDraft = useCallback(() => {
+  const doSyncWorkflowDraft = useCallback(() => {
     const {
       getNodes,
       edges,
@@ -67,12 +70,7 @@ export const useNodesSyncDraft = () => {
     }
   }, [store, reactFlow, featuresStore, workflowStore])
 
-  const { run: debouncedSyncWorkflowDraft } = useDebounceFn(shouldDebouncedSyncWorkflowDraft, {
-    wait: 2000,
-    trailing: true,
-  })
-
-  const handleSyncWorkflowDraft = useCallback((shouldDelay?: boolean) => {
+  const handleSyncWorkflowDraft = useCallback((sync?: boolean) => {
     const {
       runningStatus,
       isRestoring,
@@ -81,11 +79,11 @@ export const useNodesSyncDraft = () => {
     if (runningStatus || isRestoring)
       return
 
-    if (shouldDelay)
-      debouncedSyncWorkflowDraft()
+    if (sync)
+      doSyncWorkflowDraft()
     else
-      shouldDebouncedSyncWorkflowDraft()
-  }, [debouncedSyncWorkflowDraft, shouldDebouncedSyncWorkflowDraft, workflowStore])
+      debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
+  }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, workflowStore])
 
   return {
     handleSyncWorkflowDraft,
