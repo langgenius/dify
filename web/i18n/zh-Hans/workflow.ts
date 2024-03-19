@@ -26,6 +26,7 @@ const translation = {
     noVar: '没有变量',
     variableNamePlaceholder: '变量名',
     setVarValuePlaceholder: '设置变量值',
+    needConnecttip: '此节点尚未连接到其他节点',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
