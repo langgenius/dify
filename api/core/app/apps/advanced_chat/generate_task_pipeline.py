@@ -418,7 +418,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         if node_type in [
             NodeType.ANSWER.value,
             NodeType.IF_ELSE.value,
-            NodeType.QUESTION_CLASSIFIER
+            NodeType.QUESTION_CLASSIFIER.value
         ]:
             start_node_id = target_node_id
         elif node_type == NodeType.START.value:
