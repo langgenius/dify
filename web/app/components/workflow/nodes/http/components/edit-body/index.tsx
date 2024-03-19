@@ -56,7 +56,12 @@ const EditBody: FC<Props> = ({
     addItem: addBody,
     isKeyValueEdit: isBodyKeyValueEdit,
     toggleIsKeyValueEdit: toggleIsBodyKeyValueEdit,
-  } = useKeyValueList(payload.data)
+  } = useKeyValueList(payload.data, (value) => {
+    const newBody = produce(payload, (draft: Body) => {
+      draft.data = value
+    })
+    onChange(newBody)
+  })
 
   const isCurrentKeyValue = type === BodyType.formData || type === BodyType.xWwwFormUrlencoded
 

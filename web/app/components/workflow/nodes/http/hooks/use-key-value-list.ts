@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import type { KeyValue } from '../types'
 
@@ -9,9 +9,15 @@ const strToKeyValueList = (value: string) => {
   })
 }
 
-const useKeyValueList = (value: string) => {
+const useKeyValueList = (value: string, onChange: (value: string) => void) => {
   const [list, setList] = useState<KeyValue[]>(value ? strToKeyValueList(value) : [])
+  useEffect(() => {
+    const newValue = list.filter(item => item.key && item.value).map(item => `${item.key}: ${item.value}`).join('\n')
+    if (newValue !== value)
+      onChange(newValue)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list])
   const addItem = useCallback(() => {
     setList(prev => [...prev, { key: '', value: '' }])
   }, [])

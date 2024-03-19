@@ -12,7 +12,7 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
 
-  // console.log(inputs)
+  console.log(inputs)
   const { handleVarListChange, handleAddVariable } = useVarList<HttpNodeType>({
     inputs,
     setInputs,
@@ -32,13 +32,22 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleFieldChange = useCallback((field: string) => {
+    return (value: string) => {
+      const newInputs = produce(inputs, (draft: HttpNodeType) => {
+        (draft as any)[field] = value
+      })
+      setInputs(newInputs)
+    }
+  }, [inputs, setInputs])
+
   const {
     list: headers,
     setList: setHeaders,
     addItem: addHeader,
     isKeyValueEdit: isHeaderKeyValueEdit,
     toggleIsKeyValueEdit: toggleIsHeaderKeyValueEdit,
-  } = useKeyValueList(inputs.headers)
+  } = useKeyValueList(inputs.headers, handleFieldChange('headers'))
 
   const {
     list: params,
@@ -46,7 +55,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     addItem: addParam,
     isKeyValueEdit: isParamKeyValueEdit,
     toggleIsKeyValueEdit: toggleIsParamKeyValueEdit,
-  } = useKeyValueList(inputs.params)
+  } = useKeyValueList(inputs.params, handleFieldChange('params'))
 
   const setBody = useCallback((data: Body) => {
     const newInputs = produce(inputs, (draft: HttpNodeType) => {
