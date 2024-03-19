@@ -2,8 +2,11 @@ from collections.abc import Generator, Sequence
 from typing import Optional, Union
 
 from langchain import PromptTemplate
+from langchain.agents import AgentOutputParser
 from langchain.agents.structured_chat.base import HUMAN_MESSAGE_TEMPLATE
+from langchain.agents.structured_chat.output_parser import StructuredChatOutputParserWithRetries
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
+from langchain.schema import AgentAction
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
@@ -13,6 +16,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.llm_node import LLMNode
+from pydantic import Field
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -126,7 +130,13 @@ class ReactMultiDatasetRouter:
             user_id=user_id,
             tenant_id=tenant_id
         )
-        return result_text
+        output_parser: AgentOutputParser = Field(
+            default_factory=StructuredChatOutputParserWithRetries
+        )
+        agent_decision = output_parser.parse(result_text)
+        if isinstance(agent_decision, AgentAction):
+            tool_inputs = agent_decision.tool_input
+        return tool_inputs
 
     def _invoke_llm(self, node_data: KnowledgeRetrievalNodeData,
                     model_instance: ModelInstance,
@@ -197,7 +207,7 @@ class ReactMultiDatasetRouter:
     ) -> list[ChatModelMessage]:
         tool_strings = []
         for tool in tools:
-            tool_strings.append(f"{tool.name}: {tool.description}")
+            tool_strings.append(f"dataset_{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}")
         formatted_tools = "\n".join(tool_strings)
         unique_tool_names = set(tool.name for tool in tools)
         tool_names = ", ".join('"' + name + '"' for name in unique_tool_names)
