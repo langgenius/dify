@@ -356,7 +356,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         prompt_message_dicts = []
         for message in prompt_messages:
             if not isinstance(message, SystemPromptMessage):
-                prompt_message_dicts.append(self._convert_claude3_prompt_message_to_dict(message))
+                prompt_message_dicts.append(self._convert_prompt_message_to_dict(message))
 
         return system, prompt_message_dicts
 
