@@ -1,0 +1,29 @@
+identity:
+  author: jimmy wu
+  name: xtuis
+  label:
+    en_US: xtuis
+    zh_Hans: 虾推啥
+    pt_BR: xtuis
+  description:
+    en_US: send message to Weixin/Wechat
+    zh_Hans: 一行代码发送信息到微信
+    pt_BR: send message to Weixin/Wechat
+  icon: icon2.png
+credentials_for_provider:
+  xtuis_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Xtuis API key
+      zh_Hans: 虾推啥API_Token
+      pt_BR: Xtuis API key
+    placeholder:
+      en_US: Please input your Xtuis API key
+      zh_Hans: 请输入你的虾推啥API Token
+      pt_BR: Please input your Xtuis API key
+    help:
+      en_US: Get your Xtuis API key from xtuis.cn
+      zh_Hans: 从 虾推啥官网 获取您的 xtuis API key/Token
+      pt_BR: Get your Xtuis API key from xtuis.cn
+    url: https://xtuis.cn/
