@@ -248,7 +248,7 @@ class MessageService:
 
             suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
 
-            if check_enabled and suggested_questions_after_answer.get("enabled", False) is False:
+            if suggested_questions_after_answer.get("enabled", False) is False:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
         # get memory of conversation (read-only)
