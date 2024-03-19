@@ -304,6 +304,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         </PortalToFollowElemContent>
         {showSwitchModal && (
           <SwitchAppModal
+            inAppDetail
             show={showSwitchModal}
             appDetail={appDetail}
             onClose={() => setShowSwitchModal(false)}
