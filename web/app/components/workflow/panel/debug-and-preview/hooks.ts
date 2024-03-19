@@ -7,10 +7,15 @@ import {
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { useWorkflowRun } from '../../hooks'
-import type { ChatItem } from '@/app/components/base/chat/types'
+import type {
+  ChatItem,
+  Inputs,
+  PromptVariable,
+} from '@/app/components/base/chat/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import type { VisionFile } from '@/types/app'
+import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -18,6 +23,10 @@ type SendCallback = {
 }
 export const useChat = (
   config: any,
+  promptVariablesConfig?: {
+    inputs: Inputs
+    promptVariables: PromptVariable[]
+  },
   prevChatList?: ChatItem[],
   stopChat?: (taskId: string) => void,
 ) => {
@@ -50,6 +59,34 @@ export const useChat = (
     setIsResponding(isResponding)
     isRespondingRef.current = isResponding
   }, [])
+
+  const getIntroduction = useCallback((str: string) => {
+    return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
+  }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
+  useEffect(() => {
+    if (config?.opening_statement) {
+      handleUpdateChatList(produce(chatListRef.current, (draft) => {
+        const index = draft.findIndex(item => item.isOpeningStatement)
+
+        if (index > -1) {
+          draft[index] = {
+            ...draft[index],
+            content: getIntroduction(config.opening_statement),
+            suggestedQuestions: config.suggested_questions,
+          }
+        }
+        else {
+          draft.unshift({
+            id: `${Date.now()}`,
+            content: getIntroduction(config.opening_statement),
+            isAnswer: true,
+            isOpeningStatement: true,
+            suggestedQuestions: config.suggested_questions,
+          })
+        }
+      }))
+    }
+  }, [config?.opening_statement, getIntroduction, config?.suggested_questions, handleUpdateChatList])
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
