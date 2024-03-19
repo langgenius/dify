@@ -13,6 +13,7 @@ import type {
   Edge,
   Node,
 } from '../types'
+import { BlockEnum } from '../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
@@ -168,6 +169,10 @@ export const useEdgesInteractions = () => {
         sourceHandle: 'source',
         target: nodeId,
         targetHandle,
+        data: {
+          sourceType: nodes.find(node => node.id === targetHandle)?.data.type,
+          targetType: BlockEnum.VariableAssigner,
+        },
       }
     })
 
