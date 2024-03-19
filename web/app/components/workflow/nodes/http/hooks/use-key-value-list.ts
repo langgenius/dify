@@ -12,7 +12,7 @@ const strToKeyValueList = (value: string) => {
 const useKeyValueList = (value: string, onChange: (value: string) => void) => {
   const [list, setList] = useState<KeyValue[]>(value ? strToKeyValueList(value) : [])
   useEffect(() => {
-    const newValue = list.filter(item => item.key && item.value).map(item => `${item.key}: ${item.value}`).join('\n')
+    const newValue = list.filter(item => item.key && item.value).map(item => `${item.key}:${item.value}`).join('\n')
     if (newValue !== value)
       onChange(newValue)
 
