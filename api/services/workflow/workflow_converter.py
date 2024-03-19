@@ -59,7 +59,6 @@ class WorkflowConverter:
         new_app.name = app_model.name + '(workflow)'
         new_app.mode = AppMode.ADVANCED_CHAT.value \
             if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
-        new_app.workflow_id = workflow.id
         new_app.icon = app_model.icon
         new_app.icon_background = app_model.icon_background
         new_app.enable_site = app_model.enable_site
@@ -190,8 +189,7 @@ class WorkflowConverter:
             version='draft',
             graph=json.dumps(graph),
             features=json.dumps(features),
-            created_by=account_id,
-            created_at=app_model_config.created_at
+            created_by=account_id
         )
 
         db.session.add(workflow)
