@@ -77,6 +77,17 @@ class App(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     @property
+    def desc_or_prompt(self):
+        if self.description:
+            return self.description
+        else:
+            app_model_config = self.app_model_config
+            if app_model_config:
+                return app_model_config.pre_prompt
+            else:
+                return ''
+
+    @property
     def site(self):
         site = db.session.query(Site).filter(Site.app_id == self.id).first()
         return site

@@ -64,7 +64,7 @@ model_config_partial_fields = {
 app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
-    'description': fields.String,
+    'description': fields.String(attribute='desc_or_prompt'),
     'mode': fields.String,
     'icon': fields.String,
     'icon_background': fields.String,
