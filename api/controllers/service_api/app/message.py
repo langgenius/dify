@@ -119,8 +119,7 @@ class MessageSuggestedApi(Resource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
                 user=end_user,
-                message_id=message_id,
-                check_enabled=False
+                message_id=message_id
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
