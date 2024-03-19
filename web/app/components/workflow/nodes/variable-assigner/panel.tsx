@@ -10,6 +10,8 @@ import AddButton from '@/app/components/base/button/add-button'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
@@ -73,7 +75,18 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
           />
         </Field>
       </div>
-
+      <Split />
+      <div className='px-4 pt-4 pb-2'>
+        <OutputVars>
+          <>
+            <VarItem
+              name='output'
+              type={inputs.output_type}
+              description={t(`${i18nPrefix}.outputVars.output`)}
+            />
+          </>
+        </OutputVars>
+      </div>
     </div>
   )
 }

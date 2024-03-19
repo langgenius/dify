@@ -258,6 +258,9 @@ const translation = {
         object: 'Object',
         array: 'Array',
       },
+      outputVars: {
+        output: 'Assigned variable value',
+      },
     },
     tool: {
       toAuthorize: 'To authorize',
