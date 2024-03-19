@@ -388,6 +388,10 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
     variable: 'headers',
     type: VarType.string,
   },
+  {
+    variable: 'files',
+    type: VarType.arrayFile,
+  },
 ]
 
 export const TOOL_OUTPUT_STRUCT: Var[] = [
