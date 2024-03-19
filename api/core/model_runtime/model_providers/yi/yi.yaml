@@ -9,7 +9,7 @@ icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.svg
-background: "#EFFDFD"
+background: "#E9F1EC"
 help:
   title:
     en_US: Get your API Key from 01.ai
