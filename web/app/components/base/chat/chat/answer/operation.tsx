@@ -75,21 +75,23 @@ const Operation: FC<OperationProps> = ({
         />
       )}
 
-      <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
-        {showPromptLog && (
-          <Log logItem={item} />
-        )}
-        {(!isOpeningStatement && config?.text_to_speech?.enabled) && (
-          <>
-            <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
-            <AudioBtn
-              value={content}
-              voice={config?.text_to_speech?.voice}
-              className='hidden group-hover:block'
-            />
-          </>
-        )}
-      </div>
+      {!isOpeningStatement && (
+        <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
+          {showPromptLog && (
+            <Log logItem={item} />
+          )}
+          {(config?.text_to_speech?.enabled) && (
+            <>
+              <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
+              <AudioBtn
+                value={content}
+                voice={config?.text_to_speech?.voice}
+                className='hidden group-hover:block'
+              />
+            </>
+          )}
+        </div>
+      )}
 
       {(!isOpeningStatement && config?.supportAnnotation && config.annotation_reply?.enabled) && (
         <AnnotationCtrlBtn

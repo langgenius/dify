@@ -135,7 +135,7 @@ const Debug: FC<IDebug> = ({
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
-    if (isAdvancedMode && mode === AppType.chat) {
+    if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
@@ -391,7 +391,7 @@ const Debug: FC<IDebug> = ({
                 )
                 : null
             }
-            {mode === 'chat' && (
+            {mode !== AppType.completion && (
               <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -428,7 +428,7 @@ const Debug: FC<IDebug> = ({
         !debugWithMultipleModel && (
           <div className="flex flex-col grow">
             {/* Chat */}
-            {mode === AppType.chat && (
+            {mode !== AppType.completion && (
               <div className='grow h-0 overflow-hidden'>
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}

@@ -346,7 +346,7 @@ const Configuration: FC = () => {
       const appMode = mode
 
       if (modeMode === ModelModeType.completion) {
-        if (appMode === AppType.chat) {
+        if (appMode !== AppType.completion) {
           if (!completionPromptConfig.prompt.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
             await migrateToDefaultPrompt(true, ModelModeType.completion)
         }
@@ -511,7 +511,7 @@ const Configuration: FC = () => {
   }, [appId])
 
   const promptEmpty = (() => {
-    if (mode === AppType.chat)
+    if (mode !== AppType.completion)
       return false
 
     if (isAdvancedMode) {
@@ -525,7 +525,7 @@ const Configuration: FC = () => {
     else { return !modelConfig.configs.prompt_template }
   })()
   const cannotPublish = (() => {
-    if (mode === AppType.chat) {
+    if (mode !== AppType.completion) {
       if (!isAdvancedMode)
         return false
 
@@ -550,7 +550,7 @@ const Configuration: FC = () => {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
       return
     }
-    if (isAdvancedMode && mode === AppType.chat) {
+    if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })

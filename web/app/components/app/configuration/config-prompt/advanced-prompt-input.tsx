@@ -92,7 +92,7 @@ const AdvancedPromptInput: FC<Props> = ({
       },
     })
   }
-  const isChatApp = mode === AppType.chat
+  const isChatApp = mode !== AppType.completion
   const [isCopied, setIsCopied] = React.useState(false)
 
   const promptVariablesObj = (() => {
