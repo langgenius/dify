@@ -5,8 +5,14 @@ import {
   useImperativeHandle,
   useMemo,
 } from 'react'
-import { useWorkflowStore } from '../../store'
+import { useNodes } from 'reactflow'
+import { BlockEnum } from '../../types'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../../store'
 import { useWorkflowRun } from '../../hooks'
+import type { StartNodeType } from '../../nodes/start/types'
 import UserInput from './user-input'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
@@ -20,9 +26,13 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
+  const nodes = useNodes<StartNodeType>()
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
+  const inputs = useStore(s => s.inputs)
   const { handleStopRun } = useWorkflowRun()
   const features = featuresStore!.getState().features
 
@@ -49,6 +59,10 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
     handleRestart,
   } = useChat(
     config,
+    {
+      inputs,
+      promptVariables: (startVariables as any) || [],
+    },
     [],
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
@@ -90,7 +104,6 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       onSend={doSend}
       onStopResponding={doStop}
       chatNode={<UserInput />}
-      allToolIcons={{}}
       suggestedQuestions={suggestedQuestions}
     />
   )
