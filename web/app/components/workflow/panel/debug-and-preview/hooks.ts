@@ -261,6 +261,14 @@ export const useChat = (
           })
           handleUpdateChatList(newChatList)
         },
+        onWorkflowStarted: () => {
+        },
+        onWorkflowFinished: () => {
+        },
+        onNodeStarted: () => {
+        },
+        onNodeFinished: () => {
+        },
       },
     )
   }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled])
