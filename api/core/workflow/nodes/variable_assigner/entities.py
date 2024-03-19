@@ -9,4 +9,4 @@ class VariableAssignerNodeData(BaseNodeData):
     """
     type: str = 'variable-assigner'
     output_type: str
-    variables: list[str]
+    variables: list[list[str]]
