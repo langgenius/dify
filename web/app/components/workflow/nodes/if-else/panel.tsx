@@ -22,6 +22,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
     handleConditionsChange,
     handleAddCondition,
     handleLogicalOperatorToggle,
+    varTypesList,
     filterVar,
   } = useConfig(id, data)
   return (
@@ -39,6 +40,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
               onChange={handleConditionsChange}
               logicalOperator={inputs.logical_operator}
               onLogicalOperatorToggle={handleLogicalOperatorToggle}
+              varTypesList={varTypesList}
               filterVar={filterVar}
             />
             <AddButton

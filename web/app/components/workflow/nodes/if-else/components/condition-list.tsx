@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import cn from 'classnames'
-import type { Var } from '../../../types'
+import type { Var, VarType } from '../../../types'
 import Item from './condition-item'
 import type { Condition, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 
@@ -12,6 +12,7 @@ type Props = {
   className?: string
   readonly: boolean
   list: Condition[]
+  varTypesList: (VarType | undefined)[]
   onChange: (newList: Condition[]) => void
   logicalOperator: LogicalOperator
   onLogicalOperatorToggle: () => void
@@ -23,6 +24,7 @@ const ConditionList: FC<Props> = ({
   readonly,
   nodeId,
   list,
+  varTypesList,
   onChange,
   logicalOperator,
   onLogicalOperatorToggle,
@@ -50,13 +52,13 @@ const ConditionList: FC<Props> = ({
 
   if (list.length === 0)
     return null
-
   return (
     <div className={cn(className, 'space-y-2')}>
       <Item
         readonly={readonly}
         nodeId={nodeId}
         payload={list[0]}
+        varType={varTypesList[0]}
         onChange={handleItemChange(0)}
         canRemove={canRemove}
         onRemove={handleItemRemove(0)}
@@ -72,6 +74,7 @@ const ConditionList: FC<Props> = ({
               readonly={readonly}
               nodeId={nodeId}
               payload={item}
+              varType={varTypesList[i + 1]}
               onChange={handleItemChange(i + 1)}
               canRemove={canRemove}
               onRemove={handleItemRemove(i + 1)}

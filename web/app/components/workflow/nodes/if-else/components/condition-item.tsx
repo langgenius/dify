@@ -5,12 +5,14 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import { isComparisonOperatorNeedTranslate } from '../utils'
+import { VarType } from '../../../types'
 import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
+import Toast from '@/app/components/base/toast'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const Line = (
@@ -25,9 +27,9 @@ const Line = (
   </svg>
 )
 
-const getOperators = (type: string) => {
+const getOperators = (type?: VarType) => {
   switch (type) {
-    case 'string':
+    case VarType.string:
       return [
         ComparisonOperator.contains,
         ComparisonOperator.notContains,
@@ -38,7 +40,7 @@ const getOperators = (type: string) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
-    case 'number':
+    case VarType.number:
       return [
         ComparisonOperator.equal,
         ComparisonOperator.notEqual,
@@ -51,15 +53,13 @@ const getOperators = (type: string) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
-    case 'array':
+    default:
       return [
         ComparisonOperator.is,
         ComparisonOperator.isNot,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
-    default:
-      return []
   }
 }
 
@@ -67,6 +67,7 @@ type ItemProps = {
   readonly: boolean
   nodeId: string
   payload: Condition
+  varType?: VarType
   onChange: (newItem: Condition) => void
   canRemove: boolean
   onRemove?: () => void
@@ -80,6 +81,7 @@ const Item: FC<ItemProps> = ({
   readonly,
   nodeId,
   payload,
+  varType,
   onChange,
   canRemove,
   onRemove = () => { },
@@ -149,13 +151,24 @@ const Item: FC<ItemProps> = ({
           popupClassName='top-[34px]'
           itemClassName='capitalize'
           trigger={
-            <div className='shrink-0 w-[100px] whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize cursor-pointer'>
+            <div
+              onClick={(e) => {
+                if (!varType) {
+                  e.stopPropagation()
+                  Toast.notify({
+                    message: 'please selector var first', // t(`${i18nPrefix}.selectVarType`)
+                    type: 'error',
+                  })
+                }
+              }}
+              className='shrink-0 w-[100px] whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize cursor-pointer'
+            >
               <div className='text-[13px] font-normal text-gray-900'>{isComparisonOperatorNeedTranslate(payload.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${payload.comparison_operator}`) : payload.comparison_operator}</div>
             </div>
           }
           readonly={readonly}
           value={payload.comparison_operator}
-          options={getOperators('string').map((o) => {
+          options={getOperators(varType).map((o) => {
             return {
               label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
               value: o,
