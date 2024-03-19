@@ -1,3 +1,4 @@
+import json
 import re
 from copy import deepcopy
 from random import randint
@@ -147,6 +148,19 @@ class HttpExecutor:
         # init template
         self._init_template(node_data, variables)
 
+    def _is_json_body(self, node_data: HttpRequestNodeData):
+        """
+        check if body is json
+        """
+        if node_data.body and node_data.body.type == 'json':
+            try:
+                json.loads(node_data.body.data)
+                return True
+            except:
+                return False
+        
+        return False
+
     def _init_template(self, node_data: HttpRequestNodeData, variables: dict[str, Any]):
         """
         init template
@@ -217,14 +231,20 @@ class HttpExecutor:
 
         # extract all template in body
         if node_data.body:
+            # check if it's a valid JSON
+            is_valid_json = self._is_json_body(node_data)
             body_template = re.findall(r'{{(.*?)}}', node_data.body.data or '') or []
             body_template = list(set(body_template))
             original_body = node_data.body.data or ''
             for body in body_template:
                 if not body:
                     continue
-
-                original_body = original_body.replace(f'{{{{{body}}}}}', str(variables.get(body, '')))
+                
+                body_value = variables.get(body, '')
+                if is_valid_json:
+                    body_value = body_value.replace('"', '\\"')
+                
+                original_body = original_body.replace(f'{{{{{body}}}}}', body_value)
 
             if node_data.body.type == 'json':
                 self.headers['Content-Type'] = 'application/json'
