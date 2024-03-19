@@ -102,7 +102,17 @@ export const useWorkflowRun = () => {
     }
   }, [store, handleLoadBackupDraft, handleBackupDraft, workflowStore])
 
-  const handleRun = useCallback((params: any, callback?: IOtherOptions) => {
+  const handleRun = useCallback((
+    params: any,
+    callback?: IOtherOptions,
+  ) => {
+    const {
+      onWorkflowStarted,
+      onWorkflowFinished,
+      onNodeStarted,
+      onNodeFinished,
+      ...restCallback
+    } = callback || {}
     const {
       getNodes,
       setNodes,
@@ -130,7 +140,8 @@ export const useWorkflowRun = () => {
         body: params,
       },
       {
-        onWorkflowStarted: ({ task_id, workflow_run_id, data }) => {
+        onWorkflowStarted: (params) => {
+          const { task_id, workflow_run_id, data } = params
           workflowStore.setState({ runningStatus: WorkflowRunningStatus.Running })
           workflowStore.setState({ taskId: task_id })
           workflowStore.setState({ currentSequenceNumber: data.sequence_number })
@@ -141,11 +152,19 @@ export const useWorkflowRun = () => {
             })
           })
           setNodes(newNodes)
+
+          if (onWorkflowStarted)
+            onWorkflowStarted(params)
         },
-        onWorkflowFinished: ({ data }) => {
+        onWorkflowFinished: (params) => {
+          const { data } = params
           workflowStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
+
+          if (onWorkflowFinished)
+            onWorkflowFinished(params)
         },
-        onNodeStarted: ({ data }) => {
+        onNodeStarted: (params) => {
+          const { data } = params
           const nodes = getNodes()
           const {
             setViewport,
@@ -171,16 +190,23 @@ export const useWorkflowRun = () => {
               edge.data._runned = true
           })
           setEdges(newEdges)
+
+          if (onNodeStarted)
+            onNodeStarted(params)
         },
-        onNodeFinished: ({ data }) => {
+        onNodeFinished: (params) => {
+          const { data } = params
           const newNodes = produce(getNodes(), (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 
             currentNode.data._runningStatus = data.status
           })
           setNodes(newNodes)
+
+          if (onNodeFinished)
+            onNodeFinished(params)
         },
-        ...callback,
+        ...restCallback,
       },
     )
   }, [store, reactflow, workflowStore])
