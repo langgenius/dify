@@ -1,5 +1,5 @@
 'use client'
-import type { Dispatch, FC, SetStateAction } from 'react'
+import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
@@ -8,7 +8,7 @@ import { useParams } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
-import PromptLog from '@/app/components/app/chat/log'
+// import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
@@ -22,6 +22,7 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import { fetchTextGenerationMessge } from '@/service/debug'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
@@ -113,7 +114,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
     rating: null,
   })
-  const [promptLog, setPromptLog] = useState<{ role: string; text: string }[]>([])
+  const { setCurrentLogItem, setShowPromptLogModal } = useAppStore()
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
@@ -183,13 +184,24 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setChildMessageId(null)
   }, [isLoading])
 
-  const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
+  const handleOpenLogModal = async () => {
     const data = await fetchTextGenerationMessge({
       appId: params.appId as string,
       messageId: messageId!,
     })
-    setPromptLog(data.message as any || [])
-    setModal(true)
+    const logItem = {
+      ...data,
+      log: [
+        ...data.message,
+        {
+          role: 'assistant',
+          text: data.answer,
+          files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+        },
+      ],
+    }
+    setCurrentLogItem(logItem)
+    setShowPromptLogModal(true)
   }
 
   const ratingContent = (
@@ -281,22 +293,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               <div className='flex items-center'>
                 {
                   !isInWebApp && !isInstalledApp && !isResponding && (
-                    <PromptLog
-                      log={promptLog}
-                      containerRef={ref}
-                    >
-                      {
-                        showModal => (
-                          <SimpleBtn
-                            isDisabled={isError || !messageId}
-                            className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
-                            onClick={() => handleOpenLogModal(showModal)}>
-                            <File02 className='w-3.5 h-3.5' />
-                            {!isMobile && <div>{t('common.operation.log')}</div>}
-                          </SimpleBtn>
-                        )
-                      }
-                    </PromptLog>
+                    <SimpleBtn
+                      isDisabled={isError || !messageId}
+                      className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
+                      onClick={handleOpenLogModal}>
+                      <File02 className='w-3.5 h-3.5' />
+                      {!isMobile && <div>{t('common.operation.log')}</div>}
+                    </SimpleBtn>
                   )
                 }
                 <SimpleBtn
