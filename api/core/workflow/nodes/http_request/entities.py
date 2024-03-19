@@ -37,7 +37,7 @@ class HttpRequestNodeData(BaseNodeData):
         data: Union[None, str]
 
     variables: list[VariableSelector]
-    method: Literal['get', 'post', 'put', 'patch', 'delete']
+    method: Literal['get', 'post', 'put', 'patch', 'delete', 'head']
     url: str
     authorization: Authorization
     headers: str
