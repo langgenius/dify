@@ -1,6 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
+import { useState } from 'react'
 import cn from 'classnames'
 import BlockIcon from '../block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -12,11 +13,11 @@ import type { NodeTracing } from '@/types/workflow'
 
 type Props = {
   nodeInfo: NodeTracing
-  collapsed: boolean
-  collapseHandle: () => void
+  collapsed?: boolean
 }
 
-const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
+const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true }) => {
+  const [collapseState, setCollapseState] = useState<boolean>(collapsed)
   const { t } = useTranslation()
 
   const getTime = (time: number) => {
@@ -44,7 +45,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
             'flex items-center pl-[6px] py-3 pr-3 cursor-pointer',
             !collapsed && 'pb-2',
           )}
-          onClick={collapseHandle}
+          onClick={() => setCollapseState(!collapseState)}
         >
           <ChevronRight
             className={cn(
@@ -71,7 +72,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed, collapseHandle }) => {
             </div>
           )}
         </div>
-        {!collapsed && (
+        {!collapseState && (
           <div className='pb-2'>
             <div className='px-[10px] py-1'>
               {nodeInfo.status === 'stopped' && (
