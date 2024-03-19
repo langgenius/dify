@@ -20,10 +20,10 @@ Valid "action" values: "Final Answer" or {tool_names}
 Provide only ONE action per $JSON_BLOB, as shown:
 
 ```
-{{{{
+{{
   "action": $TOOL_NAME,
   "action_input": $INPUT
-}}}}
+}}
 ```
 
 Follow this format:
@@ -39,10 +39,10 @@ Observation: action result
 Thought: I know what to respond
 Action:
 ```
-{{{{
+{{
   "action": "Final Answer",
   "action_input": "Final response to human"
-}}}}
+}}
 ```"""
 
 
