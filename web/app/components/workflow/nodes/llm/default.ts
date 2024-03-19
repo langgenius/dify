@@ -3,6 +3,8 @@ import { type NodeDefault, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
+const i18nPrefix = 'workflow.errorMsg'
+
 const nodeDefault: NodeDefault<LLMNodeType> = {
   defaultValue: {
     model: {
@@ -43,15 +45,13 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
   },
-  checkValid(payload: LLMNodeType) {
-    let isValid = true
+  checkValid(payload: LLMNodeType, t: any) {
     let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
-    }
+    if (!errorMessages && !payload.model.provider)
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.model`) })
+
     return {
-      isValid,
+      isValid: !errorMessages,
       errorMessage: errorMessages,
     }
   },
