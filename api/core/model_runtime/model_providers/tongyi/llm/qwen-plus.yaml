@@ -4,7 +4,7 @@ label:
 model_type: llm
 model_properties:
   mode: completion
-  context_size: 32000
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
