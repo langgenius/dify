@@ -187,7 +187,7 @@ class HttpExecutor:
             else:
                 raise ValueError(f'Invalid params {kv}')
             
-            self.params[k] = v
+            self.params[k.strip()] = v
 
         # extract all template in headers
         header_template = re.findall(r'{{(.*?)}}', node_data.headers) or []
@@ -239,9 +239,9 @@ class HttpExecutor:
                         continue
                     kv = kv.split(':')
                     if len(kv) == 2:
-                        body[kv[0]] = kv[1]
+                        body[kv[0].strip()] = kv[1]
                     elif len(kv) == 1:
-                        body[kv[0]] = ''
+                        body[kv[0].strip()] = ''
                     else:
                         raise ValueError(f'Invalid body {kv}')
 
