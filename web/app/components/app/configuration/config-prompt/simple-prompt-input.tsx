@@ -120,7 +120,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     })
     setModelConfig(newModelConfig)
     setPrevPromptConfig(modelConfig.configs)
-    if (mode === AppType.chat)
+    if (mode !== AppType.completion)
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
     eventEmitter?.emit({

@@ -135,7 +135,7 @@ const Debug: FC<IDebug> = ({
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
-    if (isAdvancedMode && mode === AppType.chat) {
+    if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
@@ -428,7 +428,7 @@ const Debug: FC<IDebug> = ({
         !debugWithMultipleModel && (
           <div className="flex flex-col grow">
             {/* Chat */}
-            {mode === AppType.chat && (
+            {mode !== AppType.completion && (
               <div className='grow h-0 overflow-hidden'>
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}

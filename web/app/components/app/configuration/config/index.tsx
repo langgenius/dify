@@ -59,7 +59,7 @@ const Config: FC = () => {
     moderationConfig,
     setModerationConfig,
   } = useContext(ConfigContext)
-  const isChatApp = mode === AppType.chat
+  const isChatApp = mode !== AppType.completion
   const { data: speech2textDefaultModel } = useDefaultModel(4)
   const { data: text2speechDefaultModel } = useDefaultModel(5)
   const { setShowModerationSettingModal } = useModalContext()
