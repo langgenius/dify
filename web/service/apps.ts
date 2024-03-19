@@ -32,8 +32,8 @@ export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
   return get<{ data: string }>(`apps/${appID}/export`)
 }
 
-export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ name, description, icon, icon_background }) => {
-  return post<AppDetailResponse>('apps/import', { body: { name, description, icon, icon_background } })
+export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ data, name, description, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon, icon_background } })
 }
 
 export const switchApp: Fetcher<{ new_app_id: string }, string> = (appID) => {
