@@ -17,6 +17,7 @@ import type { InputVar, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 const useConfig = (id: string, payload: ToolNodeType) => {
   const { t } = useTranslation()
+
   const language = useLanguage()
   const toolsMap = useStore(s => s.toolsMap)
   const setToolsMap = useStore(s => s.setToolsMap)
@@ -137,26 +138,12 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }, [provider_name])
 
   // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    setRunInputData,
-    handleRun,
-    handleStop,
-    runResult,
-  } = useOneStepRun<ToolNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-  })
-
   const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
   const setInputVarValues = (value: Record<string, any>) => {
     doSetInputVarValues(value)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setRunInputData(value)
   }
-
   // fill single run form variable with constant value first time
   const inputVarValuesWithConstantValue = () => {
     const res = produce(inputVarValues, (draft) => {
@@ -167,7 +154,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
     return res
   }
-
   const singleRunForms = (() => {
     const formInputs: InputVar[] = []
     toolInputVarSchema.forEach((item: any) => {
@@ -185,6 +171,24 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     }]
     return forms
   })()
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    setRunInputData,
+    handleRun,
+    handleStop,
+    runResult,
+  } = useOneStepRun<ToolNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {},
+    moreDataForCheckValid: {
+      toolInputsSchema: singleRunForms[0].inputs,
+      toolSettingSchema,
+      language,
+    },
+  })
 
   return {
     inputs,
