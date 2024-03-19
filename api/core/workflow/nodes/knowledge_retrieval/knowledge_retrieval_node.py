@@ -19,6 +19,7 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.knowledge_retrieval.structed_multi_dataset_router_agent import ReactMultiDatasetRouter
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
@@ -214,6 +215,10 @@ class KnowledgeRetrievalNode(BaseNode):
                     or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
 
+        if planning_strategy == PlanningStrategy.REACT_ROUTER:
+            react_multi_dataset_router = ReactMultiDatasetRouter()
+            return react_multi_dataset_router.invoke(query, tools, node_data, model_config, model_instance,
+                                                     self.user_id, self.tenant_id)
 
         prompt_messages = [
             SystemPromptMessage(content='You are a helpful AI assistant.'),
@@ -398,4 +403,3 @@ class KnowledgeRetrievalNode(BaseNode):
                                                           )
 
                     all_documents.extend(documents)
-
