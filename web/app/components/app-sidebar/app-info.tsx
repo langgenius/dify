@@ -287,12 +287,15 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               )}
             >
               <div className={cn(
-                'w-full h-[256px] bg-center bg-no-repeat bg-contain',
+                'w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl',
                 showSwitchTip === 'chat' && s.expertPic,
                 showSwitchTip === 'completion' && s.completionPic,
               )}/>
               <div className='px-4 pb-2'>
-                <div className='text-gray-700 text-md leading-6 font-semibold'>{t('app.newApp.advanced')}</div>
+                <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
+                  {t('app.newApp.advanced')}
+                  <span className='px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
+                </div>
                 <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.advancedFor')}</div>
                 <div className='mt-1 text-gray-500 text-sm leading-5'>{t('app.newApp.advancedDescription')}</div>
               </div>

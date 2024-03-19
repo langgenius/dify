@@ -3,6 +3,8 @@ import { BlockEnum } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
+const i18nPrefix = 'workflow'
+
 const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
   defaultValue: {
     query_variable_selector: [],
@@ -26,15 +28,19 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes.filter(type => type !== BlockEnum.VariableAssigner)
   },
-  checkValid(payload: QuestionClassifierNodeType) {
-    let isValid = true
+  checkValid(payload: QuestionClassifierNodeType, t: any) {
     let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
-    }
+    if (!errorMessages && (!payload.query_variable_selector || payload.query_variable_selector.length === 0))
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.inputVars`) })
+
+    if (!errorMessages && !payload.model.provider)
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.model`) })
+
+    if (!errorMessages && (!payload.classes || payload.classes.length === 0))
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.class`) })
+
     return {
-      isValid,
+      isValid: !errorMessages,
       errorMessage: errorMessages,
     }
   },

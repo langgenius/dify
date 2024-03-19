@@ -27,6 +27,7 @@ const translation = {
     variableNamePlaceholder: 'Variable name',
     setVarValuePlaceholder: 'Set variable',
     needConnecttip: 'This step is not connected to anything',
+    maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

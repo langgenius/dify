@@ -80,7 +80,7 @@ const useOneStepRun = <T>({
   moreDataForCheckValid,
 }: Params<T>) => {
   const { t } = useTranslation()
-  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const { getBeforeNodesInSameBranch } = useWorkflow() as any
   const isChatMode = useIsChatMode()
 
   const allOutputVars = toNodeOutputVars(getBeforeNodesInSameBranch(id), isChatMode)

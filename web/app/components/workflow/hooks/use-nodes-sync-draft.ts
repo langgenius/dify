@@ -8,6 +8,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
+import { BlockEnum } from '../types'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -28,8 +29,14 @@ export const useNodesSyncDraft = () => {
     const appId = useAppStore.getState().appDetail?.id
 
     if (appId) {
+      const nodes = getNodes()
+      const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
+
+      if (!hasStartNode)
+        return
+
       const features = featuresStore!.getState().features
-      const producedNodes = produce(getNodes(), (draft) => {
+      const producedNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
           Object.keys(node.data).forEach((key) => {
             if (key.startsWith('_'))
