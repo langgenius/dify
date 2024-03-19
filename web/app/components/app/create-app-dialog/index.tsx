@@ -44,7 +44,7 @@ const CreateAppDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => 
       >
         {showInstruction === 'BASIC' && (
           <>
-            <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain', s.basicPic)}/>
+            <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.basicPic)}/>
             <div className='px-4 pb-2'>
               <div className='text-gray-700 text-md leading-6 font-semibold'>{t('app.newApp.basic')}</div>
               <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.basicFor')}</div>
@@ -54,7 +54,7 @@ const CreateAppDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => 
         )}
         {showInstruction === 'ADVANCED' && (
           <>
-            <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain', s.advancedPic)}/>
+            <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.advancedPic)}/>
             <div className='px-4 pb-2'>
               <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
                 {t('app.newApp.advanced')}
