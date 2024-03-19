@@ -374,7 +374,7 @@ class WorkflowConverter:
         :return:
         """
         retrieve_config = dataset_config.retrieve_config
-        if new_app_mode == AppMode.CHAT:
+        if new_app_mode == AppMode.ADVANCED_CHAT:
             query_variable_selector = ["start", "sys.query"]
         elif retrieve_config.query_variable:
             # fetch query variable
@@ -497,7 +497,7 @@ class WorkflowConverter:
                     }
 
         memory = None
-        if new_app_mode == AppMode.CHAT:
+        if new_app_mode == AppMode.ADVANCED_CHAT:
             memory = {
                 "role_prefix": role_prefix,
                 "window": {
@@ -505,6 +505,8 @@ class WorkflowConverter:
                 }
             }
 
+        completion_params = model_config.parameters
+        completion_params.update({"stop": model_config.stop})
         return {
             "id": "llm",
             "position": None,
@@ -515,7 +517,7 @@ class WorkflowConverter:
                     "provider": model_config.provider,
                     "name": model_config.model,
                     "mode": model_config.mode,
-                    "completion_params": model_config.parameters.update({"stop": model_config.stop})
+                    "completion_params": completion_params
                 },
                 "variables": [{
                     "variable": v['variable'],
