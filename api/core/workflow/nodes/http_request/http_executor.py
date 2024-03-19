@@ -361,12 +361,12 @@ class HttpExecutor:
         # if files, use multipart/form-data with boundary
         if self.files:
             boundary = self.boundary
+            raw_request += f'--{boundary}'
             for k, v in self.files.items():
-                raw_request += f'Content-Disposition: form-data; name="{k}"; filename="{v[0]}"\n'
-                raw_request += f'Content-Type: {v[1]}\n\n'
-                raw_request += v[1] + '\n'
-                raw_request += f'{boundary}\n'
-            raw_request += '--\n'
+                raw_request += f'\nContent-Disposition: form-data; name="{k}"\n\n'
+                raw_request += f'{v[1]}\n'
+                raw_request += f'--{boundary}'
+            raw_request += '--'
         else:
             raw_request += self.body or ''
 
