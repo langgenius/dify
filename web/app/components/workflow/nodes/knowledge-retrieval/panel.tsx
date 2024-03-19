@@ -97,7 +97,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='output'
+              name='result'
               type='Array[Object]'
               description={t(`${i18nPrefix}.outputVars.output`)}
               subItems={[

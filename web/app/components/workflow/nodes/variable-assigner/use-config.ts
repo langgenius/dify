@@ -3,7 +3,8 @@ import produce from 'immer'
 import useVarList from './components/var-list/use-var-list'
 import type { VariableAssignerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import type { ValueSelector, Var, VarType } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 
 const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const { inputs, setInputs } = useNodeCrud<VariableAssignerNodeType>(id, payload)
@@ -28,7 +29,10 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     setCurrVarIndex(index)
   }, [])
   const filterVar = useCallback((varPayload: Var, valueSelector: ValueSelector) => {
-    if (varPayload.type !== inputs.output_type)
+    const type = varPayload.type
+    if ((inputs.output_type !== VarType.array && type !== inputs.output_type) || (
+      inputs.output_type === VarType.array && ![VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(type)
+    ))
       return false
 
     // can not choose the same node
