@@ -76,6 +76,12 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: gpt-35-turbo-0125
+          value: gpt-35-turbo-0125
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: gpt-35-turbo-16k
           value: gpt-35-turbo-16k
           show_on:
@@ -90,6 +96,12 @@ model_credential_schema:
         - label:
             en_US: gpt-4-32k
           value: gpt-4-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-0125-preview
+          value: gpt-4-0125-preview
           show_on:
             - variable: __model_type
               value: llm
