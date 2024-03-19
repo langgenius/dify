@@ -17,7 +17,6 @@ parameter_rules:
       en_US: Used to control the degree of randomness and diversity. Specifically, the temperature value controls the degree to which the probability distribution of each candidate word is smoothed when generating text. A higher temperature value will reduce the peak value of the probability distribution, allowing more low-probability words to be selected, and the generated results will be more diverse; while a lower temperature value will enhance the peak value of the probability distribution, making it easier for high-probability words to be selected. , the generated results are more certain.
   - name: max_tokens
     use_template: max_tokens
-    required: false
     type: int
     default: 2000
     min: 1
@@ -27,7 +26,6 @@ parameter_rules:
       en_US: It is used to specify the maximum number of tokens when the model generates content. It defines the upper limit of generation, but does not guarantee that this number will be generated every time.
   - name: top_p
     use_template: top_p
-    required: false
     type: float
     default: 0.8
     min: 0.1
@@ -36,7 +34,6 @@ parameter_rules:
       zh_Hans: 生成过程中核采样方法概率阈值，例如，取值为0.8时，仅保留概率加起来大于等于0.8的最可能token的最小集合作为候选集。取值范围为（0,1.0)，取值越大，生成的随机性越高；取值越低，生成的确定性越高。
       en_US: The probability threshold of the kernel sampling method during the generation process. For example, when the value is 0.8, only the smallest set of the most likely tokens with a sum of probabilities greater than or equal to 0.8 is retained as the candidate set. The value range is (0,1.0). The larger the value, the higher the randomness generated; the lower the value, the higher the certainty generated.
   - name: top_k
-    required: false
     type: int
     min: 0
     max: 99
