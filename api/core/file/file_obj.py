@@ -128,13 +128,7 @@ class FileVar(BaseModel):
                     force_url=force_url
                 )
             elif self.transfer_method == FileTransferMethod.TOOL_FILE:
-                # get extension
-                if '.' in self.url:
-                    extension = f'.{self.url.split(".")[-1]}'
-                    if len(extension) > 10:
-                        extension = '.bin'
-                else:
-                    extension = '.bin'
+                extension = self.extension
                 # add sign url
                 return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=self.related_id, extension=extension)
 
