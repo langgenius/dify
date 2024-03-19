@@ -34,6 +34,7 @@ const translation = {
       variable: 'Variable Name',
       variableValue: 'Variable Value',
       code: 'Code',
+      model: 'Model',
     },
   },
   singleRun: {

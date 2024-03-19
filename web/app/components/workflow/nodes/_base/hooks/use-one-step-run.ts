@@ -12,13 +12,37 @@ import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/compo
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
+
+import LLMDefault from '@/app/components/workflow/nodes/llm/default'
+import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
+import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
+import TemplateTransformDefault from '@/app/components/workflow/nodes/template-transform/default'
+import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-classifier/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import ToolDefault from '@/app/components/workflow/nodes/tool/default'
+import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
+
+const { checkValid: checkLLMValid } = LLMDefault
+const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
+const { checkValid: checkIfElseValid } = IfElseDefault
 const { checkValid: checkCodeValid } = CodeDefault
+const { checkValid: checkTemplateTransformValid } = TemplateTransformDefault
+const { checkValid: checkQuestionClassifyValid } = QuestionClassifyDefault
+const { checkValid: checkHttpValid } = HTTPDefault
+const { checkValid: checkToolValid } = ToolDefault
+const { checkValid: checkVariableAssignerValid } = VariableAssigner
 
 const checkValidFns: Record<BlockEnum, Function> = {
+  [BlockEnum.LLM]: checkLLMValid,
+  [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,
+  [BlockEnum.IfElse]: checkIfElseValid,
   [BlockEnum.Code]: checkCodeValid,
-  [BlockEnum.HttpRequest]: HTTPDefault.checkValid,
+  [BlockEnum.TemplateTransform]: checkTemplateTransformValid,
+  [BlockEnum.QuestionClassifier]: checkQuestionClassifyValid,
+  [BlockEnum.HttpRequest]: checkHttpValid,
+  [BlockEnum.Tool]: checkToolValid,
+  [BlockEnum.VariableAssigner]: checkVariableAssignerValid,
 } as any
 
 type Params<T> = {

@@ -34,6 +34,7 @@ const translation = {
       variable: '变量名',
       variableValue: '变量值',
       code: '代码',
+      model: '模型',
     },
   },
   singleRun: {

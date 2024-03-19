@@ -147,7 +147,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   // context
   const handleContextVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.context.variable_selector = newVar as ValueSelector
+      draft.context.variable_selector = newVar as ValueSelector || []
       draft.context.enabled = !!(newVar && newVar.length > 0)
     })
     setInputs(newInputs)
