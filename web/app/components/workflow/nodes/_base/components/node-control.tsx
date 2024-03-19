@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
+  useNodesSyncDraft,
 } from '../../../hooks'
 import type { Node } from '../../../types'
 import { canRunBySingle } from '../../../utils'
@@ -27,6 +28,7 @@ const NodeControl: FC<NodeControlProps> = ({
   const [open, setOpen] = useState(false)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleNodeSelect } = useNodesInteractions()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
@@ -56,6 +58,8 @@ const NodeControl: FC<NodeControlProps> = ({
                   },
                 })
                 handleNodeSelect(id)
+                if (!data._isSingleRun)
+                  handleSyncWorkflowDraft(true)
               }}
             >
               {
