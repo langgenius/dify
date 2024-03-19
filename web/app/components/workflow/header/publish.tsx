@@ -11,6 +11,7 @@ import {
 import {
   useNodesSyncDraft,
   useWorkflow,
+  useWorkflowRun,
 } from '../hooks'
 import Button from '@/app/components/base/button'
 import {
@@ -20,12 +21,15 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { publishWorkflow } from '@/service/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useToastContext } from '@/app/components/base/toast'
 
 const Publish = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const [published, setPublished] = useState(false)
   const workflowStore = useWorkflowStore()
   const { formatTimeFromNow } = useWorkflow()
+  const { handleCheckBeforePublish } = useWorkflowRun()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const runningStatus = useStore(s => s.runningStatus)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
@@ -34,16 +38,20 @@ const Publish = () => {
 
   const handlePublish = async () => {
     const appId = useAppStore.getState().appDetail?.id
-    try {
-      const res = await publishWorkflow(`/apps/${appId}/workflows/publish`)
 
-      if (res) {
-        setPublished(true)
-        workflowStore.getState().setPublishedAt(res.created_at)
+    if (handleCheckBeforePublish()) {
+      try {
+        const res = await publishWorkflow(`/apps/${appId}/workflows/publish`)
+
+        if (res) {
+          notify({ type: 'success', message: t('common.api.actionSuccess') })
+          setPublished(true)
+          workflowStore.getState().setPublishedAt(res.created_at)
+        }
       }
-    }
-    catch (e) {
-      setPublished(false)
+      catch (e) {
+        setPublished(false)
+      }
     }
   }
 
@@ -84,11 +92,7 @@ const Publish = () => {
             ${runningStatus && 'cursor-not-allowed opacity-50'}
           `}
         >
-          {
-            published
-              ? t('workflow.common.published')
-              : t('workflow.common.publish')
-          }
+          {t('workflow.common.publish')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
@@ -109,7 +113,11 @@ const Publish = () => {
               onClick={handlePublish}
               disabled={published}
             >
-              {t('workflow.common.publish')}
+              {
+                published
+                  ? t('workflow.common.published')
+                  : t('workflow.common.publish')
+              }
             </Button>
           </div>
           {
