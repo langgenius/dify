@@ -36,6 +36,7 @@ const translation = {
       variableValue: '变量值',
       code: '代码',
       model: '模型',
+      rerankModel: 'Rerank 模型',
     },
   },
   singleRun: {
