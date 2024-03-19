@@ -130,7 +130,8 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
                 user=current_user,
-                message_id=message_id
+                message_id=message_id,
+                invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

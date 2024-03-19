@@ -166,7 +166,8 @@ class MessageSuggestedQuestionApi(WebApiResource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
                 user=end_user,
-                message_id=message_id
+                message_id=message_id,
+                invoke_from=InvokeFrom.WEB_APP
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

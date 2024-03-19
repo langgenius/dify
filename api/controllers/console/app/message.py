@@ -13,8 +13,10 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
+from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
@@ -25,7 +27,7 @@ from libs.login import login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError
+from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
 
@@ -187,7 +189,8 @@ class MessageSuggestedQuestionApi(Resource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
                 message_id=message_id,
-                user=current_user
+                user=current_user,
+                invoke_from=InvokeFrom.DEBUGGER
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")
@@ -201,6 +204,8 @@ class MessageSuggestedQuestionApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except SuggestedQuestionsAfterAnswerDisabledError:
+            raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
