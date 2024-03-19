@@ -48,8 +48,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         page_content = page_content[1:]
                     else:
                         page_content = page_content
-                    document_node.page_content = page_content
-                    split_documents.append(document_node)
+                    if page_content:
+                        document_node.page_content = page_content
+                        split_documents.append(document_node)
             all_documents.extend(split_documents)
         return all_documents
 
