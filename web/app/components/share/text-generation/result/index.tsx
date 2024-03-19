@@ -14,6 +14,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -181,33 +182,42 @@ const Result: FC<IResultProps> = ({
 
     if (isWorkflow) {
       // ###TODO###
+      let outputsExisted = false
       sendWorkflowMessage(
         data,
         {
           onWorkflowStarted: ({ workflow_run_id }) => {
             tempMessageId = workflow_run_id
+            // console.log('onWorkflowStarted runID: ', workflow_run_id)
           },
-          onTextChunk: ({ data }) => {
-            res.push(data.text)
-            setCompletionRes(res.join(''))
+          onNodeStarted: ({ data }) => {
+            // console.log('onNodeStarted: ', data.node_type)
           },
-          onWorkflowFinished: () => {
+          onNodeFinished: ({ data }) => {
+            // console.log('onNodeFinished: ', data.node_type, data)
+            if (data.node_type === BlockEnum.LLM && data.outputs.text)
+              setCompletionRes(data.outputs.text)
+            if (data.node_type === BlockEnum.End && data.outputs)
+              outputsExisted = true
+          },
+          onWorkflowFinished: ({ data }) => {
+            // console.log('onWorkflowFinished: ', data)
             if (isTimeout)
               return
+            if (data.error) {
+              notify({ type: 'error', message: data.error })
+              setRespondingFalse()
+              onCompleted(getCompletionRes(), taskId, false)
+              clearInterval(runId)
+              return
+            }
+            if (!outputsExisted) {
+              notify({ type: 'info', message: 'Outputs not existed.' })
+              setCompletionRes('')
+            }
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
-            clearInterval(runId)
-          },
-          onTextReplace: ({ data }) => {
-            res = [data.text]
-            setCompletionRes(res.join(''))
-          },
-          onError() {
-            if (isTimeout)
-              return
-            setRespondingFalse()
-            onCompleted(getCompletionRes(), taskId, false)
             clearInterval(runId)
           },
         },
