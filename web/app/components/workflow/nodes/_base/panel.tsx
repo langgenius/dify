@@ -23,6 +23,7 @@ import {
   useNodeDataUpdate,
   useNodesExtraData,
   useNodesInteractions,
+  useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { canRunBySingle } from '@/app/components/workflow/utils'
@@ -43,6 +44,7 @@ const BasePanel: FC<BasePanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { handleNodeSelect } = useNodesInteractions()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const nodesExtraData = useNodesExtraData()
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
 
@@ -86,7 +88,10 @@ const BasePanel: FC<BasePanelProps> = ({
                 >
                   <div
                     className='flex items-center justify-center mr-1 w-6 h-6 rounded-md hover:bg-black/5 cursor-pointer'
-                    onClick={() => handleNodeDataUpdate({ id, data: { _isSingleRun: true } })}
+                    onClick={() => {
+                      handleNodeDataUpdate({ id, data: { _isSingleRun: true } })
+                      handleSyncWorkflowDraft(true)
+                    }}
                   >
                     <Play className='w-4 h-4 text-gray-500' />
                   </div>
