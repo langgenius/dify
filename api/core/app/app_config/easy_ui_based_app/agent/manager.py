@@ -13,8 +13,7 @@ class AgentConfigManager:
         :param config: model config args
         """
         if 'agent_mode' in config and config['agent_mode'] \
-                and 'enabled' in config['agent_mode'] \
-                and config['agent_mode']['enabled']:
+                and 'enabled' in config['agent_mode']:
 
             agent_dict = config.get('agent_mode', {})
             agent_strategy = agent_dict.get('strategy', 'cot')
