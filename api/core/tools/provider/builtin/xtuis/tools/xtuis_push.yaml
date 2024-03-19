@@ -23,7 +23,7 @@ parameters:
       en_US: summary of message which need to be sent
       zh_Hans: 推送消息标题
       pt_BR: summary of message which need to be sent
-    llm_description: summary of message which need to be sent，pls make it as short as possible,no more than 50 letter.
+    llm_description: summary of message which need to be sent。
     form: llm
   - name: desp
     type: string
@@ -36,5 +36,5 @@ parameters:
       en_US: detail of message which need to be sent
       zh_Hans: 推送消息内容
       pt_BR: detail of message which need to be sent
-    llm_description: detail of message which need to be sent, limit lenth of content should less than 16K letter.
+    llm_description: detail of message which need to be sent.
     form: llm
