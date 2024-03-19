@@ -17,7 +17,6 @@ from anthropic.types import (
 )
 from httpx import Timeout
 
-from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -39,15 +38,6 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-
-ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
-The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
-if you are not sure about the structure.
-
-<instructions>
-{{instructions}}
-</instructions>
-"""
 
 
 class AnthropicLargeLanguageModel(LargeLanguageModel):
@@ -122,62 +112,6 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages)
 
         return self._handle_chat_generate_response(model, credentials, response, prompt_messages)
-
-    def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                                 model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
-                                 stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
-                                 callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
-        """
-        Code block mode wrapper for invoking large language model
-        """
-        if 'response_format' in model_parameters and model_parameters['response_format']:
-            stop = stop or []
-            # chat model
-            self._transform_chat_json_prompts(
-                model=model,
-                credentials=credentials,
-                prompt_messages=prompt_messages,
-                model_parameters=model_parameters,
-                tools=tools,
-                stop=stop,
-                stream=stream,
-                user=user,
-                response_format=model_parameters['response_format']
-            )
-            model_parameters.pop('response_format')
-
-        return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
-
-    def _transform_chat_json_prompts(self, model: str, credentials: dict,
-                                     prompt_messages: list[PromptMessage], model_parameters: dict,
-                                     tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
-                                     stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
-            -> None:
-        """
-        Transform json prompts
-        """
-        if "```\n" not in stop:
-            stop.append("```\n")
-        if "\n```" not in stop:
-            stop.append("\n```")
-
-        # check if there is a system message
-        if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
-            # override the system message
-            prompt_messages[0] = SystemPromptMessage(
-                content=ANTHROPIC_BLOCK_MODE_PROMPT
-                .replace("{{instructions}}", prompt_messages[0].content)
-                .replace("{{block}}", response_format)
-            )
-            prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
-        else:
-            # insert the system message
-            prompt_messages.insert(0, SystemPromptMessage(
-                content=ANTHROPIC_BLOCK_MODE_PROMPT
-                .replace("{{instructions}}", f"Please output a valid {response_format} object.")
-                .replace("{{block}}", response_format)
-            ))
-            prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
