@@ -187,7 +187,7 @@ class HttpExecutor:
             else:
                 raise ValueError(f'Invalid params {kv}')
             
-            self.params[k] = v
+            self.params[k.strip()] = v
 
         # extract all template in headers
         header_template = re.findall(r'{{(.*?)}}', node_data.headers) or []
@@ -213,7 +213,7 @@ class HttpExecutor:
             else:
                 raise ValueError(f'Invalid headers {kv}')
             
-            self.headers[k] = v
+            self.headers[k.strip()] = v.strip()
 
         # extract all template in body
         if node_data.body:
@@ -239,9 +239,9 @@ class HttpExecutor:
                         continue
                     kv = kv.split(':')
                     if len(kv) == 2:
-                        body[kv[0]] = kv[1]
+                        body[kv[0].strip()] = kv[1]
                     elif len(kv) == 1:
-                        body[kv[0]] = ''
+                        body[kv[0].strip()] = ''
                     else:
                         raise ValueError(f'Invalid body {kv}')
 
@@ -361,12 +361,12 @@ class HttpExecutor:
         # if files, use multipart/form-data with boundary
         if self.files:
             boundary = self.boundary
+            raw_request += f'--{boundary}'
             for k, v in self.files.items():
-                raw_request += f'Content-Disposition: form-data; name="{k}"; filename="{v[0]}"\n'
-                raw_request += f'Content-Type: {v[1]}\n\n'
-                raw_request += v[1] + '\n'
-                raw_request += f'{boundary}\n'
-            raw_request += '--\n'
+                raw_request += f'\nContent-Disposition: form-data; name="{k}"\n\n'
+                raw_request += f'{v[1]}\n'
+                raw_request += f'--{boundary}'
+            raw_request += '--'
         else:
             raw_request += self.body or ''
 
