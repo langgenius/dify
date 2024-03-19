@@ -258,6 +258,9 @@ const translation = {
         object: 'Object',
         array: 'Array',
       },
+      outputVars: {
+        output: '指派的变量值',
+      },
     },
     tool: {
       toAuthorize: '授权',
