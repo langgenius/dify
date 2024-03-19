@@ -9,9 +9,23 @@ import type {
   Node,
 } from './types'
 import { BlockEnum } from './types'
+import {
+  NODE_WIDTH_X_OFFSET,
+  START_INITIAL_POSITION,
+} from './constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
 
 export const initialNodes = (nodes: Node[], edges: Edge[]) => {
+  const firstNode = nodes[0]
+
+  if (!firstNode?.position) {
+    nodes.forEach((node, index) => {
+      node.position = {
+        x: START_INITIAL_POSITION.x + index * NODE_WIDTH_X_OFFSET,
+        y: START_INITIAL_POSITION.y,
+      }
+    })
+  }
   return nodes.map((node) => {
     node.type = 'custom'
 
