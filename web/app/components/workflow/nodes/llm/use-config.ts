@@ -85,7 +85,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [isChatModel])
   useEffect(() => {
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
-    if (isReady) {
+
+    if (isReady && !inputs.prompt_template) {
       const newInputs = produce(inputs, (draft) => {
         appendDefaultPromptConfig(draft, defaultConfig)
       })
