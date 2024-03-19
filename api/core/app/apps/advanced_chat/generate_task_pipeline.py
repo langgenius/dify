@@ -529,30 +529,39 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     text = ''
                     if isinstance(value, str | int | float):
                         text = str(value)
-                    elif isinstance(value, dict):
-                        # other types
-                        text = json.dumps(value, ensure_ascii=False)
                     elif isinstance(value, FileVar):
                         # convert file to markdown
                         text = value.to_markdown()
+                    elif isinstance(value, dict):
+                        # handle files
+                        file_vars = self._fetch_files_from_variable_value(value)
+                        if file_vars:
+                            file_var = file_vars[0]
+                            try:
+                                file_var_obj = FileVar(**file_var)
+
+                                # convert file to markdown
+                                text = file_var_obj.to_markdown()
+                            except Exception as e:
+                                logger.error(f'Error creating file var: {e}')
+
+                        if not text:
+                            # other types
+                            text = json.dumps(value, ensure_ascii=False)
                     elif isinstance(value, list):
-                        for item in value:
-                            if isinstance(item, FileVar):
-                                text += item.to_markdown() + ' '
+                        # handle files
+                        file_vars = self._fetch_files_from_variable_value(value)
+                        for file_var in file_vars:
+                            try:
+                                file_var_obj = FileVar(**file_var)
+                            except Exception as e:
+                                logger.error(f'Error creating file var: {e}')
+                                continue
+
+                            # convert file to markdown
+                            text = file_var_obj.to_markdown() + ' '
 
                         text = text.strip()
-
-                        # # handle files
-                        # file_vars = self._fetch_files_from_variable_value(value)
-                        # for file_var in file_vars:
-                        #     try:
-                        #         file_var_obj = FileVar(**file_var)
-                        #     except Exception as e:
-                        #         logger.error(f'Error creating file var: {e}')
-                        #         continue
-                        #
-                        #     # convert file to markdown
-                        #     text = file_var_obj.to_markdown()
 
                         if not text and value:
                             # other types

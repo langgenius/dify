@@ -533,5 +533,7 @@ class WorkflowCycleManage:
         if isinstance(value, dict):
             if '__variant' in value and value['__variant'] == FileVar.__name__:
                 return value
+        elif isinstance(value, FileVar):
+            return value.to_dict()
 
         return None
