@@ -12,7 +12,7 @@ gunicorn~=21.2.0
 gevent~=23.9.1
 langchain==0.0.250
 openai~=1.13.3
-tiktoken~=0.5.2
+tiktoken~=0.6.0
 psycopg2-binary~=2.9.6
 pycryptodome==3.19.1
 python-dotenv==1.0.0
