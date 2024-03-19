@@ -9,7 +9,7 @@ import requests
 import core.helper.ssrf_proxy as ssrf_proxy
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 
 API_TOOL_DEFAULT_TIMEOUT = (10, 60)
@@ -81,7 +81,7 @@ class ApiTool(Tool):
         needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
-                raise ToolProviderCredentialValidationError(f"Missing required parameter {parameter.name}")
+                raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
             
             if parameter.default is not None and parameter.name not in parameters:
                 parameters[parameter.name] = parameter.default
@@ -94,7 +94,7 @@ class ApiTool(Tool):
         """
         if isinstance(response, httpx.Response):
             if response.status_code >= 400:
-                raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
+                raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
                 return 'Empty response from the tool, please check your parameters and try again.'
             try:
@@ -107,7 +107,7 @@ class ApiTool(Tool):
                 return response.text
         elif isinstance(response, requests.Response):
             if not response.ok:
-                raise ToolProviderCredentialValidationError(f"Request failed with status code {response.status_code}")
+                raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
             if not response.content:
                 return 'Empty response from the tool, please check your parameters and try again.'
             try:
@@ -139,7 +139,7 @@ class ApiTool(Tool):
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
                 elif parameter['required']:
-                    raise ToolProviderCredentialValidationError(f"Missing required parameter {parameter['name']}")
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
                 path_params[parameter['name']] = value
@@ -149,7 +149,7 @@ class ApiTool(Tool):
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
                 elif parameter['required']:
-                    raise ToolProviderCredentialValidationError(f"Missing required parameter {parameter['name']}")
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
                 params[parameter['name']] = value
@@ -159,7 +159,7 @@ class ApiTool(Tool):
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
                 elif parameter['required']:
-                    raise ToolProviderCredentialValidationError(f"Missing required parameter {parameter['name']}")
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
                 cookies[parameter['name']] = value
@@ -169,7 +169,7 @@ class ApiTool(Tool):
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
                 elif parameter['required']:
-                    raise ToolProviderCredentialValidationError(f"Missing required parameter {parameter['name']}")
+                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
                 headers[parameter['name']] = value
@@ -188,7 +188,7 @@ class ApiTool(Tool):
                             # convert type
                             body[name] = self._convert_body_property_type(property, parameters[name])
                         elif name in required:
-                            raise ToolProviderCredentialValidationError(
+                            raise ToolParameterValidationError(
                                 f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
                             )
                         elif 'default' in property:

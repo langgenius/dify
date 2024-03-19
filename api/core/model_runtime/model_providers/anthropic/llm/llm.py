@@ -342,12 +342,20 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         Convert prompt messages to dict list and system
         """
         system = ""
-        prompt_message_dicts = []
-
+        first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
-                system += message.content + ("\n" if not system else "")
-            else:
+                message.content=message.content.strip()
+                if first_loop:
+                    system=message.content
+                    first_loop=False
+                else:
+                    system+="\n"
+                    system+=message.content
+
+        prompt_message_dicts = []
+        for message in prompt_messages:
+            if not isinstance(message, SystemPromptMessage):
                 prompt_message_dicts.append(self._convert_prompt_message_to_dict(message))
 
         return system, prompt_message_dicts
