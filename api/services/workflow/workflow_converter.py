@@ -523,7 +523,7 @@ class WorkflowConverter:
                     "variable": v['variable'],
                     "value_selector": ["start", v['variable']]
                 } for v in start_node['data']['variables']],
-                "prompts": prompts,
+                "prompt_template": prompts,
                 "memory": memory,
                 "context": {
                     "enabled": knowledge_retrieval_node is not None,
@@ -571,10 +571,10 @@ class WorkflowConverter:
             "data": {
                 "title": "ANSWER",
                 "type": NodeType.ANSWER.value,
-                "variables": {
+                "variables": [{
                     "variable": "text",
                     "value_selector": ["llm", "text"]
-                },
+                }],
                 "answer": "{{text}}"
             }
         }
