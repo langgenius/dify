@@ -1,6 +1,8 @@
+import logging
+
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.service_api import api
@@ -9,6 +11,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
+from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
 
@@ -120,10 +123,15 @@ class MessageSuggestedApi(Resource):
                 app_model=app_model,
                 user=end_user,
                 message_id=message_id,
-                check_enabled=False
+                invoke_from=InvokeFrom.SERVICE_API
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
+        except SuggestedQuestionsAfterAnswerDisabledError:
+            raise BadRequest("Message Not Exists.")
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
 
         return {'result': 'success', 'data': questions}
 
