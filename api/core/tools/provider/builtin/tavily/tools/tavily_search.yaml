@@ -1,0 +1,27 @@
+identity:
+  name: tavily_search
+  author: Yash Parmar
+  label:
+    en_US: TavilySearch
+    zh_Hans: TavilySearch
+    pt_BR: TavilySearch
+description:
+  human:
+    en_US: A tool for  search engine built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+    zh_Hans: 专为人工智能代理 (LLM) 构建的搜索引擎工具，可快速提供实时、准确和真实的结果。
+    pt_BR: A tool for search engine built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+  llm: A tool for search engine built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: used for searching
+      zh_Hans: 用于搜索网页内容
+      pt_BR: used for searching
+    llm_description: key words for searching
+    form: llm

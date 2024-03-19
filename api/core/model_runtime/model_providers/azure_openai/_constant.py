@@ -14,8 +14,7 @@ from core.model_runtime.entities.model_entities import (
     PriceConfig,
 )
 
-AZURE_OPENAI_API_VERSION = '2023-12-01-preview'
-
+AZURE_OPENAI_API_VERSION = '2024-02-15-preview'
 
 def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
     rule = ParameterRule(
@@ -520,6 +519,173 @@ EMBEDDING_BASE_MODELS = [
             },
             pricing=PriceConfig(
                 input=0.0001,
+                unit=0.001,
+                currency='USD',
+            )
+        )
+    ),
+    AzureBaseModel(
+        base_model_name='text-embedding-3-small',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: 8191,
+                ModelPropertyKey.MAX_CHUNKS: 32,
+            },
+            pricing=PriceConfig(
+                input=0.00002,
+                unit=0.001,
+                currency='USD',
+            )
+        )
+    ),
+    AzureBaseModel(
+        base_model_name='text-embedding-3-large',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: 8191,
+                ModelPropertyKey.MAX_CHUNKS: 32,
+            },
+            pricing=PriceConfig(
+                input=0.00013,
+                unit=0.001,
+                currency='USD',
+            )
+        )
+    )
+]
+SPEECH2TEXT_BASE_MODELS = [
+    AzureBaseModel(
+        base_model_name='whisper-1',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.SPEECH2TEXT,
+            model_properties={
+                ModelPropertyKey.FILE_UPLOAD_LIMIT: 25,
+                ModelPropertyKey.SUPPORTED_FILE_EXTENSIONS: 'flac,mp3,mp4,mpeg,mpga,m4a,ogg,wav,webm'
+            }
+        )
+    )
+]
+TTS_BASE_MODELS = [
+    AzureBaseModel(
+        base_model_name='tts-1',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TTS,
+            model_properties={
+                ModelPropertyKey.DEFAULT_VOICE: 'alloy',
+                ModelPropertyKey.VOICES: [
+                    {
+                        'mode': 'alloy',
+                        'name': 'Alloy',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'echo',
+                        'name': 'Echo',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'fable',
+                        'name': 'Fable',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'onyx',
+                        'name': 'Onyx',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'nova',
+                        'name': 'Nova',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'shimmer',
+                        'name': 'Shimmer',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                ],
+                ModelPropertyKey.WORD_LIMIT: 120,
+                ModelPropertyKey.AUDIO_TYPE: 'mp3',
+                ModelPropertyKey.MAX_WORKERS: 5
+            },
+            pricing=PriceConfig(
+                input=0.015,
+                unit=0.001,
+                currency='USD',
+            )
+        )
+    ),
+    AzureBaseModel(
+        base_model_name='tts-1-hd',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
+            label=I18nObject(
+                en_US='fake-deployment-name-label'
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TTS,
+            model_properties={
+                ModelPropertyKey.DEFAULT_VOICE: 'alloy',
+                ModelPropertyKey.VOICES: [
+                    {
+                        'mode': 'alloy',
+                        'name': 'Alloy',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'echo',
+                        'name': 'Echo',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'fable',
+                        'name': 'Fable',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'onyx',
+                        'name': 'Onyx',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'nova',
+                        'name': 'Nova',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                    {
+                        'mode': 'shimmer',
+                        'name': 'Shimmer',
+                        'language': ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+                    },
+                ],
+                ModelPropertyKey.WORD_LIMIT: 120,
+                ModelPropertyKey.AUDIO_TYPE: 'mp3',
+                ModelPropertyKey.MAX_WORKERS: 5
+            },
+            pricing=PriceConfig(
+                input=0.03,
                 unit=0.001,
                 currency='USD',
             )

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { toolCredentialToFormSchemas } from '../../utils/to-form-schema'
+import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 import type { Collection } from '../../types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
@@ -28,12 +28,15 @@ const ConfigCredential: FC<Props> = ({
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { team_credentials: credentialValue, name: collectionName } = collection
+  const [tempCredential, setTempCredential] = React.useState<any>(credentialValue)
   useEffect(() => {
     fetchBuiltInToolCredentialSchema(collectionName).then((res) => {
-      setCredentialSchema(toolCredentialToFormSchemas(res))
+      const toolCredentialSchemas = toolCredentialToFormSchemas(res)
+      const defaultCredentials = addDefaultValue(credentialValue, toolCredentialSchemas)
+      setCredentialSchema(toolCredentialSchemas)
+      setTempCredential(defaultCredentials)
     })
   }, [])
-  const [tempCredential, setTempCredential] = React.useState<any>(credentialValue)
 
   return (
     <Drawer

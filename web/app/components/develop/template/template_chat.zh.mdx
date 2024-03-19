@@ -71,7 +71,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `upload_file_id` 上传文件 ID。（仅当传递方式为 `local_file `时）。
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
-      （选填）自动生成标题，默认 `false`。 可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
+      （选填）自动生成标题，默认 `true`。 若设置为 `false`，则可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
       </Property>
     </Properties>
 
@@ -439,6 +439,55 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/suggested'
+  method='GET'
+  title='获取下一轮建议问题列表'
+  name='#suggested'
+/>
+<Row>
+  <Col>
+    获取下一轮建议问题列表。
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        Message ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success",
+      "data": [
+            "a",
+            "b",
+            "c"
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
 
 ---
 

@@ -181,7 +181,7 @@ class BasicApplicationRunner(AppRunner):
             return
 
         # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
-        self.recale_llm_max_tokens(
+        self.recalc_llm_max_tokens(
             model_config=app_orchestration_config.model_config,
             prompt_messages=prompt_messages
         )
@@ -191,6 +191,8 @@ class BasicApplicationRunner(AppRunner):
             provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
             model=app_orchestration_config.model_config.model
         )
+
+        db.session.close()
 
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,

@@ -28,6 +28,9 @@ from models.model import Conversation, Message
 
 
 class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
+    _is_first_iteration = True
+    _ignore_observation_providers = ['wenxin']
+
     def run(self, conversation: Conversation,
         message: Message,
         query: str,
@@ -42,10 +45,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         agent_scratchpad: list[AgentScratchpadUnit] = []
         self._init_agent_scratchpad(agent_scratchpad, self.history_prompt_messages)
 
-        # check model mode
-        if self.app_orchestration_config.model_config.mode == "completion":
-            # TODO: stop words
-            if 'Observation' not in app_orchestration_config.model_config.stop:
+        if 'Observation' not in app_orchestration_config.model_config.stop:
+            if app_orchestration_config.model_config.provider not in self._ignore_observation_providers:
                 app_orchestration_config.model_config.stop.append('Observation')
 
         # override inputs
@@ -130,8 +131,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 input=query
             )
 
-            # recale llm max tokens
-            self.recale_llm_max_tokens(self.model_config, prompt_messages)
+            # recalc llm max tokens
+            self.recalc_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
@@ -202,6 +203,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         )
                     )
 
+            scratchpad.thought = scratchpad.thought.strip() or 'I am thinking about how to help you'
             agent_scratchpad.append(scratchpad)
                         
             # get llm usage
@@ -255,9 +257,15 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                         # invoke tool
                         error_response = None
                         try:
+                            if isinstance(tool_call_args, str):
+                                try:
+                                    tool_call_args = json.loads(tool_call_args)
+                                except json.JSONDecodeError:
+                                    pass
+                            
                             tool_response = tool_instance.invoke(
                                 user_id=self.user_id, 
-                                tool_parameters=tool_call_args if isinstance(tool_call_args, dict) else json.loads(tool_call_args)
+                                tool_parameters=tool_call_args
                             )
                             # transform tool response to llm friendly response
                             tool_response = self.transform_tool_invoke_messages(tool_response)
@@ -466,7 +474,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             if isinstance(message, AssistantPromptMessage):
                 current_scratchpad = AgentScratchpadUnit(
                     agent_response=message.content,
-                    thought=message.content,
+                    thought=message.content or 'I am thinking about how to help you',
                     action_str='',
                     action=None,
                     observation=None,
@@ -546,7 +554,8 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         result = ''
         for scratchpad in agent_scratchpad:
-            result += scratchpad.thought + next_iteration.replace("{{observation}}", scratchpad.observation or '') + "\n"
+            result += (scratchpad.thought or '') + (scratchpad.action_str or '') + \
+                next_iteration.replace("{{observation}}", scratchpad.observation or 'It seems that no response is available')
 
         return result
     
@@ -621,21 +630,24 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                 ))
 
             # add assistant message
-            if len(agent_scratchpad) > 0:
+            if len(agent_scratchpad) > 0 and not self._is_first_iteration:
                 prompt_messages.append(AssistantPromptMessage(
-                    content=(agent_scratchpad[-1].thought or '')
+                    content=(agent_scratchpad[-1].thought or '') + (agent_scratchpad[-1].action_str or ''),
                 ))
             
             # add user message
-            if len(agent_scratchpad) > 0:
+            if len(agent_scratchpad) > 0 and not self._is_first_iteration:
                 prompt_messages.append(UserPromptMessage(
-                    content=(agent_scratchpad[-1].observation or ''),
+                    content=(agent_scratchpad[-1].observation or 'It seems that no response is available'),
                 ))
+
+            self._is_first_iteration = False
 
             return prompt_messages
         elif mode == "completion":
             # parse agent scratchpad
             agent_scratchpad_str = self._convert_scratchpad_list_to_str(agent_scratchpad)
+            self._is_first_iteration = False
             # parse prompt messages
             return [UserPromptMessage(
                 content=first_prompt.replace("{{instruction}}", instruction)

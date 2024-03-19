@@ -10,7 +10,7 @@ from core.rag.models.document import Document
 
 
 class WordExtractor(BaseExtractor):
-    """Load pdf files.
+    """Load docx files.
 
 
     Args:
@@ -46,14 +46,16 @@ class WordExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        import docx2txt
+        from docx import Document as docx_Document
 
-        return [
-            Document(
-                page_content=docx2txt.process(self.file_path),
-                metadata={"source": self.file_path},
-            )
-        ]
+        document = docx_Document(self.file_path)
+        doc_texts = [paragraph.text for paragraph in document.paragraphs]
+        content = '\n'.join(doc_texts)
+
+        return [Document(
+            page_content=content,
+            metadata={"source": self.file_path},
+        )]
 
     @staticmethod
     def _is_valid_url(url: str) -> bool:

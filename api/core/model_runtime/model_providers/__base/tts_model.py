@@ -94,8 +94,8 @@ class TTSModel(AIModel):
         """
         model_schema = self.get_model_schema(model, credentials)
 
-        if model_schema and ModelPropertyKey.AUDOI_TYPE in model_schema.model_properties:
-            return model_schema.model_properties[ModelPropertyKey.AUDOI_TYPE]
+        if model_schema and ModelPropertyKey.AUDIO_TYPE in model_schema.model_properties:
+            return model_schema.model_properties[ModelPropertyKey.AUDIO_TYPE]
 
     def _get_model_word_limit(self, model: str, credentials: dict) -> int:
         """

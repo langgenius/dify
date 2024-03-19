@@ -7,6 +7,7 @@ import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 type UploaderProps = {
   children: (hovering: boolean) => JSX.Element
   onUpload: (imageFile: ImageFile) => void
+  closePopover?: () => void
   limit?: number
   disabled?: boolean
 }
@@ -14,11 +15,16 @@ type UploaderProps = {
 const Uploader: FC<UploaderProps> = ({
   children,
   onUpload,
+  closePopover,
   limit,
   disabled,
 }) => {
   const [hovering, setHovering] = useState(false)
-  const { handleLocalFileUpload } = useLocalFileUploader({ limit, onUpload, disabled })
+  const { handleLocalFileUpload } = useLocalFileUploader({
+    limit,
+    onUpload,
+    disabled,
+  })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -27,6 +33,7 @@ const Uploader: FC<UploaderProps> = ({
       return
 
     handleLocalFileUpload(file)
+    closePopover?.()
   }
 
   return (
@@ -37,11 +44,8 @@ const Uploader: FC<UploaderProps> = ({
     >
       {children(hovering)}
       <input
-        className={`
-          absolute block inset-0 opacity-0 text-[0] w-full
-          ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
-        `}
-        onClick={e => (e.target as HTMLInputElement).value = ''}
+        className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
+        onClick={e => ((e.target as HTMLInputElement).value = '')}
         type='file'
         accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
         onChange={handleChange}

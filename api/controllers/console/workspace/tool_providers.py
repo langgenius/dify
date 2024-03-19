@@ -82,6 +82,30 @@ class ToolBuiltinProviderIconApi(Resource):
         icon_bytes, minetype = ToolManageService.get_builtin_tool_provider_icon(provider)
         return send_file(io.BytesIO(icon_bytes), mimetype=minetype)
 
+class ToolModelProviderIconApi(Resource):
+    @setup_required
+    def get(self, provider):
+        icon_bytes, mimetype = ToolManageService.get_model_tool_provider_icon(provider)
+        return send_file(io.BytesIO(icon_bytes), mimetype=mimetype)
+    
+class ToolModelProviderListToolsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('provider', type=str, required=True, nullable=False, location='args')
+
+        args = parser.parse_args()
+
+        return ToolManageService.list_model_tool_provider_tools(
+            user_id,
+            tenant_id,
+            args['provider'],
+        )
 
 class ToolApiProviderAddApi(Resource):
     @setup_required
@@ -259,6 +283,7 @@ class ToolApiProviderPreviousTestApi(Resource):
         parser = reqparse.RequestParser()
 
         parser.add_argument('tool_name', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('provider_name', type=str, required=False, nullable=False, location='json')
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('parameters', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('schema_type', type=str, required=True, nullable=False, location='json')
@@ -268,6 +293,7 @@ class ToolApiProviderPreviousTestApi(Resource):
 
         return ToolManageService.test_api_tool_preview(
             current_user.current_tenant_id,
+            args['provider_name'] if args['provider_name'] else '',
             args['tool_name'],
             args['credentials'],
             args['parameters'],
@@ -281,6 +307,8 @@ api.add_resource(ToolBuiltinProviderDeleteApi, '/workspaces/current/tool-provide
 api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provider/builtin/<provider>/update')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
+api.add_resource(ToolModelProviderIconApi, '/workspaces/current/tool-provider/model/<provider>/icon')
+api.add_resource(ToolModelProviderListToolsApi, '/workspaces/current/tool-provider/model/tools')
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
 api.add_resource(ToolApiProviderGetRemoteSchemaApi, '/workspaces/current/tool-provider/api/remote')
 api.add_resource(ToolApiProviderListToolsApi, '/workspaces/current/tool-provider/api/tools')

@@ -35,9 +35,11 @@ const Item: FC<Props> = ({
   const language = getLanguage(locale)
 
   const isBuiltIn = collection.type === CollectionType.builtIn
-  const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
+  const isModel = collection.type === CollectionType.model
+  const canShowDetail = isInToolsPage
   const [showDetail, setShowDetail] = useState(false)
   const addBtn = <Button className='shrink-0 flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd?.(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
+
   return (
     <>
       <div
@@ -63,7 +65,7 @@ const Item: FC<Props> = ({
           )}
         </div>
       </div>
-      {showDetail && isBuiltIn && (
+      {showDetail && (
         <SettingBuiltInTool
           collection={collection}
           toolName={payload.name}
@@ -71,6 +73,8 @@ const Item: FC<Props> = ({
           onHide={() => {
             setShowDetail(false)
           }}
+          isBuiltIn={isBuiltIn}
+          isModel={isModel}
         />
       )}
     </>

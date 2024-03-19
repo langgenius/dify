@@ -7,6 +7,7 @@
 - togetherai
 - ollama
 - mistralai
+- groq
 - replicate
 - huggingface_hub
 - zhipuai
@@ -19,6 +20,7 @@
 - jina
 - chatglm
 - xinference
+- yi
 - openllm
 - localai
 - openai_api_compatible

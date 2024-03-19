@@ -4,11 +4,13 @@ import type {
 } from 'react'
 import {
   memo,
+  useCallback,
   useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useThrottleEffect } from 'ahooks'
+import { debounce } from 'lodash-es'
 import type {
   ChatConfig,
   ChatItem,
@@ -27,7 +29,7 @@ import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAn
 export type ChatProps = {
   chatList: ChatItem[]
   config?: ChatConfig
-  isResponsing?: boolean
+  isResponding?: boolean
   noStopResponding?: boolean
   onStopResponding?: () => void
   noChatInput?: boolean
@@ -51,7 +53,7 @@ const Chat: FC<ChatProps> = ({
   config,
   onSend,
   chatList,
-  isResponsing,
+  isResponding,
   noStopResponding,
   onStopResponding,
   noChatInput,
@@ -75,21 +77,30 @@ const Chat: FC<ChatProps> = ({
   const chatContainerInnerRef = useRef<HTMLDivElement>(null)
   const chatFooterRef = useRef<HTMLDivElement>(null)
   const chatFooterInnerRef = useRef<HTMLDivElement>(null)
+  const userScrolledRef = useRef(false)
 
-  const handleScrolltoBottom = () => {
-    if (chatContainerRef.current)
+  const handleScrolltoBottom = useCallback(() => {
+    if (chatContainerRef.current && !userScrolledRef.current)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-  }
+  }, [])
 
-  useThrottleEffect(() => {
-    handleScrolltoBottom()
-
+  const handleWindowResize = useCallback(() => {
     if (chatContainerRef.current && chatFooterRef.current)
       chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
 
     if (chatContainerInnerRef.current && chatFooterInnerRef.current)
       chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
+  }, [])
+
+  useThrottleEffect(() => {
+    handleScrolltoBottom()
+    handleWindowResize()
   }, [chatList], { wait: 500 })
+
+  useEffect(() => {
+    window.addEventListener('resize', debounce(handleWindowResize))
+    return () => window.removeEventListener('resize', handleWindowResize)
+  }, [handleWindowResize])
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
@@ -108,7 +119,19 @@ const Chat: FC<ChatProps> = ({
         resizeObserver.disconnect()
       }
     }
-  }, [chatFooterRef, chatContainerRef])
+  }, [handleScrolltoBottom])
+
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current
+    if (chatContainer) {
+      const setUserScrolled = () => {
+        if (chatContainer)
+          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop >= chatContainer.clientHeight + 300
+      }
+      chatContainer.addEventListener('scroll', setUserScrolled)
+      return () => chatContainer.removeEventListener('scroll', setUserScrolled)
+    }
+  }, [])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
@@ -116,7 +139,7 @@ const Chat: FC<ChatProps> = ({
     <ChatContextProvider
       config={config}
       chatList={chatList}
-      isResponsing={isResponsing}
+      isResponding={isResponding}
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
@@ -149,7 +172,7 @@ const Chat: FC<ChatProps> = ({
                       index={index}
                       config={config}
                       answerIcon={answerIcon}
-                      responsing={isLast && isResponsing}
+                      responding={isLast && isResponding}
                       allToolIcons={allToolIcons}
                     />
                   )
@@ -160,7 +183,7 @@ const Chat: FC<ChatProps> = ({
                     item={item}
                     showPromptLog={showPromptLog}
                     questionIcon={questionIcon}
-                    isResponsing={isResponsing}
+                    isResponding={isResponding}
                   />
                 )
               })
@@ -179,7 +202,7 @@ const Chat: FC<ChatProps> = ({
             className={`${chatFooterInnerClassName}`}
           >
             {
-              !noStopResponding && isResponsing && (
+              !noStopResponding && isResponding && (
                 <div className='flex justify-center mb-2'>
                   <Button className='py-0 px-3 h-7 bg-white shadow-xs' onClick={onStopResponding}>
                     <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />

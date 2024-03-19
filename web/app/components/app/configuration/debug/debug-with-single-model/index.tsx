@@ -45,7 +45,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   const config = useConfigFromDebugContext()
   const {
     chatList,
-    isResponsing,
+    isResponding,
     handleSend,
     suggestedQuestions,
     handleStop,
@@ -118,7 +118,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     <Chat
       config={config}
       chatList={chatList}
-      isResponsing={isResponsing}
+      isResponding={isResponding}
       chatContainerclassName='p-6'
       chatFooterClassName='px-6 pt-10 pb-4'
       suggestedQuestions={suggestedQuestions}

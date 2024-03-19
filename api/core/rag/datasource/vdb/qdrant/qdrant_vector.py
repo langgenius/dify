@@ -231,21 +231,30 @@ class QdrantVector(BaseVector):
 
     def delete(self):
         from qdrant_client.http import models
-        filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
+        from qdrant_client.http.exceptions import UnexpectedResponse
+        
+        try:
+            filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="group_id",
+                        match=models.MatchValue(value=self._group_id),
+                    ),
+                ],
+            )
+            self._client.delete(
+                collection_name=self._collection_name,
+                points_selector=FilterSelector(
+                    filter=filter
                 ),
-            ],
-        )
-        self._client.delete(
-            collection_name=self._collection_name,
-            points_selector=FilterSelector(
-                filter=filter
-            ),
-        )
-
+            )
+        except UnexpectedResponse as e:
+            # Collection does not exist, so return
+            if e.status_code == 404:                
+                return
+            # Some other error occurred, so re-raise the exception
+            else:
+                raise e
     def delete_by_ids(self, ids: list[str]) -> None:
 
         from qdrant_client.http import models

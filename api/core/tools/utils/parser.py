@@ -146,7 +146,8 @@ class ApiBasedToolSchemaParser:
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
-                summary=interface['operation']['summary'] if 'summary' in interface['operation'] else None,
+                summary=interface['operation']['description'] if 'description' in interface['operation'] else 
+                        interface['operation']['summary'] if 'summary' in interface['operation'] else None,
                 operation_id=interface['operation']['operationId'],
                 parameters=parameters,
                 author='',
@@ -249,12 +250,10 @@ class ApiBasedToolSchemaParser:
                 if 'operationId' not in operation:
                     raise ToolApiSchemaError(f'No operationId found in operation {method} {path}.')
                 
-                if 'summary' not in operation or len(operation['summary']) == 0:
-                    warning['missing_summary'] = f'No summary found in operation {method} {path}.'
+                if ('summary' not in operation or len(operation['summary']) == 0) and \
+                    ('description' not in operation or len(operation['description']) == 0):
+                    warning['missing_summary'] = f'No summary or description found in operation {method} {path}.'
                 
-                if 'description' not in operation or len(operation['description']) == 0:
-                    warning['missing_description'] = f'No description found in operation {method} {path}.'
-
                 openapi['paths'][path][method] = {
                     'operationId': operation['operationId'],
                     'summary': operation.get('summary', ''),

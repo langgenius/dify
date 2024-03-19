@@ -15,6 +15,8 @@ help:
 supported_model_types:
   - llm
   - text-embedding
+  - speech2text
+  - tts
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -44,6 +46,22 @@ model_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API key here
+    - variable: openai_api_version
+      label:
+        zh_Hans: API 版本
+        en_US: API Version
+      type: select
+      required: true
+      options:
+        - label:
+            en_US: 2024-02-15-preview
+          value: 2024-02-15-preview
+        - label:
+            en_US: 2023-12-01-preview
+          value: 2023-12-01-preview
+      placeholder:
+        zh_Hans: 在此选择您的 API 版本
+        en_US: Select your API Version here
     - variable: base_model_name
       label:
         en_US: Base Model
@@ -99,6 +117,36 @@ model_credential_schema:
           show_on:
             - variable: __model_type
               value: text-embedding
+        - label:
+            en_US: text-embedding-3-small
+          value: text-embedding-3-small
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: text-embedding-3-large
+          value: text-embedding-3-large
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: whisper-1
+          value: whisper-1
+          show_on:
+            - variable: __model_type
+              value: speech2text
+        - label:
+            en_US: tts-1
+          value: tts-1
+          show_on:
+            - variable: __model_type
+              value: tts
+        - label:
+            en_US: tts-1-hd
+          value: tts-1-hd
+          show_on:
+            - variable: __model_type
+              value: tts
       placeholder:
         zh_Hans: 在此输入您的模型版本
         en_US: Enter your model version

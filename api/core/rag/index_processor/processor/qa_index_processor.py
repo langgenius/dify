@@ -7,7 +7,6 @@ from typing import Optional
 
 import pandas as pd
 from flask import Flask, current_app
-from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 
 from core.generator.llm_generator import LLMGenerator
@@ -31,7 +30,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         splitter = self._get_splitter(processing_rule=kwargs.get('process_rule'),
-                                      embedding_model_instance=None)
+                                      embedding_model_instance=kwargs.get('embedding_model_instance'))
 
         # Split the text documents into nodes.
         all_documents = []
@@ -66,10 +65,10 @@ class QAIndexProcessor(BaseIndexProcessor):
             for doc in sub_documents:
                 document_format_thread = threading.Thread(target=self._format_qa_document, kwargs={
                     'flask_app': current_app._get_current_object(),
-                    'tenant_id': current_user.current_tenant.id,
+                    'tenant_id': kwargs.get('tenant_id'),
                     'document_node': doc,
                     'all_qa_documents': all_qa_documents,
-                    'document_language': kwargs.get('document_language', 'English')})
+                    'document_language': kwargs.get('doc_language', 'English')})
                 threads.append(document_format_thread)
                 document_format_thread.start()
             for thread in threads:

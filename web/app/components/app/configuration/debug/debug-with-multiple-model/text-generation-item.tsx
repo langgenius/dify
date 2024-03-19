@@ -83,7 +83,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
   const {
     completion,
     handleSend,
-    isResponsing,
+    isResponding,
     messageId,
   } = useTextGeneration()
 
@@ -143,8 +143,8 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       innerClassName='grow flex flex-col'
       contentClassName='grow'
       content={completion}
-      isLoading={!completion && isResponsing}
-      isResponsing={isResponsing}
+      isLoading={!completion && isResponding}
+      isResponding={isResponding}
       isInstalledApp={false}
       messageId={messageId}
       isError={false}
