@@ -103,69 +103,69 @@ class KnowledgeRetrievalNode(BaseNode):
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             all_documents = self._multiple_retrieve(available_datasets, node_data, query)
 
-        document_score_list = {}
-        for item in all_documents:
-            if 'score' in item.metadata and item.metadata['score']:
-                document_score_list[item.metadata['doc_id']] = item.metadata['score']
-
-        document_context_list = []
-        index_node_ids = [document.metadata['doc_id'] for document in all_documents]
-        segments = DocumentSegment.query.filter(
-            DocumentSegment.dataset_id.in_(dataset_ids),
-            DocumentSegment.completed_at.isnot(None),
-            DocumentSegment.status == 'completed',
-            DocumentSegment.enabled == True,
-            DocumentSegment.index_node_id.in_(index_node_ids)
-        ).all()
         context_list = []
-        if segments:
-            index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
-            sorted_segments = sorted(segments,
-                                     key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
-                                                                                       float('inf')))
-            for segment in sorted_segments:
-                if segment.answer:
-                    document_context_list.append(f'question:{segment.content} answer:{segment.answer}')
-                else:
-                    document_context_list.append(segment.content)
+        if all_documents:
+            document_score_list = {}
+            for item in all_documents:
+                if 'score' in item.metadata and item.metadata['score']:
+                    document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
-            for segment in sorted_segments:
-                dataset = Dataset.query.filter_by(
-                    id=segment.dataset_id
-                ).first()
-                document = Document.query.filter(Document.id == segment.document_id,
-                                                 Document.enabled == True,
-                                                 Document.archived == False,
-                                                 ).first()
-                resource_number = 1
-                if dataset and document:
-
-                    source = {
-                        'metadata': {
-                            '_source': 'knowledge',
-                            'position': resource_number,
-                            'dataset_id': dataset.id,
-                            'dataset_name': dataset.name,
-                            'document_id': document.id,
-                            'document_name': document.name,
-                            'document_data_source_type': document.data_source_type,
-                            'segment_id': segment.id,
-                            'retriever_from': 'workflow',
-                            'score': document_score_list.get(segment.index_node_id, None),
-                            'segment_hit_count': segment.hit_count,
-                            'segment_word_count': segment.word_count,
-                            'segment_position': segment.position,
-                            'segment_index_node_hash': segment.index_node_hash,
-                        },
-                        'title': document.name
-                    }
+            document_context_list = []
+            index_node_ids = [document.metadata['doc_id'] for document in all_documents]
+            segments = DocumentSegment.query.filter(
+                DocumentSegment.dataset_id.in_(dataset_ids),
+                DocumentSegment.completed_at.isnot(None),
+                DocumentSegment.status == 'completed',
+                DocumentSegment.enabled == True,
+                DocumentSegment.index_node_id.in_(index_node_ids)
+            ).all()
+            if segments:
+                index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
+                sorted_segments = sorted(segments,
+                                         key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
+                                                                                           float('inf')))
+                for segment in sorted_segments:
                     if segment.answer:
-                        source['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                        document_context_list.append(f'question:{segment.content} answer:{segment.answer}')
                     else:
-                        source['content'] = segment.content
-                    context_list.append(source)
-                    resource_number += 1
+                        document_context_list.append(segment.content)
 
+                for segment in sorted_segments:
+                    dataset = Dataset.query.filter_by(
+                        id=segment.dataset_id
+                    ).first()
+                    document = Document.query.filter(Document.id == segment.document_id,
+                                                     Document.enabled == True,
+                                                     Document.archived == False,
+                                                     ).first()
+                    resource_number = 1
+                    if dataset and document:
+
+                        source = {
+                            'metadata': {
+                                '_source': 'knowledge',
+                                'position': resource_number,
+                                'dataset_id': dataset.id,
+                                'dataset_name': dataset.name,
+                                'document_id': document.id,
+                                'document_name': document.name,
+                                'document_data_source_type': document.data_source_type,
+                                'segment_id': segment.id,
+                                'retriever_from': 'workflow',
+                                'score': document_score_list.get(segment.index_node_id, None),
+                                'segment_hit_count': segment.hit_count,
+                                'segment_word_count': segment.word_count,
+                                'segment_position': segment.position,
+                                'segment_index_node_hash': segment.index_node_hash,
+                            },
+                            'title': document.name
+                        }
+                        if segment.answer:
+                            source['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                        else:
+                            source['content'] = segment.content
+                        context_list.append(source)
+                        resource_number += 1
         return context_list
 
     @classmethod
@@ -257,6 +257,7 @@ class KnowledgeRetrievalNode(BaseNode):
                                                     top_k=top_k, score_threshold=score_threshold,
                                                     reranking_model=reranking_model)
                 return results
+        return []
 
     def _fetch_model_config(self, node_data: KnowledgeRetrievalNodeData) -> tuple[
         ModelInstance, ModelConfigWithCredentialsEntity]:
