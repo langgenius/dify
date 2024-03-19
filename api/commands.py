@@ -254,7 +254,7 @@ def migrate_knowledge_vector_database():
         for dataset in datasets:
             total_count = total_count + 1
             click.echo(f'Processing the {total_count} dataset {dataset.id}. '
-                       + f'{create_count} created, ${skipped_count} skipped.')
+                       + f'{create_count} created, {skipped_count} skipped.')
             try:
                 click.echo('Create dataset vdb index: {}'.format(dataset.id))
                 if dataset.index_struct_dict:

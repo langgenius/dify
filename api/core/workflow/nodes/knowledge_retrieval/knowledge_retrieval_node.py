@@ -19,6 +19,7 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.knowledge_retrieval.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.workflow.nodes.knowledge_retrieval.structed_multi_dataset_router_agent import ReactMultiDatasetRouter
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
@@ -214,32 +215,19 @@ class KnowledgeRetrievalNode(BaseNode):
             if ModelFeature.TOOL_CALL in features \
                     or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
-
+        dataset_id = None
         if planning_strategy == PlanningStrategy.REACT_ROUTER:
             react_multi_dataset_router = ReactMultiDatasetRouter()
-            return react_multi_dataset_router.invoke(query, tools, node_data, model_config, model_instance,
-                                                     self.user_id, self.tenant_id)
+            dataset_id = react_multi_dataset_router.invoke(query, tools, node_data, model_config, model_instance,
+                                                           self.user_id, self.tenant_id)
 
-        prompt_messages = [
-            SystemPromptMessage(content='You are a helpful AI assistant.'),
-            UserPromptMessage(content=query)
-        ]
-        result = model_instance.invoke_llm(
-            prompt_messages=prompt_messages,
-            tools=tools,
-            stream=False,
-            model_parameters={
-                'temperature': 0.2,
-                'top_p': 0.3,
-                'max_tokens': 1500
-            }
-        )
-
-        if result.message.tool_calls:
+        elif planning_strategy == PlanningStrategy.ROUTER:
+            function_call_router = FunctionCallMultiDatasetRouter()
+            dataset_id = function_call_router.invoke(query, tools, model_config, model_instance)
+        if dataset_id:
             # get retrieval model config
-            function_call_name = result.message.tool_calls[0].function.name
             dataset = db.session.query(Dataset).filter(
-                Dataset.id == function_call_name
+                Dataset.id == dataset_id
             ).first()
             if dataset:
                 retrieval_model_config = dataset.retrieval_model \

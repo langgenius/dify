@@ -2,8 +2,11 @@ from collections.abc import Generator, Sequence
 from typing import Optional, Union
 
 from langchain import PromptTemplate
+from langchain.agents import AgentOutputParser
 from langchain.agents.structured_chat.base import HUMAN_MESSAGE_TEMPLATE
+from langchain.agents.structured_chat.output_parser import StructuredChatOutputParserWithRetries
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
+from langchain.schema import AgentAction
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
@@ -11,8 +14,10 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage
+from core.rag.retrieval.agent.output_parser.structured_chat import StructuredChatOutputParser
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.llm_node import LLMNode
+from pydantic import Field
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -88,7 +93,7 @@ class ReactMultiDatasetRouter:
             suffix: str = SUFFIX,
             human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-    ) -> str:
+    ) -> Union[str, None]:
         if model_config.mode == "chat":
             prompt = self.create_chat_prompt(
                 query=query,
@@ -105,7 +110,7 @@ class ReactMultiDatasetRouter:
                 format_instructions=format_instructions,
                 input_variables=None
             )
-        stop = model_config.stop
+        stop = ['Observation:']
         # handle invoke result
         prompt_transform = AdvancedPromptTransform()
         prompt_messages = prompt_transform.get_prompt(
@@ -126,7 +131,11 @@ class ReactMultiDatasetRouter:
             user_id=user_id,
             tenant_id=tenant_id
         )
-        return result_text
+        output_parser = StructuredChatOutputParser()
+        agent_decision = output_parser.parse(result_text)
+        if isinstance(agent_decision, AgentAction):
+            return agent_decision.tool
+        return None
 
     def _invoke_llm(self, node_data: KnowledgeRetrievalNodeData,
                     model_instance: ModelInstance,
@@ -197,7 +206,7 @@ class ReactMultiDatasetRouter:
     ) -> list[ChatModelMessage]:
         tool_strings = []
         for tool in tools:
-            tool_strings.append(f"{tool.name}: {tool.description}")
+            tool_strings.append(f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}")
         formatted_tools = "\n".join(tool_strings)
         unique_tool_names = set(tool.name for tool in tools)
         tool_names = ", ".join('"' + name + '"' for name in unique_tool_names)
