@@ -49,7 +49,7 @@ type Params<T> = {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
-  // beforeRunCheckValid?: () => CheckValidRes // has checked before run button clicked
+  moreDataForCheckValid?: any
 }
 
 const varTypeToInputVarType = (type: VarType, {
@@ -77,7 +77,7 @@ const useOneStepRun = <T>({
   id,
   data,
   defaultRunInputData,
-  // beforeRunCheckValid = () => ({ isValid: true }),
+  moreDataForCheckValid,
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -124,7 +124,7 @@ const useOneStepRun = <T>({
     }
 
     if (data._isSingleRun) {
-      const { isValid, errorMessage } = checkValid(data, t)
+      const { isValid, errorMessage } = checkValid(data, t, moreDataForCheckValid)
       setCanShowSingleRun(isValid)
       if (!isValid) {
         handleNodeDataUpdate({

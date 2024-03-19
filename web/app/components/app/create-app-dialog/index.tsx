@@ -56,14 +56,17 @@ const CreateAppDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => 
           <>
             <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain', s.advancedPic)}/>
             <div className='px-4 pb-2'>
-              <div className='text-gray-700 text-md leading-6 font-semibold'>{t('app.newApp.advanced')}</div>
+              <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
+                {t('app.newApp.advanced')}
+                <span className='px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
+              </div>
               <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.advancedFor')}</div>
               <div className='mt-1 text-gray-500 text-sm leading-5'>{t('app.newApp.advancedDescription')}</div>
             </div>
           </>
         )}
       </div>
-      <div className='absolute top-6 left-[464px] w-8 h-8 p-1 bg-white border-2 border-gray-200 rounded-2xl text-xs leading-[20px] font-medium text-gray-500 cursor-default z-20'>OR</div>
+      <div className='absolute top-6 left-[505px] w-8 h-8 p-1 bg-white border-2 border-gray-200 rounded-2xl text-xs leading-[20px] font-medium text-primary-600 cursor-default z-20'>OR</div>
       <div className='absolute right-6 top-6 p-2 cursor-pointer z-20' onClick={onClose}>
         <XClose className='w-4 h-4 text-gray-500' />
       </div>

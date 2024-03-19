@@ -3,6 +3,8 @@ import type { NodeDefault } from '../../types'
 import type { ToolNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 
+const i18nPrefix = 'workflow.errorMsg'
+
 const nodeDefault: NodeDefault<ToolNodeType> = {
   defaultValue: {
     tool_parameters: [],
@@ -18,15 +20,30 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
   },
-  checkValid(payload: ToolNodeType) {
-    let isValid = true
+  checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
+    const { toolInputsSchema, toolSettingSchema, language } = moreDataForCheckValid
     let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
+
+    toolInputsSchema.filter((field: any) => {
+      return field.required
+    }).forEach((field: any) => {
+      const value = payload.tool_parameters.find((item: any) => item.variable === field.variable)?.value
+      if (!errorMessages && (value === undefined || value === null || value === ''))
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
+    })
+
+    if (!errorMessages) {
+      toolSettingSchema.filter((field: any) => {
+        return field.required
+      }).forEach((field: any) => {
+        const value = payload.tool_configurations[field.variable]
+        if (!errorMessages && (value === undefined || value === null || value === ''))
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
+      })
     }
+
     return {
-      isValid,
+      isValid: !errorMessages,
       errorMessage: errorMessages,
     }
   },

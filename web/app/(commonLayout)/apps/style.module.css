@@ -19,3 +19,11 @@
 .actionName {
   @apply text-gray-700 text-sm;
 }
+
+/* .completionPic {
+  background-image: url(~@/app/components/app-sidebar/completion.png)
+}
+    
+.expertPic {
+  background-image: url(~@/app/components/app-sidebar/expert.png)
+} */
