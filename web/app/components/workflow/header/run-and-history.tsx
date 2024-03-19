@@ -7,6 +7,7 @@ import {
 } from '../store'
 import {
   useIsChatMode,
+  useNodesSyncDraft,
   useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
@@ -23,12 +24,14 @@ const RunMode = memo(() => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const { handleStopRun } = useWorkflowRun()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const runningStatus = useStore(s => s.runningStatus)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const isRunning = runningStatus === WorkflowRunningStatus.Running
 
   const handleClick = () => {
     workflowStore.setState({ showInputsPanel: true })
+    handleSyncWorkflowDraft(true)
   }
 
   return (
@@ -76,9 +79,11 @@ RunMode.displayName = 'RunMode'
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
   const { handleRunSetting } = useWorkflowRun()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const runningStatus = useStore(s => s.runningStatus)
 
   const handleClick = () => {
+    handleSyncWorkflowDraft(true)
     handleRunSetting()
   }
 

@@ -34,7 +34,7 @@ export const useNodeDataUpdate = () => {
       return
 
     handleNodeDataUpdate(payload)
-    handleSyncWorkflowDraft(true)
+    handleSyncWorkflowDraft()
   }, [handleSyncWorkflowDraft, handleNodeDataUpdate, workflowStore])
 
   return {
