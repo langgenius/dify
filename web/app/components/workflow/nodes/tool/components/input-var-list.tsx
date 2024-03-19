@@ -65,7 +65,7 @@ const InputVarList: FC<Props> = ({
       })
       onChange(newValue)
     }
-  }, [value, onChange])
+  }, [value, onChange, isSupportConstantValue])
 
   return (
     <div className='space-y-3'>

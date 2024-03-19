@@ -84,14 +84,18 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     if (!currTool)
       return
     const inputsWithDefaultValue = produce(inputs, (draft) => {
-      draft.tool_configurations = addDefaultValue(tool_configurations, toolSettingSchema)
-      draft.tool_parameters = toolInputVarSchema.map((item: any) => {
-        return {
-          variable: item.variable,
-          variable_type: VarType.static,
-          value: '',
-        }
-      })
+      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
+        draft.tool_configurations = addDefaultValue(tool_configurations, toolSettingSchema)
+
+      if (!draft.tool_parameters || draft.tool_parameters.length === 0) {
+        draft.tool_parameters = toolInputVarSchema.map((item: any) => {
+          return {
+            variable: item.variable,
+            variable_type: VarType.static,
+            value: '',
+          }
+        })
+      }
     })
     setInputs(inputsWithDefaultValue)
   // eslint-disable-next-line react-hooks/exhaustive-deps

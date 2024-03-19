@@ -6,12 +6,10 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
-import SettingsModal from '@/app/components/app/overview/settings'
-import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -19,12 +17,13 @@ import AppsContext, { useAppContext } from '@/context/app-context'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
-import { asyncRunSafe } from '@/utils'
 import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
+import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import EditAppModal from '@/app/components/explore/create-app-modal'
 
 export type AppCardProps = {
   app: App
@@ -43,13 +42,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     state => state.mutateApps,
   )
 
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [detailState, setDetailState] = useState<{
-    loading: boolean
-    detail?: App
-  }>({ loading: false })
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -69,43 +64,33 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setShowConfirmDelete(false)
   }, [app.id])
 
-  const getAppDetail = async () => {
-    setDetailState({ loading: true })
-    const [err, res] = await asyncRunSafe(
-      fetchAppDetail({ url: '/apps', id: app.id }),
-    )
-    if (!err)
-      setDetailState({ loading: false, detail: res })
-    else
-      setDetailState({ loading: false })
-  }
-
-  const onSaveSiteConfig = useCallback(
-    async (params: ConfigParams) => {
-      const [err] = await asyncRunSafe(
-        updateAppSiteConfig({
-          url: `/apps/${app.id}/site`,
-          body: params,
-        }),
-      )
-      if (!err) {
-        notify({
-          type: 'success',
-          message: t('common.actionMsg.modifiedSuccessfully'),
-        })
-        if (onRefresh)
-          onRefresh()
-        mutateApps()
-      }
-      else {
-        notify({
-          type: 'error',
-          message: t('common.actionMsg.modifiedUnsuccessfully'),
-        })
-      }
-    },
-    [app.id],
-  )
+  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+    name,
+    icon,
+    icon_background,
+    description,
+  }) => {
+    try {
+      await updateAppInfo({
+        appID: app.id,
+        name,
+        icon,
+        icon_background,
+        description,
+      })
+      setShowEditModal(false)
+      notify({
+        type: 'success',
+        message: t('app.editDone'),
+      })
+      if (onRefresh)
+        onRefresh()
+      mutateApps()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.editFailed') })
+    }
+  }, [app.id, mutateApps, notify, onRefresh, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
     try {
@@ -122,6 +107,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      if (onRefresh)
+        onRefresh()
       mutateApps()
       onPlanInfoChanged()
       getRedirection(isCurrentWorkspaceManager, newApp, push)
@@ -150,8 +137,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      await getAppDetail()
-      setShowSettingsModal(true)
+      setShowEditModal(true)
     }
     const onClickDuplicate = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -173,21 +159,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
     return (
       <div className="w-full py-1">
-        <button className={s.actionItem} onClick={onClickSettings} disabled={detailState.loading}>
-          <span className={s.actionName}>{t('common.operation.settings')}</span>
+        <button className={s.actionItem} onClick={onClickSettings}>
+          <span className={s.actionName}>{t('app.editApp')}</span>
         </button>
         <Divider className="!my-1" />
-        {(app.mode === 'workflow' || app.mode === 'agent-chat' || app.mode === 'advanced-chat' || (app.mode === 'chat' && detailState.detail?.model_config.prompt_type === 'simple')) && (
-          <>
-            <button className={s.actionItem} onClick={onClickDuplicate} disabled={detailState.loading}>
-              <span className={s.actionName}>{t('app.duplicate')}</span>
-            </button>
-            <button className={s.actionItem} onClick={onClickExport} disabled={detailState.loading}>
-              <span className={s.actionName}>{t('app.export')}</span>
-            </button>
-            <Divider className="!my-1" />
-          </>
-        )}
+        <button className={s.actionItem} onClick={onClickDuplicate}>
+          <span className={s.actionName}>{t('app.duplicate')}</span>
+        </button>
+        <button className={s.actionItem} onClick={onClickExport}>
+          <span className={s.actionName}>{t('app.export')}</span>
+        </button>
+        <Divider className="!my-1" />
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
           onClick={onClickDelete}
@@ -204,8 +186,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     <>
       <div
         onClick={(e) => {
-          if (showSettingsModal)
-            return
           e.preventDefault()
           getRedirection(isCurrentWorkspaceManager, app, push)
         }}
@@ -259,10 +239,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
           {isCurrentWorkspaceManager && <CustomPopover
-            onTriggerClick={() => {
-              if (app.mode === 'chat' && !detailState.detail)
-                getAppDetail()
-            }}
             htmlContent={<Operations />}
             position="br"
             trigger="click"
@@ -278,12 +254,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           />}
         </div>
         <div className='mb-1 px-[14px] text-xs leading-normal text-gray-500 line-clamp-4'>{app.description}</div>
-        {showSettingsModal && detailState.detail && (
-          <SettingsModal
-            appInfo={detailState.detail}
-            isShow={showSettingsModal}
-            onClose={() => setShowSettingsModal(false)}
-            onSave={onSaveSiteConfig}
+        {showEditModal && (
+          <EditAppModal
+            isEditModal
+            appIcon={app.icon}
+            appIconBackground={app.icon_background}
+            appName={app.name}
+            appDescription={app.description}
+            show={showEditModal}
+            onConfirm={onEdit}
+            onHide={() => setShowEditModal(false)}
           />
         )}
         {showDuplicateModal && (
