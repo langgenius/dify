@@ -8,7 +8,10 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import { useWorkflow } from '../hooks'
+import {
+  useNodesSyncDraft,
+  useWorkflow,
+} from '../hooks'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -23,6 +26,7 @@ const Publish = () => {
   const [published, setPublished] = useState(false)
   const workflowStore = useWorkflowStore()
   const { formatTimeFromNow } = useWorkflow()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const runningStatus = useStore(s => s.runningStatus)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const publishedAt = useStore(s => s.publishedAt)
@@ -56,10 +60,11 @@ const Publish = () => {
       setOpen(false)
 
     if (!open) {
+      handleSyncWorkflowDraft(true)
       setOpen(true)
       setPublished(false)
     }
-  }, [runningStatus, open])
+  }, [runningStatus, open, handleSyncWorkflowDraft])
 
   return (
     <PortalToFollowElem

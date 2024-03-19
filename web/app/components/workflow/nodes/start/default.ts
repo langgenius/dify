@@ -6,9 +6,8 @@ const nodeDefault: NodeDefault<StartNodeType> = {
   defaultValue: {
     variables: [],
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
+  getAvailablePrevNodes() {
+    return []
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
