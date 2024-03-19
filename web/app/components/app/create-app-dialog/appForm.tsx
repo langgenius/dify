@@ -16,8 +16,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/line/communication'
-// import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import { HelpCircle, InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { getRedirection } from '@/utils/app-redirection'
@@ -115,11 +114,6 @@ const AppForm = ({
             popupContent={
               <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
                 <div className='text-gray-700'>{t('app.newApp.completionDescription')}</div>
-                {/* <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
-                <div className='flex items-center text-[#dc6803]'>
-                  <AlertTriangle className='w-3 h-3 mr-1'/>
-                  <div>{t('app.newApp.completionWarning')}</div>
-                </div> */}
               </div>
             }
           >
@@ -162,11 +156,6 @@ const AppForm = ({
             popupContent={
               <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
                 <div className='text-gray-700'>{t('app.newApp.workflowDescription')}</div>
-                <div className='w-[298px] h-[0.5px] my-2 bg-[rgba(0,0,0,0.05)]'></div>
-                <div className='flex items-center text-indigo-600'>
-                  <InfoCircle className='w-3 h-3 mr-1'/>
-                  <div>{t('app.newApp.workflowWarning')}</div>
-                </div>
               </div>
             }
           >
@@ -182,6 +171,7 @@ const AppForm = ({
             >
               <Route className='w-6 h-6' />
               <div className='h-5 text-sm font-medium leading-5'>{t('app.types.workflow')}</div>
+              <span className='absolute top-[-3px] right-[-3px] px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
             </div>
           </TooltipPlus>
         </div>
@@ -223,6 +213,7 @@ const AppForm = ({
               >
                 <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
               </div>
+              <span className='absolute top-[-11px] left-[8px] px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
             </div>
           </div>
         </div>

@@ -34,8 +34,9 @@ export const useTabSearchParams = ({
   )
 
   const setActiveTab = (newActiveTab: string) => {
+    setTab(newActiveTab)
     if (disableSearchParams)
-      return setTab(newActiveTab)
+      return
     router[routingBehavior](`${pathName}?${searchParamName}=${newActiveTab}`)
   }
 
