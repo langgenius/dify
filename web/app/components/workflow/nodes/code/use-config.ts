@@ -1,15 +1,34 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import useOutputVarList from '../_base/hooks/use-output-var-list'
-import { VarType } from '../../types'
+import { BlockEnum, VarType } from '../../types'
 import type { Var } from '../../types'
 import { useStore } from '../../store'
-import type { CodeLanguage, CodeNodeType } from './types'
+import type { CodeNodeType } from './types'
+import { CodeLanguage } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import { fetchNodeDefault } from '@/service/workflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const useConfig = (id: string, payload: CodeNodeType) => {
+  const appId = useAppStore.getState().appDetail?.id
+
+  const [allLanguageDefault, setAllLanguageDefault] = useState<Record<CodeLanguage, CodeNodeType> | null>(null)
+  useEffect(() => {
+    if (appId) {
+      (async () => {
+        const { config: javaScriptConfig } = await fetchNodeDefault(appId, BlockEnum.Code, { code_language: CodeLanguage.javascript }) as any
+        const { config: pythonConfig } = await fetchNodeDefault(appId, BlockEnum.Code, { code_language: CodeLanguage.python3 }) as any
+        setAllLanguageDefault({
+          [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
+          [CodeLanguage.python3]: pythonConfig as CodeNodeType,
+        } as any)
+      })()
+    }
+  }, [appId])
+
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
   const { inputs, setInputs } = useNodeCrud<CodeNodeType>(id, payload)
   const { handleVarListChange, handleAddVariable } = useVarList<CodeNodeType>({
@@ -40,10 +59,14 @@ const useConfig = (id: string, payload: CodeNodeType) => {
 
   const handleCodeLanguageChange = useCallback((codeLanguage: CodeLanguage) => {
     const newInputs = produce(inputs, (draft) => {
+      const currDefaultConfig = allLanguageDefault![codeLanguage]
       draft.code_language = codeLanguage
+      draft.code = currDefaultConfig.code
+      draft.variables = currDefaultConfig.variables
+      draft.outputs = currDefaultConfig.outputs
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [allLanguageDefault, inputs, setInputs])
 
   const { handleVarsChange, handleAddVariable: handleAddOutputVariable } = useOutputVarList<CodeNodeType>({
     inputs,

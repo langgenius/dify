@@ -7,6 +7,7 @@ import type {
   NodesDefaultConfigsResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
+import type { BlockEnum } from '@/app/components/workflow/types'
 
 export const fetchWorkflowDraft: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
   return get<FetchWorkflowDraftResponse>(url, {}, { silent: true })
@@ -42,4 +43,10 @@ export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string>
 
 export const stopWorkflowRun = (url: string) => {
   return post<CommonResponse>(url)
+}
+
+export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
+  return get(`apps/${appId}/workflows/default-workflow-block-configs/${blockType}`, {
+    params: { q: JSON.stringify(query) },
+  })
 }

@@ -90,6 +90,7 @@ export type NodeStartedResponse = {
   data: {
     id: string
     node_id: string
+    node_type: string
     index: number
     predecessor_node_id?: string
     inputs: any
@@ -104,6 +105,7 @@ export type NodeFinishedResponse = {
   data: {
     id: string
     node_id: string
+    node_type: string
     index: number
     predecessor_node_id?: string
     inputs: any

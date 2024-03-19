@@ -97,27 +97,32 @@ const VarReferencePicker: FC<Props> = ({
   const getVarType = () => {
     if (isConstant)
       return 'undefined'
-
-    const targetVarNodeId = isSystemVar(value as ValueSelector) ? startNode?.id : outputVarNodeId
+    const isSystem = isSystemVar(value as ValueSelector)
+    const targetVarNodeId = isSystem ? startNode?.id : outputVarNodeId
     const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
 
     if (!targetVar)
       return 'undefined'
 
     let type: VarType = VarType.string
-    let curr: any = targetVar.vars;
-    (value as ValueSelector).slice(1).forEach((key, i) => {
-      const isLast = i === value.length - 2
-      curr = curr.find((v: any) => v.variable === key)
-      if (isLast) {
-        type = curr?.type
-      }
-      else {
-        if (curr.type === VarType.object)
-          curr = curr.children
-      }
-    })
-    return type
+    let curr: any = targetVar.vars
+    if (isSystem) {
+      return curr.find((v: any) => v.variable === (value as ValueSelector).join('.'))?.type
+    }
+    else {
+      (value as ValueSelector).slice(1).forEach((key, i) => {
+        const isLast = i === value.length - 2
+        curr = curr.find((v: any) => v.variable === key)
+        if (isLast) {
+          type = curr?.type
+        }
+        else {
+          if (curr.type === VarType.object)
+            curr = curr.children
+        }
+      })
+      return type
+    }
   }
 
   const varKindTypes = [
