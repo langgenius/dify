@@ -36,6 +36,7 @@ const translation = {
       variableValue: 'Variable Value',
       code: 'Code',
       model: 'Model',
+      rerankModel: 'Rerank Model',
     },
   },
   singleRun: {
