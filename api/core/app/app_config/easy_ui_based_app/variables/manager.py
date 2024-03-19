@@ -34,6 +34,9 @@ class BasicVariablesConfigManager:
             typ = list(variable.keys())[0]
             if typ == 'external_data_tool':
                 val = variable[typ]
+                if 'config' not in val:
+                    continue
+
                 external_data_variables.append(
                     ExternalDataVariableEntity(
                         variable=val['variable'],

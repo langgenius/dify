@@ -14,15 +14,19 @@ class VariableAssignerNode(BaseNode):
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: VariableAssignerNodeData = cast(self._node_data_cls, self.node_data)
-        value = variable_pool.get_variable_value(node_data.variables)
-        variable_pool.append_variable(
-            node_id=self.node_id,
-            variable_key_list=node_data.variables,
-            value=value
-        )
-        outputs = {
-            "output": value
-        }
+        outputs = {}
+        for variable in node_data.variables:
+            value = variable_pool.get_variable_value(variable)
+            if value:
+                variable_pool.append_variable(
+                    node_id=self.node_id,
+                    variable_key_list=variable,
+                    value=value
+                )
+                outputs = {
+                    "output": value
+                }
+                break
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
