@@ -26,6 +26,7 @@ const translation = {
     noVar: 'No variable',
     variableNamePlaceholder: 'Variable name',
     setVarValuePlaceholder: 'Set variable',
+    needConnecttip: 'This step is not connected to anything',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

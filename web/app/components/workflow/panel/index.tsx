@@ -32,7 +32,7 @@ const Panel: FC = () => {
     showDebugAndPreviewPanel,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: !isChatMode && !selectedNode && !runningStatus,
+      showWorkflowInfoPanel: !selectedNode && !runningStatus,
       showNodePanel: !!selectedNode && !runningStatus,
       showDebugAndPreviewPanel: isChatMode && runningStatus && !currentConversationID,
     }
