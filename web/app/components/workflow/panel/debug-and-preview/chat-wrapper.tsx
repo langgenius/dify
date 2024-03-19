@@ -33,6 +33,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const inputs = useStore(s => s.inputs)
+  const workflowRunId = useStore(s => s.workflowRunId)
   const { handleStopRun } = useWorkflowRun()
   const features = featuresStore!.getState().features
 
@@ -95,7 +96,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
   return (
     <Chat
       config={config as any}
-      chatList={chatList}
+      chatList={chatList.map(item => ({ ...item, workflow_run_id: workflowRunId }))}
       isResponding={isResponding}
       chatContainerclassName='px-4'
       chatContainerInnerClassName='pt-6'
@@ -105,6 +106,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       onStopResponding={doStop}
       chatNode={<UserInput />}
       suggestedQuestions={suggestedQuestions}
+      showPromptLog
     />
   )
 })
