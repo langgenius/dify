@@ -3,7 +3,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { union } from 'lodash-es'
+import { intersection } from 'lodash-es'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useNodesExtraData,
@@ -51,7 +51,7 @@ const ChangeBlock = ({
       }}
       onSelect={handleSelect}
       trigger={renderTrigger}
-      availableBlocksTypes={union(availablePrevNodes, availableNextNodes)}
+      availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
     />
   )
 }

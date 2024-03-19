@@ -15,6 +15,7 @@ import {
 } from 'reactflow'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type {
+  Edge,
   Node,
   OnNodeAdd,
 } from '../types'
@@ -540,23 +541,26 @@ export const useNodesInteractions = () => {
           targetType: newNode.data.type,
         },
       }
-      const newNextEdge = {
-        id: `${newNode.id}-${nextNodeId}`,
-        type: 'custom',
-        source: newNode.id,
-        sourceHandle,
-        target: nextNodeId,
-        targetHandle: nextNodeTargetHandle,
-        data: {
-          sourceType: newNode.data.type,
-          targetType: nextNode.data.type,
-        },
+      let newNextEdge: Edge | null = null
+      if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier) {
+        newNextEdge = {
+          id: `${newNode.id}-${nextNodeId}`,
+          type: 'custom',
+          source: newNode.id,
+          sourceHandle,
+          target: nextNodeId,
+          targetHandle: nextNodeTargetHandle,
+          data: {
+            sourceType: newNode.data.type,
+            targetType: nextNode.data.type,
+          },
+        }
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
         [
           { type: 'remove', edge: edges[currentEdgeIndex] },
           { type: 'add', edge: newPrevEdge },
-          { type: 'add', edge: newNextEdge },
+          ...(newNextEdge ? [{ type: 'add', edge: newNextEdge }] : []),
         ],
         nodes,
       )
@@ -582,7 +586,9 @@ export const useNodesInteractions = () => {
       const newEdges = produce(edges, (draft) => {
         draft.splice(currentEdgeIndex, 1)
         draft.push(newPrevEdge)
-        draft.push(newNextEdge)
+
+        if (newNextEdge)
+          draft.push(newNextEdge)
       })
       setEdges(newEdges)
     }

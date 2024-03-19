@@ -3,7 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { union } from 'lodash-es'
+import { intersection } from 'lodash-es'
 import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
@@ -49,8 +49,8 @@ const CustomEdge = ({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
-  const availablePrevNodes = nodesExtraData[(data as Edge['data'])?.targetType]?.availablePrevNodes || []
-  const availableNextNodes = nodesExtraData[(data as Edge['data'])?.sourceType]?.availableNextNodes || []
+  const availablePrevNodes = nodesExtraData[(data as Edge['data'])!.targetType]?.availablePrevNodes || []
+  const availableNextNodes = nodesExtraData[(data as Edge['data'])!.sourceType]?.availableNextNodes || []
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
@@ -98,7 +98,7 @@ const CustomEdge = ({
             onOpenChange={handleOpenChange}
             asChild
             onSelect={handleInsert}
-            availableBlocksTypes={union(availablePrevNodes, availableNextNodes)}
+            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
           />
         </div>
       </EdgeLabelRenderer>

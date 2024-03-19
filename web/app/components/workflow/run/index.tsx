@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import produce from 'immer'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
 import { ToastContext } from '@/app/components/base/toast'
@@ -27,7 +26,6 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
-  const [collapseState, setCollapseState] = useState<boolean[]>([])
 
   const executor = useMemo(() => {
     if (runDetail?.created_by_role === 'account')
@@ -36,13 +34,6 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
       return runDetail.created_by_end_user?.session_id || ''
     return 'N/A'
   }, [runDetail])
-
-  const collapseStateChange = (index: number) => {
-    const newCollapseState = produce(collapseState, (draft: boolean[]) => {
-      draft[index] = !draft[index]
-    })
-    setCollapseState(newCollapseState)
-  }
 
   const getResult = useCallback(async (appID: string, runID: string) => {
     try {
@@ -65,9 +56,7 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
       const { data: nodeList } = await fetchTracingList({
         url: `/apps/${appID}/workflow-runs/${runID}/node-executions`,
       })
-      const collapseState = nodeList.map(node => node.status === 'succeeded')
       setList(nodeList.reverse())
-      setCollapseState(collapseState)
     }
     catch (err) {
       notify({
@@ -139,8 +128,6 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
             list={list}
-            collapseState={collapseState}
-            collapseHandle={collapseStateChange}
           />
         )}
       </div>

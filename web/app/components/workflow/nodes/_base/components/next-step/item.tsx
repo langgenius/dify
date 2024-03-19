@@ -4,7 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { union } from 'lodash-es'
+import { intersection } from 'lodash-es'
 import type {
   CommonNodeType,
   OnSelectBlock,
@@ -86,7 +86,7 @@ const Item = ({
         }}
         trigger={renderTrigger}
         popupClassName='!w-[328px]'
-        availableBlocksTypes={union(availablePrevNodes, availableNextNodes)}
+        availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
       />
     </div>
   )
