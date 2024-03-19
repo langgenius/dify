@@ -1,16 +1,23 @@
 import json
-import requests
-from yarl import URL
-
 from collections.abc import Generator
 from typing import Optional, Union
 
+import requests
+from yarl import URL
+
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageContentType, PromptMessageFunction, PromptMessageTool, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    PromptMessage,
+    PromptMessageContentType,
+    PromptMessageFunction,
+    PromptMessageTool,
+    UserPromptMessage,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAIAPICompatLargeLanguageModel
 from core.model_runtime.utils import helper
+
 
 class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
     MODEL_SUFFIX_MAP = {

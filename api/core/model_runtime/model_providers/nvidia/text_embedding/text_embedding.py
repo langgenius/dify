@@ -1,7 +1,6 @@
 import time
 from json import JSONDecodeError, dumps
 from typing import Optional
-from fastapi import Query
 
 from requests import post
 
