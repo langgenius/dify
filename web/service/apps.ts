@@ -29,7 +29,7 @@ export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; 
 }
 
 export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
-  return post<{ data: string }>(`apps/${appID}/export`)
+  return get<{ data: string }>(`apps/${appID}/export`)
 }
 
 export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ name, description, icon, icon_background }) => {

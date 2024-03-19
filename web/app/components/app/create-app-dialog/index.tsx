@@ -63,7 +63,7 @@ const CreateAppDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => 
           </>
         )}
       </div>
-      <div className='absolute top-6 left-[464px] w-8 h-8 p-1 bg-white border-2 border-gray-200 rounded-2xl text-xs leading-[20px] font-medium text-gray-500 cursor-default z-20'>OR</div>
+      <div className='absolute top-6 left-[505px] w-8 h-8 p-1 bg-white border-2 border-gray-200 rounded-2xl text-xs leading-[20px] font-medium text-gray-500 cursor-default z-20'>OR</div>
       <div className='absolute right-6 top-6 p-2 cursor-pointer z-20' onClick={onClose}>
         <XClose className='w-4 h-4 text-gray-500' />
       </div>

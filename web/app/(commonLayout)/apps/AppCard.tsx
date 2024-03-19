@@ -24,6 +24,7 @@ import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/ven
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
+import SwitchAppModal from '@/app/components/app/switch-app-modal'
 
 export type AppCardProps = {
   app: App
@@ -44,6 +45,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const onConfirmDelete = useCallback(async () => {
@@ -132,6 +134,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }
 
+  const onSwitch = () => {
+    if (onRefresh)
+      onRefresh()
+    mutateApps()
+    setShowSwitchModal(false)
+  }
+
   const Operations = (props: HtmlContentProps) => {
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -151,6 +160,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       onExport()
     }
+    const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowSwitchModal(true)
+    }
     const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
       props.onClick?.()
@@ -158,7 +173,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setShowConfirmDelete(true)
     }
     return (
-      <div className="w-full py-1">
+      <div className="relative w-full py-1">
         <button className={s.actionItem} onClick={onClickSettings}>
           <span className={s.actionName}>{t('app.editApp')}</span>
         </button>
@@ -169,6 +184,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         <button className={s.actionItem} onClick={onClickExport}>
           <span className={s.actionName}>{t('app.export')}</span>
         </button>
+        {(app.mode === 'completion' || app.mode === 'chat') && (
+          <>
+            <Divider className="!my-1" />
+            <div
+              className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+              onClick={onClickSwitch}
+            >
+              <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
+            </div>
+          </>
+        )}
         <Divider className="!my-1" />
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
@@ -250,6 +276,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               )
             }
             className={'!w-[128px] h-fit !z-20'}
+            popupClassName={
+              (app.mode === 'completion' || app.mode === 'chat')
+                ? '!w-[238px] translate-x-[-110px]'
+                : ''
+            }
             manualClose
           />}
         </div>
@@ -274,6 +305,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             show={showDuplicateModal}
             onConfirm={onCopy}
             onHide={() => setShowDuplicateModal(false)}
+          />
+        )}
+        {showSwitchModal && (
+          <SwitchAppModal
+            show={showSwitchModal}
+            appDetail={app}
+            onClose={() => setShowSwitchModal(false)}
+            onSuccess={onSwitch}
           />
         )}
         {showConfirmDelete && (
