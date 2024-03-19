@@ -136,7 +136,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       <div className='rounded-xl bg-[#EEF4FF]'>
         <div className="flex justify-between items-center h-11 px-3">
           <div className="flex items-center space-x-1">
-            <div className='h2'>{mode === AppType.chat ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+            <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
             {!readonly && (
               <Tooltip
                 htmlContent={<div className='w-[180px]'>
