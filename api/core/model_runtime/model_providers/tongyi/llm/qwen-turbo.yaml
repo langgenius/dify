@@ -10,7 +10,7 @@ parameter_rules:
     use_template: temperature
     type: float
     default: 0.85
-    min: 0.01
+    min: 0.0
     max: 2.0
     help:
       zh_Hans: 用于控制随机性和多样性的程度。具体来说，temperature值控制了生成文本时对每个候选词的概率分布进行平滑的程度。较高的temperature值会降低概率分布的峰值，使得更多的低概率词被选择，生成结果更加多样化；而较低的temperature值则会增强概率分布的峰值，使得高概率词更容易被选择，生成结果更加确定。
