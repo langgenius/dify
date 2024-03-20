@@ -23,10 +23,13 @@ import { fetchTextGenerationMessge } from '@/service/debug'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   isWorkflow?: boolean
+  workflowProcessData?: WorkflowProcess
   className?: string
   isError: boolean
   onRetry: () => void
@@ -78,6 +81,7 @@ export const copyIcon = (
 
 const GenerationItem: FC<IGenerationItemProps> = ({
   isWorkflow,
+  workflowProcessData,
   className,
   isError,
   onRetry,
@@ -280,6 +284,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
+                {workflowProcessData && (
+                  <WorkflowProcessItem data={workflowProcessData} />
+                )}
                 {isError
                   ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
                   : (

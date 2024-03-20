@@ -44,14 +44,14 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true, className }) => {
         <div
           className={cn(
             'flex items-center pl-[6px] py-3 pr-3 cursor-pointer',
-            !collapsed && 'pb-2',
+            !collapseState && 'pb-2',
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
           <ChevronRight
             className={cn(
               'shrink-0 w-3 h-3 mr-1 text-gray-400 transition-all group-hover:text-gray-500',
-              !collapsed && 'rotate-90',
+              !collapseState && 'rotate-90',
             )}
           />
           <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} />

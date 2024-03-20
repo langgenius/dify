@@ -13,9 +13,11 @@ import NodePanel from '@/app/components/workflow/run/node'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess
+  grayBg?: boolean
 }
 const WorkflowProcessItem = ({
   data,
+  grayBg,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
   const [collapse, setCollapse] = useState(true)
@@ -37,9 +39,9 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={`
-        px-3 w-full rounded-xl border-[0.5px] border-black/[0.08]
+        mb-2 px-3 w-full rounded-xl border-[0.5px] border-black/[0.08]
         ${collapse ? 'py-[7px]' : 'py-2'}
-        ${collapse && 'bg-white'}
+        ${collapse && (grayBg ? 'bg-white' : 'bg-gray-50')}
       `}
       style={{
         background,
@@ -67,7 +69,7 @@ const WorkflowProcessItem = ({
         <div className='grow text-xs font-medium text-gray-700'>
           {t('workflow.common.workflowProcess')}
         </div>
-        <ChevronRight className='ml-1 w-3 h-3 text-gray-500' />
+        <ChevronRight className={`'ml-1 w-3 h-3 text-gray-500' ${collapse ? '' : 'rotate-90'}`} />
       </div>
       {
         !collapse && (
