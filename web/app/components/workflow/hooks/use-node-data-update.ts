@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
-import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useNodesReadOnly } from './use-workflow'
 
 type NodeDataUpdatePayload = {
   id: string
@@ -11,8 +11,8 @@ type NodeDataUpdatePayload = {
 
 export const useNodeDataUpdate = () => {
   const store = useStoreApi()
-  const workflowStore = useWorkflowStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleNodeDataUpdate = useCallback(({ id, data }: NodeDataUpdatePayload) => {
     const {
@@ -28,14 +28,12 @@ export const useNodeDataUpdate = () => {
   }, [store])
 
   const handleNodeDataUpdateWithSyncDraft = useCallback((payload: NodeDataUpdatePayload) => {
-    const { runningStatus } = workflowStore.getState()
-
-    if (runningStatus)
+    if (getNodesReadOnly())
       return
 
     handleNodeDataUpdate(payload)
     handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft, handleNodeDataUpdate, workflowStore])
+  }, [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly])
 
   return {
     handleNodeDataUpdate,

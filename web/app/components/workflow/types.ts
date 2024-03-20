@@ -5,6 +5,7 @@ import type {
 import type { TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { NodeTracing } from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -218,4 +219,35 @@ export type RunFile = {
   transfer_method: TransferMethod[]
   url?: string
   upload_file_id?: string
+}
+
+export type WorkflowRunningData = {
+  task_id?: string
+  message_id?: string
+  conversation_id?: string
+  result: {
+    sequence_number?: number
+    workflow_id?: string
+    inputs?: string
+    process_data?: string
+    outputs?: string
+    status: string
+    error?: string
+    elapsed_time?: number
+    total_tokens?: number
+    created_at?: number
+    created_by?: string
+    finished_at?: number
+    steps?: number
+    showSteps?: boolean
+    total_steps?: number
+  }
+  tracing?: NodeTracing[]
+}
+
+export type HistoryWorkflowData = {
+  id: string
+  sequence_number: number
+  status: string
+  conversation_id?: string
 }

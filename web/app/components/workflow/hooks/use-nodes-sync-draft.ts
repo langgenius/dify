@@ -9,6 +9,7 @@ import {
   useWorkflowStore,
 } from '../store'
 import { BlockEnum } from '../types'
+import { useNodesReadOnly } from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -18,6 +19,7 @@ export const useNodesSyncDraft = () => {
   const workflowStore = useWorkflowStore()
   const reactFlow = useReactFlow()
   const featuresStore = useFeaturesStore()
+  const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
 
   const doSyncWorkflowDraft = useCallback(() => {
@@ -78,19 +80,14 @@ export const useNodesSyncDraft = () => {
   }, [store, reactFlow, featuresStore, workflowStore])
 
   const handleSyncWorkflowDraft = useCallback((sync?: boolean) => {
-    const {
-      runningStatus,
-      isRestoring,
-    } = workflowStore.getState()
-
-    if (runningStatus || isRestoring)
+    if (getNodesReadOnly())
       return
 
     if (sync)
       doSyncWorkflowDraft()
     else
       debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
-  }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, workflowStore])
+  }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly])
 
   return {
     handleSyncWorkflowDraft,

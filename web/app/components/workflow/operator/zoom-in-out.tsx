@@ -10,9 +10,10 @@ import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import { useNodesSyncDraft } from '../hooks'
-import { useStore } from '../store'
-import { WorkflowRunningStatus } from '../types'
+import {
+  useNodesSyncDraft,
+  useWorkflowReadOnly,
+} from '../hooks'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -32,7 +33,10 @@ const ZoomInOut: FC = () => {
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const [open, setOpen] = useState(false)
-  const runningStatus = useStore(s => s.runningStatus)
+  const {
+    workflowReadOnly,
+    getWorkflowReadOnly,
+  } = useWorkflowReadOnly()
 
   const ZOOM_IN_OUT_OPTIONS = [
     [
@@ -64,8 +68,9 @@ const ZoomInOut: FC = () => {
   ]
 
   const handleZoom = (type: string) => {
-    if (runningStatus === WorkflowRunningStatus.Running)
+    if (workflowReadOnly)
       return
+
     if (type === 'in')
       zoomIn()
 
@@ -85,10 +90,11 @@ const ZoomInOut: FC = () => {
   }
 
   const handleTrigger = useCallback(() => {
-    if (runningStatus === WorkflowRunningStatus.Running)
+    if (getWorkflowReadOnly())
       return
+
     setOpen(v => !v)
-  }, [runningStatus])
+  }, [getWorkflowReadOnly])
 
   return (
     <PortalToFollowElem
@@ -104,7 +110,7 @@ const ZoomInOut: FC = () => {
         <div className={`
           flex items-center px-2 h-8 cursor-pointer text-[13px] hover:bg-gray-50 rounded-lg
           ${open && 'bg-gray-50'}
-          ${runningStatus === WorkflowRunningStatus.Running && '!cursor-not-allowed opacity-50'}
+          ${workflowReadOnly && '!cursor-not-allowed opacity-50'}
         `}>
           <SearchLg className='mr-1 w-4 h-4' />
           <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>

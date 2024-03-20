@@ -6,8 +6,7 @@ import ChatRecord from './chat-record'
 
 const Record = () => {
   const isChatMode = useIsChatMode()
-  const currentSequenceNumber = useStore(s => s.currentSequenceNumber)
-  const workflowRunId = useStore(s => s.workflowRunId)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
 
   return (
     <div className={`
@@ -15,12 +14,12 @@ const Record = () => {
       ${isChatMode ? 'w-[320px]' : 'w-[400px]'}
     `}>
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
-        {`Test ${isChatMode ? 'Chat' : 'Run'}#${currentSequenceNumber}`}
+        {`Test ${isChatMode ? 'Chat' : 'Run'}#${historyWorkflowData?.sequence_number}`}
       </div>
       {
         isChatMode
           ? <ChatRecord />
-          : <Run runID={workflowRunId} />
+          : <Run runID={historyWorkflowData?.id || ''} />
       }
     </div>
   )

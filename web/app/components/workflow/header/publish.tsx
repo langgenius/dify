@@ -9,6 +9,7 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
+  useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflow,
   useWorkflowRun,
@@ -31,7 +32,10 @@ const Publish = () => {
   const { formatTimeFromNow } = useWorkflow()
   const { handleCheckBeforePublish } = useWorkflowRun()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const runningStatus = useStore(s => s.runningStatus)
+  const {
+    nodesReadOnly,
+    getNodesReadOnly,
+  } = useNodesReadOnly()
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const publishedAt = useStore(s => s.publishedAt)
   const [open, setOpen] = useState(false)
@@ -61,7 +65,7 @@ const Publish = () => {
   }, [workflowStore])
 
   const handleTrigger = useCallback(() => {
-    if (runningStatus)
+    if (getNodesReadOnly())
       return
 
     if (open)
@@ -72,7 +76,7 @@ const Publish = () => {
       setOpen(true)
       setPublished(false)
     }
-  }, [runningStatus, open, handleSyncWorkflowDraft])
+  }, [getNodesReadOnly, open, handleSyncWorkflowDraft])
 
   return (
     <PortalToFollowElem
@@ -89,7 +93,7 @@ const Publish = () => {
           type='primary'
           className={`
             px-3 py-0 h-8 text-[13px] font-medium
-            ${runningStatus && 'cursor-not-allowed opacity-50'}
+            ${nodesReadOnly && 'cursor-not-allowed opacity-50'}
           `}
         >
           {t('workflow.common.publish')}

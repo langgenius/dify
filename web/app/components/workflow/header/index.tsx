@@ -8,7 +8,10 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import { useWorkflowRun } from '../hooks'
+import {
+  useNodesReadOnly,
+  useWorkflowRun,
+} from '../hooks'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
@@ -24,7 +27,10 @@ const Header: FC = () => {
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
-  const runningStatus = useStore(s => s.runningStatus)
+  const {
+    nodesReadOnly,
+    getNodesReadOnly,
+  } = useNodesReadOnly()
   const isRestoring = useStore(s => s.isRestoring)
   const {
     handleRunSetting,
@@ -32,11 +38,11 @@ const Header: FC = () => {
   } = useWorkflowRun()
 
   const handleShowFeatures = useCallback(() => {
-    if (runningStatus)
+    if (getNodesReadOnly())
       return
 
     workflowStore.setState({ showFeaturesPanel: true })
-  }, [runningStatus, workflowStore])
+  }, [getNodesReadOnly, workflowStore])
 
   const handleGoBackToEdit = useCallback(() => {
     handleRunSetting(true)
@@ -65,10 +71,10 @@ const Header: FC = () => {
           )
         }
         {
-          !runningStatus && !isRestoring && <EditingTitle />
+          !nodesReadOnly && !isRestoring && <EditingTitle />
         }
         {
-          runningStatus && !isRestoring && <RunningTitle />
+          nodesReadOnly && !isRestoring && <RunningTitle />
         }
         {
           isRestoring && <RestoringTitle />
@@ -78,7 +84,7 @@ const Header: FC = () => {
         !isRestoring && (
           <div className='flex items-center'>
             {
-              runningStatus && (
+              nodesReadOnly && (
                 <Button
                   className={`
                     mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
@@ -97,7 +103,7 @@ const Header: FC = () => {
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
-                ${runningStatus && '!cursor-not-allowed opacity-50'}
+                ${nodesReadOnly && '!cursor-not-allowed opacity-50'}
               `}
               onClick={handleShowFeatures}
             >
@@ -115,7 +121,6 @@ const Header: FC = () => {
               className={`
                 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
-                ${runningStatus && '!cursor-not-allowed opacity-50'}
               `}
               onClick={handleShowFeatures}
             >

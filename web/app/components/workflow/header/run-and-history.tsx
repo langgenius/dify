@@ -7,6 +7,7 @@ import {
 } from '../store'
 import {
   useIsChatMode,
+  useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflowRun,
 } from '../hooks'
@@ -25,9 +26,9 @@ const RunMode = memo(() => {
   const workflowStore = useWorkflowStore()
   const { handleStopRun } = useWorkflowRun()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const runningStatus = useStore(s => s.runningStatus)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
   const showInputsPanel = useStore(s => s.showInputsPanel)
-  const isRunning = runningStatus === WorkflowRunningStatus.Running
+  const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
   const handleClick = () => {
     workflowStore.setState({ showInputsPanel: true })
@@ -65,7 +66,7 @@ const RunMode = memo(() => {
         isRunning && (
           <div
             className='flex items-center justify-center ml-0.5 w-7 h-7 cursor-pointer hover:bg-black/5 rounded-md'
-            onClick={handleStopRun}
+            onClick={() => handleStopRun(workflowRunningData?.task_id || '')}
           >
             <StopCircle className='w-4 h-4 text-gray-500' />
           </div>
@@ -80,7 +81,7 @@ const PreviewMode = memo(() => {
   const { t } = useTranslation()
   const { handleRunSetting } = useWorkflowRun()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const runningStatus = useStore(s => s.runningStatus)
+  const { nodesReadOnly } = useNodesReadOnly()
 
   const handleClick = () => {
     handleSyncWorkflowDraft(true)
@@ -92,12 +93,12 @@ const PreviewMode = memo(() => {
       className={`
         flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600
         hover:bg-primary-50 cursor-pointer
-        ${runningStatus && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
+        ${nodesReadOnly && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
       `}
-      onClick={() => !runningStatus && handleClick()}
+      onClick={() => !nodesReadOnly && handleClick()}
     >
       {
-        runningStatus
+        nodesReadOnly
           ? (
             <>
               {t('workflow.common.inPreview')}
@@ -140,7 +141,7 @@ const RunAndHistory: FC = () => {
             ${showRunHistory && 'bg-primary-50'}
           `}
           onClick={() => {
-            workflowStore.setState({ showRunHistory: !showRunHistory, workflowRunId: '' })
+            workflowStore.setState({ showRunHistory: !showRunHistory })
             setCurrentLogItem()
             setShowMessageLogModal(false)
           }}
