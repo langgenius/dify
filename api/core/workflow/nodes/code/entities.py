@@ -11,7 +11,7 @@ class CodeNodeData(BaseNodeData):
     Code Node Data.
     """
     class Output(BaseModel):
-        type: Literal['string', 'number', 'object', 'array[string]', 'array[number]']
+        type: Literal['string', 'number', 'object', 'array[string]', 'array[number]', 'array[object]']
         children: Optional[dict[str, 'Output']]
 
     variables: list[VariableSelector]

@@ -227,7 +227,7 @@ def test_execute_code_output_validator_depth():
     # construct result
     result = {
         "number_validator": 1,
-        "string_validator": "1" * 2000,
+        "string_validator": "1" * 6000,
         "number_array_validator": [1, 2, 3, 3.333],
         "string_array_validator": ["1", "2", "3"],
         "object_validator": {
@@ -263,4 +263,76 @@ def test_execute_code_output_validator_depth():
     # validate
     with pytest.raises(ValueError):
         node._transform_result(result, node.node_data.outputs)
-        
+
+
+def test_execute_code_output_object_list():
+    code = '''
+    def main(args1: int, args2: int) -> dict:
+        return {
+            "result": {
+                "result": args1 + args2,
+            }
+        }
+    '''
+    # trim first 4 spaces at the beginning of each line
+    code = '\n'.join([line[4:] for line in code.split('\n')])
+    node = CodeNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=InvokeFrom.WEB_APP,
+        config={
+            'id': '1',
+            'data': {
+                "outputs": {
+                    "object_list": {
+                        "type": "array[object]",
+                    },
+                },
+                'title': '123',
+                'variables': [
+                    {
+                        'variable': 'args1',
+                        'value_selector': ['1', '123', 'args1'],
+                    },
+                    {
+                        'variable': 'args2',
+                        'value_selector': ['1', '123', 'args2']
+                    }
+                ],
+                'answer': '123',
+                'code_language': 'python3',
+                'code': code
+            }
+        }
+    )
+
+    # construct result
+    result = {
+        "object_list": [{
+            "result": 1,
+        }, {
+            "result": 2,
+        }, {
+            "result": [1, 2, 3],
+        }]
+    }
+
+    # validate
+    node._transform_result(result, node.node_data.outputs)
+
+    # construct result
+    result = {
+        "object_list": [{
+            "result": 1,
+        }, {
+            "result": 2,
+        }, {
+            "result": [1, 2, 3],
+        }, 1]
+    }
+
+    # validate
+    with pytest.raises(ValueError):
+        node._transform_result(result, node.node_data.outputs)
