@@ -31,9 +31,9 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,
@@ -60,7 +60,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
-            <AddButton onClick={handleAddVariable} />
+            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
           }
         >
           <VarList
@@ -101,24 +101,26 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           />
         </Field>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: varInputs,
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
-    </div>
+      {
+        isShowSingleRun && (
+          <BeforeRunForm
+            nodeName={inputs.title}
+            onHide={hideSingleRun}
+            forms={[
+              {
+                inputs: varInputs,
+                values: inputVarValues,
+                onChange: setInputVarValues,
+              },
+            ]}
+            runningStatus={runningStatus}
+            onRun={handleRun}
+            onStop={handleStop}
+            result={<ResultPanel {...runResult} showSteps={false} />}
+          />
+        )
+      }
+    </div >
   )
 }
 
