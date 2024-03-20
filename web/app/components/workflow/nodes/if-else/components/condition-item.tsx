@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
@@ -98,8 +98,20 @@ const Item: FC<ItemProps> = ({
       ...payload,
       variable_selector: value as ValueSelector,
     })
-    // TODO: handle value type change will effect the comparisonOperators
   }, [onChange, payload])
+
+  // change to default operator if the variable type is changed
+  useEffect(() => {
+    if (varType && payload.comparison_operator) {
+      if (!getOperators(varType).includes(payload.comparison_operator)) {
+        onChange({
+          ...payload,
+          comparison_operator: getOperators(varType)[0],
+        })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [varType, payload])
 
   const handleValueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({
