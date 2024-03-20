@@ -104,6 +104,8 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `data` (object) detail
         - `id` (string) Unique ID of workflow execution
         - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
         - `inputs` (array[object]) Contents of all preceding node variables used in the node
@@ -115,6 +117,8 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `data` (object) detail
         - `id` (string) Unique ID of workflow execution
         - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
         - `inputs` (array[object]) Contents of all preceding node variables used in the node
@@ -143,18 +147,6 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `total_steps` (int) default 0
         - `created_at` (timestamp) start time
         - `finished_at` (timestamp) end time
-    - `event: text_chunk` Output text in chunks
-      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
-      - `workflow_run_id` (string) Unique ID of workflow execution
-      - `event` (string) fixed to `text_chunk`
-      - `data` (object) detail
-        - `text` (string) Output text in chunks
-    - `event: text_replace` Output text replacement
-      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
-      - `workflow_run_id` (string) Unique ID of workflow execution
-      - `event` (string) fixed to `text_replacement`
-      - `data` (object) detail
-        - `text` (string) Output text in chunks
     - `event: ping` Ping event every 10 seconds to keep the connection alive.
 
     ### Errors
@@ -168,7 +160,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
   </Col>
   <Col sticky>
-     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
@@ -208,11 +200,10 @@ Workflow applications offers non-session support and is ideal for translation, a
     ### Streaming Mode
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " Nice", "created_at": 1679586595}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " to", "created_at": 1679586595}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " meet", "created_at": 1679586595}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " you", "created_at": 1679586595}
-      data: {"event": "finished", "task_id": "5e52ce04-874b-4d27-9045-b3bc80def685", "log_id": "5e52ce04-874b-4d27-9045-b3bc80def685", "output": "Nice to meet you", "created_at": 1679586595}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
     ```
     </CodeGroup>
 

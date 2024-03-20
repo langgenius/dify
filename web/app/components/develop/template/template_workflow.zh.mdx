@@ -102,6 +102,8 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
       - `data` (object) 详细内容
         - `id` (string) workflow 执行 ID
         - `node_id` (string) 节点 ID
+        - `node_type` (string) 节点类型
+        - `title` (string) 节点名称
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) 前置节点 ID，用于画布展示执行路径
         - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
@@ -141,18 +143,6 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `total_steps` (int) 总步数（冗余），默认 0
         - `created_at` (timestamp) 开始时间
         - `finished_at` (timestamp) 结束时间
-    - `event: text_chunk` 输出文本块
-      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
-      - `workflow_run_id` (string) workflow 执行 ID
-      - `event` (string) 固定为 `text_chunk`
-      - `data` (object) 详细内容
-        - `text` (string) 输出文本块
-    - `event: text_replace` 输出文本替换
-      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
-      - `workflow_run_id` (string) workflow 执行 ID
-      - `event` (string) 固定为 `text_replacement`
-      - `data` (object) 详细内容
-        - `text` (string) 输出文本块
     - `event: ping` 每 10s 一次的 ping 事件，保持连接存活。
 
     ### Errors
@@ -166,7 +156,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
   </Col>
   <Col sticky>
-     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
@@ -206,11 +196,10 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     ### Streaming Mode
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " Nice", "created_at": 1679586595}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " to", "created_at": 1679586595}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " meet", "created_at": 1679586595}
-      data: {"event": "text_chunk", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "output": " you", "created_at": 1679586595}
-      data: {"event": "finished", "task_id": "5e52ce04-874b-4d27-9045-b3bc80def685", "log_id": "5e52ce04-874b-4d27-9045-b3bc80def685", "output": "Nice to meet you", "created_at": 1679586595}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
     ```
     </CodeGroup>
 
