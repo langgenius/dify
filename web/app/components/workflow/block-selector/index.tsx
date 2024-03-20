@@ -37,6 +37,7 @@ type NodeSelectorProps = {
   popupClassName?: string
   asChild?: boolean
   availableBlocksTypes?: BlockEnum[]
+  disabled?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -50,6 +51,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   popupClassName,
   asChild,
   availableBlocksTypes,
+  disabled,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -62,9 +64,11 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       onOpenChange(newOpen)
   }, [onOpenChange])
   const handleTrigger = useCallback<MouseEventHandler<HTMLDivElement>>((e) => {
+    if (disabled)
+      return
     e.stopPropagation()
     handleOpenChange(!open)
-  }, [handleOpenChange, open])
+  }, [handleOpenChange, open, disabled])
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleOpenChange(false)
     onSelect(type, toolDefaultValue)

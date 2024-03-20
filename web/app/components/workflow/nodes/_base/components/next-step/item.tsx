@@ -14,6 +14,7 @@ import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useNodesExtraData,
   useNodesInteractions,
+  useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
 import { useStore } from '@/app/components/workflow/store'
@@ -33,6 +34,7 @@ const Item = ({
 }: ItemProps) => {
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
+  const { nodesReadOnly } = useNodesReadOnly()
   const nodesExtraData = useNodesExtraData()
   const toolsets = useStore(s => s.toolsets)
   const toolIcon = useMemo(() => {
@@ -77,17 +79,21 @@ const Item = ({
         className='shrink-0 mr-1.5'
       />
       <div className='grow'>{data.title}</div>
-      <BlockSelector
-        onSelect={handleSelect}
-        placement='top-end'
-        offset={{
-          mainAxis: 6,
-          crossAxis: 8,
-        }}
-        trigger={renderTrigger}
-        popupClassName='!w-[328px]'
-        availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
-      />
+      {
+        !nodesReadOnly && (
+          <BlockSelector
+            onSelect={handleSelect}
+            placement='top-end'
+            offset={{
+              mainAxis: 6,
+              crossAxis: 8,
+            }}
+            trigger={renderTrigger}
+            popupClassName='!w-[328px]'
+            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
+          />
+        )
+      }
     </div>
   )
 }

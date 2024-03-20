@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { intersection } from 'lodash-es'
@@ -30,6 +31,15 @@ const ChangeBlock = ({
   const availablePrevNodes = nodesExtraData[nodeType].availablePrevNodes
   const availableNextNodes = nodesExtraData[nodeType].availableNextNodes
 
+  const availableNodes = useMemo(() => {
+    if (availableNextNodes.length && availableNextNodes.length)
+      return intersection(availablePrevNodes, availableNextNodes)
+    else if (availablePrevNodes.length)
+      return availablePrevNodes
+    else
+      return availableNextNodes
+  }, [availablePrevNodes, availableNextNodes])
+
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
   }, [handleNodeChange, nodeId, sourceHandle])
@@ -51,7 +61,7 @@ const ChangeBlock = ({
       }}
       onSelect={handleSelect}
       trigger={renderTrigger}
-      availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
+      availableBlocksTypes={availableNodes}
     />
   )
 }

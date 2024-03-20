@@ -15,6 +15,7 @@ import { useStore } from '@/app/components/workflow/store'
 import {
   useNodesExtraData,
   useNodesInteractions,
+  useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -53,6 +54,7 @@ const PanelOperator = ({
   const language = getLanguage(locale)
   const edges = useEdges()
   const { handleNodeDelete } = useNodesInteractions()
+  const { nodesReadOnly } = useNodesReadOnly()
   const nodesExtraData = useNodesExtraData()
   const toolsets = useStore(s => s.toolsets)
   const toolsMap = useStore(s => s.toolsMap)
@@ -126,7 +128,7 @@ const PanelOperator = ({
         <div className='w-[240px] border-[0.5px] border-gray-200 rounded-2xl shadow-xl bg-white'>
           <div className='p-1'>
             {
-              data.type !== BlockEnum.Start && (
+              data.type !== BlockEnum.Start && !nodesReadOnly && (
                 <ChangeBlock
                   nodeId={id}
                   nodeType={data.type}
@@ -139,7 +141,7 @@ const PanelOperator = ({
             </div>
           </div>
           {
-            data.type !== BlockEnum.Start && (
+            data.type !== BlockEnum.Start && !nodesReadOnly && (
               <>
                 <div className='h-[1px] bg-gray-100'></div>
                 <div className='p-1'>
