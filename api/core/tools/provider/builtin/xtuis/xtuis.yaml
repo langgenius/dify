@@ -9,7 +9,7 @@ identity:
     en_US: send message to Weixin/Wechat
     zh_Hans: 一行代码发送信息到微信
     pt_BR: send message to Weixin/Wechat
-  icon: icon6.png
+  icon: xtuis.svg
 credentials_for_provider:
   xtuis_api_key:
     type: secret-input
