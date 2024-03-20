@@ -3,7 +3,7 @@ import produce from 'immer'
 import type { Var } from '../../types'
 import { VarType } from '../../types'
 import { getVarType } from '../_base/components/variable/utils'
-import { ComparisonOperator, LogicalOperator } from './types'
+import { LogicalOperator } from './types'
 import type { Condition, IfElseNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
@@ -30,7 +30,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
       draft.conditions.push({
         id: `${Date.now()}`,
         variable_selector: [],
-        comparison_operator: ComparisonOperator.equal,
+        comparison_operator: undefined,
         value: '',
       })
     })

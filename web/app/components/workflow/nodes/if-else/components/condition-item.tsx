@@ -91,7 +91,7 @@ const Item: FC<ItemProps> = ({
   filterVar,
 }) => {
   const { t } = useTranslation()
-  const isValueReadOnly = [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(payload.comparison_operator)
+  const isValueReadOnly = payload.comparison_operator ? [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(payload.comparison_operator) : false
 
   const handleVarReferenceChange = useCallback((value: ValueSelector | string) => {
     onChange({
@@ -156,18 +156,23 @@ const Item: FC<ItemProps> = ({
                 if (!varType) {
                   e.stopPropagation()
                   Toast.notify({
-                    message: 'please selector var first', // t(`${i18nPrefix}.selectVarType`)
+                    message: t(`${i18nPrefix}.notSetVariable`),
                     type: 'error',
                   })
                 }
               }}
               className='shrink-0 w-[100px] whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize cursor-pointer'
             >
-              <div className='text-[13px] font-normal text-gray-900'>{isComparisonOperatorNeedTranslate(payload.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${payload.comparison_operator}`) : payload.comparison_operator}</div>
+              {
+                !payload.comparison_operator
+                  ? <div className='text-[13px] font-normal text-gray-400'>{t(`${i18nPrefix}.operator`)}</div>
+                  : <div className='text-[13px] font-normal text-gray-900'>{isComparisonOperatorNeedTranslate(payload.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${payload.comparison_operator}`) : payload.comparison_operator}</div>
+              }
+
             </div>
           }
           readonly={readonly}
-          value={payload.comparison_operator}
+          value={payload.comparison_operator || ''}
           options={getOperators(varType).map((o) => {
             return {
               label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
@@ -178,10 +183,18 @@ const Item: FC<ItemProps> = ({
         />
 
         <input
-          readOnly={readonly || isValueReadOnly}
+          readOnly={readonly || isValueReadOnly || !varType}
+          onClick={() => {
+            if (!varType) {
+              Toast.notify({
+                message: t(`${i18nPrefix}.notSetVariable`),
+                type: 'error',
+              })
+            }
+          }}
           value={!isValueReadOnly ? payload.value : ''}
           onChange={handleValueChange}
-          placeholder={!isValueReadOnly ? t(`${i18nPrefix}.enterValue`)! : ''}
+          placeholder={(!readonly && !isValueReadOnly) ? t(`${i18nPrefix}.enterValue`)! : ''}
           className='w-[80px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
           type='text'
         />

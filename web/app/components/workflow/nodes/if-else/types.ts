@@ -27,7 +27,7 @@ export enum ComparisonOperator {
 export type Condition = {
   id: string
   variable_selector: ValueSelector
-  comparison_operator: ComparisonOperator
+  comparison_operator?: ComparisonOperator
   value: string
 }
 

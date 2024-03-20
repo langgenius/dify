@@ -231,6 +231,8 @@ const translation = {
       elseDescription: '用于定义当 if 条件不满足时应执行的逻辑。',
       and: 'and',
       or: 'or',
+      operator: '操作符',
+      notSetVariable: '请先设置变量',
       comparisonOperator: {
         'contains': '包含',
         'not contains': '不包含',
