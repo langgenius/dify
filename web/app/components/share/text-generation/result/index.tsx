@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
+import produce from 'immer'
 import cn from 'classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
@@ -14,7 +15,8 @@ import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -76,6 +78,14 @@ const Result: FC<IResultProps> = ({
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
+  const [workflowProcessData, doSetWorkflowProccessData] = useState<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const setWorkflowProccessData = (data: WorkflowProcess) => {
+    workflowProcessDataRef.current = data
+    doSetWorkflowProccessData(data)
+  }
+  const getWorkflowProccessData = () => workflowProcessDataRef.current
+
   const { notify } = Toast
   const isNoData = !completionRes
 
@@ -188,12 +198,28 @@ const Result: FC<IResultProps> = ({
         {
           onWorkflowStarted: ({ workflow_run_id }) => {
             tempMessageId = workflow_run_id
+            setWorkflowProccessData({
+              status: WorkflowRunningStatus.Running,
+              tracing: [],
+            })
+            setRespondingFalse()
             // console.log('onWorkflowStarted runID: ', workflow_run_id)
           },
           onNodeStarted: ({ data }) => {
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+              } as any)
+            }))
             // console.log('onNodeStarted: ', data.node_type)
           },
           onNodeFinished: ({ data }) => {
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
+              if (currentIndex > -1 && draft.tracing)
+                draft.tracing[currentIndex] = data as any
+            }))
             // console.log('onNodeFinished: ', data.node_type, data)
             if (data.node_type === BlockEnum.LLM && data.outputs.text)
               setCompletionRes(data.outputs.text)
@@ -215,6 +241,9 @@ const Result: FC<IResultProps> = ({
               notify({ type: 'info', message: 'Outputs not existed.' })
               setCompletionRes('')
             }
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.status = data.error ? WorkflowRunningStatus.Failed : WorkflowRunningStatus.Succeeded
+            }))
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
@@ -271,6 +300,7 @@ const Result: FC<IResultProps> = ({
   const renderTextGenerationRes = () => (
     <TextGenerationRes
       isWorkflow={isWorkflow}
+      workflowProcessData={workflowProcessData}
       className='mt-3'
       isError={isError}
       onRetry={handleSend}
