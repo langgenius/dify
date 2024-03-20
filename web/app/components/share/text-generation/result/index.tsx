@@ -5,7 +5,7 @@ import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import produce from 'immer'
 import cn from 'classnames'
-import TextGenerationRes from '@/app/components/app/text-generate/item'
+import TextGenerationRes, { type WorkflowProcessData } from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
 import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
@@ -16,7 +16,6 @@ import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -78,9 +77,9 @@ const Result: FC<IResultProps> = ({
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
-  const [workflowProcessData, doSetWorkflowProccessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
-  const setWorkflowProccessData = (data: WorkflowProcess) => {
+  const [workflowProcessData, doSetWorkflowProccessData] = useState<WorkflowProcessData>()
+  const workflowProcessDataRef = useRef<WorkflowProcessData>()
+  const setWorkflowProccessData = (data: WorkflowProcessData) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProccessData(data)
   }
@@ -191,7 +190,6 @@ const Result: FC<IResultProps> = ({
     }, 1000)
 
     if (isWorkflow) {
-      // ###TODO###
       let outputsExisted = false
       sendWorkflowMessage(
         data,
@@ -201,33 +199,36 @@ const Result: FC<IResultProps> = ({
             setWorkflowProccessData({
               status: WorkflowRunningStatus.Running,
               tracing: [],
+              expand: false,
             })
             setRespondingFalse()
-            // console.log('onWorkflowStarted runID: ', workflow_run_id)
           },
           onNodeStarted: ({ data }) => {
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.expand = true
               draft.tracing!.push({
                 ...data,
                 status: NodeRunningStatus.Running,
+                expand: true,
               } as any)
             }))
-            // console.log('onNodeStarted: ', data.node_type)
           },
           onNodeFinished: ({ data }) => {
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
               const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
-              if (currentIndex > -1 && draft.tracing)
-                draft.tracing[currentIndex] = data as any
+              if (currentIndex > -1 && draft.tracing) {
+                draft.tracing[currentIndex] = {
+                  ...data,
+                  expand: !!data.error,
+                } as any
+              }
             }))
-            // console.log('onNodeFinished: ', data.node_type, data)
             if (data.node_type === BlockEnum.LLM && data.outputs.text)
               setCompletionRes(data.outputs.text)
             if (data.node_type === BlockEnum.End && data.outputs)
               outputsExisted = true
           },
           onWorkflowFinished: ({ data }) => {
-            // console.log('onWorkflowFinished: ', data)
             if (isTimeout)
               return
             if (data.error) {
@@ -324,14 +325,14 @@ const Result: FC<IResultProps> = ({
   return (
     <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
       {!isCallBatchAPI && (
-        (isResponding && !completionRes)
+        (isResponding && (!completionRes || !isWorkflow))
           ? (
             <div className='flex h-full w-full justify-center items-center'>
               <Loading type='area' />
             </div>)
           : (
             <>
-              {isNoData
+              {(isNoData && !workflowProcessData)
                 ? <NoData />
                 : renderTextGenerationRes()
               }
