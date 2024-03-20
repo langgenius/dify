@@ -94,7 +94,10 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
 
   return (
     <Chat
-      config={config as any}
+      config={{
+        ...config,
+        supportCitationHitInfo: true,
+      } as any}
       chatList={chatList}
       isResponding={isResponding}
       chatContainerclassName='px-4'

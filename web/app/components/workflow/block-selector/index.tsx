@@ -115,6 +115,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                 className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
                 placeholder={t('workflow.tabs.searchBlock') || ''}
                 onChange={e => setSearchText(e.target.value)}
+                autoFocus
               />
               {
                 searchText && (
