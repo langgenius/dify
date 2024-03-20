@@ -58,9 +58,12 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   }, [inputs, setInputs])
 
   const handleCodeLanguageChange = useCallback((codeLanguage: CodeLanguage) => {
+    const currDefaultConfig = allLanguageDefault?.[codeLanguage]
+
     const newInputs = produce(inputs, (draft) => {
-      const currDefaultConfig = allLanguageDefault![codeLanguage]
       draft.code_language = codeLanguage
+      if (!currDefaultConfig)
+        return
       draft.code = currDefaultConfig.code
       draft.variables = currDefaultConfig.variables
       draft.outputs = currDefaultConfig.outputs
