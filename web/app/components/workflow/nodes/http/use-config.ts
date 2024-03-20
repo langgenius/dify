@@ -8,8 +8,12 @@ import type { Authorization, Body, HttpNodeType, Method } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import {
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: HttpNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
 
   const { handleVarListChange, handleAddVariable } = useVarList<HttpNodeType>({
@@ -112,6 +116,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   }, [setRunInputData])
 
   return {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,

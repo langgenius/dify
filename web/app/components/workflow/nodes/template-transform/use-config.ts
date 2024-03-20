@@ -7,8 +7,12 @@ import { useStore } from '../../store'
 import type { TemplateTransformNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import {
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
 
   const { inputs, setInputs } = useNodeCrud<TemplateTransformNodeType>(id, payload)
@@ -74,6 +78,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   }, [])
 
   return {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,

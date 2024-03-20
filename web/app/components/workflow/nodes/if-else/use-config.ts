@@ -8,10 +8,12 @@ import type { Condition, IfElseNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
+  useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const isChatMode = useIsChatMode()
   const availableNodes = getBeforeNodesInSameBranch(id)
@@ -53,6 +55,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   })
 
   return {
+    readOnly,
     inputs,
     handleConditionsChange,
     handleAddCondition,

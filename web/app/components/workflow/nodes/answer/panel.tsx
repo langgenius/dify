@@ -17,9 +17,9 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,
@@ -32,7 +32,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
       <Field
         title={t(`${i18nPrefix}.outputVars`)}
         operations={
-          <AddButton onClick={handleAddVariable} />
+          !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
         }
       >
         <VarList

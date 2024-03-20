@@ -183,7 +183,11 @@ const VarReferencePicker: FC<Props> = ({
         onOpenChange={setOpen}
         placement='bottom-start'
       >
-        <PortalToFollowElemTrigger onClick={() => !isConstant ? setOpen(!open) : setControlFocus(Date.now())} className='!flex'>
+        <PortalToFollowElemTrigger onClick={() => {
+          if (readonly)
+            return
+          !isConstant ? setOpen(!open) : setControlFocus(Date.now())
+        }} className='!flex'>
           <div className={cn((open || isFocus) && 'border border-gray-300', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100')}>
             {isSupportConstantValue
               ? <div onClick={(e) => {
@@ -242,7 +246,7 @@ const VarReferencePicker: FC<Props> = ({
                     : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
                 </div>
               )}
-            {hasValue && (<div
+            {(hasValue && !readonly) && (<div
               className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
               onClick={handleClearVar}
             >

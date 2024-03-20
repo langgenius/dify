@@ -15,7 +15,12 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import { VarType as VarVarType } from '@/app/components/workflow/types'
 import type { InputVar, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import {
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks'
+
 const useConfig = (id: string, payload: ToolNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { t } = useTranslation()
 
   const language = useLanguage()
@@ -191,6 +196,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   })
 
   return {
+    readOnly,
     inputs,
     currTool,
     toolSettingSchema,

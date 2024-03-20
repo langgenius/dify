@@ -5,8 +5,12 @@ import type { VariableAssignerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
+import {
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: VariableAssignerNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<VariableAssignerNodeType>(id, payload)
 
   const handleOutputTypeChange = useCallback((outputType: string) => {
@@ -47,6 +51,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     return true
   }, [currVar, inputs.output_type, variables])
   return {
+    readOnly,
     inputs,
     handleOutputTypeChange,
     handleVarListChange,
