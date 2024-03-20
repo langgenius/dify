@@ -45,6 +45,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
       </Field>
       <Split />
       <Editor
+        readOnly={readOnly}
         justVar
         title={t(`${i18nPrefix}.answer`)!}
         value={inputs.answer}
