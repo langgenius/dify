@@ -184,7 +184,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.arrayObject, VarType.string].includes(varPayload.type)
+    return [VarType.arrayObject, VarType.array, VarType.string].includes(varPayload.type)
   }, [])
 
   // single run
