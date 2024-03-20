@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Union
 
 import boto3
-from azure.storage.blob import generate_account_sas, ResourceTypes, AccountSasPermissions, BlobServiceClient, BlobType
+from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 from botocore.exceptions import ClientError
 from flask import Flask
 
