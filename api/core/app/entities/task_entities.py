@@ -101,9 +101,10 @@ class ErrorStreamResponse(StreamResponse):
     ErrorStreamResponse entity
     """
     event: StreamEvent = StreamEvent.ERROR
-    code: str
-    status: int
-    message: Optional[str] = None
+    err: Exception
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class MessageStreamResponse(StreamResponse):

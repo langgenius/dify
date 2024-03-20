@@ -21,10 +21,13 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
+    ErrorStreamResponse,
+    StreamResponse,
     TextChunkStreamResponse,
     TextReplaceStreamResponse,
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
+    WorkflowFinishStreamResponse,
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -84,71 +87,61 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         db.session.refresh(self._user)
         db.session.close()
 
+        generator = self._process_stream_response()
         if self._stream:
-            generator = self._process_stream_response()
-            for stream_response in generator:
-                yield WorkflowAppStreamResponse(
-                    workflow_run_id=self._task_state.workflow_run_id,
-                    stream_response=stream_response
-                )
+            return self._to_stream_response(generator)
         else:
-            return self._process_blocking_response()
+            return self._to_blocking_response(generator)
 
-    def _process_blocking_response(self) -> WorkflowAppBlockingResponse:
+    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) \
+            -> WorkflowAppBlockingResponse:
         """
-        Process blocking response.
+        To blocking response.
         :return:
         """
-        for queue_message in self._queue_manager.listen():
-            event = queue_message.event
+        for stream_response in generator:
+            if isinstance(stream_response, ErrorStreamResponse):
+                raise stream_response.err
+            elif isinstance(stream_response, WorkflowFinishStreamResponse):
+                workflow_run = db.session.query(WorkflowRun).filter(
+                    WorkflowRun.id == self._task_state.workflow_run_id).first()
 
-            if isinstance(event, QueueErrorEvent):
-                err = self._handle_error(event)
-                raise err
-            elif isinstance(event, QueueWorkflowStartedEvent):
-                self._handle_workflow_start()
-            elif isinstance(event, QueueNodeStartedEvent):
-                self._handle_node_start(event)
-            elif isinstance(event, QueueNodeSucceededEvent | QueueNodeFailedEvent):
-                self._handle_node_finished(event)
-            elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(event)
+                response = WorkflowAppBlockingResponse(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run_id=workflow_run.id,
+                    data=WorkflowAppBlockingResponse.Data(
+                        id=workflow_run.id,
+                        workflow_id=workflow_run.workflow_id,
+                        status=workflow_run.status,
+                        outputs=workflow_run.outputs_dict,
+                        error=workflow_run.error,
+                        elapsed_time=workflow_run.elapsed_time,
+                        total_tokens=workflow_run.total_tokens,
+                        total_steps=workflow_run.total_steps,
+                        created_at=int(workflow_run.created_at.timestamp()),
+                        finished_at=int(workflow_run.finished_at.timestamp())
+                    )
+                )
 
-                # save workflow app log
-                self._save_workflow_app_log(workflow_run)
-
-                return self._to_blocking_response(workflow_run)
+                return response
             else:
                 continue
 
         raise Exception('Queue listening stopped unexpectedly.')
 
-    def _to_blocking_response(self, workflow_run: WorkflowRun) -> WorkflowAppBlockingResponse:
+    def _to_stream_response(self, generator: Generator[StreamResponse, None, None]) \
+            -> Generator[WorkflowAppStreamResponse, None, None]:
         """
-        To blocking response.
-        :param workflow_run: workflow run
+        To stream response.
         :return:
         """
-        response = WorkflowAppBlockingResponse(
-            task_id=self._application_generate_entity.task_id,
-            workflow_run_id=workflow_run.id,
-            data=WorkflowAppBlockingResponse.Data(
-                id=workflow_run.id,
-                workflow_id=workflow_run.workflow_id,
-                status=workflow_run.status,
-                outputs=workflow_run.outputs_dict,
-                error=workflow_run.error,
-                elapsed_time=workflow_run.elapsed_time,
-                total_tokens=workflow_run.total_tokens,
-                total_steps=workflow_run.total_steps,
-                created_at=int(workflow_run.created_at.timestamp()),
-                finished_at=int(workflow_run.finished_at.timestamp())
+        for stream_response in generator:
+            yield WorkflowAppStreamResponse(
+                workflow_run_id=self._task_state.workflow_run_id,
+                stream_response=stream_response
             )
-        )
 
-        return response
-
-    def _process_stream_response(self) -> Generator:
+    def _process_stream_response(self) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:

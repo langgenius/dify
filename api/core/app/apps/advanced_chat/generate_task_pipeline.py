@@ -28,8 +28,10 @@ from core.app.entities.task_entities import (
     AdvancedChatTaskState,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
+    ErrorStreamResponse,
     MessageEndStreamResponse,
     StreamGenerateRoute,
+    StreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
@@ -94,10 +96,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             usage=LLMUsage.empty_usage()
         )
 
-        if stream:
-            self._stream_generate_routes = self._get_stream_generate_routes()
-        else:
-            self._stream_generate_routes = None
+        self._stream_generate_routes = self._get_stream_generate_routes()
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -108,100 +107,58 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         db.session.refresh(self._user)
         db.session.close()
 
+        generator = self._process_stream_response()
         if self._stream:
-            generator = self._process_stream_response()
-            for stream_response in generator:
-                yield ChatbotAppStreamResponse(
-                    conversation_id=self._conversation.id,
-                    message_id=self._message.id,
-                    created_at=int(self._message.created_at.timestamp()),
-                    stream_response=stream_response
-                )
+            return self._to_stream_response(generator)
         else:
-            return self._process_blocking_response()
+            return self._to_blocking_response(generator)
 
-    def _process_blocking_response(self) -> ChatbotAppBlockingResponse:
+    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) \
+            -> ChatbotAppBlockingResponse:
         """
         Process blocking response.
         :return:
         """
-        for queue_message in self._queue_manager.listen():
-            event = queue_message.event
+        for stream_response in generator:
+            if isinstance(stream_response, ErrorStreamResponse):
+                raise stream_response.err
+            elif isinstance(stream_response, MessageEndStreamResponse):
+                extras = {}
+                if stream_response.metadata:
+                    extras['metadata'] = stream_response.metadata
 
-            if isinstance(event, QueueErrorEvent):
-                err = self._handle_error(event)
-                raise err
-            elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._handle_retriever_resources(event)
-            elif isinstance(event, QueueAnnotationReplyEvent):
-                self._handle_annotation_reply(event)
-            elif isinstance(event, QueueWorkflowStartedEvent):
-                self._handle_workflow_start()
-            elif isinstance(event, QueueNodeStartedEvent):
-                self._handle_node_start(event)
-            elif isinstance(event, QueueNodeSucceededEvent | QueueNodeFailedEvent):
-                self._handle_node_finished(event)
-            elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(event)
-
-                if workflow_run and workflow_run.status == WorkflowRunStatus.FAILED.value:
-                    raise self._handle_error(QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}')))
-
-                # handle output moderation
-                output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
-                if output_moderation_answer:
-                    self._task_state.answer = output_moderation_answer
-
-                # Save message
-                self._save_message()
-
-                return self._to_blocking_response()
-            elif isinstance(event, QueueTextChunkEvent):
-                delta_text = event.text
-                if delta_text is None:
-                    continue
-
-                if not self._is_stream_out_support(
-                        event=event
-                ):
-                    continue
-
-                # handle output moderation chunk
-                should_direct_answer = self._handle_output_moderation_chunk(delta_text)
-                if should_direct_answer:
-                    continue
-
-                self._task_state.answer += delta_text
+                return ChatbotAppBlockingResponse(
+                    task_id=stream_response.task_id,
+                    data=ChatbotAppBlockingResponse.Data(
+                        id=self._message.id,
+                        mode=self._conversation.mode,
+                        conversation_id=self._conversation.id,
+                        message_id=self._message.id,
+                        answer=self._task_state.answer,
+                        created_at=int(self._message.created_at.timestamp()),
+                        **extras
+                    )
+                )
             else:
                 continue
 
         raise Exception('Queue listening stopped unexpectedly.')
 
-    def _to_blocking_response(self) -> ChatbotAppBlockingResponse:
+    def _to_stream_response(self, generator: Generator[StreamResponse, None, None]) \
+            -> Generator[ChatbotAppStreamResponse, None, None]:
         """
-        To blocking response.
+        To stream response.
         :return:
         """
-        extras = {}
-        if self._task_state.metadata:
-            extras['metadata'] = self._task_state.metadata
-
-        response = ChatbotAppBlockingResponse(
-            task_id=self._application_generate_entity.task_id,
-            data=ChatbotAppBlockingResponse.Data(
-                id=self._message.id,
-                mode=self._conversation.mode,
+        for stream_response in generator:
+            yield ChatbotAppStreamResponse(
                 conversation_id=self._conversation.id,
                 message_id=self._message.id,
-                answer=self._task_state.answer,
                 created_at=int(self._message.created_at.timestamp()),
-                **extras
+                stream_response=stream_response
             )
-        )
 
-        return response
-
-    def _process_stream_response(self) -> Generator:
+    def _process_stream_response(self) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:

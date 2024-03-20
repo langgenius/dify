@@ -4,6 +4,7 @@ from typing import cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
+    ErrorStreamResponse,
     PingStreamResponse,
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
@@ -52,7 +53,11 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 'workflow_run_id': chunk.workflow_run_id,
             }
 
-            response_chunk.update(sub_stream_response.to_dict())
+            if isinstance(sub_stream_response, ErrorStreamResponse):
+                data = cls._error_to_stream_response(sub_stream_response.err)
+                response_chunk.update(data)
+            else:
+                response_chunk.update(sub_stream_response.to_dict())
             yield json.dumps(response_chunk)
 
     @classmethod

@@ -30,7 +30,9 @@ from core.app.entities.task_entities import (
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
     EasyUITaskState,
+    ErrorStreamResponse,
     MessageEndStreamResponse,
+    StreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
@@ -107,67 +109,84 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         db.session.refresh(self._message)
         db.session.close()
 
+        generator = self._process_stream_response()
         if self._stream:
-            generator = self._process_stream_response()
-            for stream_response in generator:
-                if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
-                    yield CompletionAppStreamResponse(
-                        message_id=self._message.id,
-                        created_at=int(self._message.created_at.timestamp()),
-                        stream_response=stream_response
-                    )
-                else:
-                    yield ChatbotAppStreamResponse(
-                        conversation_id=self._conversation.id,
-                        message_id=self._message.id,
-                        created_at=int(self._message.created_at.timestamp()),
-                        stream_response=stream_response
-                    )
-
-            #     yield "data: " + json.dumps(response) + "\n\n"
+            return self._to_stream_response(generator)
         else:
-            return self._process_blocking_response()
+            return self._to_blocking_response(generator)
 
-    def _process_blocking_response(self) -> Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]:
+    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> Union[
+        ChatbotAppBlockingResponse,
+        CompletionAppBlockingResponse
+    ]:
         """
         Process blocking response.
         :return:
         """
-        for queue_message in self._queue_manager.listen():
-            event = queue_message.event
+        for stream_response in generator:
+            if isinstance(stream_response, ErrorStreamResponse):
+                raise stream_response.err
+            elif isinstance(stream_response, MessageEndStreamResponse):
+                extras = {
+                    'usage': jsonable_encoder(self._task_state.llm_result.usage)
+                }
+                if self._task_state.metadata:
+                    extras['metadata'] = self._task_state.metadata
 
-            if isinstance(event, QueueErrorEvent):
-                err = self._handle_error(event)
-                raise err
-            elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._handle_retriever_resources(event)
-            elif isinstance(event, QueueAnnotationReplyEvent):
-                annotation = self._handle_annotation_reply(event)
-                if annotation:
-                    self._task_state.llm_result.message.content = annotation.content
-            elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
-                if isinstance(event, QueueMessageEndEvent):
-                    self._task_state.llm_result = event.llm_result
+                if self._conversation.mode == AppMode.COMPLETION.value:
+                    response = CompletionAppBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        data=CompletionAppBlockingResponse.Data(
+                            id=self._message.id,
+                            mode=self._conversation.mode,
+                            message_id=self._message.id,
+                            answer=self._task_state.llm_result.message.content,
+                            created_at=int(self._message.created_at.timestamp()),
+                            **extras
+                        )
+                    )
                 else:
-                    self._handle_stop(event)
+                    response = ChatbotAppBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        data=ChatbotAppBlockingResponse.Data(
+                            id=self._message.id,
+                            mode=self._conversation.mode,
+                            conversation_id=self._conversation.id,
+                            message_id=self._message.id,
+                            answer=self._task_state.llm_result.message.content,
+                            created_at=int(self._message.created_at.timestamp()),
+                            **extras
+                        )
+                    )
 
-                # handle output moderation
-                output_moderation_answer = self._handle_output_moderation_when_task_finished(
-                    self._task_state.llm_result.message.content
-                )
-                if output_moderation_answer:
-                    self._task_state.llm_result.message.content = output_moderation_answer
-
-                # Save message
-                self._save_message()
-
-                return self._to_blocking_response()
+                return response
             else:
                 continue
 
         raise Exception('Queue listening stopped unexpectedly.')
 
-    def _process_stream_response(self) -> Generator:
+    def _to_stream_response(self, generator: Generator[StreamResponse, None, None]) \
+            -> Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]:
+        """
+        To stream response.
+        :return:
+        """
+        for stream_response in generator:
+            if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
+                yield CompletionAppStreamResponse(
+                    message_id=self._message.id,
+                    created_at=int(self._message.created_at.timestamp()),
+                    stream_response=stream_response
+                )
+            else:
+                yield ChatbotAppStreamResponse(
+                    conversation_id=self._conversation.id,
+                    message_id=self._message.id,
+                    created_at=int(self._message.created_at.timestamp()),
+                    stream_response=stream_response
+                )
+
+    def _process_stream_response(self) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
@@ -312,45 +331,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             prompt_tokens,
             completion_tokens
         )
-
-    def _to_blocking_response(self) -> ChatbotAppBlockingResponse:
-        """
-        To blocking response.
-        :return:
-        """
-        self._task_state.metadata['usage'] = jsonable_encoder(self._task_state.llm_result.usage)
-
-        extras = {}
-        if self._task_state.metadata:
-            extras['metadata'] = self._task_state.metadata
-
-        if self._conversation.mode != AppMode.COMPLETION.value:
-            response = CompletionAppBlockingResponse(
-                task_id=self._application_generate_entity.task_id,
-                data=CompletionAppBlockingResponse.Data(
-                    id=self._message.id,
-                    mode=self._conversation.mode,
-                    message_id=self._message.id,
-                    answer=self._task_state.llm_result.message.content,
-                    created_at=int(self._message.created_at.timestamp()),
-                    **extras
-                )
-            )
-        else:
-            response = ChatbotAppBlockingResponse(
-                task_id=self._application_generate_entity.task_id,
-                data=ChatbotAppBlockingResponse.Data(
-                    id=self._message.id,
-                    mode=self._conversation.mode,
-                    conversation_id=self._conversation.id,
-                    message_id=self._message.id,
-                    answer=self._task_state.llm_result.message.content,
-                    created_at=int(self._message.created_at.timestamp()),
-                    **extras
-                )
-            )
-
-        return response
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """

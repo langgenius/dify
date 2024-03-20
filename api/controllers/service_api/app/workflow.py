@@ -36,7 +36,10 @@ class WorkflowRunApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('files', type=list, required=False, location='json')
+        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         args = parser.parse_args()
+
+        streaming = args.get('response_mode') == 'streaming'
 
         try:
             response = AppGenerateService.generate(
@@ -44,7 +47,7 @@ class WorkflowRunApi(Resource):
                 user=end_user,
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
-                streaming=True
+                streaming=streaming
             )
 
             return helper.compact_generate_response(response)
