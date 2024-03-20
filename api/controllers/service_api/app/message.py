@@ -8,6 +8,7 @@ import services
 from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
