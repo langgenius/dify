@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'
@@ -23,7 +23,18 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const isChatMode = useIsChatMode()
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
-  const { inputs, setInputs } = useNodeCrud<LLMNodeType>(id, payload)
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
+  const setInputs = useCallback((newInputs: LLMNodeType) => {
+    if (newInputs.memory && !newInputs.memory.role_prefix) {
+      const newPayload = produce(newInputs, (draft) => {
+        draft.memory!.role_prefix = defaultRolePrefix
+      })
+      doSetInputs(newPayload)
+      return
+    }
+    doSetInputs(newInputs)
+  }, [doSetInputs, defaultRolePrefix])
   const inputRef = useRef(inputs)
   useEffect(() => {
     inputRef.current = inputs
@@ -68,23 +79,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     }
     else {
       draft.prompt_template = promptTemplates.completion_model.prompt
-      if (!draft.memory) {
-        draft.memory = {
-          role_prefix: {
-            user: '',
-            assistant: '',
-          },
-          window: {
-            enabled: false,
-            size: '',
-          },
-        }
-      }
 
-      draft.memory.role_prefix = {
+      setDefaultRolePrefix({
         user: promptTemplates.completion_model.conversation_histories_role.user_prefix,
         assistant: promptTemplates.completion_model.conversation_histories_role.assistant_prefix,
-      }
+      })
     }
   }, [isChatModel])
   useEffect(() => {
@@ -165,7 +164,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleMemoryChange = useCallback((newMemory: Memory) => {
+  const handleMemoryChange = useCallback((newMemory?: Memory) => {
     const newInputs = produce(inputs, (draft) => {
       draft.memory = newMemory
     })

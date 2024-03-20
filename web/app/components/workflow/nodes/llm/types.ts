@@ -5,7 +5,7 @@ export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
   variables: Variable[]
   prompt_template: PromptItem[] | PromptItem
-  memory: Memory
+  memory?: Memory
   context: {
     enabled: boolean
     variable_selector: ValueSelector

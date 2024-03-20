@@ -11,8 +11,8 @@ type Props = {
   instruction: string
   onInstructionChange: (instruction: string) => void
   hideMemorySetting: boolean
-  memory: Memory
-  onMemoryChange: (memory: Memory) => void
+  memory?: Memory
+  onMemoryChange: (memory?: Memory) => void
   readonly?: boolean
 }
 
@@ -46,7 +46,7 @@ const AdvancedSetting: FC<Props> = ({
         <MemoryConfig
           className='mt-4'
           readonly={false}
-          payload={memory}
+          config={{ data: memory }}
           onChange={onMemoryChange}
           canSetRoleName={false}
         />
