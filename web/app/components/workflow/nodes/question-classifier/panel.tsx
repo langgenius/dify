@@ -56,7 +56,6 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
             filterVar={filterVar}
-            width={387}
           />
         </Field>
         <Field

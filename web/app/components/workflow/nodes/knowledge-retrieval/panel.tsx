@@ -57,7 +57,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
             filterVar={filterVar}
-            width={370}
           />
         </Field>
 

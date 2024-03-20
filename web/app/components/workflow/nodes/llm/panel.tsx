@@ -157,7 +157,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             value={inputs.context?.variable_selector || []}
             onChange={handleContextVarChange}
             filterVar={filterVar}
-            width={370}
           />
 
         </Field>

@@ -71,7 +71,6 @@ const VarList: FC<Props> = ({
             onOpen={handleOpen(index)}
             onlyLeafNodeVar={onlyLeafNodeVar}
             filterVar={filterVar}
-            width={350}
           />
           {!readonly && (
             <RemoveButton
