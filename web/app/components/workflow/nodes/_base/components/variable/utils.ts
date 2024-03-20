@@ -161,3 +161,41 @@ export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = 
     .filter(item => item.vars.length > 0)
   return res
 }
+
+export const isSystemVar = (valueSelector: ValueSelector) => {
+  return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
+
+export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMode: boolean): VarType | undefined => {
+  const isSystem = isSystemVar(value)
+  const startNode = availableNodes.find((node: any) => {
+    return node.data.type === BlockEnum.Start
+  })
+  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+
+  const targetVarNodeId = isSystem ? startNode?.id : value[0]
+  const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
+
+  if (!targetVar)
+    return undefined
+
+  let type: VarType = VarType.string
+  let curr: any = targetVar.vars
+  if (isSystem) {
+    return curr.find((v: any) => v.variable === (value as ValueSelector).join('.'))?.type
+  }
+  else {
+    (value as ValueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === value.length - 2
+      curr = curr.find((v: any) => v.variable === key)
+      if (isLast) {
+        type = curr?.type
+      }
+      else {
+        if (curr.type === VarType.object)
+          curr = curr.children
+      }
+    })
+    return type
+  }
+}

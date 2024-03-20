@@ -6,7 +6,7 @@ import cn from 'classnames'
 import { isArray } from 'lodash-es'
 import produce from 'immer'
 import VarReferencePopup from './var-reference-popup'
-import { toNodeOutputVars } from './utils'
+import { isSystemVar, toNodeOutputVars } from './utils'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -45,10 +45,6 @@ const getNodeInfoById = (nodes: any, id: string) => {
   if (!isArray(nodes))
     return
   return nodes.find((node: any) => node.id === id)
-}
-
-const isSystemVar = (valueSelector: ValueSelector) => {
-  return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
 }
 
 const VarReferencePicker: FC<Props> = ({

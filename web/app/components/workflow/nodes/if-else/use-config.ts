@@ -2,11 +2,20 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import type { Var } from '../../types'
 import { VarType } from '../../types'
+import { getVarType } from '../_base/components/variable/utils'
 import { ComparisonOperator, LogicalOperator } from './types'
 import type { Condition, IfElseNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import {
+  useIsChatMode,
+  useWorkflow,
+} from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const isChatMode = useIsChatMode()
+  const availableNodes = getBeforeNodesInSameBranch(id)
+
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
 
   const handleConditionsChange = useCallback((newConditions: Condition[]) => {
@@ -39,11 +48,16 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     return varPayload.type !== VarType.arrayFile
   }, [])
 
+  const varTypesList = (inputs.conditions || []).map((condition) => {
+    return getVarType(condition.variable_selector, availableNodes, isChatMode)
+  })
+
   return {
     inputs,
     handleConditionsChange,
     handleAddCondition,
     handleLogicalOperatorToggle,
+    varTypesList,
     filterVar,
   }
 }
