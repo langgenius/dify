@@ -17,6 +17,7 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetcChatRunHistory, fetchWorkflowRunHistory } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
+import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 
 const RunHistory = () => {
   const { t } = useTranslation()
@@ -62,6 +63,20 @@ const RunHistory = () => {
         )
       }
       <div className='grow p-2 overflow-y-auto'>
+        {
+          !data?.data.length && (
+            <div className='flex justify-center items-center h-full'>
+              <div>
+                <div className='flex justify-center mb-2'>
+                  <ClockPlay className='w-8 h-8 text-gray-300' />
+                </div>
+                <div className='text-center text-[13px] text-gray-400'>
+                  {t('workflow.common.notRunning')}
+                </div>
+              </div>
+            </div>
+          )
+        }
         {
           data?.data.map(item => (
             <div

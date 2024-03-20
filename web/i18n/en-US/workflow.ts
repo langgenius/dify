@@ -29,6 +29,7 @@ const translation = {
     needConnecttip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     workflowProcess: 'Workflow Process',
+    notRunning: 'Not running yet',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
