@@ -22,7 +22,7 @@ const DatasetList: FC<Props> = ({
       })
       onChange(newList)
     }
-  }, [])
+  }, [list, onChange])
 
   const handleChange = useCallback((index: number) => {
     return (value: DataSet) => {

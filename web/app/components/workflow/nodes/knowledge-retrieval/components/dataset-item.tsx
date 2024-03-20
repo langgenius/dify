@@ -35,7 +35,7 @@ const DatasetItem: FC<Props> = ({
   const handleSave = useCallback((newDataset: DataSet) => {
     onChange(newDataset)
     hideSettingsModal()
-  }, [payload])
+  }, [hideSettingsModal, onChange])
 
   return (
     <div className='flex items-center h-10 justify-between rounded-xl px-2 bg-white border border-gray-200  cursor-pointer group/dataset-item'>
