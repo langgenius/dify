@@ -88,7 +88,6 @@ const InputVarList: FC<Props> = ({
               <VarReferencePicker
                 readonly={readOnly}
                 isShowNodeName
-                width={372}
                 nodeId={nodeId}
                 value={varInput?.variable_type === VarKindType.static ? (varInput?.value || '') : (varInput?.value_selector || [])}
                 onChange={handleChange(variable)}

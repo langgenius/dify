@@ -26,9 +26,10 @@ import TypeSelector from '@/app/components/workflow/nodes/_base/components/selec
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
+const TRIGGER_DEFAULT_WIDTH = 227
+
 type Props = {
   className?: string
-  width?: number
   nodeId: string
   isShowNodeName: boolean
   readonly: boolean
@@ -49,7 +50,6 @@ const getNodeInfoById = (nodes: any, id: string) => {
 
 const VarReferencePicker: FC<Props> = ({
   nodeId,
-  width,
   readonly,
   className,
   isShowNodeName,
@@ -62,6 +62,13 @@ const VarReferencePicker: FC<Props> = ({
   filterVar = () => true,
 }) => {
   const { t } = useTranslation()
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
+  useEffect(() => {
+    if (triggerRef.current)
+      setTriggerWidth(triggerRef.current.clientWidth)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerRef.current])
 
   const isChatMode = useIsChatMode()
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
@@ -176,8 +183,19 @@ const VarReferencePicker: FC<Props> = ({
       onChange([], varKindType)
   }, [onChange, varKindType])
 
+  const type = getVarType()
+  // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 5 buff
+  const availableWidth = triggerWidth - 47
+  const [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth] = (() => {
+    const totalTextLength = ((outputVarNode?.title) + (varName) + type).length
+    const maxNodeNameWidth = Math.ceil(outputVarNode?.title.length / totalTextLength * availableWidth)
+    const maxVarNameWidth = Math.ceil(varName.length / totalTextLength * availableWidth)
+    const maxTypeWidth = Math.ceil(type.length / totalTextLength * availableWidth)
+    return [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth]
+  })()
+
   return (
-    <div className={cn(className, !readonly && 'cursor-pointer')}>
+    <div className={cn(className, !readonly && 'cursor-pointer', 'overflow-hidden')}>
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
@@ -188,7 +206,7 @@ const VarReferencePicker: FC<Props> = ({
             return
           !isConstant ? setOpen(!open) : setControlFocus(Date.now())
         }} className='!flex'>
-          <div className={cn((open || isFocus) && 'border border-gray-300', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100')}>
+          <div ref={triggerRef} className={cn((open || isFocus) && 'border border-gray-300', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100')}>
             {isSupportConstantValue
               ? <div onClick={(e) => {
                 e.stopPropagation()
@@ -234,15 +252,21 @@ const VarReferencePicker: FC<Props> = ({
                                 type={outputVarNode?.type || BlockEnum.Start}
                               />
                             </div>
-                            <div className='mx-0.5 text-xs font-medium text-gray-700'>{outputVarNode?.title}</div>
+                            <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
+                              maxWidth: maxNodeNameWidth,
+                            }}>{outputVarNode?.title}</div>
                             <Line3 className='mr-0.5'></Line3>
                           </div>
                         )}
                         <div className='flex items-center text-primary-600'>
                           {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
-                          <div className='ml-0.5 text-xs font-medium'>{varName}</div>
+                          <div className='ml-0.5 text-xs font-medium truncate' title={varName} style={{
+                            maxWidth: maxVarNameWidth,
+                          }}>{varName}</div>
                         </div>
-                        <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize'>{getVarType()}</div>
+                        <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
+                          maxWidth: maxTypeWidth,
+                        }}>{type}</div>
                       </>
                     )
                     : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
@@ -258,13 +282,12 @@ const VarReferencePicker: FC<Props> = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{
           zIndex: 100,
-          minWidth: 227,
         }}>
           {!isConstant && (
             <VarReferencePopup
               vars={outputVars}
               onChange={handleVarReferenceChange}
-              itemWidth={width}
+              itemWidth={triggerWidth}
             />
           )}
         </PortalToFollowElemContent>
