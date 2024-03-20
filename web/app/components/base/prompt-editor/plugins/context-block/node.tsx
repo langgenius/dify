@@ -3,11 +3,12 @@ import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
 import type { Dataset } from './index'
 
-export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[]; onAddContext: () => void }
+export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[]; onAddContext: () => void; canNotAddContext: boolean }
 
 export class ContextBlockNode extends DecoratorNode<JSX.Element> {
   __datasets: Dataset[]
   __onAddContext: () => void
+  __canNotAddContext: boolean
 
   static getType(): string {
     return 'context-block'
@@ -21,11 +22,12 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return true
   }
 
-  constructor(datasets: Dataset[], onAddContext: () => void, key?: NodeKey) {
+  constructor(datasets: Dataset[], onAddContext: () => void, key?: NodeKey, canNotAddContext?: boolean) {
     super(key)
 
     this.__datasets = datasets
     this.__onAddContext = onAddContext
+    this.__canNotAddContext = canNotAddContext || false
   }
 
   createDOM(): HTMLElement {
@@ -44,6 +46,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
         nodeKey={this.getKey()}
         datasets={this.getDatasets()}
         onAddContext={this.getOnAddContext()}
+        canNotAddContext={this.__canNotAddContext}
       />
     )
   }
@@ -61,7 +64,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   static importJSON(serializedNode: SerializedNode): ContextBlockNode {
-    const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext)
+    const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext, serializedNode.canNotAddContext)
 
     return node
   }
@@ -72,6 +75,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
       version: 1,
       datasets: this.getDatasets(),
       onAddContext: this.getOnAddContext(),
+      canNotAddContext: this.__canNotAddContext,
     }
   }
 
@@ -79,8 +83,8 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return '{{#context#}}'
   }
 }
-export function $createContextBlockNode(datasets: Dataset[], onAddContext: () => void): ContextBlockNode {
-  return new ContextBlockNode(datasets, onAddContext)
+export function $createContextBlockNode(datasets: Dataset[], onAddContext: () => void, canNotAddContext?: boolean): ContextBlockNode {
+  return new ContextBlockNode(datasets, onAddContext, undefined, canNotAddContext)
 }
 
 export function $isContextBlockNode(

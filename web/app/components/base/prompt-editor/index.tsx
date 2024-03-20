@@ -49,6 +49,7 @@ export type PromptEditorProps = {
   value?: string
   editable?: boolean
   outToolDisabled?: boolean
+  canNotAddContext?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
   onFocus?: () => void
@@ -88,6 +89,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   value,
   editable = true,
   outToolDisabled = false,
+  canNotAddContext = false,
   onChange,
   onBlur,
   onFocus,
@@ -190,11 +192,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
                 onAddContext={contextBlock.onAddContext}
                 onInsert={contextBlock.onInsert}
                 onDelete={contextBlock.onDelete}
+                canNotAddContext={canNotAddContext}
               />
               <ContextBlockReplacementBlock
                 datasets={contextBlock.datasets}
                 onAddContext={contextBlock.onAddContext}
                 onInsert={contextBlock.onInsert}
+                canNotAddContext={canNotAddContext}
               />
             </>
           )

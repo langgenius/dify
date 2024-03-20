@@ -26,12 +26,14 @@ export type ContextBlockProps = {
   onAddContext: () => void
   onInsert?: () => void
   onDelete?: () => void
+  canNotAddContext?: boolean
 }
 const ContextBlock: FC<ContextBlockProps> = ({
   datasets,
   onAddContext,
   onInsert,
   onDelete,
+  canNotAddContext,
 }) => {
   const [editor] = useLexicalComposerContext()
 
@@ -43,7 +45,7 @@ const ContextBlock: FC<ContextBlockProps> = ({
       editor.registerCommand(
         INSERT_CONTEXT_BLOCK_COMMAND,
         () => {
-          const contextBlockNode = $createContextBlockNode(datasets, onAddContext)
+          const contextBlockNode = $createContextBlockNode(datasets, onAddContext, canNotAddContext)
 
           $insertNodes([contextBlockNode])
 
