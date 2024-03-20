@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
@@ -36,6 +36,8 @@ import type { ModelParameterModalProps } from '@/app/components/header/account-s
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -365,6 +367,19 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode])
 
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore()
+  const [width, setWidth] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const adjustModalWidth = () => {
+    if (ref.current)
+      setWidth(document.body.clientWidth - (ref.current?.clientWidth + 16) - 8)
+  }
+
+  useEffect(() => {
+    adjustModalWidth()
+  }, [])
+
   return (
     <>
       <div className="shrink-0 pt-4 px-6">
@@ -426,7 +441,7 @@ const Debug: FC<IDebug> = ({
       }
       {
         !debugWithMultipleModel && (
-          <div className="flex flex-col grow">
+          <div className="flex flex-col grow" ref={ref}>
             {/* Chat */}
             {mode !== AppType.completion && (
               <div className='grow h-0 overflow-hidden'>
@@ -457,6 +472,16 @@ const Debug: FC<IDebug> = ({
                   />
                 )}
               </div>
+            )}
+            {showPromptLogModal && (
+              <PromptLogModal
+                width={width}
+                currentLogItem={currentLogItem}
+                onCancel={() => {
+                  setCurrentLogItem()
+                  setShowPromptLogModal(false)
+                }}
+              />
             )}
             {isShowCannotQueryDataset && (
               <CannotQueryDataset
