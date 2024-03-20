@@ -11,7 +11,7 @@ import {
 import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
-  useStore as useRunHistoryStore,
+  useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -25,7 +25,7 @@ const RunHistory = () => {
   const { formatTimeFromNow } = useWorkflow()
   const { handleBackupDraft } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
-  const workflowRunId = useRunHistoryStore(state => state.workflowRunId)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
 
   const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetcChatRunHistory)
@@ -45,8 +45,7 @@ const RunHistory = () => {
           onClick={() => {
             workflowStore.setState({
               showRunHistory: false,
-              workflowRunId: '',
-              currentConversationID: '',
+              historyWorkflowData: undefined,
             })
             setCurrentLogItem()
             setShowMessageLogModal(false)
@@ -69,14 +68,11 @@ const RunHistory = () => {
               key={item.id}
               className={cn(
                 'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
-                item.id === workflowRunId && 'bg-primary-50',
+                item.id === historyWorkflowData?.id && 'bg-primary-50',
               )}
               onClick={() => {
                 workflowStore.setState({
-                  currentSequenceNumber: item.sequence_number,
-                  workflowRunId: item.id,
-                  currentConversationID: item.conversation_id,
-                  runningStatus: item.status as WorkflowRunningStatus,
+                  historyWorkflowData: item,
                 })
                 handleBackupDraft()
               }}
@@ -95,7 +91,7 @@ const RunHistory = () => {
                 <div
                   className={cn(
                     'flex items-center text-[13px] font-medium leading-[18px]',
-                    item.id === workflowRunId && 'text-primary-600',
+                    item.id === historyWorkflowData?.id && 'text-primary-600',
                   )}
                 >
                   {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}

@@ -20,8 +20,14 @@ import {
   getLayoutByDagre,
 } from '../utils'
 import type { Node } from '../types'
-import { BlockEnum } from '../types'
-import { useWorkflowStore } from '../store'
+import {
+  BlockEnum,
+  WorkflowRunningStatus,
+} from '../types'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import {
   AUTO_LAYOUT_OFFSET,
   START_INITIAL_POSITION,
@@ -345,4 +351,39 @@ export const useWorkflowInit = () => {
   }
 
   return data
+}
+
+export const useWorkflowReadOnly = () => {
+  const workflowStore = useWorkflowStore()
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+
+  const getWorkflowReadOnly = useCallback(() => {
+    return workflowStore.getState().workflowRunningData?.result.status === WorkflowRunningStatus.Running
+  }, [workflowStore])
+
+  return {
+    workflowReadOnly: workflowRunningData?.result.status === WorkflowRunningStatus.Running,
+    getWorkflowReadOnly,
+  }
+}
+export const useNodesReadOnly = () => {
+  const workflowStore = useWorkflowStore()
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const isRestoring = useStore(s => s.isRestoring)
+
+  const getNodesReadOnly = useCallback(() => {
+    const {
+      workflowRunningData,
+      historyWorkflowData,
+      isRestoring,
+    } = workflowStore.getState()
+
+    return workflowRunningData || historyWorkflowData || isRestoring
+  }, [workflowStore])
+
+  return {
+    nodesReadOnly: workflowRunningData || historyWorkflowData || isRestoring,
+    getNodesReadOnly,
+  }
 }

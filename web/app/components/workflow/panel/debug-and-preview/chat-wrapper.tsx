@@ -33,7 +33,6 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const inputs = useStore(s => s.inputs)
-  const workflowRunId = useStore(s => s.workflowRunId)
   const { handleStopRun } = useWorkflowRun()
   const features = featuresStore!.getState().features
 
@@ -84,8 +83,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
 
   const doStop = useCallback(() => {
     handleStop()
-    handleStopRun()
-  }, [handleStop, handleStopRun])
+    handleStopRun(workflowStore.getState().workflowRunningData?.task_id || '')
+  }, [handleStop, handleStopRun, workflowStore])
 
   useImperativeHandle(ref, () => {
     return {
@@ -96,7 +95,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
   return (
     <Chat
       config={config as any}
-      chatList={chatList.map(item => ({ ...item, workflow_run_id: workflowRunId }))}
+      chatList={chatList}
       isResponding={isResponding}
       chatContainerclassName='px-4'
       chatContainerInnerClassName='pt-6'

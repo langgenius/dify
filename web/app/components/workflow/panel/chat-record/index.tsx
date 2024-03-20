@@ -17,7 +17,8 @@ const ChatRecord = () => {
   const [fetched, setFetched] = useState(false)
   const [chatList, setChatList] = useState([])
   const appDetail = useAppStore(s => s.appDetail)
-  const currentConversationID = useStore(s => s.currentConversationID)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const currentConversationID = historyWorkflowData?.conversation_id
 
   const chatMessageList = useMemo(() => {
     const res: ChatItem[] = []

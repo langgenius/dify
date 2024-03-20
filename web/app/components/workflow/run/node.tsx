@@ -56,7 +56,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true }) => {
           <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} />
           <div className='grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate' title={nodeInfo.title}>{nodeInfo.title}</div>
           {nodeInfo.status !== 'running' && (
-            <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time)} · ${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens`}</div>
+            <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time || 0)} · ${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens`}</div>
           )}
           {nodeInfo.status === 'succeeded' && (
             <CheckCircle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#12B76A]' />

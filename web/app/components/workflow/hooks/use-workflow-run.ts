@@ -71,10 +71,23 @@ export const useWorkflowRun = () => {
   }, [store, reactflow, workflowStore])
 
   const handleRunSetting = useCallback((shouldClear?: boolean) => {
-    workflowStore.setState({ runningStatus: shouldClear ? undefined : WorkflowRunningStatus.Waiting })
-    workflowStore.setState({ taskId: '' })
-    workflowStore.setState({ currentSequenceNumber: 0 })
-    workflowStore.setState({ workflowRunId: '' })
+    if (shouldClear) {
+      workflowStore.setState({
+        workflowRunningData: undefined,
+        historyWorkflowData: undefined,
+      })
+    }
+    else {
+      workflowStore.setState({
+        workflowRunningData: {
+          result: {
+            status: shouldClear ? '' : WorkflowRunningStatus.Waiting,
+          },
+          tracing: [],
+        },
+      })
+    }
+
     const {
       setNodes,
       getNodes,
@@ -141,11 +154,19 @@ export const useWorkflowRun = () => {
       },
       {
         onWorkflowStarted: (params) => {
-          const { task_id, workflow_run_id, data } = params
-          workflowStore.setState({ runningStatus: WorkflowRunningStatus.Running })
-          workflowStore.setState({ taskId: task_id })
-          workflowStore.setState({ currentSequenceNumber: data.sequence_number })
-          workflowStore.setState({ workflowRunId: workflow_run_id })
+          const { task_id, data } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.task_id = task_id
+            draft.result = {
+              ...draft?.result,
+              ...data,
+            }
+          }))
+
           const newNodes = produce(getNodes(), (draft) => {
             draft.forEach((node) => {
               node.data._runningStatus = NodeRunningStatus.Waiting
@@ -158,13 +179,31 @@ export const useWorkflowRun = () => {
         },
         onWorkflowFinished: (params) => {
           const { data } = params
-          workflowStore.setState({ runningStatus: data.status as WorkflowRunningStatus })
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.result = {
+              ...draft.result,
+              ...data,
+            }
+          }))
 
           if (onWorkflowFinished)
             onWorkflowFinished(params)
         },
         onNodeStarted: (params) => {
           const { data } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.tracing!.push(data as any)
+          }))
+
           const nodes = getNodes()
           const {
             setViewport,
@@ -196,6 +235,17 @@ export const useWorkflowRun = () => {
         },
         onNodeFinished: (params) => {
           const { data } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
+
+            if (currentIndex > -1 && draft.tracing)
+              draft.tracing[currentIndex] = data as any
+          }))
+
           const newNodes = produce(getNodes(), (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 
@@ -211,12 +261,11 @@ export const useWorkflowRun = () => {
     )
   }, [store, reactflow, workflowStore])
 
-  const handleStopRun = useCallback(() => {
+  const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id
-    const taskId = workflowStore.getState().taskId
 
     stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
-  }, [workflowStore])
+  }, [])
 
   const handleRestoreFromPublishedWorkflow = useCallback(async () => {
     const appDetail = useAppStore.getState().appDetail
