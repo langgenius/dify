@@ -202,6 +202,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         elapsed_time: float
         total_tokens: int
         total_steps: int
+        created_by: Optional[dict] = None
         created_at: int
         finished_at: int
         files: Optional[list[dict]] = []
@@ -222,6 +223,7 @@ class NodeStartStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
+        title: str
         index: int
         predecessor_node_id: Optional[str] = None
         inputs: Optional[dict] = None
@@ -243,6 +245,7 @@ class NodeFinishStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
+        title: str
         index: int
         predecessor_node_id: Optional[str] = None
         inputs: Optional[dict] = None

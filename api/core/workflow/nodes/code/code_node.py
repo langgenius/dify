@@ -55,7 +55,7 @@ class CodeNode(BaseNode):
                     "code": JAVASCRIPT_DEFAULT_CODE,
                     "outputs": {
                         "result": {
-                            "type": "number",
+                            "type": "string",
                             "children": None
                         }
                     }
@@ -79,7 +79,7 @@ class CodeNode(BaseNode):
                 "code": PYTHON_DEFAULT_CODE,
                 "outputs": {
                     "result": {
-                        "type": "number",
+                        "type": "string",
                         "children": None
                     }
                 }

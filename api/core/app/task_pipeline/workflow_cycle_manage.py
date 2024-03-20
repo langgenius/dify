@@ -284,6 +284,23 @@ class WorkflowCycleManage:
         :param workflow_run: workflow run
         :return:
         """
+        created_by = None
+        if workflow_run.created_by_role == CreatedByRole.ACCOUNT.value:
+            created_by_account = workflow_run.created_by_account
+            if created_by_account:
+                created_by = {
+                    "id": created_by_account.id,
+                    "name": created_by_account.name,
+                    "email": created_by_account.email,
+                }
+        else:
+            created_by_end_user = workflow_run.created_by_end_user
+            if created_by_end_user:
+                created_by = {
+                    "id": created_by_end_user.id,
+                    "user": created_by_end_user.session_id,
+                }
+
         return WorkflowFinishStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -297,6 +314,7 @@ class WorkflowCycleManage:
                 elapsed_time=workflow_run.elapsed_time,
                 total_tokens=workflow_run.total_tokens,
                 total_steps=workflow_run.total_steps,
+                created_by=created_by,
                 created_at=int(workflow_run.created_at.timestamp()),
                 finished_at=int(workflow_run.finished_at.timestamp()),
                 files=self._fetch_files_from_node_outputs(workflow_run.outputs_dict)
@@ -318,6 +336,7 @@ class WorkflowCycleManage:
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
+                title=workflow_node_execution.title,
                 index=workflow_node_execution.index,
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
                 inputs=workflow_node_execution.inputs_dict,
@@ -341,6 +360,7 @@ class WorkflowCycleManage:
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
                 index=workflow_node_execution.index,
+                title=workflow_node_execution.title,
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
                 inputs=workflow_node_execution.inputs_dict,
                 process_data=workflow_node_execution.process_data_dict,
