@@ -31,7 +31,10 @@ export const useWorkflowRun = () => {
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
   const nodesExtraData = useNodesExtraData()
-  const { getValidTreeNodes } = useWorkflow()
+  const {
+    getValidTreeNodes,
+    renderTreeFromRecord,
+  } = useWorkflow()
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -134,12 +137,16 @@ export const useWorkflowRun = () => {
       onNodeFinished,
       ...restCallback
     } = callback || {}
+    workflowStore.setState({ historyWorkflowData: undefined })
+    const { backupDraft } = workflowStore.getState()
     const {
-      getNodes,
       setNodes,
-      edges,
       setEdges,
     } = store.getState()
+    const {
+      nodes,
+      edges,
+    } = backupDraft!
     const appDetail = useAppStore.getState().appDetail
     const workflowContainer = document.getElementById('workflow-container')
 
@@ -176,7 +183,7 @@ export const useWorkflowRun = () => {
             }
           }))
 
-          const newNodes = produce(getNodes(), (draft) => {
+          const newNodes = produce(nodes, (draft) => {
             draft.forEach((node) => {
               node.data._runningStatus = NodeRunningStatus.Waiting
             })
@@ -216,7 +223,6 @@ export const useWorkflowRun = () => {
             } as any)
           }))
 
-          const nodes = getNodes()
           const {
             setViewport,
           } = reactflow
@@ -238,7 +244,7 @@ export const useWorkflowRun = () => {
             const edge = draft.find(edge => edge.target === data.node_id)
 
             if (edge)
-              edge.data._runned = true
+              edge.data = { ...edge.data, _runned: true } as any
           })
           setEdges(newEdges)
 
@@ -258,10 +264,10 @@ export const useWorkflowRun = () => {
               draft.tracing[currentIndex] = data as any
           }))
 
-          const newNodes = produce(getNodes(), (draft) => {
+          const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 
-            currentNode.data._runningStatus = data.status
+            currentNode.data._runningStatus = data.status as any
           })
           setNodes(newNodes)
 
@@ -284,23 +290,15 @@ export const useWorkflowRun = () => {
     const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
 
     if (publishedWorkflow) {
-      const {
-        setNodes,
-        setEdges,
-      } = store.getState()
-      const { setViewport } = reactflow
       const nodes = publishedWorkflow.graph.nodes
       const edges = publishedWorkflow.graph.edges
       const viewport = publishedWorkflow.graph.viewport
 
-      setNodes(nodes)
-      setEdges(edges)
-      if (viewport)
-        setViewport(viewport)
+      renderTreeFromRecord(nodes, edges, viewport)
       featuresStore?.setState({ features: publishedWorkflow.features })
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
     }
-  }, [store, reactflow, featuresStore, workflowStore])
+  }, [featuresStore, workflowStore, renderTreeFromRecord])
 
   const handleCheckBeforePublish = useCallback(() => {
     const {
