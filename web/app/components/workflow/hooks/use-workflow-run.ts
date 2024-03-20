@@ -204,7 +204,7 @@ export const useWorkflowRun = () => {
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.tracing!.push({
               ...data,
-              status: 'running',
+              status: NodeRunningStatus.Running,
             } as any)
           }))
 
