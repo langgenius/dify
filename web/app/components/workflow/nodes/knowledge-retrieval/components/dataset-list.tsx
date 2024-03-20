@@ -7,11 +7,13 @@ import type { DataSet } from '@/models/datasets'
 type Props = {
   list: DataSet[]
   onChange: (list: DataSet[]) => void
+  readonly?: boolean
 }
 
 const DatasetList: FC<Props> = ({
   list,
   onChange,
+  readonly,
 }) => {
   const handleRemove = useCallback((index: number) => {
     return () => {
@@ -40,6 +42,7 @@ const DatasetList: FC<Props> = ({
               payload={item}
               onRemove={handleRemove(index)}
               onChange={handleChange(index)}
+              readonly={readonly}
             />
           )
         })
