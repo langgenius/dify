@@ -3,6 +3,7 @@ from typing import Optional, Union
 from urllib.parse import urlparse
 
 import tiktoken
+
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import (
     PromptMessage,
@@ -10,7 +11,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
 )
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
-from core.model_runtime.entities.llm_entities import LLMResult
+
 
 class YiLargeLanguageModel(OpenAILargeLanguageModel):
     def _invoke(self, model: str, credentials: dict,
