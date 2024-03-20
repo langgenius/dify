@@ -99,7 +99,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleMemoryChange = useCallback((memory: Memory) => {
+  const handleMemoryChange = useCallback((memory?: Memory) => {
     const newInputs = produce(inputs, (draft) => {
       draft.memory = memory
     })

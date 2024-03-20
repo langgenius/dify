@@ -180,11 +180,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <div className='text-xs text-gray-300'>Memory examples(Designing)</div>
         )} */}
         {/* Memory */}
-        {isChatModel && (
+        {isChatMode && (
           <>
             <MemoryConfig
               readonly={readOnly}
-              payload={inputs.memory}
+              config={{ data: inputs.memory }}
               onChange={handleMemoryChange}
               canSetRoleName={isCompletionModel}
             />

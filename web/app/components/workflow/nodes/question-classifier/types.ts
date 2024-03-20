@@ -10,5 +10,5 @@ export type QuestionClassifierNodeType = CommonNodeType & {
   model: ModelConfig
   classes: Topic[]
   instruction: string
-  memory: Memory
+  memory?: Memory
 }

@@ -45,31 +45,38 @@ const RoleItem: FC<RoleItemProps> = ({
 type Props = {
   className?: string
   readonly: boolean
-  payload: Memory
-  onChange: (memory: Memory) => void
+  config: { data?: Memory }
+  onChange: (memory?: Memory) => void
   canSetRoleName?: boolean
 }
+
+const MEMORY_DEFAULT: Memory = { window: { enabled: false, size: WINDOW_SIZE_DEFAULT } }
 
 const MemoryConfig: FC<Props> = ({
   className,
   readonly,
-  payload = { window: { enabled: false, size: WINDOW_SIZE_DEFAULT } },
+  config = { data: MEMORY_DEFAULT },
   onChange,
   canSetRoleName = false,
 }) => {
   const { t } = useTranslation()
+  const payload = config.data
+  const handleMemoryEnabledChange = useCallback((enabled: boolean) => {
+    onChange(enabled ? MEMORY_DEFAULT : undefined)
+  }, [onChange])
   const handleWindowEnabledChange = useCallback((enabled: boolean) => {
-    const newPayload = produce(payload, (draft) => {
+    const newPayload = produce(config.data || MEMORY_DEFAULT, (draft) => {
       if (!draft.window)
         draft.window = { enabled: false, size: WINDOW_SIZE_DEFAULT }
 
       draft.window.enabled = enabled
     })
+
     onChange(newPayload)
-  }, [payload, onChange])
+  }, [config, onChange])
 
   const handleWindowSizeChange = useCallback((size: number | string) => {
-    const newPayload = produce(payload, (draft) => {
+    const newPayload = produce(payload || MEMORY_DEFAULT, (draft) => {
       if (!draft.window)
         draft.window = { enabled: true, size: WINDOW_SIZE_DEFAULT }
       let limitedSize: null | string | number = size
@@ -94,13 +101,17 @@ const MemoryConfig: FC<Props> = ({
   }, [payload, onChange])
 
   const handleBlur = useCallback(() => {
+    const payload = config.data
+    if (!payload)
+      return
+
     if (payload.window.size === '' || payload.window.size === null)
       handleWindowSizeChange(WINDOW_SIZE_DEFAULT)
-  }, [handleWindowSizeChange, payload.window?.size])
+  }, [handleWindowSizeChange, config])
 
   const handleRolePrefixChange = useCallback((role: MemoryRole) => {
     return (value: string) => {
-      const newPayload = produce(payload, (draft) => {
+      const newPayload = produce(config.data || MEMORY_DEFAULT, (draft) => {
         if (!draft.role_prefix) {
           draft.role_prefix = {
             user: '',
@@ -111,69 +122,79 @@ const MemoryConfig: FC<Props> = ({
       })
       onChange(newPayload)
     }
-  }, [payload, onChange])
+  }, [config, onChange])
   return (
     <div className={cn(className)}>
       <Field
         title={t(`${i18nPrefix}.memory`)}
         tooltip={t(`${i18nPrefix}.memoryTip`)!}
+        operations={
+          <Switch
+            defaultValue={!!payload}
+            onChange={handleMemoryEnabledChange}
+            size='md'
+            disabled={readonly}
+          />
+        }
       >
-        <>
-          {/* window size */}
-          <div className='flex justify-between'>
-            <div className='flex items-center h-8 space-x-1'>
-              <Switch
-                defaultValue={payload.window?.enabled}
-                onChange={handleWindowEnabledChange}
-                size='md'
-                disabled={readonly}
-              />
-              <div className='leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.windowSize`)}</div>
-            </div>
-            <div className='flex items-center h-8 space-x-2'>
-              <Slider
-                className='w-[144px]'
-                value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-                min={WINDOW_SIZE_MIN}
-                max={WINDOW_SIZE_MAX}
-                step={1}
-                onChange={handleWindowSizeChange}
-                disabled={readonly}
-              />
-              <input
-                value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-                className='shrink-0 block ml-4 pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
-                type='number'
-                min={WINDOW_SIZE_MIN}
-                max={WINDOW_SIZE_MAX}
-                step={1}
-                onChange={e => handleWindowSizeChange(e.target.value)}
-                onBlur={handleBlur}
-                disabled={readonly}
-              />
-            </div>
-          </div>
-          {canSetRoleName && (
-            <div className='mt-4'>
-              <div className='leading-6 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
-              <div className='mt-1 space-y-2'>
-                <RoleItem
-                  readonly={readonly}
-                  title={t(`${i18nPrefix}.user`)}
-                  value={payload.role_prefix?.user || ''}
-                  onChange={handleRolePrefixChange(MemoryRole.user)}
+        {payload && (
+          <>
+            {/* window size */}
+            <div className='flex justify-between'>
+              <div className='flex items-center h-8 space-x-1'>
+                <Switch
+                  defaultValue={payload?.window?.enabled}
+                  onChange={handleWindowEnabledChange}
+                  size='md'
+                  disabled={readonly}
                 />
-                <RoleItem
-                  readonly={readonly}
-                  title={t(`${i18nPrefix}.assistant`)}
-                  value={payload.role_prefix?.assistant || ''}
-                  onChange={handleRolePrefixChange(MemoryRole.assistant)}
+                <div className='leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.windowSize`)}</div>
+              </div>
+              <div className='flex items-center h-8 space-x-2'>
+                <Slider
+                  className='w-[144px]'
+                  value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
+                  min={WINDOW_SIZE_MIN}
+                  max={WINDOW_SIZE_MAX}
+                  step={1}
+                  onChange={handleWindowSizeChange}
+                  disabled={readonly || !payload.window?.enabled}
+                />
+                <input
+                  value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
+                  className='shrink-0 block ml-4 pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+                  type='number'
+                  min={WINDOW_SIZE_MIN}
+                  max={WINDOW_SIZE_MAX}
+                  step={1}
+                  onChange={e => handleWindowSizeChange(e.target.value)}
+                  onBlur={handleBlur}
+                  disabled={readonly}
                 />
               </div>
             </div>
+            {canSetRoleName && (
+              <div className='mt-4'>
+                <div className='leading-6 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
+                <div className='mt-1 space-y-2'>
+                  <RoleItem
+                    readonly={readonly}
+                    title={t(`${i18nPrefix}.user`)}
+                    value={payload.role_prefix?.user || ''}
+                    onChange={handleRolePrefixChange(MemoryRole.user)}
+                  />
+                  <RoleItem
+                    readonly={readonly}
+                    title={t(`${i18nPrefix}.assistant`)}
+                    value={payload.role_prefix?.assistant || ''}
+                    onChange={handleRolePrefixChange(MemoryRole.assistant)}
+                  />
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-          )}
-        </>
       </Field>
     </div>
   )
