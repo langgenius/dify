@@ -52,7 +52,7 @@ const WorkflowPreview = () => {
               elapsed_time={workflowRunningData?.result?.elapsed_time}
               total_tokens={workflowRunningData?.result?.total_tokens}
               created_at={workflowRunningData?.result?.created_at}
-              created_by={''}
+              created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
             />
           )}

@@ -29,6 +29,7 @@ const translation = {
     needConnecttip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     workflowProcess: '工作流',
+    notRunning: '尚未运行',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
