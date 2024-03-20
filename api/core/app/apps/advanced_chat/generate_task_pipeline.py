@@ -172,6 +172,14 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 break
             elif isinstance(event, QueueWorkflowStartedEvent):
                 workflow_run = self._handle_workflow_start()
+
+                self._message = db.session.query(Message).filter(Message.id == self._message.id).first()
+                self._message.workflow_run_id = workflow_run.id
+
+                db.session.commit()
+                db.session.refresh(self._message)
+                db.session.close()
+
                 yield self._workflow_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run
@@ -276,7 +284,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         self._message.answer = self._task_state.answer
         self._message.provider_response_latency = time.perf_counter() - self._start_at
-        self._message.workflow_run_id = self._task_state.workflow_run_id
 
         if self._task_state.metadata and self._task_state.metadata.get('usage'):
             usage = LLMUsage(**self._task_state.metadata['usage'])

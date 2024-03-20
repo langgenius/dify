@@ -17,12 +17,7 @@ class VariableAssignerNode(BaseNode):
         outputs = {}
         for variable in node_data.variables:
             value = variable_pool.get_variable_value(variable)
-            if value:
-                variable_pool.append_variable(
-                    node_id=self.node_id,
-                    variable_key_list=variable,
-                    value=value
-                )
+            if value is not None:
                 outputs = {
                     "output": value
                 }
