@@ -201,6 +201,9 @@ class ChatConversationApi(Resource):
                 .having(func.count(Message.id) >= args['message_count_gte'])
             )
 
+        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+            query = query.where(Conversation.override_model_configs.is_(None))
+
         query = query.order_by(Conversation.created_at.desc())
 
         conversations = db.paginate(
