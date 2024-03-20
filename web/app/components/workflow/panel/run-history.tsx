@@ -9,7 +9,7 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { AlertCircle, AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
   useStore,
   useWorkflowStore,
@@ -78,8 +78,13 @@ const RunHistory = () => {
               }}
             >
               {
+                !isChatMode && item.status === WorkflowRunningStatus.Stopped && (
+                  <AlertTriangle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
+                )
+              }
+              {
                 !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                  <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
+                  <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
                 )
               }
               {

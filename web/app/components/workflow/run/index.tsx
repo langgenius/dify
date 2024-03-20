@@ -106,7 +106,7 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detal */}
-      <div className={cn('grow bg-white h-0 overflow-y-auto', currentTab === 'TRACING' && '!bg-gray-50')}>
+      <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab === 'TRACING' && '!bg-gray-50')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-white'>
             <Loading />

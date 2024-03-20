@@ -202,7 +202,10 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-            draft.tracing!.push(data as any)
+            draft.tracing!.push({
+              ...data,
+              status: 'running',
+            } as any)
           }))
 
           const nodes = getNodes()
