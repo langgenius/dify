@@ -245,6 +245,7 @@ class NodeFinishStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
+        title: str
         index: int
         predecessor_node_id: Optional[str] = None
         inputs: Optional[dict] = None

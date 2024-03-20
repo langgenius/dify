@@ -360,6 +360,7 @@ class WorkflowCycleManage:
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
                 index=workflow_node_execution.index,
+                title=workflow_node_execution.title,
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
                 inputs=workflow_node_execution.inputs_dict,
                 process_data=workflow_node_execution.process_data_dict,
