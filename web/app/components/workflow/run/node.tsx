@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import cn from 'classnames'
 import BlockIcon from '../block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -13,12 +13,11 @@ import type { NodeTracing } from '@/types/workflow'
 
 type Props = {
   nodeInfo: NodeTracing
-  collapsed?: boolean
   className?: string
 }
 
-const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true, className }) => {
-  const [collapseState, setCollapseState] = useState<boolean>(collapsed)
+const NodePanel: FC<Props> = ({ nodeInfo, className }) => {
+  const [collapseState, setCollapseState] = useState<boolean>(true)
   const { t } = useTranslation()
 
   const getTime = (time: number) => {
@@ -37,6 +36,10 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true, className }) => {
     if (tokens >= 1000000)
       return `${parseFloat((tokens / 1000000).toFixed(3))}M`
   }
+
+  useEffect(() => {
+    setCollapseState(!nodeInfo.expand)
+  }, [nodeInfo.expand])
 
   return (
     <div className={`px-4 py-1 ${className}`}>

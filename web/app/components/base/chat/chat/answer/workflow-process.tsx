@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -14,13 +15,15 @@ import NodePanel from '@/app/components/workflow/run/node'
 type WorkflowProcessProps = {
   data: WorkflowProcess
   grayBg?: boolean
+  expand?: boolean
 }
 const WorkflowProcessItem = ({
   data,
   grayBg,
+  expand = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
-  const [collapse, setCollapse] = useState(true)
+  const [collapse, setCollapse] = useState(!expand)
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
@@ -36,12 +39,16 @@ const WorkflowProcessItem = ({
       return 'linear-gradient(180deg, #FEE4E2 0%, #FEF3F2 100%)'
   }, [running, succeeded, failed, collapse])
 
+  useEffect(() => {
+    setCollapse(!expand)
+  }, [expand])
+
   return (
     <div
       className={`
         mb-2 px-3 w-full rounded-xl border-[0.5px] border-black/[0.08]
         ${collapse ? 'py-[7px]' : 'py-2'}
-        ${collapse && (grayBg ? 'bg-white' : 'bg-gray-50')}
+        ${collapse && (!grayBg ? 'bg-white' : 'bg-gray-50')}
       `}
       style={{
         background,

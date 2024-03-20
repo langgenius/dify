@@ -27,9 +27,14 @@ import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 const MAX_DEPTH = 3
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+export interface WorkflowProcessData extends WorkflowProcess {
+  expand: boolean
+}
+
 export type IGenerationItemProps = {
   isWorkflow?: boolean
-  workflowProcessData?: WorkflowProcess
+  workflowProcessData?: WorkflowProcessData
   className?: string
   isError: boolean
   onRetry: () => void
@@ -285,7 +290,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
                 {workflowProcessData && (
-                  <WorkflowProcessItem data={workflowProcessData} />
+                  <WorkflowProcessItem grayBg data={workflowProcessData} expand={workflowProcessData.expand} />
                 )}
                 {isError
                   ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
