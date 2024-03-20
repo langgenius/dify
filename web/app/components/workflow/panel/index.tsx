@@ -13,30 +13,37 @@ import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
 import Record from './record'
 import InputsPanel from './inputs-panel'
+import WorkflowPreview from './workflow-preview'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 
 const Panel: FC = () => {
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
-  const runningStatus = useStore(s => s.runningStatus)
-  const workflowRunId = useStore(s => s.workflowRunId)
   const selectedNode = nodes.find(node => node.data.selected)
   const showRunHistory = useStore(state => state.showRunHistory)
   const showInputsPanel = useStore(s => s.showInputsPanel)
-  const currentConversationID = useStore(s => s.currentConversationID)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const {
     showWorkflowInfoPanel,
     showNodePanel,
     showDebugAndPreviewPanel,
+    showWorkflowPreview,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: !selectedNode && !runningStatus,
-      showNodePanel: !!selectedNode && !runningStatus,
-      showDebugAndPreviewPanel: isChatMode && runningStatus && !currentConversationID,
+      showWorkflowInfoPanel: !selectedNode && !workflowRunningData && !historyWorkflowData,
+      showNodePanel: !!selectedNode && !workflowRunningData && !historyWorkflowData,
+      showDebugAndPreviewPanel: isChatMode && workflowRunningData && !historyWorkflowData,
+      showWorkflowPreview: !isChatMode && workflowRunningData && !historyWorkflowData,
     }
-  }, [selectedNode, isChatMode, runningStatus, currentConversationID])
+  }, [
+    selectedNode,
+    isChatMode,
+    workflowRunningData,
+    historyWorkflowData,
+  ])
 
   return (
     <div
@@ -45,11 +52,6 @@ const Panel: FC = () => {
         ${(showRunHistory || showDebugAndPreviewPanel) && '!pr-0'}
       `}
     >
-      {
-        showInputsPanel && (
-          <InputsPanel />
-        )
-      }
       {
         showMessageLogModal && (
           <MessageLogModal
@@ -64,13 +66,23 @@ const Panel: FC = () => {
         )
       }
       {
-        runningStatus && !isChatMode && workflowRunId && (
+        historyWorkflowData && (
           <Record />
         )
       }
       {
-        runningStatus && isChatMode && showRunHistory && currentConversationID && (
-          <Record />
+        showDebugAndPreviewPanel && (
+          <DebugAndPreview />
+        )
+      }
+      {
+        showInputsPanel && (
+          <InputsPanel />
+        )
+      }
+      {
+        showWorkflowPreview && (
+          <WorkflowPreview />
         )
       }
       {
@@ -81,11 +93,6 @@ const Panel: FC = () => {
       {
         showWorkflowInfoPanel && (
           <WorkflowInfo />
-        )
-      }
-      {
-        showDebugAndPreviewPanel && (
-          <DebugAndPreview />
         )
       }
       {

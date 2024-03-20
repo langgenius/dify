@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import VarList from './components/var-list'
 import useConfig from './use-config'
 import type { StartNodeType } from './types'
+// import { useStore } from '@/app/components/workflow/store'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -18,7 +19,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
+  const readOnly = false // useStore(s => s.readOnly)
   const {
     isChatMode,
     inputs,

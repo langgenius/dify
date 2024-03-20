@@ -231,6 +231,8 @@ const translation = {
       elseDescription: 'Used to define the logic that should be executed when the if condition is not met.',
       and: 'and',
       or: 'or',
+      operator: 'Operator',
+      notSetVariable: 'Please set variable first',
       comparisonOperator: {
         'contains': 'contains',
         'not contains': 'not contains',

@@ -18,14 +18,15 @@ import type {
   Edge,
   Node,
 } from './types'
-import { WorkflowRunningStatus } from './types'
 import { WorkflowContextProvider } from './context'
 import {
   useEdgesInteractions,
   useNodesInteractions,
+  useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflow,
   useWorkflowInit,
+  useWorkflowReadOnly,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -62,9 +63,10 @@ const Workflow: FC<WorkflowProps> = memo(({
   viewport,
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
-  const runningStatus = useStore(s => s.runningStatus)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { workflowReadOnly } = useWorkflowReadOnly()
+  const { nodesReadOnly } = useNodesReadOnly()
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -106,7 +108,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       id='workflow-container'
       className={`
         relative w-full min-w-[960px] h-full bg-[#F0F2F7]
-        ${runningStatus === WorkflowRunningStatus.Running && 'workflow-panel-animation'}
+        ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
     >
@@ -138,14 +140,14 @@ const Workflow: FC<WorkflowProps> = memo(({
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable={!runningStatus}
-        nodesConnectable={!runningStatus}
-        nodesFocusable={!runningStatus}
-        edgesFocusable={!runningStatus}
-        panOnDrag={runningStatus !== WorkflowRunningStatus.Running}
-        zoomOnPinch={runningStatus !== WorkflowRunningStatus.Running}
-        zoomOnScroll={runningStatus !== WorkflowRunningStatus.Running}
-        zoomOnDoubleClick={runningStatus !== WorkflowRunningStatus.Running}
+        nodesDraggable={!nodesReadOnly}
+        nodesConnectable={!nodesReadOnly}
+        nodesFocusable={!nodesReadOnly}
+        edgesFocusable={!nodesReadOnly}
+        panOnDrag={!workflowReadOnly}
+        zoomOnPinch={!workflowReadOnly}
+        zoomOnScroll={!workflowReadOnly}
+        zoomOnDoubleClick={!workflowReadOnly}
         isValidConnection={isValidConnection}
       >
         <Background

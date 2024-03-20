@@ -13,7 +13,7 @@ import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-type RunProps = {
+export type RunProps = {
   activeTab?: 'RESULT' | 'TRACING'
   runID: string
 }

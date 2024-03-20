@@ -16,75 +16,63 @@ import type {
 } from './block-selector/types'
 import type {
   Edge,
+  HistoryWorkflowData,
   Node,
   RunFile,
-  WorkflowRunningStatus,
+  WorkflowRunningData,
 } from './types'
 import { WorkflowContext } from './context'
 
-type State = {
-  taskId: string
-  currentSequenceNumber: number
-  workflowRunId: string
-  currentConversationID: string
+type Shape = {
+  workflowRunningData?: WorkflowRunningData
+  setWorkflowRunningData: (workflowData: WorkflowRunningData) => void
+  historyWorkflowData?: HistoryWorkflowData
+  setHistoryWorkflowData: (historyWorkflowData: HistoryWorkflowData) => void
   showRunHistory: boolean
+  setShowRunHistory: (showRunHistory: boolean) => void
   showFeaturesPanel: boolean
+  setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
   helpLineHorizontal?: HelpLineHorizontalPosition
+  setHelpLineHorizontal: (helpLineHorizontal?: HelpLineHorizontalPosition) => void
   helpLineVertical?: HelpLineVerticalPosition
+  setHelpLineVertical: (helpLineVertical?: HelpLineVerticalPosition) => void
   toolsets: CollectionWithExpanded[]
+  setToolsets: (toolsets: CollectionWithExpanded[]) => void
   toolsMap: ToolsMap
+  setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
   draftUpdatedAt: number
+  setDraftUpdatedAt: (draftUpdatedAt: number) => void
   publishedAt: number
-  runningStatus?: WorkflowRunningStatus
+  setPublishedAt: (publishedAt: number) => void
   showInputsPanel: boolean
+  setShowInputsPanel: (showInputsPanel: boolean) => void
   inputs: Record<string, string>
+  setInputs: (inputs: Record<string, string>) => void
   files: RunFile[]
+  setFiles: (files: RunFile[]) => void
   backupDraft?: {
     nodes: Node[]
     edges: Edge[]
     viewport: Viewport
   }
+  setBackupDraft: (backupDraft?: Shape['backupDraft']) => void
   notInitialWorkflow: boolean
-  nodesDefaultConfigs: Record<string, any>
-  nodeAnimation: boolean
-  isRestoring: boolean
-}
-
-type Action = {
-  setTaskId: (taskId: string) => void
-  setCurrentSequenceNumber: (currentSequenceNumber: number) => void
-  setWorkflowRunId: (workflowRunId: string) => void
-  setCurrentConversationID: (currentConversationID: string) => void
-  setShowRunHistory: (showRunHistory: boolean) => void
-  setShowFeaturesPanel: (showFeaturesPanel: boolean) => void
-  setHelpLineHorizontal: (helpLineHorizontal?: HelpLineHorizontalPosition) => void
-  setHelpLineVertical: (helpLineVertical?: HelpLineVerticalPosition) => void
-  setToolsets: (toolsets: CollectionWithExpanded[]) => void
-  setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
-  setDraftUpdatedAt: (draftUpdatedAt: number) => void
-  setPublishedAt: (publishedAt: number) => void
-  setRunningStatus: (runningStatus?: WorkflowRunningStatus) => void
-  setShowInputsPanel: (showInputsPanel: boolean) => void
-  setInputs: (inputs: Record<string, string>) => void
-  setFiles: (files: RunFile[]) => void
-  setBackupDraft: (backupDraft?: State['backupDraft']) => void
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
+  nodesDefaultConfigs: Record<string, any>
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
+  nodeAnimation: boolean
   setNodeAnimation: (nodeAnimation: boolean) => void
+  isRestoring: boolean
   setIsRestoring: (isRestoring: boolean) => void
   debouncedSyncWorkflowDraft: (fn: () => void) => void
 }
 
 export const createWorkflowStore = () => {
-  return create<State & Action>(set => ({
-    taskId: '',
-    setTaskId: taskId => set(() => ({ taskId })),
-    currentSequenceNumber: 0,
-    setCurrentSequenceNumber: currentSequenceNumber => set(() => ({ currentSequenceNumber })),
-    workflowRunId: '',
-    setWorkflowRunId: workflowRunId => set(() => ({ workflowRunId })),
-    currentConversationID: '',
-    setCurrentConversationID: currentConversationID => set(() => ({ currentConversationID })),
+  return create<Shape>(set => ({
+    workflowData: undefined,
+    setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
+    historyWorkflowData: undefined,
+    setHistoryWorkflowData: historyWorkflowData => set(() => ({ historyWorkflowData })),
     showRunHistory: false,
     setShowRunHistory: showRunHistory => set(() => ({ showRunHistory })),
     showFeaturesPanel: false,
@@ -101,8 +89,6 @@ export const createWorkflowStore = () => {
     setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt: draftUpdatedAt ? draftUpdatedAt * 1000 : 0 })),
     publishedAt: 0,
     setPublishedAt: publishedAt => set(() => ({ publishedAt: publishedAt ? publishedAt * 1000 : 0 })),
-    runningStatus: undefined,
-    setRunningStatus: runningStatus => set(() => ({ runningStatus })),
     showInputsPanel: false,
     setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
     inputs: {},
@@ -125,7 +111,7 @@ export const createWorkflowStore = () => {
   }))
 }
 
-export function useStore<T>(selector: (state: State & Action) => T): T {
+export function useStore<T>(selector: (state: Shape) => T): T {
   const store = useContext(WorkflowContext)
   if (!store)
     throw new Error('Missing WorkflowContext.Provider in the tree')

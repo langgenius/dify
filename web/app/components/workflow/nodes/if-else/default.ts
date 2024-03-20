@@ -1,7 +1,7 @@
 import { BlockEnum, type NodeDefault } from '../../types'
 import { type IfElseNodeType, LogicalOperator } from './types'
+import { isEmptyRelatedOperator } from './utils'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
-
 const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<IfElseNodeType> = {
@@ -38,7 +38,9 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     conditions.forEach((condition) => {
       if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
-      if (!errorMessages && !condition.value)
+      if (!errorMessages && !condition.comparison_operator)
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.ifElse.operator') })
+      if (!errorMessages && !isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
     })
     return {
