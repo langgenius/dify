@@ -6,9 +6,11 @@ import type { InputVar } from '@/app/components/workflow/types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
+  useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: StartNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
   const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
@@ -32,6 +34,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
   return {
+    readOnly,
     isChatMode,
     inputs,
     isShowAddVarModal,

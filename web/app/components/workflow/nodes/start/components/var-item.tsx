@@ -45,7 +45,7 @@ const VarItem: FC<Props> = ({
         <div className='grow w-0 truncate text-[13px] font-medium text-gray-500'>{payload.label}</div>
       </div>
       <div className='shrink-0 ml-2 flex items-center'>
-        {!isHovering
+        {(!isHovering || readonly)
           ? (
             <>
               {payload.required && (
