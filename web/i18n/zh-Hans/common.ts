@@ -478,6 +478,10 @@ const translation = {
         title: '变量 & 外部工具',
         desc: '插入变量和外部工具',
       },
+      outputToolDisabledItem: {
+        title: '变量',
+        desc: '插入变量',
+      },
       modal: {
         add: '添加新变量',
         addTool: '添加工具',

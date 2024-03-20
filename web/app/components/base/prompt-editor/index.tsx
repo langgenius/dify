@@ -48,6 +48,7 @@ export type PromptEditorProps = {
   style?: React.CSSProperties
   value?: string
   editable?: boolean
+  outToolDisabled?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
   onFocus?: () => void
@@ -86,6 +87,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   style,
   value,
   editable = true,
+  outToolDisabled = false,
   onChange,
   onBlur,
   onFocus,
@@ -172,6 +174,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           historyShow={historyBlock.show}
           queryDisabled={!queryBlock.selectable}
           queryShow={queryBlock.show}
+          outToolDisabled={outToolDisabled}
         />
         <VariablePicker
           items={variableBlock.variables}

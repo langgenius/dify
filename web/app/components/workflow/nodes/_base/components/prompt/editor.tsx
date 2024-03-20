@@ -116,6 +116,7 @@ const Editor: FC<Props> = ({
               className={cn('min-h-[84px]')}
               style={isExpand ? { height: editorExpandHeight - 5 } : {}}
               value={value}
+              outToolDisabled
               contextBlock={{
                 show: justVar ? false : isShowContext,
                 selectable: !hasSetBlockStatus?.context,

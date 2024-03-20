@@ -96,6 +96,7 @@ type ComponentPickerProps = {
   contextShow?: boolean
   historyShow?: boolean
   queryShow?: boolean
+  outToolDisabled?: boolean
 }
 const ComponentPicker: FC<ComponentPickerProps> = ({
   contextDisabled,
@@ -104,6 +105,7 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
   contextShow,
   historyShow,
   queryShow,
+  outToolDisabled,
 }) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -127,8 +129,8 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
         }),
       ]
       : [],
-    new ComponentPickerOption(t('common.promptEditor.variable.item.title'), {
-      desc: t('common.promptEditor.variable.item.desc'),
+    new ComponentPickerOption(t(`common.promptEditor.variable.${!outToolDisabled ? 'item' : 'outputToolDisabledItem'}.title`), {
+      desc: t(`common.promptEditor.variable.${!outToolDisabled ? 'item' : 'outputToolDisabledItem'}.desc`),
       icon: <Variable className='w-4 h-4 text-[#2970FF]' />,
       onSelect: () => {
         editor.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
