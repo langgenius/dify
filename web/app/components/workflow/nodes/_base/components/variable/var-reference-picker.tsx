@@ -206,9 +206,9 @@ const VarReferencePicker: FC<Props> = ({
                 />
                 <div className='h-4 w-px bg-black/5'></div>
               </div>
-              : <div className='ml-1.5 mr-1'>
+              : (!hasValue && <div className='ml-1.5 mr-1'>
                 <Variable02 className='w-3.5 h-3.5 text-gray-400' />
-              </div>}
+              </div>)}
             {isConstant
               ? (
                 <input
@@ -239,7 +239,7 @@ const VarReferencePicker: FC<Props> = ({
                           </div>
                         )}
                         <div className='flex items-center text-primary-600'>
-                          <Variable02 className='w-3.5 h-3.5' />
+                          {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
                           <div className='ml-0.5 text-xs font-medium'>{varName}</div>
                         </div>
                         <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize'>{getVarType()}</div>
