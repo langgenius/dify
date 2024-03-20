@@ -112,43 +112,47 @@ const Editor: FC<Props> = ({
             )}
             hideResize={isExpand}
           >
-            <PromptEditor
-              className={cn('min-h-[84px]')}
-              style={isExpand ? { height: editorExpandHeight - 5 } : {}}
-              value={value}
-              outToolDisabled
-              contextBlock={{
-                show: justVar ? false : isShowContext,
-                selectable: !hasSetBlockStatus?.context,
-                datasets: [],
-                onAddContext: () => { },
-              }}
-              variableBlock={{
-                variables: variables.map(item => ({
-                  name: item,
-                  value: item,
-                })),
-                externalTools: [],
-                onAddExternalTool: () => { },
-              }}
-              historyBlock={{
-                show: justVar ? false : isShowHistory,
-                selectable: !hasSetBlockStatus?.history,
-                history: {
-                  user: 'Human',
-                  assistant: 'Assistant',
-                },
-                onEditRole: () => { },
-              }}
-              queryBlock={{
-                show: justVar ? false : isShowQuery,
-                selectable: !hasSetBlockStatus?.query,
-              }}
-              onChange={onChange}
-              onBlur={setBlur}
-              onFocus={setFocus}
-              editable={!readOnly}
-            />
+            <>
+              <PromptEditor
+                className={cn('min-h-[84px]')}
+                style={isExpand ? { height: editorExpandHeight - 5 } : {}}
+                value={value}
+                outToolDisabled
+                contextBlock={{
+                  show: justVar ? false : isShowContext,
+                  selectable: !hasSetBlockStatus?.context,
+                  datasets: [],
+                  onAddContext: () => { },
+                }}
+                variableBlock={{
+                  variables: variables.map(item => ({
+                    name: item,
+                    value: item,
+                  })),
+                  externalTools: [],
+                  onAddExternalTool: () => { },
+                }}
+                historyBlock={{
+                  show: justVar ? false : isShowHistory,
+                  selectable: !hasSetBlockStatus?.history,
+                  history: {
+                    user: 'Human',
+                    assistant: 'Assistant',
+                  },
+                  onEditRole: () => { },
+                }}
+                queryBlock={{
+                  show: justVar ? false : isShowQuery,
+                  selectable: !hasSetBlockStatus?.query,
+                }}
+                onChange={onChange}
+                onBlur={setBlur}
+                onFocus={setFocus}
+                editable={!readOnly}
+              />
+              {/* to patch Editor not support dynamic change editable status */}
+              {readOnly && <div className='absolute inset-0 z-10'></div>}
+            </>
           </PromptEditorHeightResizeWrap>
         </div>
       </div>

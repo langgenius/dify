@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useStore } from './store'
 import {
   useIsChatMode,
+  useNodesReadOnly,
   useNodesSyncDraft,
 } from './hooks'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -18,7 +19,7 @@ const Features = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
-  const isRestoring = useStore(s => s.isRestoring)
+  const { nodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleFeaturesChange = useCallback(() => {
@@ -34,7 +35,7 @@ const Features = () => {
             isChatMode && (
               <>
                 <FeaturesChoose
-                  disabled={isRestoring}
+                  disabled={nodesReadOnly}
                   onChange={handleFeaturesChange}
                 />
                 <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
@@ -51,7 +52,7 @@ const Features = () => {
       </div>
       <div className='p-4'>
         <FeaturesPanel
-          disabled={isRestoring}
+          disabled={nodesReadOnly}
           onChange={handleFeaturesChange}
           openingStatementProps={{
             onAutoAddPromptVariable: () => {},

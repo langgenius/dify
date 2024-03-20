@@ -23,6 +23,7 @@ import {
   useNodeDataUpdate,
   useNodesExtraData,
   useNodesInteractions,
+  useNodesReadOnly,
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
@@ -45,6 +46,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { t } = useTranslation()
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { nodesReadOnly } = useNodesReadOnly()
   const nodesExtraData = useNodesExtraData()
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
 
@@ -82,7 +84,7 @@ const BasePanel: FC<BasePanelProps> = ({
           />
           <div className='shrink-0 flex items-center text-gray-500'>
             {
-              canRunBySingle(data.type) && (
+              canRunBySingle(data.type) && !nodesReadOnly && (
                 <TooltipPlus
                   popupContent={t('workflow.panel.runThisStep')}
                 >

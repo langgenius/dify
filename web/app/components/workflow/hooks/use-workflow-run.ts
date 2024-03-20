@@ -202,7 +202,10 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-            draft.tracing!.push(data as any)
+            draft.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+            } as any)
           }))
 
           const nodes = getNodes()
@@ -320,6 +323,7 @@ export const useWorkflowRun = () => {
 
   return {
     handleBackupDraft,
+    handleLoadBackupDraft,
     handleRunSetting,
     handleRun,
     handleStopRun,

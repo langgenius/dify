@@ -99,6 +99,7 @@ const EditBody: FC<Props> = ({
               value={t}
               checked={type === t}
               onChange={handleTypeChange}
+              disabled={readonly}
             />
             <div className='leading-[18px] text-[13px] font-normal text-gray-700'>{bodyTextMap[t]}</div>
           </label>
@@ -124,6 +125,7 @@ const EditBody: FC<Props> = ({
             onChange={handleBodyValueChange}
             value={payload.data}
             minHeight={150}
+            readonly={readonly}
           />
         )}
 

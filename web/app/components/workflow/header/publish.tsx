@@ -30,7 +30,11 @@ const Publish = () => {
   const [published, setPublished] = useState(false)
   const workflowStore = useWorkflowStore()
   const { formatTimeFromNow } = useWorkflow()
-  const { handleCheckBeforePublish } = useWorkflowRun()
+  const {
+    handleBackupDraft,
+    handleCheckBeforePublish,
+    handleRestoreFromPublishedWorkflow,
+  } = useWorkflowRun()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     nodesReadOnly,
@@ -61,8 +65,10 @@ const Publish = () => {
 
   const handleRestore = useCallback(() => {
     workflowStore.getState().setIsRestoring(true)
+    handleBackupDraft()
+    handleRestoreFromPublishedWorkflow()
     setOpen(false)
-  }, [workflowStore])
+  }, [workflowStore, handleBackupDraft, handleRestoreFromPublishedWorkflow])
 
   const handleTrigger = useCallback(() => {
     if (getNodesReadOnly())

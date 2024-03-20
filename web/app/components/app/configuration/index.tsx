@@ -477,7 +477,7 @@ const Configuration: FC = () => {
             external_data_tools: modelConfig.external_data_tools,
             dataSets: datasets || [],
             // eslint-disable-next-line multiline-ternary
-            agentConfig: res.is_agent ? {
+            agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
               ...modelConfig.agent_mode,
               // remove dataset

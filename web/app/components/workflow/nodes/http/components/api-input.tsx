@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
+import cn from 'classnames'
 import { Method } from '../types'
 import Selector from '../../_base/components/selector'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-
 const MethodOptions = [
   { label: 'GET', value: Method.get },
   { label: 'POST', value: Method.post },
@@ -38,9 +38,9 @@ const ApiInput: FC<Props> = ({
         onChange={onMethodChange}
         options={MethodOptions}
         trigger={
-          <div className='h-8 shrink-0 flex items-center px-2.5 cursor-pointer border-r border-black/5'>
+          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 border-r border-black/5')} >
             <div className='w-12 pl-0.5 leading-[18px] text-xs font-medium text-gray-900 uppercase'>{method}</div>
-            <ChevronDown className='ml-1 w-3.5 h-3.5 text-gray-700' />
+            {!readonly && <ChevronDown className='ml-1 w-3.5 h-3.5 text-gray-700' />}
           </div>
         }
         popupClassName='top-[34px] w-[108px]'
@@ -54,7 +54,7 @@ const ApiInput: FC<Props> = ({
         onChange={handleUrlChange}
         className='w-0 grow h-6 leading-6 px-2.5 border-0  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none'
       />
-    </div>
+    </div >
   )
 }
 export default React.memo(ApiInput)

@@ -53,6 +53,7 @@ const KeyValueItem: FC<Props> = ({
           onChange={handleChange('key')}
           hasRemove={false}
           placeholder={t(`${i18nPrefix}.key`)!}
+          readOnly={readonly}
         />
       </div>
       <div className='w-1/2  h-full'>
@@ -63,6 +64,7 @@ const KeyValueItem: FC<Props> = ({
           hasRemove={!readonly && canRemove}
           onRemove={onRemove}
           placeholder={t(`${i18nPrefix}.value`)!}
+          readOnly={readonly}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import useConfig from './use-config'
 import ApiInput from './components/api-input'
 import KeyValue from './components/key-value'
@@ -24,9 +25,9 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,
@@ -60,15 +61,13 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     runResult,
   } = useConfig(id, data)
 
-  // console.log(inputs)
-
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
-            <AddButton onClick={handleAddVariable} />
+            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
           }
         >
           <VarList
@@ -84,9 +83,9 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           operations={
             <div
               onClick={showAuthorization}
-              className='flex items-center h-6 space-x-1 cursor-pointer'
+              className={cn(!readOnly && 'cursor-pointer', 'flex items-center h-6 space-x-1')}
             >
-              <Settings01 className='w-3 h-3 text-gray-500' />
+              {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
               <div className='text-xs font-medium text-gray-500'>
                 {t(`${i18nPrefix}.authorization.authorization`)}
                 <span className='ml-1 text-gray-700'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
@@ -136,7 +135,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
       </div>
-      {isShowAuthorization && (
+      {(isShowAuthorization && !readOnly) && (
         <AuthorizationModal
           isShow
           onHide={hideAuthorization}

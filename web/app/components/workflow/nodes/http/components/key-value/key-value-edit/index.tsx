@@ -51,16 +51,17 @@ const KeyValueList: FC<Props> = ({
         <div className='w-1/2 h-full pl-3 border-r border-gray-200'>{t(`${i18nPrefix}.key`)}</div>
         <div className='flex w-1/2 h-full pl-3 pr-1 items-center justify-between'>
           <div>{t(`${i18nPrefix}.value`)}</div>
-          <TooltipPlus
-            popupContent={t(`${i18nPrefix}.bulkEdit`)}
-          >
-            <div
-              className='p-1 cursor-pointer rounded-md hover:bg-black/5 text-gray-500 hover:text-gray-800'
-              onClick={onSwitchToBulkEdit}
+          {!readonly && (
+            <TooltipPlus
+              popupContent={t(`${i18nPrefix}.bulkEdit`)}
             >
-              <EditList className='w-3 h-3' />
-            </div>
-          </TooltipPlus>
+              <div
+                className='p-1 cursor-pointer rounded-md hover:bg-black/5 text-gray-500 hover:text-gray-800'
+                onClick={onSwitchToBulkEdit}
+              >
+                <EditList className='w-3 h-3' />
+              </div>
+            </TooltipPlus>)}
         </div>
       </div>
       {
