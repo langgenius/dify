@@ -12,6 +12,7 @@ type Props = {
   minHeight?: number
   onBlur?: () => void
   placeholder?: string
+  readonly?: boolean
 }
 
 const TextEditor: FC<Props> = ({
@@ -22,6 +23,7 @@ const TextEditor: FC<Props> = ({
   minHeight,
   onBlur,
   placeholder,
+  readonly,
 }) => {
   const [isFocus, {
     setTrue: setIsFocus,
@@ -49,6 +51,7 @@ const TextEditor: FC<Props> = ({
           onBlur={handleBlur}
           className='w-full h-full px-3 resize-none bg-transparent border-none focus:outline-none leading-[18px] text-[13px] font-normal text-gray-900 placeholder:text-gray-300'
           placeholder={placeholder}
+          readOnly={readonly}
         />
       </Base>
     </div>

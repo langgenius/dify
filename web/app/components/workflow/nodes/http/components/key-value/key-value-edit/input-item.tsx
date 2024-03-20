@@ -11,6 +11,7 @@ type Props = {
   hasRemove: boolean
   onRemove?: () => void
   placeholder?: string
+  readOnly?: boolean
 }
 
 const InputItem: FC<Props> = ({
@@ -20,6 +21,7 @@ const InputItem: FC<Props> = ({
   hasRemove,
   onRemove,
   placeholder,
+  readOnly,
 }) => {
   const hasValue = !!value
   const [isEdit, {
@@ -38,7 +40,7 @@ const InputItem: FC<Props> = ({
 
   return (
     <div className={cn(className, !isEdit && 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full items-center pl-2')}>
-      {isEdit
+      {(isEdit && !readOnly)
         ? (
           <input
             type='text'
@@ -48,6 +50,7 @@ const InputItem: FC<Props> = ({
             onBlur={setIsEditFalse}
             autoFocus
             placeholder={placeholder}
+            readOnly={readOnly}
           />
         )
         : <div
