@@ -19,9 +19,9 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleOutputTypeChange,
     handleVarListChange,
@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             trigger={
               <div className='flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize'>
                 <div className='text-[13px] font-normal text-gray-900'>{inputs.output_type}</div>
-                <ChevronDown className='w-3.5 h-3.5 text-gray-700' />
+                {!readOnly && <ChevronDown className='w-3.5 h-3.5 text-gray-700' />}
               </div>
             }
             popupClassName='!top-[36px] !w-[387px]'
@@ -61,7 +61,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.title`)}
           operations={
-            <AddButton onClick={handleAddVariable} />
+            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
           }
         >
           <VarList

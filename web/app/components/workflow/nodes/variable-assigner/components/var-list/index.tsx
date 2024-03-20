@@ -73,10 +73,12 @@ const VarList: FC<Props> = ({
             filterVar={filterVar}
             width={350}
           />
-          <RemoveButton
-            className='!p-2 !bg-gray-100 hover:!bg-gray-200'
-            onClick={handleVarRemove(index)}
-          />
+          {!readonly && (
+            <RemoveButton
+              className='!p-2 !bg-gray-100 hover:!bg-gray-200'
+              onClick={handleVarRemove(index)}
+            />
+          )}
         </div>
       ))}
     </div>
