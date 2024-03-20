@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import {
   useNodesExtraData,
   useNodesInteractions,
+  useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
@@ -29,6 +30,7 @@ const Add = ({
   const { t } = useTranslation()
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
+  const { nodesReadOnly } = useNodesReadOnly()
   const availableNextNodes = nodesExtraData[nodeType].availableNextNodes
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
@@ -51,6 +53,7 @@ const Add = ({
           relative flex items-center px-2 w-[328px] h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
           hover:bg-gray-100 text-xs text-gray-500 cursor-pointer
           ${open && '!bg-gray-100'}
+          ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
         {
@@ -69,10 +72,11 @@ const Add = ({
         {t('workflow.panel.selectNextStep')}
       </div>
     )
-  }, [branchName, t])
+  }, [branchName, t, nodesReadOnly])
 
   return (
     <BlockSelector
+      disabled={nodesReadOnly}
       onSelect={handleSelect}
       placement='top'
       offset={0}

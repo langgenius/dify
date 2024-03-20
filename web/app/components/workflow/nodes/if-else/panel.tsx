@@ -15,9 +15,9 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleConditionsChange,
     handleAddCondition,
@@ -43,11 +43,13 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
               varTypesList={varTypesList}
               filterVar={filterVar}
             />
-            <AddButton
-              className='mt-3'
-              text={t(`${i18nPrefix}.addCondition`)}
-              onClick={handleAddCondition}
-            />
+            {!readOnly && (
+              <AddButton
+                className='mt-3'
+                text={t(`${i18nPrefix}.addCondition`)}
+                onClick={handleAddCondition}
+              />
+            )}
           </>
         </Field>
         <Split />

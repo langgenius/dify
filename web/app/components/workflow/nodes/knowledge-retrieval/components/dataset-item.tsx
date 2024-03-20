@@ -15,12 +15,14 @@ type Props = {
   payload: DataSet
   onRemove: () => void
   onChange: (dataSet: DataSet) => void
+  readonly?: boolean
 }
 
 const DatasetItem: FC<Props> = ({
   payload,
   onRemove,
   onChange,
+  readonly,
 }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -54,20 +56,23 @@ const DatasetItem: FC<Props> = ({
         }
         <div className='w-0 grow text-[13px] font-normal text-gray-800 truncate'>{payload.name}</div>
       </div>
-      <div className='hidden group-hover/dataset-item:flex shrink-0 ml-2  items-center space-x-1'>
-        <div
-          className='flex items-center justify-center w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
-          onClick={showSettingsModal}
-        >
-          <Settings01 className='w-4 h-4 text-gray-500' />
+      {!readonly && (
+        <div className='hidden group-hover/dataset-item:flex shrink-0 ml-2  items-center space-x-1'>
+          <div
+            className='flex items-center justify-center w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+            onClick={showSettingsModal}
+          >
+            <Settings01 className='w-4 h-4 text-gray-500' />
+          </div>
+          <div
+            className='flex items-center justify-center w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+            onClick={onRemove}
+          >
+            <Trash03 className='w-4 h-4 text-gray-500' />
+          </div>
         </div>
-        <div
-          className='flex items-center justify-center w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
-          onClick={onRemove}
-        >
-          <Trash03 className='w-4 h-4 text-gray-500' />
-        </div>
-      </div>
+      )}
+
       {isShowSettingsModal && (
         <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
           <SettingsModal

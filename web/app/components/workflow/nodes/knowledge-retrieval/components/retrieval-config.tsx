@@ -31,6 +31,7 @@ type Props = {
   singleRetrievalModelConfig?: ModelConfig
   onSingleRetrievalModelChange?: (config: ModelConfig) => void
   onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
+  readonly?: boolean
 }
 
 const RetrievalConfig: FC<Props> = ({
@@ -40,6 +41,7 @@ const RetrievalConfig: FC<Props> = ({
   singleRetrievalModelConfig,
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -83,11 +85,15 @@ const RetrievalConfig: FC<Props> = ({
       }}
     >
       <PortalToFollowElemTrigger
-        onClick={() => setOpen(v => !v)}
+        onClick={() => {
+          if (readonly)
+            return
+          setOpen(v => !v)
+        }}
       >
-        <div className={cn(open && 'bg-gray-100', 'flex items-center h-6  px-2 rounded-md hover:bg-gray-100 group cursor-pointer select-none')}>
+        <div className={cn(!readonly && 'cursor-pointer', open && 'bg-gray-100', 'flex items-center h-6  px-2 rounded-md hover:bg-gray-100 group  select-none')}>
           <div className={cn(open ? 'text-gray-700' : 'text-gray-500', 'leading-[18px] text-xs font-medium group-hover:bg-gray-100')}>{payload.retrieval_mode === RETRIEVE_TYPE.oneWay ? t('appDebug.datasetConfig.retrieveOneWay.title') : t('appDebug.datasetConfig.retrieveMultiWay.title')}</div>
-          <ChevronDown className='ml-1 w-3 h-3' />
+          {!readonly && <ChevronDown className='ml-1 w-3 h-3' />}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>

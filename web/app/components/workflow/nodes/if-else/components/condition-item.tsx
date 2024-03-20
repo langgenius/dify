@@ -13,6 +13,7 @@ import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 import Toast from '@/app/components/base/toast'
+
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const Line = (
@@ -165,6 +166,10 @@ const Item: FC<ItemProps> = ({
           trigger={
             <div
               onClick={(e) => {
+                if (readonly) {
+                  e.stopPropagation()
+                  return
+                }
                 if (!varType) {
                   e.stopPropagation()
                   Toast.notify({
@@ -173,7 +178,7 @@ const Item: FC<ItemProps> = ({
                   })
                 }
               }}
-              className='shrink-0 w-[100px] whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize cursor-pointer'
+              className={cn(!readonly && 'cursor-pointer', 'shrink-0 w-[100px] whitespace-nowrap flex items-center h-8 justify-between px-2.5 rounded-lg bg-gray-100 capitalize')}
             >
               {
                 !payload.comparison_operator
@@ -197,6 +202,9 @@ const Item: FC<ItemProps> = ({
         <input
           readOnly={readonly || isValueReadOnly || !varType}
           onClick={() => {
+            if (readonly)
+              return
+
             if (!varType) {
               Toast.notify({
                 message: t(`${i18nPrefix}.notSetVariable`),
@@ -210,13 +218,14 @@ const Item: FC<ItemProps> = ({
           className='w-[80px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
           type='text'
         />
-
-        <div
-          className={cn(canRemove ? 'text-gray-500 bg-gray-100 hover:bg-gray-200  cursor-pointer' : 'bg-gray-25 text-gray-300', 'p-2 rounded-lg ')}
-          onClick={canRemove ? onRemove : () => { }}
-        >
-          <Trash03 className='w-4 h-4 ' />
-        </div>
+        {!readonly && (
+          <div
+            className={cn(canRemove ? 'text-gray-500 bg-gray-100 hover:bg-gray-200  cursor-pointer' : 'bg-gray-25 text-gray-300', 'p-2 rounded-lg ')}
+            onClick={canRemove ? onRemove : () => { }}
+          >
+            <Trash03 className='w-4 h-4 ' />
+          </div>
+        )}
       </div>
     </div >
 

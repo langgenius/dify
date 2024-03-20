@@ -21,9 +21,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleQueryVarChange,
     filterVar,
@@ -76,18 +76,22 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 singleRetrievalModelConfig={inputs.single_retrieval_config?.model}
                 onSingleRetrievalModelChange={handleModelChanged as any}
                 onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
+                readonly={readOnly}
               />
-              <div className='w-px h-3 bg-gray-200'></div>
-              <AddKnowledge
-                selectedIds={inputs.dataset_ids}
-                onChange={handleOnDatasetsChange}
-              />
+              {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
+              {!readOnly && (
+                <AddKnowledge
+                  selectedIds={inputs.dataset_ids}
+                  onChange={handleOnDatasetsChange}
+                />
+              )}
             </div>
           }
         >
           <DatasetList
             list={selectedDatasets}
             onChange={handleOnDatasetsChange}
+            readonly={readOnly}
           />
         </Field>
       </div>
