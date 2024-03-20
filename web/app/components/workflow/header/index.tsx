@@ -30,6 +30,7 @@ const Header: FC = () => {
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const {
     nodesReadOnly,
+    getNodesReadOnly,
   } = useNodesReadOnly()
   const isRestoring = useStore(s => s.isRestoring)
   const {
@@ -39,8 +40,15 @@ const Header: FC = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleShowFeatures = useCallback(() => {
-    workflowStore.setState({ showFeaturesPanel: true })
-  }, [workflowStore])
+    const {
+      isRestoring,
+      setShowFeaturesPanel,
+    } = workflowStore.getState()
+    if (getNodesReadOnly() && !isRestoring)
+      return
+
+    setShowFeaturesPanel(true)
+  }, [workflowStore, getNodesReadOnly])
 
   const handleGoBackToEdit = useCallback(() => {
     handleRunSetting(true)
@@ -102,6 +110,7 @@ const Header: FC = () => {
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
+                ${nodesReadOnly && !isRestoring && 'opacity-50 !cursor-not-allowed'}
               `}
               onClick={handleShowFeatures}
             >

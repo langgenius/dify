@@ -16,9 +16,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 export type RunProps = {
   activeTab?: 'RESULT' | 'TRACING'
   runID: string
+  getResultCallback?: (result: WorkflowRunDetailResponse) => void
 }
 
-const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
+const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID, getResultCallback }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
@@ -42,6 +43,8 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
         runID,
       })
       setRunDetail(res)
+      if (getResultCallback)
+        getResultCallback(res)
     }
     catch (err) {
       notify({
@@ -49,7 +52,7 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID }) => {
         message: `${err}`,
       })
     }
-  }, [notify])
+  }, [notify, getResultCallback])
 
   const getTracingList = useCallback(async (appID: string, runID: string) => {
     try {

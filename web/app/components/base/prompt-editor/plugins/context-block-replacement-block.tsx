@@ -21,6 +21,7 @@ const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
   datasets,
   onAddContext,
   onInsert,
+  canNotAddContext,
 }) => {
   const [editor] = useLexicalComposerContext()
 
@@ -32,7 +33,7 @@ const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
   const createContextBlockNode = useCallback((): ContextBlockNode => {
     if (onInsert)
       onInsert()
-    return $applyNodeReplacement($createContextBlockNode(datasets, onAddContext))
+    return $applyNodeReplacement($createContextBlockNode(datasets, onAddContext, canNotAddContext))
   }, [datasets, onAddContext, onInsert])
 
   const getMatch = useCallback((text: string) => {

@@ -118,6 +118,7 @@ const Editor: FC<Props> = ({
                 style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                 value={value}
                 outToolDisabled
+                canNotAddContext
                 contextBlock={{
                   show: justVar ? false : isShowContext,
                   selectable: !hasSetBlockStatus?.context,

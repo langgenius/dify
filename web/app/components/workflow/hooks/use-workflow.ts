@@ -13,13 +13,21 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { Connection } from 'reactflow'
+import type {
+  Connection,
+  Viewport,
+} from 'reactflow'
 import type { ToolsMap } from '../block-selector/types'
 import {
   generateNewNode,
   getLayoutByDagre,
+  initialEdges,
+  initialNodes,
 } from '../utils'
-import type { Node } from '../types'
+import type {
+  Edge,
+  Node,
+} from '../types'
 import {
   BlockEnum,
   WorkflowRunningStatus,
@@ -270,6 +278,17 @@ export const useWorkflow = () => {
     }
   }, [store])
 
+  const renderTreeFromRecord = useCallback((nodes: Node[], edges: Edge[], viewport?: Viewport) => {
+    const { setNodes } = store.getState()
+    const { setViewport, setEdges } = reactflow
+
+    setNodes(initialNodes(nodes, edges))
+    setEdges(initialEdges(edges, nodes))
+
+    if (viewport)
+      setViewport(viewport)
+  }, [store, reactflow])
+
   return {
     handleLayout,
     getTreeLeafNodes,
@@ -278,6 +297,7 @@ export const useWorkflow = () => {
     isValidConnection,
     formatTimeFromNow,
     getValidTreeNodes,
+    renderTreeFromRecord,
   }
 }
 
