@@ -323,6 +323,7 @@ export const useWorkflowRun = () => {
 
   return {
     handleBackupDraft,
+    handleLoadBackupDraft,
     handleRunSetting,
     handleRun,
     handleStopRun,

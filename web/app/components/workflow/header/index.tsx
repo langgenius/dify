@@ -10,6 +10,7 @@ import {
 } from '../store'
 import {
   useNodesReadOnly,
+  useNodesSyncDraft,
   useWorkflowRun,
 } from '../hooks'
 import RunAndHistory from './run-and-history'
@@ -29,33 +30,31 @@ const Header: FC = () => {
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const {
     nodesReadOnly,
-    getNodesReadOnly,
   } = useNodesReadOnly()
   const isRestoring = useStore(s => s.isRestoring)
   const {
+    handleLoadBackupDraft,
     handleRunSetting,
-    handleRestoreFromPublishedWorkflow,
   } = useWorkflowRun()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleShowFeatures = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
     workflowStore.setState({ showFeaturesPanel: true })
-  }, [getNodesReadOnly, workflowStore])
+  }, [workflowStore])
 
   const handleGoBackToEdit = useCallback(() => {
     handleRunSetting(true)
   }, [handleRunSetting])
 
   const handleCancelRestore = useCallback(() => {
+    handleLoadBackupDraft()
     workflowStore.setState({ isRestoring: false })
-  }, [workflowStore])
+  }, [workflowStore, handleLoadBackupDraft])
 
   const handleRestore = useCallback(() => {
-    handleRestoreFromPublishedWorkflow()
     workflowStore.setState({ isRestoring: false })
-  }, [handleRestoreFromPublishedWorkflow, workflowStore])
+    handleSyncWorkflowDraft(true)
+  }, [handleSyncWorkflowDraft, workflowStore])
 
   return (
     <div
@@ -103,7 +102,6 @@ const Header: FC = () => {
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
-                ${nodesReadOnly && '!cursor-not-allowed opacity-50'}
               `}
               onClick={handleShowFeatures}
             >

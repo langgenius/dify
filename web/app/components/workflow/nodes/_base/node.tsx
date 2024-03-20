@@ -13,6 +13,7 @@ import {
   NodeRunningStatus,
 } from '../../types'
 import { useStore } from '../../store'
+import { useNodesReadOnly } from '../../hooks'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -34,6 +35,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const { nodesReadOnly } = useNodesReadOnly()
   const toolsets = useStore(s => s.toolsets)
   const toolIcon = useMemo(() => {
     if (data.type === BlockEnum.Tool)
@@ -60,7 +62,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         `}
       >
         {
-          data.type !== BlockEnum.VariableAssigner && !data._runningStatus && (
+          data.type !== BlockEnum.VariableAssigner && !data._runningStatus && !nodesReadOnly && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -70,7 +72,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._runningStatus && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._runningStatus && !nodesReadOnly && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -80,7 +82,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          !data._runningStatus && (
+          !data._runningStatus && !nodesReadOnly && (
             <NodeControl
               id={id}
               data={data}
