@@ -262,7 +262,8 @@ class LLMNode(BaseNode):
         :param context_dict: context dict
         :return:
         """
-        if '_source' in context_dict and context_dict['_source'] == 'knowledge':
+        if ('metadata' in context_dict and '_source' in context_dict['metadata']
+                and context_dict['metadata']['_source'] == 'knowledge'):
             metadata = context_dict.get('metadata', {})
             source = {
                 'position': metadata.get('position'),
