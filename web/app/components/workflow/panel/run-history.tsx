@@ -46,7 +46,6 @@ const RunHistory = () => {
           onClick={() => {
             workflowStore.setState({
               showRunHistory: false,
-              historyWorkflowData: undefined,
             })
             setCurrentLogItem()
             setShowMessageLogModal(false)
