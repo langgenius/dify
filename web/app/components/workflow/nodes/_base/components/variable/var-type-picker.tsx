@@ -44,8 +44,8 @@ const VarReferencePicker: FC<Props> = ({
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='w-[120px] cursor-pointer'>
           <div className='flex items-center h-8 justify-between px-2.5 rounded-lg border-0 bg-gray-100 text-gray-900 text-[13px]'>
-            <div className='capitalize'>{value}</div>
-            <ChevronDown className='w-3.5 h-3.5 text-gray-700' />
+            <div className='capitalize grow w-0 truncate' title={value}>{value}</div>
+            <ChevronDown className='shrink-0 w-3.5 h-3.5 text-gray-700' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{

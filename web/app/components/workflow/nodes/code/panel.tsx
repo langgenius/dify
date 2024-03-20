@@ -35,8 +35,10 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
   const {
     readOnly,
     inputs,
+    outputKeyOrders,
     handleVarListChange,
     handleAddVariable,
+    handleRemoveVariable,
     handleCodeChange,
     handleCodeLanguageChange,
     handleVarsChange,
@@ -94,10 +96,13 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
             <AddButton onClick={handleAddOutputVariable} />
           }
         >
+
           <OutputVarList
             readonly={readOnly}
             outputs={inputs.outputs}
+            outputKeyOrders={outputKeyOrders}
             onChange={handleVarsChange}
+            onRemove={handleRemoveVariable}
           />
         </Field>
       </div>

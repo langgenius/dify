@@ -5,7 +5,7 @@ import useOutputVarList from '../_base/hooks/use-output-var-list'
 import { BlockEnum, VarType } from '../../types'
 import type { Var } from '../../types'
 import { useStore } from '../../store'
-import type { CodeNodeType } from './types'
+import type { CodeNodeType, OutputVar } from './types'
 import { CodeLanguage } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
@@ -41,9 +41,17 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs,
   })
 
+  const [outputKeyOrders, setOutputKeyOrders] = useState<string[]>([])
+  const syncOutputKeyOrders = useCallback((outputs: OutputVar) => {
+    setOutputKeyOrders(Object.keys(outputs))
+  }, [])
   useEffect(() => {
-    if (inputs.code)
+    if (inputs.code) {
+      if (inputs.outputs && Object.keys(inputs.outputs).length > 0)
+        syncOutputKeyOrders(inputs.outputs)
+
       return
+    }
 
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
@@ -51,6 +59,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
         ...inputs,
         ...defaultConfig,
       })
+      syncOutputKeyOrders(defaultConfig.outputs)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
@@ -76,9 +85,11 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs(newInputs)
   }, [allLanguageDefault, inputs, setInputs])
 
-  const { handleVarsChange, handleAddVariable: handleAddOutputVariable } = useOutputVarList<CodeNodeType>({
+  const { handleVarsChange, handleAddVariable: handleAddOutputVariable, handleRemoveVariable } = useOutputVarList<CodeNodeType>({
     inputs,
     setInputs,
+    outputKeyOrders,
+    onOutputKeyOrdersChange: setOutputKeyOrders,
   })
 
   const filterVar = useCallback((varPayload: Var) => {
@@ -121,8 +132,10 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   return {
     readOnly,
     inputs,
+    outputKeyOrders,
     handleVarListChange,
     handleAddVariable,
+    handleRemoveVariable,
     handleCodeChange,
     handleCodeLanguageChange,
     handleVarsChange,

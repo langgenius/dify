@@ -10,31 +10,37 @@ import type { VarType } from '@/app/components/workflow/types'
 type Props = {
   readonly: boolean
   outputs: OutputVar
-  onChange: (payload: OutputVar) => void
+  outputKeyOrders: string[]
+  onChange: (payload: OutputVar, changedIndex?: number, newKey?: string) => void
+  onRemove: (index: number) => void
 }
 
 const OutputVarList: FC<Props> = ({
   readonly,
   outputs,
+  outputKeyOrders,
   onChange,
+  onRemove,
 }) => {
-  const list = (Object.keys(outputs)).map((key) => {
+  const list = outputKeyOrders.map((key) => {
     return {
       variable: key,
-      variable_type: outputs[key].type,
+      variable_type: outputs[key]?.type,
     }
   })
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
+      const newKey = e.target.value
+
       const newOutputs = produce(outputs, (draft) => {
-        const newKey = e.target.value
         draft[newKey] = draft[oldKey]
         delete draft[oldKey]
       })
-      onChange(newOutputs)
+      onChange(newOutputs, index, newKey)
     }
-  }, [list, onChange])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, onChange, outputs, outputKeyOrders])
 
   const handleVarTypeChange = useCallback((index: number) => {
     return (value: string) => {
@@ -44,17 +50,14 @@ const OutputVarList: FC<Props> = ({
       })
       onChange(newOutputs)
     }
-  }, [list, onChange])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, onChange, outputs, outputKeyOrders])
 
   const handleVarRemove = useCallback((index: number) => {
     return () => {
-      const key = list[index].variable
-      const newOutputs = produce(outputs, (draft) => {
-        delete draft[key]
-      })
-      onChange(newOutputs)
+      onRemove(index)
     }
-  }, [list, onChange])
+  }, [onRemove])
 
   return (
     <div className='space-y-2'>
