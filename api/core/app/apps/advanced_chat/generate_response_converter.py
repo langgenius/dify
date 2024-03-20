@@ -6,6 +6,7 @@ from core.app.apps.base_app_generate_response_converter import AppGenerateRespon
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
+    ErrorStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
 )
@@ -72,7 +73,11 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 'created_at': chunk.created_at
             }
 
-            response_chunk.update(sub_stream_response.to_dict())
+            if isinstance(sub_stream_response, ErrorStreamResponse):
+                data = cls._error_to_stream_response(sub_stream_response.err)
+                response_chunk.update(data)
+            else:
+                response_chunk.update(sub_stream_response.to_dict())
             yield json.dumps(response_chunk)
 
     @classmethod
@@ -98,10 +103,15 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
                 'created_at': chunk.created_at
             }
 
-            sub_stream_response_dict = sub_stream_response.to_dict()
             if isinstance(sub_stream_response, MessageEndStreamResponse):
+                sub_stream_response_dict = sub_stream_response.to_dict()
                 metadata = sub_stream_response_dict.get('metadata', {})
                 sub_stream_response_dict['metadata'] = cls._get_simple_metadata(metadata)
+                response_chunk.update(sub_stream_response_dict)
+            if isinstance(sub_stream_response, ErrorStreamResponse):
+                data = cls._error_to_stream_response(sub_stream_response.err)
+                response_chunk.update(data)
+            else:
+                response_chunk.update(sub_stream_response.to_dict())
 
-            response_chunk.update(sub_stream_response_dict)
             yield json.dumps(response_chunk)
