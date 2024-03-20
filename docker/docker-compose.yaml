@@ -70,7 +70,7 @@ services:
       # If you want to enable cross-origin support,
       # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
       #
-      # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob`, Default: `local`
       STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
       # only available when STORAGE_TYPE is `local`.
@@ -81,6 +81,11 @@ services:
       S3_ACCESS_KEY: 'ak-difyai'
       S3_SECRET_KEY: 'sk-difyai'
       S3_REGION: 'us-east-1'
+      # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
+      AZURE_BLOB_ACCOUNT_NAME: 'difyai'
+      AZURE_BLOB_ACCOUNT_KEY: 'difyai'
+      AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
+      AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
@@ -164,9 +169,20 @@ services:
       REDIS_USE_SSL: 'false'
       # The configurations of celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
-      # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob`, Default: `local`
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
+      # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
+      S3_BUCKET_NAME: 'difyai'
+      S3_ACCESS_KEY: 'ak-difyai'
+      S3_SECRET_KEY: 'sk-difyai'
+      S3_REGION: 'us-east-1'
+      # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
+      AZURE_BLOB_ACCOUNT_NAME: 'difyai'
+      AZURE_BLOB_ACCOUNT_KEY: 'difyai'
+      AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
+      AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
