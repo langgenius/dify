@@ -18,7 +18,7 @@ type Props = {
   onChange: (value: string) => void
 }
 
-const TYPES = [VarType.string, VarType.number, VarType.arrayNumber, VarType.arrayString, VarType.object]
+const TYPES = [VarType.string, VarType.number, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.object]
 const VarReferencePicker: FC<Props> = ({
   readonly,
   className,
@@ -44,8 +44,8 @@ const VarReferencePicker: FC<Props> = ({
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='w-[120px] cursor-pointer'>
           <div className='flex items-center h-8 justify-between px-2.5 rounded-lg border-0 bg-gray-100 text-gray-900 text-[13px]'>
-            <div className='capitalize'>{value}</div>
-            <ChevronDown className='w-3.5 h-3.5 text-gray-700' />
+            <div className='capitalize grow w-0 truncate' title={value}>{value}</div>
+            <ChevronDown className='shrink-0 w-3.5 h-3.5 text-gray-700' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{
@@ -58,8 +58,8 @@ const VarReferencePicker: FC<Props> = ({
                 className='flex items-center h-[30px] justify-between pl-3 pr-2 rounded-lg hover:bg-gray-100 text-gray-900 text-[13px] cursor-pointer'
                 onClick={handleChange(type)}
               >
-                <div className='capitalize'>{type}</div>
-                {type === value && <Check className='w-4 h-4 text-primary-600' />}
+                <div className='w-0 grow capitalize truncate'>{type}</div>
+                {type === value && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
               </div>
             ))}
           </div>

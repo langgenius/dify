@@ -183,8 +183,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const filterInputVar = useCallback((varPayload: Var) => {
+    return [VarType.number, VarType.string].includes(varPayload.type)
+  }, [])
+
   const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.arrayObject, VarType.string].includes(varPayload.type)
+    return [VarType.arrayObject, VarType.array, VarType.string].includes(varPayload.type)
   }, [])
 
   // single run
@@ -274,6 +278,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleVarListChange,
     handleAddVariable,
     handleContextVarChange,
+    filterInputVar,
     filterVar,
     handlePromptChange,
     handleMemoryChange,

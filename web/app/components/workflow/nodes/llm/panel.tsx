@@ -40,6 +40,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleVarListChange,
     handleAddVariable,
     handleContextVarChange,
+    filterInputVar,
     filterVar,
     handlePromptChange,
     handleMemoryChange,
@@ -142,6 +143,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             nodeId={id}
             list={inputs.variables}
             onChange={handleVarListChange}
+            filterVar={filterInputVar}
           />
         </Field>
 
