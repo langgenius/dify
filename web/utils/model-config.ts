@@ -87,6 +87,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           default: '',
         },
       } as any)
+      return
     }
     if (item.type === 'number') {
       userInputs.push({
@@ -124,5 +125,6 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
       } as any)
     }
   })
+
   return userInputs
 }
