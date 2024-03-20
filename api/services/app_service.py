@@ -66,7 +66,8 @@ class AppService:
         app_template = default_app_templates[app_mode]
 
         # get model config
-        default_model_config = app_template.get('model_config').copy()
+        default_model_config = app_template.get('model_config')
+        default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and 'model' in default_model_config:
             # get model provider
             model_manager = ModelManager()
