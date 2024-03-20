@@ -164,6 +164,7 @@ export const useWorkflowRun = () => {
             draft.result = {
               ...draft?.result,
               ...data,
+              status: WorkflowRunningStatus.Running,
             }
           }))
 

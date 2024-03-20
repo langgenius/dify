@@ -14,9 +14,10 @@ import type { NodeTracing } from '@/types/workflow'
 type Props = {
   nodeInfo: NodeTracing
   collapsed?: boolean
+  className?: string
 }
 
-const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true }) => {
+const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true, className }) => {
   const [collapseState, setCollapseState] = useState<boolean>(collapsed)
   const { t } = useTranslation()
 
@@ -38,7 +39,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, collapsed = true }) => {
   }
 
   return (
-    <div className='px-4 py-1'>
+    <div className={`px-4 py-1 ${className}`}>
       <div className='group transition-all bg-white border border-gray-100 rounded-2xl shadow-xs hover:shadow-md'>
         <div
           className={cn(

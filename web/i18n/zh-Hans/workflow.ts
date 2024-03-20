@@ -28,6 +28,7 @@ const translation = {
     setVarValuePlaceholder: '设置变量值',
     needConnecttip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
+    workflowProcess: '工作流',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
