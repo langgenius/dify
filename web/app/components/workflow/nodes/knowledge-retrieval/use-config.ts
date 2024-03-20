@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
+import { isEqual } from 'lodash-es'
 import type { ValueSelector, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
 import { useIsChatMode, useWorkflow } from '../../hooks'
@@ -72,6 +73,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [setInputs])
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    // inputRef.current.single_retrieval_config?.model is old  when change the provider...
+    if (isEqual(newParams, inputRef.current.single_retrieval_config?.model.completion_params))
+      return
+
     const newInputs = produce(inputRef.current, (draft) => {
       if (!draft.single_retrieval_config) {
         draft.single_retrieval_config = {
@@ -91,6 +96,12 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   // set defaults models
   useEffect(() => {
     const inputs = inputRef.current
+    if (inputs.retrieval_mode === RETRIEVE_TYPE.multiWay && inputs.multiple_retrieval_config?.reranking_model?.provider)
+      return
+
+    if (inputs.retrieval_mode === RETRIEVE_TYPE.oneWay && inputs.single_retrieval_config?.model?.provider)
+      return
+
     const newInput = produce(inputs, (draft) => {
       if (currentProvider?.provider && currentModel?.model) {
         const hasSetModel = draft.single_retrieval_config?.model?.provider
