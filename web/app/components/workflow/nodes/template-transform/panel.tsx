@@ -22,9 +22,9 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,
@@ -49,7 +49,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
-            <AddButton onClick={handleAddVariable} />
+            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
           }
         >
           <VarList

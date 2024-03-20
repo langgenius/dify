@@ -14,12 +14,14 @@ type Props = {
   id: string
   list: Topic[]
   onChange: (list: Topic[]) => void
+  readonly?: boolean
 }
 
 const ClassList: FC<Props> = ({
   id,
   list,
   onChange,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
@@ -62,14 +64,18 @@ const ClassList: FC<Props> = ({
               onChange={handleClassChange(index)}
               onRemove={handleRemoveClass(index)}
               index={index + 1}
+              readonly={readonly}
             />
           )
         })
       }
-      <AddButton
-        onClick={handleAddClass}
-        text={t(`${i18nPrefix}.addClass`)}
-      />
+      {!readonly && (
+        <AddButton
+          onClick={handleAddClass}
+          text={t(`${i18nPrefix}.addClass`)}
+        />
+      )}
+
     </div>
   )
 }

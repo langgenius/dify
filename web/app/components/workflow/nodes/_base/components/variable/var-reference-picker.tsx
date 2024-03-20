@@ -198,6 +198,7 @@ const VarReferencePicker: FC<Props> = ({
                 <TypeSelector
                   noLeft
                   triggerClassName='!text-xs'
+                  readonly={readonly}
                   DropDownIcon={ChevronDown}
                   value={varKindType}
                   options={varKindTypes}
@@ -217,6 +218,7 @@ const VarReferencePicker: FC<Props> = ({
                   onChange={handleStaticChange}
                   onFocus={() => setIsFocus(true)}
                   onBlur={() => setIsFocus(false)}
+                  readOnly={readonly}
                 />
               )
               : (

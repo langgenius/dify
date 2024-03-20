@@ -13,6 +13,7 @@ type Props = {
   hideMemorySetting: boolean
   memory: Memory
   onMemoryChange: (memory: Memory) => void
+  readonly?: boolean
 }
 
 const AdvancedSetting: FC<Props> = ({
@@ -21,6 +22,7 @@ const AdvancedSetting: FC<Props> = ({
   hideMemorySetting,
   memory,
   onMemoryChange,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -38,6 +40,7 @@ const AdvancedSetting: FC<Props> = ({
             <div className='mx-3 h-3 w-px bg-gray-200'></div>
           </div>
         )}
+        readonly={readonly}
       />
       {!hideMemorySetting && (
         <MemoryConfig

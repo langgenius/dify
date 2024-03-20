@@ -38,6 +38,7 @@ type PanelOperatorProps = {
   triggerClassName?: string
   offset?: OffsetOptions
   onOpenChange?: (open: boolean) => void
+  inNode?: boolean
 }
 const PanelOperator = ({
   id,
@@ -48,6 +49,7 @@ const PanelOperator = ({
     crossAxis: 53,
   },
   onOpenChange,
+  inNode,
 }: PanelOperatorProps) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -121,11 +123,11 @@ const PanelOperator = ({
             ${triggerClassName}
           `}
         >
-          <DotsHorizontal className='w-4 h-4 text-gray-700' />
+          <DotsHorizontal className={`w-4 h-4 ${inNode ? 'text-gray-500' : 'text-gray-700'}`} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[240px] border-[0.5px] border-gray-200 rounded-2xl shadow-xl bg-white'>
+        <div className='w-[240px] border-[0.5px] border-gray-200 rounded-lg shadow-xl bg-white'>
           <div className='p-1'>
             {
               data.type !== BlockEnum.Start && !nodesReadOnly && (
@@ -162,7 +164,7 @@ const PanelOperator = ({
           <div className='p-1'>
             <div className='px-3 py-2 text-xs text-gray-500'>
               <div className='flex items-center mb-1 h-[22px] font-medium'>
-                {t('workflow.panel.about')}
+                {t('workflow.panel.about').toLocaleUpperCase()}
               </div>
               <div className='text-gray-500 leading-[18px]'>{about}</div>
               <div className='my-2 h-[0.5px] bg-black/5'></div>

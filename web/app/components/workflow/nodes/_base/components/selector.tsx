@@ -62,7 +62,7 @@ const TypeSelector: FC<Props> = ({
             onClick={toggleShow}
             className={cn(showOption && 'bg-black/5', 'flex items-center h-5 pl-1 pr-0.5 rounded-md text-xs font-semibold text-gray-700 cursor-pointer hover:bg-black/5')}>
             <div className={cn(triggerClassName, 'text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-gray-400')}>{!noValue ? item?.label : placeholder}</div>
-            <DropDownIcon className='w-3 h-3 ' />
+            {!readonly && <DropDownIcon className='w-3 h-3 ' />}
           </div>
         )}
 

@@ -26,9 +26,9 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     isChatModel,
     isChatMode,
@@ -127,13 +127,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             onCompletionParamsChange={handleCompletionParamsChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
+            readonly={readOnly}
           />
         </Field>
 
         <Field
           title={t(`${i18nPrefix}.variables`)}
           operations={
-            <AddButton onClick={handleAddVariable} />
+            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
           }
         >
           <VarList

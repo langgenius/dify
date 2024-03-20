@@ -47,6 +47,7 @@ export type ModelParameterModalProps = {
   debugWithMultipleModel?: boolean
   onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
+  readonly?: boolean
 }
 const stopParameerRule: ModelParameterRule = {
   default: [],
@@ -81,6 +82,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
   renderTrigger,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const { hasSettedApiKey } = useProviderContext()
@@ -174,7 +176,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       <div className='relative'>
         <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
+          onClick={() => {
+            if (readonly)
+              return
+            setOpen(v => !v)
+          }}
           className='block'
         >
           {
