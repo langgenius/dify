@@ -115,11 +115,13 @@ type VariablePickerProps = {
   items?: Option[]
   externalTools?: ExternalToolOption[]
   onAddExternalTool?: () => void
+  outToolDisabled?: boolean
 }
 const VariablePicker: FC<VariablePickerProps> = ({
   items = [],
   externalTools = [],
   onAddExternalTool,
+  outToolDisabled,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -215,7 +217,9 @@ const VariablePicker: FC<VariablePickerProps> = ({
     [editor],
   )
 
-  const mergedOptions = [...options, ...toolOptions, newOption, newToolOption]
+  const mergedOptions = [...options, ...toolOptions, newOption]
+  if (!outToolDisabled)
+    mergedOptions.push(newToolOption)
 
   return (
     <LexicalTypeaheadMenuPlugin
@@ -298,26 +302,29 @@ const VariablePicker: FC<VariablePickerProps> = ({
                   {newOption.icon}
                   <div className='text-[13px] text-gray-900'>{newOption.title}</div>
                 </div>
-                <div
-                  className={`
+                {!outToolDisabled && (
+                  <div
+                    className={`
                     flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
                     ${selectedIndex === options.length + toolOptions.length + 1 && 'bg-primary-50'}
                   `}
-                  ref={newToolOption.setRefElement}
-                  tabIndex={-1}
-                  onClick={() => {
-                    setHighlightedIndex(options.length + toolOptions.length + 1)
-                    selectOptionAndCleanUp(newToolOption)
-                  }}
-                  onMouseEnter={() => {
-                    setHighlightedIndex(options.length + toolOptions.length + 1)
-                  }}
-                  key={newToolOption.key}
-                >
-                  {newToolOption.icon}
-                  <div className='grow text-[13px] text-gray-900'>{newToolOption.title}</div>
-                  {newToolOption.extraElement}
-                </div>
+                    ref={newToolOption.setRefElement}
+                    tabIndex={-1}
+                    onClick={() => {
+                      setHighlightedIndex(options.length + toolOptions.length + 1)
+                      selectOptionAndCleanUp(newToolOption)
+                    }}
+                    onMouseEnter={() => {
+                      setHighlightedIndex(options.length + toolOptions.length + 1)
+                    }}
+                    key={newToolOption.key}
+                  >
+                    {newToolOption.icon}
+                    <div className='grow text-[13px] text-gray-900'>{newToolOption.title}</div>
+                    {newToolOption.extraElement}
+                  </div>
+                )}
+
               </div>
             </div>,
             anchorElementRef.current,

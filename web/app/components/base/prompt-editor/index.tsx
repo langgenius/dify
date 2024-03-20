@@ -180,6 +180,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           items={variableBlock.variables}
           externalTools={variableBlock.externalTools}
           onAddExternalTool={variableBlock.onAddExternalTool}
+          outToolDisabled={outToolDisabled}
         />
         {
           contextBlock.show && (

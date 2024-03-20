@@ -161,7 +161,6 @@ const VarReferencePicker: FC<Props> = ({
         })
       }
     })
-    console.log(newValue)
     onChange(newValue, varKindType)
     setOpen(false)
   }, [onChange, varKindType])
