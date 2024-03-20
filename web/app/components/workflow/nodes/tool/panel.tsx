@@ -22,9 +22,9 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     toolInputVarSchema,
     setInputVar,
