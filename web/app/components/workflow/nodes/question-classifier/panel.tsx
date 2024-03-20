@@ -19,9 +19,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const readOnly = false
 
   const {
+    readOnly,
     inputs,
     handleModelChanged,
     isChatModel,
@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             onCompletionParamsChange={handleCompletionParamsChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
+            readonly={readOnly}
           />
         </Field>
         <Field
@@ -81,7 +82,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           <ClassList
             id={id}
             list={inputs.classes}
-            onChange={handleTopicsChange} />
+            onChange={handleTopicsChange}
+            readonly={readOnly}
+          />
         </Field>
         <Field
           title={t(`${i18nPrefix}.advancedSetting`)}
@@ -93,6 +96,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             onInstructionChange={handleInstructionChange}
             memory={inputs.memory}
             onMemoryChange={handleMemoryChange}
+            readonly={readOnly}
           />
         </Field>
       </div>

@@ -13,6 +13,7 @@ type Props = {
   onChange: (payload: Topic) => void
   onRemove: () => void
   index: number
+  readonly?: boolean
 }
 
 const ClassItem: FC<Props> = ({
@@ -20,6 +21,7 @@ const ClassItem: FC<Props> = ({
   onChange,
   onRemove,
   index,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -45,12 +47,15 @@ const ClassItem: FC<Props> = ({
         <div className='flex items-center h-full'>
           <div className='text-xs font-medium text-gray-500'>{payload.name.length}</div>
           <div className='mx-3 h-3 w-px bg-gray-200'></div>
-          <Trash03
-            className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
-            onClick={onRemove}
-          />
+          {!readonly && (
+            <Trash03
+              className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+              onClick={onRemove}
+            />
+          )}
         </div>
       )}
+      readonly={readonly}
       minHeight={64}
     />
   )
