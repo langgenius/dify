@@ -1,6 +1,7 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
 import {
   useStore,
   useWorkflowStore,
@@ -11,7 +12,10 @@ import {
   useNodesSyncDraft,
   useWorkflowRun,
 } from '../hooks'
-import { WorkflowRunningStatus } from '../types'
+import {
+  BlockEnum,
+  WorkflowRunningStatus,
+} from '../types'
 import {
   Play,
   StopCircle,
@@ -20,20 +24,59 @@ import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
+  const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const { handleStopRun } = useWorkflowRun()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const featuresStore = useFeaturesStore()
+  const {
+    handleStopRun,
+    handleRunSetting,
+    handleRun,
+  } = useWorkflowRun()
+  const {
+    doSyncWorkflowDraft,
+    handleSyncWorkflowDraft,
+  } = useNodesSyncDraft()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
-  const handleClick = () => {
-    workflowStore.setState({ showInputsPanel: true })
-    handleSyncWorkflowDraft(true)
-  }
+  const handleClick = useCallback(async () => {
+    const {
+      setShowInputsPanel,
+      workflowRunningData,
+    } = workflowStore.getState()
+
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
+      return
+
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    const startVariables = startNode?.data.variables || []
+    const fileSettings = featuresStore!.getState().features.file
+
+    if (!startVariables.length && !fileSettings.image.enabled) {
+      await doSyncWorkflowDraft()
+      handleRunSetting()
+      handleRun({ inputs: {}, files: [] })
+    }
+    else {
+      setShowInputsPanel(true)
+      handleSyncWorkflowDraft(true)
+    }
+  }, [
+    workflowStore,
+    handleSyncWorkflowDraft,
+    handleRunSetting,
+    handleRun,
+    doSyncWorkflowDraft,
+    store,
+    featuresStore,
+  ])
 
   return (
     <>
@@ -44,7 +87,7 @@ const RunMode = memo(() => {
           ${showInputsPanel && 'bg-primary-50'}
           ${isRunning && 'bg-primary-50 !cursor-not-allowed'}
         `}
-        onClick={() => !isRunning && handleClick()}
+        onClick={handleClick}
       >
         {
           isRunning

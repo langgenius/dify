@@ -22,7 +22,7 @@ export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
 
-  const doSyncWorkflowDraft = useCallback(() => {
+  const doSyncWorkflowDraft = useCallback(async () => {
     const {
       getNodes,
       edges,
@@ -90,6 +90,7 @@ export const useNodesSyncDraft = () => {
   }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly])
 
   return {
+    doSyncWorkflowDraft,
     handleSyncWorkflowDraft,
   }
 }

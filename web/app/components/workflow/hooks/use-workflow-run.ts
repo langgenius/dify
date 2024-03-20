@@ -36,19 +36,22 @@ export const useWorkflowRun = () => {
   const handleBackupDraft = useCallback(() => {
     const {
       getNodes,
-      getEdges,
-      getViewport,
-    } = reactflow
+      edges,
+    } = store.getState()
+    const { getViewport } = reactflow
     const {
+      backupDraft,
       setBackupDraft,
     } = workflowStore.getState()
 
-    setBackupDraft({
-      nodes: getNodes(),
-      edges: getEdges(),
-      viewport: getViewport(),
-    })
-  }, [reactflow, workflowStore])
+    if (!backupDraft) {
+      setBackupDraft({
+        nodes: getNodes(),
+        edges,
+        viewport: getViewport(),
+      })
+    }
+  }, [reactflow, workflowStore, store])
 
   const handleLoadBackupDraft = useCallback(() => {
     const {
@@ -56,7 +59,10 @@ export const useWorkflowRun = () => {
       setEdges,
     } = store.getState()
     const { setViewport } = reactflow
-    const { backupDraft } = workflowStore.getState()
+    const {
+      backupDraft,
+      setBackupDraft,
+    } = workflowStore.getState()
 
     if (backupDraft) {
       const {
@@ -67,6 +73,8 @@ export const useWorkflowRun = () => {
       setNodes(nodes)
       setEdges(edges)
       setViewport(viewport)
+
+      setBackupDraft(undefined)
     }
   }, [store, reactflow, workflowStore])
 
