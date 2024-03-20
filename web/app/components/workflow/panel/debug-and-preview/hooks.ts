@@ -7,6 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { useWorkflowRun } from '../../hooks'
+import { WorkflowRunningStatus } from '../../types'
 import type {
   ChatItem,
   Inputs,
@@ -261,13 +262,50 @@ export const useChat = (
           })
           handleUpdateChatList(newChatList)
         },
-        onWorkflowStarted: () => {
+        onWorkflowStarted: ({ workflow_run_id }) => {
+          responseItem.workflow_run_id = workflow_run_id
+          responseItem.workflowProcess = {
+            status: WorkflowRunningStatus.Running,
+            tracing: [],
+          }
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
-        onWorkflowFinished: () => {
+        onWorkflowFinished: ({ data }) => {
+          responseItem.workflowProcess!.status = data.status as WorkflowRunningStatus
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
-        onNodeStarted: () => {
+        onNodeStarted: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push(data as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
-        onNodeFinished: () => {
+        onNodeFinished: ({ data }) => {
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          responseItem.workflowProcess!.tracing[currentIndex] = data as any
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
       },
     )

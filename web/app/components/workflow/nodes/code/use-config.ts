@@ -11,8 +11,13 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { fetchNodeDefault } from '@/service/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import {
+  useNodesReadOnly,
+} from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: CodeNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
+
   const appId = useAppStore.getState().appDetail?.id
 
   const [allLanguageDefault, setAllLanguageDefault] = useState<Record<CodeLanguage, CodeNodeType> | null>(null)
@@ -114,6 +119,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   }, [setRunInputData])
 
   return {
+    readOnly,
     inputs,
     handleVarListChange,
     handleAddVariable,

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef } from 'react'
 import produce from 'immer'
 import { BlockEnum, VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
-import { useIsChatMode, useWorkflow } from '../../hooks'
+import {
+  useIsChatMode, useNodesReadOnly,
+  useWorkflow,
+} from '../../hooks'
 import { useStore } from '../../store'
 import type { QuestionClassifierNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -10,6 +13,7 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -133,6 +137,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   }, [])
 
   return {
+    readOnly,
     inputs,
     handleModelChanged,
     isChatModel,

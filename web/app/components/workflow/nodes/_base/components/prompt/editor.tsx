@@ -127,7 +127,7 @@ const Editor: FC<Props> = ({
                 variables: variables.map(item => ({
                   name: item,
                   value: item,
-                })), // add context
+                })),
                 externalTools: [],
                 onAddExternalTool: () => { },
               }}

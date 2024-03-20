@@ -3,7 +3,10 @@ import produce from 'immer'
 import { isEqual } from 'lodash-es'
 import type { ValueSelector, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
-import { useIsChatMode, useWorkflow } from '../../hooks'
+import {
+  useIsChatMode, useNodesReadOnly,
+  useWorkflow,
+} from '../../hooks'
 import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
@@ -14,6 +17,7 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
@@ -242,6 +246,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [runInputData, setRunInputData])
 
   return {
+    readOnly,
     inputs,
     handleQueryVarChange,
     filterVar,

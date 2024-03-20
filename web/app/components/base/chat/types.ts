@@ -52,7 +52,7 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
 
 export type WorkflowProcess = {
   status: WorkflowRunningStatus
-  nodes: NodeTracing[]
+  tracing: NodeTracing[]
 }
 
 export type ChatItem = IChatItem & {

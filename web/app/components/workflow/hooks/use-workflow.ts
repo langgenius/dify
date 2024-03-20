@@ -383,7 +383,7 @@ export const useNodesReadOnly = () => {
   }, [workflowStore])
 
   return {
-    nodesReadOnly: workflowRunningData || historyWorkflowData || isRestoring,
+    nodesReadOnly: !!(workflowRunningData || historyWorkflowData || isRestoring),
     getNodesReadOnly,
   }
 }

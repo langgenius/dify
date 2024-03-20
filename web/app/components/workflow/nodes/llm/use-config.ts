@@ -4,7 +4,10 @@ import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
 import { useStore } from '../../store'
-import { useIsChatMode } from '../../hooks'
+import {
+  useIsChatMode,
+  useNodesReadOnly,
+} from '../../hooks'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -16,6 +19,7 @@ import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
+  const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
@@ -259,6 +263,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const varInputs = toVarInputs(inputs.variables)
 
   return {
+    readOnly,
     isChatMode,
     inputs,
     isChatModel,
