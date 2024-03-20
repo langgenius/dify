@@ -46,11 +46,12 @@ def load_single_subclass_from_source(
         module_name: str,
         script_path: AnyStr,
         parent_type: type,
+        use_lazy_loader: bool = False,
 ) -> type:
     """
     Load a single subclass from the source
     """
-    module = import_module_from_source(module_name, script_path)
+    module = import_module_from_source(module_name, script_path, use_lazy_loader)
     subclasses = get_subclasses_from_module(module, parent_type)
     match len(subclasses):
         case 1:
