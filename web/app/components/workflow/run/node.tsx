@@ -14,9 +14,10 @@ import type { NodeTracing } from '@/types/workflow'
 type Props = {
   nodeInfo: NodeTracing
   className?: string
+  hideInfo?: boolean
 }
 
-const NodePanel: FC<Props> = ({ nodeInfo, className }) => {
+const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
   const { t } = useTranslation()
 
@@ -59,7 +60,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, className }) => {
           />
           <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} />
           <div className='grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate' title={nodeInfo.title}>{nodeInfo.title}</div>
-          {nodeInfo.status !== 'running' && (
+          {nodeInfo.status !== 'running' && !hideInfo && (
             <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time || 0)} · ${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens`}</div>
           )}
           {nodeInfo.status === 'succeeded' && (
