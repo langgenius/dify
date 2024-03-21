@@ -136,7 +136,7 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
           </div>
         }
       >
-        <div className={classNames('mt-5 p-3', isMobile && 'border-[0.5px] border-gray-200 shadow-lg rounded-lg bg-white w-[150px]')}>
+        <div className={classNames('mt-5 p-3', isMobile && 'border-[0.5px] border-gray-200 shadow-lg rounded-lg bg-white w-[160px]')}>
           <div className='flex items-center justify-start gap-2'>
             <div className={s.emptyIconDiv}>
               <Squares2X2Icon className='w-3 h-3 text-gray-500' />
