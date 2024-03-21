@@ -1,12 +1,12 @@
-model: ernie-bot-4
+model: ernie-3.5-8k-1222
 label:
-  en_US: Ernie Bot 4
+  en_US: Ernie-3.5-8K-1222
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 4800
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -15,14 +15,13 @@ parameter_rules:
     default: 0.8
   - name: top_p
     use_template: top_p
-  - name: max_tokens
-    use_template: max_tokens
-    required: true
-    default: 256
+  - name: max_output_tokens
+    use_template: max_output_tokens
+    default: 1024
     min: 1
-    max: 4800
-  - name: presence_penalty
-    use_template: presence_penalty
+    max: 8000
+  - name: penalty_score
+    use_template: penalty_score
   - name: frequency_penalty
     use_template: frequency_penalty
   - name: response_format
