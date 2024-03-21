@@ -2,8 +2,12 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import { type OutputVar } from '../../code/types'
 import { VarType } from '@/app/components/workflow/types'
+import {
+  useWorkflow,
+} from '@/app/components/workflow/hooks'
 
 type Params<T> = {
+  id: string
   inputs: T
   setInputs: (newInputs: T) => void
   varKey?: string
@@ -11,12 +15,15 @@ type Params<T> = {
   onOutputKeyOrdersChange: (newOutputKeyOrders: string[]) => void
 }
 function useOutputVarList<T>({
+  id,
   inputs,
   setInputs,
   varKey = 'outputs',
   outputKeyOrders = [],
   onOutputKeyOrdersChange,
 }: Params<T>) {
+  const { handleOutVarRenameChange } = useWorkflow()
+
   const handleVarsChange = useCallback((newVars: OutputVar, changedIndex?: number, newKey?: string) => {
     const newInputs = produce(inputs, (draft: any) => {
       draft[varKey] = newVars
@@ -29,7 +36,10 @@ function useOutputVarList<T>({
       })
       onOutputKeyOrdersChange(newOutputKeyOrders)
     }
-  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange])
+
+    if (newKey)
+      handleOutVarRenameChange(id, [id, outputKeyOrders[changedIndex!]], [id, newKey])
+  }, [inputs, setInputs, handleOutVarRenameChange, id, outputKeyOrders, varKey, onOutputKeyOrdersChange])
 
   const handleAddVariable = useCallback(() => {
     const newKey = `var-${Object.keys((inputs as any)[varKey]).length + 1}`
