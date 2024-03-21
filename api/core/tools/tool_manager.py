@@ -15,7 +15,6 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolInvokeMessage,
     ToolParameter,
-    ToolProviderCredentials,
 )
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolProviderNotFoundError
@@ -37,6 +36,7 @@ from core.tools.utils.encoder import serialize_base_model_dict
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
+from services.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
 
@@ -468,131 +468,47 @@ class ToolManager:
         tenant_id: str,
     ) -> list[UserToolProvider]:
         result_providers: dict[str, UserToolProvider] = {}
+        
         # get builtin providers
         builtin_providers = ToolManager.list_builtin_providers()
-        # append builtin providers
-        for provider in builtin_providers:
-            result_providers[provider.identity.name] = UserToolProvider(
-                id=provider.identity.name,
-                author=provider.identity.author,
-                name=provider.identity.name,
-                description=I18nObject(
-                    en_US=provider.identity.description.en_US,
-                    zh_Hans=provider.identity.description.zh_Hans,
-                ),
-                icon=provider.identity.icon,
-                label=I18nObject(
-                    en_US=provider.identity.label.en_US,
-                    zh_Hans=provider.identity.label.zh_Hans,
-                ),
-                type=UserToolProvider.ProviderType.BUILTIN,
-                team_credentials={},
-                is_team_authorization=False,
-            )
-
-            # get credentials schema
-            schema = provider.get_credentials_schema()
-            for name, value in schema.items():
-                result_providers[provider.identity.name].team_credentials[name] = \
-                    ToolProviderCredentials.CredentialsType.default(value.type)
-
-            # check if the provider need credentials
-            if not provider.need_credentials:
-                result_providers[provider.identity.name].is_team_authorization = True
-                result_providers[provider.identity.name].allow_delete = False
-
+        
         # get db builtin providers
         db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
             filter(BuiltinToolProvider.tenant_id == tenant_id).all()
         
-        for db_builtin_provider in db_builtin_providers:
-            # add provider into providers
-            credentials = db_builtin_provider.credentials
-            provider_name = db_builtin_provider.provider
-            if provider_name not in result_providers:
-                # the provider has been deleted
-                continue
+        find_db_builtin_provider = lambda provider: next((x for x in db_builtin_providers if x.provider == provider), None)
+        
+        # append builtin providers
+        for provider in builtin_providers:
+            user_provider = ToolTransformService.builtin_provider_to_user_provider(
+                provider_controller=provider,
+                db_provider=find_db_builtin_provider(provider.identity.name),
+            )
 
-            result_providers[provider_name].is_team_authorization = True
-
-            # package builtin tool provider controller
-            controller = ToolManager.get_builtin_provider(provider_name)
-
-            # init tool configuration
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
-            # decrypt the credentials and mask the credentials
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
-
-            result_providers[provider_name].team_credentials = masked_credentials
+            result_providers[provider.identity.name] = user_provider
 
         # get model tool providers
         model_providers = ToolManager.list_model_providers(tenant_id=tenant_id)
         # append model providers
         for provider in model_providers:
-            result_providers[f'model_provider.{provider.identity.name}'] = UserToolProvider(
-                id=provider.identity.name,
-                author=provider.identity.author,
-                name=provider.identity.name,
-                description=I18nObject(
-                    en_US=provider.identity.description.en_US,
-                    zh_Hans=provider.identity.description.zh_Hans,
-                ),
-                icon=provider.identity.icon,
-                label=I18nObject(
-                    en_US=provider.identity.label.en_US,
-                    zh_Hans=provider.identity.label.zh_Hans,
-                ),
-                type=UserToolProvider.ProviderType.MODEL,
-                team_credentials={},
-                is_team_authorization=provider.is_active,
+            user_provider = ToolTransformService.model_provider_to_user_provider(
+                db_provider=provider,
             )
+            result_providers[f'model_provider.{provider.identity.name}'] = user_provider
 
         # get db api providers
         db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
             filter(ApiToolProvider.tenant_id == tenant_id).all()
         
         for db_api_provider in db_api_providers:
-            username = 'Anonymous'
-            try:
-                username = db_api_provider.user.name
-            except Exception as e:
-                logger.error(f'failed to get user name for api provider {db_api_provider.id}: {str(e)}')
-            # add provider into providers
-            credentials = db_api_provider.credentials
-            provider_name = db_api_provider.name
-            result_providers[provider_name] = UserToolProvider(
-                id=db_api_provider.id,
-                author=username,
-                name=db_api_provider.name,
-                description=I18nObject(
-                    en_US=db_api_provider.description,
-                    zh_Hans=db_api_provider.description,
-                ),
-                icon=db_api_provider.icon,
-                label=I18nObject(
-                    en_US=db_api_provider.name,
-                    zh_Hans=db_api_provider.name,
-                ),
-                type=UserToolProvider.ProviderType.API,
-                team_credentials={},
-                is_team_authorization=True,
-            )
-
-            # package tool provider controller
-            controller = ApiBasedToolProviderController.from_db(
+            provider_controller = ToolTransformService.api_provider_to_controller(
                 db_provider=db_api_provider,
-                auth_type=ApiProviderAuthType.API_KEY if db_api_provider.credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
             )
-
-            # init tool configuration
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
-
-            # decrypt the credentials and mask the credentials
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
-
-            result_providers[provider_name].team_credentials = masked_credentials
+            user_provider = ToolTransformService.api_provider_to_user_provider(
+                provider_controller=provider_controller,
+                db_provider=db_api_provider,
+            )
+            result_providers[db_api_provider.name] = user_provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
     

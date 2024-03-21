@@ -9,7 +9,6 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
     ToolCredentialsOption,
-    ToolParameter,
     ToolProviderCredentials,
 )
 from core.tools.entities.user_entities import UserTool, UserToolProvider
@@ -23,6 +22,7 @@ from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 from services.model_provider_service import ModelProviderService
+from services.tools_transform_service import ToolTransformService
 
 
 class ToolManageService:
@@ -70,7 +70,7 @@ class ToolManageService:
     @staticmethod
     def list_builtin_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
-    ):
+    ) -> list[UserTool]:
         """
             list builtin tool provider tools
         """
@@ -92,41 +92,11 @@ class ToolManageService:
 
         result = []
         for tool in tools:
-            # fork tool runtime
-            tool = tool.fork_tool_runtime(meta={
-                'credentials': credentials,
-                'tenant_id': tenant_id,
-            })
+            result.append(ToolTransformService.tool_to_user_tool(
+                tool=tool, credentials=credentials, tenant_id=tenant_id
+            ))
 
-            # get tool parameters
-            parameters = tool.parameters or []
-            # get tool runtime parameters
-            runtime_parameters = tool.get_runtime_parameters()
-            # override parameters
-            current_parameters = parameters.copy()
-            for runtime_parameter in runtime_parameters:
-                found = False
-                for index, parameter in enumerate(current_parameters):
-                    if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
-                        current_parameters[index] = runtime_parameter
-                        found = True
-                        break
-
-                if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
-                    current_parameters.append(runtime_parameter)
-
-            user_tool = UserTool(
-                author=tool.identity.author,
-                name=tool.identity.name,
-                label=tool.identity.label,
-                description=tool.description.human,
-                parameters=current_parameters
-            )
-            result.append(user_tool)
-
-        return json.loads(
-            serialize_base_model_array(result)
-        )
+        return result
     
     @staticmethod
     def list_builtin_provider_credentials_schema(
@@ -318,7 +288,7 @@ class ToolManageService:
     @staticmethod
     def list_api_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
-    ):
+    ) -> list[UserTool]:
         """
             list api tool provider tools
         """
@@ -330,23 +300,21 @@ class ToolManageService:
         if provider is None:
             raise ValueError(f'you have not added provider {provider}')
         
-        return json.loads(
-            serialize_base_model_array([
-                UserTool(
-                    author=tool_bundle.author,
-                    name=tool_bundle.operation_id,
-                    label=I18nObject(
-                        en_US=tool_bundle.operation_id,
-                        zh_Hans=tool_bundle.operation_id
-                    ),
-                    description=I18nObject(
-                        en_US=tool_bundle.summary or '',
-                        zh_Hans=tool_bundle.summary or ''
-                    ),
-                    parameters=tool_bundle.parameters
-                ) for tool_bundle in provider.tools
-            ])
-        )
+        return [
+            UserTool(
+                author=tool_bundle.author,
+                name=tool_bundle.operation_id,
+                label=I18nObject(
+                    en_US=tool_bundle.operation_id,
+                    zh_Hans=tool_bundle.operation_id
+                ),
+                description=I18nObject(
+                    en_US=tool_bundle.summary or '',
+                    zh_Hans=tool_bundle.summary or ''
+                ),
+                parameters=tool_bundle.parameters
+            ) for tool_bundle in provider.tools
+        ]
 
     @staticmethod
     def update_builtin_tool_provider(
@@ -527,7 +495,7 @@ class ToolManageService:
     @staticmethod
     def list_model_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
-    ):
+    ) -> list[UserTool]:
         """
             list model tool provider tools
         """
@@ -656,3 +624,78 @@ class ToolManageService:
             return { 'error': str(e) }
         
         return { 'result': result or 'empty response' }
+    
+    @staticmethod
+    def list_builtin_tools(
+        user_id: str, tenant_id: str
+    ) -> list[UserToolProvider]:
+        """
+            list builtin tools
+        """
+        # get all builtin providers
+        provider_controllers = ToolManager.list_builtin_providers()
+
+        # get all user added providers
+        db_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider).filter(
+            BuiltinToolProvider.tenant_id == tenant_id
+        ).all() or []
+
+        # find provider
+        find_provider = lambda provider: next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
+
+        result: list[UserToolProvider] = []
+
+        for provider_controller in provider_controllers:
+            # convert provider controller to user provider
+            user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
+                provider_controller=provider_controller,
+                db_provider=find_provider(provider_controller.identity.name)
+            )
+            
+            tools = provider_controller.get_tools()
+            for tool in tools:
+                user_builtin_provider.tools.append(ToolTransformService.tool_to_user_tool(
+                    tenant_id=tenant_id,
+                    tool=tool, 
+                    credentials=user_builtin_provider.original_credentials, 
+                ))
+
+            result.append(user_builtin_provider)
+
+        return result
+    
+    @staticmethod
+    def list_api_tools(
+        user_id: str, tenant_id: str
+    ) -> list[UserToolProvider]:
+        """
+            list api tools
+        """
+        # get all api providers
+        db_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tenant_id
+        ).all() or []
+
+        result: list[UserToolProvider] = []
+
+        for provider in db_providers:
+            # convert provider controller to user provider
+            provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
+            user_provider = ToolTransformService.api_provider_to_user_provider(
+                provider_controller,
+                db_provider=provider
+            )
+
+            tools = provider_controller.get_tools(
+                user_id=user_id, tenant_id=tenant_id
+            )
+            for tool in tools:
+                user_provider.tools.append(ToolTransformService.tool_to_user_tool(
+                    tenant_id=tenant_id,
+                    tool=tool, 
+                    credentials=user_provider.original_credentials, 
+                ))
+
+            result.append(user_provider)
+
+        return result
