@@ -5,7 +5,7 @@ import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import produce from 'immer'
 import cn from 'classnames'
-import TextGenerationRes, { type WorkflowProcessData } from '@/app/components/app/text-generate/item'
+import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
 import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
@@ -16,6 +16,7 @@ import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -77,9 +78,9 @@ const Result: FC<IResultProps> = ({
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
-  const [workflowProcessData, doSetWorkflowProccessData] = useState<WorkflowProcessData>()
-  const workflowProcessDataRef = useRef<WorkflowProcessData>()
-  const setWorkflowProccessData = (data: WorkflowProcessData) => {
+  const [workflowProcessData, doSetWorkflowProccessData] = useState<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const setWorkflowProccessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProccessData(data)
   }
