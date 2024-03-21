@@ -24,14 +24,17 @@ const Doc = ({ appDetail }: IDocProps) => {
 
   return (
     <article className="prose prose-xl" >
+      {(appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') && (
+        locale !== LanguagesSupported[1] ? <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} /> : <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
+      )}
+      {appDetail?.mode === 'advanced-chat' && (
+        locale !== LanguagesSupported[1] ? <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} /> : <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
+      )}
       {appDetail?.mode === 'workflow' && (
         locale !== LanguagesSupported[1] ? <TemplateWorkflowEn appDetail={appDetail} variables={variables} inputs={inputs} /> : <TemplateWorkflowZh appDetail={appDetail} variables={variables} inputs={inputs} />
       )}
       {appDetail?.mode === 'completion' && (
         locale !== LanguagesSupported[1] ? <TemplateEn appDetail={appDetail} variables={variables} inputs={inputs} /> : <TemplateZh appDetail={appDetail} variables={variables} inputs={inputs} />
-      )}
-      {(appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') && (
-        locale !== LanguagesSupported[1] ? <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} /> : <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
       )}
     </article>
   )
