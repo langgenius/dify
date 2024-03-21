@@ -100,6 +100,7 @@ const CodeEditor: FC<Props> = ({
             quickSuggestions: false,
             minimap: { enabled: false },
             lineNumbersMinChars: 1, // would change line num width
+            wordWrap: 'on', // auto line wrap
             // lineNumbers: (num) => {
             //   return <div>{num}</div>
             // }
