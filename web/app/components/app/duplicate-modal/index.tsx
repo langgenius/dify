@@ -64,7 +64,7 @@ const DuplicateAppModal = ({
         <div className={s.title}>{t('app.duplicateTitle')}</div>
         <div className={s.content}>
           <div className={s.subTitle}>{t('explore.appCustomize.subTitle')}</div>
-          <div className='flex items-center justify-between space-x-3'>
+          <div className='flex items-center justify-between space-x-2'>
             <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
             <input
               value={name}

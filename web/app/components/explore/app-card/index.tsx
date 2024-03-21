@@ -6,7 +6,7 @@ import Button from '../../base/button'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
+import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 export type AppCardProps = {
   app: App
   canCreate: boolean
