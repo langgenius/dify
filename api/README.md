@@ -4,7 +4,7 @@
 
 1. Start the docker-compose stack
 
-   The backend require some middleware, including PostgreSQL, Redis, and Weaviate, which can be started together using `docker-compose`.
+   The backend requires some middleware, including PostgreSQL, Redis, and Weaviate, which can be started together using `docker-compose`.
 
    ```bash
    cd ../docker
@@ -52,4 +52,8 @@
    flask run --host 0.0.0.0 --port=5001 --debug
    ```
 7. Setup your application by visiting http://localhost:5001/console/api/setup or other apis...
-8. If you need to debug local async processing, you can run `celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail`, celery can do dataset importing and other async tasks.
+8. If you need to debug local async processing, you **must** start celery worker by: 
+    ```bash
+    celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail
+    ```
+    celery can do dataset importing and other async tasks.
