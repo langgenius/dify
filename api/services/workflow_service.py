@@ -9,6 +9,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode
@@ -117,8 +118,6 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError('No valid workflow found.')
 
-        # TODO check if the workflow structure is valid
-
         # create new workflow
         workflow = Workflow(
             tenant_id=app_model.tenant_id,
@@ -138,7 +137,8 @@ class WorkflowService:
         app_model.workflow_id = workflow.id
         db.session.commit()
 
-        # TODO update app related datasets
+        # trigger app workflow events
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
         return workflow

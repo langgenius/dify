@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Generator
@@ -195,7 +196,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                err = self._handle_error(event)
+                err = self._handle_error(event, self._message)
                 yield self._error_to_stream_response(err)
                 break
             elif isinstance(event, QueueStopEvent | QueueMessageEndEvent):
@@ -281,6 +282,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         self._message.provider_response_latency = time.perf_counter() - self._start_at
         self._message.total_price = usage.total_price
         self._message.currency = usage.currency
+        self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
+            if self._task_state.metadata else None
 
         db.session.commit()
 

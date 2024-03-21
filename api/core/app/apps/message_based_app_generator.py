@@ -182,6 +182,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 system_instruction="",
                 system_instruction_tokens=0,
                 status='normal',
+                invoke_from=application_generate_entity.invoke_from.value,
                 from_source=from_source,
                 from_end_user_id=end_user_id,
                 from_account_id=account_id,
@@ -210,6 +211,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             provider_response_latency=0,
             total_price=0,
             currency='USD',
+            invoke_from=application_generate_entity.invoke_from.value,
             from_source=from_source,
             from_end_user_id=end_user_id,
             from_account_id=account_id

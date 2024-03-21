@@ -458,7 +458,8 @@ class WorkflowCycleManage:
 
     def _handle_workflow_finished(self, event: QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent) \
             -> Optional[WorkflowRun]:
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == self._task_state.workflow_run_id).first()
+        workflow_run = db.session.query(WorkflowRun).filter(
+            WorkflowRun.id == self._task_state.workflow_run_id).first()
         if not workflow_run:
             return None
 
@@ -471,6 +472,18 @@ class WorkflowCycleManage:
                 status=WorkflowRunStatus.STOPPED,
                 error='Workflow stopped.'
             )
+
+            latest_node_execution_info = self._task_state.latest_node_execution_info
+            if latest_node_execution_info:
+                workflow_node_execution = db.session.query(WorkflowNodeExecution).filter(
+                    WorkflowNodeExecution.id == latest_node_execution_info.workflow_node_execution_id).first()
+                if (workflow_node_execution
+                        and workflow_node_execution.status == WorkflowNodeExecutionStatus.RUNNING.value):
+                    self._workflow_node_execution_failed(
+                        workflow_node_execution=workflow_node_execution,
+                        start_at=latest_node_execution_info.start_at,
+                        error='Workflow stopped.'
+                    )
         elif isinstance(event, QueueWorkflowFailedEvent):
             workflow_run = self._workflow_run_failed(
                 workflow_run=workflow_run,

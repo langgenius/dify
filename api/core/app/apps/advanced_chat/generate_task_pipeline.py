@@ -38,6 +38,7 @@ from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.answer.entities import TextGenerateRouteChunk, VarGenerateRouteChunk
@@ -167,7 +168,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
-                err = self._handle_error(event)
+                err = self._handle_error(event, self._message)
                 yield self._error_to_stream_response(err)
                 break
             elif isinstance(event, QueueWorkflowStartedEvent):
@@ -285,6 +286,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         self._message.answer = self._task_state.answer
         self._message.provider_response_latency = time.perf_counter() - self._start_at
+        self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
+            if self._task_state.metadata else None
 
         if self._task_state.metadata and self._task_state.metadata.get('usage'):
             usage = LLMUsage(**self._task_state.metadata['usage'])
@@ -295,7 +298,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             self._message.answer_tokens = usage.completion_tokens
             self._message.answer_unit_price = usage.completion_unit_price
             self._message.answer_price_unit = usage.completion_price_unit
-            self._message.provider_response_latency = time.perf_counter() - self._start_at
             self._message.total_price = usage.total_price
             self._message.currency = usage.currency
 
@@ -451,6 +453,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             else:
                 route_chunk = cast(VarGenerateRouteChunk, route_chunk)
                 value_selector = route_chunk.value_selector
+                if not value_selector:
+                    self._task_state.current_stream_generate_state.current_route_position += 1
+                    continue
+
                 route_chunk_node_id = value_selector[0]
 
                 if route_chunk_node_id == 'sys':
