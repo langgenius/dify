@@ -30,6 +30,7 @@ const translation = {
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     workflowProcess: '工作流',
     notRunning: '尚未运行',
+    previewPlaceholder: '在下面的框中输入内容开始调试聊天机器人',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
