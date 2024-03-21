@@ -248,8 +248,8 @@ const Answer: FC<IAnswerProps> = ({
             </div>
           )
         }
-        <div className={cn(s.answerWrapWrap, 'chat-answer-container group')}>
-          <div className={s.answerWrap}>
+        <div className={cn(s.answerWrapWrap, 'chat-answer-container')}>
+          <div className={cn(s.answerWrap, 'group')}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
                 {(isResponding && (isAgentMode ? (!content && (agent_thoughts || []).filter(item => !!item.thought || !!item.tool).length === 0) : !content))
@@ -311,7 +311,7 @@ const Answer: FC<IAnswerProps> = ({
                   )
                 }
               </div>
-              <div className='absolute top-[-14px] right-[-14px] flex flex-row justify-end gap-1'>
+              <div className='absolute top-[-14px] left-[-6px] flex flex-row justify-end gap-1'>
                 {!item.isOpeningStatement && (
                   <CopyBtn
                     value={content}
@@ -319,7 +319,7 @@ const Answer: FC<IAnswerProps> = ({
                   />
                 )}
                 {((isShowPromptLog && !isResponding) || (!item.isOpeningStatement && isShowTextToSpeech)) && (
-                  <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
+                  <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
                     {isShowPromptLog && !isResponding && (
                       <Log logItem={item} />
                     )}
