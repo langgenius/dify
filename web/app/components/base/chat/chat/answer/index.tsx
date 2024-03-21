@@ -90,7 +90,7 @@ const Answer: FC<AnswerProps> = ({
             }
             {
               workflowProcess && (
-                <WorkflowProcess data={workflowProcess} />
+                <WorkflowProcess data={workflowProcess} hideInfo />
               )
             }
             {
