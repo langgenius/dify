@@ -13,6 +13,7 @@ type TagInputProps = {
   disableRemove?: boolean
   disableAdd?: boolean
   customizedConfirmKey?: 'Enter' | 'Tab'
+  isInWorkflow?: boolean
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -21,6 +22,7 @@ const TagInput: FC<TagInputProps> = ({
   disableAdd,
   disableRemove,
   customizedConfirmKey = 'Enter',
+  isInWorkflow,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -64,7 +66,7 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-wrap', isSpecialMode ? 'bg-gray-100 min-w-[200px] rounded-lg pb-1 pl-1' : '')}>
+    <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'bg-gray-100 rounded-lg pb-1 pl-1' : '')}>
       {
         items.map((item, index) => (
           <div
