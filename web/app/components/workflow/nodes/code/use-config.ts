@@ -86,6 +86,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   }, [allLanguageDefault, inputs, setInputs])
 
   const { handleVarsChange, handleAddVariable: handleAddOutputVariable, handleRemoveVariable } = useOutputVarList<CodeNodeType>({
+    id,
     inputs,
     setInputs,
     outputKeyOrders,

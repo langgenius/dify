@@ -218,7 +218,6 @@ export const useWorkflow = () => {
     const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
     // console.log(effectNodes)
     if (effectNodes.length > 0) {
-      // debugger
       const newNodes = getNodes().map((node) => {
         if (effectNodes.find(n => n.id === node.id))
           return updateNodeVars(node, oldValeSelector, newVarSelector)
