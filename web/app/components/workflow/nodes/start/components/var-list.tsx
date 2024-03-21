@@ -5,11 +5,11 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
 import type { InputVar } from '@/app/components/workflow/types'
-
+import type { MoreInfo } from '@/app/components/app/configuration/config-var/config-modal'
 type Props = {
   readonly: boolean
   list: InputVar[]
-  onChange: (list: InputVar[]) => void
+  onChange: (list: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => void
 }
 
 const VarList: FC<Props> = ({
@@ -19,12 +19,12 @@ const VarList: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleVarNameChange = useCallback((index: number) => {
-    return (payload: InputVar) => {
+  const handleVarChange = useCallback((index: number) => {
+    return (payload: InputVar, moreInfo?: MoreInfo) => {
       const newList = produce(list, (draft) => {
         draft[index] = payload
       })
-      onChange(newList)
+      onChange(newList, moreInfo ? { index, payload: moreInfo } : undefined)
     }
   }, [list, onChange])
 
@@ -52,7 +52,7 @@ const VarList: FC<Props> = ({
           key={index}
           readonly={readonly}
           payload={item}
-          onChange={handleVarNameChange(index)}
+          onChange={handleVarChange(index)}
           onRemove={handleVarRemove(index)}
         />
       ))}

@@ -93,7 +93,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       </div>
       <div className='pb-4'>
         <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.switchLabel')}</div>
-        <div className='flex items-center justify-between space-x-3'>
+        <div className='flex items-center justify-between space-x-2'>
           <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
           <input
             value={name}

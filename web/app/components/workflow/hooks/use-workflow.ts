@@ -27,6 +27,7 @@ import {
 import type {
   Edge,
   Node,
+  ValueSelector,
 } from '../types'
 import {
   BlockEnum,
@@ -41,6 +42,7 @@ import {
   START_INITIAL_POSITION,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import { findUsedVarNodes, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import {
   useNodesExtraData,
   useNodesInitialData,
@@ -55,7 +57,6 @@ import {
 } from '@/service/workflow'
 import { fetchCollectionList } from '@/service/tools'
 import I18n from '@/context/i18n'
-
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
 
@@ -211,6 +212,25 @@ export const useWorkflow = () => {
     return uniqBy(list, 'id')
   }, [store])
 
+  const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
+    const { getNodes, setNodes } = store.getState()
+    const afterNodes = getAfterNodesInSameBranch(nodeId)
+    const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
+    console.log(effectNodes)
+    if (effectNodes.length > 0) {
+      // debugger
+      const newNodes = getNodes().map((node) => {
+        if (effectNodes.find(n => n.id === node.id))
+          return updateNodeVars(node, oldValeSelector, newVarSelector)
+
+        return node
+      })
+      setNodes(newNodes)
+    }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store])
+
   const isValidConnection = useCallback(({ source, target }: Connection) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
@@ -294,6 +314,7 @@ export const useWorkflow = () => {
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getAfterNodesInSameBranch,
+    handleOutVarRenameChange,
     isValidConnection,
     formatTimeFromNow,
     getValidTreeNodes,

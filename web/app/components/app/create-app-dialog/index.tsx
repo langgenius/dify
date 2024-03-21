@@ -38,7 +38,7 @@ const CreateAppDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => 
       </div>
       <div
         className={cn(
-          'hidden absolute left-[452px] top-[68px] w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg',
+          'hidden absolute left-[528px] top-[68px] w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg',
           showInstruction && '!block',
         )}
       >

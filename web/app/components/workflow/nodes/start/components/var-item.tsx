@@ -8,12 +8,13 @@ import type { InputVar } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import type { MoreInfo } from '@/app/components/app/configuration/config-var/config-modal'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 
 type Props = {
   readonly: boolean
   payload: InputVar
-  onChange: (item: InputVar) => void
+  onChange: (item: InputVar, moreInfo?: MoreInfo) => void
   onRemove: () => void
 }
 
@@ -32,8 +33,8 @@ const VarItem: FC<Props> = ({
     setFalse: hideEditVarModal,
   }] = useBoolean(false)
 
-  const handlePayloadChange = useCallback((payload: InputVar) => {
-    onChange(payload)
+  const handlePayloadChange = useCallback((payload: InputVar, moreInfo?: MoreInfo) => {
+    onChange(payload, moreInfo)
     hideEditVarModal()
   }, [onChange, hideEditVarModal])
   return (

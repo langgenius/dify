@@ -96,7 +96,7 @@ const AppForm = ({
           >
             <div
               className={cn(
-                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                'relative grow w-[108px] mr-2 px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
                 showChatBotType && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
               )}
               onClick={() => {
@@ -105,7 +105,7 @@ const AppForm = ({
               }}
             >
               <ChatBot className='w-6 h-6' />
-              <div className='h-5 text-sm font-medium leading-5'>{t('app.types.chatbot')}</div>
+              <div className='h-5 text-[13px] font-medium leading-[18px]'>{t('app.types.chatbot')}</div>
               <div className='hidden absolute max-h-[92px] left-[-20px] bottom-[75px] px-3 py-[10px] bg-white rounded-xl shadow-lg border-[0.5px] border-[rgba(0,0,0,0.05)] text-gray-700 text-xs leading-[18px] group-hover:block'>{t('app.newApp.chatbotDescription')}</div>
             </div>
           </TooltipPlus>
@@ -119,7 +119,7 @@ const AppForm = ({
           >
             <div
               className={cn(
-                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                'relative grow w-[108px] mr-2 px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
                 appMode === 'completion' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
               )}
               onClick={() => {
@@ -128,7 +128,7 @@ const AppForm = ({
               }}
             >
               <AiText className='w-6 h-6' />
-              <div className='h-5 text-sm font-medium leading-5'>{t('app.newApp.completeApp')}</div>
+              <div className='h-5 text-[13px] font-medium leading-[18px]'>{t('app.newApp.completeApp')}</div>
             </div>
           </TooltipPlus>
           <TooltipPlus
@@ -139,7 +139,7 @@ const AppForm = ({
           >
             <div
               className={cn(
-                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                'relative grow w-[108px] mr-2 px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
                 appMode === 'agent-chat' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
               )}
               onClick={() => {
@@ -148,7 +148,7 @@ const AppForm = ({
               }}
             >
               <CuteRobot className='w-6 h-6' />
-              <div className='h-5 text-sm font-medium leading-5'>{t('app.types.agent')}</div>
+              <div className='h-5 text-[13px] font-medium leading-[18px]'>{t('app.types.agent')}</div>
             </div>
           </TooltipPlus>
           <TooltipPlus
@@ -161,7 +161,7 @@ const AppForm = ({
           >
             <div
               className={cn(
-                'relative grow w-[110px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
+                'relative grow w-[108px] px-0.5 pt-3 pb-2 flex flex-col items-center justify-center gap-1 rounded-lg border border-gray-100 bg-gray-25 text-gray-700 cursor-pointer hover:bg-white hover:shadow-xs hover:border-gray-300',
                 appMode === 'workflow' && 'bg-white shadow-xs border-[1.5px] border-primary-400 hover:border-[1.5px] hover:border-primary-400',
               )}
               onClick={() => {
@@ -170,14 +170,14 @@ const AppForm = ({
               }}
             >
               <Route className='w-6 h-6' />
-              <div className='h-5 text-sm font-medium leading-5'>{t('app.types.workflow')}</div>
+              <div className='h-5 text-[13px] font-medium leading-[18px]'>{t('app.types.workflow')}</div>
               <span className='absolute top-[-3px] right-[-3px] px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
             </div>
           </TooltipPlus>
         </div>
       </div>
       {showChatBotType && (
-        <div className='py-2 px-8 w-[480px]'>
+        <div className='py-2 px-8'>
           <div className='py-2 text-sm leading-[20px] font-medium text-gray-900'>{t('app.newApp.chatbotType')}</div>
           <div className='flex gap-2'>
             <div
@@ -221,7 +221,7 @@ const AppForm = ({
       {/* icon & name */}
       <div className='pt-2 px-8'>
         <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionName')}</div>
-        <div className='flex items-center justify-between space-x-3'>
+        <div className='flex items-center justify-between space-x-2'>
           <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
           <input
             value={name}

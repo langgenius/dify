@@ -51,7 +51,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     >
       <div
         className={`
-          group relative w-[240px] bg-[#fcfdff] shadow-xs
+          group relative pb-1 w-[240px] bg-[#fcfdff] shadow-xs
           border border-transparent rounded-[15px]
           ${!data._runningStatus && 'hover:shadow-lg'}
           ${data._runningStatus === NodeRunningStatus.Running && '!border-primary-500'}
@@ -118,9 +118,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
         </div>
-        <div className='pb-1'>
-          {cloneElement(children, { id, data })}
-        </div>
+        {cloneElement(children, { id, data })}
         {
           data.desc && (
             <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>

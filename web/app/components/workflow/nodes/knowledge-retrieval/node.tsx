@@ -21,8 +21,12 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
       }
     })()
   }, [data.dataset_ids])
+
+  if (!selectedDatasets.length)
+    return null
+
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3 py-1'>
       <div className='space-y-0.5'>
         {selectedDatasets.map(({ id, name }) => (
           <div key={id} className='flex items-center h-[26px] bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700'>

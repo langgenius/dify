@@ -15,8 +15,12 @@ const Node: FC<NodeProps<LLMNodeType>> = ({
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList()
   const hasSetModel = provider && modelId
+
+  if (!hasSetModel)
+    return null
+
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3 py-1'>
       {hasSetModel && (
         <ModelSelector
           defaultModel={{ provider, model: modelId }}

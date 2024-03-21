@@ -13,8 +13,11 @@ const Node: FC<NodeProps<StartNodeType>> = ({
   const { t } = useTranslation()
   const { variables } = data
 
+  if (!variables.length)
+    return null
+
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3 py-1'>
       <div className='space-y-0.5'>
         {variables.map(variable => (
           <div key={variable.variable} className='flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>

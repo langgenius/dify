@@ -22,6 +22,10 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     return nodes
   },
   checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
+    // TODO: wait for publish add moreDataForCheckValid
+    if (!moreDataForCheckValid)
+      return { isValid: true }
+
     const { toolInputsSchema, toolSettingSchema, language } = moreDataForCheckValid
     let errorMessages = ''
 

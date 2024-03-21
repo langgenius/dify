@@ -187,15 +187,15 @@ const VarReferencePicker: FC<Props> = ({
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 5 buff
   const availableWidth = triggerWidth - 47
   const [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth] = (() => {
-    const totalTextLength = ((outputVarNode?.title) + (varName) + type).length
-    const maxNodeNameWidth = Math.ceil(outputVarNode?.title.length / totalTextLength * availableWidth)
-    const maxVarNameWidth = Math.ceil(varName.length / totalTextLength * availableWidth)
-    const maxTypeWidth = Math.ceil(type.length / totalTextLength * availableWidth)
+    const totalTextLength = ((outputVarNode?.title || '') + (varName || '') + (type || '')).length
+    const maxNodeNameWidth = Math.floor((outputVarNode?.title?.length || 0) / totalTextLength * availableWidth)
+    const maxVarNameWidth = Math.floor((varName?.length || 0) / totalTextLength * availableWidth)
+    const maxTypeWidth = Math.floor((type?.length || 0) / totalTextLength * availableWidth)
     return [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth]
   })()
 
   return (
-    <div className={cn(className, !readonly && 'cursor-pointer', 'overflow-hidden')}>
+    <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
@@ -231,7 +231,7 @@ const VarReferencePicker: FC<Props> = ({
               ? (
                 <input
                   type='text'
-                  className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none'
+                  className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
                   value={isConstant ? value : ''}
                   onChange={handleStaticChange}
                   onFocus={() => setIsFocus(true)}

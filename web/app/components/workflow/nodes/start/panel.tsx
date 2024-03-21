@@ -50,7 +50,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
           />
         </Field>
       </div>
-      <Split />
+      {isChatMode && <Split />}
       {isChatMode && (
         <div className='px-4 pt-4 pb-2'>
           <OutputVars title={t(`${i18nPrefix}.builtInVar`)!}>

@@ -285,7 +285,7 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store, reactflow, workflowStore])
+  }, [store, reactflow, workflowStore, handleLoadBackupDraft])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id
