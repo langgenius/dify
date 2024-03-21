@@ -73,6 +73,8 @@ class LLMNode(BaseNode):
             # fetch prompt messages
             prompt_messages, stop = self._fetch_prompt_messages(
                 node_data=node_data,
+                query=variable_pool.get_variable_value(['sys', SystemVariable.QUERY.value])
+                if node_data.memory else None,
                 inputs=inputs,
                 files=files,
                 context=context,
@@ -391,6 +393,7 @@ class LLMNode(BaseNode):
         return memory
 
     def _fetch_prompt_messages(self, node_data: LLMNodeData,
+                               query: Optional[str],
                                inputs: dict[str, str],
                                files: list[FileVar],
                                context: Optional[str],
@@ -400,6 +403,7 @@ class LLMNode(BaseNode):
         """
         Fetch prompt messages
         :param node_data: node data
+        :param query: query
         :param inputs: inputs
         :param files: files
         :param context: context
@@ -411,7 +415,7 @@ class LLMNode(BaseNode):
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=node_data.prompt_template,
             inputs=inputs,
-            query='',
+            query=query if query else '',
             files=files,
             context=context,
             memory_config=node_data.memory,
