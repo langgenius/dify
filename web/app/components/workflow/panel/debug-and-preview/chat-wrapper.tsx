@@ -11,8 +11,8 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../store'
-import { useWorkflowRun } from '../../hooks'
 import type { StartNodeType } from '../../nodes/start/types'
+import Empty from './empty'
 import UserInput from './user-input'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
@@ -33,7 +33,6 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const inputs = useStore(s => s.inputs)
-  const { handleStopRun } = useWorkflowRun()
   const features = featuresStore!.getState().features
 
   const config = useMemo(() => {
@@ -81,11 +80,6 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
     )
   }, [conversationId, handleSend, workflowStore, appDetail])
 
-  const doStop = useCallback(() => {
-    handleStop()
-    handleStopRun(workflowStore.getState().workflowRunningData?.task_id || '')
-  }, [handleStop, handleStopRun, workflowStore])
-
   useImperativeHandle(ref, () => {
     return {
       handleRestart,
@@ -105,8 +99,17 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       chatFooterClassName='px-4 rounded-bl-2xl'
       chatFooterInnerClassName='pb-4'
       onSend={doSend}
-      onStopResponding={doStop}
-      chatNode={<UserInput />}
+      onStopResponding={handleStop}
+      chatNode={(
+        <>
+          <UserInput />
+          {
+            !chatList.length && (
+              <Empty />
+            )
+          }
+        </>
+      )}
       suggestedQuestions={suggestedQuestions}
       showPromptLog
     />

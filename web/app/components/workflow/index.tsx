@@ -122,8 +122,8 @@ const Workflow: FC<WorkflowProps> = memo(({
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        nodes={nodes}
-        edges={edges}
+        defaultNodes={nodes}
+        defaultEdges={edges}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}

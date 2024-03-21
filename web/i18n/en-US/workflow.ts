@@ -30,6 +30,7 @@ const translation = {
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
+    previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
