@@ -93,8 +93,8 @@ const NodePanel: FC<Props> = ({ nodeInfo, className }) => {
                 readOnly
                 title={<div>INPUT</div>}
                 language={CodeLanguage.json}
-                value={JSON.stringify(nodeInfo.inputs)}
-                onChange={() => {}}
+                value={nodeInfo.inputs}
+                isJSONStringifyBeauty
               />
             </div>
             {nodeInfo.process_data && (
@@ -103,8 +103,8 @@ const NodePanel: FC<Props> = ({ nodeInfo, className }) => {
                   readOnly
                   title={<div>PROCESS DATA</div>}
                   language={CodeLanguage.json}
-                  value={JSON.stringify(nodeInfo.process_data)}
-                  onChange={() => {}}
+                  value={nodeInfo.process_data}
+                  isJSONStringifyBeauty
                 />
               </div>
             )}
@@ -114,8 +114,8 @@ const NodePanel: FC<Props> = ({ nodeInfo, className }) => {
                   readOnly
                   title={<div>OUTPUT</div>}
                   language={CodeLanguage.json}
-                  value={JSON.stringify(nodeInfo.outputs)}
-                  onChange={() => {}}
+                  value={nodeInfo.outputs}
+                  isJSONStringifyBeauty
                 />
               </div>
             )}
