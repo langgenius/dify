@@ -487,7 +487,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     value = None
                     for key in value_selector[1:]:
                         if not value:
-                            value = outputs.get(key)
+                            value = outputs.get(key) if outputs else None
                         else:
                             value = value.get(key)
 
