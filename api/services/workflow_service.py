@@ -126,6 +126,7 @@ class WorkflowService:
             type=draft_workflow.type,
             version=str(datetime.utcnow()),
             graph=draft_workflow.graph,
+            features=draft_workflow.features,
             created_by=account.id
         )
 
