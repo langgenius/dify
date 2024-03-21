@@ -275,7 +275,7 @@ class HttpExecutor:
                     self.headers['Content-Type'] = f'multipart/form-data; boundary={self.boundary}'
                 else:
                     self.body = urlencode(body)
-            elif node_data.body.type in ['json', 'raw']:
+            elif node_data.body.type in ['json', 'raw-text']:
                 self.body = original_body
             elif node_data.body.type == 'none':
                 self.body = ''

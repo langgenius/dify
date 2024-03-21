@@ -299,6 +299,7 @@ services:
       # The DifySandbox configurations
       API_KEY: dify-sandbox
       GIN_MODE: release
+      WORKER_TIMEOUT: 15
     ports:
       - "8194:8194"
 
