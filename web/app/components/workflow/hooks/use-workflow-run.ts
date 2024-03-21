@@ -130,7 +130,6 @@ export const useWorkflowRun = () => {
     params: any,
     callback?: IOtherOptions,
   ) => {
-    handleLoadBackupDraft()
     const {
       onWorkflowStarted,
       onWorkflowFinished,
@@ -153,6 +152,8 @@ export const useWorkflowRun = () => {
 
     if (appDetail?.mode === 'workflow')
       url = `/apps/${appDetail.id}/workflows/draft/run`
+
+    let prevNodeId = ''
 
     ssePost(
       url,
@@ -203,6 +204,8 @@ export const useWorkflowRun = () => {
             }
           }))
 
+          prevNodeId = ''
+
           if (onWorkflowFinished)
             onWorkflowFinished(params)
         },
@@ -244,7 +247,7 @@ export const useWorkflowRun = () => {
           })
           setNodes(newNodes)
           const newEdges = produce(edges, (draft) => {
-            const edge = draft.find(edge => edge.target === data.node_id)
+            const edge = draft.find(edge => edge.target === data.node_id && edge.source === prevNodeId)
 
             if (edge)
               edge.data = { ...edge.data, _runned: true } as any
@@ -279,13 +282,15 @@ export const useWorkflowRun = () => {
           })
           setNodes(newNodes)
 
+          prevNodeId = data.node_id
+
           if (onNodeFinished)
             onNodeFinished(params)
         },
         ...restCallback,
       },
     )
-  }, [store, reactflow, workflowStore, handleLoadBackupDraft])
+  }, [store, reactflow, workflowStore])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id
