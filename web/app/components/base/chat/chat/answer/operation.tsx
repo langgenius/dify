@@ -67,7 +67,7 @@ const Operation: FC<OperationProps> = ({
   }
 
   return (
-    <div className='absolute top-[-14px] right-[-14px] flex justify-end gap-1'>
+    <div className='absolute top-[-14px] left-[-14px] flex justify-end gap-1'>
       {!isOpeningStatement && (
         <CopyBtn
           value={content}
@@ -76,7 +76,7 @@ const Operation: FC<OperationProps> = ({
       )}
 
       {!isOpeningStatement && (
-        <div className='hidden group-hover:flex items-center h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
+        <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
           {showPromptLog && (
             <Log logItem={item} />
           )}

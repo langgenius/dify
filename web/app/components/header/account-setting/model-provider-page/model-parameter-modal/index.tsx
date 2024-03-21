@@ -48,6 +48,7 @@ export type ModelParameterModalProps = {
   onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
+  isInWorkflow?: boolean
 }
 const stopParameerRule: ModelParameterRule = {
   default: [],
@@ -83,6 +84,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   onDebugWithMultipleModelChange,
   renderTrigger,
   readonly,
+  isInWorkflow,
 }) => {
   const { t } = useTranslation()
   const { hasSettedApiKey } = useProviderContext()
@@ -198,6 +200,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               : (
                 <Trigger
                   disabled={disabled}
+                  isInWorkflow={isInWorkflow}
                   modelDisabled={modelDisabled}
                   hasDeprecated={hasDeprecated}
                   currentProvider={currentProvider}

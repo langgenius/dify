@@ -69,6 +69,7 @@ export const NodeTargetHandle = memo(({
         className={`
           !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]
           after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-primary-500
+          hover:scale-150 transition-all
           ${!connected && 'after:opacity-0'}
           ${data.type === BlockEnum.Start && 'opacity-0'}
           ${handleClassName}
@@ -88,6 +89,7 @@ export const NodeTargetHandle = memo(({
                 hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
                 group-hover:flex
+                group-hover:scale-150
                 ${open && '!flex'}
               `}
               availableBlocksTypes={availablePrevNodes}
@@ -149,6 +151,7 @@ export const NodeSourceHandle = memo(({
         className={`
           !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]
           after:absolute after:w-0.5 after:h-2 after:right-1.5 after:top-1 after:bg-primary-500
+          hover:scale-150 transition-all
           ${!connected && 'after:opacity-0'}
           ${handleClassName}
         `}
@@ -163,7 +166,7 @@ export const NodeSourceHandle = memo(({
               onSelect={handleSelect}
               asChild
               triggerClassName={open => `
-                hidden absolute top-0 left-0 pointer-events-none
+                hidden absolute top-0 left-0 pointer-events-none 
                 ${nodeSelectorClassName}
                 group-hover:flex
                 ${open && '!flex'}

@@ -83,7 +83,7 @@ const CustomEdge = ({
       <EdgeLabelRenderer>
         <div
           className={`
-            nopan nodrag
+            nopan nodrag hover:scale-150 transition-all
             ${data?._hovering ? 'block' : 'hidden'}
             ${open && '!block'}
           `}
@@ -99,6 +99,7 @@ const CustomEdge = ({
             asChild
             onSelect={handleInsert}
             availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
+            triggerClassName={() => 'hover:scale-150 transition-all'}
           />
         </div>
       </EdgeLabelRenderer>
