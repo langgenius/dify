@@ -5,7 +5,7 @@ icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.png
-background: "#FAF5FF"
+background: "#EFFDFD"
 help:
   title:
     en_US: How to deploy Triton Inference Server
@@ -63,3 +63,22 @@ model_credential_schema:
             zh_Hans: 对话模型
             en_US: Chat model
           value: chat
+    - variable: stream
+      label:
+        zh_Hans: 流式输出
+        en_US: Stream output
+      type: select
+      required: true
+      default: true
+      placeholder:
+        zh_Hans: 是否支持流式输出
+        en_US: Whether to support stream output
+      options:
+        - label:
+            zh_Hans: 是
+            en_US: Yes
+          value: true
+        - label:
+            zh_Hans: 否
+            en_US: No
+          value: false

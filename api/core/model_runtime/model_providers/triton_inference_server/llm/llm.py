@@ -1,9 +1,10 @@
 from collections.abc import Generator
 
-from httpx import Response
+from httpx import Response, post
+from yarl import URL
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -31,7 +32,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 
-class XinferenceAILargeLanguageModel(LargeLanguageModel):
+class TritonInferenceAILargeLanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
@@ -41,12 +42,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             see `core.model_runtime.model_providers.__base.large_language_model.LargeLanguageModel._invoke`
         """
-        if 'temperature' in model_parameters:
-            if model_parameters['temperature'] < 0.01:
-                model_parameters['temperature'] = 0.01
-            elif model_parameters['temperature'] > 1.0:
-                model_parameters['temperature'] = 0.99
-
         return self._generate(
             model=model, credentials=credentials, prompt_messages=prompt_messages, model_parameters=model_parameters,
             tools=tools, stop=stop, stream=stream, user=user,
@@ -55,25 +50,26 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
             validate credentials
-
-            credentials should be like:
-            {
-                'model_type': 'text-generation',
-                'server_url': 'server url',
-                'model_uid': 'model uid',
-            }
         """
+        if 'server_url' not in credentials:
+            raise CredentialsValidateFailedError('server_url is required in credentials')
+        
+        try:
+            self._invoke(model=model, credentials=credentials, prompt_messages=[
+                UserPromptMessage(content='ping')
+            ], model_parameters={}, stream=False)
+        except InvokeError as ex:
+            raise CredentialsValidateFailedError(f'An error occurred during connection: {str(ex)}')
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
         """
             get number of tokens
 
-            cause XinferenceAI LLM is a customized model, we could net detect which tokenizer to use
+            cause TritonInference LLM is a customized model, we could net detect which tokenizer to use
             so we just take the GPT2 tokenizer as default
         """
-        return self._num_tokens_from_messages(prompt_messages, tools)
-
+        return self._get_num_tokens_by_gpt2(self._convert_prompt_message_to_text(prompt_messages))
     
     def _convert_prompt_message_to_text(self, message: list[PromptMessage]) -> str:
         """
@@ -82,11 +78,11 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         text = ''
         for item in message:
             if isinstance(item, UserPromptMessage):
-                text += item.content
+                text += f'User: {item.content}'
             elif isinstance(item, SystemPromptMessage):
-                text += item.content
+                text += f'System: {item.content}'
             elif isinstance(item, AssistantPromptMessage):
-                text += item.content
+                text += f'Assistant: {item.content}'
             else:
                 raise NotImplementedError(f'PromptMessage type {type(item)} is not supported')
         return text
@@ -161,35 +157,90 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             -> LLMResult | Generator:
         """
             generate text from LLM
-
-            see `core.model_runtime.model_providers.__base.large_language_model.LargeLanguageModel._generate`
-            
-            extra_model_kwargs can be got by `XinferenceHelper.get_xinference_extra_parameter`
         """
         if 'server_url' not in credentials:
             raise CredentialsValidateFailedError('server_url is required in credentials')
         
-        if credentials['server_url'].endswith('/'):
-            credentials['server_url'] = credentials['server_url'][:-1]
-        
-        return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
-                                                        tools=tools)
+        if 'stream' in credentials and not bool(credentials['stream']) and stream:
+            raise ValueError(f'stream is not supported by model {model}')
 
+        try:
+            parameters = {}
+            if 'temperature' in model_parameters:
+                parameters['temperature'] = model_parameters['temperature']
+            if 'top_p' in model_parameters:
+                parameters['top_p'] = model_parameters['top_p']
+            if 'top_k' in model_parameters:
+                parameters['top_k'] = model_parameters['top_k']
+            if 'presence_penalty' in model_parameters:
+                parameters['presence_penalty'] = model_parameters['presence_penalty']
+            if 'frequency_penalty' in model_parameters:
+                parameters['frequency_penalty'] = model_parameters['frequency_penalty']
+
+            response = post(str(URL(credentials['server_url']) / 'v2' / 'models' / model / 'generate'), json={
+                'text_input': self._convert_prompt_message_to_text(prompt_messages),
+                'max_tokens': model_parameters.get('max_tokens', 512),
+                'parameters': {
+                    'stream': False,
+                    **parameters
+                },
+            }, timeout=(10, 120))
+            response.raise_for_status()
+            if response.status_code != 200:
+                raise InvokeBadRequestError(f'Invoke failed with status code {response.status_code}, {response.text}')
+            
+            if stream:
+                return self._handle_chat_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
+                                                        tools=tools, resp=response)
+            return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
+                                                        tools=tools, resp=response)
+        except Exception as ex:
+            raise InvokeConnectionError(f'An error occurred during connection: {str(ex)}')
+        
     def _handle_chat_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: Response) -> LLMResult:
         """
             handle normal chat generate response
         """
-        pass
+        text = resp.json()['text_output']
+
+        usage = LLMUsage.empty_usage()
+        usage.prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+        usage.completion_tokens = self._get_num_tokens_by_gpt2(text)
+
+        return LLMResult(
+            model=model,
+            prompt_messages=prompt_messages,
+            message=AssistantPromptMessage(
+                content=text
+            ),
+            usage=usage
+        )
 
     def _handle_chat_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: Response) -> Generator:
         """
-            handle stream chat generate response
+            handle normal chat generate response
         """
-        pass
+        text = resp.json()['text_output']
+
+        usage = LLMUsage.empty_usage()
+        usage.prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+        usage.completion_tokens = self._get_num_tokens_by_gpt2(text)
+
+        yield LLMResultChunk(
+            model=model,
+            prompt_messages=prompt_messages,
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(
+                    content=text
+                ),
+                usage=usage
+            )
+        )
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
