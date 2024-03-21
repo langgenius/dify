@@ -453,6 +453,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             else:
                 route_chunk = cast(VarGenerateRouteChunk, route_chunk)
                 value_selector = route_chunk.value_selector
+                if not value_selector:
+                    self._task_state.current_stream_generate_state.current_route_position += 1
+                    continue
+
                 route_chunk_node_id = value_selector[0]
 
                 if route_chunk_node_id == 'sys':
