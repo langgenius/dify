@@ -262,7 +262,8 @@ export const useChat = (
           })
           handleUpdateChatList(newChatList)
         },
-        onWorkflowStarted: ({ workflow_run_id }) => {
+        onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+          taskIdRef.current = task_id
           responseItem.workflow_run_id = workflow_run_id
           responseItem.workflowProcess = {
             status: WorkflowRunningStatus.Running,
