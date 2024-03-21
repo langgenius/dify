@@ -30,6 +30,7 @@ export type NodeTracing = {
     email: string
   }
   finished_at: number
+  expand?: boolean // for UI
 }
 
 export type FetchWorkflowDraftResponse = {

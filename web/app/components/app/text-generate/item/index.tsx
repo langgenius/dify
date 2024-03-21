@@ -27,14 +27,10 @@ import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 const MAX_DEPTH = 3
-// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-export interface WorkflowProcessData extends WorkflowProcess {
-  expand: boolean
-}
 
 export type IGenerationItemProps = {
   isWorkflow?: boolean
-  workflowProcessData?: WorkflowProcessData
+  workflowProcessData?: WorkflowProcess
   className?: string
   isError: boolean
   onRetry: () => void
