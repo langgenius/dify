@@ -88,7 +88,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const { hasSettedApiKey } = useProviderContext()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const { data: parameterRulesData, isLoading } = useSWR((provider && modelId) ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}` : null, fetchModelParameterRules)
   const {
     currentProvider,
@@ -213,9 +213,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn(portalToFollowElemContentClassName, 'z-[60]')}>
           <div className={cn(popupClassName, 'w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl')}>
-            <div className='max-h-[480px] px-10 pt-6 pb-8 overflow-y-auto'>
+            <div className={cn(
+              'max-h-[480px]  overflow-y-auto',
+              !isInWorkflow && 'px-10 pt-6 pb-8',
+              isInWorkflow && 'p-4')}>
               <div className='flex items-center justify-between h-8'>
-                <div className='font-semibold text-gray-900'>
+                <div className={cn('font-semibold text-gray-900', isInWorkflow && 'text-[13px]')}>
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
@@ -237,7 +240,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               {
                 !isLoading && !!parameterRules.length && (
                   <div className='flex items-center justify-between mb-4'>
-                    <div className='text-gray-900 font-semibold'>{t('common.modelProvider.parameters')}</div>
+                    <div className={cn('font-semibold text-gray-900', isInWorkflow && 'text-[13px]')}>{t('common.modelProvider.parameters')}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -259,6 +262,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                       value={completionParams[parameter.name]}
                       onChange={v => handleParamChange(parameter.name, v)}
                       onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
+                      isInWorkflow={isInWorkflow}
                     />
                   ))
                 )
