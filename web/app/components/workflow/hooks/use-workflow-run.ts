@@ -130,6 +130,7 @@ export const useWorkflowRun = () => {
     params: any,
     callback?: IOtherOptions,
   ) => {
+    handleLoadBackupDraft()
     const {
       onWorkflowStarted,
       onWorkflowFinished,
@@ -138,15 +139,6 @@ export const useWorkflowRun = () => {
       ...restCallback
     } = callback || {}
     workflowStore.setState({ historyWorkflowData: undefined })
-    const { backupDraft } = workflowStore.getState()
-    const {
-      setNodes,
-      setEdges,
-    } = store.getState()
-    const {
-      nodes,
-      edges,
-    } = backupDraft!
     const appDetail = useAppStore.getState().appDetail
     const workflowContainer = document.getElementById('workflow-container')
 
@@ -174,6 +166,10 @@ export const useWorkflowRun = () => {
             workflowRunningData,
             setWorkflowRunningData,
           } = workflowStore.getState()
+          const {
+            getNodes,
+            setNodes,
+          } = store.getState()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.task_id = task_id
             draft.result = {
@@ -183,7 +179,7 @@ export const useWorkflowRun = () => {
             }
           }))
 
-          const newNodes = produce(nodes, (draft) => {
+          const newNodes = produce(getNodes(), (draft) => {
             draft.forEach((node) => {
               node.data._runningStatus = NodeRunningStatus.Waiting
             })
@@ -216,6 +212,13 @@ export const useWorkflowRun = () => {
             workflowRunningData,
             setWorkflowRunningData,
           } = workflowStore.getState()
+          const {
+            getNodes,
+            setNodes,
+            edges,
+            setEdges,
+          } = store.getState()
+          const nodes = getNodes()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.tracing!.push({
               ...data,
@@ -257,6 +260,11 @@ export const useWorkflowRun = () => {
             workflowRunningData,
             setWorkflowRunningData,
           } = workflowStore.getState()
+          const {
+            getNodes,
+            setNodes,
+          } = store.getState()
+          const nodes = getNodes()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
 

@@ -68,7 +68,7 @@ const translation = {
     'question-classifier': 'Question Classifier',
     'if-else': 'IF/ELSE',
     'code': 'Code',
-    'template-transform': 'Templating Transform',
+    'template-transform': 'Template',
     'http-request': 'HTTP Request',
     'variable-assigner': 'Variable Assigner',
   },
