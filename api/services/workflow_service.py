@@ -118,8 +118,6 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError('No valid workflow found.')
 
-        # TODO check if the workflow structure is valid
-
         # create new workflow
         workflow = Workflow(
             tenant_id=app_model.tenant_id,
