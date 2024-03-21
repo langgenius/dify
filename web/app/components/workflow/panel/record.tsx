@@ -1,23 +1,26 @@
-import { memo, useCallback } from 'react'
+import {
+  memo,
+  // useCallback,
+} from 'react'
 import {
   useIsChatMode,
-  useWorkflow,
+  // useWorkflow,
 } from '../hooks'
 import Run from '../run'
 import { useStore } from '../store'
 import ChatRecord from './chat-record'
-import type { WorkflowRunDetailResponse } from '@/models/log'
+// import type { WorkflowRunDetailResponse } from '@/models/log'
 
 const Record = () => {
   const isChatMode = useIsChatMode()
-  const { renderTreeFromRecord } = useWorkflow()
+  // const { renderTreeFromRecord } = useWorkflow()
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
 
-  const getResultCallback = useCallback((res: WorkflowRunDetailResponse) => {
-    const { graph } = res
+  // const getResultCallback = useCallback((res: WorkflowRunDetailResponse) => {
+  //   const { graph } = res
 
-    renderTreeFromRecord(graph.nodes, graph.edges, graph.viewport)
-  }, [renderTreeFromRecord])
+  //   renderTreeFromRecord(graph.nodes, graph.edges, graph.viewport)
+  // }, [renderTreeFromRecord])
 
   return (
     <div className={`
@@ -33,7 +36,7 @@ const Record = () => {
           : (
             <Run
               runID={historyWorkflowData?.id || ''}
-              getResultCallback={getResultCallback}
+              // getResultCallback={getResultCallback}
             />
           )
       }

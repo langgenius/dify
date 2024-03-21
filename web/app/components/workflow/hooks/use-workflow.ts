@@ -216,7 +216,7 @@ export const useWorkflow = () => {
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
     const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
-    console.log(effectNodes)
+    // console.log(effectNodes)
     if (effectNodes.length > 0) {
       // debugger
       const newNodes = getNodes().map((node) => {

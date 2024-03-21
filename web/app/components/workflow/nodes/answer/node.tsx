@@ -11,7 +11,7 @@ const Node: FC<NodeProps<AnswerNodeType>> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3 py-1'>
       <InfoPanel title={t('workflow.nodes.answer.answer')} content={data.answer} />
     </div>
   )
