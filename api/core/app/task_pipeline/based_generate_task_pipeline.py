@@ -14,10 +14,12 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     TaskState,
 )
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from extensions.ext_database import db
 from models.account import Account
-from models.model import EndUser
+from models.model import EndUser, Message
 
 logger = logging.getLogger(__name__)
 
@@ -48,21 +50,60 @@ class BasedGenerateTaskPipeline:
         self._output_moderation_handler = self._init_output_moderation()
         self._stream = stream
 
-    def _handle_error(self, event: QueueErrorEvent) -> Exception:
+    def _handle_error(self, event: QueueErrorEvent, message: Optional[Message] = None) -> Exception:
         """
         Handle error event.
         :param event: event
+        :param message: message
         :return:
         """
         logger.debug("error: %s", event.error)
         e = event.error
 
         if isinstance(e, InvokeAuthorizationError):
-            return InvokeAuthorizationError('Incorrect API key provided')
+            err = InvokeAuthorizationError('Incorrect API key provided')
         elif isinstance(e, InvokeError) or isinstance(e, ValueError):
-            return e
+            err = e
         else:
-            return Exception(e.description if getattr(e, 'description', None) is not None else str(e))
+            err = Exception(e.description if getattr(e, 'description', None) is not None else str(e))
+
+        if message:
+            message = db.session.query(Message).filter(Message.id == message.id).first()
+            err_desc = self._error_to_desc(err)
+            message.status = 'error'
+            message.error = err_desc
+
+            db.session.commit()
+
+        return err
+
+    def _error_to_desc(cls, e: Exception) -> str:
+        """
+        Error to desc.
+        :param e: exception
+        :return:
+        """
+        error_responses = {
+            ValueError: None,
+            ProviderTokenNotInitError: None,
+            QuotaExceededError: "Your quota for Dify Hosted Model Provider has been exhausted. "
+                                "Please go to Settings -> Model Provider to complete your own provider credentials.",
+            ModelCurrentlyNotSupportError: None,
+            InvokeError: None
+        }
+
+        # Determine the response based on the type of exception
+        data = None
+        for k, v in error_responses.items():
+            if isinstance(e, k):
+                data = v
+
+        if data:
+            message = getattr(e, 'description', str(e)) if data is None else data
+        else:
+            message = 'Internal Server Error, please contact support.'
+
+        return message
 
     def _error_to_stream_response(self, e: Exception) -> ErrorStreamResponse:
         """

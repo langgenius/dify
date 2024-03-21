@@ -413,6 +413,11 @@ class WorkflowEngineManager:
             node_run_result = node.run(
                 variable_pool=workflow_run_state.variable_pool
             )
+        except GenerateTaskStoppedException as e:
+            node_run_result = NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error='Workflow stopped.'
+            )
         except Exception as e:
             logger.exception(f"Node {node.node_data.title} run failed: {str(e)}")
             node_run_result = NodeRunResult(
