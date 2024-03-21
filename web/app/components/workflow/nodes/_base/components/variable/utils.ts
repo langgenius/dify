@@ -1,7 +1,18 @@
+import produce from 'immer'
 import type { CodeNodeType } from '../../../code/types'
+import type { EndNodeType } from '../../../end/types'
+import type { AnswerNodeType } from '../../../answer/types'
+import type { LLMNodeType } from '../../../llm/types'
+import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
+import type { IfElseNodeType } from '../../../if-else/types'
+import type { TemplateTransformNodeType } from '../../../template-transform/types'
+import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
+import type { HttpNodeType } from '../../../http/types'
+import type { ToolNodeType } from '../../../tool/types'
+import { VarType as VarKindType } from '../../../tool/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
   CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
@@ -198,4 +209,117 @@ export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMo
     })
     return type
   }
+}
+
+const getNodeUsedVars = (node: Node): ValueSelector[] => {
+  const { data } = node
+  const { type } = data
+  let res: ValueSelector[] = []
+  switch (type) {
+    case BlockEnum.End: {
+      res = (data as EndNodeType).outputs?.map((output) => {
+        return output.value_selector
+      })
+      break
+    }
+    case BlockEnum.Answer: {
+      res = (data as AnswerNodeType).variables?.map((v) => {
+        return v.value_selector
+      })
+      break
+    }
+    case BlockEnum.LLM: {
+      const inputVars = (data as LLMNodeType)?.variables.map((v) => {
+        return v.value_selector
+      })
+
+      const contextVar = (data as LLMNodeType).context?.variable_selector ? [(data as LLMNodeType).context?.variable_selector] : []
+      res = [...inputVars, ...contextVar]
+      break
+    }
+    case BlockEnum.KnowledgeRetrieval: {
+      res = [(data as KnowledgeRetrievalNodeType).query_variable_selector]
+      break
+    }
+    case BlockEnum.IfElse: {
+      res = (data as IfElseNodeType).conditions?.map((c) => {
+        return c.variable_selector
+      })
+      break
+    }
+    case BlockEnum.Code: {
+      res = (data as CodeNodeType).variables?.map((v) => {
+        return v.value_selector
+      })
+      break
+    }
+    case BlockEnum.TemplateTransform: {
+      res = (data as TemplateTransformNodeType).variables?.map((v: any) => {
+        return v.value_selector
+      })
+      break
+    }
+    case BlockEnum.QuestionClassifier: {
+      res = [(data as QuestionClassifierNodeType).query_variable_selector]
+      break
+    }
+    case BlockEnum.HttpRequest: {
+      res = (data as HttpNodeType).variables?.map((v) => {
+        return v.value_selector
+      })
+      break
+    }
+    case BlockEnum.Tool: {
+      res = (data as ToolNodeType).tool_parameters?.filter((v) => {
+        return v.variable_type === VarKindType.static
+      }).map((v) => {
+        return v.value_selector || []
+      })
+      break
+    }
+
+    case BlockEnum.VariableAssigner: {
+      res = (data as VariableAssignerNodeType)?.variables
+    }
+  }
+  return res || []
+}
+
+export const findUsedVarNodes = (varSelector: ValueSelector, availableNodes: Node[]): Node[] => {
+  const res: Node[] = []
+  availableNodes.forEach((node) => {
+    const vars = getNodeUsedVars(node)
+    if (vars.find(v => v.join('.') === varSelector.join('.')))
+      res.push(node)
+  })
+  return res
+}
+
+export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, newVarSelector: ValueSelector): Node => {
+  const newNode = produce(oldNode, (draft: any) => {
+    const { data } = draft
+    const { type } = data
+    switch (type) {
+      case BlockEnum.End: {
+        if ((data as EndNodeType).outputs) {
+          (data as EndNodeType).outputs = (data as EndNodeType).outputs.map((output) => {
+            if (output.value_selector.join('.') === oldVarSelector.join('.'))
+              output.value_selector = newVarSelector
+            return output
+          })
+        }
+        break
+      }
+      case BlockEnum.Answer: {
+        if ((data as AnswerNodeType).variables) {
+          (data as AnswerNodeType).variables = (data as AnswerNodeType).variables.map((v) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+      }
+    }
+  })
+  return newNode
 }

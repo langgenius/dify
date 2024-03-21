@@ -16,12 +16,23 @@ import { type InputVar, InputVarType } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 
+export enum ChangeType {
+  changeVarName = 'changeVarName',
+}
+
+export type MoreInfo = {
+  type: ChangeType
+  payload?: {
+    beforeKey: string
+    afterKey: string
+  }
+}
 export type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
   isShow: boolean
   onClose: () => void
-  onConfirm: (newValue: InputVar) => void
+  onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
 }
 
 const inputClassName = 'w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
@@ -39,7 +50,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { type, label, variable, options, max_length } = tempPayload
 
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph
-
   const handlePayloadChange = useCallback((key: string) => {
     return (value: any) => {
       setTempPayload((prev) => {
@@ -52,6 +62,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
   }, [])
 
   const handleConfirm = () => {
+    const moreInfo = tempPayload.variable === payload?.variable
+      ? undefined
+      : {
+        type: ChangeType.changeVarName,
+        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+      }
     if (!tempPayload.variable) {
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.varNameRequired') })
       return
@@ -61,7 +77,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       return
     }
     if (isStringInput || type === InputVarType.number) {
-      onConfirm(tempPayload)
+      onConfirm(tempPayload, moreInfo)
     }
     else {
       if (options?.length === 0) {
@@ -81,7 +97,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.optionRepeat') })
         return
       }
-      onConfirm(tempPayload)
+      onConfirm(tempPayload, moreInfo)
     }
   }
 
