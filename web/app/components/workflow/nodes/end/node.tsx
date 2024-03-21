@@ -46,9 +46,14 @@ const Node: FC<NodeProps<EndNodeType>> = ({
     return type
   }
   const { outputs } = data
+  const filteredOutputs = (outputs as Variable[]).filter(({ value_selector }) => value_selector.length > 0)
+
+  if (!filteredOutputs.length)
+    return null
+
   return (
-    <div className='px-3 space-y-0.5'>
-      {(outputs as Variable[]).filter(({ value_selector }) => value_selector.length > 0).map(({ value_selector }, index) => {
+    <div className='mb-1 px-3 py-1 space-y-0.5'>
+      {filteredOutputs.map(({ value_selector }, index) => {
         const node = getNode(value_selector[0])
         const varName = value_selector[value_selector.length - 1]
         return (

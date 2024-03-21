@@ -24,7 +24,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const variables = originVariables.filter(item => item.length > 0)
 
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3 py-1'>
       <div className='mb-0.5 leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.title`)}</div>
       {
         variables.length === 0 && (

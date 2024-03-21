@@ -7,11 +7,15 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   data,
 }) => {
   const { tool_configurations } = data
+  const toolConfigs = Object.keys(tool_configurations || {})
+
+  if (!toolConfigs.length)
+    return null
 
   return (
-    <div className='px-3'>
+    <div className='mb-1 px-3 py-1'>
       <div className='space-y-0.5'>
-        {Object.keys(tool_configurations || {}).map((key, index) => (
+        {toolConfigs.map((key, index) => (
           <div key={index} className='flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
             <div className='text-xs font-medium text-gray-500 uppercase'>
               {key}
