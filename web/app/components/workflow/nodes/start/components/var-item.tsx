@@ -4,11 +4,10 @@ import React, { useCallback, useRef } from 'react'
 import { useBoolean, useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
-import type { MoreInfo } from '@/app/components/app/configuration/config-var/config-modal'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 
 type Props = {

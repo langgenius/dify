@@ -271,7 +271,7 @@ const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.Tool: {
       res = (data as ToolNodeType).tool_parameters?.filter((v) => {
-        return v.variable_type === VarKindType.static
+        return v.variable_type === VarKindType.selector
       }).map((v) => {
         return v.value_selector || []
       })
@@ -396,6 +396,9 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         const payload = data as ToolNodeType
         if (payload.tool_parameters) {
           payload.tool_parameters = payload.tool_parameters.map((v) => {
+            if (v.variable_type === VarKindType.static)
+              return v
+
             if (v.value_selector?.join('.') === oldVarSelector.join('.'))
               v.value_selector = newVarSelector
             return v

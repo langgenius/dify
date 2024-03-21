@@ -11,22 +11,12 @@ import Field from './field'
 import Toast from '@/app/components/base/toast'
 import { getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
-import { type InputVar, InputVarType } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
+import { ChangeType, InputVarType } from '@/app/components/workflow/types'
 
-export enum ChangeType {
-  changeVarName = 'changeVarName',
-}
-
-export type MoreInfo = {
-  type: ChangeType
-  payload?: {
-    beforeKey: string
-    afterKey: string
-  }
-}
 export type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar

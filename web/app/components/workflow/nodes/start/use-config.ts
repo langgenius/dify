@@ -2,14 +2,13 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
-import type { MoreInfo } from '@/app/components/app/configuration/config-var/config-modal'
 
 const useConfig = (id: string, payload: StartNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -32,7 +31,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
       const changedVar = newList[moreInfo.index]
       handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
     }
-  }, [inputs, setInputs])
+  }, [handleOutVarRenameChange, id, inputs, setInputs])
 
   const handleAddVariable = useCallback((payload: InputVar) => {
     const newInputs = produce(inputs, (draft: StartNodeType) => {

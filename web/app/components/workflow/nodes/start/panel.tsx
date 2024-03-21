@@ -8,7 +8,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import AddButton from '@/app/components/base/button/add-button'
-import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
+import ConfigVarModal from '@/app/components/workflow/types'
 import type { InputVar, NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.start'
