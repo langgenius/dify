@@ -228,6 +228,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     self._save_message()
 
                     yield self._message_end_to_stream_response()
+                    break
                 else:
                     self._queue_manager.publish(
                         QueueAdvancedChatMessageEndEvent(),
