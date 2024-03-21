@@ -195,7 +195,7 @@ const VarReferencePicker: FC<Props> = ({
   })()
 
   return (
-    <div className={cn(className, !readonly && 'cursor-pointer', 'overflow-hidden')}>
+    <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
@@ -231,7 +231,7 @@ const VarReferencePicker: FC<Props> = ({
               ? (
                 <input
                   type='text'
-                  className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none'
+                  className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
                   value={isConstant ? value : ''}
                   onChange={handleStaticChange}
                   onFocus={() => setIsFocus(true)}
