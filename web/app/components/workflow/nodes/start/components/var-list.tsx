@@ -4,8 +4,7 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
-import type { InputVar } from '@/app/components/workflow/types'
-import type { MoreInfo } from '@/app/components/app/configuration/config-var/config-modal'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 type Props = {
   readonly: boolean
   list: InputVar[]

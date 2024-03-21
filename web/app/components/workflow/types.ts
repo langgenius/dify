@@ -251,3 +251,15 @@ export type HistoryWorkflowData = {
   status: string
   conversation_id?: string
 }
+
+export enum ChangeType {
+  changeVarName = 'changeVarName',
+}
+
+export type MoreInfo = {
+  type: ChangeType
+  payload?: {
+    beforeKey: string
+    afterKey: string
+  }
+}
