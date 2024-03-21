@@ -19,6 +19,7 @@ parameter_rules:
     max: 1.0
     default: 0.7
   - name: max_output_tokens
+    use_template: max_output_tokens
   - name: penalty_score
     use_template: penalty_score
     default: 1.0
