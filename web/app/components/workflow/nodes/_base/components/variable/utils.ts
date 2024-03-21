@@ -336,6 +336,84 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
 
         break
       }
+      case BlockEnum.KnowledgeRetrieval: {
+        const payload = data as KnowledgeRetrievalNodeType
+        if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
+          payload.query_variable_selector = newVarSelector
+        break
+      }
+      case BlockEnum.IfElse: {
+        const payload = data as IfElseNodeType
+        if (payload.conditions) {
+          payload.conditions = payload.conditions.map((c) => {
+            if (c.variable_selector.join('.') === oldVarSelector.join('.'))
+              c.variable_selector = newVarSelector
+            return c
+          })
+        }
+        break
+      }
+      case BlockEnum.Code: {
+        const payload = data as CodeNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        break
+      }
+      case BlockEnum.TemplateTransform: {
+        const payload = data as TemplateTransformNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v: any) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        break
+      }
+      case BlockEnum.QuestionClassifier: {
+        const payload = data as QuestionClassifierNodeType
+        if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
+          payload.query_variable_selector = newVarSelector
+        break
+      }
+      case BlockEnum.HttpRequest: {
+        const payload = data as HttpNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        break
+      }
+      case BlockEnum.Tool: {
+        const payload = data as ToolNodeType
+        if (payload.tool_parameters) {
+          payload.tool_parameters = payload.tool_parameters.map((v) => {
+            if (v.value_selector?.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        break
+      }
+      case BlockEnum.VariableAssigner: {
+        const payload = data as VariableAssignerNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
+            if (v.join('.') === oldVarSelector.join('.'))
+              v = newVarSelector
+            return v
+          })
+        }
+        break
+      }
     }
   })
   return newNode

@@ -182,6 +182,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   useEffect(() => {
     (async () => {
+      const inputs = inputRef.current
       const datasetIds = inputs.dataset_ids
       if (datasetIds?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
@@ -196,7 +197,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [])
 
   useEffect(() => {
-    let query_variable_selector: ValueSelector = []
+    let query_variable_selector: ValueSelector = inputs.query_variable_selector
     if (isChatMode && inputs.query_variable_selector.length === 0 && startNodeId)
       query_variable_selector = [startNodeId, 'sys.query']
 
