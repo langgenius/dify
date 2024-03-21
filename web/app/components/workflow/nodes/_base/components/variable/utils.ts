@@ -301,8 +301,9 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
     const { type } = data
     switch (type) {
       case BlockEnum.End: {
-        if ((data as EndNodeType).outputs) {
-          (data as EndNodeType).outputs = (data as EndNodeType).outputs.map((output) => {
+        const payload = data as EndNodeType
+        if (payload.outputs) {
+          payload.outputs = payload.outputs.map((output) => {
             if (output.value_selector.join('.') === oldVarSelector.join('.'))
               output.value_selector = newVarSelector
             return output
@@ -311,13 +312,29 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         break
       }
       case BlockEnum.Answer: {
-        if ((data as AnswerNodeType).variables) {
-          (data as AnswerNodeType).variables = (data as AnswerNodeType).variables.map((v) => {
+        const payload = data as AnswerNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
             if (v.value_selector.join('.') === oldVarSelector.join('.'))
               v.value_selector = newVarSelector
             return v
           })
         }
+        break
+      }
+      case BlockEnum.LLM: {
+        const payload = data as LLMNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        if (payload.context?.variable_selector?.join('.') === oldVarSelector.join('.'))
+          payload.context.variable_selector = newVarSelector
+
+        break
       }
     }
   })
