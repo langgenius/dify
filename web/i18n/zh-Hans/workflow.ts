@@ -31,6 +31,10 @@ const translation = {
     workflowProcess: '工作流',
     notRunning: '尚未运行',
     previewPlaceholder: '在下面的框中输入内容开始调试聊天机器人',
+    effectVarConfirm: {
+      title: '移除变量',
+      content: '该变量在其他节点中使用。您是否仍要删除它？',
+    },
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

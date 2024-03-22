@@ -1,8 +1,9 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
-import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
+import { ChangeType } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
@@ -12,7 +13,7 @@ import {
 
 const useConfig = (id: string, payload: StartNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { handleOutVarRenameChange, removeUsedVarInNodes } = useWorkflow()
+  const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
   const isChatMode = useIsChatMode()
 
   const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
@@ -22,7 +23,20 @@ const useConfig = (id: string, payload: StartNodeType) => {
     setFalse: hideAddVarModal,
   }] = useBoolean(false)
 
+  const [isShowRemoveVarConfirm, {
+    setTrue: showRemoveVarConfirm,
+    setFalse: hideRemoveVarConfirm,
+  }] = useBoolean(false)
+  const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const handleVarListChange = useCallback((newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
+    if (moreInfo?.payload?.type === ChangeType.remove) {
+      if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
+        showRemoveVarConfirm()
+        setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
+        return
+      }
+    }
+
     const newInputs = produce(inputs, (draft: any) => {
       draft.variables = newList
     })
@@ -31,9 +45,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
       const changedVar = newList[moreInfo.index]
       handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
     }
-    if (moreInfo?.payload?.type === ChangeType.remove)
-      removeUsedVarInNodes(id, [id, moreInfo?.payload?.payload?.beforeKey || ''])
-  }, [handleOutVarRenameChange, id, inputs, setInputs])
+  }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
+
+  const removeVarInNode = useCallback(() => {
+    removeUsedVarInNodes(removedVar)
+    hideRemoveVarConfirm()
+  }, [hideRemoveVarConfirm, removeUsedVarInNodes, removedVar])
 
   const handleAddVariable = useCallback((payload: InputVar) => {
     const newInputs = produce(inputs, (draft: StartNodeType) => {
@@ -50,6 +67,9 @@ const useConfig = (id: string, payload: StartNodeType) => {
     hideAddVarModal,
     handleVarListChange,
     handleAddVariable,
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm: removeVarInNode,
   }
 }
 

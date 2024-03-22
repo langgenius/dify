@@ -31,6 +31,10 @@ const translation = {
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
     previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',
+    effectVarConfirm: {
+      title: 'Remove Variable',
+      content: 'The variable is used in other nodes. Do you still want to remove it?',
+    },
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

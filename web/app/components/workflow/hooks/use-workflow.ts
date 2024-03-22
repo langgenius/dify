@@ -233,13 +233,15 @@ export const useWorkflow = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
-  const isVarUsedInNodes = useCallback((nodeId: string, varSelector: ValueSelector) => {
+  const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
+    const nodeId = varSelector[0]
     const afterNodes = getAfterNodesInSameBranch(nodeId)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     return effectNodes.length > 0
   }, [getAfterNodesInSameBranch])
 
-  const removeUsedVarInNodes = useCallback((nodeId: string, varSelector: ValueSelector) => {
+  const removeUsedVarInNodes = useCallback((varSelector: ValueSelector) => {
+    const nodeId = varSelector[0]
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
@@ -257,7 +259,7 @@ export const useWorkflow = () => {
   const isNodeVarsUsedInNodes = useCallback((node: Node, isChatMode: boolean) => {
     const outputVars = getNodeOutputVars(node, isChatMode)
     const isUsed = outputVars.some((varSelector) => {
-      return isVarUsedInNodes(node.id, varSelector)
+      return isVarUsedInNodes(varSelector)
     })
     return isUsed
   }, [isVarUsedInNodes])
