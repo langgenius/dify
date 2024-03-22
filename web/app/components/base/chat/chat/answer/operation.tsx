@@ -75,7 +75,7 @@ const Operation: FC<OperationProps> = ({
         />
       )}
 
-      {!isOpeningStatement && (
+      {!isOpeningStatement && (showPromptLog || config?.text_to_speech?.enabled) && (
         <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md'>
           {showPromptLog && (
             <Log logItem={item} />

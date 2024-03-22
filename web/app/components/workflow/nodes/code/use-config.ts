@@ -85,7 +85,14 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     setInputs(newInputs)
   }, [allLanguageDefault, inputs, setInputs])
 
-  const { handleVarsChange, handleAddVariable: handleAddOutputVariable, handleRemoveVariable } = useOutputVarList<CodeNodeType>({
+  const {
+    handleVarsChange,
+    handleAddVariable: handleAddOutputVariable,
+    handleRemoveVariable,
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm,
+  } = useOutputVarList<CodeNodeType>({
     id,
     inputs,
     setInputs,
@@ -142,6 +149,9 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     handleVarsChange,
     filterVar,
     handleAddOutputVariable,
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm,
     // single run
     isShowSingleRun,
     hideSingleRun,
