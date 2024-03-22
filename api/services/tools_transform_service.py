@@ -1,5 +1,8 @@
+import json
 import logging
-from typing import Optional
+from typing import Optional, Union
+
+from flask import current_app
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderCredentials
@@ -14,6 +17,49 @@ from models.tools import ApiToolProvider, BuiltinToolProvider
 logger = logging.getLogger(__name__)
 
 class ToolTransformService:
+    @staticmethod
+    def get_tool_provider_icon_url(provider_type: str, provider_name: str, icon: str) -> Union[str, dict]:
+        """
+            get tool provider icon url
+        """
+        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+                      + "/console/api/workspaces/current/tool-provider/")
+        
+        if provider_type == UserToolProvider.ProviderType.BUILTIN.value:
+            return url_prefix + 'builtin/' + provider_name + '/icon'
+        elif provider_type == UserToolProvider.ProviderType.MODEL.value:
+            return url_prefix + 'model/' + provider_name + '/icon'
+        elif provider_type == UserToolProvider.ProviderType.API.value:
+            try:
+                return json.loads(icon)
+            except:
+                return {
+                    "background": "#252525",
+                    "content": "\ud83d\ude01"
+                }
+        
+        return ''
+        
+    @staticmethod
+    def repack_provider(provider: Union[dict, UserToolProvider]):
+        """
+            repack provider
+
+            :param provider: the provider dict
+        """
+        if isinstance(provider, dict) and 'icon' in provider:
+            provider['icon'] = ToolTransformService.get_tool_provider_icon_url(
+                provider_type=provider['type'],
+                provider_name=provider['name'],
+                icon=provider['icon']
+            )
+        elif isinstance(provider, UserToolProvider):
+            provider.icon = ToolTransformService.get_tool_provider_icon_url(
+                provider_type=provider.type.value,
+                provider_name=provider.name,
+                icon=provider.icon
+            )
+
     @staticmethod
     def builtin_provider_to_user_provider(
         provider_controller: BuiltinToolProviderController,
