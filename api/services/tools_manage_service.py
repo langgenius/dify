@@ -1,6 +1,5 @@
 import json
 
-from flask import current_app
 from httpx import get
 
 from core.tools.entities.common_entities import I18nObject
@@ -33,39 +32,17 @@ class ToolManageService:
 
             :return: the list of tool providers
         """
-        result = [provider.to_dict() for provider in ToolManager.user_list_providers(
+        providers = ToolManager.user_list_providers(
             user_id, tenant_id
-        )]
+        )
 
-        # add icon url prefix
-        for provider in result:
-            ToolManageService.repack_provider(provider)
+        # add icon
+        for provider in providers:
+            ToolTransformService.repack_provider(provider)
+
+        result = [provider.to_dict() for provider in providers]
 
         return result
-    
-    @staticmethod
-    def repack_provider(provider: dict):
-        """
-            repack provider
-
-            :param provider: the provider dict
-        """
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                      + "/console/api/workspaces/current/tool-provider/")
-        
-        if 'icon' in provider:
-            if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
-                provider['icon'] = url_prefix + 'builtin/' + provider['name'] + '/icon'
-            elif provider['type'] == UserToolProvider.ProviderType.MODEL.value:
-                provider['icon'] = url_prefix + 'model/' + provider['name'] + '/icon'
-            elif provider['type'] == UserToolProvider.ProviderType.API.value:
-                try:
-                    provider['icon'] = json.loads(provider['icon'])
-                except:
-                    provider['icon'] =  {
-                        "background": "#252525",
-                        "content": "\ud83d\ude01"
-                    }
     
     @staticmethod
     def list_builtin_tool_provider_tools(
@@ -651,7 +628,10 @@ class ToolManageService:
                 provider_controller=provider_controller,
                 db_provider=find_provider(provider_controller.identity.name)
             )
-            
+
+            # add icon
+            ToolTransformService.repack_provider(user_builtin_provider)
+
             tools = provider_controller.get_tools()
             for tool in tools:
                 user_builtin_provider.tools.append(ToolTransformService.tool_to_user_tool(
@@ -686,9 +666,13 @@ class ToolManageService:
                 db_provider=provider
             )
 
+            # add icon
+            ToolTransformService.repack_provider(user_provider)
+
             tools = provider_controller.get_tools(
                 user_id=user_id, tenant_id=tenant_id
             )
+
             for tool in tools:
                 user_provider.tools.append(ToolTransformService.tool_to_user_tool(
                     tenant_id=tenant_id,
