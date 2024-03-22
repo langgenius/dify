@@ -299,6 +299,12 @@ class ErnieBotModel:
             **parameters
         }
 
+        if 'max_tokens' in parameters and type(parameters['max_tokens']) == int:
+            body['max_output_tokens'] = parameters['max_tokens']
+
+        if 'presence_penalty' in parameters and type(parameters['presence_penalty']) == float:
+            body['penalty_score'] = parameters['presence_penalty']
+
         if system_message:
             body['system'] = system_message
 
