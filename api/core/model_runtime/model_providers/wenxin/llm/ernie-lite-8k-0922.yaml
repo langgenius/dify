@@ -28,4 +28,3 @@ parameter_rules:
     default: 1.0
     min: 1.0
     max: 2.0
-
