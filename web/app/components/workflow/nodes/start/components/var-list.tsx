@@ -4,7 +4,7 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
-import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
 type Props = {
   readonly: boolean
   list: InputVar[]
@@ -32,7 +32,15 @@ const VarList: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft.splice(index, 1)
       })
-      onChange(newList)
+      onChange(newList, {
+        index,
+        payload: {
+          type: ChangeType.remove,
+          payload: {
+            beforeKey: list[index].variable,
+          },
+        },
+      })
     }
   }, [list, onChange])
 

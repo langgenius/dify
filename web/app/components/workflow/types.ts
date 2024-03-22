@@ -255,13 +255,14 @@ export type HistoryWorkflowData = {
 
 export enum ChangeType {
   changeVarName = 'changeVarName',
+  remove = 'remove',
 }
 
 export type MoreInfo = {
   type: ChangeType
   payload?: {
     beforeKey: string
-    afterKey: string
+    afterKey?: string
   }
 }
 
