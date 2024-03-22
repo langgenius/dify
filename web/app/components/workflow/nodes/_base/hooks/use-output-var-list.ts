@@ -1,6 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import produce from 'immer'
+import { useBoolean } from 'ahooks'
 import { type OutputVar } from '../../code/types'
+import type { ValueSelector } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import {
   useWorkflow,
@@ -22,7 +24,7 @@ function useOutputVarList<T>({
   outputKeyOrders = [],
   onOutputKeyOrdersChange,
 }: Params<T>) {
-  const { handleOutVarRenameChange } = useWorkflow()
+  const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
   const handleVarsChange = useCallback((newVars: OutputVar, changedIndex?: number, newKey?: string) => {
     const newInputs = produce(inputs, (draft: any) => {
@@ -56,19 +58,38 @@ function useOutputVarList<T>({
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
   }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange])
 
+  const [isShowRemoveVarConfirm, {
+    setTrue: showRemoveVarConfirm,
+    setFalse: hideRemoveVarConfirm,
+  }] = useBoolean(false)
+  const [removedVar, setRemovedVar] = useState<ValueSelector>([])
+  const removeVarInNode = useCallback(() => {
+    removeUsedVarInNodes(removedVar)
+    hideRemoveVarConfirm()
+  }, [hideRemoveVarConfirm, removeUsedVarInNodes, removedVar])
   const handleRemoveVariable = useCallback((index: number) => {
     const key = outputKeyOrders[index]
+
+    if (isVarUsedInNodes([id, key])) {
+      showRemoveVarConfirm()
+      setRemovedVar([id, key])
+      return
+    }
+
     const newInputs = produce(inputs, (draft: any) => {
       delete draft[varKey][key]
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange(outputKeyOrders.filter((_, i) => i !== index))
-  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange])
+  }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, showRemoveVarConfirm, varKey])
 
   return {
     handleVarsChange,
     handleAddVariable,
     handleRemoveVariable,
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm: removeVarInNode,
   }
 }
 
