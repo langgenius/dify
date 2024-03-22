@@ -28,7 +28,7 @@ const translation = {
     completionDescription: '构建一个根据提示生成高质量文本的应用程序，例如生成文章、摘要、翻译等。',
     completionWarning: '该类型不久后将不再支持创建',
     agentDescription: '构建一个智能Agent，可以自主选择工具来完成任务',
-    workflowDescription: 'Description text here',
+    workflowDescription: '以工作流的形式编排生成型应用，提供更多的自定义能力。 它适合有经验的用户。',
     workflowWarning: '正在进行 Beta 测试',
     chatbotType: '聊天助手编排方法',
     basic: '基础编排',
