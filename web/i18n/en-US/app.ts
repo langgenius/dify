@@ -29,7 +29,7 @@ const translation = {
     completionDescription: 'Build an application that generates high-quality text based on prompts, such as generating articles, summaries, translations, and more.',
     completionWarning: 'This type of app will no longer be supported.',
     agentDescription: 'Build an intelligent Agent which can autonomously choose tools to complete the tasks',
-    workflowDescription: 'Description text here',
+    workflowDescription: 'Build an application that generates high-quality text based on workflow orchestrates with a high degree of customization. It is suitable for experienced users.',
     workflowWarning: 'Currently in beta',
     chatbotType: 'Chatbot orchestrate method',
     basic: 'Basic Orchestrate',
