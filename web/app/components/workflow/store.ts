@@ -10,15 +10,11 @@ import type {
   HelpLineVerticalPosition,
 } from './help-line/types'
 import type {
-  CollectionWithExpanded,
-  ToolInWorkflow,
-  ToolsMap,
-} from './block-selector/types'
-import type {
   Edge,
   HistoryWorkflowData,
   Node,
   RunFile,
+  ToolWithProvider,
   WorkflowRunningData,
 } from './types'
 import { WorkflowContext } from './context'
@@ -36,10 +32,6 @@ type Shape = {
   setHelpLineHorizontal: (helpLineHorizontal?: HelpLineHorizontalPosition) => void
   helpLineVertical?: HelpLineVerticalPosition
   setHelpLineVertical: (helpLineVertical?: HelpLineVerticalPosition) => void
-  toolsets: CollectionWithExpanded[]
-  setToolsets: (toolsets: CollectionWithExpanded[]) => void
-  toolsMap: ToolsMap
-  setToolsMap: (toolsMap: Record<string, ToolInWorkflow[]>) => void
   draftUpdatedAt: number
   setDraftUpdatedAt: (draftUpdatedAt: number) => void
   publishedAt: number
@@ -65,6 +57,10 @@ type Shape = {
   isRestoring: boolean
   setIsRestoring: (isRestoring: boolean) => void
   debouncedSyncWorkflowDraft: (fn: () => void) => void
+  buildInTools: ToolWithProvider[]
+  setBuildInTools: (tools: ToolWithProvider[]) => void
+  customTools: ToolWithProvider[]
+  setCustomTools: (tools: ToolWithProvider[]) => void
 }
 
 export const createWorkflowStore = () => {
@@ -81,10 +77,6 @@ export const createWorkflowStore = () => {
     setHelpLineHorizontal: helpLineHorizontal => set(() => ({ helpLineHorizontal })),
     helpLineVertical: undefined,
     setHelpLineVertical: helpLineVertical => set(() => ({ helpLineVertical })),
-    toolsets: [],
-    setToolsets: toolsets => set(() => ({ toolsets })),
-    toolsMap: {},
-    setToolsMap: toolsMap => set(() => ({ toolsMap })),
     draftUpdatedAt: 0,
     setDraftUpdatedAt: draftUpdatedAt => set(() => ({ draftUpdatedAt: draftUpdatedAt ? draftUpdatedAt * 1000 : 0 })),
     publishedAt: 0,
@@ -108,6 +100,10 @@ export const createWorkflowStore = () => {
     debouncedSyncWorkflowDraft: debounce((syncWorkflowDraft) => {
       syncWorkflowDraft()
     }, 5000),
+    buildInTools: [],
+    setBuildInTools: buildInTools => set(() => ({ buildInTools })),
+    customTools: [],
+    setCustomTools: customTools => set(() => ({ customTools })),
   }))
 }
 

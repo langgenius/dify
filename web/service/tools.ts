@@ -1,5 +1,6 @@
 import { get, post } from './base'
 import type { Collection, CustomCollectionBackend, CustomParamSchema, Tool, ToolCredential } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 
 export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
@@ -85,4 +86,12 @@ export const testAPIAvailable = (payload: any) => {
       ...payload,
     },
   })
+}
+
+export const fetchAllBuiltInTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/builtin')
+}
+
+export const fetchAllCustomTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/api')
 }

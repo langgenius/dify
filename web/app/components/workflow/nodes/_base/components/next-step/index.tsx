@@ -1,15 +1,12 @@
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo } from 'react'
 import {
   getConnectedEdges,
   getOutgoers,
   useEdges,
   useStoreApi,
 } from 'reactflow'
+import { useToolIcon } from '../../../../hooks'
 import BlockIcon from '../../../../block-icon'
-import { useStore } from '../../../../store'
 import type {
   Branch,
   Node,
@@ -26,11 +23,7 @@ const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
   const data = selectedNode.data
-  const toolsets = useStore(s => s.toolsets)
-  const toolIcon = useMemo(() => {
-    if (data.type === BlockEnum.Tool)
-      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
-  }, [data, toolsets])
+  const toolIcon = useToolIcon(data)
   const store = useStoreApi()
   const branches = data._targetBranches || []
   const nodeWithBranches = data.type === BlockEnum.IfElse || data.type === BlockEnum.QuestionClassifier

@@ -5,15 +5,16 @@ import type {
 import {
   cloneElement,
   memo,
-  useMemo,
 } from 'react'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
   NodeRunningStatus,
 } from '../../types'
-import { useStore } from '../../store'
-import { useNodesReadOnly } from '../../hooks'
+import {
+  useNodesReadOnly,
+  useToolIcon,
+} from '../../hooks'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -36,12 +37,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   children,
 }) => {
   const { nodesReadOnly } = useNodesReadOnly()
-  const toolsets = useStore(s => s.toolsets)
-  const toolIcon = useMemo(() => {
-    if (data.type === BlockEnum.Tool)
-      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
-  }, [data, toolsets])
-
+  const toolIcon = useToolIcon(data)
   return (
     <div
       className={`
