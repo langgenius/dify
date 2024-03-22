@@ -7,8 +7,7 @@ import { type ToolNodeType, type ToolVarInput, VarType } from './types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
-import type { Collection, Tool } from '@/app/components/tools/types'
-import { fetchBuiltInToolList, fetchCollectionList, fetchCustomToolList, updateBuiltInToolCredential } from '@/service/tools'
+import { updateBuiltInToolCredential } from '@/service/tools'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
@@ -16,40 +15,27 @@ import { VarType as VarVarType } from '@/app/components/workflow/types'
 import type { InputVar, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
+  useFetchToolsData,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const { handleFetchAllTools } = useFetchToolsData()
   const { t } = useTranslation()
 
   const language = useLanguage()
-  const toolsMap = useStore(s => s.toolsMap)
-  const setToolsMap = useStore(s => s.setToolsMap)
-
   const { inputs, setInputs } = useNodeCrud<ToolNodeType>(id, payload)
   /*
   * tool_configurations: tool setting, not dynamic setting
   * tool_parameters: tool dynamic setting(by user)
   */
-  const { provider_id, provider_name, provider_type, tool_name, tool_configurations } = inputs
+  const { provider_id, provider_type, tool_name, tool_configurations } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
-  const [currCollection, setCurrCollection] = useState<Collection | null | undefined>(null)
-  const fetchCurrCollection = useCallback(async () => {
-    if (!provider_id)
-      return
-    const res = await fetchCollectionList()
-    const currCollection = res.find(item => item.id === provider_id)
-    setCurrCollection(currCollection)
-  }, [provider_id])
-
-  useEffect(() => {
-    if (!provider_id || !isBuiltIn)
-      return
-
-    fetchCurrCollection()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider_id])
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const currentTools = isBuiltIn ? buildInTools : customTools
+  const currCollection = currentTools.find(item => item.id === provider_id)
 
   // Auth
   const needAuth = !!currCollection?.allow_delete
@@ -67,11 +53,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       type: 'success',
       message: t('common.api.actionSuccess'),
     })
-    await fetchCurrCollection()
+    handleFetchAllTools(provider_type)
     hideSetAuthModal()
-  }, [currCollection?.name, fetchCurrCollection, hideSetAuthModal, t])
+  }, [currCollection?.name, hideSetAuthModal, t, handleFetchAllTools, provider_type])
 
-  const [currTool, setCurrTool] = useState<Tool | null>(null)
+  const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
   // use setting
@@ -121,26 +107,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }, [])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
-
-  useEffect(() => {
-    (async () => {
-      let list: Tool[] = []
-      if (toolsMap[provider_id]?.length) {
-        list = toolsMap[provider_id]
-      }
-      else {
-        list = isBuiltIn ? await fetchBuiltInToolList(provider_name || provider_id) : await fetchCustomToolList(provider_name)
-
-        setToolsMap(produce(toolsMap, (draft) => {
-          draft[provider_id] = list
-        }))
-      }
-      const currTool = list.find(tool => tool.name === tool_name)
-      if (currTool)
-        setCurrTool(currTool)
-    })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider_name])
 
   // single run
   const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})

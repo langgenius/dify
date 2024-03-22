@@ -1,12 +1,9 @@
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react'
-import produce from 'immer'
-import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
 import type { OffsetOptions } from '@floating-ui/react'
@@ -25,12 +22,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
-import {
-  fetchBuiltInToolList,
-  fetchCustomToolList,
-} from '@/service/tools'
+import { useGetLanguage } from '@/context/i18n'
 
 type PanelOperatorProps = {
   id: string
@@ -52,53 +44,34 @@ const PanelOperator = ({
   inNode,
 }: PanelOperatorProps) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
+  const language = useGetLanguage()
   const edges = useEdges()
   const { handleNodeDelete } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
   const nodesExtraData = useNodesExtraData()
-  const toolsets = useStore(s => s.toolsets)
-  const toolsMap = useStore(s => s.toolsMap)
-  const setToolsMap = useStore(s => s.setToolsMap)
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
   const [open, setOpen] = useState(false)
-  const fetchToolList = useMemo(() => {
-    const toolset = toolsets.find(toolset => toolset.id === data.provider_id)
-    return toolset?.type === 'api' ? fetchCustomToolList : fetchBuiltInToolList
-  }, [toolsets, data.provider_id])
-
-  const handleGetAbout = useCallback(() => {
-    if (data.provider_id && !toolsMap[data.provider_id]?.length && open) {
-      fetchToolList(data.provider_id).then((list: any) => {
-        setToolsMap(produce(toolsMap, (draft) => {
-          draft[data.provider_id as string] = list
-        }))
-      })
-    }
-  }, [data, toolsMap, fetchToolList, setToolsMap, open])
-  useEffect(() => {
-    handleGetAbout()
-  }, [handleGetAbout])
-
   const edge = edges.find(edge => edge.target === id)
-
   const author = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
       return nodesExtraData[data.type].author
 
-    const toolset = toolsets.find(toolset => toolset.id === data.provider_id)
+    if (data.provider_type === 'builtin')
+      return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
 
-    return toolset?.author
-  }, [data, nodesExtraData, toolsets])
+    return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
+  }, [data, nodesExtraData, buildInTools, customTools])
 
   const about = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
       return nodesExtraData[data.type].about
 
-    const tool = toolsMap[data.provider_id as string]?.find(tool => tool.name === data.tool_name)
+    if (data.provider_type === 'builtin')
+      return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
 
-    return tool?.description[language] || ''
-  }, [data, nodesExtraData, toolsMap, language])
+    return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
+  }, [data, nodesExtraData, language, buildInTools, customTools])
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)

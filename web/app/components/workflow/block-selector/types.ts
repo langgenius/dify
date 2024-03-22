@@ -1,8 +1,3 @@
-import type {
-  Collection,
-  Tool,
-} from '@/app/components/tools/types'
-
 export enum TabsEnum {
   Blocks = 'blocks',
   BuiltInTool = 'built-in-tool',
@@ -16,14 +11,6 @@ export enum BlockClassificationEnum {
   Transform = 'transform',
   Utilities = 'utilities',
 }
-
-export type CollectionWithExpanded = Collection & {
-  expanded?: boolean
-  fetching?: boolean
-}
-
-export type ToolInWorkflow = Tool
-export type ToolsMap = Record<string, ToolInWorkflow[]>
 
 export type ToolDefaultValue = {
   provider_id: string

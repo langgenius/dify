@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
 } from 'react'
 import dayjs from 'dayjs'
 import { uniqBy } from 'lodash-es'
@@ -17,7 +18,6 @@ import type {
   Connection,
   Viewport,
 } from 'reactflow'
-import type { ToolsMap } from '../block-selector/types'
 import {
   generateNewNode,
   getLayoutByDagre,
@@ -55,7 +55,10 @@ import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
-import { fetchCollectionList } from '@/service/tools'
+import {
+  fetchAllBuiltInTools,
+  fetchAllCustomTools,
+} from '@/service/tools'
 import I18n from '@/context/i18n'
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -321,25 +324,42 @@ export const useWorkflow = () => {
   }
 }
 
+export const useFetchToolsData = () => {
+  const workflowStore = useWorkflowStore()
+
+  const handleFetchAllTools = useCallback(async (type: string) => {
+    if (type === 'builtin') {
+      const buildInTools = await fetchAllBuiltInTools()
+
+      workflowStore.setState({
+        buildInTools: buildInTools || [],
+      })
+    }
+    if (type === 'custom') {
+      const customTools = await fetchAllCustomTools()
+
+      workflowStore.setState({
+        customTools: customTools || [],
+      })
+    }
+  }, [workflowStore])
+
+  return {
+    handleFetchAllTools,
+  }
+}
+
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const nodesInitialData = useNodesInitialData()
+  const { handleFetchAllTools } = useFetchToolsData()
   const appDetail = useAppStore(state => state.appDetail)!
   const { data, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
 
   const handleFetchPreloadData = useCallback(async () => {
     try {
-      const toolsets = await fetchCollectionList()
       const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
       const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
-
-      workflowStore.setState({
-        toolsets,
-        toolsMap: toolsets.reduce((acc, toolset) => {
-          acc[toolset.id] = []
-          return acc
-        }, {} as ToolsMap),
-      })
       workflowStore.setState({
         nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
           if (!acc[block.type])
@@ -356,7 +376,9 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleFetchPreloadData()
-  }, [handleFetchPreloadData])
+    handleFetchAllTools('builtin')
+    handleFetchAllTools('custom')
+  }, [handleFetchPreloadData, handleFetchAllTools])
 
   useEffect(() => {
     if (data)
@@ -426,4 +448,19 @@ export const useNodesReadOnly = () => {
     nodesReadOnly: !!(workflowRunningData || historyWorkflowData || isRestoring),
     getNodesReadOnly,
   }
+}
+
+export const useToolIcon = (data: Node['data']) => {
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const toolIcon = useMemo(() => {
+    if (data.type === BlockEnum.Tool) {
+      if (data.provider_type === 'builtin')
+        return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.icon
+
+      return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.icon
+    }
+  }, [data, buildInTools, customTools])
+
+  return toolIcon
 }

@@ -6,6 +6,7 @@ import type { TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeTracing } from '@/types/workflow'
+import type { Collection, Tool } from '@/app/components/tools/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -262,4 +263,8 @@ export type MoreInfo = {
     beforeKey: string
     afterKey: string
   }
+}
+
+export type ToolWithProvider = Collection & {
+  tools: Tool[]
 }
