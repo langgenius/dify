@@ -6,7 +6,7 @@ features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 11200
+  context_size: 128000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -18,10 +18,13 @@ parameter_rules:
     min: 0
     max: 1.0
     default: 0.7
-  - name: max_output_tokens
-    use_template: max_output_tokens
-  - name: penalty_score
-    use_template: penalty_score
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 1
+    max: 128000
+  - name: presence_penalty
+    use_template: presence_penalty
     default: 1.0
     min: 1.0
     max: 2.0

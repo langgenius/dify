@@ -15,13 +15,13 @@ parameter_rules:
     default: 0.8
   - name: top_p
     use_template: top_p
-  - name: max_output_tokens
-    use_template: max_output_tokens
+  - name: max_tokens
+    use_template: max_tokens
     default: 1024
     min: 1
     max: 8000
-  - name: penalty_score
-    use_template: penalty_score
+  - name: presence_penalty
+    use_template: presence_penalty
   - name: frequency_penalty
     use_template: frequency_penalty
   - name: response_format
