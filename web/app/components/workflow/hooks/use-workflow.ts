@@ -42,7 +42,7 @@ import {
   START_INITIAL_POSITION,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
-import { findUsedVarNodes, updateNodeVars } from '../nodes/_base/components/variable/utils'
+import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import {
   useNodesExtraData,
   useNodesInitialData,
@@ -233,6 +233,35 @@ export const useWorkflow = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store])
 
+  const isVarUsedInNodes = useCallback((nodeId: string, varSelector: ValueSelector) => {
+    const afterNodes = getAfterNodesInSameBranch(nodeId)
+    const effectNodes = findUsedVarNodes(varSelector, afterNodes)
+    return effectNodes.length > 0
+  }, [getAfterNodesInSameBranch])
+
+  const removeUsedVarInNodes = useCallback((nodeId: string, varSelector: ValueSelector) => {
+    const { getNodes, setNodes } = store.getState()
+    const afterNodes = getAfterNodesInSameBranch(nodeId)
+    const effectNodes = findUsedVarNodes(varSelector, afterNodes)
+    if (effectNodes.length > 0) {
+      const newNodes = getNodes().map((node) => {
+        if (effectNodes.find(n => n.id === node.id))
+          return updateNodeVars(node, varSelector, [])
+
+        return node
+      })
+      setNodes(newNodes)
+    }
+  }, [getAfterNodesInSameBranch, store])
+
+  const isNodeVarsUsedInNodes = useCallback((node: Node, isChatMode: boolean) => {
+    const outputVars = getNodeOutputVars(node, isChatMode)
+    const isUsed = outputVars.some((varSelector) => {
+      return isVarUsedInNodes(node.id, varSelector)
+    })
+    return isUsed
+  }, [isVarUsedInNodes])
+
   const isValidConnection = useCallback(({ source, target }: Connection) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
@@ -317,6 +346,9 @@ export const useWorkflow = () => {
     getBeforeNodesInSameBranch,
     getAfterNodesInSameBranch,
     handleOutVarRenameChange,
+    isVarUsedInNodes,
+    removeUsedVarInNodes,
+    isNodeVarsUsedInNodes,
     isValidConnection,
     formatTimeFromNow,
     getValidTreeNodes,

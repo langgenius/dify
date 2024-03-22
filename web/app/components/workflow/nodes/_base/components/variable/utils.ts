@@ -211,7 +211,7 @@ export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMo
   }
 }
 
-const getNodeUsedVars = (node: Node): ValueSelector[] => {
+export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   const { data } = node
   const { type } = data
   let res: ValueSelector[] = []
@@ -420,4 +420,99 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
     }
   })
   return newNode
+}
+const varToValueSelectorList = (v: Var, parentValueSelector: ValueSelector, res: ValueSelector[]) => {
+  if (!v.variable)
+    return
+
+  res.push([...parentValueSelector, v.variable])
+
+  if (v.children && v.children.length > 0) {
+    v.children.forEach((child) => {
+      varToValueSelectorList(child, [...parentValueSelector, v.variable], res)
+    })
+  }
+}
+
+const varsToValueSelectorList = (vars: Var | Var[], parentValueSelector: ValueSelector, res: ValueSelector[]) => {
+  if (Array.isArray(vars)) {
+    vars.forEach((v) => {
+      varToValueSelectorList(v, parentValueSelector, res)
+    })
+  }
+  varToValueSelectorList(vars as Var, parentValueSelector, res)
+}
+
+// const test: ValueSelector[] = []
+// varsToValueSelectorList(LLM_OUTPUT_STRUCT, ['ttt'], test)
+// console.log(test)
+
+export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelector[] => {
+  const { data, id } = node
+  const { type } = data
+  let res: ValueSelector[] = []
+
+  switch (type) {
+    case BlockEnum.Start: {
+      const {
+        variables,
+      } = data as StartNodeType
+      res = variables.map((v) => {
+        return [id, v.variable]
+      })
+
+      if (isChatMode) {
+        res.push([id, 'sys', 'query'])
+        res.push([id, 'sys', 'files'])
+      }
+      break
+    }
+
+    case BlockEnum.LLM: {
+      varsToValueSelectorList(LLM_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.KnowledgeRetrieval: {
+      varsToValueSelectorList(KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.Code: {
+      const {
+        outputs,
+      } = data as CodeNodeType
+      Object.keys(outputs).forEach((key) => {
+        res.push([id, key])
+      })
+      break
+    }
+
+    case BlockEnum.TemplateTransform: {
+      varsToValueSelectorList(TEMPLATE_TRANSFORM_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.QuestionClassifier: {
+      varsToValueSelectorList(isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.HttpRequest: {
+      varsToValueSelectorList(HTTP_REQUEST_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.VariableAssigner: {
+      res.push([id, 'output'])
+      break
+    }
+
+    case BlockEnum.Tool: {
+      varsToValueSelectorList(TOOL_OUTPUT_STRUCT, [id], res)
+      break
+    }
+  }
+
+  return res
 }

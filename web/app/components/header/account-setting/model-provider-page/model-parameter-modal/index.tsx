@@ -88,7 +88,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const { hasSettedApiKey } = useProviderContext()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const { data: parameterRulesData, isLoading } = useSWR((provider && modelId) ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}` : null, fetchModelParameterRules)
   const {
     currentProvider,
