@@ -140,7 +140,7 @@ const CustomWebAppBrand = () => {
       </div>
       <div className={`
         flex items-center justify-between px-4 py-3 rounded-xl border-[0.5px] border-gray-200 bg-gray-50
-        ${webappBrandRemoved && 'opacity-30'}
+        ${webappBrandRemoved ? 'opacity-30' : ''}
       `}>
         <div>
           <div className='leading-5 text-sm font-medium text-gray-900'>{t('custom.webapp.changeLogo')}</div>

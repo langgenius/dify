@@ -22,7 +22,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
         className={`
           flex items-center px-[7px] h-7 rounded-md border-[0.5px] border-gray-200 shadow-xs
           text-xs font-medium text-gray-700 cursor-pointer
-          ${open && 'bg-gray-100'}
+          ${open ? 'bg-gray-100' : ''}
         `}
       >
         <SlidersH className='mr-[5px] w-3.5 h-3.5 text-gray-500' />

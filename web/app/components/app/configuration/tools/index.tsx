@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import copy from 'copy-to-clipboard'
+import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import ConfigContext from '@/context/debug-configuration'
 import Switch from '@/app/components/base/switch'
@@ -85,10 +86,10 @@ const Tools = () => {
       <div className='flex items-center h-12'>
         <div className='grow flex items-center'>
           <div
-            className={`
-              group flex items-center justify-center mr-1 w-6 h-6 rounded-md 
-              ${externalDataToolsConfig.length && 'hover:shadow-xs hover:bg-white'}
-            `}
+            className={cn(
+              'group flex items-center justify-center mr-1 w-6 h-6 rounded-md',
+              externalDataToolsConfig.length && 'hover:shadow-xs hover:bg-white',
+            )}
             onClick={() => setExpanded(v => !v)}
           >
             {

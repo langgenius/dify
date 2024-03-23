@@ -120,7 +120,7 @@ const ChatInput: FC<ChatInputProps> = ({
       <Send03
         className={`
           w-5 h-5 text-gray-300 group-hover:text-primary-600
-          ${!!query.trim() && 'text-primary-600'}
+          ${query.trim() ? 'text-primary-600' : ''}
         `}
       />
     </div>
@@ -131,7 +131,7 @@ const ChatInput: FC<ChatInputProps> = ({
       <div
         className={`
           p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
-          ${isDragActive && 'border-primary-600'}
+          ${isDragActive ? 'border-primary-600' : ''}
         `}
       >
         {
@@ -160,7 +160,7 @@ const ChatInput: FC<ChatInputProps> = ({
         <Textarea
           className={`
             block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
-            ${visionConfig?.enabled && 'pl-12'}
+            ${visionConfig?.enabled ? 'pl-12' : ''}
           `}
           value={query}
           onChange={handleContentChange}

@@ -77,8 +77,8 @@ const ModelList: FC<ModelListProps> = ({
               key={model.model}
               className={`
                 group flex items-center pl-2 pr-2.5 h-8 rounded-lg
-                ${canCustomConfig && 'hover:bg-gray-50'}
-                ${model.deprecated && 'opacity-60'}
+                ${canCustomConfig ? 'hover:bg-gray-50' : ''}
+                ${model.deprecated ? 'opacity-60' : ''}
               `}
             >
               <ModelIcon

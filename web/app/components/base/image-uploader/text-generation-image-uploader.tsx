@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
 import ImageList from './image-list'
@@ -97,11 +98,11 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
     >
       {
         hovering => (
-          <div className={`
-            flex items-center justify-center px-3 h-8 bg-gray-100
-            text-xs text-gray-500 rounded-lg cursor-pointer
-            ${hovering && 'bg-gray-200'}
-          `}>
+          <div className={cn(
+            `flex items-center justify-center px-3 h-8 bg-gray-100
+            text-xs text-gray-500 rounded-lg cursor-pointer`,
+            hovering && 'bg-gray-200',
+          )}>
             <ImagePlus className='mr-2 w-4 h-4' />
             {t('common.imageUploader.uploadFromComputer')}
           </div>

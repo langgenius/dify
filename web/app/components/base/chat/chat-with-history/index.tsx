@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import { useAsyncEffect } from 'ahooks'
+import cn from 'classnames'
 import {
   ChatWithHistoryContext,
   useChatWithHistoryContext,
@@ -62,7 +63,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
+    <div className={cn(`h-full flex bg-white ${className}`, isMobile && 'flex-col')}>
       {
         !isMobile && (
           <Sidebar />
@@ -73,10 +74,10 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
           <HeaderInMobile />
         )
       }
-      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center'}`}>
+      <div className={cn('grow overflow-hidden', showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center')}>
         {
           showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
-            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
+            <div className={cn('flex w-full items-center justify-center h-full', isMobile && 'px-4')}>
               <ConfigPanel />
             </div>
           )

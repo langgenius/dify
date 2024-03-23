@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
+import cn from 'classnames'
 import Chat from '../chat'
 import type {
   ChatConfig,
@@ -99,7 +100,7 @@ const ChatWrapper = () => {
           />
           {
             !currentConversationId && (
-              <div className={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}>
+              <div className={cn('mx-auto w-full max-w-[720px]', isMobile && 'px-4')}>
                 <div className='mb-6' />
                 <ConfigPanel />
                 <div
@@ -131,9 +132,9 @@ const ChatWrapper = () => {
       config={appConfig}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
+      chatContainerInnerClassName={cn('mx-auto pt-6 w-full max-w-[720px]', isMobile && 'px-4')}
       chatFooterClassName='pb-4'
-      chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
+      chatFooterInnerClassName={cn('mx-auto w-full max-w-[720px]', isMobile && 'px-4')}
       onSend={doSend}
       onStopResponding={handleStop}
       chatNode={chatNode}

@@ -129,7 +129,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         <div className={`
           flex items-center px-2 h-6 text-xs text-gray-700 cursor-pointer bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs
           hover:bg-gray-100 hover:shadow-none
-          ${open && 'bg-gray-100 shadow-none'}
+          ${open ? 'bg-gray-100 shadow-none' : ''}
         `}>
           <Settings01 className='mr-1 w-3 h-3 text-gray-500' />
           {t('common.modelProvider.systemModelSettings')}

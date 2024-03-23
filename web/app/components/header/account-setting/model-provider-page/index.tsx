@@ -89,7 +89,7 @@ const ModelProviderPage = () => {
 
   return (
     <div className='relative pt-1 -mt-2'>
-      <div className={`flex items-center justify-between mb-2 h-8 ${defaultModelNotConfigured && 'px-3 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]'}`}>
+      <div className={`flex items-center justify-between mb-2 h-8 ${defaultModelNotConfigured ? 'px-3 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]' : ''}`}>
         {
           defaultModelNotConfigured
             ? (

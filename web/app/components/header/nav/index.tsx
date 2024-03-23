@@ -33,18 +33,18 @@ const Nav = ({
   const isActived = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
 
   return (
-    <div className={`
-      flex items-center h-8 mr-0 sm:mr-3 px-0.5 rounded-xl text-sm shrink-0 font-medium
-      ${isActived && 'bg-white shadow-md font-semibold'}
-      ${!curNav && !isActived && 'hover:bg-gray-200'}
-    `}>
+    <div className={classNames(
+      'flex items-center h-8 mr-0 sm:mr-3 px-0.5 rounded-xl text-sm shrink-0 font-medium',
+      isActived && 'bg-white shadow-md font-semibold',
+      !curNav && !isActived && 'hover:bg-gray-200')
+    }>
       <Link href={link}>
         <div
-          className={classNames(`
-            flex items-center h-7 px-2.5 cursor-pointer rounded-[10px]
-            ${isActived ? 'text-primary-600' : 'text-gray-500'}
-            ${curNav && isActived && 'hover:bg-primary-50'}
-          `)}
+          className={classNames(
+            'flex items-center h-7 px-2.5 cursor-pointer rounded-[10px]',
+            isActived ? 'text-primary-600' : 'text-gray-500',
+            (curNav && isActived && 'hover:bg-primary-50'))
+          }
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >

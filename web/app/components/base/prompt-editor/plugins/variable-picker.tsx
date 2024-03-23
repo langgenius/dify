@@ -8,6 +8,7 @@ import {
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import cn from 'classnames'
 import { useBasicTypeaheadTriggerMatch } from '../hooks'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from './variable-block'
 import { $createCustomTextNode } from './custom-text/node'
@@ -78,10 +79,10 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
   return (
     <div
       key={option.key}
-      className={`
-        flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
-        ${isSelected && 'bg-primary-50'}
-      `}
+      className={cn(
+        'flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer',
+        isSelected && 'bg-primary-50',
+      )}
       tabIndex={-1}
       ref={option.setRefElement}
       onMouseEnter={onMouseEnter}
@@ -280,10 +281,10 @@ const VariablePicker: FC<VariablePickerProps> = ({
               }
               <div className='p-1'>
                 <div
-                  className={`
-                    flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
-                    ${selectedIndex === options.length + toolOptions.length && 'bg-primary-50'}
-                  `}
+                  className={cn(
+                    'flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer',
+                    selectedIndex === options.length + toolOptions.length && 'bg-primary-50',
+                  )}
                   ref={newOption.setRefElement}
                   tabIndex={-1}
                   onClick={() => {
@@ -299,10 +300,10 @@ const VariablePicker: FC<VariablePickerProps> = ({
                   <div className='text-[13px] text-gray-900'>{newOption.title}</div>
                 </div>
                 <div
-                  className={`
-                    flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
-                    ${selectedIndex === options.length + toolOptions.length + 1 && 'bg-primary-50'}
-                  `}
+                  className={cn(
+                    'flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer',
+                    selectedIndex === options.length + toolOptions.length + 1 && 'bg-primary-50',
+                  )}
                   ref={newToolOption.setRefElement}
                   tabIndex={-1}
                   onClick={() => {

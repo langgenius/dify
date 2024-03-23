@@ -32,7 +32,7 @@ const TabSlider: FC<TabSliderProps> = ({
               flex justify-center items-center h-7 text-[13px] 
               font-semibold text-gray-600 rounded-[7px] cursor-pointer
               hover:bg-gray-50
-              ${index !== options.length - 1 && 'mr-[1px]'}
+              ${index !== options.length - 1 ? 'mr-[1px]' : ''}
             `}
             style={{
               width: itemWidth,

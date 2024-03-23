@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useRef } from 'react'
 import { useContext } from 'use-context-selector'
+import cn from 'classnames'
 import s from '../style.module.css'
 import type { IChatItem } from '../type'
 import Log from '../log'
@@ -23,7 +24,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar,
   const imgSrcs = item.message_files?.map(item => item.url)
 
   return (
-    <div className={`flex items-start justify-end ${isShowPromptLog && 'first-of-type:pt-[14px]'}`} key={id} ref={ref}>
+    <div className={cn('flex items-start justify-end', isShowPromptLog && 'first-of-type:pt-[14px]')} key={id} ref={ref}>
       <div className={s.questionWrapWrap}>
 
         <div className={`${s.question} group relative text-sm text-gray-900`}>

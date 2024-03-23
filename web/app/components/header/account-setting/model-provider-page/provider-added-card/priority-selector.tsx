@@ -33,7 +33,7 @@ const Selector: FC<SelectorProps> = ({
           ({ open }) => (
             <Button className={`
               px-0 w-6 h-6 bg-white rounded-md
-              ${open && '!bg-gray-100'}
+              ${open ? '!bg-gray-100' : ''}
             `}>
               <DotsHorizontal className='w-3 h-3 text-gray-700' />
             </Button>

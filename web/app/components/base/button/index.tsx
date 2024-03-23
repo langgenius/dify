@@ -36,7 +36,7 @@ const Button: FC<IButtonProps> = ({
 
   return (
     <div
-      className={`btn ${style} ${className && className}`}
+      className={`btn ${style} ${className || ''}`}
       tabIndex={tabIndex}
       onClick={disabled ? undefined : onClick}
     >

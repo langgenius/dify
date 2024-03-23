@@ -46,7 +46,7 @@ const Input: FC<InputProps> = ({
           hover:border-[rgba(0,0,0,0.08)] hover:bg-gray-50
           focus:bg-white focus:border-gray-300 focus:shadow-xs
           placeholder:text-sm placeholder:text-gray-400
-          ${validated && 'pr-[30px]'}
+          ${validated ? 'pr-[30px]' : ''}
           ${className}
         `}
         placeholder={placeholder || ''}

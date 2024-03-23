@@ -751,7 +751,7 @@ const Configuration: FC = () => {
       <>
         <div className="flex flex-col h-full">
           <div className='flex grow h-[200px]'>
-            <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+            <div className={cn('w-full sm:w-1/2 shrink-0 flex flex-col h-full', debugWithMultipleModel && 'max-w-[560px]')}>
               {/* Header Left */}
               <div className='flex justify-between items-center px-6 h-14'>
                 <div className='flex items-center'>

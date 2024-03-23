@@ -50,7 +50,7 @@ export default function Operate({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={`flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 ${open && 'bg-gray-100'}`}>
+            <Menu.Button className={`flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 ${open ? 'bg-gray-100' : ''}`}>
               <EllipsisHorizontalIcon className='w-4 h-4' />
             </Menu.Button>
             <Transition

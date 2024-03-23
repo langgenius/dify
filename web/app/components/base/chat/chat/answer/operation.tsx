@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
@@ -146,11 +147,11 @@ const Operation: FC<OperationProps> = ({
         config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement && (
           <TooltipPlus popupContent={localFeedback.rating === 'like' ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree')}>
             <div
-              className={`
-                flex items-center justify-center w-7 h-7 rounded-[10px] border-[2px] border-white cursor-pointer
-                ${localFeedback.rating === 'like' && 'bg-blue-50 text-blue-600'}
-                ${localFeedback.rating === 'dislike' && 'bg-red-100 text-red-600'}
-              `}
+              className={cn(
+                'flex items-center justify-center w-7 h-7 rounded-[10px] border-[2px] border-white cursor-pointer',
+                localFeedback.rating === 'like' && 'bg-blue-50 text-blue-600',
+                localFeedback.rating === 'dislike' && 'bg-red-100 text-red-600',
+              )}
               onClick={() => handleFeedback(null)}
             >
               {

@@ -86,7 +86,7 @@ const PopupItem: FC<PopupItemProps> = ({
               <ModelIcon
                 className={`
                   shrink-0 mr-2 w-4 h-4
-                  ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
+                  ${modelItem.status !== ModelStatusEnum.active ? 'opacity-60' : ''}
                 `}
                 provider={model}
                 modelName={modelItem.model}
@@ -94,7 +94,7 @@ const PopupItem: FC<PopupItemProps> = ({
               <ModelName
                 className={`
                   grow text-sm font-normal text-gray-900
-                  ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
+                  ${modelItem.status !== ModelStatusEnum.active ? 'opacity-60' : ''}
                 `}
                 modelItem={modelItem}
                 showMode

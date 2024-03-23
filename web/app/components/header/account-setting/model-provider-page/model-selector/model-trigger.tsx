@@ -33,8 +33,8 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       className={`
         group flex items-center px-2 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer
         ${className}
-        ${open && '!bg-gray-200'}
-        ${model.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]'}
+        ${open ? '!bg-gray-200' : ''}
+        ${model.status !== ModelStatusEnum.active ? '!bg-[#FFFAEB]' : ''}
       `}
     >
       <ModelIcon
