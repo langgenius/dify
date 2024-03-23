@@ -13,6 +13,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
+from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolConfigurationManager
@@ -642,7 +643,7 @@ class ToolManageService:
 
             result.append(user_builtin_provider)
 
-        return result
+        return BuiltinToolProviderSort.sort(result)
     
     @staticmethod
     def list_api_tools(
