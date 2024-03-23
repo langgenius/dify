@@ -5,8 +5,8 @@ import mimetypes
 from os import listdir, path
 from typing import Any, Union
 
+from core.agent.entities import AgentToolEntity
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.entities.application_entities import AgentToolEntity
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.provider_manager import ProviderManager
 from core.tools.entities.common_entities import I18nObject
@@ -15,7 +15,6 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolInvokeMessage,
     ToolParameter,
-    ToolProviderCredentials,
 )
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolProviderNotFoundError
@@ -34,8 +33,10 @@ from core.tools.utils.configuration import (
     ToolParameterConfigurationManager,
 )
 from core.tools.utils.encoder import serialize_base_model_dict
+from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
+from services.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +227,48 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
 
     @staticmethod
+    def _init_runtime_parameter(parameter_rule: ToolParameter, parameters: dict) -> Union[str, int, float, bool]:
+        """
+            init runtime parameter
+        """
+        parameter_value = parameters.get(parameter_rule.name)
+        if not parameter_value:
+            # get default value
+            parameter_value = parameter_rule.default
+            if not parameter_value and parameter_rule.required:
+                raise ValueError(f"tool parameter {parameter_rule.name} not found in tool config")
+        
+        if parameter_rule.type == ToolParameter.ToolParameterType.SELECT:
+            # check if tool_parameter_config in options
+            options = list(map(lambda x: x.value, parameter_rule.options))
+            if parameter_value not in options:
+                raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}")
+        
+        # convert tool parameter config to correct type
+        try:
+            if parameter_rule.type == ToolParameter.ToolParameterType.NUMBER:
+                # check if tool parameter is integer
+                if isinstance(parameter_value, int):
+                    parameter_value = parameter_value
+                elif isinstance(parameter_value, float):
+                    parameter_value = parameter_value
+                elif isinstance(parameter_value, str):
+                    if '.' in parameter_value:
+                        parameter_value = float(parameter_value)
+                    else:
+                        parameter_value = int(parameter_value)
+            elif parameter_rule.type == ToolParameter.ToolParameterType.BOOLEAN:
+                parameter_value = bool(parameter_value)
+            elif parameter_rule.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
+                parameter_value = str(parameter_value)
+            elif parameter_rule.type == ToolParameter.ToolParameterType:
+                parameter_value = str(parameter_value)
+        except Exception as e:
+            raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} is not correct type")
+        
+        return parameter_value
+
+    @staticmethod
     def get_agent_tool_runtime(tenant_id: str, agent_tool: AgentToolEntity, agent_callback: DifyAgentCallbackHandler) -> Tool:
         """
             get the agent tool runtime
@@ -239,44 +282,9 @@ class ToolManager:
         parameters = tool_entity.get_all_runtime_parameters()
         for parameter in parameters:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # get tool parameter from form
-                tool_parameter_config = agent_tool.tool_parameters.get(parameter.name)
-                if not tool_parameter_config:
-                    # get default value
-                    tool_parameter_config = parameter.default
-                    if not tool_parameter_config and parameter.required:
-                        raise ValueError(f"tool parameter {parameter.name} not found in tool config")
-                    
-                if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                    # check if tool_parameter_config in options
-                    options = list(map(lambda x: x.value, parameter.options))
-                    if tool_parameter_config not in options:
-                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
-                    
-                # convert tool parameter config to correct type
-                try:
-                    if parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                        # check if tool parameter is integer
-                        if isinstance(tool_parameter_config, int):
-                            tool_parameter_config = tool_parameter_config
-                        elif isinstance(tool_parameter_config, float):
-                            tool_parameter_config = tool_parameter_config
-                        elif isinstance(tool_parameter_config, str):
-                            if '.' in tool_parameter_config:
-                                tool_parameter_config = float(tool_parameter_config)
-                            else:
-                                tool_parameter_config = int(tool_parameter_config)
-                    elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                        tool_parameter_config = bool(tool_parameter_config)
-                    elif parameter.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
-                        tool_parameter_config = str(tool_parameter_config)
-                    elif parameter.type == ToolParameter.ToolParameterType:
-                        tool_parameter_config = str(tool_parameter_config)
-                except Exception as e:
-                    raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} is not correct type")
-                
                 # save tool parameter to tool entity memory
-                runtime_parameters[parameter.name] = tool_parameter_config
+                value = ToolManager._init_runtime_parameter(parameter, agent_tool.tool_parameters)
+                runtime_parameters[parameter.name] = value
         
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
@@ -286,6 +294,41 @@ class ToolManager:
             provider_type=agent_tool.provider_type,
         )
         runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+
+        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+        return tool_entity
+    
+    @staticmethod
+    def get_workflow_tool_runtime(tenant_id: str, workflow_tool: ToolEntity, agent_callback: DifyAgentCallbackHandler):
+        """
+            get the workflow tool runtime
+        """
+        tool_entity = ToolManager.get_tool_runtime(
+            provider_type=workflow_tool.provider_type, 
+            provider_name=workflow_tool.provider_id, 
+            tool_name=workflow_tool.tool_name, 
+            tenant_id=tenant_id,
+            agent_callback=agent_callback
+        )
+        runtime_parameters = {}
+        parameters = tool_entity.get_all_runtime_parameters()
+
+        for parameter in parameters:
+            # save tool parameter to tool entity memory
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_configurations)
+                runtime_parameters[parameter.name] = value
+    
+        # decrypt runtime parameters
+        encryption_manager = ToolParameterConfigurationManager(
+            tenant_id=tenant_id,
+            tool_runtime=tool_entity,
+            provider_name=workflow_tool.provider_id,
+            provider_type=workflow_tool.provider_type,
+        )
+        
+        if runtime_parameters:
+            runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity
@@ -425,127 +468,47 @@ class ToolManager:
         tenant_id: str,
     ) -> list[UserToolProvider]:
         result_providers: dict[str, UserToolProvider] = {}
+        
         # get builtin providers
         builtin_providers = ToolManager.list_builtin_providers()
-        # append builtin providers
-        for provider in builtin_providers:
-            result_providers[provider.identity.name] = UserToolProvider(
-                id=provider.identity.name,
-                author=provider.identity.author,
-                name=provider.identity.name,
-                description=I18nObject(
-                    en_US=provider.identity.description.en_US,
-                    zh_Hans=provider.identity.description.zh_Hans,
-                ),
-                icon=provider.identity.icon,
-                label=I18nObject(
-                    en_US=provider.identity.label.en_US,
-                    zh_Hans=provider.identity.label.zh_Hans,
-                ),
-                type=UserToolProvider.ProviderType.BUILTIN,
-                team_credentials={},
-                is_team_authorization=False,
-            )
-
-            # get credentials schema
-            schema = provider.get_credentials_schema()
-            for name, value in schema.items():
-                result_providers[provider.identity.name].team_credentials[name] = \
-                    ToolProviderCredentials.CredentialsType.default(value.type)
-
-            # check if the provider need credentials
-            if not provider.need_credentials:
-                result_providers[provider.identity.name].is_team_authorization = True
-                result_providers[provider.identity.name].allow_delete = False
-
+        
         # get db builtin providers
         db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
             filter(BuiltinToolProvider.tenant_id == tenant_id).all()
         
-        for db_builtin_provider in db_builtin_providers:
-            # add provider into providers
-            credentials = db_builtin_provider.credentials
-            provider_name = db_builtin_provider.provider
-            result_providers[provider_name].is_team_authorization = True
+        find_db_builtin_provider = lambda provider: next((x for x in db_builtin_providers if x.provider == provider), None)
+        
+        # append builtin providers
+        for provider in builtin_providers:
+            user_provider = ToolTransformService.builtin_provider_to_user_provider(
+                provider_controller=provider,
+                db_provider=find_db_builtin_provider(provider.identity.name),
+            )
 
-            # package builtin tool provider controller
-            controller = ToolManager.get_builtin_provider(provider_name)
-
-            # init tool configuration
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
-            # decrypt the credentials and mask the credentials
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
-
-            result_providers[provider_name].team_credentials = masked_credentials
+            result_providers[provider.identity.name] = user_provider
 
         # get model tool providers
         model_providers = ToolManager.list_model_providers(tenant_id=tenant_id)
         # append model providers
         for provider in model_providers:
-            result_providers[f'model_provider.{provider.identity.name}'] = UserToolProvider(
-                id=provider.identity.name,
-                author=provider.identity.author,
-                name=provider.identity.name,
-                description=I18nObject(
-                    en_US=provider.identity.description.en_US,
-                    zh_Hans=provider.identity.description.zh_Hans,
-                ),
-                icon=provider.identity.icon,
-                label=I18nObject(
-                    en_US=provider.identity.label.en_US,
-                    zh_Hans=provider.identity.label.zh_Hans,
-                ),
-                type=UserToolProvider.ProviderType.MODEL,
-                team_credentials={},
-                is_team_authorization=provider.is_active,
+            user_provider = ToolTransformService.model_provider_to_user_provider(
+                db_provider=provider,
             )
+            result_providers[f'model_provider.{provider.identity.name}'] = user_provider
 
         # get db api providers
         db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
             filter(ApiToolProvider.tenant_id == tenant_id).all()
         
         for db_api_provider in db_api_providers:
-            username = 'Anonymous'
-            try:
-                username = db_api_provider.user.name
-            except Exception as e:
-                logger.error(f'failed to get user name for api provider {db_api_provider.id}: {str(e)}')
-            # add provider into providers
-            credentials = db_api_provider.credentials
-            provider_name = db_api_provider.name
-            result_providers[provider_name] = UserToolProvider(
-                id=db_api_provider.id,
-                author=username,
-                name=db_api_provider.name,
-                description=I18nObject(
-                    en_US=db_api_provider.description,
-                    zh_Hans=db_api_provider.description,
-                ),
-                icon=db_api_provider.icon,
-                label=I18nObject(
-                    en_US=db_api_provider.name,
-                    zh_Hans=db_api_provider.name,
-                ),
-                type=UserToolProvider.ProviderType.API,
-                team_credentials={},
-                is_team_authorization=True,
-            )
-
-            # package tool provider controller
-            controller = ApiBasedToolProviderController.from_db(
+            provider_controller = ToolTransformService.api_provider_to_controller(
                 db_provider=db_api_provider,
-                auth_type=ApiProviderAuthType.API_KEY if db_api_provider.credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
             )
-
-            # init tool configuration
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
-
-            # decrypt the credentials and mask the credentials
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
-
-            result_providers[provider_name].team_credentials = masked_credentials
+            user_provider = ToolTransformService.api_provider_to_user_provider(
+                provider_controller=provider_controller,
+                db_provider=db_api_provider,
+            )
+            result_providers[db_api_provider.name] = user_provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
     

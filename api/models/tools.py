@@ -218,7 +218,7 @@ class ToolFile(db.Model):
     # tenant id
     tenant_id = db.Column(UUID, nullable=False)
     # conversation id
-    conversation_id = db.Column(UUID, nullable=False)
+    conversation_id = db.Column(UUID, nullable=True)
     # file key
     file_key = db.Column(db.String(255), nullable=False)
     # mime type
