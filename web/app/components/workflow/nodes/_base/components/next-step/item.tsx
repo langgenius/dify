@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { intersection } from 'lodash-es'
@@ -15,10 +14,9 @@ import {
   useNodesExtraData,
   useNodesInteractions,
   useNodesReadOnly,
+  useToolIcon,
 } from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
-import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 type ItemProps = {
   nodeId: string
@@ -36,11 +34,7 @@ const Item = ({
   const { handleNodeChange } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
   const nodesExtraData = useNodesExtraData()
-  const toolsets = useStore(s => s.toolsets)
-  const toolIcon = useMemo(() => {
-    if (data.type === BlockEnum.Tool)
-      return toolsets.find(toolset => toolset.id === data.provider_id)?.icon
-  }, [data, toolsets])
+  const toolIcon = useToolIcon(data)
   const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
