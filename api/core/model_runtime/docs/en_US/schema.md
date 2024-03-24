@@ -147,7 +147,7 @@
 
 - `input` (float) Input price, i.e., Prompt price
 - `output` (float) Output price, i.e., returned content price
-- `unit` (float) Pricing unit, e.g., per 100K price is `0.000001`
+- `unit` (float) Pricing unit, e.g., if the price is meausred in 1M tokens, the corresponding token amount for the unit price is `0.000001`.
 - `currency` (string) Currency unit
 
 ### ProviderCredentialSchema
