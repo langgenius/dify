@@ -566,7 +566,11 @@ class BaseAssistantApplicationRunner(AppRunner):
                         tools = tools.split(';')
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
-                        tool_inputs = json.loads(agent_thought.tool_input)
+                        try:
+                            tool_inputs = json.loads(agent_thought.tool_input)
+                        except Exception as e:
+                            logging.warning("tool execution error: {}, tool_input: {}.".format(str(e), agent_thought.tool_input))
+                            tool_inputs = { agent_thought.tool: agent_thought.tool_input }
                         for tool in tools:
                             # generate a uuid for tool call
                             tool_call_id = str(uuid.uuid4())
