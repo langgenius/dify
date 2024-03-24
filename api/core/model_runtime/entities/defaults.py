@@ -73,8 +73,8 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         'type': 'int',
         'help': {
-            'en_US': 'The maximum number of tokens to generate. Requests can use up to 2048 tokens shared between prompt and completion.',
-            'zh_Hans': '要生成的标记的最大数量。请求可以使用最多2048个标记，这些标记在提示和完成之间共享。',
+            'en_US': 'Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.',
+            'zh_Hans': '指定生成结果长度的上限。如果生成结果截断，可以调大该参数。',
         },
         'required': False,
         'default': 64,
