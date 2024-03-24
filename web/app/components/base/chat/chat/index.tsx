@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useThrottleEffect } from 'ahooks'
 import { debounce } from 'lodash-es'
+import cn from 'classnames'
 import type {
   ChatConfig,
   ChatItem,
@@ -191,7 +192,7 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
-          className={`absolute bottom-0 ${(hasTryToAsk || !noChatInput || !noStopResponding) ? chatFooterClassName : ''}`}
+          className={cn('absolute bottom-0', (hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName)}
           ref={chatFooterRef}
           style={{
             background: 'linear-gradient(0deg, #F9FAFB 40%, rgba(255, 255, 255, 0.00) 100%)',

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type {
   CustomConfigrationModelFixedFields,
   ModelItem,
@@ -75,11 +76,11 @@ const ModelList: FC<ModelListProps> = ({
           models.map(model => (
             <div
               key={model.model}
-              className={`
-                group flex items-center pl-2 pr-2.5 h-8 rounded-lg
-                ${canCustomConfig ? 'hover:bg-gray-50' : ''}
-                ${model.deprecated ? 'opacity-60' : ''}
-              `}
+              className={cn(
+                'group flex items-center pl-2 pr-2.5 h-8 rounded-lg',
+                canCustomConfig && 'hover:bg-gray-50',
+                model.deprecated && 'opacity-60',
+              )}
             >
               <ModelIcon
                 className='shrink-0 mr-2'

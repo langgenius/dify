@@ -28,12 +28,12 @@ const TabSlider: FC<TabSliderProps> = ({
         options.map((option, index) => (
           <div
             key={option.value}
-            className={`
-              flex justify-center items-center h-7 text-[13px] 
+            className={cn(
+              `flex justify-center items-center h-7 text-[13px] 
               font-semibold text-gray-600 rounded-[7px] cursor-pointer
-              hover:bg-gray-50
-              ${index !== options.length - 1 ? 'mr-[1px]' : ''}
-            `}
+              hover:bg-gray-50`,
+              index !== options.length - 1 && 'mr-[1px]',
+            )}
             style={{
               width: itemWidth,
             }}

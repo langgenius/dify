@@ -1,5 +1,6 @@
 import type { FC, MouseEventHandler } from 'react'
 import React from 'react'
+import cn from 'classnames'
 import Spinner from '../spinner'
 
 export type IButtonProps = {
@@ -36,7 +37,7 @@ const Button: FC<IButtonProps> = ({
 
   return (
     <div
-      className={`btn ${style} ${className || ''}`}
+      className={cn('btn', style, className)}
       tabIndex={tabIndex}
       onClick={disabled ? undefined : onClick}
     >

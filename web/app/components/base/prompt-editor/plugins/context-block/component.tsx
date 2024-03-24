@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
 import type { Dataset } from './index'
@@ -37,11 +38,11 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   })
 
   return (
-    <div className={`
-      group inline-flex items-center pl-1 pr-0.5 h-6 border border-transparent bg-[#F4F3FF] text-[#6938EF] rounded-[5px] hover:bg-[#EBE9FE]
-      ${open ? 'bg-[#EBE9FE]' : 'bg-[#F4F3FF]'}
-      ${isSelected ? '!border-[#9B8AFB]' : ''}
-    `} ref={ref}>
+    <div className={cn(
+      'group inline-flex items-center pl-1 pr-0.5 h-6 border border-transparent bg-[#F4F3FF] text-[#6938EF] rounded-[5px] hover:bg-[#EBE9FE]',
+      open ? 'bg-[#EBE9FE]' : 'bg-[#F4F3FF]',
+      isSelected && '!border-[#9B8AFB]',
+    )} ref={ref}>
       <File05 className='mr-1 w-[14px] h-[14px]' />
       <div className='mr-1 text-xs font-medium'>{t('common.promptEditor.context.item.title')}</div>
       <PortalToFollowElem

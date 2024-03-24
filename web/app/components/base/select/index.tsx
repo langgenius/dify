@@ -265,10 +265,10 @@ const PortalSelect: FC<PortalSelectProps> = ({
           title={selectedItem?.name}
         >
           <span
-            className={`
-              grow truncate
-              ${!selectedItem?.name ? 'text-gray-400' : ''}
-            `}
+            className={classNames(
+              'grow truncate',
+              !selectedItem?.name && 'text-gray-400',
+            )}
           >
             {selectedItem?.name ?? localPlaceholder}
           </span>
@@ -282,10 +282,10 @@ const PortalSelect: FC<PortalSelectProps> = ({
           {items.map((item: Item) => (
             <div
               key={item.value}
-              className={`
-                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-gray-100 text-gray-700
-                ${item.value === value ? 'bg-gray-100' : ''}
-              `}
+              className={classNames(
+                'flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-gray-100 text-gray-700',
+                item.value === value && 'bg-gray-100',
+              )}
               title={item.name}
               onClick={() => {
                 onSelect(item)

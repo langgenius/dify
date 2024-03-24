@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import type { FC } from 'react'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { Check, DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
@@ -31,10 +32,10 @@ const Selector: FC<SelectorProps> = ({
       <Popover.Button>
         {
           ({ open }) => (
-            <Button className={`
-              px-0 w-6 h-6 bg-white rounded-md
-              ${open ? '!bg-gray-100' : ''}
-            `}>
+            <Button className={cn(
+              'px-0 w-6 h-6 bg-white rounded-md',
+              open && '!bg-gray-100',
+            )}>
               <DotsHorizontal className='w-3 h-3 text-gray-700' />
             </Button>
           )

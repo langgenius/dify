@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
@@ -89,7 +90,7 @@ const ModelProviderPage = () => {
 
   return (
     <div className='relative pt-1 -mt-2'>
-      <div className={`flex items-center justify-between mb-2 h-8 ${defaultModelNotConfigured ? 'px-3 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]' : ''}`}>
+      <div className={cn('flex items-center justify-between mb-2 h-8', defaultModelNotConfigured && 'px-3 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]')}>
         {
           defaultModelNotConfigured
             ? (

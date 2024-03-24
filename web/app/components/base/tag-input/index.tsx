@@ -86,10 +86,10 @@ const TagInput: FC<TagInputProps> = ({
         !disableAdd && (
           <AutosizeInput
             inputClassName={cn('outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400', isSpecialMode ? 'bg-transparent' : '')}
-            className={`
-              mt-1 py-1 rounded-lg border border-transparent text-sm max-w-[300px] overflow-hidden
-              ${focused ? 'px-2 border !border-dashed !border-gray-200' : ''}
-            `}
+            className={cn(
+              'mt-1 py-1 rounded-lg border border-transparent text-sm max-w-[300px] overflow-hidden',
+              focused && 'px-2 border !border-dashed !border-gray-200',
+            )}
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}
             value={value}

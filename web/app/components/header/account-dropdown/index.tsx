@@ -50,13 +50,13 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
             <>
               <div>
                 <Menu.Button
-                  className={`
-                    inline-flex items-center
+                  className={classNames(
+                    `inline-flex items-center
                     rounded-[20px] py-1 pr-2.5 pl-1 text-sm
                   text-gray-700 hover:bg-gray-200
-                    mobile:px-1
-                    ${open ? 'bg-gray-200' : ''}
-                  `}
+                    mobile:px-1`,
+                    open && 'bg-gray-200',
+                  )}
                 >
                   <Avatar name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
                   {!isMobile && <>

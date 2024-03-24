@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type {
   DefaultModel,
   Model,
@@ -84,18 +85,18 @@ const PopupItem: FC<PopupItemProps> = ({
               onClick={() => handleSelect(model.provider, modelItem)}
             >
               <ModelIcon
-                className={`
-                  shrink-0 mr-2 w-4 h-4
-                  ${modelItem.status !== ModelStatusEnum.active ? 'opacity-60' : ''}
-                `}
+                className={cn(
+                  'shrink-0 mr-2 w-4 h-4',
+                  modelItem.status !== ModelStatusEnum.active && 'opacity-60',
+                )}
                 provider={model}
                 modelName={modelItem.model}
               />
               <ModelName
-                className={`
-                  grow text-sm font-normal text-gray-900
-                  ${modelItem.status !== ModelStatusEnum.active ? 'opacity-60' : ''}
-                `}
+                className={cn(
+                  'grow text-sm font-normal text-gray-900',
+                  modelItem.status !== ModelStatusEnum.active && 'opacity-60',
+                )}
                 modelItem={modelItem}
                 showMode
                 showFeatures

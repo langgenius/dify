@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type {
   ModelProvider,
   TypeWithI18N,
@@ -74,7 +75,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
         }
       </div>
       <div>
-        <div className={`flex flex-wrap group-hover:hidden gap-0.5 ${canGetFreeQuota ? 'pb-[18px]' : ''}`}>
+        <div className={cn('flex flex-wrap group-hover:hidden gap-0.5', canGetFreeQuota && 'pb-[18px]')}>
           {
             provider.supported_model_types.map(modelType => (
               <ModelBadge key={modelType}>

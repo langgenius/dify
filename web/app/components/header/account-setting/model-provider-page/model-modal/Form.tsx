@@ -149,18 +149,18 @@ const Form: FC<FormProps> = ({
                 return true
               }).map(option => (
                 <div
-                  className={`
-                    flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
-                    ${value[variable] === option.value && 'bg-white border-[1.5px] border-primary-400 shadow-sm'}
-                    ${disabed ? '!cursor-not-allowed opacity-60' : ''}
-                  `}
+                  className={cn(
+                    'flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer',
+                    value[variable] === option.value && 'bg-white border-[1.5px] border-primary-400 shadow-sm',
+                    disabed && '!cursor-not-allowed opacity-60',
+                  )}
                   onClick={() => handleFormChange(variable, option.value)}
                   key={`${variable}-${option.value}`}
                 >
-                  <div className={`
-                    flex justify-center items-center mr-2 w-4 h-4 border border-gray-300 rounded-full
-                    ${value[variable] === option.value ? 'border-[5px] border-primary-600' : ''}
-                  `} />
+                  <div className={cn(
+                    'flex justify-center items-center mr-2 w-4 h-4 border border-gray-300 rounded-full',
+                    value[variable] === option.value && 'border-[5px] border-primary-600',
+                  )} />
                   <div className='text-sm text-gray-900'>{option.label[language]}</div>
                 </div>
               ))

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import Dropdown from '@/app/components/base/dropdown'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -19,11 +20,11 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <div
-        className={`
-          flex items-center px-[7px] h-7 rounded-md border-[0.5px] border-gray-200 shadow-xs
-          text-xs font-medium text-gray-700 cursor-pointer
-          ${open ? 'bg-gray-100' : ''}
-        `}
+        className={cn(
+          `flex items-center px-[7px] h-7 rounded-md border-[0.5px] border-gray-200 shadow-xs
+          text-xs font-medium text-gray-700 cursor-pointer`,
+          open && 'bg-gray-100',
+        )}
       >
         <SlidersH className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
         {t('common.modelProvider.loadPresets')}

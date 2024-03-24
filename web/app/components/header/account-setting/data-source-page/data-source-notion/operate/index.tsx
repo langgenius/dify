@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import { useSWRConfig } from 'swr'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid'
 import { Menu, Transition } from '@headlessui/react'
+import cn from 'classnames'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNotion } from '@/models/common'
@@ -50,7 +51,7 @@ export default function Operate({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={`flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 ${open ? 'bg-gray-100' : ''}`}>
+            <Menu.Button className={cn('flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100', open && 'bg-gray-100')}>
               <EllipsisHorizontalIcon className='w-4 h-4' />
             </Menu.Button>
             <Transition
