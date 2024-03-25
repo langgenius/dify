@@ -178,7 +178,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           />
         )}
 
-        {/* Memory examples. Wait for design */}
+        {/* Memory put place examples. Wait for design */}
         {/* {isChatModel && (
           <div className='text-xs text-gray-300'>Memory examples(Designing)</div>
         )} */}
@@ -191,24 +191,27 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               onChange={handleMemoryChange}
               canSetRoleName={isCompletionModel}
             />
-            <Split />
           </>
         )}
 
         {/* Vision: GPT4-vision and so on */}
         {isShowVisionConfig && (
-          <Field
-            title={t(`${i18nPrefix}.vision`)}
-            tooltip={t('appDebug.vision.description')!}
-            operations={
-              <ResolutionPicker
-                value={inputs.vision.configs?.detail || Resolution.high}
-                onChange={handleVisionResolutionChange}
-              />
-            }
-          />
+          <>
+            <Split />
+            <Field
+              title={t(`${i18nPrefix}.vision`)}
+              tooltip={t('appDebug.vision.description')!}
+              operations={
+                <ResolutionPicker
+                  value={inputs.vision.configs?.detail || Resolution.high}
+                  onChange={handleVisionResolutionChange}
+                />
+              }
+            />
+          </>
         )}
       </div>
+      <Split />
       <div className='px-4 pt-4 pb-2'>
         <OutputVars>
           <>

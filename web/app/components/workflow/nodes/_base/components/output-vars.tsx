@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useBoolean } from 'ahooks'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {
   className?: string
@@ -16,15 +18,22 @@ const OutputVars: FC<Props> = ({
   children,
 }) => {
   const { t } = useTranslation()
-
+  const [isFold, {
+    toggle: toggleFold,
+  }] = useBoolean(true)
   return (
     <div>
-      <div className={cn(className, 'leading-[18px] text-[13px] font-semibold text-gray-700 uppercase')}>
-        {title || t('workflow.nodes.common.outputVars')}
+      <div
+        onClick={toggleFold}
+        className={cn(className, 'flex justify-between leading-[18px] text-[13px] font-semibold text-gray-700 uppercase cursor-pointer')}>
+        <div>{title || t('workflow.nodes.common.outputVars')}</div>
+        <ChevronRight className='w-4 h-4 text-gray-500 transform transition-transform' style={{ transform: isFold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
       </div>
-      <div className='mt-2 space-y-1'>
-        {children}
-      </div>
+      {!isFold && (
+        <div className='mt-2 space-y-1'>
+          {children}
+        </div>
+      )}
     </div>
   )
 }
