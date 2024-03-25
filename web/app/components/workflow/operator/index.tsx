@@ -25,7 +25,7 @@ const Operator = () => {
 
   return (
     <div className={`
-      absolute left-6 bottom-6 z-10
+      absolute left-6 bottom-6 z-[9]
     `}>
       <MiniMap
         style={{
