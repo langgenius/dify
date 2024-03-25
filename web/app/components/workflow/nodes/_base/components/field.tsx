@@ -5,7 +5,7 @@ import cn from 'classnames'
 import { useBoolean } from 'ahooks'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 type Props = {
   title: string
   tooltip?: string
@@ -26,10 +26,11 @@ const Filed: FC<Props> = ({
   const [fold, {
     toggle: toggleFold,
   }] = useBoolean(true)
-  const FoldHandler = fold ? ChevronRight : ChevronDown
   return (
-    <div className={cn(inline && 'flex justify-between items-center')}>
-      <div className='flex justify-between items-center'>
+    <div className={cn(inline && 'flex justify-between items-center', supportFold && 'cursor-pointer')}>
+      <div
+        onClick={() => supportFold && toggleFold()}
+        className='flex justify-between items-center'>
         <div className='flex items-center h-6'>
           <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
           {tooltip && (
@@ -45,7 +46,7 @@ const Filed: FC<Props> = ({
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <FoldHandler className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={toggleFold} />
+            <ChevronRight className='w-3.5 h-3.5 text-gray-500 cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
           )}
         </div>
       </div>
