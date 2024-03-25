@@ -124,6 +124,11 @@ const translation = {
         user: '用户前缀',
         assistant: '助手前缀',
       },
+      memories: {
+        title: '记忆',
+        tip: '聊天记忆',
+        builtIn: '内置',
+      },
     },
     start: {
       required: '必填',

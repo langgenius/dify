@@ -124,6 +124,11 @@ const translation = {
         user: 'User prefix',
         assistant: 'Assistant prefix',
       },
+      memories: {
+        title: 'Memories',
+        tip: 'Chat memory',
+        builtIn: 'Built-in',
+      },
     },
     start: {
       required: 'required',
