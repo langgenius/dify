@@ -89,7 +89,6 @@ export const NodeTargetHandle = memo(({
                 hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
                 group-hover:flex
-                group-hover:scale-150
                 ${open && '!flex'}
               `}
               availableBlocksTypes={availablePrevNodes}
