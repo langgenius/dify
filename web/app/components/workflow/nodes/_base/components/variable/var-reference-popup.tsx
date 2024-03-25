@@ -1,12 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useHover } from 'ahooks'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -14,6 +19,7 @@ type ObjectChildrenProps = {
   data: Var[]
   objPath: string[]
   onChange: (value: ValueSelector) => void
+  onHovering?: (value: boolean) => void
   itemWidth?: number
 }
 
@@ -23,6 +29,7 @@ type ItemProps = {
   objPath: string[]
   itemData: Var
   onChange: (value: ValueSelector) => void
+  onHovering?: (value: boolean) => void
   itemWidth?: number
 }
 
@@ -32,45 +39,79 @@ const Item: FC<ItemProps> = ({
   objPath,
   itemData,
   onChange,
+  onHovering,
   itemWidth,
 }) => {
   const isObj = itemData.type === VarType.object && itemData.children && itemData.children.length > 0
   const itemRef = useRef(null)
-  const isItemHovering = useHover(itemRef)
+  const [isItemHovering, setIsItemHovering] = useState(false)
+  const _ = useHover(itemRef, {
+    onChange: (hovering) => {
+      if (hovering) {
+        setIsItemHovering(true)
+      }
+      else {
+        setTimeout(() => {
+          setIsItemHovering(false)
+        }, 100)
+      }
+    },
+  })
+  const [isChildrenHovering, setIsChildrenHovering] = useState(false)
+  const isHovering = isItemHovering || isChildrenHovering
+  const open = isObj && isHovering
+  useEffect(() => {
+    onHovering && onHovering(isHovering)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange([nodeId, ...objPath, itemData.variable])
   }
   return (
-    <div
-      ref={itemRef}
-      className={cn(
-        isObj ? 'hover:bg-primary-50 pr-1' : 'hover:bg-gray-50 pr-[18px]',
-        'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
-      }
-      // style={{ width: itemWidth || 252 }}
-      onClick={handleChosen}
+    <PortalToFollowElem
+      open={open}
+      onOpenChange={() => { }}
+      placement='left-start'
     >
-      <div className='flex items-center w-0 grow'>
-        <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />
-        <div className='ml-1 w-0 grow text-ellipsis text-[13px] font-normal text-gray-900'>{itemData.variable}</div>
-      </div>
-      <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>
-      {isObj && (
-        <ChevronRight className='ml-0.5 w-3 h-3 text-gray-500' />
-      )}
-      {isObj && isItemHovering && (
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        <ObjectChildren
-          nodeId={nodeId}
-          title={title}
-          objPath={[...objPath, itemData.variable]}
-          data={itemData.children as Var[]}
-          onChange={onChange}
-          itemWidth={itemWidth}
-        />
-      )}
-    </div>
+      <PortalToFollowElemTrigger className='w-full'>
+        <div
+          ref={itemRef}
+          className={cn(
+            isObj ? ' pr-1' : 'pr-[18px]',
+            isHovering && (isObj ? 'bg-primary-50' : 'bg-gray-50'),
+            'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
+          }
+          // style={{ width: itemWidth || 252 }}
+          onClick={handleChosen}
+        >
+          <div className='flex items-center w-0 grow'>
+            <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />
+            <div className='ml-1 w-0 grow text-ellipsis text-[13px] font-normal text-gray-900'>{itemData.variable}</div>
+          </div>
+          <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>
+          {isObj && (
+            <ChevronRight className='ml-0.5 w-3 h-3 text-gray-500' />
+          )}
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent style={{
+        zIndex: 100,
+      }}>
+        {isObj && (
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          <ObjectChildren
+            nodeId={nodeId}
+            title={title}
+            objPath={[...objPath, itemData.variable]}
+            data={itemData.children as Var[]}
+            onChange={onChange}
+            onHovering={setIsChildrenHovering}
+            itemWidth={itemWidth}
+          />
+        )}
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 
@@ -80,12 +121,37 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   objPath,
   data,
   onChange,
+  onHovering,
   itemWidth,
 }) => {
   const currObjPath = objPath
-
+  const itemRef = useRef(null)
+  const [isItemHovering, setIsItemHovering] = useState(false)
+  const _ = useHover(itemRef, {
+    onChange: (hovering) => {
+      if (hovering) {
+        setIsItemHovering(true)
+      }
+      else {
+        setTimeout(() => {
+          setIsItemHovering(false)
+        }, 100)
+      }
+    },
+  })
+  const [isChildrenHovering, setIsChildrenHovering] = useState(false)
+  const isHovering = isItemHovering || isChildrenHovering
+  useEffect(() => {
+    onHovering && onHovering(isHovering)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHovering])
+  useEffect(() => {
+    onHovering && onHovering(isItemHovering)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isItemHovering])
+  // absolute top-[-2px]
   return (
-    <div className='absolute top-[-2px] bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
+    <div ref={itemRef} className=' bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
       right: itemWidth ? itemWidth - 10 : 215,
       minWidth: 252,
     }}>
@@ -100,6 +166,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
             objPath={objPath}
             itemData={v}
             onChange={onChange}
+            onHovering={setIsChildrenHovering}
           />
         ))
       }
