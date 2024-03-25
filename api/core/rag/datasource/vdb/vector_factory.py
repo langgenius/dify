@@ -66,7 +66,7 @@ class Vector:
                     raise ValueError('Dataset Collection Bindings is not exist!')
             else:
                 if self._dataset.index_struct_dict:
-                    class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
+                    class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
                     collection_name = class_prefix
                 else:
                     dataset_id = self._dataset.id

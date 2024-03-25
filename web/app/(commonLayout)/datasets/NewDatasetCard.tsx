@@ -1,16 +1,16 @@
 'use client'
 
-import { forwardRef, useState } from 'react'
+import { forwardRef } from 'react'
 import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
+import Link from 'next/link'
 import style from '../list.module.css'
 
 const CreateAppCard = forwardRef<HTMLAnchorElement>((_, ref) => {
   const { t } = useTranslation()
-  const [showNewAppDialog, setShowNewAppDialog] = useState(false)
 
   return (
-    <a ref={ref} className={classNames(style.listItem, style.newItemCard)} href='/datasets/create'>
+    <Link ref={ref} className={classNames(style.listItem, style.newItemCard)} href='/datasets/create'>
       <div className={style.listItemTitle}>
         <span className={style.newItemIcon}>
           <span className={classNames(style.newItemIconImage, style.newItemIconAdd)} />
@@ -21,8 +21,10 @@ const CreateAppCard = forwardRef<HTMLAnchorElement>((_, ref) => {
       </div>
       <div className={style.listItemDescription}>{t('dataset.createDatasetIntro')}</div>
       {/* <div className='text-xs text-gray-500'>{t('app.createFromConfigFile')}</div> */}
-    </a>
+    </Link>
   )
 })
+
+CreateAppCard.displayName = 'CreateAppCard'
 
 export default CreateAppCard

@@ -197,11 +197,11 @@ class DatasetSegmentApi(DatasetApiResource):
 
         # validate args
         parser = reqparse.RequestParser()
-        parser.add_argument('segments', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('segment', type=dict, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
-        SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.update_segment(args, segment, document, dataset)
+        SegmentService.segment_create_args_validate(args['segment'], document)
+        segment = SegmentService.update_segment(args['segment'], segment, document, dataset)
         return {
             'data': marshal(segment, segment_fields),
             'doc_form': document.doc_form

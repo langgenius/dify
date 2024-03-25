@@ -246,8 +246,27 @@ class BuiltinToolProviderController(ToolProviderController):
                 
                 if credentials[credential_name] not in [x.value for x in options]:
                     raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be one of {options}')
-            
-            if credentials[credential_name]:
+            elif credential_schema.type == ToolProviderCredentials.CredentialsType.BOOLEAN:
+                if isinstance(credentials[credential_name], bool):
+                    pass
+                elif isinstance(credentials[credential_name], str):
+                    if credentials[credential_name].lower() == 'true':
+                        credentials[credential_name] = True
+                    elif credentials[credential_name].lower() == 'false':
+                        credentials[credential_name] = False
+                    else:
+                        raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+                elif isinstance(credentials[credential_name], int):
+                    if credentials[credential_name] == 1:
+                        credentials[credential_name] = True
+                    elif credentials[credential_name] == 0:
+                        credentials[credential_name] = False
+                    else:
+                        raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+                else:
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+
+            if credentials[credential_name] or credentials[credential_name] == False:
                 credentials_need_to_validate.pop(credential_name)
 
         for credential_name in credentials_need_to_validate:
