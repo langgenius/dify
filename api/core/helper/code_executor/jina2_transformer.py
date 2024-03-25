@@ -32,10 +32,10 @@ class Jinja2TemplateTransformer(TemplateTransformer):
 
         # transform jinja2 template to python code
         runner = PYTHON_RUNNER.replace('{{code}}', code)
-        runner = runner.replace('{{inputs}}', json.dumps(inputs, indent=4))
+        runner = runner.replace('{{inputs}}', json.dumps(inputs, indent=4, ensure_ascii=False))
 
         return runner
-    
+
     @classmethod
     def transform_response(cls, response: str) -> dict:
         """
