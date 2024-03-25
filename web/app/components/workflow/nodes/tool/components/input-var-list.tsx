@@ -16,6 +16,7 @@ type Props = {
   schema: CredentialFormSchema[]
   value: ToolVarInput[]
   onChange: (value: ToolVarInput[]) => void
+  onOpen?: (index: number) => void
   isSupportConstantValue?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
@@ -26,6 +27,7 @@ const InputVarList: FC<Props> = ({
   schema,
   value,
   onChange,
+  onOpen = () => { },
   isSupportConstantValue,
   filterVar,
 }) => {
@@ -67,6 +69,9 @@ const InputVarList: FC<Props> = ({
     }
   }, [value, onChange, isSupportConstantValue])
 
+  const handleOpen = useCallback((index: number) => {
+    return () => onOpen(index)
+  }, [onOpen])
   return (
     <div className='space-y-3'>
       {
@@ -76,7 +81,7 @@ const InputVarList: FC<Props> = ({
           type,
           required,
           tooltip,
-        }) => {
+        }, index) => {
           const varInput = keyValues[variable]
           return (
             <div key={variable} className='space-y-1'>
@@ -91,6 +96,7 @@ const InputVarList: FC<Props> = ({
                 nodeId={nodeId}
                 value={varInput?.variable_type === VarKindType.static ? (varInput?.value || '') : (varInput?.value_selector || [])}
                 onChange={handleChange(variable)}
+                onOpen={handleOpen(index)}
                 isSupportConstantValue={isSupportConstantValue}
                 defaultVarKindType={varInput?.variable_type}
                 filterVar={filterVar}

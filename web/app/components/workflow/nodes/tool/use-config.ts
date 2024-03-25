@@ -101,10 +101,18 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
   }, [inputs, setInputs])
 
-  // TODO: dynamic setting as the current var type
-  const filterVar = useCallback((varPayload: Var) => {
-    return varPayload.type !== VarVarType.arrayFile
+  const [currVarIndex, setCurrVarIndex] = useState(-1)
+  const currVarType = toolInputVarSchema[currVarIndex]?._type
+  const handleOnVarOpen = useCallback((index: number) => {
+    setCurrVarIndex(index)
   }, [])
+
+  const filterVar = useCallback((varPayload: Var) => {
+    if (currVarType)
+      return varPayload.type === currVarType
+
+    return varPayload.type !== VarVarType.arrayFile
+  }, [currVarType])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -170,6 +178,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
+    handleOnVarOpen,
     filterVar,
     currCollection,
     isShowAuthBtn,
