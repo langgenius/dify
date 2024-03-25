@@ -12,6 +12,10 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import {
+  SearchLg,
+} from '@/app/components/base/icons/src/vender/line/general'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -51,9 +55,14 @@ const Item: FC<ItemProps> = ({
         setIsItemHovering(true)
       }
       else {
-        setTimeout(() => {
+        if (isObj) {
+          setTimeout(() => {
+            setIsItemHovering(false)
+          }, 100)
+        }
+        else {
           setIsItemHovering(false)
-        }, 100)
+        }
       }
     },
   })
@@ -185,30 +194,72 @@ const VarReferencePopup: FC<Props> = ({
   itemWidth,
 }) => {
   const { t } = useTranslation()
+  const [searchText, setSearchText] = useState('')
+  const filteredVars = vars.filter((v) => {
+    if (!searchText)
+      return v
+    const children = v.vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+    return children.length > 0
+  }).map((v) => {
+    if (!searchText)
+      return v
+    const children = v.vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+    return {
+      ...v,
+      vars: children,
+    }
+  })
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
       width: itemWidth || 228,
     }}>
-      {vars.length > 0
-        ? vars.map((item, i) => (
-          <div key={i}>
-            <div className='flex items-center h-[22px] px-3 text-xs font-medium text-gray-500 uppercase'>{item.title}</div>
-            {item.vars.map((v, j) => (
-              <Item
-                key={j}
-                title={item.title}
-                nodeId={item.nodeId}
-                objPath={[]}
-                itemData={v}
-                onChange={onChange}
-                itemWidth={itemWidth}
-              />
-            ))}
-          </div>
-        ))
+      <div
+        className='mt-1 mb-2 mx-2 flex items-center px-2 rounded-lg bg-gray-100'
+        onClick={e => e.stopPropagation()}
+      >
+        <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
+        <input
+          value={searchText}
+          className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
+          placeholder={t('workflow.common.searchVar') || ''}
+          onChange={e => setSearchText(e.target.value)}
+          autoFocus
+        />
+        {
+          searchText && (
+            <div
+              className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
+              onClick={() => setSearchText('')}
+            >
+              <XCircle className='w-[14px] h-[14px] text-gray-400' />
+            </div>
+          )
+        }
+      </div>
+      {filteredVars.length > 0
+        ? <div>
+
+          {
+            filteredVars.map((item, i) => (
+              <div key={i}>
+                <div className='flex items-center h-[22px] px-3 text-xs font-medium text-gray-500 uppercase'>{item.title}</div>
+                {item.vars.map((v, j) => (
+                  <Item
+                    key={j}
+                    title={item.title}
+                    nodeId={item.nodeId}
+                    objPath={[]}
+                    itemData={v}
+                    onChange={onChange}
+                    itemWidth={itemWidth}
+                  />
+                ))}
+              </div>))
+          }
+        </div>
         : <div className='pl-3 leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t('workflow.common.noVar')}</div>}
-    </div>
+    </div >
   )
 }
 export default React.memo(VarReferencePopup)

@@ -25,6 +25,7 @@ const translation = {
     addDescription: '添加描述...',
     noVar: '没有变量',
     variableNamePlaceholder: '变量名',
+    searchVar: '搜索变量',
     setVarValuePlaceholder: '设置变量值',
     needConnecttip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',

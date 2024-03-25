@@ -24,6 +24,7 @@ const translation = {
     addTitle: 'Add title...',
     addDescription: 'Add description...',
     noVar: 'No variable',
+    searchVar: 'Search variable',
     variableNamePlaceholder: 'Variable name',
     setVarValuePlaceholder: 'Set variable',
     needConnecttip: 'This step is not connected to anything',
