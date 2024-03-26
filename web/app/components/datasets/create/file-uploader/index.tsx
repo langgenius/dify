@@ -130,7 +130,6 @@ const FileUploader = ({
       }
     }
 
-    const fileListCopy = fileListRef.current
     return upload({
       xhr: new XMLHttpRequest(),
       data: formData,
@@ -142,14 +141,14 @@ const FileUploader = ({
           file: res,
           progress: -1,
         }
-        const index = fileListCopy.findIndex(item => item.fileID === fileItem.fileID)
-        fileListCopy[index] = completeFile
-        onFileUpdate(completeFile, 100, fileListCopy)
+        const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)
+        fileListRef.current[index] = completeFile
+        onFileUpdate(completeFile, 100, fileListRef.current)
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
         notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
-        onFileUpdate(fileItem, -2, fileListCopy)
+        onFileUpdate(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
       .finally()
