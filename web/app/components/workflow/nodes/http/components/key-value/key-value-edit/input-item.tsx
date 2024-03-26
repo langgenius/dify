@@ -4,6 +4,8 @@ import React, { useCallback } from 'react'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import SupportVarInput from '@/app/components/workflow/nodes/_base/components/support-var-input'
+
 type Props = {
   className?: string
   value: string
@@ -57,7 +59,15 @@ const InputItem: FC<Props> = ({
           className="pl-0.5 w-full h-[18px] leading-[18px]"
           onClick={setIsEditTrue}
         >
-          <div className={cn(hasValue ? 'text-gray-900' : 'text-gray-300', 'text-xs font-normal')}>{hasValue ? value : placeholder}</div>
+          {!hasValue && <div className='text-gray-300 text-xs font-normal'>{placeholder}</div>}
+          {hasValue && (
+            <SupportVarInput
+              wrapClassName='w-0 grow truncate flex items-center'
+              textClassName='text-gray-900 text-xs font-normal'
+              value={value}
+              readonly
+            />
+          )}
           {hasRemove && !isEdit && (
             <RemoveButton
               className='group-hover:block hidden absolute right-1 top-0.5'
