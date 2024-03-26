@@ -3,15 +3,16 @@ import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
+import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
+import DOMPurify from 'dompurify'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import cn from 'classnames'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import SVGBtn from '@/app/components/app/chat/svg'
-import Flowchart from '@/app/components/app/chat/mermaid'
+import Flowchart from '@/app/components/base/flow-mermaid'
 import s from '@/app/components/app/chat/style.module.css'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
@@ -30,6 +31,10 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   mermaid: 'Mermaid',
   markdown: 'MarkDown',
   makefile: 'MakeFile',
+  shell: 'Shell',
+  powershell: 'PowerShell',
+  json: 'JSON',
+  latex: 'Latex',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -40,59 +45,43 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
-export function PreCode(props: { children: any }) {
-  const ref = useRef<HTMLPreElement>(null)
-
-  return (
-    <pre ref={ref}>
-      <span
-        className="copy-code-button"
-        onClick={() => {
-          if (ref.current) {
-            const code = ref.current.innerText
-            // copyToClipboard(code);
-          }
-        }}
-      ></span>
-      {props.children}
-    </pre>
-  )
-}
-
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
-
-    if (ref.current)
-      observer.observe(ref.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
-
-  return isIntersecting
-}
 
 export function Markdown(props: { content: string; className?: string }) {
-  const [isCopied, setIsCopied] = useState(false)
   const [isSVG, setIsSVG] = useState(false)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
-        remarkPlugins={[[RemarkMath, { singleDollarTextMath: false }], RemarkGfm, RemarkBreaks]}
+        remarkPlugins={[[RemarkGfm, RemarkMath, { singleDollarTextMath: false }], RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
+          RehypeRaw as any,
         ]}
         components={{
-          code({ node, inline, className, children, ...props }) {
+          iframe: ({ src, width, height, title, className }) => {
+            if (!src || typeof src !== 'string' || !src.startsWith('https://')) {
+              return null
+            }
+            else {
+              try {
+                const sanitizedSrc = DOMPurify.sanitize(src, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+                return (
+                  <iframe
+                    src={sanitizedSrc}
+                    width={width ?? 450}
+                    height={height ?? 700}
+                    title={title}
+                    className={`max-w-full align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2 ${className}`}
+                    sandbox="allow-same-origin allow-forms"
+                  />
+                )
+              }
+              catch (error) {
+                console.error('Error sanitizing iframe src:', error)
+                return null
+              }
+            }
+          },
+          code({ inline, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '')
             const language = match?.[1]
             const languageShowName = getCorrectCapitalizationLanguageName(language || '')
