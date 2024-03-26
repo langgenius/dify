@@ -3,11 +3,10 @@ requires-python = ">=3.10"
 
 [tool.ruff]
 exclude = [
-    "app.py",
-    "__init__.py",
-    "tests/",
 ]
 line-length = 120
+unsafe-fixes = true
+preview = true
 
 [tool.ruff.lint]
 ignore-init-module-imports = true
@@ -16,6 +15,8 @@ select = [
     "I001", # unsorted-imports
     "I002", # missing-required-import
     "UP",   # pyupgrade rules
+    "E",    # pycodestyle error rules
+    "W",    # pycodestyle warning rules
 ]
 ignore = [
     "F403", # undefined-local-with-import-star
@@ -24,4 +25,26 @@ ignore = [
     "F841", # unused-variable
     "UP007", # non-pep604-annotation
     "UP032", # f-string
+    "W293", # blank-line-with-whitespace
+    "E402", # module-import-not-at-top-of-file
+    "E501", # line-too-long
+    "E711", # none-comparison
+    "E712", # true-false-comparison
+    "E721", # type-comparison
+    "E722", # forward-annotation-syntax-error
+    "E741", # ambiguous-variable-name
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+"__init__.py" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+"tests/*" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
 ]
