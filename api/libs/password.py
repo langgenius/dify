@@ -5,6 +5,7 @@ import re
 
 password_pattern = r"^(?=.*[a-zA-Z])(?=.*\d).{8,}$"
 
+
 def valid_password(password):
     # Define a regex pattern for password rules
     pattern = password_pattern

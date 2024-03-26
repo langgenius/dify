@@ -42,12 +42,10 @@ class OAuthDataSource(Resource):
         if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
             internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
             oauth_provider.save_internal_access_token(internal_secret)
-            return { 'data': '' }
+            return {'data': ''}
         else:
             auth_url = oauth_provider.get_authorization_url()
-            return { 'data': auth_url }, 200
-
-
+            return {'data': auth_url}, 200
 
 
 class OAuthDataSourceCallback(Resource):

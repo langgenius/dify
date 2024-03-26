@@ -93,7 +93,7 @@ class ExternalApi(Api):
                 data,
                 status_code,
                 headers,
-                fallback_mediatype = fallback_mediatype
+                fallback_mediatype=fallback_mediatype
             )
         elif status_code == 400:
             if isinstance(data.get('message'), dict):

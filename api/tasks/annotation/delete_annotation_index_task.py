@@ -41,4 +41,3 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
                         fg='green'))
     except Exception as e:
         logging.exception("Annotation deleted index failed:{}".format(str(e)))
-

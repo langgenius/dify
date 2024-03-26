@@ -51,9 +51,9 @@ from core.model_runtime.utils import helper
 
 
 class LocalAILarguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, 
-                prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _invoke(self, model: str, credentials: dict,
+                prompt_messages: list[PromptMessage], model_parameters: dict,
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -67,7 +67,7 @@ class LocalAILarguageModel(LargeLanguageModel):
     def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool]) -> int:
         """
             Calculate num tokens for baichuan model
-            LocalAI does not supports 
+            LocalAI does not supports
         """
         def tokens(text: str):
             """
@@ -227,7 +227,7 @@ class LocalAILarguageModel(LargeLanguageModel):
             )
         ]
 
-        model_properties = { 
+        model_properties = {
             ModelPropertyKey.MODE: completion_model,
         } if completion_model else {}
 
@@ -246,8 +246,8 @@ class LocalAILarguageModel(LargeLanguageModel):
 
         return entity
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                 model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         
@@ -294,21 +294,21 @@ class LocalAILarguageModel(LargeLanguageModel):
         if stream:
             if completion_type == 'completion':
                 return self._handle_completion_generate_stream_response(
-                    model=model, credentials=credentials, response=result, tools=tools, 
+                    model=model, credentials=credentials, response=result, tools=tools,
                     prompt_messages=prompt_messages
                 )
             return self._handle_chat_generate_stream_response(
-                model=model, credentials=credentials, response=result, tools=tools, 
+                model=model, credentials=credentials, response=result, tools=tools,
                 prompt_messages=prompt_messages
             )
         
         if completion_type == 'completion':
             return self._handle_completion_generate_response(
-                model=model, credentials=credentials, response=result, 
+                model=model, credentials=credentials, response=result,
                 prompt_messages=prompt_messages
             )
         return self._handle_chat_generate_response(
-            model=model, credentials=credentials, response=result, tools=tools, 
+            model=model, credentials=credentials, response=result, tools=tools,
             prompt_messages=prompt_messages
         )
     
@@ -496,7 +496,7 @@ class LocalAILarguageModel(LargeLanguageModel):
 
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
                 
                 yield LLMResultChunk(
@@ -562,7 +562,7 @@ class LocalAILarguageModel(LargeLanguageModel):
                 prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
                 
                 yield LLMResultChunk(
@@ -613,7 +613,7 @@ class LocalAILarguageModel(LargeLanguageModel):
                 )
                 tool_calls.append(tool_call)
 
-        return tool_calls 
+        return tool_calls
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:

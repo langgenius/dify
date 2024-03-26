@@ -37,6 +37,7 @@ class QueueMessageEvent(AppQueueEvent):
     event = QueueEvent.MESSAGE
     chunk: LLMResultChunk
 
+
 class QueueAgentMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
@@ -84,6 +85,7 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     event = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
 
+
 class QueueMessageFileEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
@@ -91,6 +93,7 @@ class QueueMessageFileEvent(AppQueueEvent):
     event = QueueEvent.MESSAGE_FILE
     message_file_id: str
     
+
 class QueueErrorEvent(AppQueueEvent):
     """
     QueueErrorEvent entity

@@ -26,6 +26,7 @@ from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
+
 class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
     def run(self, conversation: Conversation,
                 message: Message,
@@ -222,7 +223,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
 
             # save thought
             self.save_agent_thought(
-                agent_thought=agent_thought, 
+                agent_thought=agent_thought,
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
@@ -258,8 +259,8 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
                     error_response = None
                     try:
                         tool_invoke_message = tool_instance.invoke(
-                            user_id=self.user_id, 
-                            tool_parameters=tool_call_args, 
+                            user_id=self.user_id,
+                            tool_parameters=tool_call_args,
                         )
                         # transform tool invoke message to get LLM friendly message
                         tool_invoke_message = self.transform_tool_invoke_messages(tool_invoke_message)
@@ -321,11 +322,11 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
             if len(tool_responses) > 0:
                 # save agent thought
                 self.save_agent_thought(
-                    agent_thought=agent_thought, 
+                    agent_thought=agent_thought,
                     tool_name=None,
                     tool_input=None,
-                    thought=None, 
-                    observation=tool_response['tool_response'], 
+                    thought=None,
+                    observation=tool_response['tool_response'],
                     answer=None,
                     messages_ids=message_file_ids
                 )
@@ -400,7 +401,7 @@ class AssistantFunctionCallApplicationRunner(BaseAssistantApplicationRunner):
         return tool_calls
 
     def organize_prompt_messages(self, prompt_template: str,
-                                 query: str = None, 
+                                 query: str = None,
                                  tool_call_id: str = None, tool_call_name: str = None, tool_response: str = None,
                                  prompt_messages: list[PromptMessage] = None
                                  ) -> list[PromptMessage]:

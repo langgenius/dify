@@ -44,5 +44,3 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         cred_with_endpoint = self._update_endpoint_url(credentials=credentials)
 
         return super().get_num_tokens(model, cred_with_endpoint, prompt_messages, tools)
-
-

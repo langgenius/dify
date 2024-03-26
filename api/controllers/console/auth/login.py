@@ -74,11 +74,11 @@ class ResetPasswordApi(Resource):
             'subject': 'Reset your Dify password',
             'html': """
                 <p>Dear User,</p>
-                <p>The Dify team has generated a new password for you, details as follows:</p> 
+                <p>The Dify team has generated a new password for you, details as follows:</p>
                 <p><strong>{new_password}</strong></p>
                 <p>Please change your password to log in as soon as possible.</p>
                 <p>Regards,</p>
-                <p>The Dify Team</p> 
+                <p>The Dify Team</p>
             """
         }
 

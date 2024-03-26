@@ -11,10 +11,11 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class WikipediaInput(BaseModel):
     query: str = Field(..., description="search query.")
 
+
 class WikiPediaSearchTool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
+    def _invoke(self,
+                user_id: str,
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
@@ -33,5 +34,4 @@ class WikiPediaSearchTool(BuiltinTool):
             'query': query
         })
 
-        return self.create_text_message(self.summary(user_id=user_id,content=result))
-    
+        return self.create_text_message(self.summary(user_id=user_id, content=result))

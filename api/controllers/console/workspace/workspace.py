@@ -147,7 +147,7 @@ class CustomConfigWorkspaceApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('remove_webapp_brand', type=bool, location='json')
-        parser.add_argument('replace_webapp_logo', type=str,  location='json')
+        parser.add_argument('replace_webapp_logo', type=str, location='json')
         args = parser.parse_args()
 
         custom_config_dict = {
@@ -191,7 +191,7 @@ class WebappLogoWorkspaceApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
         
-        return { 'id': upload_file.id }, 201
+        return {'id': upload_file.id}, 201
 
 
 api.add_resource(TenantListApi, '/workspaces')  # GET for getting all tenants

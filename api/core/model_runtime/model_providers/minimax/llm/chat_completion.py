@@ -19,7 +19,7 @@ class MinimaxChatCompletion:
     """
         Minimax Chat Completion API
     """
-    def generate(self, model: str, api_key: str, group_id: str, 
+    def generate(self, model: str, api_key: str, group_id: str,
                  prompt_messages: list[MinimaxMessage], model_parameters: dict,
                  tools: list[dict[str, Any]], stop: list[str] | None, stream: bool, user: str) \
         -> Union[MinimaxMessage, Generator[MinimaxMessage, None, None]]:
@@ -149,7 +149,7 @@ class MinimaxChatCompletion:
 
             if data['reply']:
                 total_tokens = data['usage']['total_tokens']
-                message =  MinimaxMessage(
+                message = MinimaxMessage(
                     role=MinimaxMessage.Role.ASSISTANT.value,
                     content=''
                 )

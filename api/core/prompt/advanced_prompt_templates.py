@@ -15,7 +15,7 @@ CHAT_APP_COMPLETION_PROMPT_CONFIG = {
     "stop": ["Human:"]
 }
 
-CHAT_APP_CHAT_PROMPT_CONFIG = { 
+CHAT_APP_CHAT_PROMPT_CONFIG = {
     "chat_prompt_config": {
         "prompt": [{
             "role": "system",
@@ -55,7 +55,7 @@ BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
     "stop": ["用户:"]
 }
 
-BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = { 
+BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = {
     "chat_prompt_config": {
         "prompt": [{
             "role": "system",

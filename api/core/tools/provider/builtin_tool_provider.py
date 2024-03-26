@@ -69,7 +69,7 @@ class BuiltinToolProviderController(ToolProviderController):
                 spec.loader.exec_module(mod)
 
                 # get all the classes in the module
-                classes = [x for _, x in vars(mod).items() 
+                classes = [x for _, x in vars(mod).items()
                     if isinstance(x, type) and x not in [BuiltinTool, Tool] and issubclass(x, BuiltinTool)
                 ]
                 assistant_tool_class = classes[0]

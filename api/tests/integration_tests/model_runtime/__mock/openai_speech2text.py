@@ -1,13 +1,14 @@
 import re
-from typing import Any, List, Literal, Union
+from typing import Any, Literal, Union
 
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from openai._types import NOT_GIVEN, FileTypes, NotGiven
 from openai.resources.audio.transcriptions import Transcriptions
 from openai.types.audio.transcription import Transcription
 
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 
-class MockSpeech2TextClass(object):
+
+class MockSpeech2TextClass:
     def speech2text_create(self: Transcriptions,
         *,
         file: FileTypes,

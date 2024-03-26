@@ -50,8 +50,8 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     ) -> None:
         """Run on agent start."""
         if thought:
-            print_text("\n[on_agent_start] \nCurrent Loop: " + \
-                        str(self.current_loop) + \
+            print_text("\n[on_agent_start] \nCurrent Loop: " +
+                        str(self.current_loop) +
                         "\nThought: " + thought + "\n", color=self.color)
         else:
             print_text("\n[on_agent_start] \nCurrent Loop: " + str(self.current_loop) + "\n", color=self.color)

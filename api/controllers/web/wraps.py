@@ -21,6 +21,7 @@ def validate_jwt_token(view=None):
         return decorator(view)
     return decorator
 
+
 def decode_jwt_token():
     auth_header = request.headers.get('Authorization')
     if auth_header is None:
@@ -49,6 +50,7 @@ def decode_jwt_token():
         raise NotFound()
 
     return app_model, end_user
+
 
 class WebApiResource(Resource):
     method_decorators = [validate_jwt_token]

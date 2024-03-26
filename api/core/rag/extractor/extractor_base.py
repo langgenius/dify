@@ -9,4 +9,3 @@ class BaseExtractor(ABC):
     @abstractmethod
     def extract(self):
         raise NotImplementedError
-

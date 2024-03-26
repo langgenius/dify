@@ -17,10 +17,10 @@ class UserToolProvider(BaseModel):
 
     id: str
     author: str
-    name: str # identifier
+    name: str  # identifier
     description: I18nObject
     icon: str
-    label: I18nObject # label
+    label: I18nObject  # label
     type: ProviderType
     team_credentials: dict = None
     is_team_authorization: bool = False
@@ -40,12 +40,14 @@ class UserToolProvider(BaseModel):
             'allow_delete': self.allow_delete
         }
 
+
 class UserToolProviderCredentials(BaseModel):
     credentials: dict[str, ToolProviderCredentials]
 
+
 class UserTool(BaseModel):
     author: str
-    name: str # identifier
-    label: I18nObject # label
+    name: str  # identifier
+    label: I18nObject  # label
     description: I18nObject
     parameters: Optional[list[ToolParameter]]

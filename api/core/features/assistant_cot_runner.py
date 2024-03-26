@@ -182,7 +182,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             delta=LLMResultChunkDelta(
                                 index=0,
                                 message=AssistantPromptMessage(
-                                    content=json.dumps(chunk, ensure_ascii=False) # if ensure_ascii=True, the text in webui maybe garbled text
+                                    content=json.dumps(chunk, ensure_ascii=False)  # if ensure_ascii=True, the text in webui maybe garbled text
                                 ),
                                 usage=None
                             )
@@ -245,11 +245,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                     tool_instance = tool_instances.get(tool_call_name)
                     if not tool_instance:
                         answer = f"there is not a tool named {tool_call_name}"
-                        self.save_agent_thought(agent_thought=agent_thought, 
+                        self.save_agent_thought(agent_thought=agent_thought,
                                                 tool_name='',
                                                 tool_input='',
-                                                thought=None, 
-                                                observation=answer, 
+                                                thought=None,
+                                                observation=answer,
                                                 answer=answer,
                                                 messages_ids=[])
                         self.queue_manager.publish_agent_thought(agent_thought, PublishFrom.APPLICATION_MANAGER)
@@ -264,7 +264,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                                     pass
                             
                             tool_response = tool_instance.invoke(
-                                user_id=self.user_id, 
+                                user_id=self.user_id,
                                 tool_parameters=tool_call_args
                             )
                             # transform tool response to llm friendly response
@@ -307,11 +307,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
                         # save agent thought
                         self.save_agent_thought(
-                            agent_thought=agent_thought, 
+                            agent_thought=agent_thought,
                             tool_name=tool_call_name,
                             tool_input=tool_call_args,
                             thought=None,
-                            observation=observation, 
+                            observation=observation,
                             answer=scratchpad.agent_response,
                             messages_ids=message_file_ids,
                         )
@@ -338,11 +338,11 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         # save agent thought
         self.save_agent_thought(
-            agent_thought=agent_thought, 
+            agent_thought=agent_thought,
             tool_name='',
             tool_input='',
             thought=final_answer,
-            observation='', 
+            observation='',
             answer=final_answer,
             messages_ids=[]
         )
@@ -392,7 +392,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
             index = 0
             while index < len(response):
                 steps = 1
-                delta = response[index:index+steps]
+                delta = response[index:index + steps]
                 if delta == '`':
                     code_block_cache += delta
                     code_block_delimiter_count += 1
@@ -462,7 +462,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
 
         return instruction
     
-    def _init_agent_scratchpad(self, 
+    def _init_agent_scratchpad(self,
                                agent_scratchpad: list[AgentScratchpadUnit],
                                messages: list[PromptMessage]
                                ) -> list[AgentScratchpadUnit]:
@@ -495,12 +495,12 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         
         return agent_scratchpad
 
-    def _check_cot_prompt_messages(self, mode: Literal["completion", "chat"], 
+    def _check_cot_prompt_messages(self, mode: Literal["completion", "chat"],
                                       agent_prompt_message: AgentPromptEntity,
     ):
         """
             check chain of thought prompt messages, a standard prompt message is like:
-                Respond to the human as helpfully and accurately as possible. 
+                Respond to the human as helpfully and accurately as possible.
 
                 {{instruction}}
 
@@ -561,7 +561,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
     
     def _organize_cot_prompt_messages(self, mode: Literal["completion", "chat"],
                                       prompt_messages: list[PromptMessage],
-                                      tools: list[PromptMessageTool], 
+                                      tools: list[PromptMessageTool],
                                       agent_scratchpad: list[AgentScratchpadUnit],
                                       agent_prompt_message: AgentPromptEntity,
                                       instruction: str,
@@ -569,7 +569,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
         ) -> list[PromptMessage]:
         """
             organize chain of thought prompt messages, a standard prompt message is like:
-                Respond to the human as helpfully and accurately as possible. 
+                Respond to the human as helpfully and accurately as possible.
 
                 {{instruction}}
 

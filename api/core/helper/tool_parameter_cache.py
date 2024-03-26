@@ -9,11 +9,12 @@ from extensions.ext_redis import redis_client
 class ToolParameterCacheType(Enum):
     PARAMETER = "tool_parameter"
 
+
 class ToolParameterCache:
-    def __init__(self, 
-                 tenant_id: str, 
-                 provider: str, 
-                 tool_name: str, 
+    def __init__(self,
+                 tenant_id: str,
+                 provider: str,
+                 tool_name: str,
                  cache_type: ToolParameterCacheType
         ):
         self.cache_key = f"{cache_type.value}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}"

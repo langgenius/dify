@@ -26,6 +26,7 @@ class ApiBasedToolBundle(BaseModel):
     # openapi operation
     openapi: dict
 
+
 class AppToolBundle(BaseModel):
     """
     This class is used to store the schema information of an tool for an app.

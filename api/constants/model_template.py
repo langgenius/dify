@@ -60,5 +60,3 @@ model_templates = {
         }
     },
 }
-
-

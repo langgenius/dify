@@ -65,7 +65,6 @@ class AccountService:
 
         return account
 
-
     @staticmethod
     def get_account_jwt_token(account):
         payload = {

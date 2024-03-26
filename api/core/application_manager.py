@@ -412,7 +412,6 @@ class ApplicationManager:
                 'datasets': []
             })
 
-
             for dataset in datasets.get('datasets', []):
                 keys = list(dataset.keys())
                 if len(keys) == 0 or keys[0] != 'dataset':

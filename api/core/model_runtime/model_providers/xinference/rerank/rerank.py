@@ -153,7 +153,7 @@ class XinferenceRerankModel(RerankModel):
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.RERANK,
-            model_properties={ },
+            model_properties={},
             parameter_rules=[]
         )
 

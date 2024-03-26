@@ -10,6 +10,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 plt.style.use('seaborn-v0_8-darkgrid')
 plt.rcParams['axes.unicode_minus'] = False
 
+
 def init_fonts():
     fonts = findSystemFonts()
 
@@ -38,7 +39,9 @@ def init_fonts():
             plt.rcParams['font.sans-serif'] = font
             break
     
+
 init_fonts()
+
 
 class ChartProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:

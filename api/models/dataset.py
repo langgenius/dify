@@ -121,6 +121,7 @@ class Dataset(db.Model):
         normalized_dataset_id = dataset_id.replace("-", "_")
         return f'Vector_index_{normalized_dataset_id}_Node'
 
+
 class DatasetProcessRule(db.Model):
     __tablename__ = 'dataset_process_rules'
     __table_args__ = (

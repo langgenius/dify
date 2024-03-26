@@ -315,8 +315,8 @@ class Tool(BaseModel, ABC):
             :param image: the url of the image
             :return: the image message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
-                                 message=image, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE,
+                                 message=image,
                                  save_as=save_as)
     
     def create_link_message(self, link: str, save_as: str = '') -> ToolInvokeMessage:
@@ -326,8 +326,8 @@ class Tool(BaseModel, ABC):
             :param link: the url of the link
             :return: the link message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, 
-                                 message=link, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK,
+                                 message=link,
                                  save_as=save_as)
     
     def create_text_message(self, text: str, save_as: str = '') -> ToolInvokeMessage:
@@ -337,7 +337,7 @@ class Tool(BaseModel, ABC):
             :param text: the text
             :return: the text message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT,
                                  message=text,
                                  save_as=save_as
                                  )
@@ -349,7 +349,7 @@ class Tool(BaseModel, ABC):
             :param blob: the blob
             :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB,
                                  message=blob, meta=meta,
                                  save_as=save_as
                                  )

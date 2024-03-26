@@ -48,6 +48,7 @@ from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
+
 class BaseAssistantApplicationRunner(AppRunner):
     def __init__(self, tenant_id: str,
                  application_generate_entity: ApplicationGenerateEntity,
@@ -354,7 +355,7 @@ class BaseAssistantApplicationRunner(AppRunner):
             
         return result
         
-    def create_agent_thought(self, message_id: str, message: str, 
+    def create_agent_thought(self, message_id: str, message: str,
                              tool_name: str, tool_input: str, messages_ids: list[str]
                              ) -> MessageAgentThought:
         """
@@ -395,12 +396,12 @@ class BaseAssistantApplicationRunner(AppRunner):
 
         return thought
 
-    def save_agent_thought(self, 
-                           agent_thought: MessageAgentThought, 
+    def save_agent_thought(self,
+                           agent_thought: MessageAgentThought,
                            tool_name: str,
                            tool_input: Union[str, dict],
-                           thought: str, 
-                           observation: str, 
+                           thought: str,
+                           observation: str,
                            answer: str,
                            messages_ids: list[str],
                            llm_usage: LLMUsage = None) -> MessageAgentThought:
@@ -570,7 +571,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                             tool_inputs = json.loads(agent_thought.tool_input)
                         except Exception as e:
                             logging.warning("tool execution error: {}, tool_input: {}.".format(str(e), agent_thought.tool_input))
-                            tool_inputs = { agent_thought.tool: agent_thought.tool_input }
+                            tool_inputs = {agent_thought.tool: agent_thought.tool_input}
                         for tool in tools:
                             # generate a uuid for tool call
                             tool_call_id = str(uuid.uuid4())

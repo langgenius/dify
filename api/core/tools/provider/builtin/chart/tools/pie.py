@@ -8,9 +8,9 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class PieChartTool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
+    def _invoke(self,
+                user_id: str,
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         data = tool_parameters.get('data', '')
         if not data:

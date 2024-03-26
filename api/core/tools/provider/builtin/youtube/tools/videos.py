@@ -46,8 +46,8 @@ class YoutubeVideosAnalyticsTool(BuiltinTool):
 
         # get videos
         time_range_videos = youtube.search().list(
-            part='snippet', channelId=channel_id, order='date', type='video', 
-            publishedAfter=start_date, 
+            part='snippet', channelId=channel_id, order='date', type='video',
+            publishedAfter=start_date,
             publishedBefore=end_date
         ).execute()
 
@@ -64,4 +64,3 @@ class YoutubeVideosAnalyticsTool(BuiltinTool):
         summary = extract_video_data(time_range_videos)
         
         return self.create_text_message(str(summary))
-    

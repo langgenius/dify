@@ -19,6 +19,7 @@ from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
+
 class AssistantApplicationRunner(AppRunner):
     """
     Assistant Application Runner

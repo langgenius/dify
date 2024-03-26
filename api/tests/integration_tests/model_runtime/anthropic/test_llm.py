@@ -1,7 +1,8 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -27,6 +28,7 @@ def test_validate_credentials(setup_anthropic_mock):
             'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY')
         }
     )
+
 
 @pytest.mark.parametrize('setup_anthropic_mock', [['none']], indirect=True)
 def test_invoke_model(setup_anthropic_mock):
@@ -58,6 +60,7 @@ def test_invoke_model(setup_anthropic_mock):
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
+
 
 @pytest.mark.parametrize('setup_anthropic_mock', [['none']], indirect=True)
 def test_invoke_stream_model(setup_anthropic_mock):

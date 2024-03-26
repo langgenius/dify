@@ -40,7 +40,9 @@ class ToolFilePreviewApi(Resource):
 
         return Response(generator, mimetype=mimetype)
 
+
 api.add_resource(ToolFilePreviewApi, '/files/tools/<uuid:file_id>.<string:extension>')
+
 
 class UnsupportedFileTypeError(BaseHTTPException):
     error_code = 'unsupported_file_type'

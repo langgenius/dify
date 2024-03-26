@@ -23,6 +23,9 @@ from flask_cors import CORS
 
 from commands import register_commands
 from config import CloudEditionConfig, Config
+
+# DO NOT REMOVE BELOW
+from events import event_handlers
 from extensions import (
     ext_celery,
     ext_code_based_extension,
@@ -39,11 +42,9 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
+from models import account, dataset, model, source, task, tool, tools, web
 from services.account_service import AccountService
 
-# DO NOT REMOVE BELOW
-from events import event_handlers
-from models import account, dataset, model, source, task, tool, tools, web
 # DO NOT REMOVE ABOVE
 
 
@@ -51,7 +52,7 @@ warnings.simplefilter("ignore", ResourceWarning)
 
 # fix windows platform
 if os.name == "nt":
-    os.system('tzutil /s "UTC"')    
+    os.system('tzutil /s "UTC"')
 else:
     os.environ['TZ'] = 'UTC'
     time.tzset()
