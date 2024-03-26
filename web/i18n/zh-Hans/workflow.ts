@@ -168,7 +168,11 @@ const translation = {
       contextTooltip: '您可以导入知识库作为上下文',
       prompt: '提示词',
       addMessage: '添加消息',
-      roleDescription: '消息角色',
+      roleDescription: {
+        system: '为对话提供高层指导',
+        user: '向模型提供指令、查询或任何基于文本的输入',
+        assistant: '基于用户消息的模型回复',
+      },
       vision: '视觉',
       files: '文件',
       resolution: {

@@ -167,7 +167,11 @@ const translation = {
       context: 'context',
       contextTooltip: 'You can import Knowledge as context',
       prompt: 'prompt',
-      roleDescription: 'Message role',
+      roleDescription: {
+        system: 'Give high level instructions for the conversation',
+        user: 'Provide instructions, queries, or any text-based input to the model',
+        assistant: 'The model’s responses  based on the user messages',
+      },
       addMessage: 'Add Message',
       vision: 'vision',
       files: 'Files',

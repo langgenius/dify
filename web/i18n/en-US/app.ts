@@ -1,5 +1,5 @@
 const translation = {
-  createApp: 'Create App',
+  createApp: 'CREATE APP',
   types: {
     all: 'All',
     chatbot: 'Chatbot',
@@ -11,6 +11,7 @@ const translation = {
   duplicateTitle: 'Duplicate App',
   export: 'Export DSL',
   exportFailed: 'Export DSL failed.',
+  importDSL: 'Import DSL file',
   createFromConfigFile: 'Create from DSL file',
   deleteAppConfirmTitle: 'Delete this app?',
   deleteAppConfirmContent:
@@ -22,8 +23,8 @@ const translation = {
     'Discuss with team members, contributors and developers on different channels.',
   roadmap: 'See our roadmap',
   newApp: {
-    startFromBlank: 'Start from a blank app',
-    startFromTemplate: 'Start from a template',
+    startFromBlank: 'Create from Blank',
+    startFromTemplate: 'Create from Template',
     captionAppType: 'What type of app do you want to create?',
     chatbotDescription: 'Build a chat-based application. This app uses a question-and-answer format, allowing for multiple rounds of continuous conversation.',
     completionDescription: 'Build an application that generates high-quality text based on prompts, such as generating articles, summaries, translations, and more.',
@@ -32,11 +33,12 @@ const translation = {
     workflowDescription: 'Build an application that generates high-quality text based on workflow orchestrates with a high degree of customization. It is suitable for experienced users.',
     workflowWarning: 'Currently in beta',
     chatbotType: 'Chatbot orchestrate method',
-    basic: 'Basic Orchestrate',
+    basic: 'Basic',
+    basicTip: 'For beginners, can switch to Chatflow later',
     basicFor: 'FOR BEGINNERS',
     basicDescription: 'Basic Orchestrate allows for the orchestration of a Chatbot app using simple settings, without the ability to modify built-in prompts. It is suitable for beginners.',
-    advanced: 'Workflow Orchestrate',
-    advancedFor: 'FOR ADVANCED USERS',
+    advanced: 'Chatflow',
+    advancedFor: 'For advanced users',
     advancedDescription: 'Workflow Orchestrate orchestrates Chatbots in the form of workflows, offering a high degree of customization, including the ability to edit built-in prompts. It is suitable for experienced users.',
     captionName: 'App icon & name',
     appNamePlaceholder: 'Give your app a name',
