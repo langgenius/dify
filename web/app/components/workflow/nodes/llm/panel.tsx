@@ -201,7 +201,9 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 title={<div className='flex items-center space-x-1'>
                   <div className='text-xs font-semibold text-gray-700 uppercase'>user</div>
                   <TooltipPlus
-                    popupContent={t('workflow.nodes.llm.roleDescription')}
+                    popupContent={
+                      <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>
+                    }
                   >
                     <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
                   </TooltipPlus>

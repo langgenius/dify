@@ -119,7 +119,7 @@ const ConfigPrompt: FC<Props> = ({
                           />
                           <TooltipPlus
                             popupContent={
-                              <div>{t(`${i18nPrefix}.roleDescription`)}</div>
+                              <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${item.role}`)}</div>
                             }
                           >
                             <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
