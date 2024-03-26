@@ -42,9 +42,9 @@ const VarItem: FC<Props> = ({
     <div ref={ref} className='flex items-center h-8 justify-between px-2.5 bg-white rounded-lg border border-gray-200 shadow-xs cursor-pointer hover:shadow-md'>
       <div className='flex items-center space-x-1 grow w-0'>
         <Variable02 className='w-3.5 h-3.5 text-primary-500' />
-        <div className='shrink-0 truncate text-[13px] font-medium text-gray-700'>{payload.variable}</div>
+        <div title={payload.variable} className='shrink-0 max-w-[130px] truncate text-[13px] font-medium text-gray-700'>{payload.variable}</div>
         {payload.label && (<><div className='shrink-0 text-xs font-medium text-gray-400'>·</div>
-          <div className='grow w-0 truncate text-[13px] font-medium text-gray-500'>{payload.label}</div>
+          <div title={payload.label} className='max-w-[130px] truncate text-[13px] font-medium text-gray-500'>{payload.label}</div>
         </>)}
       </div>
       <div className='shrink-0 ml-2 flex items-center'>
