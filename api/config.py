@@ -22,6 +22,7 @@ DEFAULTS = {
     'SERVICE_API_URL': 'https://api.dify.ai',
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
+    'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
@@ -181,6 +182,7 @@ class Config:
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
         self.S3_SECRET_KEY = get_env('S3_SECRET_KEY')
         self.S3_REGION = get_env('S3_REGION')
+        self.S3_ADDRESS_STYLE = get_env('S3_ADDRESS_STYLE')
         self.AZURE_BLOB_ACCOUNT_NAME = get_env('AZURE_BLOB_ACCOUNT_NAME')
         self.AZURE_BLOB_ACCOUNT_KEY = get_env('AZURE_BLOB_ACCOUNT_KEY')
         self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
