@@ -148,7 +148,7 @@ class ApiTool(Tool):
                 value = ''
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
-                elif parameter['required']:
+                elif parameter.get('required', False):
                     raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
@@ -158,7 +158,7 @@ class ApiTool(Tool):
                 value = ''
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
-                elif parameter['required']:
+                elif parameter.get('required', False):
                     raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
@@ -168,7 +168,7 @@ class ApiTool(Tool):
                 value = ''
                 if parameter['name'] in parameters:
                     value = parameters[parameter['name']]
-                elif parameter['required']:
+                elif parameter.get('required', False):
                     raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
                 else:
                     value = (parameter.get('schema', {}) or {}).get('default', '')
