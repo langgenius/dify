@@ -4849,10 +4849,10 @@ negotiator@^0.6.3:
   resolved "https://registry.npmjs.org/negotiator/-/negotiator-0.6.3.tgz"
   integrity sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==
 
-next-nprogress-bar@^2.1.2:
-  version "2.1.2"
-  resolved "https://registry.npmjs.org/next-nprogress-bar/-/next-nprogress-bar-2.1.2.tgz"
-  integrity sha512-2Df5d7fr6uPx+BX8MkoWCfl+RjG+uWI5mA399e5sEe8mbT3q/GIUvCXLzBgJBIISpKuMmdLAOYEzqpjlsRVOWw==
+next-nprogress-bar@^2.3.8:
+  version "2.3.9"
+  resolved "https://registry.yarnpkg.com/next-nprogress-bar/-/next-nprogress-bar-2.3.9.tgz#f271abb7e1f6bc95b024256f8dcec041dd63bcdb"
+  integrity sha512-X4nJqpyXcqpXwcSyCzed8hKWnOCqzLaINVHdwokKpuJ76Qj8EGB9mPqwCcFhgXsvIdlzPLAKxq6ajPI9tSYmig==
   dependencies:
     nprogress "^0.2.0"
 
@@ -4926,7 +4926,7 @@ npm-run-path@^5.1.0:
 
 nprogress@^0.2.0:
   version "0.2.0"
-  resolved "https://registry.npmjs.org/nprogress/-/nprogress-0.2.0.tgz"
+  resolved "https://registry.yarnpkg.com/nprogress/-/nprogress-0.2.0.tgz#cb8f34c53213d895723fcbab907e9422adbcafb1"
   integrity sha512-I19aIingLgR1fmhftnbWWO3dXc0hSxqHQHQb3H8m+K3TnEn/iSeTZZOyvKXWqQESMwuUVnatlCnZdLBZZt2VSA==
 
 nth-check@^2.0.1:
