@@ -4,7 +4,7 @@ const translation = {
   type: {
     all: 'Todas',
     builtIn: 'Integradas',
-    custom: 'Personal...',
+    custom: 'Personalizadas',
   },
   contribute: {
     line1: 'Estou interessado em ',
@@ -13,7 +13,7 @@ const translation = {
   },
   author: 'Por',
   auth: {
-    unauthorized: 'Não autorizado',
+    unauthorized: 'Para Autorizar',
     authorized: 'Autorizado',
     setup: 'Configurar autorização para usar',
     setupModalTitle: 'Configurar Autorização',
@@ -35,8 +35,8 @@ const translation = {
     urlError: 'Digite uma URL válida',
     examples: 'Exemplos',
     exampleOptions: {
-      json: 'Clima (JSON)',
-      yaml: 'Pet Store (YAML)',
+      json: 'Clima(JSON)',
+      yaml: 'Pet Store(YAML)',
       blankTemplate: 'Modelo em Branco',
     },
     availableTools: {
@@ -51,18 +51,22 @@ const translation = {
     authMethod: {
       title: 'Método de Autorização',
       type: 'Tipo de Autorização',
+      keyTooltip: 'Chave do Cabeçalho HTTP, você pode deixar como "Authorization" se não tiver ideia do que é ou definir um valor personalizado',
       types: {
         none: 'Nenhum',
         api_key: 'Chave de API',
+        apiKeyPlaceholder: 'Nome do cabeçalho HTTP para a Chave de API',
+        apiValuePlaceholder: 'Digite a Chave de API',
       },
       key: 'Chave',
       value: 'Valor',
     },
     authHeaderPrefix: {
+      title: 'Tipo de Autenticação',
       types: {
-        basic: 'Basic',
+        basic: 'Básica',
         bearer: 'Bearer',
-        custom: 'Custom',
+        custom: 'Personalizada',
       },
     },
     privacyPolicy: 'Política de Privacidade',
@@ -94,7 +98,7 @@ const translation = {
   },
   noCustomTool: {
     title: 'Nenhuma ferramenta personalizada!',
-    content: 'Você não possui ferramentas personalizadas. ',
+    content: 'Adicione e gerencie suas ferramentas personalizadas aqui para construir aplicativos de IA.',
     createTool: 'Criar Ferramenta',
   },
   noSearchRes: {
@@ -104,7 +108,8 @@ const translation = {
   },
   builtInPromptTitle: 'Prompt',
   toolRemoved: 'Ferramenta removida',
-  howToGet: 'Como conseguir',
+  notAuthorized: 'Ferramenta não autorizada',
+  howToGet: 'Como obter',
 }
 
 export default translation

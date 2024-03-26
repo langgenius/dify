@@ -72,6 +72,14 @@ const translation = {
     privacyPolicy: '隐私协议',
     privacyPolicyPlaceholder: '请输入隐私协议',
   },
+  test: {
+    title: '测试',
+    parametersValue: '参数和值',
+    parameters: '参数',
+    value: '值',
+    testResult: '测试结果',
+    testResultPlaceholder: '测试结果将显示在这里',
+  },
   thought: {
     using: '正在使用',
     used: '已使用',
