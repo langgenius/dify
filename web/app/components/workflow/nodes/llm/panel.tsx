@@ -20,7 +20,8 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-
+import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import { QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({
@@ -194,7 +195,31 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               </div>
               <div className='h-[18px] leading-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
             </div>
-            {/* TODO: user query editor */}
+            {/* Readonly User Query */}
+            <div className='mt-4'>
+              <Editor
+                title={<div className='flex items-center space-x-1'>
+                  <div className='text-xs font-semibold text-gray-700 uppercase'>user</div>
+                  <TooltipPlus
+                    popupContent={t('workflow.nodes.llm.roleDescription')}
+                  >
+                    <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
+                  </TooltipPlus>
+                </div>}
+                value={QUERY_PLACEHOLDER_TEXT}
+                onChange={() => { }}
+                variables={[]}
+                readOnly
+                isShowContext={false}
+                isChatApp
+                isChatModel
+                hasSetBlockStatus={{
+                  query: false,
+                  history: true,
+                  context: true,
+                }}
+              />
+            </div>
           </div>
         )}
 
