@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useThrottleEffect } from 'ahooks'
 import { debounce } from 'lodash-es'
 import type {
   ChatConfig,
@@ -100,10 +99,19 @@ const Chat: FC<ChatProps> = ({
       chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
   }, [])
 
-  useThrottleEffect(() => {
+  useEffect(() => {
     handleScrolltoBottom()
     handleWindowResize()
-  }, [chatList], { wait: 500 })
+  }, [handleScrolltoBottom, handleWindowResize])
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      requestAnimationFrame(() => {
+        handleScrolltoBottom()
+        handleWindowResize()
+      })
+    }
+  })
 
   useEffect(() => {
     window.addEventListener('resize', debounce(handleWindowResize))
