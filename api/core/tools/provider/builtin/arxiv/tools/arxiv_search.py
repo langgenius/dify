@@ -10,6 +10,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class ArxivSearchInput(BaseModel):
     query: str = Field(..., description="Search query.")
     
+
 class ArxivSearchTool(BuiltinTool):
     """
     A tool for searching articles on Arxiv.

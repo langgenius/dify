@@ -92,4 +92,5 @@ def get_setup_status():
     else:
         return True
 
+
 api.add_resource(SetupApi, '/setup')

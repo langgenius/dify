@@ -260,4 +260,3 @@ class BasicApplicationRunner(AppRunner):
             hit_callback=hit_callback,
             memory=memory
         )
-    

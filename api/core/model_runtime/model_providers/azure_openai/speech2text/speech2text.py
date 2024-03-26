@@ -68,7 +68,6 @@ class AzureOpenAISpeech2TextModel(_CommonAzureOpenAI, Speech2TextModel):
         ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
         return ai_model_entity.entity
 
-
     @staticmethod
     def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:
         for ai_model_entity in SPEECH2TEXT_BASE_MODELS:

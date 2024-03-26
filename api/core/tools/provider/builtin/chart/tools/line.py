@@ -8,9 +8,9 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class LinearChartTool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
+    def _invoke(self,
+                user_id: str,
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         data = tool_parameters.get('data', '')
         if not data:
@@ -48,4 +48,3 @@ class LinearChartTool(BuiltinTool):
             self.create_blob_message(blob=buf.read(),
                                     meta={'mime_type': 'image/png'})
         ]
-    

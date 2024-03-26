@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.rerank.rerank import XinferenceRerankModel
@@ -27,6 +28,7 @@ def test_validate_credentials(setup_xinference_mock):
             'model_uid': os.environ.get('XINFERENCE_RERANK_MODEL_UID')
         }
     )
+
 
 @pytest.mark.parametrize('setup_xinference_mock', [['none']], indirect=True)
 def test_invoke_model(setup_xinference_mock):

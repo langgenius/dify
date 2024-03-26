@@ -129,6 +129,7 @@ class App(db.Model):
 
         return deleted_tools
 
+
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'
     __table_args__ = (
@@ -414,6 +415,7 @@ class InstalledApp(db.Model):
         if not app:
             return False
         return app.is_agent
+
 
 class Conversation(db.Model):
     __tablename__ = 'conversations'
@@ -1043,6 +1045,7 @@ class MessageAgentThought(db.Model):
                 return {}
         except Exception as e:
             return {}
+
 
 class DatasetRetrieverResource(db.Model):
     __tablename__ = 'dataset_retriever_resources'

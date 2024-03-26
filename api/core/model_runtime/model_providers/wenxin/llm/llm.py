@@ -41,10 +41,11 @@ if you are not sure about the structure.
 You should also complete the text started with ``` but not tell ``` directly.
 """
 
+
 class ErnieBotLargeLanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, 
-                prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _invoke(self, model: str, credentials: dict,
+                prompt_messages: list[PromptMessage], model_parameters: dict,
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -72,9 +73,9 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
             
         return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
-    def _transform_json_prompts(self, model: str, credentials: dict, 
-                                prompt_messages: list[PromptMessage], model_parameters: dict, 
-                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _transform_json_prompts(self, model: str, credentials: dict,
+                                prompt_messages: list[PromptMessage], model_parameters: dict,
+                                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                                 stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
                             -> None:
         """
@@ -144,8 +145,8 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
         except Exception as e:
             raise CredentialsValidateFailedError(f'Credentials validation failed: {e}')
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                 model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         instance = ErnieBotModel(

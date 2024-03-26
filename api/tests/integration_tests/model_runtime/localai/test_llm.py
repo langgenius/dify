@@ -1,11 +1,16 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, TextPromptMessageContent,
-                                                          UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import ParameterRule
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.localai.llm.llm import LocalAILarguageModel
@@ -30,6 +35,7 @@ def test_validate_credentials_for_chat_model():
             'completion_type': 'completion',
         }
     )
+
 
 def test_invoke_completion_model():
     model = LocalAILarguageModel()
@@ -59,6 +65,7 @@ def test_invoke_completion_model():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
+
 def test_invoke_chat_model():
     model = LocalAILarguageModel()
 
@@ -86,6 +93,7 @@ def test_invoke_chat_model():
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 def test_invoke_stream_completion_model():
     model = LocalAILarguageModel()
@@ -118,6 +126,7 @@ def test_invoke_stream_completion_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
+
 def test_invoke_stream_chat_model():
     model = LocalAILarguageModel()
 
@@ -148,6 +157,7 @@ def test_invoke_stream_chat_model():
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
 
 def test_get_num_tokens():
     model = LocalAILarguageModel()

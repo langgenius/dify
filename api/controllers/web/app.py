@@ -63,6 +63,7 @@ class AppParameterApi(WebApiResource):
             }
         }
 
+
 class AppMeta(WebApiResource):
     def get(self, app_model: App, end_user):
         """Get app meta"""
@@ -93,12 +94,13 @@ class AppMeta(WebApiResource):
                         )
                         meta['tool_icons'][tool_name] = json.loads(provider.icon)
                     except:
-                        meta['tool_icons'][tool_name] =  {
+                        meta['tool_icons'][tool_name] = {
                             "background": "#252525",
                             "content": "\ud83d\ude01"
                         }
 
         return meta
+
 
 api.add_resource(AppParameterApi, '/parameters')
 api.add_resource(AppMeta, '/meta')

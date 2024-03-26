@@ -64,6 +64,7 @@ class AppParameterApi(InstalledAppResource):
             }
         }
 
+
 class ExploreAppMetaApi(InstalledAppResource):
     def get(self, installed_app: InstalledApp):
         """Get app meta"""
@@ -94,12 +95,13 @@ class ExploreAppMetaApi(InstalledAppResource):
                         )
                         meta['tool_icons'][tool_name] = json.loads(provider.icon)
                     except:
-                        meta['tool_icons'][tool_name] =  {
+                        meta['tool_icons'][tool_name] = {
                             "background": "#252525",
                             "content": "\ud83d\ude01"
                         }
 
         return meta
+
 
 api.add_resource(AppParameterApi, '/installed-apps/<uuid:installed_app_id>/parameters', endpoint='installed_app_parameters')
 api.add_resource(ExploreAppMetaApi, '/installed-apps/<uuid:installed_app_id>/meta', endpoint='installed_app_meta')

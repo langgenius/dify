@@ -33,7 +33,7 @@ class WorkspaceService:
 
         can_replace_logo = FeatureService.get_features(tenant_info['id']).can_replace_logo
 
-        if can_replace_logo and TenantService.has_roles(tenant, 
+        if can_replace_logo and TenantService.has_roles(tenant,
         [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]):
             base_url = current_app.config.get('FILES_URL')
             replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict.get('replace_webapp_logo') else None

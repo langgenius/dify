@@ -27,6 +27,7 @@ class ToolProviderType(Enum):
                 return mode
         raise ValueError(f'invalid mode value {value}')
     
+
 class ApiProviderSchemaType(Enum):
     """
     Enum class for api provider schema type.
@@ -49,6 +50,7 @@ class ApiProviderSchemaType(Enum):
                 return mode
         raise ValueError(f'invalid mode value {value}')
     
+
 class ApiProviderAuthType(Enum):
     """
     Enum class for api provider auth type.
@@ -69,6 +71,7 @@ class ApiProviderAuthType(Enum):
                 return mode
         raise ValueError(f'invalid mode value {value}')
 
+
 class ToolInvokeMessage(BaseModel):
     class MessageType(Enum):
         TEXT = "text"
@@ -85,14 +88,17 @@ class ToolInvokeMessage(BaseModel):
     meta: dict[str, Any] = None
     save_as: str = ''
 
+
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
     save_as: str = ''
 
+
 class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+
 
 class ToolParameter(BaseModel):
     class ToolParameterType(Enum):
@@ -103,7 +109,7 @@ class ToolParameter(BaseModel):
         SECRET_INPUT = "secret-input"
 
     class ToolParameterForm(Enum):
-        SCHEMA = "schema" # should be set while adding tool
+        SCHEMA = "schema"  # should be set while adding tool
         FORM = "form"     # should be set before invoking tool
         LLM = "llm"       # will be set by LLM
 
@@ -120,8 +126,8 @@ class ToolParameter(BaseModel):
     options: Optional[list[ToolParameterOption]] = None
 
     @classmethod
-    def get_simple_instance(cls, 
-                       name: str, llm_description: str, type: ToolParameterType, 
+    def get_simple_instance(cls,
+                       name: str, llm_description: str, type: ToolParameterType,
                        required: bool, options: Optional[list[str]] = None) -> 'ToolParameter':
         """
             get a simple tool parameter
@@ -146,6 +152,7 @@ class ToolParameter(BaseModel):
             options=options,
         )
 
+
 class ToolProviderIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
@@ -153,18 +160,22 @@ class ToolProviderIdentity(BaseModel):
     icon: str = Field(..., description="The icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
 
+
 class ToolDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
     llm: str = Field(..., description="The description presented to the LLM")
+
 
 class ToolIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
 
+
 class ToolCredentialsOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+
 
 class ToolProviderCredentials(BaseModel):
     class CredentialsType(Enum):
@@ -213,9 +224,11 @@ class ToolProviderCredentials(BaseModel):
             'placeholder': self.placeholder.to_dict() if self.placeholder else None,
         }
 
+
 class ToolRuntimeVariableType(Enum):
     TEXT = "text"
     IMAGE = "image"
+
 
 class ToolRuntimeVariable(BaseModel):
     type: ToolRuntimeVariableType = Field(..., description="The type of the variable")
@@ -223,11 +236,14 @@ class ToolRuntimeVariable(BaseModel):
     position: int = Field(..., description="The position of the variable")
     tool_name: str = Field(..., description="The name of the tool")
 
+
 class ToolRuntimeTextVariable(ToolRuntimeVariable):
     value: str = Field(..., description="The value of the variable")
 
+
 class ToolRuntimeImageVariable(ToolRuntimeVariable):
     value: str = Field(..., description="The path of the image")
+
 
 class ToolRuntimeVariablePool(BaseModel):
     conversation_id: str = Field(..., description="The conversation id")
@@ -308,8 +324,10 @@ class ToolRuntimeVariablePool(BaseModel):
 
         self.pool.append(variable)
 
+
 class ModelToolPropertyKey(Enum):
     IMAGE_PARAMETER_NAME = "image_parameter_name"
+
 
 class ModelToolConfiguration(BaseModel):
     """
@@ -319,6 +337,7 @@ class ModelToolConfiguration(BaseModel):
     model: str = Field(..., description="The model")
     label: I18nObject = Field(..., description="The label of the model tool")
     properties: dict[ModelToolPropertyKey, Any] = Field(..., description="The properties of the model tool")
+
 
 class ModelToolProviderConfiguration(BaseModel):
     """

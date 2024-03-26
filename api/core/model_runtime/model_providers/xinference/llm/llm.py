@@ -61,8 +61,8 @@ from core.model_runtime.utils import helper
 
 
 class XinferenceAILargeLanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         """
@@ -135,7 +135,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         return self._num_tokens_from_messages(prompt_messages, tools)
 
-    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool], 
+    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool],
                                   is_completion_model: bool = False) -> int:
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
@@ -352,7 +352,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             features=[
                 ModelFeature.TOOL_CALL
             ] if support_function_call else [],
-            model_properties={ 
+            model_properties={
                 ModelPropertyKey.MODE: completion_type,
                 ModelPropertyKey.CONTEXT_SIZE: context_length
             },
@@ -361,9 +361,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         return entity
     
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                  model_parameters: dict, extra_model_kwargs: XinferenceModelExtraParameter,
-                 tools: list[PromptMessageTool] | None = None, 
+                 tools: list[PromptMessageTool] | None = None,
                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         """
@@ -412,7 +412,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         if isinstance(xinference_model, RESTfulChatModelHandle | RESTfulChatglmCppChatModelHandle):
             resp = client.chat.completions.create(
                 model=credentials['model_uid'],
-                messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages], 
+                messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages],
                 stream=stream,
                 user=user,
                 **generate_config,
@@ -573,7 +573,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
                 
                 yield LLMResultChunk(
@@ -670,7 +670,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 completion_tokens = self._num_tokens_from_messages(
                     messages=[temp_assistant_prompt_message], tools=[], is_completion_model=True
                 )
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
                 
                 yield LLMResultChunk(

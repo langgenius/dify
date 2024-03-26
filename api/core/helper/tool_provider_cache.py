@@ -9,6 +9,7 @@ from extensions.ext_redis import redis_client
 class ToolProviderCredentialsCacheType(Enum):
     PROVIDER = "tool_provider"
 
+
 class ToolProviderCredentialsCache:
     def __init__(self, tenant_id: str, identity_id: str, cache_type: ToolProviderCredentialsCacheType):
         self.cache_key = f"{cache_type.value}_credentials:tenant_id:{tenant_id}:id:{identity_id}"

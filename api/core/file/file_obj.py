@@ -32,6 +32,7 @@ class FileTransferMethod(enum.Enum):
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
 
+
 class FileBelongsTo(enum.Enum):
     USER = 'user'
     ASSISTANT = 'assistant'
@@ -42,6 +43,7 @@ class FileBelongsTo(enum.Enum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
 
 class FileObj(BaseModel):
     id: Optional[str]

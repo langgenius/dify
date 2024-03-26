@@ -45,4 +45,3 @@ class ModerationModel(AIModel):
         :return: false if text is safe, true otherwise
         """
         raise NotImplementedError
-

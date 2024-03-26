@@ -1,7 +1,8 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -27,6 +28,7 @@ def test_validate_credentials():
             "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         }
     )
+
 
 def test_invoke_model():
     model = BedrockLargeLanguageModel()
@@ -58,6 +60,7 @@ def test_invoke_model():
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
+
 
 def test_invoke_stream_model():
     model = BedrockLargeLanguageModel()
@@ -100,7 +103,7 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='meta.llama2-13b-chat-v1',
-        credentials = {
+        credentials={
             "aws_region": os.getenv("AWS_REGION"),
             "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
             "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")

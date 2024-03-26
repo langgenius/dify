@@ -38,8 +38,8 @@ from core.model_runtime.model_providers.openllm.llm.openllm_generate_errors impo
 
 
 class OpenLLMLargeLanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         return self._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
@@ -56,7 +56,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
         try:
             instance.generate(
                 server_url=credentials['server_url'],
-                model_name=model, 
+                model_name=model,
                 prompt_messages=[
                     OpenLLMGenerateMessage(content='ping\nAnswer: ', role='user')
                 ],
@@ -85,8 +85,8 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
         messages = ','.join([message.content for message in messages])
         return self._get_num_tokens_by_gpt2(messages)
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         client = OpenLLMGenerate()
@@ -116,8 +116,8 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
             raise NotImplementedError(f'Prompt message type {type(prompt_message)} is not supported')
 
     def _handle_chat_generate_response(self, model: str, prompt_messages: list[PromptMessage], credentials: dict, response: OpenLLMGenerateMessage) -> LLMResult:
-        usage = self._calc_response_usage(model=model, credentials=credentials, 
-                                          prompt_tokens=response.usage['prompt_tokens'], 
+        usage = self._calc_response_usage(model=model, credentials=credentials,
+                                          prompt_tokens=response.usage['prompt_tokens'],
                                           completion_tokens=response.usage['completion_tokens']
                                         )
         return LLMResult(
@@ -130,14 +130,14 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
             usage=usage,
         )
 
-    def _handle_chat_generate_stream_response(self, model: str, prompt_messages: list[PromptMessage], 
+    def _handle_chat_generate_stream_response(self, model: str, prompt_messages: list[PromptMessage],
                                               credentials: dict, response: Generator[OpenLLMGenerateMessage, None, None]) \
         -> Generator[LLMResultChunk, None, None]:
         for message in response:
             if message.usage:
                 usage = self._calc_response_usage(
-                    model=model, credentials=credentials, 
-                    prompt_tokens=message.usage['prompt_tokens'], 
+                    model=model, credentials=credentials,
+                    prompt_tokens=message.usage['prompt_tokens'],
                     completion_tokens=message.usage['completion_tokens']
                 )
                 yield LLMResultChunk(
@@ -166,7 +166,6 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                         finish_reason=message.stop_reason if message.stop_reason else None,
                     ),
                 )
-
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
@@ -222,7 +221,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
-            model_properties={ 
+            model_properties={
                 ModelPropertyKey.MODE: LLMMode.COMPLETION.value,
             },
             parameter_rules=rules
@@ -259,4 +258,3 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                 KeyError
             ]
         }
-

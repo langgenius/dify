@@ -111,9 +111,9 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
     @staticmethod
     def _add_custom_parameters(credentials: dict) -> None:
         credentials['mode'] = 'chat'
-        credentials['openai_api_key']=credentials['api_key']
+        credentials['openai_api_key'] = credentials['api_key']
         if 'endpoint_url' not in credentials or credentials['endpoint_url'] == "":
-            credentials['openai_api_base']='https://api.lingyiwanwu.com'
+            credentials['openai_api_base'] = 'https://api.lingyiwanwu.com'
         else:
             parsed_url = urlparse(credentials['endpoint_url'])
-            credentials['openai_api_base']=f"{parsed_url.scheme}://{parsed_url.netloc}"
+            credentials['openai_api_base'] = f"{parsed_url.scheme}://{parsed_url.netloc}"

@@ -17,7 +17,7 @@ class _CommonZhipuaiAI:
         :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['api_key'] if 'api_key' in credentials else 
+            "api_key": credentials['api_key'] if 'api_key' in credentials else
                         credentials['zhipuai_api_key'] if 'zhipuai_api_key' in credentials else None,
         }
 

@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.minimax.text_embedding.text_embedding import MinimaxTextEmbeddingModel
@@ -26,6 +27,7 @@ def test_validate_credentials():
         }
     )
 
+
 def test_invoke_model():
     model = MinimaxTextEmbeddingModel()
 
@@ -45,6 +47,7 @@ def test_invoke_model():
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
     assert result.usage.total_tokens == 16
+
 
 def test_get_num_tokens():
     model = MinimaxTextEmbeddingModel()

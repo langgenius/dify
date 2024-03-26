@@ -22,7 +22,7 @@ class NvidiaRerankModel(RerankModel):
     """
 
     def _sigmoid(self, logit: float) -> float:
-        return 1/(1+exp(-logit))
+        return 1 / (1 + exp(-logit))
 
     def _invoke(self, model: str, credentials: dict,
                 query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,

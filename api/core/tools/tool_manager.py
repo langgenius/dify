@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 _builtin_providers = {}
 _builtin_tools_labels = {}
 
+
 class ToolManager:
     @staticmethod
     def invoke(
@@ -78,7 +79,7 @@ class ToolManager:
             spec.loader.exec_module(mod)
 
             # get all the classes in the module
-            classes = [ x for _, x in vars(mod).items() 
+            classes = [x for _, x in vars(mod).items()
                        if isinstance(x, type) and x != ToolProviderController and issubclass(x, ToolProviderController)
             ]
             if len(classes) == 0:
@@ -148,7 +149,7 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
         
     @staticmethod
-    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tenant_id: str, 
+    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tenant_id: str,
                          agent_callback: DifyAgentCallbackHandler = None) \
         -> Union[BuiltinTool, ApiTool]:
         """
@@ -231,7 +232,7 @@ class ToolManager:
             get the agent tool runtime
         """
         tool_entity = ToolManager.get_tool_runtime(
-            provider_type=agent_tool.provider_type, provider_name=agent_tool.provider_id, tool_name=agent_tool.tool_name, 
+            provider_type=agent_tool.provider_type, provider_name=agent_tool.provider_id, tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
             agent_callback=agent_callback
         )
@@ -337,7 +338,7 @@ class ToolManager:
 
                 # load all classes
                 classes = [
-                    obj for name, obj in vars(mod).items() 
+                    obj for name, obj in vars(mod).items()
                         if isinstance(obj, type) and obj != BuiltinToolProviderController and issubclass(obj, BuiltinToolProviderController)
                 ]
                 if len(classes) == 0:

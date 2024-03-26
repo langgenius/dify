@@ -1,11 +1,16 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, TextPromptMessageContent,
-                                                          UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.llm.llm import XinferenceAILargeLanguageModel
@@ -45,6 +50,7 @@ def test_validate_credentials_for_chat_model(setup_openai_mock, setup_xinference
         }
     )
 
+
 @pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['chat', 'none']], indirect=True)
 def test_invoke_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
@@ -75,6 +81,7 @@ def test_invoke_chat_model(setup_openai_mock, setup_xinference_mock):
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 @pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['chat', 'none']], indirect=True)
 def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
@@ -109,6 +116,8 @@ def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
+
 """
     Funtion calling of xinference does not support stream mode currently
 """
@@ -236,6 +245,7 @@ def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
 #     assert response.usage.total_tokens > 0
 #     assert response.message.tool_calls[0].function.name == 'get_current_weather'
 
+
 @pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['completion', 'none']], indirect=True)
 def test_validate_credentials_for_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
@@ -266,6 +276,7 @@ def test_validate_credentials_for_generation_model(setup_openai_mock, setup_xinf
         }
     )
 
+
 @pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['completion', 'none']], indirect=True)
 def test_invoke_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
@@ -293,6 +304,7 @@ def test_invoke_generation_model(setup_openai_mock, setup_xinference_mock):
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 @pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['completion', 'none']], indirect=True)
 def test_invoke_stream_generation_model(setup_openai_mock, setup_xinference_mock):
@@ -324,6 +336,7 @@ def test_invoke_stream_generation_model(setup_openai_mock, setup_xinference_mock
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
 
 def test_get_num_tokens():
     model = XinferenceAILargeLanguageModel()

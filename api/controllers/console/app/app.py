@@ -12,10 +12,13 @@ from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from core.entities.application_entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created, app_was_deleted
 from extensions.ext_database import db
 from fields.app_fields import (
@@ -27,9 +30,7 @@ from fields.app_fields import (
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
-from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.tools.tool_manager import ToolManager
-from core.entities.application_entities import AgentToolEntity
+
 
 def _get_app(app_id, tenant_id):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()

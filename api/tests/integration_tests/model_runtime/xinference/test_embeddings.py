@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.text_embedding.text_embedding import XinferenceTextEmbeddingModel
@@ -28,6 +29,7 @@ def test_validate_credentials(setup_xinference_mock):
         }
     )
 
+
 @pytest.mark.parametrize('setup_xinference_mock', [['none']], indirect=True)
 def test_invoke_model(setup_xinference_mock):
     model = XinferenceTextEmbeddingModel()
@@ -48,6 +50,7 @@ def test_invoke_model(setup_xinference_mock):
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 2
     assert result.usage.total_tokens > 0
+
 
 def test_get_num_tokens():
     model = XinferenceTextEmbeddingModel()

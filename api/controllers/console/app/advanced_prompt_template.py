@@ -23,4 +23,5 @@ class AdvancedPromptTemplateList(Resource):
 
         return AdvancedPromptTemplateService.get_prompt(args)
 
+
 api.add_resource(AdvancedPromptTemplateList, '/app/prompt-templates')

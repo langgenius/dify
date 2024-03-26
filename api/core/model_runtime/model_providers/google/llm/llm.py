@@ -111,7 +111,6 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
             
-
     def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
                   stop: Optional[list[str]] = None, stream: bool = True,
@@ -153,7 +152,6 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 else:
                     history.append(content)
 
-
         # Create a new ClientManager with tenant's API key
         new_client_manager = client._ClientManager()
         new_client_manager.configure(api_key=credentials["google_api_key"])
@@ -161,7 +159,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
 
         google_model._client = new_custom_client
 
-        safety_settings={
+        safety_settings = {
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
@@ -311,7 +309,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 else:
                     metadata, data = c.data.split(',', 1)
                     mime_type = metadata.split(';', 1)[0].split(':')[1]
-                    blob = {"inline_data":{"mime_type":mime_type,"data":data}}
+                    blob = {"inline_data": {"mime_type": mime_type, "data": data}}
                     parts.append(blob)
 
         glm_content = {

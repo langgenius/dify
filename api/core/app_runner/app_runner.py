@@ -336,7 +336,7 @@ class AppRunner:
                 queue_manager=queue_manager,
                 app_orchestration_config=application_generate_entity.app_orchestration_config_entity,
                 prompt_messages=prompt_messages,
-                text="I apologize for any confusion, " \
+                text="I apologize for any confusion, "
                      "but I'm an AI assistant to be helpful, harmless, and honest.",
                 stream=application_generate_entity.stream
             )

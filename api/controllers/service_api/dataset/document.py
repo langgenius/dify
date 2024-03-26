@@ -245,7 +245,6 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             # save file info
             file = request.files['file']
 
-
             if len(request.files) > 1:
                 raise TooManyFilesError()
 

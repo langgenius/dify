@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.speech2text.speech2text import OpenAISpeech2TextModel
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
@@ -24,6 +25,7 @@ def test_validate_credentials(setup_openai_mock):
             'openai_api_key': os.environ.get('OPENAI_API_KEY')
         }
     )
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['speech2text']], indirect=True)
 def test_invoke_model(setup_openai_mock):

@@ -61,9 +61,9 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         # self._transform_json_prompts(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
         return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, tools, stop, stream, user)
 
-    # def _transform_json_prompts(self, model: str, credentials: dict, 
-    #                             prompt_messages: list[PromptMessage], model_parameters: dict, 
-    #                             tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    # def _transform_json_prompts(self, model: str, credentials: dict,
+    #                             prompt_messages: list[PromptMessage], model_parameters: dict,
+    #                             tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
     #                             stream: bool = True, user: str | None = None) \
     #                         -> None:
     #     """
@@ -176,7 +176,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                     if model != 'glm-4v':
                         # not support list message
                         continue
-                    # get image and 
+                    # get image and
                     if not isinstance(copy_prompt_message, UserPromptMessage):
                         # not support system message
                         continue

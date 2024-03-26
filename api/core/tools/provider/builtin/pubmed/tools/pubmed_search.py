@@ -37,4 +37,3 @@ class PubMedSearchTool(BuiltinTool):
         result = tool.run(query)
 
         return self.create_text_message(self.summary(user_id=user_id, content=result))
-    

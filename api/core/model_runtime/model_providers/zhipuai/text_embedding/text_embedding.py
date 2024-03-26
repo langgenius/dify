@@ -112,7 +112,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         """
         return self.embed_documents([text])[0]
     
-    def _calc_response_usage(self, model: str,credentials: dict, tokens: int) -> EmbeddingUsage:
+    def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
 

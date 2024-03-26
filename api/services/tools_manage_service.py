@@ -62,7 +62,7 @@ class ToolManageService:
                 try:
                     provider['icon'] = json.loads(provider['icon'])
                 except:
-                    provider['icon'] =  {
+                    provider['icon'] = {
                         "background": "#252525",
                         "content": "\ud83d\ude01"
                     }
@@ -286,7 +286,7 @@ class ToolManageService:
         db.session.add(db_provider)
         db.session.commit()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_api_tool_provider_remote_schema(
@@ -361,7 +361,7 @@ class ToolManageService:
             BuiltinToolProvider.provider == provider_name,
         ).first()
 
-        try: 
+        try:
             # get provider
             provider_controller = ToolManager.get_builtin_provider(provider_name)
             if not provider_controller.need_credentials:
@@ -402,11 +402,11 @@ class ToolManageService:
             # delete cache
             tool_configuration.delete_tool_credentials_cache()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
+        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict,
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -468,7 +468,7 @@ class ToolManageService:
         # delete cache
         tool_configuration.delete_tool_credentials_cache()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def delete_builtin_tool_provider(
@@ -493,7 +493,7 @@ class ToolManageService:
         tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         tool_configuration.delete_tool_credentials_cache()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_builtin_tool_provider_icon(
@@ -566,7 +566,7 @@ class ToolManageService:
         db.session.delete(provider)
         db.session.commit()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_api_tool_provider(
@@ -579,12 +579,12 @@ class ToolManageService:
     
     @staticmethod
     def test_api_tool_preview(
-        tenant_id: str, 
+        tenant_id: str,
         provider_name: str,
-        tool_name: str, 
-        credentials: dict, 
-        parameters: dict, 
-        schema_type: str, 
+        tool_name: str,
+        credentials: dict,
+        parameters: dict,
+        schema_type: str,
         schema: str
     ):
         """
@@ -633,7 +633,7 @@ class ToolManageService:
         # decrypt credentials
         if db_provider.id:
             tool_configuration = ToolConfigurationManager(
-                tenant_id=tenant_id, 
+                tenant_id=tenant_id,
                 provider_controller=provider_controller
             )
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
@@ -653,6 +653,6 @@ class ToolManageService:
             })
             result = tool.validate_credentials(credentials, parameters)
         except Exception as e:
-            return { 'error': str(e) }
+            return {'error': str(e)}
         
-        return { 'result': result or 'empty response' }
+        return {'result': result or 'empty response'}

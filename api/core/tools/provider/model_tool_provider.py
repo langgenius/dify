@@ -77,7 +77,7 @@ class ModelToolProviderController(ToolProviderController):
                 author='Dify',
                 name=configuration.provider.provider,
                 description=I18nObject(
-                    zh_Hans=f'{label.zh_Hans} 模型能力提供商', 
+                    zh_Hans=f'{label.zh_Hans} 模型能力提供商',
                     en_US=f'{label.en_US} model capability provider'
                 ),
                 label=I18nObject(

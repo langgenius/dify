@@ -62,7 +62,6 @@ class CacheEmbedding(Embeddings):
             redis_client.expire(embedding_cache_key, 600)
             return list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
 
-
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
                 texts=[text],

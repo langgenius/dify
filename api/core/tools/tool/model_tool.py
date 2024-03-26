@@ -28,6 +28,7 @@ I require a powerful vision language model for an image recognition task. The mo
 - For each task, provide confidence scores or relevance scores for the model outputs to assess the reliability of the results.
 - If necessary, pose specific questions for different tasks to guide the model in better understanding the images and providing relevant information."""
 
+
 class ModelTool(Tool):
     class ModelToolType(Enum):
         """
@@ -38,8 +39,8 @@ class ModelTool(Tool):
     model_configuration: dict[str, Any] = None
     tool_type: ModelToolType
     
-    def __init__(self, model_instance: ModelInstance = None, model: str = None, 
-                 tool_type: ModelToolType = ModelToolType.VISION, 
+    def __init__(self, model_instance: ModelInstance = None, model: str = None,
+                 tool_type: ModelToolType = ModelToolType.VISION,
                  properties: dict[ModelToolPropertyKey, Any] = None,
                  **kwargs):
         """

@@ -17,7 +17,6 @@ class AsyncCompletions(BaseAPI):
     def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
-
     def create(
             self,
             *,
@@ -71,7 +70,7 @@ class AsyncCompletions(BaseAPI):
         disable_strict_validation: Optional[bool] | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> Union[AsyncCompletion, AsyncTaskStatus]:
-        _cast_type = Union[AsyncCompletion,AsyncTaskStatus]
+        _cast_type = Union[AsyncCompletion, AsyncTaskStatus]
         if disable_strict_validation:
             _cast_type = object
         return self._get(
@@ -82,5 +81,3 @@ class AsyncCompletions(BaseAPI):
                 timeout=timeout
             )
         )
-
-

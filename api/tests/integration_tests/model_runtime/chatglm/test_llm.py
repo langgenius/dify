@@ -1,11 +1,16 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, TextPromptMessageContent,
-                                                          UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.chatglm.llm.llm import ChatGLMLargeLanguageModel
@@ -17,6 +22,7 @@ def test_predefined_models():
     model_schemas = model.predefined_models()
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_validate_credentials_for_chat_model(setup_openai_mock):
@@ -36,6 +42,7 @@ def test_validate_credentials_for_chat_model(setup_openai_mock):
             'api_base': os.environ.get('CHATGLM_API_BASE')
         }
     )
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_invoke_model(setup_openai_mock):
@@ -66,6 +73,7 @@ def test_invoke_model(setup_openai_mock):
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_invoke_stream_model(setup_openai_mock):
@@ -99,6 +107,7 @@ def test_invoke_stream_model(setup_openai_mock):
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_invoke_stream_model_with_functions(setup_openai_mock):
@@ -166,6 +175,7 @@ def test_invoke_stream_model_with_functions(setup_openai_mock):
 
     assert call is not None
     assert call.delta.message.tool_calls[0].function.name == 'get_current_weather'
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_invoke_model_with_functions(setup_openai_mock):

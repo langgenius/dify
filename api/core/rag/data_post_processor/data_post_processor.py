@@ -45,5 +45,3 @@ class DataPostProcessor:
         if reorder_enabled:
             return ReorderRunner()
         return None
-
-

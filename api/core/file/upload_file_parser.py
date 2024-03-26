@@ -13,6 +13,7 @@ from extensions.ext_storage import storage
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
+
 class UploadFileParser:
     @classmethod
     def get_image_data(cls, upload_file, force_url: bool = False) -> Optional[str]:

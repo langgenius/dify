@@ -1,7 +1,7 @@
 import json
 
 from flask import current_app
-from flask_restful import fields, marshal_with, Resource
+from flask_restful import Resource, fields, marshal_with
 
 from controllers.service_api import api
 from controllers.service_api.wraps import validate_app_token
@@ -65,6 +65,7 @@ class AppParameterApi(Resource):
             }
         }
 
+
 class AppMetaApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
@@ -96,12 +97,13 @@ class AppMetaApi(Resource):
                         )
                         meta['tool_icons'][tool_name] = json.loads(provider.icon)
                     except:
-                        meta['tool_icons'][tool_name] =  {
+                        meta['tool_icons'][tool_name] = {
                             "background": "#252525",
                             "content": "\ud83d\ude01"
                         }
 
         return meta
+
 
 api.add_resource(AppParameterApi, '/parameters')
 api.add_resource(AppMetaApi, '/meta')

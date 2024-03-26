@@ -19,6 +19,7 @@ from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
+
 class ToolFileManager:
     @staticmethod
     def sign_file(file_id: str, extension: str) -> str:
@@ -55,7 +56,7 @@ class ToolFileManager:
         return current_time - int(timestamp) <= 300  # expired after 5 minutes
 
     @staticmethod
-    def create_file_by_raw(user_id: str, tenant_id: str, 
+    def create_file_by_raw(user_id: str, tenant_id: str,
                             conversation_id: str, file_binary: bytes,
                             mimetype: str
     ) -> ToolFile:
@@ -76,7 +77,7 @@ class ToolFileManager:
         return tool_file
     
     @staticmethod
-    def create_file_by_url(user_id: str, tenant_id: str, 
+    def create_file_by_url(user_id: str, tenant_id: str,
                             conversation_id: str, file_url: str,
     ) -> ToolFile:
         """
@@ -93,7 +94,7 @@ class ToolFileManager:
         storage.save(filename, blob)
 
         tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
-                             conversation_id=conversation_id, file_key=filename, 
+                             conversation_id=conversation_id, file_key=filename,
                              mimetype=mimetype, original_url=file_url)
         
         db.session.add(tool_file)
@@ -102,7 +103,7 @@ class ToolFileManager:
         return tool_file
 
     @staticmethod
-    def create_file_by_key(user_id: str, tenant_id: str, 
+    def create_file_by_key(user_id: str, tenant_id: str,
                             conversation_id: str, file_key: str,
                             mimetype: str
     ) -> ToolFile:
@@ -192,6 +193,8 @@ class ToolFileManager:
         return generator, tool_file.mimetype
     
 # init tool_file_parser
+
+
 from core.file.tool_file_parser import tool_file_manager
 
 tool_file_manager['manager'] = ToolFileManager
