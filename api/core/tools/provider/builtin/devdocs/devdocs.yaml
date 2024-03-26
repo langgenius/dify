@@ -1,0 +1,10 @@
+identity:
+  author: Richards Tu
+  name: devdocs
+  label:
+    en_US: DevDocs
+    zh_Hans: DevDocs
+  description:
+    en_US: Get information about developer documentations on DevDocs.
+    zh_Hans: 从DevDocs获取大量官方开发者文档。
+  icon: icon.svg
