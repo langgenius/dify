@@ -21,8 +21,8 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     default: 1024
-    min: 1
-    max: 8000
+    min: 2
+    max: 1024
   - name: presence_penalty
     use_template: presence_penalty
     default: 1.0
