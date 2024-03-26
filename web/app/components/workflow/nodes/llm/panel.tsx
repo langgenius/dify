@@ -212,7 +212,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 readOnly
                 isShowContext={false}
                 isChatApp
-                isChatModel
+                isChatModel={false}
                 hasSetBlockStatus={{
                   query: false,
                   history: true,
@@ -224,7 +224,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
 
         {/* Memory */}
-        {isChatMode && isChatModel && (
+        {isChatMode && (
           <>
             <Split />
             <MemoryConfig
