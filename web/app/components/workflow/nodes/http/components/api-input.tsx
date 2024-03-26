@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import cn from 'classnames'
+import { useBoolean } from 'ahooks'
 import { Method } from '../types'
 import Selector from '../../_base/components/selector'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import SupportVarInput from '@/app/components/workflow/nodes/_base/components/support-var-input'
+
 const MethodOptions = [
   { label: 'GET', value: Method.get },
   { label: 'POST', value: Method.post },
@@ -31,6 +34,16 @@ const ApiInput: FC<Props> = ({
   const handleUrlChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onUrlChange(e.target.value)
   }, [onUrlChange])
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isFocus, {
+    setTrue: onFocus,
+    setFalse: onBlur,
+  }] = useBoolean(false)
+  useEffect(() => {
+    if (isFocus)
+      inputRef.current?.focus()
+  }, [isFocus])
   return (
     <div className='flex items-center h-8 rounded-lg bg-white border border-gray-200 shadow-xs'>
       <Selector
@@ -47,13 +60,24 @@ const ApiInput: FC<Props> = ({
         showChecked
         readonly={readonly}
       />
-      <input
-        type='text'
-        readOnly={readonly}
+      <SupportVarInput
+        isFocus={isFocus}
+        onFocus={onFocus}
         value={url}
-        onChange={handleUrlChange}
-        className='w-0 grow h-6 leading-6 px-2.5 border-0  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none'
-      />
+        wrapClassName='flex h-[30px] items-center'
+        textClassName='!h-6 leading-6 px-2.5 text-gray-900 text-[13px]'
+      >
+        <input
+          type='text'
+          readOnly={readonly}
+          value={url}
+          onChange={handleUrlChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          className='w-full h-6 leading-6 px-2.5 border-0  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none'
+          ref={inputRef}
+        />
+      </SupportVarInput>
     </div >
   )
 }
