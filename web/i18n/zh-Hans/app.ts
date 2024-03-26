@@ -11,6 +11,7 @@ const translation = {
   duplicateTitle: '复制应用',
   export: '导出 DSL',
   exportFailed: '导出 DSL 失败',
+  importDSL: '导入 DSL 文件',
   createFromConfigFile: '通过 DSL 文件创建',
   deleteAppConfirmTitle: '确认删除应用?',
   deleteAppConfirmContent:
@@ -21,7 +22,7 @@ const translation = {
   communityIntro: '与团队成员、贡献者和开发者在不同频道中交流',
   roadmap: '产品路线图',
   newApp: {
-    startFromBlank: '开始创建新应用',
+    startFromBlank: '创建空白应用',
     startFromTemplate: '从应用模版创建',
     captionAppType: '想要哪种应用类型？',
     chatbotDescription: '使用大型语言模型构建基于聊天的助手',
@@ -32,6 +33,7 @@ const translation = {
     workflowWarning: '正在进行 Beta 测试',
     chatbotType: '聊天助手编排方法',
     basic: '基础编排',
+    basicTip: '新手适用，可以切换成工作流编排',
     basicFor: '新手适用',
     basicDescription: '基本编排允许使用简单的设置编排聊天机器人应用程序，而无需修改内置提示。 它适合初学者。',
     advanced: '工作流编排',

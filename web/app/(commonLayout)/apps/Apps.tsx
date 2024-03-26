@@ -13,8 +13,14 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
+import { DotsGrid, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import {
+  // AiText,
+  ChatBot,
+  CuteRobot,
+} from '@/app/components/base/icons/src/vender/line/communication'
+import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 
 const getKey = (
   pageIndex: number,
@@ -52,10 +58,11 @@ const Apps = () => {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all') },
-    { value: 'chat', text: t('app.types.chatbot') },
-    { value: 'agent-chat', text: t('app.types.agent') },
-    { value: 'workflow', text: t('app.types.workflow') },
+    { value: 'all', text: t('app.types.all'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'chat', text: t('app.types.chatbot'), icon: <ChatBot className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'agent-chat', text: t('app.types.agent'), icon: <CuteRobot className='w-[14px] h-[14px] mr-1'/> },
+    // { value: 'completion', text: t('app.newApp.completeApp'), icon: <AiText className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'workflow', text: t('app.types.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1'/> },
   ]
 
   useEffect(() => {
