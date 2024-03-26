@@ -63,6 +63,7 @@ const AppContext = createContext<AppContextValue>({
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
+  isCurrentWorkspaceOwner: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
