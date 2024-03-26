@@ -1,0 +1,34 @@
+identity:
+  name: searchDevDocs
+  author: Richards Tu
+  label:
+    en_US: Search Developer Docs
+    zh_Hans: 搜索开发者文档
+description:
+  human:
+    en_US: A tools for searching for a specific topic and path in DevDocs based on the provided documentation name and topic.
+    zh_Hans: 一个工具，用于根据提供的文档名称和主题，在DevDocs中搜索特定主题和路径。
+  llm: A tools for searching for a specific topic and path in DevDocs based on the provided documentation name and topic.
+parameters:
+  - name: doc
+    type: string
+    required: true
+    label:
+      en_US: Documentation name
+      zh_Hans: 文档名称
+    human_description:
+      en_US: The name of the documentation.
+      zh_Hans: 文档名称。
+    llm_description: The name of the documentation, such as \"vuex~4\" or \"css\". The exact value should be identified by the user.
+    form: llm
+  - name: topic
+    type: string
+    required: true
+    label:
+      en_US: Topic name
+      zh_Hans: 主题名称
+    human_description:
+      en_US: The path of the section/topic.
+      zh_Hans: 部分/主题的路径。
+    llm_description: The path of the section/topic, such as \"guide/actions\" for Vuex or \"display-box\" for CSS.
+    form: llm
