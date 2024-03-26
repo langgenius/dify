@@ -59,7 +59,8 @@ DEFAULTS = {
     'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
     'KEYWORD_STORE': 'jieba',
-    'BATCH_UPLOAD_LIMIT': 20
+    'BATCH_UPLOAD_LIMIT': 20,
+    'TOOL_ICON_CACHE_MAX_AGE': 3600,
 }
 
 
@@ -298,6 +299,7 @@ class Config:
         self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
 
         self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
+        self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
 
 
 class CloudEditionConfig(Config):

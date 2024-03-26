@@ -1,6 +1,6 @@
 import io
 
-from flask import send_file
+from flask import current_app, send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
@@ -80,7 +80,8 @@ class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
         icon_bytes, minetype = ToolManageService.get_builtin_tool_provider_icon(provider)
-        return send_file(io.BytesIO(icon_bytes), mimetype=minetype)
+        icon_cache_max_age = int(current_app.config.get('TOOL_ICON_CACHE_MAX_AGE'))
+        return send_file(io.BytesIO(icon_bytes), mimetype=minetype, max_age=icon_cache_max_age)
 
 class ToolModelProviderIconApi(Resource):
     @setup_required
