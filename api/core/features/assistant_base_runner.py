@@ -145,7 +145,7 @@ class BaseAssistantApplicationRunner(AppRunner):
                 result += f"result link: {response.message}. please tell user to check it."
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += "image has been created and sent to user already, you should tell user to check it now."
+                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
             else:
                 result += f"tool response: {response.message}."
 
@@ -566,7 +566,11 @@ class BaseAssistantApplicationRunner(AppRunner):
                         tools = tools.split(';')
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
-                        tool_inputs = json.loads(agent_thought.tool_input)
+                        try:
+                            tool_inputs = json.loads(agent_thought.tool_input)
+                        except Exception as e:
+                            logging.warning("tool execution error: {}, tool_input: {}.".format(str(e), agent_thought.tool_input))
+                            tool_inputs = { agent_thought.tool: agent_thought.tool_input }
                         for tool in tools:
                             # generate a uuid for tool call
                             tool_call_id = str(uuid.uuid4())
