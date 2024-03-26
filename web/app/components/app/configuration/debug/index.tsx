@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
+import cn from 'classnames'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
@@ -376,10 +377,10 @@ const Debug: FC<IDebug> = ({
                 ? (
                   <>
                     <Button
-                      className={`
-                        h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white
-                        ${multipleModelConfigs.length >= 4 && 'opacity-30'}
-                      `}
+                      className={cn(
+                        'h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white',
+                        multipleModelConfigs.length >= 4 && 'opacity-30')
+                      }
                       onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                       disabled={multipleModelConfigs.length >= 4}
                     >

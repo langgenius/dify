@@ -3,6 +3,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import ModerationContent from './moderation-content'
 import FormGeneration from './form-generation'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
@@ -251,11 +252,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             providers.map(provider => (
               <div
                 key={provider.key}
-                className={`
-                  flex items-center px-3 py-2 rounded-lg text-sm text-gray-900 cursor-pointer
-                  ${localeData.type === provider.key ? 'bg-white border-[1.5px] border-primary-400 shadow-sm' : 'border border-gray-100 bg-gray-25'}
-                  ${localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !openaiProviderConfiged && 'opacity-50'}
-                `}
+                className={cn(
+                  'flex items-center px-3 py-2 rounded-lg text-sm text-gray-900 cursor-pointer',
+                  localeData.type === provider.key ? 'bg-white border-[1.5px] border-primary-400 shadow-sm' : 'border border-gray-100 bg-gray-25',
+                  localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !openaiProviderConfiged && 'opacity-50',
+                )}
                 onClick={() => handleDataTypeChange(provider.key)}
               >
                 <div className={`

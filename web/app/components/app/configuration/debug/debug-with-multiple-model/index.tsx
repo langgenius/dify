@@ -4,6 +4,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import cn from 'classnames'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 import DebugItem from './debug-item'
 import {
@@ -104,13 +105,13 @@ const DebugWithMultipleModel = () => {
             <DebugItem
               key={modelConfig.id}
               modelAndParameter={modelConfig}
-              className={`
-                absolute left-6 top-0 min-h-[200px]
-                ${twoLine && index === 0 && 'mr-2'}
-                ${threeLine && (index === 0 || index === 1) && 'mr-2'}
-                ${fourLine && (index === 0 || index === 2) && 'mr-2'}
-                ${fourLine && (index === 0 || index === 1) && 'mb-2'}
-              `}
+              className={cn(
+                'absolute left-6 top-0 min-h-[200px]',
+                twoLine && index === 0 && 'mr-2',
+                threeLine && (index === 0 || index === 1) && 'mr-2',
+                fourLine && (index === 0 || index === 2) && 'mr-2',
+                fourLine && (index === 0 || index === 1) && 'mb-2')
+              }
               style={{
                 width: size.width,
                 height: size.height,

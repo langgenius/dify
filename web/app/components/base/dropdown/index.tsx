@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import cn from 'classnames'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
@@ -44,10 +45,10 @@ const Dropdown: FC<DropdownProps> = ({
             ? renderTrigger(open)
             : (
               <div
-                className={`
-                  flex items-center justify-center w-6 h-6 cursor-pointer rounded-md
-                  ${open && 'bg-black/5'}
-                `}
+                className={cn(
+                  'flex items-center justify-center w-6 h-6 cursor-pointer rounded-md',
+                  open && 'bg-black/5',
+                )}
               >
                 <DotsHorizontal className='w-4 h-4 text-gray-500' />
               </div>

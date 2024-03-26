@@ -28,10 +28,10 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
     <Uploader onUpload={onUpload} disabled={disabled} limit={limit}>
       {hovering => (
         <div
-          className={`
-            relative flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer
-            ${hovering && 'bg-gray-100'}
-          `}
+          className={cn(
+            'relative flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer',
+            hovering && 'bg-gray-100',
+          )}
         >
           <ImagePlus className="w-4 h-4 text-gray-500" />
         </div>

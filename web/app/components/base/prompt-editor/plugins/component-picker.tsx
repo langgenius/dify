@@ -8,6 +8,7 @@ import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import cn from 'classnames'
 import { useBasicTypeaheadTriggerMatch } from '../hooks'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from './context-block'
 import { INSERT_VARIABLE_BLOCK_COMMAND } from './variable-block'
@@ -66,11 +67,11 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
   return (
     <div
       key={option.key}
-      className={`
-        flex items-center px-3 py-1.5 rounded-lg 
-        ${isSelected && !option.disabled && '!bg-gray-50'}
-        ${option.disabled ? 'cursor-not-allowed opacity-30' : 'hover:bg-gray-50 cursor-pointer'}
-      `}
+      className={cn(
+        'flex items-center px-3 py-1.5 rounded-lg',
+        { '!bg-gray-50': isSelected && !option.disabled },
+        option.disabled ? 'cursor-not-allowed opacity-30' : 'hover:bg-gray-50 cursor-pointer',
+      )}
       tabIndex={-1}
       ref={option.setRefElement}
       onMouseEnter={onMouseEnter}

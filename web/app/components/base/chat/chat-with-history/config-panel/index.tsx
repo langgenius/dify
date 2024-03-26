@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { useChatWithHistoryContext } from '../context'
 import Form from './form'
 import Button from '@/app/components/base/button'
@@ -25,18 +26,18 @@ const ConfigPanel = () => {
   return (
     <div className='flex flex-col max-h-[80%] w-full max-w-[720px]'>
       <div
-        className={`
-          grow rounded-xl overflow-y-auto
-          ${showConfigPanelBeforeChat && 'border-[0.5px] border-gray-100 shadow-lg'}
-          ${!showConfigPanelBeforeChat && collapsed && 'border border-indigo-100'}
-          ${!showConfigPanelBeforeChat && !collapsed && 'border-[0.5px] border-gray-100 shadow-lg'}
-        `}
+        className={cn(
+          'grow rounded-xl overflow-y-auto',
+          showConfigPanelBeforeChat && 'border-[0.5px] border-gray-100 shadow-lg',
+          !showConfigPanelBeforeChat && collapsed && 'border border-indigo-100',
+          !showConfigPanelBeforeChat && !collapsed && 'border-[0.5px] border-gray-100 shadow-lg',
+        )}
       >
         <div
-          className={`
-            flex flex-wrap px-6 py-4 rounded-t-xl bg-indigo-25
-            ${isMobile && '!px-4 !py-3'}
-          `}
+          className={cn(`
+              flex flex-wrap px-6 py-4 rounded-t-xl bg-indigo-25
+            `, isMobile && '!px-4 !py-3')
+          }
         >
           {
             showConfigPanelBeforeChat && (
@@ -91,7 +92,7 @@ const ConfigPanel = () => {
           !collapsed && !showConfigPanelBeforeChat && (
             <div className='p-6 rounded-b-xl'>
               <Form />
-              <div className={`pl-[136px] flex items-center ${isMobile && '!pl-0'}`}>
+              <div className={cn('pl-[136px] flex items-center', isMobile && '!pl-0')}>
                 <Button
                   type='primary'
                   className='mr-2 text-sm font-medium'
@@ -117,7 +118,7 @@ const ConfigPanel = () => {
             <div className='p-6 rounded-b-xl'>
               <Form />
               <Button
-                className={`px-4 py-0 h-9 ${inputsForms.length && !isMobile && 'ml-[136px]'}`}
+                className={cn('px-4 py-0 h-9', inputsForms.length && !isMobile && 'ml-[136px]')}
                 type='primary'
                 onClick={handleStartChat}
               >
@@ -132,7 +133,7 @@ const ConfigPanel = () => {
         showConfigPanelBeforeChat && (site || customConfig) && (
           <div className='mt-4 flex flex-wrap justify-between items-center py-2 text-xs text-gray-400'>
             {site?.privacy_policy
-              ? <div className={`flex items-center ${isMobile && 'w-full justify-end'}`}>{t('share.chat.privacyPolicyLeft')}
+              ? <div className={cn('flex items-center', isMobile && 'w-full justify-end')}>{t('share.chat.privacyPolicyLeft')}
                 <a
                   className='text-gray-500'
                   href={site?.privacy_policy}
@@ -145,7 +146,7 @@ const ConfigPanel = () => {
               customConfig?.remove_webapp_brand
                 ? null
                 : (
-                  <div className={`flex items-center justify-end ${isMobile && 'w-full'}`}>
+                  <div className={cn('flex items-center justify-end', isMobile && 'w-full')}>
                     <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
                       <span className='uppercase'>{t('share.chat.powerBy')}</span>
                       {

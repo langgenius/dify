@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type { ModelAndParameter } from '../types'
 import { useDebugWithMultipleModelContext } from './context'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -71,11 +72,11 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
         currentModel,
       }) => (
         <div
-          className={`
-            flex items-center max-w-[200px] h-8 px-2 rounded-lg cursor-pointer
-            ${open && 'bg-gray-100'}
-            ${currentModel && currentModel.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]'}
-          `}
+          className={cn(
+            'flex items-center max-w-[200px] h-8 px-2 rounded-lg cursor-pointer',
+            { 'bg-gray-100': open },
+            { '!bg-[#FFFAEB]': currentModel && currentModel.status !== ModelStatusEnum.active },
+          )}
         >
           {
             currentProvider && (

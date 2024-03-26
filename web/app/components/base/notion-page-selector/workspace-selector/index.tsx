@@ -25,7 +25,7 @@ export default function WorkspaceSelector({
       {
         ({ open }) => (
           <>
-            <Menu.Button className={`flex items-center justify-center h-7 rounded-md hover:bg-gray-50 ${open && 'bg-gray-50'} cursor-pointer`}>
+            <Menu.Button className={cn('flex items-center justify-center h-7 rounded-md hover:bg-gray-50 cursor-pointer', open && 'bg-gray-50')}>
               <NotionIcon
                 className='ml-1 mr-2'
                 src={currentWorkspace?.workspace_icon}
