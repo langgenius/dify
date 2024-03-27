@@ -83,7 +83,7 @@ const CodeEditor: FC<Props> = ({
         title={title}
         value={outPutValue}
         headerRight={headerRight}
-        isFocus={isFocus}
+        isFocus={isFocus && !readOnly}
         minHeight={200}
       >
         <>
@@ -98,6 +98,7 @@ const CodeEditor: FC<Props> = ({
             // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
             options={{
               readOnly,
+              domReadOnly: true,
               quickSuggestions: false,
               minimap: { enabled: false },
               lineNumbersMinChars: 1, // would change line num width
@@ -108,8 +109,6 @@ const CodeEditor: FC<Props> = ({
             }}
             onMount={handleEditorDidMount}
           />
-          {/* mask to disable focus but left space to  scroll and resize panel */}
-          {readOnly && <div className='absolute left-0 top-0 right-[10px] bottom-[12px]  z-10'></div>}
         </>
       </Base>
     </div>
