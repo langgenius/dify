@@ -86,27 +86,31 @@ const CodeEditor: FC<Props> = ({
         isFocus={isFocus}
         minHeight={200}
       >
-        {/* https://www.npmjs.com/package/@monaco-editor/react */}
-        <Editor
-          className='h-full'
-          // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
-          language={languageMap[language] || 'javascript'}
-          theme={isFocus ? 'focus-theme' : 'blur-theme'}
-          value={outPutValue}
-          onChange={handleEditorChange}
-          // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
-          options={{
-            readOnly,
-            quickSuggestions: false,
-            minimap: { enabled: false },
-            lineNumbersMinChars: 1, // would change line num width
-            wordWrap: 'on', // auto line wrap
-            // lineNumbers: (num) => {
-            //   return <div>{num}</div>
-            // }
-          }}
-          onMount={handleEditorDidMount}
-        />
+        <>
+          {/* https://www.npmjs.com/package/@monaco-editor/react */}
+          <Editor
+            className='h-full'
+            // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
+            language={languageMap[language] || 'javascript'}
+            theme={isFocus ? 'focus-theme' : 'blur-theme'}
+            value={outPutValue}
+            onChange={handleEditorChange}
+            // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
+            options={{
+              readOnly,
+              quickSuggestions: false,
+              minimap: { enabled: false },
+              lineNumbersMinChars: 1, // would change line num width
+              wordWrap: 'on', // auto line wrap
+              // lineNumbers: (num) => {
+              //   return <div>{num}</div>
+              // }
+            }}
+            onMount={handleEditorDidMount}
+          />
+          {/* mask to disable focus but left space to  scroll and resize panel */}
+          {readOnly && <div className='absolute left-0 top-0 right-[10px] bottom-[12px]  z-10'></div>}
+        </>
       </Base>
     </div>
   )
