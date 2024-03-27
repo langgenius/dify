@@ -188,11 +188,10 @@ class QuestionClassifierNode(LLMNode):
             prompt_messages.append(user_prompt_message_3)
             return prompt_messages
         elif model_mode == ModelMode.COMPLETION:
-            prompt_messages.append(CompletionModelPromptTemplate(
+            return CompletionModelPromptTemplate(
                 text=QUESTION_CLASSIFIER_COMPLETION_PROMPT.format(input_text=input_text, categories=class_names_str,
                                                                   classification_instructions=instruction)
-            ))
+            )
 
-            return prompt_messages
         else:
             raise ValueError(f"Model mode {model_mode} not support.")

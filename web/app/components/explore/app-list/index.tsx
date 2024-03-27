@@ -21,6 +21,14 @@ import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
+import TabSliderNew from '@/app/components/base/tab-slider-new'
+import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
+import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
+import {
+  AiText,
+  ChatBot,
+  CuteRobot,
+} from '@/app/components/base/icons/src/vender/line/communication'
 
 type AppsProps = {
   pageType?: PageType
@@ -44,6 +52,13 @@ const Apps = ({
     defaultTab: allCategoriesEn,
     disableSearchParams: pageType !== PageType.EXPLORE,
   })
+  const options = [
+    { value: allCategoriesEn, text: t('app.types.all'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'chat', text: t('app.types.chatbot'), icon: <ChatBot className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'agent-chat', text: t('app.types.agent'), icon: <CuteRobot className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'completion', text: t('app.newApp.completeApp'), icon: <AiText className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'workflow', text: t('app.types.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1'/> },
+  ]
 
   const {
     data: { categories, allList },
@@ -65,7 +80,14 @@ const Apps = ({
   const currList
     = currCategory === allCategoriesEn
       ? allList
-      : allList.filter(item => item.category === currCategory)
+      : allList.filter((item) => {
+        if (pageType === PageType.EXPLORE)
+          return item.category === currCategory
+        else if (currCategory === 'chat')
+          return item.app.mode === 'chat' || item.app.mode === 'advanced-chat'
+        else
+          return item.app.mode === currCategory
+      })
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
@@ -118,13 +140,23 @@ const Apps = ({
           <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
         </div>
       )}
-      <Category
-        className={cn(pageType === PageType.EXPLORE ? 'mt-6 px-12' : 'px-8 py-2')}
-        list={categories}
-        value={currCategory}
-        onChange={setCurrCategory}
-        allCategoriesEn={allCategoriesEn}
-      />
+      {pageType === PageType.EXPLORE && (
+        <Category
+          className='mt-6 px-12'
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
+        />
+      )}
+      {pageType !== PageType.EXPLORE && (
+        <TabSliderNew
+          className='px-8 py-2'
+          value={currCategory}
+          onChange={setCurrCategory}
+          options={options}
+        />
+      )}
       <div className={cn(
         'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
         pageType === PageType.EXPLORE ? 'mt-6' : 'mt-0 pt-2',
