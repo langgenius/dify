@@ -76,7 +76,9 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
                             <Indicator />
                           </div>
                         </div>
-                        {nav.name}
+                        <div className='truncate'>
+                          {nav.name}
+                        </div>
                       </div>
                     </Menu.Item>
                   ))
