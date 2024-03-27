@@ -4,7 +4,6 @@ from typing import Optional
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.file.file_obj import FileVar
-from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
