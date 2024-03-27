@@ -139,7 +139,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": {"query": "Hello, world!"},\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": {"query": "Hello, world!"},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/completion-messages' \
