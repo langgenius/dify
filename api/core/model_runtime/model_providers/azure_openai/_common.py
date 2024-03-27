@@ -15,10 +15,11 @@ from core.model_runtime.model_providers.azure_openai._constant import AZURE_OPEN
 class _CommonAzureOpenAI:
     @staticmethod
     def _to_credential_kwargs(credentials: dict) -> dict:
+        api_version = credentials.get('openai_api_version', AZURE_OPENAI_API_VERSION)
         credentials_kwargs = {
             "api_key": credentials['openai_api_key'],
             "azure_endpoint": credentials['openai_api_base'],
-            "api_version": AZURE_OPENAI_API_VERSION,
+            "api_version": api_version,
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "max_retries": 1,
         }

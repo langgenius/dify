@@ -167,7 +167,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                 style.actionIconWrapper,
               )
             }
-            className={'!w-[128px] h-fit !z-20'}
+            className={'!w-[128px] h-fit !z-0'}
             manualClose
           />}
         </div>

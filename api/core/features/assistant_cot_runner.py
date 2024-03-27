@@ -182,7 +182,7 @@ class AssistantCotApplicationRunner(BaseAssistantApplicationRunner):
                             delta=LLMResultChunkDelta(
                                 index=0,
                                 message=AssistantPromptMessage(
-                                    content=json.dumps(chunk)
+                                    content=json.dumps(chunk, ensure_ascii=False) # if ensure_ascii=True, the text in webui maybe garbled text
                                 ),
                                 usage=None
                             )

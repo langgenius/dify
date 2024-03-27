@@ -36,3 +36,4 @@ parameter_rules:
     required: false
   - name: response_format
     use_template: response_format
+deprecated: true

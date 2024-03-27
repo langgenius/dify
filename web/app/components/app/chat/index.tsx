@@ -212,16 +212,18 @@ const Chat: FC<IChatProps> = ({
       if (i === index) {
         return {
           ...item,
-          content: answer,
           annotation: {
             ...item.annotation,
-            logAnnotation: undefined,
+            logAnnotation: {
+              ...item.annotation?.logAnnotation,
+              content: answer,
+            },
           } as any,
         }
       }
       return item
     }))
-  }, [])
+  }, [chatList])
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
     onChatListChange?.(chatList.map((item, i) => {
       if (i === index - 1) {
@@ -251,7 +253,7 @@ const Chat: FC<IChatProps> = ({
       }
       return item
     }))
-  }, [])
+  }, [chatList])
   const handleAnnotationRemoved = useCallback((index: number) => {
     onChatListChange?.(chatList.map((item, i) => {
       if (i === index) {
@@ -261,12 +263,13 @@ const Chat: FC<IChatProps> = ({
           annotation: {
             ...(item.annotation || {}),
             id: '',
+            logAnnotation: undefined, // remove log
           } as Annotation,
         }
       }
       return item
     }))
-  }, [])
+  }, [chatList])
 
   return (
     <div className={cn('px-3.5', 'h-full')}>

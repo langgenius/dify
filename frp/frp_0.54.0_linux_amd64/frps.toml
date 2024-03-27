@@ -1,0 +1,2 @@
+bindPort = 7000
+vhostHTTPPort = 443

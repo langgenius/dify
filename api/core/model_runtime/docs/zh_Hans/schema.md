@@ -149,7 +149,7 @@
 
 - `input` (float) 输入单价，即 Prompt 单价
 - `output` (float) 输出单价，即返回内容单价
-- `unit` (float) 价格单位，如：每 100K 的单价为 `0.000001`
+- `unit` (float) 价格单位，如以 1M tokens 计价，则单价对应的单位 token 数为 `0.000001`
 - `currency` (string) 货币单位
 
 ### ProviderCredentialSchema
