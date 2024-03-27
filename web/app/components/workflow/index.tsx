@@ -82,7 +82,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true)
     }
-  }, [handleSyncWorkflowDraft])
+  }, [])
 
   const {
     handleNodeDragStart,
@@ -130,8 +130,8 @@ const Workflow: FC<WorkflowProps> = memo(({
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        defaultNodes={nodes}
-        defaultEdges={edges}
+        nodes={nodes}
+        edges={edges}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
@@ -167,11 +167,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     </div>
   )
 })
-
 Workflow.displayName = 'Workflow'
 
 const WorkflowWrap = memo(() => {
-  const data = useWorkflowInit()
+  const {
+    data,
+    isLoading,
+  } = useWorkflowInit()
 
   const nodesData = useMemo(() => {
     if (data)
@@ -186,7 +188,7 @@ const WorkflowWrap = memo(() => {
     return []
   }, [data])
 
-  if (!data) {
+  if (!data || isLoading) {
     return (
       <div className='flex justify-center items-center relative w-full h-full bg-[#F0F2F7]'>
         <Loading />

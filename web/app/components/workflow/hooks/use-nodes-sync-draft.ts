@@ -1,9 +1,6 @@
 import { useCallback } from 'react'
 import produce from 'immer'
-import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
+import { useStoreApi } from 'reactflow'
 import {
   useStore,
   useWorkflowStore,
@@ -17,7 +14,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const reactFlow = useReactFlow()
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
@@ -26,8 +22,9 @@ export const useNodesSyncDraft = () => {
     const {
       getNodes,
       edges,
+      transform,
     } = store.getState()
-    const { getViewport } = reactFlow
+    const [x, y, zoom] = transform
     const appId = useAppStore.getState().appDetail?.id
 
     if (appId) {
@@ -60,7 +57,11 @@ export const useNodesSyncDraft = () => {
           graph: {
             nodes: producedNodes,
             edges: producedEdges,
-            viewport: getViewport(),
+            viewport: {
+              x,
+              y,
+              zoom,
+            },
           },
           features: {
             opening_statement: features.opening?.opening_statement || '',
@@ -77,7 +78,7 @@ export const useNodesSyncDraft = () => {
         workflowStore.getState().setDraftUpdatedAt(res.updated_at)
       })
     }
-  }, [store, reactFlow, featuresStore, workflowStore])
+  }, [store, featuresStore, workflowStore])
 
   const handleSyncWorkflowDraft = useCallback((sync?: boolean) => {
     if (getNodesReadOnly())
