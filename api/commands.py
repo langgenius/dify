@@ -383,9 +383,17 @@ def convert_to_agent_apps():
         # fetch first 1000 apps
         sql_query = """SELECT a.id AS id FROM apps a
             INNER JOIN app_model_configs am ON a.app_model_config_id=am.id
-            WHERE a.mode = 'chat' AND am.agent_mode is not null 
-            and (am.agent_mode like '%"strategy": "function_call"%' or am.agent_mode  like '%"strategy": "react"%') 
-            and am.agent_mode like '{"enabled": true%' ORDER BY a.created_at DESC LIMIT 1000"""
+            WHERE a.mode = 'chat' 
+            AND am.agent_mode is not null 
+            AND (
+				am.agent_mode like '%"strategy": "function_call"%' 
+                OR am.agent_mode  like '%"strategy": "react"%'
+			) 
+            AND (
+				am.agent_mode like '{"enabled": true%' 
+                OR am.agent_mode like '{"max_iteration": %'
+			) ORDER BY a.created_at DESC LIMIT 1000
+        """
 
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query))
