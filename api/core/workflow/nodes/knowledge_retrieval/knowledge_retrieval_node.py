@@ -39,7 +39,7 @@ default_retrieval_model = {
 
 class KnowledgeRetrievalNode(BaseNode):
     _node_data_cls = KnowledgeRetrievalNodeData
-    _node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: KnowledgeRetrievalNodeData = cast(self._node_data_cls, self.node_data)

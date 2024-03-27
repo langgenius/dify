@@ -28,7 +28,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData
-    _node_type = NodeType.QUESTION_CLASSIFIER
+    node_type = NodeType.QUESTION_CLASSIFIER
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: QuestionClassifierNodeData = cast(self._node_data_cls, self.node_data)
