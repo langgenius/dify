@@ -1,16 +1,18 @@
-import requests
 from typing import Any, Union
+
+import requests
 from pydantic import BaseModel, Field
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class SearchDevDocsInput(BaseModel):
+class SearchDocsInput(BaseModel):
     doc: str = Field(..., description="The name of the documentation.")
     topic: str = Field(..., description="The path of the section/topic.")
 
 
-class SearchDevDocsTool(BuiltinTool):
+class SearchDocsTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invokes the DevDocs search tool with the given user ID and tool parameters.
