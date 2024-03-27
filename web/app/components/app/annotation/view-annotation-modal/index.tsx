@@ -142,7 +142,7 @@ const ViewAnnotationModal: FC<Props> = ({
                 >{item.response}</td>
                 <td>{item.source}</td>
                 <td>{item.score ? item.score.toFixed(2) : '-'}</td>
-                <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD hh:mm')}</td>
+                <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD HH:mm')}</td>
               </tr>
             ))}
           </tbody>
@@ -214,7 +214,7 @@ const ViewAnnotationModal: FC<Props> = ({
                 <MessageCheckRemove />
                 <div>{t('appAnnotation.editModal.removeThisCache')}</div>
               </div>
-              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>
+              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD HH:mm')}</div>
             </div>
           )
           : undefined}
