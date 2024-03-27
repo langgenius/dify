@@ -7,7 +7,7 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
-MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = 1000
+MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = 50000
 
 class TemplateTransformNode(BaseNode):
     _node_data_cls = TemplateTransformNodeData

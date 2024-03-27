@@ -140,6 +140,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     readOnly,
     inputs,
     handleModelChanged,
+    isChatMode,
     isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,

@@ -46,7 +46,7 @@ const DatasetCard = ({
 
   return (
     <>
-      <Link href={`/datasets/${dataset.id}/documents`} className={cn(style.listItem)}>
+      <Link href={`/datasets/${dataset.id}/documents`} className={cn(style.listItem)} data-disable-nprogress={true}>
         <div className={style.listItemTitle}>
           <AppIcon size='small' className={cn(!dataset.embedding_available && style.unavailable)} />
           <div className={cn(style.listItemHeading, !dataset.embedding_available && style.unavailable)}>
