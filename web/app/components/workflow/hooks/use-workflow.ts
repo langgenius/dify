@@ -388,7 +388,7 @@ export const useWorkflowInit = () => {
   const nodesInitialData = useNodesInitialData()
   const { handleFetchAllTools } = useFetchToolsData()
   const appDetail = useAppStore(state => state.appDetail)!
-  const { data, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
+  const { data, isLoading, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
 
   const handleFetchPreloadData = useCallback(async () => {
     try {
@@ -446,7 +446,10 @@ export const useWorkflowInit = () => {
     })
   }
 
-  return data
+  return {
+    data,
+    isLoading,
+  }
 }
 
 export const useWorkflowReadOnly = () => {
