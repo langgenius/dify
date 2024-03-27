@@ -110,6 +110,7 @@ class Vector:
                     user=config.get('MILVUS_USER'),
                     password=config.get('MILVUS_PASSWORD'),
                     secure=config.get('MILVUS_SECURE'),
+                    database=config.get('MILVUS_DATABASE'),
                 )
             )
         else:
