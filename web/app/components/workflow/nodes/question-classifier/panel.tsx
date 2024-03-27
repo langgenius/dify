@@ -63,6 +63,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
+            isInWorkflow
             isAdvancedMode={true}
             mode={model?.mode}
             provider={model?.provider}
