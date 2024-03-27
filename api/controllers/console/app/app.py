@@ -27,6 +27,7 @@ from fields.app_fields import (
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
+from services.tag_service import TagService
 
 
 def _get_app(app_id, tenant_id):
@@ -49,6 +50,8 @@ class AppListApi(Resource):
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
         parser.add_argument('mode', type=str, choices=['chat', 'completion', 'all'], default='all', location='args', required=False)
         parser.add_argument('name', type=str, location='args', required=False)
+        parser.add_argument('tag_ids', type=list, location='args', required=False)
+
         args = parser.parse_args()
 
         filters = [
@@ -65,6 +68,21 @@ class AppListApi(Resource):
 
         if 'name' in args and args['name']:
             filters.append(App.name.ilike(f'%{args["name"]}%'))
+
+        if 'tag_ids' in args and args['tag_ids']:
+            target_ids = TagService.get_target_ids_by_tag_ids('knowledge',
+                                                              current_user.current_tenant_id,
+                                                              args['tag_ids'])
+            if target_ids:
+                filters.append(App.id.in_(target_ids))
+            else:
+                return {
+                    'data': [],
+                    'has_more': False,
+                    'limit': args['limit'],
+                    'total': 0,
+                    'page': args['page']
+                }
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),

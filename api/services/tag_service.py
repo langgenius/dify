@@ -29,6 +29,27 @@ class TagService:
         return results
 
     @staticmethod
+    def get_target_ids_by_tag_ids(tag_type: str, current_tenant_id: str, tag_ids: str) -> list:
+        tags = db.session.query(Tag).filter(
+            Tag.id.in_(tag_ids),
+            Tag.tenant_id == current_tenant_id,
+            Tag.type == tag_type
+        ).all()
+        if not tags:
+            return []
+        tag_ids = [tag.id for tag in tags]
+        tag_bindings = db.session.query(
+            TagBinding.target_id
+        ).filter(
+            TagBinding.tag_id.in_(tag_ids),
+            TagBinding.tenant_id == current_tenant_id
+        ).all()
+        if not tag_bindings:
+            return []
+        results = [tag_binding.target_id for tag_binding in tag_bindings]
+        return results
+
+    @staticmethod
     def save_tags(args: dict) -> Tag:
         tag = Tag(
             id=str(uuid.uuid4()),

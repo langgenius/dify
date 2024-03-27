@@ -31,13 +31,14 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.model import UploadFile
+from models.model import UploadFile, TagBinding, Tag
 from models.source import DataSourceBinding
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureModel, FeatureService
+from services.tag_service import TagService
 from services.vector_service import VectorService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
@@ -52,7 +53,7 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 class DatasetService:
 
     @staticmethod
-    def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None):
+    def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
         if user:
             permission_filter = db.or_(Dataset.created_by == user.id,
                                        Dataset.permission == 'all_team_members')
@@ -63,6 +64,12 @@ class DatasetService:
             .order_by(Dataset.created_at.desc())
         if search:
             query = query.filter(db.and_(Dataset.name.ilike(f'%{search}%')))
+        if tag_ids:
+            target_ids = TagService.get_target_ids_by_tag_ids('knowledge', tenant_id, tag_ids)
+            if target_ids:
+                query = query.filter(db.and_(Dataset.id.in_(target_ids)))
+            else:
+                return [], 0
         datasets = query.paginate(
             page=page,
             per_page=per_page,

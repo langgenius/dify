@@ -27,9 +27,11 @@ class DatasetApi(DatasetApiResource):
         limit = request.args.get('limit', default=20, type=int)
         provider = request.args.get('provider', default="vendor")
         search = request.args.get('keyword', default=None, type=str)
+        tag_ids = request.args.get('tag_ids', default=None, type=list)
+
 
         datasets, total = DatasetService.get_datasets(page, limit, provider,
-                                                      tenant_id, current_user, search)
+                                                      tenant_id, current_user, search, tag_ids)
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(
