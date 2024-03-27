@@ -1,3 +1,5 @@
+'use client'
+
 import type { FC } from 'react'
 import {
   memo,
@@ -75,6 +77,12 @@ const Workflow: FC<WorkflowProps> = memo(({
       setAutoFreeze(true)
     }
   }, [])
+
+  useEffect(() => {
+    return () => {
+      handleSyncWorkflowDraft(true)
+    }
+  }, [handleSyncWorkflowDraft])
 
   const {
     handleNodeDragStart,

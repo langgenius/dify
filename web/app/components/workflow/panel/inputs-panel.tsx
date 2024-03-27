@@ -35,7 +35,7 @@ const InputsPanel = () => {
 
   const variables = useMemo(() => {
     const data = startVariables || []
-    if (fileSettings.image.enabled) {
+    if (fileSettings?.image.enabled) {
       return [
         ...data,
         {
