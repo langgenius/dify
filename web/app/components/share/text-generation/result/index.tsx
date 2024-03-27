@@ -15,7 +15,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { BlockEnum, NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 
 export type IResultProps = {
@@ -71,9 +71,9 @@ const Result: FC<IResultProps> = ({
       setRespondingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, doSetCompletionRes] = useState('')
-  const completionResRef = useRef('')
-  const setCompletionRes = (res: string) => {
+  const [completionRes, doSetCompletionRes] = useState<any>('')
+  const completionResRef = useRef<any>()
+  const setCompletionRes = (res: any) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
@@ -191,7 +191,6 @@ const Result: FC<IResultProps> = ({
     }, 1000)
 
     if (isWorkflow) {
-      let outputsExisted = false
       sendWorkflowMessage(
         data,
         {
@@ -224,10 +223,6 @@ const Result: FC<IResultProps> = ({
                 } as any
               }
             }))
-            if (data.node_type === BlockEnum.LLM && data.outputs.text)
-              setCompletionRes(data.outputs.text)
-            if (data.node_type === BlockEnum.End && data.outputs)
-              outputsExisted = true
           },
           onWorkflowFinished: ({ data }) => {
             if (isTimeout)
@@ -239,13 +234,15 @@ const Result: FC<IResultProps> = ({
               clearInterval(runId)
               return
             }
-            if (!outputsExisted) {
-              notify({ type: 'info', message: 'Outputs not existed.' })
-              setCompletionRes('')
-            }
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
               draft.status = data.error ? WorkflowRunningStatus.Failed : WorkflowRunningStatus.Succeeded
             }))
+            if (!data.outputs)
+              setCompletionRes('')
+            else if (Object.keys(data.outputs).length > 1)
+              setCompletionRes(data.outputs)
+            else
+              setCompletionRes(data.outputs[Object.keys(data.outputs)[0]])
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)

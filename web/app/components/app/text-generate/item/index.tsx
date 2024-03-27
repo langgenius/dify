@@ -10,6 +10,7 @@ import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
 // import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
@@ -25,6 +26,7 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 const MAX_DEPTH = 3
 
@@ -34,7 +36,7 @@ export type IGenerationItemProps = {
   className?: string
   isError: boolean
   onRetry: () => void
-  content: string
+  content: any
   messageId?: string | null
   conversationId?: string
   isLoading?: boolean
@@ -288,12 +290,21 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {workflowProcessData && (
                   <WorkflowProcessItem grayBg data={workflowProcessData} expand={workflowProcessData.expand} />
                 )}
-                {isError
-                  ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
-                  : (
-                    <Markdown content={content} />
-                  )}
-
+                {isError && (
+                  <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
+                )}
+                {!isError && (typeof content === 'string') && (
+                  <Markdown content={content} />
+                )}
+                {!isError && (typeof content !== 'string') && (
+                  <CodeEditor
+                    readOnly
+                    title={<div/>}
+                    language={CodeLanguage.json}
+                    value={content}
+                    isJSONStringifyBeauty
+                  />
+                )}
               </div>
             </div>
 
@@ -314,7 +325,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   isDisabled={isError || !messageId}
                   className={cn(isMobile && '!px-1.5', 'space-x-1')}
                   onClick={() => {
-                    copy(content)
+                    if (typeof content === 'string')
+                      copy(content)
+                    else
+                      copy(JSON.stringify(content))
                     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                   }}>
                   <Clipboard className='w-3.5 h-3.5' />
