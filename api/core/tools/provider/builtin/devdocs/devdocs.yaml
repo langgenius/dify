@@ -5,6 +5,6 @@ identity:
     en_US: DevDocs
     zh_Hans: DevDocs
   description:
-    en_US: Get information about developer documentations on DevDocs.
-    zh_Hans: 从DevDocs获取官方开发者文档信息。
+    en_US: Get official developer documentations on DevDocs.
+    zh_Hans: 从DevDocs获取官方开发者文档。
   icon: icon.svg
