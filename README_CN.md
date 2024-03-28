@@ -98,7 +98,7 @@ docker compose up -d
 
 使用 [Helm Chart](https://helm.sh/) 版本，可以在 Kubernetes 上部署 Dify。
 
-- [Helm Chart by LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
+- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 
 ### 配置

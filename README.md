@@ -104,8 +104,9 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 [Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
 
-- [Helm Chart by LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
+- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+
 ### Configuration
 
 If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run `docker-compose up -d` again. You can see the full list of environment variables in our [docs](https://docs.dify.ai/getting-started/install-self-hosted/environments).
