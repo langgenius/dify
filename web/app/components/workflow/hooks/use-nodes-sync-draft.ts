@@ -11,6 +11,7 @@ import { useNodesReadOnly } from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { API_PREFIX } from '@/config'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
@@ -20,7 +21,7 @@ export const useNodesSyncDraft = () => {
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
   const params = useParams()
 
-  const doSyncWorkflowDraft = useCallback(async () => {
+  const getPostParams = useCallback(() => {
     const {
       getNodes,
       edges,
@@ -53,7 +54,7 @@ export const useNodesSyncDraft = () => {
           })
         })
       })
-      syncWorkflowDraft({
+      return {
         url: `/apps/${appId || params.appId}/workflows/draft`,
         params: {
           graph: {
@@ -76,11 +77,29 @@ export const useNodesSyncDraft = () => {
             file_upload: features.file,
           },
         },
-      }).then((res) => {
-        workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-      })
+      }
     }
-  }, [store, featuresStore, workflowStore, params.appId])
+  }, [store, featuresStore, params.appId])
+
+  const syncWorkflowDraftWhenPageClose = useCallback(() => {
+    const postParams = getPostParams()
+
+    if (postParams) {
+      navigator.sendBeacon(
+        `${API_PREFIX}/apps/${params.appId}/workflows/draft?_token=${localStorage.getItem('console_token')}`,
+        JSON.stringify(postParams.params),
+      )
+    }
+  }, [getPostParams, params.appId])
+
+  const doSyncWorkflowDraft = useCallback(async () => {
+    const postParams = getPostParams()
+
+    if (postParams) {
+      const res = await syncWorkflowDraft(postParams)
+      workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+    }
+  }, [workflowStore, getPostParams])
 
   const handleSyncWorkflowDraft = useCallback((sync?: boolean) => {
     if (getNodesReadOnly())
@@ -95,5 +114,6 @@ export const useNodesSyncDraft = () => {
   return {
     doSyncWorkflowDraft,
     handleSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
   }
 }
