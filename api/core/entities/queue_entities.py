@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel
 
@@ -27,21 +27,21 @@ class AppQueueEvent(BaseModel):
     """
     QueueEvent entity
     """
-    event: QueueEvent
+    event: ClassVar[QueueEvent]
 
 
 class QueueMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
     """
-    event = QueueEvent.MESSAGE
+    event: ClassVar[QueueEvent] = QueueEvent.MESSAGE
     chunk: LLMResultChunk
 
 class QueueAgentMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
     """
-    event = QueueEvent.AGENT_MESSAGE
+    event: ClassVar[QueueEvent] = QueueEvent.AGENT_MESSAGE
     chunk: LLMResultChunk
 
     
@@ -49,7 +49,7 @@ class QueueMessageReplaceEvent(AppQueueEvent):
     """
     QueueMessageReplaceEvent entity
     """
-    event = QueueEvent.MESSAGE_REPLACE
+    event: ClassVar[QueueEvent] = QueueEvent.MESSAGE_REPLACE
     text: str
 
 
@@ -57,7 +57,7 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """
     QueueRetrieverResourcesEvent entity
     """
-    event = QueueEvent.RETRIEVER_RESOURCES
+    event: ClassVar[QueueEvent] = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: list[dict]
 
 
@@ -65,7 +65,7 @@ class AnnotationReplyEvent(AppQueueEvent):
     """
     AnnotationReplyEvent entity
     """
-    event = QueueEvent.ANNOTATION_REPLY
+    event: ClassVar[QueueEvent] = QueueEvent.ANNOTATION_REPLY
     message_annotation_id: str
 
 
@@ -73,7 +73,7 @@ class QueueMessageEndEvent(AppQueueEvent):
     """
     QueueMessageEndEvent entity
     """
-    event = QueueEvent.MESSAGE_END
+    event: ClassVar[QueueEvent] = QueueEvent.MESSAGE_END
     llm_result: LLMResult
 
     
@@ -81,21 +81,21 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
-    event = QueueEvent.AGENT_THOUGHT
+    event: ClassVar[QueueEvent] = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
 
 class QueueMessageFileEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
-    event = QueueEvent.MESSAGE_FILE
+    event: ClassVar[QueueEvent] = QueueEvent.MESSAGE_FILE
     message_file_id: str
     
 class QueueErrorEvent(AppQueueEvent):
     """
     QueueErrorEvent entity
     """
-    event = QueueEvent.ERROR
+    event: ClassVar[QueueEvent] = QueueEvent.ERROR
     error: Any = None
 
 
@@ -103,7 +103,7 @@ class QueuePingEvent(AppQueueEvent):
     """
     QueuePingEvent entity
     """
-    event = QueueEvent.PING
+    event: ClassVar[QueueEvent] = QueueEvent.PING
 
 
 class QueueStopEvent(AppQueueEvent):
@@ -118,7 +118,7 @@ class QueueStopEvent(AppQueueEvent):
         ANNOTATION_REPLY = "annotation-reply"
         OUTPUT_MODERATION = "output-moderation"
 
-    event = QueueEvent.STOP
+    event: ClassVar[QueueEvent] = QueueEvent.STOP
     stopped_by: StopBy
 
 

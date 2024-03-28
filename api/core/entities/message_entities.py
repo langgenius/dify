@@ -30,6 +30,9 @@ class PromptMessageFile(BaseModel):
     type: PromptMessageFileType
     data: Any = None
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class ImagePromptMessageFile(PromptMessageFile):
     class DETAIL(enum.Enum):
@@ -44,6 +47,9 @@ class LCHumanMessageWithFiles(HumanMessage):
     # content: Union[str, list[Union[str, Dict]]]
     content: str
     files: list[PromptMessageFile]
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 def lc_messages_to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:

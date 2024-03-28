@@ -2,7 +2,8 @@ from collections.abc import Sequence
 from typing import Any, Optional, Union
 
 from langchain.agents import BaseSingleActionAgent, OpenAIFunctionsAgent
-from langchain.agents.openai_functions_agent.base import _format_intermediate_steps, _parse_ai_message
+from langchain.agents.openai_functions_multi_agent.base import _parse_ai_message
+from langchain.agents.format_scratchpad.openai_functions import format_to_openai_functions
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
@@ -21,12 +22,6 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     """
     An Multi Dataset Retrieve Agent driven by Router.
     """
-    model_config: ModelConfigEntity
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    @root_validator
-    def validate_llm(cls, values: dict) -> dict:
-        return values
 
     def should_use_agent(self, query: str):
         """
