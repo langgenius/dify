@@ -5,6 +5,8 @@ import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import { useWorkflow } from '../../../../hooks'
+import type { NodeOutPutVar } from '../../../../types'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
@@ -30,6 +32,7 @@ type Props = {
     history: boolean
     query: boolean
   }
+  nodesOutputVars?: NodeOutPutVar[]
 }
 
 const Editor: FC<Props> = ({
@@ -45,8 +48,12 @@ const Editor: FC<Props> = ({
   isChatApp,
   isShowContext,
   hasSetBlockStatus,
+  nodesOutputVars,
 }) => {
   const { t } = useTranslation()
+  const { getNode } = useWorkflow()
+
+  console.log(nodesOutputVars, '2')
 
   const isShowHistory = !isChatModel && isChatApp
   const isShowQuery = isShowHistory
@@ -145,6 +152,12 @@ const Editor: FC<Props> = ({
                 queryBlock={{
                   show: justVar ? false : isShowQuery,
                   selectable: !hasSetBlockStatus?.query,
+                }}
+                workflowVariableBlock={{
+                  show: true,
+                  selectable: true,
+                  variables: nodesOutputVars || [],
+                  getWorkflowNode: getNode,
                 }}
                 onChange={onChange}
                 onBlur={setBlur}

@@ -146,6 +146,7 @@ const ConfigPrompt: FC<Props> = ({
                       isChatApp={isChatApp}
                       isShowContext={isShowContext}
                       hasSetBlockStatus={hasSetBlockStatus}
+                      nodesOutputVars={availableVarList}
                     />
                   )
                 })
