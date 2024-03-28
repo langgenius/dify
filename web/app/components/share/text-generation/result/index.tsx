@@ -218,6 +218,9 @@ const Result: FC<IResultProps> = ({
               const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
               if (currentIndex > -1 && draft.tracing) {
                 draft.tracing[currentIndex] = {
+                  ...(draft.tracing[currentIndex].extras
+                    ? { extras: draft.tracing[currentIndex].extras }
+                    : {}),
                   ...data,
                   expand: !!data.error,
                 } as any
