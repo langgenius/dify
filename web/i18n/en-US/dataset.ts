@@ -47,7 +47,8 @@ const translation = {
   tag: {
     placeholder: 'All Tags',
     addNew: 'Add new tag',
-    noTag: 'No tags yet',
+    noTag: 'No tags',
+    noTagYet: 'No tags yet',
     addTag: 'add tag',
   },
 }

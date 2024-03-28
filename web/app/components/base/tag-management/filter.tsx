@@ -1,8 +1,9 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import cn from 'classnames'
+import { useStore as useTagStore } from './store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -10,14 +11,32 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+
+// import { fetchTagList } from '@/service/tag'
 
 const MOCK_TAGS = [
-  'good',
-  'bad',
-  'nice',
+  {
+    id: '001',
+    type: 'knowledge',
+    name: 'good',
+    bingding_count: 27,
+  },
+  {
+    id: '002',
+    type: 'knowledge',
+    name: 'bad',
+    bingding_count: 12,
+  },
+  {
+    id: '003',
+    type: 'knowledge',
+    name: 'nice',
+    bingding_count: 6,
+  },
 ]
 
 type TagFilterProps = {
@@ -31,6 +50,8 @@ const TagFilter: FC<TagFilterProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
+  const { tagList, setTagList } = useTagStore()
+
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
   const { run: handleSearch } = useDebounceFn(() => {
@@ -40,6 +61,28 @@ const TagFilter: FC<TagFilterProps> = ({
     setKeywords(value)
     handleSearch()
   }
+
+  const filteredTagList = useMemo(() => {
+    return tagList.filter(tag => tag.name.includes(searchKeywords))
+  }, [tagList, searchKeywords])
+
+  const currentTag = useMemo(() => {
+    return tagList.find(tag => tag.id === value[0])
+  }, [value, tagList])
+
+  const selectTag = (tag: Tag) => {
+    if (value.includes(tag.id))
+      onChange(value.filter(v => v !== tag.id))
+    else
+      onChange([...value, tag.id])
+  }
+
+  useEffect(() => {
+    // fetchTagList().then((res) => {
+    //   setTagList(res)
+    // })
+    setTagList(MOCK_TAGS)
+  }, [])
 
   return (
     <PortalToFollowElem
@@ -64,7 +107,7 @@ const TagFilter: FC<TagFilterProps> = ({
             </div>
             <div className='text-[13px] leading-[18px] text-gray-700'>
               {!value.length && t('dataset.tag.placeholder')}
-              {!!value.length && value[0]}
+              {!!value.length && currentTag?.name}
             </div>
             {value.length > 1 && (
               <div className='text-xs font-medium leading-[18px] text-gray-500'>{`+${value.length - 1}`}</div>
@@ -90,12 +133,22 @@ const TagFilter: FC<TagFilterProps> = ({
               <SearchInput white value={keywords} onChange={handleKeywordsChange} />
             </div>
             <div className='p-1'>
-              {MOCK_TAGS.map(tag => (
-                <div key={tag} className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'>
-                  <div className='grow text-sm text-gray-700 leading-5 truncate'>{tag}</div>
-                  {value.includes(tag) && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
+              {filteredTagList.map(tag => (
+                <div
+                  key={tag.id}
+                  className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
+                  onClick={() => selectTag(tag)}
+                >
+                  <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
+                  {value.includes(tag.id) && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
                 </div>
               ))}
+              {!filteredTagList.length && (
+                <div className='p-3 flex flex-col items-center gap-1'>
+                  <Tag03 className='h-6 w-6 text-gray-300' />
+                  <div className='text-gray-500 text-xs leading-[14px]'>{t('dataset.tag.noTag')}</div>
+                </div>
+              )}
             </div>
           </div>
         </PortalToFollowElemContent>

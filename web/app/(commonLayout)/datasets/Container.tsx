@@ -44,7 +44,7 @@ const Container = () => {
     setKeywords(value)
     handleSearch()
   }
-  const [tagIDs, setTagIDs] = useState<string[]>(['good', 'bad'])
+  const [tagIDs, setTagIDs] = useState<string[]>([])
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>

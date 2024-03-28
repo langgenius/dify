@@ -47,7 +47,8 @@ const translation = {
   tag: {
     placeholder: '全部标签',
     addNew: '创建新标签',
-    noTag: '还没有标签',
+    noTag: '没有标签',
+    noTagYet: '还没有标签',
     addTag: '添加标签',
   },
 }
