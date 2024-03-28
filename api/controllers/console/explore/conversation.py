@@ -6,7 +6,7 @@ from werkzeug.exceptions import NotFound
 from controllers.console import api
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from core.utils.type_helper import get_bool
+from core.utils.type_helper import get_bool_by_key
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
 from services.conversation_service import ConversationService
@@ -28,7 +28,7 @@ class ConversationListApi(InstalledAppResource):
         parser.add_argument('pinned', type=str, choices=['true', 'false', None], location='args')
         args = parser.parse_args()
 
-        pinned = get_bool(args.get('pinned'))
+        pinned = get_bool_by_key(args,'pinned')
 
         try:
             return WebConversationService.pagination_by_last_id(
