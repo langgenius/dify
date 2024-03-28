@@ -27,11 +27,11 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
     >
       <div className='grow p-2 rounded-t-xl'>
         <div className='px-6 pt-2 pb-1 text-xs font-medium leading-[18px] text-gray-500'>{t('app.createApp')}</div>
-        <div className='flex items-center mb-1 px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-500 cursor-pointer hover:text-primary-600 hover:bg-white' onClick={() => setShowNewAppModal(true)}>
+        <div className='flex items-center mb-1 px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-600 cursor-pointer hover:text-primary-600 hover:bg-white' onClick={() => setShowNewAppModal(true)}>
           <FilePlus01 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.newApp.startFromBlank')}
         </div>
-        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-500 cursor-pointer hover:text-primary-600 hover:bg-white' onClick={() => setShowNewAppTemplateDialog(true)}>
+        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-600 cursor-pointer hover:text-primary-600 hover:bg-white' onClick={() => setShowNewAppTemplateDialog(true)}>
           <FilePlus02 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.newApp.startFromTemplate')}
         </div>
@@ -40,7 +40,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
         className='p-2 border-t-[0.5px] border-black/5 rounded-b-xl'
         onClick={() => setShowCreateFromDSLModal(true)}
       >
-        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-500 cursor-pointer hover:text-primary-600 hover:bg-white'>
+        <div className='flex items-center px-6 py-[7px] rounded-lg text-[13px] font-medium leading-[18px] text-gray-600 cursor-pointer hover:text-primary-600 hover:bg-white'>
           <FileArrow01 className='shrink-0 mr-2 w-4 h-4' />
           {t('app.importDSL')}
         </div>
