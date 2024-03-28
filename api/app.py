@@ -2,9 +2,9 @@ import os
 
 from werkzeug.exceptions import Unauthorized
 
-from core.utils.type_helper import get_bool
+from core.utils.type_helper import get_bool, get_bool_from_sys_env
 
-if not get_bool(os.environ.get("DEBUG")):
+if not get_bool_from_sys_env("DEBUG"):
     from gevent import monkey
     monkey.patch_all()
     # if os.environ.get("VECTOR_STORE") == 'milvus':

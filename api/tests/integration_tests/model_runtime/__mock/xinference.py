@@ -12,7 +12,7 @@ from xinference_client.client.restful.restful_client import (Client, RESTfulChat
                                                              RESTfulGenerateModelHandle, RESTfulRerankModelHandle)
 from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
 
-from core.utils.type_helper import get_bool
+from core.utils.type_helper import get_bool, get_bool_from_sys_env
 
 
 class MockXinferenceClass(object):
@@ -159,7 +159,7 @@ class MockXinferenceClass(object):
 
         return embedding
 
-MOCK = get_bool(os.getenv('MOCK_SWITCH', 'false'))
+MOCK = get_bool_from_sys_env('MOCK_SWITCH')
 
 @pytest.fixture
 def setup_xinference_mock(request, monkeypatch: MonkeyPatch):

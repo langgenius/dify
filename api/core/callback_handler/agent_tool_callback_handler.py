@@ -1,11 +1,10 @@
-import os
 from typing import Any, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
 from pydantic import BaseModel
 
-from core.utils.type_helper import get_bool
+from core.utils.type_helper import get_bool_from_sys_env
 
 
 class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
@@ -69,9 +68,9 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     @property
     def ignore_agent(self) -> bool:
         """Whether to ignore agent callbacks."""
-        return not get_bool(os.environ.get("DEBUG"))
+        return not get_bool_from_sys_env("DEBUG")
 
     @property
     def ignore_chat_model(self) -> bool:
         """Whether to ignore chat model callbacks."""
-        return not get_bool(os.environ.get("DEBUG"))
+        return not get_bool_from_sys_env("DEBUG")
