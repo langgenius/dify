@@ -52,3 +52,10 @@ class UserToolProvider(BaseModel):
 
 class UserToolProviderCredentials(BaseModel):
     credentials: dict[str, ToolProviderCredentials]
+
+class UserTool(BaseModel):
+    author: str
+    name: str # identifier
+    label: I18nObject # label
+    description: I18nObject
+    parameters: Optional[list[ToolParameter]] = None

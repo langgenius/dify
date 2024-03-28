@@ -11,6 +11,7 @@ from langchain.callbacks.manager import Callbacks
 from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain.schema import AgentAction, AgentFinish, OutputParserException
 from langchain.tools import BaseTool
+from pydantic import ConfigDict
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.rag.retrieval.agent.llm_chain import LLMChain
@@ -50,11 +51,7 @@ Action:
 
 class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
     dataset_tools: Sequence[BaseTool]
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def should_use_agent(self, query: str):
         """

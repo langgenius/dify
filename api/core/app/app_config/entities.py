@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
@@ -16,6 +16,8 @@ class ModelConfigEntity(BaseModel):
     mode: Optional[str] = None
     parameters: dict[str, Any] = {}
     stop: list[str] = []
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AdvancedChatMessageEntity(BaseModel):

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     """Callback Handler that prints to std out."""
     color: Optional[str] = ''
-    current_loop = 1
+    current_loop: Optional[int] = 1
 
     def __init__(self, color: Optional[str] = None) -> None:
         super().__init__()

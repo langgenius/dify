@@ -10,7 +10,7 @@ flask-restful~=0.3.10
 flask-cors~=4.0.0
 gunicorn~=21.2.0
 gevent~=23.9.1
-langchain==0.0.250
+langchain==0.1.13
 openai~=1.13.3
 tiktoken~=0.6.0
 psycopg2-binary~=2.9.6
@@ -54,7 +54,7 @@ safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug~=3.0.1
 pymilvus==2.3.0
-qdrant-client==1.7.3
+qdrant-client==1.8.2
 cohere~=4.44
 pyyaml~=6.0.1
 numpy~=1.25.2
@@ -76,3 +76,4 @@ qrcode~=7.4.2
 azure-storage-blob==12.9.0
 azure-identity==1.15.0
 lxml==5.1.0
+pydantic-extra-types==2.*

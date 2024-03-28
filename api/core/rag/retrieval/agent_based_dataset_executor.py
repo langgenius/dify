@@ -5,7 +5,7 @@ from langchain.agents import AgentExecutor as LCAgentExecutor
 from langchain.agents import BaseMultiActionAgent, BaseSingleActionAgent
 from langchain.callbacks.manager import Callbacks
 from langchain.tools import BaseTool
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
@@ -22,7 +22,7 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 
 class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
-    model_config: ModelConfigWithCredentialsEntity
+    ai_model_config: ModelConfigWithCredentialsEntity = Field(alias="model_config")
     tools: list[BaseTool]
     summary_model_config: Optional[ModelConfigWithCredentialsEntity] = None
     memory: Optional[TokenBufferMemory] = None
@@ -32,16 +32,13 @@ class AgentConfiguration(BaseModel):
     early_stopping_method: str = "generate"
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
 
-    class Config:
-        """Configuration for this pydantic object."""
-
-        extra = Extra.forbid
-        arbitrary_types_allowed = True
+    agent_llm_callback: Optional[AgentLLMCallback] = None
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
 class AgentExecuteResult(BaseModel):
     strategy: PlanningStrategy
-    output: Optional[str]
+    output: Optional[str] = None
     configuration: AgentConfiguration
 
 
@@ -56,7 +53,7 @@ class AgentExecutor:
                                         if isinstance(t, DatasetRetrieverTool)
                                         or isinstance(t, DatasetMultiRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
-                model_config=self.configuration.model_config,
+                ai_model_config=self.configuration.ai_model_config,
                 tools=self.configuration.tools,
                 extra_prompt_messages=prompt_messages_to_lc_messages(self.configuration.memory.get_history_prompt_messages())
                 if self.configuration.memory else None,

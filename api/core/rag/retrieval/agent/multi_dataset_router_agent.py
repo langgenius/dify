@@ -10,18 +10,18 @@ from langchain.schema import AgentAction, AgentFinish, AIMessage, SystemMessage
 from langchain.tools import BaseTool
 from pydantic import root_validator
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
+from core.features.dataset_retrieval.agent.fake_llm import FakeLLM
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessageTool
-from core.rag.retrieval.agent.fake_llm import FakeLLM
 
 
 class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     """
     An Multi Dataset Retrieve Agent driven by Router.
     """
-    model_config: ModelConfigWithCredentialsEntity
+    model_config: ModelConfigEntity
 
     class Config:
         """Configuration for this pydantic object."""
@@ -156,7 +156,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_config: ModelConfigWithCredentialsEntity,
+            model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             extra_prompt_messages: Optional[list[BaseMessagePromptTemplate]] = None,

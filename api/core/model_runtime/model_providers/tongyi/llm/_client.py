@@ -2,8 +2,8 @@ from typing import Any, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms import Tongyi
-from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
 from langchain.schema import Generation, LLMResult
+from langchain_community.llms.tongyi import generate_with_retry, stream_generate_with_retry
 
 
 class EnhanceTongyi(Tongyi):
