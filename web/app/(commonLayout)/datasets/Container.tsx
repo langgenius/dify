@@ -13,6 +13,7 @@ import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import SearchInput from '@/app/components/base/search-input'
+import TagFilter from '@/app/components/base/tag-management/filter'
 
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
@@ -43,6 +44,7 @@ const Container = () => {
     setKeywords(value)
     handleSearch()
   }
+  const [tagIDs, setTagIDs] = useState<string[]>(['good', 'bad'])
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
@@ -53,8 +55,9 @@ const Container = () => {
           options={options}
         />
         {activeTab === 'dataset' && (
-          <div>
-            <SearchInput value={keywords} onChange={handleKeywordsChange} />
+          <div className='flex items-center gap-2'>
+            <TagFilter value={tagIDs} onChange={setTagIDs} />
+            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
           </div>
         )}
         {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
@@ -62,7 +65,7 @@ const Container = () => {
 
       {activeTab === 'dataset' && (
         <>
-          <Datasets containerRef={containerRef} keywords={searchKeywords} />
+          <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} />
           <DatasetFooter />
         </>
       )}

@@ -44,6 +44,12 @@ const translation = {
   },
   docsFailedNotice: '文档无法被索引',
   retry: '重试',
+  tag: {
+    placeholder: '全部标签',
+    addNew: '创建新标签',
+    noTag: '还没有标签',
+    addTag: '添加标签',
+  },
 }
 
 export default translation

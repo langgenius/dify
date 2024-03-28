@@ -44,6 +44,12 @@ const translation = {
   },
   docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
+  tag: {
+    placeholder: 'All Tags',
+    addNew: 'Add new tag',
+    noTag: 'No tags yet',
+    addTag: 'add tag',
+  },
 }
 
 export default translation

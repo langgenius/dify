@@ -102,7 +102,7 @@ const Apps = () => {
           onChange={setActiveTab}
           options={options}
         />
-        <SearchInput value={keywords} onChange={handleKeywordsChange} />
+        <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceManager

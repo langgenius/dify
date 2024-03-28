@@ -13,6 +13,7 @@ import { useAppContext } from '@/context/app-context'
 const getKey = (
   pageIndex: number,
   previousPageData: DataSetListResponse,
+  tags: string[],
   keyword: string,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
@@ -23,6 +24,8 @@ const getKey = (
         limit: 30,
       },
     }
+    if (tags.length)
+      params.params.tag_ids = tags
     if (keyword)
       params.params.keyword = keyword
     return params
@@ -32,16 +35,18 @@ const getKey = (
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement>
+  tags: string[]
   keywords: string
 }
 
 const Datasets = ({
   containerRef,
+  tags,
   keywords,
 }: Props) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, keywords),
+    (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, tags, keywords),
     fetchDatasets,
     { revalidateFirstPage: false, revalidateAll: true },
   )
