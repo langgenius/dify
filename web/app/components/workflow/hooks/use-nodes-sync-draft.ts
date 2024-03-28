@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
+import { useParams } from 'next/navigation'
 import {
   useStore,
   useWorkflowStore,
@@ -17,6 +18,7 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
+  const params = useParams()
 
   const doSyncWorkflowDraft = useCallback(async () => {
     const {
@@ -27,7 +29,7 @@ export const useNodesSyncDraft = () => {
     const [x, y, zoom] = transform
     const appId = useAppStore.getState().appDetail?.id
 
-    if (appId) {
+    if (appId || params.appId) {
       const nodes = getNodes()
       const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
@@ -52,7 +54,7 @@ export const useNodesSyncDraft = () => {
         })
       })
       syncWorkflowDraft({
-        url: `/apps/${appId}/workflows/draft`,
+        url: `/apps/${appId || params.appId}/workflows/draft`,
         params: {
           graph: {
             nodes: producedNodes,
@@ -78,7 +80,7 @@ export const useNodesSyncDraft = () => {
         workflowStore.getState().setDraftUpdatedAt(res.updated_at)
       })
     }
-  }, [store, featuresStore, workflowStore])
+  }, [store, featuresStore, workflowStore, params.appId])
 
   const handleSyncWorkflowDraft = useCallback((sync?: boolean) => {
     if (getNodesReadOnly())
