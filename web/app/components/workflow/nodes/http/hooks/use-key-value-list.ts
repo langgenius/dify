@@ -9,15 +9,17 @@ const strToKeyValueList = (value: string) => {
   })
 }
 
-const useKeyValueList = (value: string, onChange: (value: string) => void) => {
+const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
   const [list, setList] = useState<KeyValue[]>(value ? strToKeyValueList(value) : [])
   useEffect(() => {
+    if (noFilter)
+      return
     const newValue = list.filter(item => item.key && item.value).map(item => `${item.key}:${item.value}`).join('\n')
     if (newValue !== value)
       onChange(newValue)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list])
+  }, [list, noFilter])
   const addItem = useCallback(() => {
     setList(prev => [...prev, { key: '', value: '' }])
   }, [])

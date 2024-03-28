@@ -61,7 +61,7 @@ const EditBody: FC<Props> = ({
       draft.data = value
     })
     onChange(newBody)
-  })
+  }, type === BodyType.json)
 
   const isCurrentKeyValue = type === BodyType.formData || type === BodyType.xWwwFormUrlencoded
 
