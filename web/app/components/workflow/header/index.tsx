@@ -18,6 +18,7 @@ import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
 import RestoringTitle from './restoring-title'
 import Publish from './publish'
+import Checklist from './checklist'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -118,6 +119,7 @@ const Header: FC = () => {
               {t('workflow.common.features')}
             </Button>
             <Publish />
+            <Checklist />
           </div>
         )
       }
@@ -148,6 +150,7 @@ const Header: FC = () => {
             >
               {t('workflow.common.restore')}
             </Button>
+            <Checklist />
           </div>
         )
       }
