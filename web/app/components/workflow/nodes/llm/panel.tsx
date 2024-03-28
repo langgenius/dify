@@ -38,8 +38,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleModelChanged,
     hasSetBlockStatus,
     handleCompletionParamsChange,
-    handleVarListChange,
-    handleAddVariable,
     handleContextVarChange,
     filterInputVar,
     filterVar,
@@ -155,7 +153,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           <ConfigPrompt
             readOnly={readOnly}
             nodeId={id}
-            filterVar={filterVar}
+            filterVar={filterInputVar}
             isChatModel={isChatModel}
             isChatApp={isChatMode}
             isShowContext

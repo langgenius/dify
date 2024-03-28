@@ -1,8 +1,10 @@
 from os import path
 from typing import cast
 
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
@@ -30,7 +32,7 @@ class ToolNode(BaseNode):
         parameters = self._generate_parameters(variable_pool, node_data)
         # get tool runtime
         try:
-            tool_runtime = ToolManager.get_workflow_tool_runtime(self.tenant_id, node_data, None)
+            tool_runtime = ToolManager.get_workflow_tool_runtime(self.tenant_id, node_data)
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -39,7 +41,13 @@ class ToolNode(BaseNode):
             )
 
         try:
-            messages = tool_runtime.invoke(self.user_id, parameters)
+            messages = ToolEngine.workflow_invoke(
+                tool=tool_runtime,
+                tool_parameters=parameters,
+                user_id=self.user_id,
+                workflow_id=self.workflow_id, 
+                workflow_tool_callback=DifyWorkflowCallbackHandler()
+            )
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,

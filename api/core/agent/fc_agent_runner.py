@@ -15,15 +15,8 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.tools.errors import (
-    ToolInvokeError,
-    ToolNotFoundError,
-    ToolNotSupportedError,
-    ToolParameterValidationError,
-    ToolProviderCredentialValidationError,
-    ToolProviderNotFoundError,
-)
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
 from models.model import Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
@@ -234,6 +227,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
+                tool_invoke_meta=None,
                 observation=None,
                 answer=response,
                 messages_ids=[],
@@ -259,72 +253,40 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "tool_call_name": tool_call_name,
-                        "tool_response": f"there is not a tool named {tool_call_name}"
+                        "tool_response": f"there is not a tool named {tool_call_name}",
+                        "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict()
                     }
-                    tool_responses.append(tool_response)
                 else:
                     # invoke tool
-                    error_response = None
-                    try:
-                        tool_invoke_message = tool_instance.invoke(
-                            user_id=self.user_id, 
-                            tool_parameters=tool_call_args, 
-                        )
-                        # transform tool invoke message to get LLM friendly message
-                        tool_invoke_message = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                            messages=tool_invoke_message, 
-                            user_id=self.user_id, 
-                            tenant_id=self.tenant_id, 
-                            conversation_id=self.message.conversation_id
-                        )
-                        # extract binary data from tool invoke message
-                        binary_files = self.extract_tool_response_binary(tool_invoke_message)
-                        # create message file
-                        message_files = self.create_message_files(binary_files)
-                        # publish files
-                        for message_file, save_as in message_files:
-                            if save_as:
-                                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
+                    tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                        tool=tool_instance,
+                        tool_parameters=tool_call_args,
+                        user_id=self.user_id,
+                        tenant_id=self.tenant_id,
+                        message=self.message,
+                        invoke_from=self.application_generate_entity.invoke_from,
+                        agent_tool_callback=self.agent_callback,
+                    )
+                    # publish files
+                    for message_file, save_as in message_files:
+                        if save_as:
+                            self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
 
-                            # publish message file
-                            self.queue_manager.publish(QueueMessageFileEvent(
-                                message_file_id=message_file.id
-                            ), PublishFrom.APPLICATION_MANAGER)
-                            # add message file ids
-                            message_file_ids.append(message_file.id)
-                            
-                    except ToolProviderCredentialValidationError as e:
-                        error_response = "Please check your tool provider credentials"
-                    except (
-                        ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
-                    ) as e:
-                        error_response = f"there is not a tool named {tool_call_name}"
-                    except (
-                        ToolParameterValidationError
-                    ) as e:
-                        error_response = f"tool parameters validation error: {e}, please check your tool parameters"
-                    except ToolInvokeError as e:
-                        error_response = f"tool invoke error: {e}"
-                    except Exception as e:
-                        error_response = f"unknown error: {e}"
-
-                    if error_response:
-                        observation = error_response
-                        tool_response = {
-                            "tool_call_id": tool_call_id,
-                            "tool_call_name": tool_call_name,
-                            "tool_response": error_response
-                        }
-                        tool_responses.append(tool_response)
-                    else:
-                        observation = self._convert_tool_response_to_str(tool_invoke_message)
-                        tool_response = {
-                            "tool_call_id": tool_call_id,
-                            "tool_call_name": tool_call_name,
-                            "tool_response": observation
-                        }
-                        tool_responses.append(tool_response)
-
+                        # publish message file
+                        self.queue_manager.publish(QueueMessageFileEvent(
+                            message_file_id=message_file.id
+                        ), PublishFrom.APPLICATION_MANAGER)
+                        # add message file ids
+                        message_file_ids.append(message_file.id)
+                    
+                    tool_response = {
+                        "tool_call_id": tool_call_id,
+                        "tool_call_name": tool_call_name,
+                        "tool_response": tool_invoke_response,
+                        "meta": tool_invoke_meta.to_dict()
+                    }
+                
+                tool_responses.append(tool_response)
                 prompt_messages = self.organize_prompt_messages(
                     prompt_template=prompt_template,
                     query=None,
@@ -341,7 +303,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_name=None,
                     tool_input=None,
                     thought=None, 
-                    observation=tool_response['tool_response'], 
+                    tool_invoke_meta={
+                        tool_response['tool_call_name']: tool_response['meta'] 
+                        for tool_response in tool_responses
+                    },
+                    observation={
+                        tool_response['tool_call_name']: tool_response['tool_response'] 
+                        for tool_response in tool_responses
+                    },
                     answer=None,
                     messages_ids=message_file_ids
                 )

@@ -58,7 +58,6 @@ class ModelConfigResource(Resource):
                     tool_runtime = ToolManager.get_agent_tool_runtime(
                         tenant_id=current_user.current_tenant_id,
                         agent_tool=agent_tool_entity,
-                        agent_callback=None
                     )
                     manager = ToolParameterConfigurationManager(
                         tenant_id=current_user.current_tenant_id,
@@ -96,7 +95,6 @@ class ModelConfigResource(Resource):
                         tool_runtime = ToolManager.get_agent_tool_runtime(
                             tenant_id=current_user.current_tenant_id,
                             agent_tool=agent_tool_entity,
-                            agent_callback=None
                         )
                     except Exception as e:
                         continue

@@ -1134,6 +1134,7 @@ class MessageAgentThought(db.Model):
     thought = db.Column(db.Text, nullable=True)
     tool = db.Column(db.Text, nullable=True)
     tool_labels_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
+    tool_meta_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
     tool_input = db.Column(db.Text, nullable=True)
     observation = db.Column(db.Text, nullable=True)
     # plugin_id = db.Column(UUID, nullable=True)  ## for future design
@@ -1167,6 +1168,16 @@ class MessageAgentThought(db.Model):
         try:
             if self.tool_labels_str:
                 return json.loads(self.tool_labels_str)
+            else:
+                return {}
+        except Exception as e:
+            return {}
+        
+    @property
+    def tool_meta(self) -> dict:
+        try:
+            if self.tool_meta_str:
+                return json.loads(self.tool_meta_str)
             else:
                 return {}
         except Exception as e:

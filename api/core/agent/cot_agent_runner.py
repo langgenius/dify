@@ -17,15 +17,8 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.errors import (
-    ToolInvokeError,
-    ToolNotFoundError,
-    ToolNotSupportedError,
-    ToolParameterValidationError,
-    ToolProviderCredentialValidationError,
-    ToolProviderNotFoundError,
-)
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
 from models.model import Conversation, Message
 
 
@@ -223,7 +216,10 @@ class CotAgentRunner(BaseAgentRunner):
             
             self.save_agent_thought(agent_thought=agent_thought,
                                     tool_name=scratchpad.action.action_name if scratchpad.action else '',
-                                    tool_input=scratchpad.action.action_input if scratchpad.action else '',
+                                    tool_input={
+                                        scratchpad.action.action_name: scratchpad.action.action_input
+                                    } if scratchpad.action else '',
+                                    tool_invoke_meta={},
                                     thought=scratchpad.thought,
                                     observation='',
                                     answer=scratchpad.agent_response,
@@ -256,71 +252,65 @@ class CotAgentRunner(BaseAgentRunner):
                     tool_instance = tool_instances.get(tool_call_name)
                     if not tool_instance:
                         answer = f"there is not a tool named {tool_call_name}"
-                        self.save_agent_thought(agent_thought=agent_thought, 
-                                                tool_name='',
-                                                tool_input='',
-                                                thought=None, 
-                                                observation=answer, 
-                                                answer=answer,
-                                                messages_ids=[])
+                        self.save_agent_thought(
+                            agent_thought=agent_thought, 
+                            tool_name='',
+                            tool_input='',
+                            tool_invoke_meta=ToolInvokeMeta.error_instance(
+                                f"there is not a tool named {tool_call_name}"
+                            ).to_dict(),
+                            thought=None, 
+                            observation={
+                                tool_call_name: answer
+                            }, 
+                            answer=answer,
+                            messages_ids=[]
+                        )
                         self.queue_manager.publish(QueueAgentThoughtEvent(
                             agent_thought_id=agent_thought.id
                         ), PublishFrom.APPLICATION_MANAGER)
                     else:
+                        if isinstance(tool_call_args, str):
+                            try:
+                                tool_call_args = json.loads(tool_call_args)
+                            except json.JSONDecodeError:
+                                pass
+
                         # invoke tool
-                        error_response = None
-                        try:
-                            if isinstance(tool_call_args, str):
-                                try:
-                                    tool_call_args = json.loads(tool_call_args)
-                                except json.JSONDecodeError:
-                                    pass
+                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                            tool=tool_instance,
+                            tool_parameters=tool_call_args,
+                            user_id=self.user_id,
+                            tenant_id=self.tenant_id,
+                            message=self.message,
+                            invoke_from=self.application_generate_entity.invoke_from,
+                            agent_tool_callback=self.agent_callback
+                        )
+                        # publish files
+                        for message_file, save_as in message_files:
+                            if save_as:
+                                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
 
-                            tool_response = tool_instance.invoke(
-                                user_id=self.user_id, 
-                                tool_parameters=tool_call_args
-                            )
-                            # transform tool response to llm friendly response
-                            tool_response = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                                messages=tool_response, 
-                                user_id=self.user_id, 
-                                tenant_id=self.tenant_id, 
-                                conversation_id=self.message.conversation_id
-                            )
-                            # extract binary data from tool invoke message
-                            binary_files = self.extract_tool_response_binary(tool_response)
-                            # create message file
-                            message_files = self.create_message_files(binary_files)
-                            # publish files
-                            for message_file, save_as in message_files:
-                                if save_as:
-                                    self.variables_pool.set_file(tool_name=tool_call_name,
-                                                                  value=message_file.id,
-                                                                  name=save_as)
-                                self.queue_manager.publish(QueueMessageFileEvent(
-                                    message_file_id=message_file.id
-                                ), PublishFrom.APPLICATION_MANAGER)
+                            # publish message file
+                            self.queue_manager.publish(QueueMessageFileEvent(
+                                message_file_id=message_file.id
+                            ), PublishFrom.APPLICATION_MANAGER)
+                            # add message file ids
+                            message_file_ids.append(message_file.id)
 
-                            message_file_ids = [message_file.id for message_file, _ in message_files]
-                        except ToolProviderCredentialValidationError as e:
-                            error_response = "Please check your tool provider credentials"
-                        except (
-                            ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError
-                        ) as e:
-                            error_response = f"there is not a tool named {tool_call_name}"
-                        except (
-                            ToolParameterValidationError
-                        ) as e:
-                            error_response = f"tool parameters validation error: {e}, please check your tool parameters"
-                        except ToolInvokeError as e:
-                            error_response = f"tool invoke error: {e}"
-                        except Exception as e:
-                            error_response = f"unknown error: {e}"
+                        # publish files
+                        for message_file, save_as in message_files:
+                            if save_as:
+                                self.variables_pool.set_file(tool_name=tool_call_name,
+                                                                value=message_file.id,
+                                                                name=save_as)
+                            self.queue_manager.publish(QueueMessageFileEvent(
+                                message_file_id=message_file.id
+                            ), PublishFrom.APPLICATION_MANAGER)
 
-                        if error_response:
-                            observation = error_response
-                        else:
-                            observation = self._convert_tool_response_to_str(tool_response)
+                        message_file_ids = [message_file.id for message_file, _ in message_files]
+
+                        observation = tool_invoke_response
 
                         # save scratchpad
                         scratchpad.observation = observation
@@ -329,9 +319,16 @@ class CotAgentRunner(BaseAgentRunner):
                         self.save_agent_thought(
                             agent_thought=agent_thought, 
                             tool_name=tool_call_name,
-                            tool_input=tool_call_args,
+                            tool_input={
+                                tool_call_name: tool_call_args
+                            },
+                            tool_invoke_meta={
+                                tool_call_name: tool_invoke_meta.to_dict()
+                            },
                             thought=None,
-                            observation=observation, 
+                            observation={
+                                tool_call_name: observation
+                            }, 
                             answer=scratchpad.agent_response,
                             messages_ids=message_file_ids,
                         )
@@ -362,9 +359,10 @@ class CotAgentRunner(BaseAgentRunner):
         self.save_agent_thought(
             agent_thought=agent_thought, 
             tool_name='',
-            tool_input='',
+            tool_input={},
+            tool_invoke_meta={},
             thought=final_answer,
-            observation='', 
+            observation={}, 
             answer=final_answer,
             messages_ids=[]
         )

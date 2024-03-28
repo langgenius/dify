@@ -1,3 +1,6 @@
+from core.tools.entities.tool_entities import ToolInvokeMeta
+
+
 class ToolProviderNotFoundError(ValueError):
     pass
 
@@ -18,3 +21,6 @@ class ToolInvokeError(ValueError):
 
 class ToolApiSchemaError(ValueError):
     pass
+
+class ToolEngineInvokeError(Exception):
+    meta: ToolInvokeMeta

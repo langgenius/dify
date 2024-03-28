@@ -48,7 +48,6 @@ const ConfigPrompt: FC<Props> = ({
     onlyLeafNodeVar: false,
     filterVar,
   })
-  // console.log('availableVarList', availableVarList)
 
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
@@ -172,6 +171,7 @@ const ConfigPrompt: FC<Props> = ({
               isChatApp={isChatApp}
               isShowContext={isShowContext}
               hasSetBlockStatus={hasSetBlockStatus}
+              nodesOutputVars={availableVarList}
             />
           </div>
         )}
