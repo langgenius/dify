@@ -244,7 +244,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
                 )
 
                 tool_call = AssistantPromptMessage.ToolCall(
-                    id=0,
+                    id="0",
                     type='function',
                     function=function
                 )

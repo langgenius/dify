@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import Any, Union
+from typing import Any, ClassVar, Union
 
 from qrcode.constants import ERROR_CORRECT_H, ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q
 from qrcode.image.base import BaseImage
@@ -12,7 +12,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class QRCodeGeneratorTool(BuiltinTool):
-    error_correction_levels = {
+    error_correction_levels: ClassVar[dict] = {
         'L': ERROR_CORRECT_L,  # <=7%
         'M': ERROR_CORRECT_M,  # <=15%
         'Q': ERROR_CORRECT_Q,  # <=25%

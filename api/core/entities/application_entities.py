@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Literal, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileObj
@@ -21,6 +21,8 @@ class ModelConfigEntity(BaseModel):
     credentials: dict[str, Any] = {}
     parameters: dict[str, Any] = {}
     stop: list[str] = []
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AdvancedChatMessageEntity(BaseModel):
@@ -223,7 +225,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     """
     App Orchestration Config Entity.
     """
-    model_config: ModelConfigEntity
+    ai_model_config: ModelConfigEntity = Field(alias="model_config")
     prompt_template: PromptTemplateEntity
     external_data_variables: list[ExternalDataVariableEntity] = []
     agent: Optional[AgentEntity] = None

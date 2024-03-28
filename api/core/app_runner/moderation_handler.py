@@ -4,7 +4,7 @@ import time
 from typing import Any, Optional
 
 from flask import Flask, current_app
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.application_queue_manager import PublishFrom
 from core.moderation.base import ModerationAction, ModerationOutputsResult
@@ -25,16 +25,14 @@ class OutputModerationHandler(BaseModel):
     app_id: str
 
     rule: ModerationRule
-    on_message_replace_func: Any
+    on_message_replace_func: Any = None
 
     thread: Optional[threading.Thread] = None
     thread_running: bool = True
     buffer: str = ''
     is_final_chunk: bool = False
     final_output: Optional[str] = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def should_direct_output(self):
         return self.final_output is not None

@@ -258,12 +258,12 @@ parameters:
           en_US: Netherlands
           zh_Hans: 荷兰
           pt_BR: Netherlands
-      - value: NZ
+      - value: "NZ"
         label:
           en_US: New Zealand
           zh_Hans: 新西兰
           pt_BR: New Zealand
-      - value: NO
+      - value: "NO"
         label:
           en_US: Norway
           zh_Hans: 挪威

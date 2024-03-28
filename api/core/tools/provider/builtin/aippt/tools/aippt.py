@@ -4,7 +4,7 @@ from hmac import new as hmac_new
 from json import loads as json_loads
 from threading import Lock
 from time import sleep, time
-from typing import Any
+from typing import Any, ClassVar
 
 from httpx import get, post
 from requests import get as requests_get
@@ -22,9 +22,9 @@ class AIPPTGenerateTool(BuiltinTool):
 
     _api_base_url = URL('https://co.aippt.cn/api')
     _api_token_cache = {}
-    _api_token_cache_lock = Lock()
+    _api_token_cache_lock: ClassVar[Any] = Lock()
     _style_cache = {}
-    _style_cache_lock = Lock()
+    _style_cache_lock: ClassVar[Any] = Lock()
 
     _task = {}
     _task_type_map = {

@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Optional, Union
 from urllib.parse import quote
 
 from requests import get
@@ -8,9 +8,9 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class BingSearchTool(BuiltinTool):
-    url = 'https://api.bing.microsoft.com/v7.0/search'
+    url: Optional[str] = 'https://api.bing.microsoft.com/v7.0/search'
 
-    def _invoke_bing(self, 
+    def _invoke_bing(self,
                      user_id: str,
                      subscription_key: str, query: str, limit: int, 
                      result_type: str, market: str, lang: str, 
