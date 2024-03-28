@@ -58,7 +58,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })()
   useEffect(() => {
     if (response?.name)
-      document.title = `${(response.name || 'App')} - Dify`
+      document.title = `${(response.name || 'App')} - FinRegHub`
   }, [response])
   if (!response)
     return null
