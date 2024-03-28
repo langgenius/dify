@@ -46,7 +46,7 @@ const Container = () => {
       {activeTab === 'dataset' && (
         <>
           <Datasets containerRef={containerRef} />
-          <DatasetFooter />
+          {/*<DatasetFooter />*/}
         </>
       )}
 

@@ -216,9 +216,9 @@ const Tools: FC<Props> = ({
                 )
             )}
 
-          {loc === LOC.tools && (
+          {/*loc === LOC.tools && (
             <Contribute />
-          )}
+          )*/}
         </div>
 
         {/* tools */}
