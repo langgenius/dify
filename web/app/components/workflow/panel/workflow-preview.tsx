@@ -4,6 +4,7 @@ import {
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import OutputPanel from '../run/output-panel'
 import ResultPanel from '../run/result-panel'
 import TracingPanel from '../run/tracing-panel'
 import { useStore } from '../store'
@@ -37,13 +38,31 @@ const WorkflowPreview = () => {
           <div
             className={cn(
               'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
+              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
+            )}
+            onClick={() => switchTab('DETAIL')}
+          >{t('runLog.detail')}</div>
+          <div
+            className={cn(
+              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
               currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
             )}
             onClick={() => switchTab('TRACING')}
           >{t('runLog.tracing')}</div>
         </div>
-        <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab === 'TRACING' && '!bg-gray-50')}>
+        <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
           {currentTab === 'RESULT' && (
+            <OutputPanel
+              outputs={workflowRunningData?.result?.outputs}
+              error={workflowRunningData?.result?.error}
+            />
+          )}
+          {currentTab === 'RESULT' && !workflowRunningData?.result && (
+            <div className='flex h-full items-center justify-center bg-white'>
+              <Loading />
+            </div>
+          )}
+          {currentTab === 'DETAIL' && (
             <ResultPanel
               inputs={workflowRunningData?.result?.inputs}
               outputs={workflowRunningData?.result?.outputs}
@@ -56,7 +75,7 @@ const WorkflowPreview = () => {
               steps={workflowRunningData?.result?.total_steps}
             />
           )}
-          {currentTab === 'RESULT' && !workflowRunningData?.result && (
+          {currentTab === 'DETAIL' && !workflowRunningData?.result && (
             <div className='flex h-full items-center justify-center bg-white'>
               <Loading />
             </div>

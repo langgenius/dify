@@ -1,5 +1,6 @@
 const translation = {
   result: 'RESULT',
+  detail: 'DETAIL',
   tracing: 'TRACING',
   resultPanel: {
     status: 'STATUS',
