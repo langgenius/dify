@@ -8,6 +8,7 @@ from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
 from langchain.schema import AgentAction, AgentFinish, AIMessage, SystemMessage
 from langchain.tools import BaseTool
+from pydantic import Field
 
 from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
@@ -20,6 +21,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     """
     An Multi Dataset Retrieve Agent driven by Router.
     """
+    ai_model_config: ModelConfigEntity = Field(alias="model_config")
 
     def should_use_agent(self, query: str):
         """
@@ -98,8 +100,8 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         prompt_messages = lc_messages_to_prompt_messages(messages)
 
         model_instance = ModelInstance(
-            provider_model_bundle=self.model_config.provider_model_bundle,
-            model=self.model_config.model,
+            provider_model_bundle=self.ai_model_config.provider_model_bundle,
+            model=self.ai_model_config.model,
         )
 
         tools = []
@@ -145,7 +147,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_config: ModelConfigEntity,
+            ai_model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             extra_prompt_messages: Optional[list[BaseMessagePromptTemplate]] = None,
@@ -159,7 +161,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             system_message=system_message,
         )
         return cls(
-            model_config=model_config,
+            ai_model_config=ai_model_config,
             llm=FakeLLM(response=''),
             prompt=prompt,
             tools=tools,

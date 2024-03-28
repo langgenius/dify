@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
-from langchain import LLMChain as LCLLMChain
 from langchain.callbacks.manager import CallbackManagerForChainRun
+from langchain.chains.llm import LLMChain as LCLLMChain
 from langchain.schema import Generation, LLMResult
 from langchain.schema.language_model import BaseLanguageModel
 
@@ -13,6 +13,7 @@ from core.model_manager import ModelInstance
 
 
 class LLMChain(LCLLMChain):
+    # TODO avoid using model_config as the name is reserved by pydantic
     model_config: ModelConfigEntity
     """The language model instance to use."""
     llm: BaseLanguageModel = FakeLLM(response="")
