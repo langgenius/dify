@@ -13,10 +13,13 @@ import { INSERT_CONTEXT_BLOCK_COMMAND } from './context-block'
 import { INSERT_VARIABLE_BLOCK_COMMAND } from './variable-block'
 import { INSERT_HISTORY_BLOCK_COMMAND } from './history-block'
 import { INSERT_QUERY_BLOCK_COMMAND } from './query-block'
+import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from './workflow-variable-block'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Variable } from '@/app/components/base/icons/src/vender/line/development'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
+import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 
 class ComponentPickerOption extends MenuOption {
   title: string
@@ -97,6 +100,8 @@ type ComponentPickerProps = {
   historyShow?: boolean
   queryShow?: boolean
   outToolDisabled?: boolean
+  workflowVariableShow?: boolean
+  workflowVariables?: NodeOutPutVar[]
 }
 const ComponentPicker: FC<ComponentPickerProps> = ({
   contextDisabled,
@@ -106,6 +111,8 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
   historyShow,
   queryShow,
   outToolDisabled,
+  workflowVariableShow,
+  workflowVariables,
 }) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -184,6 +191,10 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
     [editor],
   )
 
+  const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
+    editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
+  }, [editor])
+
   return (
     <LexicalTypeaheadMenuPlugin
       options={options}
@@ -215,6 +226,14 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
                   option={option}
                 />
               ))}
+              {
+                workflowVariableShow && !!workflowVariables?.length && (
+                  <VarReferenceVars
+                    vars={workflowVariables}
+                    onChange={handleSelectWorkflowVariable}
+                  />
+                )
+              }
             </div>,
             anchorElementRef.current,
           )

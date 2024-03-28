@@ -342,6 +342,12 @@ export const useWorkflow = () => {
       setViewport(viewport)
   }, [store, reactflow])
 
+  const getNode = useCallback((nodeId: string) => {
+    const { getNodes } = store.getState()
+
+    return getNodes().find(node => node.id === nodeId)
+  }, [store])
+
   return {
     handleLayout,
     getTreeLeafNodes,
@@ -355,6 +361,7 @@ export const useWorkflow = () => {
     formatTimeFromNow,
     getValidTreeNodes,
     renderTreeFromRecord,
+    getNode,
   }
 }
 

@@ -1,7 +1,7 @@
 import json
 import time
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -23,7 +23,9 @@ from core.app.entities.task_entities import (
 )
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, SystemVariable
+from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.account import Account
@@ -321,15 +323,18 @@ class WorkflowCycleManage:
             )
         )
 
-    def _workflow_node_start_to_stream_response(self, task_id: str, workflow_node_execution: WorkflowNodeExecution) \
+    def _workflow_node_start_to_stream_response(self, event: QueueNodeStartedEvent,
+                                                task_id: str,
+                                                workflow_node_execution: WorkflowNodeExecution) \
             -> NodeStartStreamResponse:
         """
         Workflow node start to stream response.
+        :param event: queue node started event
         :param task_id: task id
         :param workflow_node_execution: workflow node execution
         :return:
         """
-        return NodeStartStreamResponse(
+        response = NodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_node_execution.workflow_run_id,
             data=NodeStartStreamResponse.Data(
@@ -343,6 +348,17 @@ class WorkflowCycleManage:
                 created_at=int(workflow_node_execution.created_at.timestamp())
             )
         )
+
+        # extras logic
+        if event.node_type == NodeType.TOOL:
+            node_data = cast(ToolNodeData, event.node_data)
+            response.data.extras['icon'] = ToolManager.get_tool_icon(
+                tenant_id=self._application_generate_entity.app_config.tenant_id,
+                provider_type=node_data.provider_type,
+                provider_id=node_data.provider_id
+            )
+
+        return response
 
     def _workflow_node_finish_to_stream_response(self, task_id: str, workflow_node_execution: WorkflowNodeExecution) \
             -> NodeFinishStreamResponse:

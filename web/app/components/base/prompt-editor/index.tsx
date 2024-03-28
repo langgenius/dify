@@ -26,6 +26,8 @@ import { HistoryBlockNode } from './plugins/history-block/node'
 import HistoryBlockReplacementBlock from './plugins/history-block-replacement-block'
 import QueryBlock from './plugins/query-block'
 import { QueryBlockNode } from './plugins/query-block/node'
+import WorkflowVariableBlock from './plugins/workflow-variable-block'
+import { WorkflowVariableBlockNode } from './plugins/workflow-variable-block/node'
 import QueryBlockReplacementBlock from './plugins/query-block-replacement-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
@@ -42,6 +44,10 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 
 export type PromptEditorProps = {
   className?: string
@@ -78,6 +84,14 @@ export type PromptEditorProps = {
   queryBlock?: {
     show?: boolean
     selectable?: boolean
+    onInsert?: () => void
+    onDelete?: () => void
+  }
+  workflowVariableBlock?: {
+    show?: boolean
+    selectable?: boolean
+    variables: NodeOutPutVar[]
+    getWorkflowNode: (nodeId: string) => Node | undefined
     onInsert?: () => void
     onDelete?: () => void
   }
@@ -121,6 +135,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
     onInsert: () => { },
     onDelete: () => { },
   },
+  workflowVariableBlock = {
+    show: true,
+    selectable: true,
+    variables: [],
+    getWorkflowNode: () => {},
+    onInsert: () => { },
+    onDelete: () => { },
+  },
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -134,6 +156,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       ContextBlockNode,
       HistoryBlockNode,
       QueryBlockNode,
+      WorkflowVariableBlockNode,
       VariableValueBlockNode,
     ],
     editorState: value ? textToEditorState(value as string) : null,
@@ -177,6 +200,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
           queryDisabled={!queryBlock.selectable}
           queryShow={queryBlock.show}
           outToolDisabled={outToolDisabled}
+          workflowVariableShow={workflowVariableBlock.show}
+          workflowVariables={workflowVariableBlock.variables}
         />
         <VariablePicker
           items={variableBlock.variables}
@@ -229,6 +254,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
                 onDelete={queryBlock.onDelete}
               />
               <QueryBlockReplacementBlock />
+            </>
+          )
+        }
+        {
+          workflowVariableBlock.show && (
+            <>
+              <WorkflowVariableBlock
+                getWorkflowNode={workflowVariableBlock.getWorkflowNode as any}
+                onInsert={workflowVariableBlock.onInsert}
+                onDelete={workflowVariableBlock.onDelete}
+              />
             </>
           )
         }
