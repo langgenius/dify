@@ -35,6 +35,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
         value={inputs.answer}
         onChange={handleAnswerChange}
         variables={inputs.variables.map(item => item.variable)}
+        nodesOutputVars={availableVarList}
       />
     </div>
   )
