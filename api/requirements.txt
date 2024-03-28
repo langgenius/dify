@@ -29,7 +29,7 @@ sentry-sdk[flask]~=1.39.2
 sympy==1.12
 jieba==0.42.1
 celery==5.2.7
-redis~=4.5.4
+redis[hiredis]~=5.0.3
 openpyxl==3.1.2
 chardet~=5.1.0
 python-docx~=1.1.0
