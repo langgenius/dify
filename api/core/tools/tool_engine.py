@@ -1,10 +1,13 @@
+from datetime import datetime, timezone
 from typing import Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolParameter
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
 from core.tools.errors import (
+    ToolEngineInvokeError,
     ToolInvokeError,
     ToolNotFoundError,
     ToolNotSupportedError,
@@ -26,7 +29,7 @@ class ToolEngine:
     def agent_invoke(tool: Tool, tool_parameters: Union[str, dict],
                      user_id: str, tenant_id: str, message: Message, invoke_from: InvokeFrom,
                      agent_tool_callback: DifyAgentCallbackHandler) \
-                        -> tuple[str, list[tuple[MessageFile, bool]]]:
+                        -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
         """
@@ -52,7 +55,10 @@ class ToolEngine:
                 tool_inputs=tool_parameters
             )
 
-            response = tool.invoke(user_id, tool_parameters)
+            try:
+                meta, response = ToolEngine._invoke(tool, tool_parameters, user_id)
+            except ToolEngineInvokeError as e:
+                meta = e.meta
 
             response = ToolFileMessageTransformer.transform_tool_invoke_messages(
                 messages=response, 
@@ -81,7 +87,7 @@ class ToolEngine:
             )
 
             # transform tool invoke message to get LLM friendly message
-            return plain_text, message_files
+            return plain_text, message_files, meta
         except ToolProviderCredentialValidationError as e:
             error_response = "Please check your tool provider credentials"
             agent_tool_callback.on_tool_error(e)
@@ -102,15 +108,56 @@ class ToolEngine:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
 
-        return error_response, []
+        return error_response, [], meta
 
     @staticmethod
     def workflow_invoke(tool: Tool, tool_parameters: dict,
-                        user_id: str, workflow_id: str) -> dict:
+                        user_id: str, workflow_id: str, 
+                        workflow_tool_callback: DifyWorkflowCallbackHandler) \
+                              -> list[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.
         """
+        try:
+            # hit the callback handler
+            workflow_tool_callback.on_tool_start(
+                tool_name=tool.identity.name, 
+                tool_inputs=tool_parameters
+            )
 
+            response = tool.invoke(user_id, tool_parameters)
+
+            # hit the callback handler
+            workflow_tool_callback.on_tool_end(
+                tool_name=tool.identity.name, 
+                tool_inputs=tool_parameters, 
+                tool_outputs=response
+            )
+
+            return response
+        except Exception as e:
+            workflow_tool_callback.on_tool_error(e)
+            raise e
+        
+    @staticmethod
+    def _invoke(tool: Tool, tool_parameters: dict, user_id: str) \
+          -> tuple[ToolInvokeMeta, list[ToolInvokeMessage]]:
+        """
+        Invoke the tool with the given arguments.
+        """
+        started_at = datetime.now(timezone.utc)
+        meta = ToolInvokeMeta(time_cost=0.0, error=None)
+        try:
+            response = tool.invoke(user_id, tool_parameters)
+        except Exception as e:
+            meta.error = str(e)
+            raise ToolEngineInvokeError(meta=meta)
+        finally:
+            ended_at = datetime.now(timezone.utc)
+            meta.time_cost = (ended_at - started_at).total_seconds()
+
+        return meta, response
+    
     @staticmethod
     def _convert_tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
         """

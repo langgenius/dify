@@ -327,3 +327,30 @@ class ModelToolProviderConfiguration(BaseModel):
     provider: str = Field(..., description="The provider of the model tool")
     models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
     label: I18nObject = Field(..., description="The label of the model tool")
+
+class ToolInvokeMeta(BaseModel):
+    """
+    Tool invoke meta
+    """
+    time_cost: float = Field(..., description="The time cost of the tool invoke")
+    error: Optional[str] = None
+
+    @classmethod
+    def empty(cls) -> 'ToolInvokeMeta':
+        """
+        Get an empty instance of ToolInvokeMeta
+        """
+        return cls(time_cost=0.0, error=None)
+    
+    @classmethod
+    def error_instance(cls, error: str) -> 'ToolInvokeMeta':
+        """
+        Get an instance of ToolInvokeMeta with error
+        """
+        return cls(time_cost=0.0, error=error)
+    
+    def to_dict(self) -> dict:
+        return {
+            'time_cost': self.time_cost,
+            'error': self.error,
+        }

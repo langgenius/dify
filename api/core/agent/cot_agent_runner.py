@@ -17,6 +17,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Conversation, Message
 
@@ -215,7 +216,10 @@ class CotAgentRunner(BaseAgentRunner):
             
             self.save_agent_thought(agent_thought=agent_thought,
                                     tool_name=scratchpad.action.action_name if scratchpad.action else '',
-                                    tool_input=scratchpad.action.action_input if scratchpad.action else '',
+                                    tool_input={
+                                        scratchpad.action.action_name: scratchpad.action.action_input
+                                    } if scratchpad.action else '',
+                                    tool_invoke_meta={},
                                     thought=scratchpad.thought,
                                     observation='',
                                     answer=scratchpad.agent_response,
@@ -248,13 +252,20 @@ class CotAgentRunner(BaseAgentRunner):
                     tool_instance = tool_instances.get(tool_call_name)
                     if not tool_instance:
                         answer = f"there is not a tool named {tool_call_name}"
-                        self.save_agent_thought(agent_thought=agent_thought, 
-                                                tool_name='',
-                                                tool_input='',
-                                                thought=None, 
-                                                observation=answer, 
-                                                answer=answer,
-                                                messages_ids=[])
+                        self.save_agent_thought(
+                            agent_thought=agent_thought, 
+                            tool_name='',
+                            tool_input='',
+                            tool_invoke_meta=ToolInvokeMeta.error_instance(
+                                f"there is not a tool named {tool_call_name}"
+                            ).to_dict(),
+                            thought=None, 
+                            observation={
+                                tool_call_name: answer
+                            }, 
+                            answer=answer,
+                            messages_ids=[]
+                        )
                         self.queue_manager.publish(QueueAgentThoughtEvent(
                             agent_thought_id=agent_thought.id
                         ), PublishFrom.APPLICATION_MANAGER)
@@ -266,7 +277,7 @@ class CotAgentRunner(BaseAgentRunner):
                                 pass
 
                         # invoke tool
-                        tool_invoke_response, message_files = ToolEngine.agent_invoke(
+                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
                             tool=tool_instance,
                             tool_parameters=tool_call_args,
                             user_id=self.user_id,
@@ -308,9 +319,16 @@ class CotAgentRunner(BaseAgentRunner):
                         self.save_agent_thought(
                             agent_thought=agent_thought, 
                             tool_name=tool_call_name,
-                            tool_input=tool_call_args,
+                            tool_input={
+                                tool_call_name: tool_call_args
+                            },
+                            tool_invoke_meta={
+                                tool_call_name: tool_invoke_meta.to_dict()
+                            },
                             thought=None,
-                            observation=observation, 
+                            observation={
+                                tool_call_name: observation
+                            }, 
                             answer=scratchpad.agent_response,
                             messages_ids=message_file_ids,
                         )
@@ -341,9 +359,10 @@ class CotAgentRunner(BaseAgentRunner):
         self.save_agent_thought(
             agent_thought=agent_thought, 
             tool_name='',
-            tool_input='',
+            tool_input={},
+            tool_invoke_meta={},
             thought=final_answer,
-            observation='', 
+            observation={}, 
             answer=final_answer,
             messages_ids=[]
         )

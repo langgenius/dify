@@ -15,6 +15,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Conversation, Message, MessageAgentThought
 
@@ -226,6 +227,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
+                tool_invoke_meta=None,
                 observation=None,
                 answer=response,
                 messages_ids=[],
@@ -251,11 +253,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "tool_call_name": tool_call_name,
-                        "tool_response": f"there is not a tool named {tool_call_name}"
+                        "tool_response": f"there is not a tool named {tool_call_name}",
+                        "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict()
                     }
                 else:
                     # invoke tool
-                    tool_invoke_response, message_files = ToolEngine.agent_invoke(
+                    tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
                         tool=tool_instance,
                         tool_parameters=tool_call_args,
                         user_id=self.user_id,
@@ -276,11 +279,11 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         # add message file ids
                         message_file_ids.append(message_file.id)
                     
-                    observation = tool_invoke_response
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "tool_call_name": tool_call_name,
-                        "tool_response": observation
+                        "tool_response": tool_invoke_response,
+                        "meta": tool_invoke_meta.to_dict()
                     }
                 
                 tool_responses.append(tool_response)
@@ -300,10 +303,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_name=None,
                     tool_input=None,
                     thought=None, 
-                    observation=json.dumps({
+                    tool_invoke_meta={
+                        tool_response['tool_call_name']: tool_response['meta'] 
+                        for tool_response in tool_responses
+                    },
+                    observation={
                         tool_response['tool_call_name']: tool_response['tool_response'] 
                         for tool_response in tool_responses
-                    }),
+                    },
                     answer=None,
                     messages_ids=message_file_ids
                 )

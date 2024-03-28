@@ -279,6 +279,7 @@ class BaseAgentRunner(AppRunner):
             thought='',
             tool=tool_name,
             tool_labels_str='{}',
+            tool_meta_str='{}',
             tool_input=tool_input,
             message=message,
             message_token=0,
@@ -313,7 +314,8 @@ class BaseAgentRunner(AppRunner):
                            tool_name: str,
                            tool_input: Union[str, dict],
                            thought: str, 
-                           observation: str, 
+                           observation: Union[str, str], 
+                           tool_invoke_meta: Union[str, dict],
                            answer: str,
                            messages_ids: list[str],
                            llm_usage: LLMUsage = None) -> MessageAgentThought:
@@ -340,6 +342,12 @@ class BaseAgentRunner(AppRunner):
             agent_thought.tool_input = tool_input
 
         if observation is not None:
+            if isinstance(observation, dict):
+                try:
+                    observation = json.dumps(observation, ensure_ascii=False)
+                except Exception as e:
+                    observation = json.dumps(observation)
+                    
             agent_thought.observation = observation
 
         if answer is not None:
@@ -372,6 +380,15 @@ class BaseAgentRunner(AppRunner):
                     labels[tool] = {'en_US': tool, 'zh_Hans': tool}
 
         agent_thought.tool_labels_str = json.dumps(labels)
+
+        if tool_invoke_meta is not None:
+            if isinstance(tool_invoke_meta, dict):
+                try:
+                    tool_invoke_meta = json.dumps(tool_invoke_meta, ensure_ascii=False)
+                except Exception as e:
+                    tool_invoke_meta = json.dumps(tool_invoke_meta)
+
+            agent_thought.tool_meta_str = tool_invoke_meta
 
         db.session.commit()
         db.session.close()

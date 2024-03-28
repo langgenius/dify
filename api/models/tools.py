@@ -58,7 +58,7 @@ class PublishedAppTool(db.Model):
     description = db.Column(db.Text, nullable=False)
     # llm_description of the tool, for LLM
     llm_description = db.Column(db.Text, nullable=False)
-    # query decription, query will be seem as a parameter of the tool, to describe this parameter to llm, we need this field
+    # query description, query will be seem as a parameter of the tool, to describe this parameter to llm, we need this field
     query_description = db.Column(db.Text, nullable=False)
     # query name, the name of the query parameter
     query_name = db.Column(db.String(40), nullable=False)
@@ -122,10 +122,6 @@ class ApiToolProvider(db.Model):
     @property
     def credentials(self) -> dict:
         return json.loads(self.credentials_str)
-    
-    @property
-    def is_taned(self) -> bool:
-        return self.tenant_id is not None
     
     @property
     def user(self) -> Account:
