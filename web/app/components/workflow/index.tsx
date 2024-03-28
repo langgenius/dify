@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import {
   memo,
+  useCallback,
   useEffect,
   useMemo,
 } from 'react'
@@ -66,7 +67,10 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const nodeAnimation = useStore(s => s.nodeAnimation)
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const {
+    handleSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose,
+  } = useNodesSyncDraft()
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
 
@@ -83,6 +87,19 @@ const Workflow: FC<WorkflowProps> = memo(({
       handleSyncWorkflowDraft(true)
     }
   }, [])
+
+  const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
+    if (document.visibilityState === 'hidden')
+      syncWorkflowDraftWhenPageClose()
+  }, [syncWorkflowDraftWhenPageClose])
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
+    }
+  }, [handleSyncWorkflowDraftWhenPageClose])
 
   const {
     handleNodeDragStart,
