@@ -20,7 +20,7 @@ const translation = {
   unavailable: 'Unavailable',
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'KNOWLEDGE',
-  datasetsApi: 'API',
+  datasetsApi: 'API ACCESS',
   retrieval: {
     semantic_search: {
       title: 'Vector Search',
