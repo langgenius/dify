@@ -7,9 +7,7 @@ import useConfig from './use-config'
 import ResolutionPicker from './components/resolution-picker'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
-import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -133,21 +131,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
-          />
-        </Field>
-
-        <Field
-          title={t(`${i18nPrefix}.variables`)}
-          operations={
-            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
-          }
-        >
-          <VarList
-            readonly={readOnly}
-            nodeId={id}
-            list={inputs.variables}
-            onChange={handleVarListChange}
-            filterVar={filterInputVar}
           />
         </Field>
 

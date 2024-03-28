@@ -48,7 +48,7 @@ const ConfigPrompt: FC<Props> = ({
     onlyLeafNodeVar: false,
     filterVar,
   })
-  console.log('availableVarList', availableVarList)
+  // console.log('availableVarList', availableVarList)
 
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
