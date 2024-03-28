@@ -8,7 +8,7 @@ from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
 from langchain.schema import AgentAction, AgentFinish, AIMessage, SystemMessage
 from langchain.tools import BaseTool
-from pydantic import root_validator
+from pydantic import ConfigDict, root_validator
 
 from core.entities.application_entities import ModelConfigEntity
 from core.entities.message_entities import lc_messages_to_prompt_messages
@@ -22,11 +22,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     An Multi Dataset Retrieve Agent driven by Router.
     """
     model_config: ModelConfigEntity
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @root_validator
     def validate_llm(cls, values: dict) -> dict:

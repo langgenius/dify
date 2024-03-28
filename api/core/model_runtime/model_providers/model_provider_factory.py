@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
@@ -19,11 +19,7 @@ class ModelProviderExtension(BaseModel):
     provider_instance: ModelProvider
     name: str
     position: Optional[int] = None
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ModelProviderFactory:

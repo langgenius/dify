@@ -12,9 +12,9 @@ from typing import Any, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
-from pydantic.color import Color
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
+from pydantic_extra_types.color import Color
 
 from ._compat import PYDANTIC_V2, Url, _model_dump
 

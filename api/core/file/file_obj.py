@@ -44,12 +44,12 @@ class FileBelongsTo(enum.Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 class FileObj(BaseModel):
-    id: Optional[str]
+    id: Optional[str] = None
     tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
-    url: Optional[str]
-    upload_file_id: Optional[str]
+    url: Optional[str] = None
+    upload_file_id: Optional[str] = None
     file_config: dict
 
     @property

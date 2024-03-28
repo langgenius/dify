@@ -5,7 +5,7 @@ from langchain.agents import AgentExecutor as LCAgentExecutor
 from langchain.agents import BaseMultiActionAgent, BaseSingleActionAgent
 from langchain.callbacks.manager import Callbacks
 from langchain.tools import BaseTool
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict
 
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.application_entities import ModelConfigEntity
@@ -32,18 +32,12 @@ class AgentConfiguration(BaseModel):
     max_execution_time: Optional[float] = None
     early_stopping_method: str = "generate"
     agent_llm_callback: Optional[AgentLLMCallback] = None
-    # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        extra = Extra.forbid
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 
 class AgentExecuteResult(BaseModel):
     strategy: PlanningStrategy
-    output: Optional[str]
+    output: Optional[str] = None
     configuration: AgentConfiguration
 
 
