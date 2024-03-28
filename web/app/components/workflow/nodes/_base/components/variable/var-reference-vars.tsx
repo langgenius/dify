@@ -184,12 +184,14 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
 }
 
 type Props = {
+  hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
   onChange: (value: ValueSelector) => void
   itemWidth?: number
 }
 const VarReferenceVars: FC<Props> = ({
+  hideSearch,
   searchBoxClassName,
   vars,
   onChange,
@@ -214,29 +216,35 @@ const VarReferenceVars: FC<Props> = ({
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <>
-      <div
-        className={cn(searchBoxClassName, 'mb-2 mx-2 flex items-center px-2 rounded-lg bg-gray-100')}
-        onClick={e => e.stopPropagation()}
-      >
-        <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
-        <input
-          value={searchText}
-          className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
-          placeholder={t('workflow.common.searchVar') || ''}
-          onChange={e => setSearchText(e.target.value)}
-          autoFocus
-        />
-        {
-          searchText && (
-            <div
-              className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
-              onClick={() => setSearchText('')}
-            >
-              <XCircle className='w-[14px] h-[14px] text-gray-400' />
-            </div>
-          )
-        }
-      </div>
+      {
+        !hideSearch && (
+          <div
+            className={cn(searchBoxClassName, 'mb-2 mx-2 flex items-center px-2 rounded-lg bg-gray-100')}
+            onClick={e => e.stopPropagation()}
+          >
+
+            <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
+            <input
+              value={searchText}
+              className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
+              placeholder={t('workflow.common.searchVar') || ''}
+              onChange={e => setSearchText(e.target.value)}
+              autoFocus
+            />
+            {
+              searchText && (
+                <div
+                  className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
+                  onClick={() => setSearchText('')}
+                >
+                  <XCircle className='w-[14px] h-[14px] text-gray-400' />
+                </div>
+              )
+            }
+          </div>
+        )
+      }
+
       {filteredVars.length > 0
         ? <div>
 

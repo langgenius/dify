@@ -229,6 +229,7 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
               {
                 workflowVariableShow && !!workflowVariables?.length && (
                   <VarReferenceVars
+                    hideSearch
                     vars={workflowVariables}
                     onChange={handleSelectWorkflowVariable}
                   />
