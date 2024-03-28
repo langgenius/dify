@@ -6,19 +6,15 @@ def get_bool(value: str) -> bool:
         return False
     else:
         match value:
-            case 'true' | 'True':
+            case 'true' | 'True' | '1':
                 return True
-            case 'false' | 'False':
-                return False
-            case '1':
-                return True
-            case '0':
+            case 'false' | 'False'|'0':
                 return False
 
         match value.strip().lower():
-            case 'true':
+            case 'true' | '1':
                 return True
-            case 'false':
+            case 'false' | '0':
                 return False
             case _:
                 raise ValueError(f'Value {value} should be true or false')
