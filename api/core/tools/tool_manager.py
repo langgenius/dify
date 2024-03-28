@@ -7,7 +7,6 @@ from typing import Any, Union
 from flask import current_app
 
 from core.agent.entities import AgentToolEntity
-from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.provider_manager import ProviderManager
 from core.tools.entities.common_entities import I18nObject
@@ -142,9 +141,8 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
 
     @staticmethod
-    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tenant_id: str,
-                         agent_callback: DifyAgentCallbackHandler = None) \
-            -> Union[BuiltinTool, ApiTool]:
+    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tenant_id: str) \
+        -> Union[BuiltinTool, ApiTool]:
         """
             get the tool runtime
 
@@ -163,7 +161,7 @@ class ToolManager:
                 return builtin_tool.fork_tool_runtime(meta={
                     'tenant_id': tenant_id,
                     'credentials': {},
-                }, agent_callback=agent_callback)
+                })
 
             # get credentials
             builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
@@ -185,8 +183,8 @@ class ToolManager:
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
                 'runtime_parameters': {}
-            }, agent_callback=agent_callback)
-
+            })
+        
         elif provider_type == 'api':
             if tenant_id is None:
                 raise ValueError('tenant id is required for api provider')
@@ -264,8 +262,7 @@ class ToolManager:
         return parameter_value
 
     @staticmethod
-    def get_agent_tool_runtime(tenant_id: str, agent_tool: AgentToolEntity,
-                               agent_callback: DifyAgentCallbackHandler) -> Tool:
+    def get_agent_tool_runtime(tenant_id: str, agent_tool: AgentToolEntity) -> Tool:
         """
             get the agent tool runtime
         """
@@ -273,7 +270,6 @@ class ToolManager:
             provider_type=agent_tool.provider_type, provider_name=agent_tool.provider_id,
             tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
-            agent_callback=agent_callback
         )
         runtime_parameters = {}
         parameters = tool_entity.get_all_runtime_parameters()
@@ -296,7 +292,7 @@ class ToolManager:
         return tool_entity
 
     @staticmethod
-    def get_workflow_tool_runtime(tenant_id: str, workflow_tool: ToolEntity, agent_callback: DifyAgentCallbackHandler):
+    def get_workflow_tool_runtime(tenant_id: str, workflow_tool: ToolEntity):
         """
             get the workflow tool runtime
         """
@@ -305,7 +301,6 @@ class ToolManager:
             provider_name=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
-            agent_callback=agent_callback
         )
         runtime_parameters = {}
         parameters = tool_entity.get_all_runtime_parameters()
@@ -372,12 +367,16 @@ class ToolManager:
                     continue
 
                 # init provider
-                provider_class = load_single_subclass_from_source(
-                    module_name=f'core.tools.provider.builtin.{provider}.{provider}',
-                    script_path=path.join(path.dirname(path.realpath(__file__)),
-                                          'provider', 'builtin', provider, f'{provider}.py'),
-                    parent_type=BuiltinToolProviderController)
-                builtin_providers.append(provider_class())
+                try:
+                    provider_class = load_single_subclass_from_source(
+                        module_name=f'core.tools.provider.builtin.{provider}.{provider}',
+                        script_path=path.join(path.dirname(path.realpath(__file__)),
+                                            'provider', 'builtin', provider, f'{provider}.py'),
+                        parent_type=BuiltinToolProviderController)
+                    builtin_providers.append(provider_class())
+                except Exception as e:
+                    logger.error(f'load builtin provider {provider} error: {e}')
+                    continue
 
         # cache the builtin providers
         for provider in builtin_providers:
