@@ -1,3 +1,4 @@
+import concurrent.futures
 import datetime
 import json
 import logging
@@ -6,7 +7,7 @@ import threading
 import time
 import uuid
 from typing import Optional, cast
-import concurrent.futures
+
 from flask import Flask, current_app
 from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
