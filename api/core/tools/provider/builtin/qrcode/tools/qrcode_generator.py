@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import Any, Union, ClassVar
+from typing import Any, ClassVar, Union
 
 from qrcode.constants import ERROR_CORRECT_H, ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q
 from qrcode.image.base import BaseImage
