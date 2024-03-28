@@ -7,12 +7,12 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class SearchDocsInput(BaseModel):
+class SearchDevDocsInput(BaseModel):
     doc: str = Field(..., description="The name of the documentation.")
     topic: str = Field(..., description="The path of the section/topic.")
 
 
-class SearchDocsTool(BuiltinTool):
+class SearchDevDocsTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invokes the DevDocs search tool with the given user ID and tool parameters.
