@@ -461,9 +461,9 @@ class RegisterService:
             name = email.split('@')[0]
 
             account = cls.register(email=email, name=name, language=language, status=AccountStatus.PENDING)
-
-            # Create new tenant member for invited tenant
-            TenantService.create_tenant_member(tenant, account, role)
+            if current_app.config['EDITION'] != 'SELF_HOSTED':
+                # Create new tenant member for invited tenant
+                TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, 'add')
