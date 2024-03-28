@@ -1,6 +1,7 @@
 import json
 import logging
 
+from flask import abort, request
 from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -52,10 +53,30 @@ class DraftWorkflowApi(Resource):
         """
         Sync draft workflow
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
-        args = parser.parse_args()
+        content_type = request.headers.get('Content-Type')
+
+        if 'application/json' in content_type:
+            parser = reqparse.RequestParser()
+            parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
+            parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
+            args = parser.parse_args()
+        elif 'text/plain' in content_type:
+            try:
+                data = json.loads(request.data.decode('utf-8'))
+                if 'graph' not in data or 'features' not in data:
+                    raise ValueError('graph or features not found in data')
+
+                if not isinstance(data.get('graph'), dict) or not isinstance(data.get('features'), dict):
+                    raise ValueError('graph or features is not a dict')
+
+                args = {
+                    'graph': data.get('graph'),
+                    'features': data.get('features')
+                }
+            except json.JSONDecodeError:
+                return {'message': 'Invalid JSON data'}, 400
+        else:
+            abort(415)
 
         workflow_service = WorkflowService()
         workflow = workflow_service.sync_draft_workflow(
