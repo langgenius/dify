@@ -1,10 +1,11 @@
-import os
 import sys
 from typing import Any, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
 from langchain.schema import AgentAction, AgentFinish, BaseMessage, LLMResult
+
+from core.utils.type_helper import get_bool_from_sys_env
 
 
 class DifyStdOutCallbackHandler(BaseCallbackHandler):
@@ -130,22 +131,22 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
     @property
     def ignore_llm(self) -> bool:
         """Whether to ignore LLM callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool_from_sys_env("DEBUG")
 
     @property
     def ignore_chain(self) -> bool:
         """Whether to ignore chain callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool_from_sys_env("DEBUG")
 
     @property
     def ignore_agent(self) -> bool:
         """Whether to ignore agent callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool_from_sys_env("DEBUG")
 
     @property
     def ignore_chat_model(self) -> bool:
         """Whether to ignore chat model callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return get_bool_from_sys_env("DEBUG")
 
 
 class DifyStreamingStdOutCallbackHandler(DifyStdOutCallbackHandler):
