@@ -8,7 +8,7 @@ def get_bool(value: str) -> bool:
         match value:
             case 'true' | 'True' | '1':
                 return True
-            case 'false' | 'False'|'0':
+            case 'false' | 'False' | '0':
                 return False
 
         match value.strip().lower():
