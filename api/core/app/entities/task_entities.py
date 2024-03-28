@@ -229,6 +229,7 @@ class NodeStartStreamResponse(StreamResponse):
         predecessor_node_id: Optional[str] = None
         inputs: Optional[dict] = None
         created_at: int
+        extras: dict = {}
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
