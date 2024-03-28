@@ -13,8 +13,8 @@ class DevDocsProvider(BuiltinToolProviderController):
             ).invoke(
                 user_id='',
                 tool_parameters={
-                    "doc": "javascript",
-                    "topic": "strings",
+                    "doc": "python~3.12",
+                    "topic": "library/code",
                 },
             )
         except Exception as e:
