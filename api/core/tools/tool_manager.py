@@ -1,4 +1,3 @@
-import importlib
 import json
 import logging
 import mimetypes
@@ -33,6 +32,7 @@ from core.tools.utils.configuration import (
     ToolParameterConfigurationManager,
 )
 from core.tools.utils.encoder import serialize_base_model_dict
+from core.utils.module_import_helper import load_single_subclass_from_source
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
@@ -73,21 +73,11 @@ class ToolManager:
 
         if provider_entity is None:
             # fetch the provider from .provider.builtin
-            py_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.py')
-            spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.{provider}', py_path)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-
-            # get all the classes in the module
-            classes = [ x for _, x in vars(mod).items() 
-                       if isinstance(x, type) and x != ToolProviderController and issubclass(x, ToolProviderController)
-            ]
-            if len(classes) == 0:
-                raise ToolProviderNotFoundError(f'provider {provider} not found')
-            if len(classes) > 1:
-                raise ToolProviderNotFoundError(f'multiple providers found for {provider}')
-            
-            provider_entity = classes[0]()
+            provider_class = load_single_subclass_from_source(
+                module_name=f'core.tools.provider.builtin.{provider}.{provider}',
+                script_path=path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.py'),
+                parent_type=ToolProviderController)
+            provider_entity = provider_class()
 
         return provider_entity.invoke(tool_id, tool_name, tool_parameters, credentials, prompt_messages)
     
@@ -237,13 +227,13 @@ class ToolManager:
             parameter_value = parameter_rule.default
             if not parameter_value and parameter_rule.required:
                 raise ValueError(f"tool parameter {parameter_rule.name} not found in tool config")
-        
+
         if parameter_rule.type == ToolParameter.ToolParameterType.SELECT:
             # check if tool_parameter_config in options
             options = list(map(lambda x: x.value, parameter_rule.options))
             if parameter_value not in options:
                 raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}")
-        
+
         # convert tool parameter config to correct type
         try:
             if parameter_rule.type == ToolParameter.ToolParameterType.NUMBER:
@@ -265,7 +255,7 @@ class ToolManager:
                 parameter_value = str(parameter_value)
         except Exception as e:
             raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} is not correct type")
-        
+
         return parameter_value
 
     @staticmethod
@@ -297,16 +287,16 @@ class ToolManager:
 
         tool_entity.runtime.runtime_parameters.update(runtime_parameters)
         return tool_entity
-    
+
     @staticmethod
     def get_workflow_tool_runtime(tenant_id: str, workflow_tool: ToolEntity, agent_callback: DifyAgentCallbackHandler):
         """
             get the workflow tool runtime
         """
         tool_entity = ToolManager.get_tool_runtime(
-            provider_type=workflow_tool.provider_type, 
-            provider_name=workflow_tool.provider_id, 
-            tool_name=workflow_tool.tool_name, 
+            provider_type=workflow_tool.provider_type,
+            provider_name=workflow_tool.provider_id,
+            tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
             agent_callback=agent_callback
         )
@@ -318,7 +308,7 @@ class ToolManager:
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 value = ToolManager._init_runtime_parameter(parameter, workflow_tool.tool_configurations)
                 runtime_parameters[parameter.name] = value
-    
+
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
@@ -326,7 +316,7 @@ class ToolManager:
             provider_name=workflow_tool.provider_id,
             provider_type=workflow_tool.provider_type,
         )
-        
+
         if runtime_parameters:
             runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
 
@@ -373,23 +363,12 @@ class ToolManager:
                 if provider.startswith('__'):
                     continue
 
-                py_path = path.join(path.dirname(path.realpath(__file__)), 'provider', 'builtin', provider, f'{provider}.py')
-                spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.{provider}', py_path)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-
-                # load all classes
-                classes = [
-                    obj for name, obj in vars(mod).items() 
-                        if isinstance(obj, type) and obj != BuiltinToolProviderController and issubclass(obj, BuiltinToolProviderController)
-                ]
-                if len(classes) == 0:
-                    raise ToolProviderNotFoundError(f'provider {provider} not found')
-                if len(classes) > 1:
-                    raise ToolProviderNotFoundError(f'multiple providers found for {provider}')
-                
                 # init provider
-                provider_class = classes[0]
+                provider_class = load_single_subclass_from_source(
+                    module_name=f'core.tools.provider.builtin.{provider}.{provider}',
+                    script_path=path.join(path.dirname(path.realpath(__file__)),
+                                           'provider', 'builtin', provider, f'{provider}.py'),
+                    parent_type=BuiltinToolProviderController)
                 builtin_providers.append(provider_class())
 
         # cache the builtin providers
@@ -468,16 +447,16 @@ class ToolManager:
         tenant_id: str,
     ) -> list[UserToolProvider]:
         result_providers: dict[str, UserToolProvider] = {}
-        
+
         # get builtin providers
         builtin_providers = ToolManager.list_builtin_providers()
-        
+
         # get db builtin providers
         db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
             filter(BuiltinToolProvider.tenant_id == tenant_id).all()
         
         find_db_builtin_provider = lambda provider: next((x for x in db_builtin_providers if x.provider == provider), None)
-        
+
         # append builtin providers
         for provider in builtin_providers:
             user_provider = ToolTransformService.builtin_provider_to_user_provider(
