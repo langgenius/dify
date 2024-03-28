@@ -1,6 +1,7 @@
 from typing import Optional
 
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
+from core.utils.type_helper import get_bool
 
 
 class CommonValidator:
@@ -78,10 +79,6 @@ class CommonValidator:
                     raise ValueError(f'Variable {credential_form_schema.variable} is not in options')
 
         if credential_form_schema.type == FormType.SWITCH:
-            # If the value is not in ['true', 'false'], an exception is thrown
-            if value.lower() not in ['true', 'false']:
-                raise ValueError(f'Variable {credential_form_schema.variable} should be true or false')
-
-            value = True if value.lower() == 'true' else False
+            value = get_bool(value)
 
         return value

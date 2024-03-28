@@ -7,6 +7,7 @@ from flask_login.config import EXEMPT_METHODS
 from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
+from core.utils.type_helper import get_bool
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin
 
@@ -53,7 +54,7 @@ def login_required(func):
     def decorated_view(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
         admin_api_key_enable = os.getenv('ADMIN_API_KEY_ENABLE', default='False')
-        if admin_api_key_enable.lower() == 'true':
+        if get_bool(admin_api_key_enable):
             if auth_header:
                 if ' ' not in auth_header:
                     raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')

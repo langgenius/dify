@@ -13,7 +13,9 @@ from anthropic.types import MessageParam, Message, MessageStreamEvent, \
     ContentBlock, MessageStartEvent, Usage, TextDelta, MessageDeltaEvent, MessageStopEvent, ContentBlockDeltaEvent, \
     MessageDeltaUsage
 
-MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
+from core.utils.type_helper import get_bool
+
+MOCK = get_bool(os.getenv('MOCK_SWITCH', 'false'))
 
 
 class MockAnthropicClass(object):

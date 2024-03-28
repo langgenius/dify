@@ -14,6 +14,7 @@ from core.prompt.advanced_prompt_templates import (
     CONTEXT,
 )
 from core.prompt.prompt_transform import AppMode
+from core.utils.type_helper import get_bool
 
 
 class AdvancedPromptTemplateService:
@@ -47,14 +48,14 @@ class AdvancedPromptTemplateService:
             
     @classmethod
     def get_completion_prompt(cls, prompt_template: dict, has_context: str, context: str) -> dict:
-        if has_context == 'true':
+        if get_bool(has_context):
             prompt_template['completion_prompt_config']['prompt']['text'] = context + prompt_template['completion_prompt_config']['prompt']['text']
         
         return prompt_template
 
     @classmethod
     def get_chat_prompt(cls, prompt_template: dict, has_context: str, context: str) -> dict:
-        if has_context == 'true':
+        if get_bool(has_context):
             prompt_template['chat_prompt_config']['prompt'][0]['text'] = context + prompt_template['chat_prompt_config']['prompt'][0]['text']
         
         return prompt_template

@@ -16,6 +16,7 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.utils.type_helper import get_bool
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
@@ -88,7 +89,7 @@ class DatasetDocumentSegmentListApi(Resource):
             query = query.where(DocumentSegment.content.ilike(f'%{keyword}%'))
 
         if args['enabled'].lower() != 'all':
-            if args['enabled'].lower() == 'true':
+            if get_bool(args['enabled']):
                 query = query.filter(DocumentSegment.enabled == True)
             elif args['enabled'].lower() == 'false':
                 query = query.filter(DocumentSegment.enabled == False)

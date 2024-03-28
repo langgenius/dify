@@ -12,6 +12,8 @@ from xinference_client.client.restful.restful_client import (Client, RESTfulChat
                                                              RESTfulGenerateModelHandle, RESTfulRerankModelHandle)
 from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
 
+from core.utils.type_helper import get_bool
+
 
 class MockXinferenceClass(object):
     def get_chat_model(self: Client, model_uid: str) -> Union[RESTfulChatglmCppChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
@@ -157,7 +159,7 @@ class MockXinferenceClass(object):
 
         return embedding
 
-MOCK = os.getenv('MOCK_SWITCH', 'false').lower() == 'true'
+MOCK = get_bool(os.getenv('MOCK_SWITCH', 'false'))
 
 @pytest.fixture
 def setup_xinference_mock(request, monkeypatch: MonkeyPatch):

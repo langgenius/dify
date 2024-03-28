@@ -2,6 +2,8 @@ import os
 
 import dotenv
 
+from core.utils.type_helper import get_bool
+
 dotenv.load_dotenv()
 
 DEFAULTS = {
@@ -71,7 +73,7 @@ def get_env(key):
 
 def get_bool_env(key):
     value = get_env(key)
-    return value.lower() == 'true' if value is not None else False
+    return get_bool(value)
 
 
 def get_cors_allow_origins(env, default):

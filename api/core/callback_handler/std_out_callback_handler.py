@@ -6,6 +6,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
 from langchain.schema import AgentAction, AgentFinish, BaseMessage, LLMResult
 
+from core.utils.type_helper import get_bool
+
 
 class DifyStdOutCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
@@ -130,22 +132,22 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
     @property
     def ignore_llm(self) -> bool:
         """Whether to ignore LLM callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool(os.environ.get("DEBUG"))
 
     @property
     def ignore_chain(self) -> bool:
         """Whether to ignore chain callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool(os.environ.get("DEBUG"))
 
     @property
     def ignore_agent(self) -> bool:
         """Whether to ignore agent callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool(os.environ.get("DEBUG"))
 
     @property
     def ignore_chat_model(self) -> bool:
         """Whether to ignore chat model callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return get_bool(os.environ.get("DEBUG"))
 
 
 class DifyStreamingStdOutCallbackHandler(DifyStdOutCallbackHandler):

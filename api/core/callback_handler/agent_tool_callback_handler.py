@@ -5,6 +5,8 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
 from pydantic import BaseModel
 
+from core.utils.type_helper import get_bool
+
 
 class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     """Callback Handler that prints to std out."""
@@ -67,9 +69,9 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
     @property
     def ignore_agent(self) -> bool:
         """Whether to ignore agent callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool(os.environ.get("DEBUG"))
 
     @property
     def ignore_chat_model(self) -> bool:
         """Whether to ignore chat model callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+        return not get_bool(os.environ.get("DEBUG"))

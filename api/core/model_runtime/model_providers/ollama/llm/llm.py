@@ -41,6 +41,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.utils.type_helper import get_bool
 
 logger = logging.getLogger(__name__)
 
@@ -425,7 +426,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         """
         extras = {}
 
-        if 'vision_support' in credentials and credentials['vision_support'] == 'true':
+        if get_bool(credentials.get('vision_support')):
             extras['features'] = [ModelFeature.VISION]
 
         entity = AIModelEntity(
