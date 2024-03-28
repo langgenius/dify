@@ -82,6 +82,8 @@ class HostingConfiguration:
                     RestrictModel(model="gpt-35-turbo-16k", base_model_name="gpt-35-turbo-16k", model_type=ModelType.LLM),
                     RestrictModel(model="text-davinci-003", base_model_name="text-davinci-003", model_type=ModelType.LLM),
                     RestrictModel(model="text-embedding-ada-002", base_model_name="text-embedding-ada-002", model_type=ModelType.TEXT_EMBEDDING),
+                    RestrictModel(model="text-embedding-3-small", base_model_name="text-embedding-3-small", model_type=ModelType.TEXT_EMBEDDING),
+                    RestrictModel(model="text-embedding-3-large", base_model_name="text-embedding-3-large", model_type=ModelType.TEXT_EMBEDDING),
                 ]
             )
             quotas.append(trial_quota)
@@ -104,37 +106,17 @@ class HostingConfiguration:
 
         if app_config.get("HOSTED_OPENAI_TRIAL_ENABLED"):
             hosted_quota_limit = int(app_config.get("HOSTED_OPENAI_QUOTA_LIMIT", "200"))
+            trial_models = self.parse_restrict_models_from_env(app_config, "HOSTED_OPENAI_TRIAL_MODELS")
             trial_quota = TrialHostingQuota(
                 quota_limit=hosted_quota_limit,
-                restrict_models=[
-                    RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-1106", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-instruct", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-16k-0613", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-0613", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-0125", model_type=ModelType.LLM),
-                    RestrictModel(model="text-davinci-003", model_type=ModelType.LLM),
-                ]
+                restrict_models=trial_models
             )
             quotas.append(trial_quota)
 
         if app_config.get("HOSTED_OPENAI_PAID_ENABLED"):
+            paid_models = self.parse_restrict_models_from_env(app_config, "HOSTED_OPENAI_PAID_MODELS")
             paid_quota = PaidHostingQuota(
-                restrict_models=[
-                    RestrictModel(model="gpt-4", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-4-turbo-preview", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-4-1106-preview", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-4-0125-preview", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-16k", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-16k-0613", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-1106", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-0613", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-0125", model_type=ModelType.LLM),
-                    RestrictModel(model="gpt-3.5-turbo-instruct", model_type=ModelType.LLM),
-                    RestrictModel(model="text-davinci-003", model_type=ModelType.LLM),
-                ]
+                restrict_models=paid_models
             )
             quotas.append(paid_quota)
 
@@ -258,3 +240,11 @@ class HostingConfiguration:
         return HostedModerationConfig(
             enabled=False
         )
+
+    @staticmethod
+    def parse_restrict_models_from_env(app_config: Config, env_var: str) -> list[RestrictModel]:
+        models_str = app_config.get(env_var)
+        models_list = models_str.split(",") if models_str else []
+        return [RestrictModel(model=model_name.strip(), model_type=ModelType.LLM) for model_name in models_list if
+                model_name.strip()]
+

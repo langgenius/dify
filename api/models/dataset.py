@@ -95,6 +95,14 @@ class Dataset(db.Model):
             .filter(Document.dataset_id == self.id).scalar()
 
     @property
+    def doc_form(self):
+        document = db.session.query(Document).filter(
+            Document.dataset_id == self.id).first()
+        if document:
+            return document.doc_form
+        return None
+
+    @property
     def retrieval_model_dict(self):
         default_retrieval_model = {
             'search_method': 'semantic_search',
@@ -108,6 +116,10 @@ class Dataset(db.Model):
         }
         return self.retrieval_model if self.retrieval_model else default_retrieval_model
 
+    @staticmethod
+    def gen_collection_name_by_id(dataset_id: str) -> str:
+        normalized_dataset_id = dataset_id.replace("-", "_")
+        return f'Vector_index_{normalized_dataset_id}_Node'
 
 class DatasetProcessRule(db.Model):
     __tablename__ = 'dataset_process_rules'
@@ -164,6 +176,7 @@ class Document(db.Model):
         db.PrimaryKeyConstraint('id', name='document_pkey'),
         db.Index('document_dataset_id_idx', 'dataset_id'),
         db.Index('document_is_paused_idx', 'is_paused'),
+        db.Index('document_tenant_idx', 'tenant_id'),
     )
 
     # initial fields
@@ -322,6 +335,7 @@ class DocumentSegment(db.Model):
         db.Index('document_segment_tenant_dataset_idx', 'dataset_id', 'tenant_id'),
         db.Index('document_segment_tenant_document_idx', 'document_id', 'tenant_id'),
         db.Index('document_segment_dataset_node_idx', 'dataset_id', 'index_node_id'),
+        db.Index('document_segment_tenant_idx', 'tenant_id'),
     )
 
     # initial fields

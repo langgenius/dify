@@ -16,7 +16,7 @@ export type App = {
   app_id: string
   description: string
   copyright: string
-  privacy_policy: string
+  privacy_policy: string | null
   category: AppCategory
   position: number
   is_listed: boolean

@@ -26,7 +26,7 @@ const ModelIcon: FC<ModelIconProps> = ({
     return (
       <img
         alt='model-icon'
-        src={`${provider.icon_small[language]}?_token=${localStorage.getItem('console_token')}`}
+        src={`${provider.icon_small[language] || provider.icon_small.en_US}?_token=${localStorage.getItem('console_token')}`}
         className={`w-4 h-4 ${className}`}
       />
     )

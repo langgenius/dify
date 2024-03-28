@@ -11,10 +11,11 @@ from flask_login import current_user
 from sqlalchemy import func
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.index.index import IndexBuilder
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.datasource.keyword.keyword_factory import Keyword
+from core.rag.models.document import Document as RAGDocument
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -36,6 +37,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from services.feature_service import FeatureModel, FeatureService
 from services.vector_service import VectorService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
@@ -401,7 +403,7 @@ class DocumentService:
     @staticmethod
     def delete_document(document):
         # trigger document_was_deleted signal
-        document_was_deleted.send(document.id, dataset_id=document.dataset_id)
+        document_was_deleted.send(document.id, dataset_id=document.dataset_id, doc_form=document.doc_form)
 
         db.session.delete(document)
         db.session.commit()
@@ -452,7 +454,9 @@ class DocumentService:
                                       created_from: str = 'web'):
 
         # check document limit
-        if current_app.config['EDITION'] == 'CLOUD':
+        features = FeatureService.get_features(current_user.current_tenant_id)
+
+        if features.billing.enabled:
             if 'original_document_id' not in document_data or not document_data['original_document_id']:
                 count = 0
                 if document_data["data_source"]["type"] == "upload_file":
@@ -462,6 +466,12 @@ class DocumentService:
                     notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                     for notion_info in notion_info_list:
                         count = count + len(notion_info['pages'])
+                batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+                if count > batch_upload_limit:
+                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+                DocumentService.check_documents_upload_quota(count, features)
+
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -613,6 +623,12 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
+    def check_documents_upload_quota(count: int, features: FeatureModel):
+        can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size
+        if count > can_upload_size:
+            raise ValueError(f'You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded.')
+
+    @staticmethod
     def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
                        document_language: str, data_source_info: dict, created_from: str, position: int,
                        account: Account,
@@ -741,14 +757,22 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
-        count = 0
-        if document_data["data_source"]["type"] == "upload_file":
-            upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
-            count = len(upload_file_list)
-        elif document_data["data_source"]["type"] == "notion_import":
-            notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
-            for notion_info in notion_info_list:
-                count = count + len(notion_info['pages'])
+        features = FeatureService.get_features(current_user.current_tenant_id)
+
+        if features.billing.enabled:
+            count = 0
+            if document_data["data_source"]["type"] == "upload_file":
+                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                count = len(upload_file_list)
+            elif document_data["data_source"]["type"] == "notion_import":
+                notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
+                for notion_info in notion_info_list:
+                    count = count + len(notion_info['pages'])
+            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            if count > batch_upload_limit:
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+            DocumentService.check_documents_upload_quota(count, features)
 
         embedding_model = None
         dataset_collection_binding_id = None
@@ -1048,7 +1072,7 @@ class SegmentService:
 
         # save vector index
         try:
-            VectorService.create_segment_vector(args['keywords'], segment_document, dataset)
+            VectorService.create_segments_vector([args['keywords']], [segment_document], dataset)
         except Exception as e:
             logging.exception("create segment index failed")
             segment_document.enabled = False
@@ -1075,6 +1099,7 @@ class SegmentService:
         ).scalar()
         pre_segment_data_list = []
         segment_data_list = []
+        keywords_list = []
         for segment_item in segments:
             content = segment_item['content']
             doc_id = str(uuid.uuid4())
@@ -1107,15 +1132,13 @@ class SegmentService:
                 segment_document.answer = segment_item['answer']
             db.session.add(segment_document)
             segment_data_list.append(segment_document)
-            pre_segment_data = {
-                'segment': segment_document,
-                'keywords': segment_item['keywords']
-            }
-            pre_segment_data_list.append(pre_segment_data)
+
+            pre_segment_data_list.append(segment_document)
+            keywords_list.append(segment_item['keywords'])
 
         try:
             # save vector index
-            VectorService.multi_create_segment_vector(pre_segment_data_list, dataset)
+            VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset)
         except Exception as e:
             logging.exception("create segment index failed")
             for segment_document in segment_data_list:
@@ -1139,17 +1162,24 @@ class SegmentService:
                     segment.answer = args['answer']
                 if 'keywords' in args and args['keywords']:
                     segment.keywords = args['keywords']
-                if'enabled' in args and args['enabled'] is not None:
+                if 'enabled' in args and args['enabled'] is not None:
                     segment.enabled = args['enabled']
                 db.session.add(segment)
                 db.session.commit()
                 # update segment index task
                 if args['keywords']:
-                    kw_index = IndexBuilder.get_index(dataset, 'economy')
-                    # delete from keyword index
-                    kw_index.delete_by_ids([segment.index_node_id])
-                    # save keyword index
-                    kw_index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
+                    keyword = Keyword(dataset)
+                    keyword.delete_by_ids([segment.index_node_id])
+                    document = RAGDocument(
+                        page_content=segment.content,
+                        metadata={
+                            "doc_id": segment.index_node_id,
+                            "doc_hash": segment.index_node_hash,
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                        }
+                    )
+                    keyword.add_texts([document], keywords_list=[args['keywords']])
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1225,7 +1255,7 @@ class DatasetCollectionBindingService:
             dataset_collection_binding = DatasetCollectionBinding(
                 provider_name=provider_name,
                 model_name=model_name,
-                collection_name="Vector_index_" + str(uuid.uuid4()).replace("-", "_") + '_Node',
+                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
                 type=collection_type
             )
             db.session.add(dataset_collection_binding)

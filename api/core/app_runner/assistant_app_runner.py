@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import cast
 
@@ -15,7 +14,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
-from models.model import App, Conversation, Message, MessageAgentThought, MessageChain
+from models.model import App, Conversation, Message, MessageAgentThought
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
@@ -173,11 +172,6 @@ class AssistantApplicationRunner(AppRunner):
 
         # convert db variables to tool variables
         tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
-        
-        message_chain = self._init_message_chain(
-            message=message,
-            query=query
-        )
 
         # init model instance
         model_instance = ModelInstance(
@@ -200,6 +194,10 @@ class AssistantApplicationRunner(AppRunner):
 
         if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
+
+        db.session.refresh(conversation)
+        db.session.refresh(message)
+        db.session.close()
 
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
@@ -289,38 +287,6 @@ class AssistantApplicationRunner(AppRunner):
             'tenant_id': db_variables.tenant_id,
             'pool': db_variables.variables
         })
-
-    def _init_message_chain(self, message: Message, query: str) -> MessageChain:
-        """
-        Init MessageChain
-        :param message: message
-        :param query: query
-        :return:
-        """
-        message_chain = MessageChain(
-            message_id=message.id,
-            type="AgentExecutor",
-            input=json.dumps({
-                "input": query
-            })
-        )
-
-        db.session.add(message_chain)
-        db.session.commit()
-
-        return message_chain
-
-    def _save_message_chain(self, message_chain: MessageChain, output_text: str) -> None:
-        """
-        Save MessageChain
-        :param message_chain: message chain
-        :param output_text: output text
-        :return:
-        """
-        message_chain.output = json.dumps({
-            "output": output_text
-        })
-        db.session.commit()
 
     def _get_usage_of_all_agent_thoughts(self, model_config: ModelConfigEntity,
                                          message: Message) -> LLMUsage:

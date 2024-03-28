@@ -25,6 +25,8 @@ parameter_rules:
     use_template: presence_penalty
   - name: frequency_penalty
     use_template: frequency_penalty
+  - name: response_format
+    use_template: response_format
   - name: disable_search
     label:
       zh_Hans: 禁用搜索
@@ -34,3 +36,4 @@ parameter_rules:
       zh_Hans: 禁用模型自行进行外部搜索。
       en_US: Disable the model to perform external search.
     required: false
+deprecated: true

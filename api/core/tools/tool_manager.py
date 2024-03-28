@@ -1,4 +1,3 @@
-import importlib
 import json
 import logging
 import mimetypes
@@ -6,21 +5,35 @@ from os import listdir, path
 from typing import Any, Union
 
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.entities.application_entities import AgentToolEntity
 from core.model_runtime.entities.message_entities import PromptMessage
+from core.provider_manager import ProviderManager
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constant import DEFAULT_PROVIDERS
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeMessage, ToolProviderCredentials
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderCredentials,
+)
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.app_tool_provider import AppBasedToolProviderEntity
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.utils.configuration import ToolConfiguration
+from core.tools.tool.tool import Tool
+from core.tools.utils.configuration import (
+    ModelToolConfigurationManager,
+    ToolConfigurationManager,
+    ToolParameterConfigurationManager,
+)
 from core.tools.utils.encoder import serialize_base_model_dict
+from core.utils.module_import_helper import load_single_subclass_from_source
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 
@@ -59,21 +72,11 @@ class ToolManager:
 
         if provider_entity is None:
             # fetch the provider from .provider.builtin
-            py_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.py')
-            spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.{provider}', py_path)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-
-            # get all the classes in the module
-            classes = [ x for _, x in vars(mod).items() 
-                       if isinstance(x, type) and x != ToolProviderController and issubclass(x, ToolProviderController)
-            ]
-            if len(classes) == 0:
-                raise ToolProviderNotFoundError(f'provider {provider} not found')
-            if len(classes) > 1:
-                raise ToolProviderNotFoundError(f'multiple providers found for {provider}')
-            
-            provider_entity = classes[0]()
+            provider_class = load_single_subclass_from_source(
+                module_name=f'core.tools.provider.builtin.{provider}.{provider}',
+                script_path=path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.py'),
+                parent_type=ToolProviderController)
+            provider_entity = provider_class()
 
         return provider_entity.invoke(tool_id, tool_name, tool_parameters, credentials, prompt_messages)
     
@@ -135,7 +138,7 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
         
     @staticmethod
-    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tenant_id, 
+    def get_tool_runtime(provider_type: str, provider_name: str, tool_name: str, tenant_id: str, 
                          agent_callback: DifyAgentCallbackHandler = None) \
         -> Union[BuiltinTool, ApiTool]:
         """
@@ -170,7 +173,7 @@ class ToolManager:
             # decrypt the credentials
             credentials = builtin_provider.credentials
             controller = ToolManager.get_builtin_provider(provider_name)
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
 
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
 
@@ -187,17 +190,95 @@ class ToolManager:
             api_provider, credentials = ToolManager.get_api_provider_controller(tenant_id, provider_name)
 
             # decrypt the credentials
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=api_provider)
+            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=api_provider)
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
 
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
             })
+        elif provider_type == 'model':
+            if tenant_id is None:
+                raise ValueError('tenant id is required for model provider')
+            # get model provider
+            model_provider = ToolManager.get_model_provider(tenant_id, provider_name)
+
+            # get tool
+            model_tool = model_provider.get_tool(tool_name)
+
+            return model_tool.fork_tool_runtime(meta={
+                'tenant_id': tenant_id,
+                'credentials': model_tool.model_configuration['model_instance'].credentials
+            })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
         else:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
+
+    @staticmethod
+    def get_agent_tool_runtime(tenant_id: str, agent_tool: AgentToolEntity, agent_callback: DifyAgentCallbackHandler) -> Tool:
+        """
+            get the agent tool runtime
+        """
+        tool_entity = ToolManager.get_tool_runtime(
+            provider_type=agent_tool.provider_type, provider_name=agent_tool.provider_id, tool_name=agent_tool.tool_name, 
+            tenant_id=tenant_id,
+            agent_callback=agent_callback
+        )
+        runtime_parameters = {}
+        parameters = tool_entity.get_all_runtime_parameters()
+        for parameter in parameters:
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                # get tool parameter from form
+                tool_parameter_config = agent_tool.tool_parameters.get(parameter.name)
+                if not tool_parameter_config:
+                    # get default value
+                    tool_parameter_config = parameter.default
+                    if not tool_parameter_config and parameter.required:
+                        raise ValueError(f"tool parameter {parameter.name} not found in tool config")
+                    
+                if parameter.type == ToolParameter.ToolParameterType.SELECT:
+                    # check if tool_parameter_config in options
+                    options = list(map(lambda x: x.value, parameter.options))
+                    if tool_parameter_config not in options:
+                        raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} not in options {options}")
+                    
+                # convert tool parameter config to correct type
+                try:
+                    if parameter.type == ToolParameter.ToolParameterType.NUMBER:
+                        # check if tool parameter is integer
+                        if isinstance(tool_parameter_config, int):
+                            tool_parameter_config = tool_parameter_config
+                        elif isinstance(tool_parameter_config, float):
+                            tool_parameter_config = tool_parameter_config
+                        elif isinstance(tool_parameter_config, str):
+                            if '.' in tool_parameter_config:
+                                tool_parameter_config = float(tool_parameter_config)
+                            else:
+                                tool_parameter_config = int(tool_parameter_config)
+                    elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
+                        tool_parameter_config = bool(tool_parameter_config)
+                    elif parameter.type not in [ToolParameter.ToolParameterType.SELECT, ToolParameter.ToolParameterType.STRING]:
+                        tool_parameter_config = str(tool_parameter_config)
+                    elif parameter.type == ToolParameter.ToolParameterType:
+                        tool_parameter_config = str(tool_parameter_config)
+                except Exception as e:
+                    raise ValueError(f"tool parameter {parameter.name} value {tool_parameter_config} is not correct type")
+                
+                # save tool parameter to tool entity memory
+                runtime_parameters[parameter.name] = tool_parameter_config
+        
+        # decrypt runtime parameters
+        encryption_manager = ToolParameterConfigurationManager(
+            tenant_id=tenant_id,
+            tool_runtime=tool_entity,
+            provider_name=agent_tool.provider_id,
+            provider_type=agent_tool.provider_type,
+        )
+        runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
+
+        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+        return tool_entity
 
     @staticmethod
     def get_builtin_provider_icon(provider: str) -> tuple[str, str]:
@@ -239,23 +320,12 @@ class ToolManager:
                 if provider.startswith('__'):
                     continue
 
-                py_path = path.join(path.dirname(path.realpath(__file__)), 'provider', 'builtin', provider, f'{provider}.py')
-                spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.{provider}', py_path)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-
-                # load all classes
-                classes = [
-                    obj for name, obj in vars(mod).items() 
-                        if isinstance(obj, type) and obj != BuiltinToolProviderController and issubclass(obj, BuiltinToolProviderController)
-                ]
-                if len(classes) == 0:
-                    raise ToolProviderNotFoundError(f'provider {provider} not found')
-                if len(classes) > 1:
-                    raise ToolProviderNotFoundError(f'multiple providers found for {provider}')
-                
                 # init provider
-                provider_class = classes[0]
+                provider_class = load_single_subclass_from_source(
+                    module_name=f'core.tools.provider.builtin.{provider}.{provider}',
+                    script_path=path.join(path.dirname(path.realpath(__file__)),
+                                           'provider', 'builtin', provider, f'{provider}.py'),
+                    parent_type=BuiltinToolProviderController)
                 builtin_providers.append(provider_class())
 
         # cache the builtin providers
@@ -266,6 +336,49 @@ class ToolManager:
 
         return builtin_providers
     
+    @staticmethod
+    def list_model_providers(tenant_id: str = None) -> list[ModelToolProviderController]:
+        """
+            list all the model providers
+
+            :return: the list of the model providers
+        """
+        tenant_id = tenant_id or 'ffffffff-ffff-ffff-ffff-ffffffffffff'
+        # get configurations
+        model_configurations = ModelToolConfigurationManager.get_all_configuration()
+        # get all providers
+        provider_manager = ProviderManager()
+        configurations = provider_manager.get_configurations(tenant_id).values()
+        # get model providers
+        model_providers: list[ModelToolProviderController] = []
+        for configuration in configurations:
+            # all the model tool should be configurated
+            if configuration.provider.provider not in model_configurations:
+                continue
+            if not ModelToolProviderController.is_configuration_valid(configuration):
+                continue
+            model_providers.append(ModelToolProviderController.from_db(configuration))
+
+        return model_providers
+    
+    @staticmethod
+    def get_model_provider(tenant_id: str, provider_name: str) -> ModelToolProviderController:
+        """
+            get the model provider
+
+            :param provider_name: the name of the provider
+
+            :return: the provider
+        """
+        # get configurations
+        provider_manager = ProviderManager()
+        configurations = provider_manager.get_configurations(tenant_id)
+        configuration = configurations.get(provider_name)
+        if configuration is None:
+            raise ToolProviderNotFoundError(f'model provider {provider_name} not found')
+        
+        return ModelToolProviderController.from_db(configuration)
+
     @staticmethod
     def get_tool_label(tool_name: str) -> Union[I18nObject, None]:
         """
@@ -338,12 +451,34 @@ class ToolManager:
             controller = ToolManager.get_builtin_provider(provider_name)
 
             # init tool configuration
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
             # decrypt the credentials and mask the credentials
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
             masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
 
             result_providers[provider_name].team_credentials = masked_credentials
+
+        # get model tool providers
+        model_providers = ToolManager.list_model_providers(tenant_id=tenant_id)
+        # append model providers
+        for provider in model_providers:
+            result_providers[f'model_provider.{provider.identity.name}'] = UserToolProvider(
+                id=provider.identity.name,
+                author=provider.identity.author,
+                name=provider.identity.name,
+                description=I18nObject(
+                    en_US=provider.identity.description.en_US,
+                    zh_Hans=provider.identity.description.zh_Hans,
+                ),
+                icon=provider.identity.icon,
+                label=I18nObject(
+                    en_US=provider.identity.label.en_US,
+                    zh_Hans=provider.identity.label.zh_Hans,
+                ),
+                type=UserToolProvider.ProviderType.MODEL,
+                team_credentials={},
+                is_team_authorization=provider.is_active,
+            )
 
         # get db api providers
         db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
@@ -383,7 +518,7 @@ class ToolManager:
             )
 
             # init tool configuration
-            tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
 
             # decrypt the credentials and mask the credentials
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
@@ -443,7 +578,7 @@ class ToolManager:
             provider, ApiProviderAuthType.API_KEY if credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
         )
         # init tool configuration
-        tool_configuration = ToolConfiguration(tenant_id=tenant_id, provider_controller=controller)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
 
         decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
         masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)

@@ -73,13 +73,26 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         'type': 'int',
         'help': {
-            'en_US': 'The maximum number of tokens to generate. Requests can use up to 2048 tokens shared between prompt and completion.',
-            'zh_Hans': '要生成的标记的最大数量。请求可以使用最多2048个标记，这些标记在提示和完成之间共享。',
+            'en_US': 'Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.',
+            'zh_Hans': '指定生成结果长度的上限。如果生成结果截断，可以调大该参数。',
         },
         'required': False,
         'default': 64,
         'min': 1,
         'max': 2048,
         'precision': 0,
+    },
+    DefaultParameterName.RESPONSE_FORMAT: {
+        'label': {
+            'en_US': 'Response Format',
+            'zh_Hans': '回复格式',
+        },
+        'type': 'string',
+        'help': {
+            'en_US': 'Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc.',
+            'zh_Hans': '设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等',
+        },
+        'required': False,
+        'options': ['JSON', 'XML'],
     }
 }

@@ -3,6 +3,7 @@ requires-python = ">=3.10"
 
 [tool.ruff]
 exclude = [
+    "app.py",
     "__init__.py",
     "tests/",
 ]

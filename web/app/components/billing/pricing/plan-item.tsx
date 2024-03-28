@@ -12,7 +12,7 @@ import { PlanRange } from './select-plan-range'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 import I18n from '@/context/i18n'
 
 type Props = {
@@ -73,8 +73,8 @@ const PlanItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
-  const isZh = language === LanguagesSupportedUnderscore[1]
+
+  const isZh = locale === LanguagesSupported[1]
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
@@ -128,6 +128,9 @@ const PlanItem: FC<Props> = ({
             <div>{t('billing.plansCommon.supportItems.emailSupport')}</div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
+            </div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <div>+ {t('billing.plansCommon.supportItems.bulkUpload')}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div className='flex items-center'>
@@ -263,6 +266,10 @@ const PlanItem: FC<Props> = ({
           label={t('billing.plansCommon.vectorSpace')}
           value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.vectorSpace >= 1000 ? `${planInfo.vectorSpace / 1000}G` : `${planInfo.vectorSpace}MB`)}
           tooltip={t('billing.plansCommon.vectorSpaceBillingTooltip') as string}
+        />
+        <KeyValue
+          label={t('billing.plansCommon.documentsUploadQuota')}
+          value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : planInfo.documentsUploadQuota}
         />
         <KeyValue
           label={t('billing.plansCommon.documentProcessingPriority')}

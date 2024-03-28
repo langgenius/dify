@@ -22,8 +22,8 @@
 </p>
 
 <p align="center">
-   <a href="https://dify.ai/blog/dify-ai-unveils-ai-agent-creating-gpts-and-assistants-with-various-llms" target="_blank">
-   Dify.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
+   <a href="https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6" target="_blank">
+   📌 Check out Dify Premium on AWS and deploy it to your own AWS VPC with one-click.
   </a>
 </p>
 
@@ -36,6 +36,9 @@
 ## Using our Cloud Services
 
 You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free requests to OpenAI GPT-3.5.
+
+### Looking to purchase via AWS?
+Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. 
 
 ## Dify vs. LangChain vs. Assistants API
 
@@ -125,7 +128,7 @@ At the same time, please consider supporting Dify by sharing it on social media 
 
 ### Translations
 
-We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README_EN.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/AhzKf7dNgk).
+We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/AhzKf7dNgk).
 
 ## Community & Support
 

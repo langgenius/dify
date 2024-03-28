@@ -34,7 +34,6 @@ const ModelName: FC<ModelNameProps> = ({
 
   if (!modelItem)
     return null
-
   return (
     <div
       className={`
@@ -44,9 +43,9 @@ const ModelName: FC<ModelNameProps> = ({
     >
       <div
         className='mr-1 truncate'
-        title={modelItem.label[language]}
+        title={modelItem.label[language] || modelItem.label.en_US}
       >
-        {modelItem.label[language]}
+        {modelItem.label[language] || modelItem.label.en_US}
       </div>
       {
         showModelType && modelItem.model_type && (

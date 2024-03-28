@@ -1,4 +1,6 @@
 
+import re
+import uuid
 from json import loads as json_loads
 
 from requests import get
@@ -46,7 +48,7 @@ class ApiBasedToolSchemaParser:
             parameters = []
             if 'parameters' in interface['operation']:
                 for parameter in interface['operation']['parameters']:
-                    parameters.append(ToolParameter(
+                    tool_parameter = ToolParameter(
                         name=parameter['name'],
                         label=I18nObject(
                             en_US=parameter['name'],
@@ -60,8 +62,15 @@ class ApiBasedToolSchemaParser:
                         required=parameter.get('required', False),
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get('description'),
-                        default=parameter['default'] if 'default' in parameter else None,
-                    ))
+                        default=parameter['schema']['default'] if 'schema' in parameter and 'default' in parameter['schema'] else None,
+                    )
+                   
+                    # check if there is a type
+                    typ = ApiBasedToolSchemaParser._get_tool_parameter_type(parameter)
+                    if typ:
+                        tool_parameter.type = typ
+
+                    parameters.append(tool_parameter)
             # create tool bundle
             # check if there is a request body
             if 'requestBody' in interface['operation']:
@@ -80,13 +89,14 @@ class ApiBasedToolSchemaParser:
                                 root = root[ref]
                             # overwrite the content
                             interface['operation']['requestBody']['content'][content_type]['schema'] = root
+
                     # parse body parameters
                     if 'schema' in interface['operation']['requestBody']['content'][content_type]:
                         body_schema = interface['operation']['requestBody']['content'][content_type]['schema']
                         required = body_schema['required'] if 'required' in body_schema else []
                         properties = body_schema['properties'] if 'properties' in body_schema else {}
                         for name, property in properties.items():
-                            parameters.append(ToolParameter(
+                            tool = ToolParameter(
                                 name=name,
                                 label=I18nObject(
                                     en_US=name,
@@ -101,7 +111,14 @@ class ApiBasedToolSchemaParser:
                                 form=ToolParameter.ToolParameterForm.LLM,
                                 llm_description=property['description'] if 'description' in property else '',
                                 default=property['default'] if 'default' in property else None,
-                            ))
+                            )
+
+                            # check if there is a type
+                            typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
+                            if typ:
+                                tool.type = typ
+
+                            parameters.append(tool)
 
             # check if parameters is duplicated
             parameters_count = {}
@@ -115,12 +132,22 @@ class ApiBasedToolSchemaParser:
 
             # check if there is a operation id, use $path_$method as operation id if not
             if 'operationId' not in interface['operation']:
-                interface['operation']['operationId'] = f'{interface["path"]}_{interface["method"]}'
+                # remove special characters like / to ensure the operation id is valid ^[a-zA-Z0-9_-]{1,64}$
+                path = interface['path']
+                if interface['path'].startswith('/'):
+                    path = interface['path'][1:]
+                # remove special characters like / to ensure the operation id is valid ^[a-zA-Z0-9_-]{1,64}$
+                path = re.sub(r'[^a-zA-Z0-9_-]', '', path)
+                if not path:
+                    path = str(uuid.uuid4())
+                    
+                interface['operation']['operationId'] = f'{path}_{interface["method"]}'
 
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
-                summary=interface['operation']['summary'] if 'summary' in interface['operation'] else None,
+                summary=interface['operation']['description'] if 'description' in interface['operation'] else 
+                        interface['operation']['summary'] if 'summary' in interface['operation'] else None,
                 operation_id=interface['operation']['operationId'],
                 parameters=parameters,
                 author='',
@@ -129,7 +156,23 @@ class ApiBasedToolSchemaParser:
             ))
 
         return bundles
+    
+    @staticmethod
+    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType:
+        parameter = parameter or {}
+        typ = None
+        if 'type' in parameter:
+            typ = parameter['type']
+        elif 'schema' in parameter and 'type' in parameter['schema']:
+            typ = parameter['schema']['type']
         
+        if typ == 'integer' or typ == 'number':
+            return ToolParameter.ToolParameterType.NUMBER
+        elif typ == 'boolean':
+            return ToolParameter.ToolParameterType.BOOLEAN
+        elif typ == 'string':
+            return ToolParameter.ToolParameterType.STRING
+
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
         """
@@ -207,12 +250,10 @@ class ApiBasedToolSchemaParser:
                 if 'operationId' not in operation:
                     raise ToolApiSchemaError(f'No operationId found in operation {method} {path}.')
                 
-                if 'summary' not in operation or len(operation['summary']) == 0:
-                    warning['missing_summary'] = f'No summary found in operation {method} {path}.'
+                if ('summary' not in operation or len(operation['summary']) == 0) and \
+                    ('description' not in operation or len(operation['description']) == 0):
+                    warning['missing_summary'] = f'No summary or description found in operation {method} {path}.'
                 
-                if 'description' not in operation or len(operation['description']) == 0:
-                    warning['missing_description'] = f'No description found in operation {method} {path}.'
-
                 openapi['paths'][path][method] = {
                     'operationId': operation['operationId'],
                     'summary': operation.get('summary', ''),

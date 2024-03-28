@@ -108,7 +108,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
         try:
             response = post(url, headers=headers, data=dumps(data))
         except Exception as e:
-            raise InvokeConnectionError(e)
+            raise InvokeConnectionError(str(e))
         
         if response.status_code != 200:
             try:
@@ -124,7 +124,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
             elif err == 'insufficient_quota':
                 raise InsufficientAccountBalance(msg)
             elif err == 'invalid_authentication':
-                raise InvalidAuthenticationError(msg)
+                raise InvalidAuthenticationError(msg) 
             elif err and 'rate' in err:
                 raise RateLimitReachedError(msg)
             elif err and 'internal' in err:

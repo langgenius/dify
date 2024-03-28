@@ -10,7 +10,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import ConfigContext from '@/context/debug-configuration'
 import type { ModelConfig } from '@/models/debug'
 import I18n from '@/context/i18n'
-import { getModelRuntimeSupported } from '@/utils/language'
+
 type Props = {
   show: boolean
   onHide: () => void
@@ -24,7 +24,6 @@ const ChooseTool: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const {
     modelConfig,
     setModelConfig,
@@ -60,7 +59,7 @@ const ChooseTool: FC<Props> = ({
                 provider_type: collection.type,
                 provider_name: collection.name,
                 tool_name: tool.name,
-                tool_label: tool.label[language],
+                tool_label: tool.label[locale],
                 tool_parameters: parameters,
                 enabled: true,
               })

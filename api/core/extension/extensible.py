@@ -1,12 +1,13 @@
 import enum
-import importlib.util
 import json
 import logging
 import os
-from collections import OrderedDict
 from typing import Any, Optional
 
 from pydantic import BaseModel
+
+from core.utils.module_import_helper import load_single_subclass_from_source
+from core.utils.position_helper import sort_to_dict_by_position_map
 
 
 class ExtensionModule(enum.Enum):
@@ -36,7 +37,8 @@ class Extensible:
 
     @classmethod
     def scan_extensions(cls):
-        extensions = {}
+        extensions: list[ModuleExtension] = []
+        position_map = {}
 
         # get the path of the current class
         current_path = os.path.abspath(cls.__module__.replace(".", os.path.sep) + '.py')
@@ -63,6 +65,7 @@ class Extensible:
                     if os.path.exists(builtin_file_path):
                         with open(builtin_file_path, encoding='utf-8') as f:
                             position = int(f.read().strip())
+                position_map[extension_name] = position
 
                 if (extension_name + '.py') not in file_names:
                     logging.warning(f"Missing {extension_name}.py file in {subdir_path}, Skip.")
@@ -70,17 +73,9 @@ class Extensible:
 
                 # Dynamic loading {subdir_name}.py file and find the subclass of Extensible
                 py_path = os.path.join(subdir_path, extension_name + '.py')
-                spec = importlib.util.spec_from_file_location(extension_name, py_path)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-
-                extension_class = None
-                for name, obj in vars(mod).items():
-                    if isinstance(obj, type) and issubclass(obj, cls) and obj != cls:
-                        extension_class = obj
-                        break
-
-                if not extension_class:
+                try:
+                    extension_class = load_single_subclass_from_source(extension_name, py_path, cls)
+                except Exception:
                     logging.warning(f"Missing subclass of {cls.__name__} in {py_path}, Skip.")
                     continue
 
@@ -96,16 +91,15 @@ class Extensible:
                         with open(json_path, encoding='utf-8') as f:
                             json_data = json.load(f)
 
-                extensions[extension_name] = ModuleExtension(
+                extensions.append(ModuleExtension(
                     extension_class=extension_class,
                     name=extension_name,
                     label=json_data.get('label'),
                     form_schema=json_data.get('form_schema'),
                     builtin=builtin,
                     position=position
-                )
+                ))
 
-        sorted_items = sorted(extensions.items(), key=lambda x: (x[1].position is None, x[1].position))
-        sorted_extensions = OrderedDict(sorted_items)
+        sorted_extensions = sort_to_dict_by_position_map(position_map, extensions, lambda x: x.name)
 
         return sorted_extensions

@@ -42,7 +42,7 @@ export const useCheckPromptVariables = () => {
     } = promptVariablesConfig
     let hasEmptyInput = ''
     const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
-      if (type === 'api')
+      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
         return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
@@ -80,8 +80,8 @@ export const useChat = (
   const { notify } = useToastContext()
   const connversationId = useRef('')
   const hasStopResponded = useRef(false)
-  const [isResponsing, setIsResponsing] = useState(false)
-  const isResponsingRef = useRef(false)
+  const [isResponding, setIsResponding] = useState(false)
+  const isRespondingRef = useRef(false)
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const taskIdRef = useRef('')
@@ -101,9 +101,9 @@ export const useChat = (
     setChatList(newChatList)
     chatListRef.current = newChatList
   }, [])
-  const handleResponsing = useCallback((isResponsing: boolean) => {
-    setIsResponsing(isResponsing)
-    isResponsingRef.current = isResponsing
+  const handleResponding = useCallback((isResponding: boolean) => {
+    setIsResponding(isResponding)
+    isRespondingRef.current = isResponding
   }, [])
 
   const getIntroduction = useCallback((str: string) => {
@@ -136,18 +136,19 @@ export const useChat = (
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
-    handleResponsing(false)
+    handleResponding(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [stopChat, handleResponsing])
+  }, [stopChat, handleResponding])
 
   const handleRestart = useCallback(() => {
-    handleStop()
     connversationId.current = ''
+    taskIdRef.current = ''
+    handleStop()
     const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
@@ -199,7 +200,7 @@ export const useChat = (
   ) => {
     setSuggestQuestions([])
 
-    if (isResponsingRef.current) {
+    if (isRespondingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
@@ -234,7 +235,7 @@ export const useChat = (
       isAnswer: true,
     }
 
-    handleResponsing(true)
+    handleResponding(true)
     hasStopResponded.current = false
 
     const bodyParams = {
@@ -294,7 +295,7 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          handleResponsing(false)
+          handleResponding(false)
 
           if (hasError)
             return
@@ -415,7 +416,7 @@ export const useChat = (
           responseItem.content = messageReplace.answer
         },
         onError() {
-          handleResponsing(false)
+          handleResponding(false)
           const newChatList = produce(chatListRef.current, (draft) => {
             draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
           })
@@ -431,7 +432,7 @@ export const useChat = (
     notify,
     promptVariablesConfig,
     handleUpdateChatList,
-    handleResponsing,
+    handleResponding,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
@@ -505,8 +506,8 @@ export const useChat = (
     chatList,
     setChatList,
     conversationId: connversationId.current,
-    isResponsing,
-    setIsResponsing,
+    isResponding,
+    setIsResponding,
     handleSend,
     suggestedQuestions,
     handleRestart,

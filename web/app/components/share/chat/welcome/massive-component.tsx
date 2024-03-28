@@ -23,9 +23,9 @@ export const AppInfo: FC<{ siteInfo: SiteInfo }> = ({ siteInfo }) => {
 export const PromptTemplate: FC<{ html: string }> = ({ html }) => {
   return (
     <div
-      className={' box-border text-sm text-gray-700'}
+      className={'box-border text-sm text-gray-700'}
       dangerouslySetInnerHTML={{ __html: html }}
-    ></div>
+    />
   )
 }
 

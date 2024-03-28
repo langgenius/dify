@@ -15,7 +15,7 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
 from libs.helper import get_remote_ip
 from libs.passport import PassportService
-from libs.password import compare_password, hash_password
+from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
 from models.account import *
 from services.errors.account import (
@@ -58,7 +58,7 @@ class AccountService:
             account.current_tenant_id = available_ta.tenant_id
             available_ta.current = True
             db.session.commit()
-       
+
         if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = datetime.utcnow()
             db.session.commit()
@@ -104,6 +104,9 @@ class AccountService:
         if account.password and not compare_password(password, account.password, account.password_salt):
             raise CurrentPasswordIncorrectError("Current password is incorrect.")
 
+        # may be raised
+        valid_password(new_password)
+
         # generate password salt
         salt = secrets.token_bytes(16)
         base64_salt = base64.b64encode(salt).decode()
@@ -140,9 +143,9 @@ class AccountService:
 
         account.interface_language = interface_language
         account.interface_theme = interface_theme
-        
+
         # Set timezone based on language
-        account.timezone = language_timezone_mapping.get(interface_language, 'UTC') 
+        account.timezone = language_timezone_mapping.get(interface_language, 'UTC')
 
         db.session.add(account)
         db.session.commit()
@@ -279,12 +282,12 @@ class TenantService:
         tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
-        else: 
+        else:
             TenantAccountJoin.query.filter(TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
             tenant_account_join.current = True
-            db.session.commit()
             # Set the current tenant for the account
             account.current_tenant_id = tenant_account_join.tenant_id
+            db.session.commit()
 
     @staticmethod
     def get_tenant_members(tenant: Tenant) -> list[Account]:
@@ -449,7 +452,7 @@ class RegisterService:
         return account
 
     @classmethod
-    def invite_new_member(cls, tenant: Tenant, email: str, language: str, role: str = 'normal', inviter: Account = None) -> str:    
+    def invite_new_member(cls, tenant: Tenant, email: str, language: str, role: str = 'normal', inviter: Account = None) -> str:
         """Invite new member"""
         account = Account.query.filter_by(email=email).first()
 

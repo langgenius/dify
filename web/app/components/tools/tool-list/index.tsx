@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { CollectionType, LOC } from '../types'
+import { AuthHeaderPrefix, AuthType, CollectionType, LOC } from '../types'
 import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Loading from '../../base/loading'
 import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
 import Toast from '../../base/toast'
+import { ConfigurateMethodEnum } from '../../header/account-setting/model-provider-page/declarations'
 import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
@@ -16,6 +17,8 @@ import { fetchCustomCollection, removeBuiltInToolCredential, removeCustomCollect
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import type { AgentTool } from '@/types/app'
 import { MAX_TOOLS_NUM } from '@/config'
+import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
   collection: Collection | null
@@ -42,9 +45,32 @@ const ToolList: FC<Props> = ({
   const { t } = useTranslation()
   const isInToolsPage = loc === LOC.tools
   const isBuiltIn = collection?.type === CollectionType.builtIn
+  const isModel = collection?.type === CollectionType.model
   const needAuth = collection?.allow_delete
 
+  const { setShowModelModal } = useModalContext()
   const [showSettingAuth, setShowSettingAuth] = useState(false)
+  const { modelProviders: providers } = useProviderContext()
+  const showSettingAuthModal = () => {
+    if (isModel) {
+      const provider = providers.find(item => item.provider === collection?.id)
+      if (provider) {
+        setShowModelModal({
+          payload: {
+            currentProvider: provider,
+            currentConfigurateMethod: ConfigurateMethodEnum.predefinedModel,
+            currentCustomConfigrationModelFixedFields: undefined,
+          },
+          onSaveCallback: () => {
+            onRefreshData()
+          },
+        })
+      }
+    }
+    else {
+      setShowSettingAuth(true)
+    }
+  }
 
   const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | null>(null)
   useEffect(() => {
@@ -53,6 +79,10 @@ const ToolList: FC<Props> = ({
     (async () => {
       if (collection.type === CollectionType.custom) {
         const res = await fetchCustomCollection(collection.name)
+        if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+          if (res.credentials.api_key_value)
+            res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+        }
         setCustomCollection({
           ...res,
           provider: collection.name,
@@ -112,7 +142,7 @@ const ToolList: FC<Props> = ({
         icon={icon}
         collection={collection}
         loc={loc}
-        onShowAuth={() => setShowSettingAuth(true)}
+        onShowAuth={() => showSettingAuthModal()}
         onShowEditCustomCollection={() => setIsShowEditCustomCollectionModal(true)}
       />
       <div className={cn(isInToolsPage ? 'px-6 pt-4' : 'px-4 pt-3')}>
@@ -120,12 +150,12 @@ const ToolList: FC<Props> = ({
           <div className=''>{t('tools.includeToolNum', {
             num: list.length,
           })}</div>
-          {needAuth && isBuiltIn && !collection.is_team_authorization && (
+          {needAuth && (isBuiltIn || isModel) && !collection.is_team_authorization && (
             <>
               <div>·</div>
               <div
                 className='flex items-center text-[#155EEF] cursor-pointer'
-                onClick={() => setShowSettingAuth(true)}
+                onClick={() => showSettingAuthModal()}
               >
                 <div>{t('tools.auth.setup')}</div>
                 <ArrowNarrowRight className='ml-0.5 w-3 h-3' />
@@ -145,7 +175,7 @@ const ToolList: FC<Props> = ({
               collection={collection}
               isInToolsPage={isInToolsPage}
               isToolNumMax={(addedTools?.length || 0) >= MAX_TOOLS_NUM}
-              added={!!addedTools?.find(v => v.provider_id === collection.id && v.tool_name === item.name)}
+              added={!!addedTools?.find(v => v.provider_id === collection.id && v.provider_type === collection.type && v.tool_name === item.name)}
               onAdd={!isInToolsPage ? tool => onAddTool?.(collection as Collection, tool) : undefined}
             />
           ))}

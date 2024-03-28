@@ -27,7 +27,9 @@ from fields.app_fields import (
 from libs.login import login_required
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
-
+from core.tools.utils.configuration import ToolParameterConfigurationManager
+from core.tools.tool_manager import ToolManager
+from core.entities.application_entities import AgentToolEntity
 
 def _get_app(app_id, tenant_id):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()
@@ -124,19 +126,13 @@ class AppListApi(Resource):
             available_models_names = [f'{model.provider.provider}.{model.model}' for model in available_models]
             provider_model = f"{model_config_dict['model']['provider']}.{model_config_dict['model']['name']}"
             if provider_model not in available_models_names:
-                model_manager = ModelManager()
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=current_user.current_tenant_id,
-                    model_type=ModelType.LLM
-                )
-
-                if not model_instance:
+                if not default_model_entity:
                     raise ProviderNotInitializeError(
                         "No Default System Reasoning Model available. Please configure "
                         "in the Settings -> Model Provider.")
                 else:
-                    model_config_dict["model"]["provider"] = model_instance.provider
-                    model_config_dict["model"]["name"] = model_instance.model
+                    model_config_dict["model"]["provider"] = default_model_entity.provider.provider
+                    model_config_dict["model"]["name"] = default_model_entity.model
 
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
@@ -242,7 +238,44 @@ class AppApi(Resource):
     def get(self, app_id):
         """Get app detail"""
         app_id = str(app_id)
-        app = _get_app(app_id, current_user.current_tenant_id)
+        app: App = _get_app(app_id, current_user.current_tenant_id)
+
+        # get original app model config
+        model_config: AppModelConfig = app.app_model_config
+        agent_mode = model_config.agent_mode_dict
+        # decrypt agent tool parameters if it's secret-input
+        for tool in agent_mode.get('tools') or []:
+            if not isinstance(tool, dict) or len(tool.keys()) <= 3:
+                continue
+            agent_tool_entity = AgentToolEntity(**tool)
+            # get tool
+            try:
+                tool_runtime = ToolManager.get_agent_tool_runtime(
+                    tenant_id=current_user.current_tenant_id,
+                    agent_tool=agent_tool_entity,
+                    agent_callback=None
+                )
+                manager = ToolParameterConfigurationManager(
+                    tenant_id=current_user.current_tenant_id,
+                    tool_runtime=tool_runtime,
+                    provider_name=agent_tool_entity.provider_id,
+                    provider_type=agent_tool_entity.provider_type,
+                )
+
+                # get decrypted parameters
+                if agent_tool_entity.tool_parameters:
+                    parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
+                    masked_parameter = manager.mask_tool_parameters(parameters or {})
+                else:
+                    masked_parameter = {}
+
+                # override tool parameters
+                tool['tool_parameters'] = masked_parameter
+            except Exception as e:
+                pass
+
+        # override agent mode
+        model_config.agent_mode = json.dumps(agent_mode)
 
         return app
 

@@ -115,6 +115,11 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
   }
 
+  useEffect(() => {
+    if ((parameterRule.type === 'int' || parameterRule.type === 'float') && numberInputRef.current)
+      numberInputRef.current.value = `${renderValue}`
+  }, [value])
+
   const renderInput = () => {
     const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
     && !isNullOrUndefined(parameterRule.min)
@@ -207,27 +212,22 @@ const ParameterItem: FC<ParameterItemProps> = ({
     return null
   }
 
-  useEffect(() => {
-    if (numberInputRef.current)
-      numberInputRef.current.value = `${renderValue}`
-  }, [])
-
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <div>
         <div className='shrink-0 flex items-center w-[200px]'>
           <div
             className='mr-0.5 text-[13px] font-medium text-gray-700 truncate'
-            title={parameterRule.label[language]}
+            title={parameterRule.label[language] || parameterRule.label.en_US}
           >
-            {parameterRule.label[language]}
+            {parameterRule.label[language] || parameterRule.label.en_US}
           </div>
           {
             parameterRule.help && (
               <Tooltip
                 selector={`model-parameter-rule-${parameterRule.name}`}
                 htmlContent={(
-                  <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language]}</div>
+                  <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
               >
                 <HelpCircle className='mr-1.5 w-3.5 h-3.5 text-gray-400' />

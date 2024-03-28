@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Form from './form'
 import Button from '@/app/components/base/button'
+import AppIcon from '@/app/components/base/app-icon'
 import { MessageDotsCircle } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Edit02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Star06 } from '@/app/components/base/icons/src/vender/solid/shapes'
@@ -40,8 +41,13 @@ const ConfigPanel = () => {
           {
             showConfigPanelBeforeChat && (
               <>
-                <div className='flex items-center text-2xl font-semibold text-gray-800'>
-                  {appData?.site.icon} {appData?.site.title}
+                <div className='flex items-center h-8 text-2xl font-semibold text-gray-800'>
+                  <AppIcon
+                    icon={appData?.site.icon}
+                    background='transparent'
+                    size='small'
+                  />
+                  {appData?.site.title}
                 </div>
                 {
                   appData?.site.description && (
@@ -89,7 +95,10 @@ const ConfigPanel = () => {
                 <Button
                   type='primary'
                   className='mr-2 text-sm font-medium'
-                  onClick={handleStartChat}
+                  onClick={() => {
+                    setCollapsed(true)
+                    handleStartChat()
+                  }}
                 >
                   {t('common.operation.save')}
                 </Button>

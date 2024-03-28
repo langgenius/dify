@@ -65,7 +65,7 @@ const PopupItem: FC<PopupItemProps> = ({
   return (
     <div className='mb-1'>
       <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
-        {model.label[language]}
+        {model.label[language] || model.label.en_US}
       </div>
       {
         model.models.map(modelItem => (

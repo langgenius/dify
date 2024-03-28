@@ -1,11 +1,12 @@
 import time
 from json import JSONDecodeError, dumps
-from os.path import join
 from typing import Optional
 
 from requests import post
+from yarl import URL
 
-from core.model_runtime.entities.model_entities import PriceType
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -57,9 +58,9 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         }
 
         try:
-            response = post(join(url, 'embeddings'), headers=headers, data=dumps(data), timeout=10)
+            response = post(str(URL(url) / 'embeddings'), headers=headers, data=dumps(data), timeout=10)
         except Exception as e:
-            raise InvokeConnectionError(e)
+            raise InvokeConnectionError(str(e))
         
         if response.status_code != 200:
             try:
@@ -113,6 +114,27 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
             # use GPT2Tokenizer to get num tokens
             num_tokens += self._get_num_tokens_by_gpt2(text)
         return num_tokens
+    
+    def _get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+        """
+        Get customizable model schema
+
+        :param model: model name
+        :param credentials: model credentials
+        :return: model schema
+        """
+        return AIModelEntity(
+            model=model,
+            label=I18nObject(zh_Hans=model, en_US=model),
+            model_type=ModelType.TEXT_EMBEDDING,
+            features=[],
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', '512')),
+                ModelPropertyKey.MAX_CHUNKS: 1,
+            },
+            parameter_rules=[]
+        )
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
