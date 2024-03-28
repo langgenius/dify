@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
 import { ToastContext } from '@/app/components/base/toast'
@@ -14,7 +15,7 @@ import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type RunProps = {
-  activeTab?: 'RESULT' | 'TRACING'
+  activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
 }
@@ -103,19 +104,32 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID, getResultCallback
         <div
           className={cn(
             'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
+            currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
+          )}
+          onClick={() => switchTab('DETAIL')}
+        >{t('runLog.detail')}</div>
+        <div
+          className={cn(
+            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
             currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
           )}
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detal */}
-      <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab === 'TRACING' && '!bg-gray-50')}>
+      <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-white'>
             <Loading />
           </div>
         )}
         {!loading && currentTab === 'RESULT' && runDetail && (
+          <OutputPanel
+            outputs={runDetail.outputs}
+            error={runDetail.error}
+          />
+        )}
+        {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
             inputs={runDetail.inputs}
             outputs={runDetail.outputs}

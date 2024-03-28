@@ -271,8 +271,14 @@ export const useWorkflowRun = () => {
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
 
-            if (currentIndex > -1 && draft.tracing)
-              draft.tracing[currentIndex] = data as any
+            if (currentIndex > -1 && draft.tracing) {
+              draft.tracing[currentIndex] = {
+                ...(draft.tracing[currentIndex].extras
+                  ? { extras: draft.tracing[currentIndex].extras }
+                  : {}),
+                ...data,
+              } as any
+            }
           }))
 
           const newNodes = produce(nodes, (draft) => {

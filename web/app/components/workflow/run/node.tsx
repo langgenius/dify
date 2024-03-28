@@ -58,7 +58,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
               !collapseState && 'rotate-90',
             )}
           />
-          <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} />
+          <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon} />
           <div className='grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate' title={nodeInfo.title}>{nodeInfo.title}</div>
           {nodeInfo.status !== 'running' && !hideInfo && (
             <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time || 0)} · ${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens`}</div>

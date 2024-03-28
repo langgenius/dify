@@ -30,6 +30,7 @@ export type NodeTracing = {
     email: string
   }
   finished_at: number
+  extras?: any
   expand?: boolean // for UI
 }
 
@@ -96,6 +97,7 @@ export type NodeStartedResponse = {
     predecessor_node_id?: string
     inputs: any
     created_at: number
+    extras?: any
   }
 }
 
