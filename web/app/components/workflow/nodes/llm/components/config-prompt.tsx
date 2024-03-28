@@ -3,8 +3,9 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import type { PromptItem } from '../../../types'
+import type { PromptItem, ValueSelector, Var } from '../../../types'
 import { PromptRole } from '../../../types'
+import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
@@ -15,6 +16,8 @@ const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
   readOnly: boolean
+  nodeId: string
+  filterVar: (payload: Var, selector: ValueSelector) => boolean
   isChatModel: boolean
   isChatApp: boolean
   payload: PromptItem | PromptItem[]
@@ -30,6 +33,8 @@ type Props = {
 
 const ConfigPrompt: FC<Props> = ({
   readOnly,
+  nodeId,
+  filterVar,
   isChatModel,
   isChatApp,
   payload,
@@ -39,6 +44,11 @@ const ConfigPrompt: FC<Props> = ({
   hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
+  const availableVarList = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar,
+  })
+  console.log('availableVarList', availableVarList)
 
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {

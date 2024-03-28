@@ -171,6 +171,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         {model.name && (
           <ConfigPrompt
             readOnly={readOnly}
+            nodeId={id}
+            filterVar={filterVar}
             isChatModel={isChatModel}
             isChatApp={isChatMode}
             isShowContext
