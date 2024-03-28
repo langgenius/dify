@@ -62,6 +62,7 @@ DEFAULTS = {
     'KEYWORD_STORE': 'jieba',
     'BATCH_UPLOAD_LIMIT': 20,
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'MILVUS_DATABASE': 'default',
 }
 
 
@@ -205,6 +206,7 @@ class Config:
         self.MILVUS_USER = get_env('MILVUS_USER')
         self.MILVUS_PASSWORD = get_env('MILVUS_PASSWORD')
         self.MILVUS_SECURE = get_env('MILVUS_SECURE')
+        self.MILVUS_DATABASE = get_env('MILVUS_DATABASE')
 
         # weaviate settings
         self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')
