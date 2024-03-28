@@ -72,16 +72,16 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
 
-        # invoke claude 3 models via anthropic official SDK
-        if "anthropic.claude-3" in model:
-            return self._invoke_claude3(model, credentials, prompt_messages, model_parameters, stop, stream, user)
-        # invoke model
+        # invoke anthropic models via anthropic official SDK
+        if "anthropic" in model:
+            return self._generate_anthropic(model, credentials, prompt_messages, model_parameters, stop, stream, user)
+        # invoke other models via boto3 client
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
 
-    def _invoke_claude3(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
+    def _generate_anthropic(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
                 stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
-        Invoke Claude3 large language model
+        Invoke Anthropic large language model
 
         :param model: model name
         :param credentials: model credentials
@@ -114,7 +114,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             # ref: https://github.com/anthropics/anthropic-sdk-python/blob/e84645b07ca5267066700a104b4d8d6a8da1383d/src/anthropic/resources/messages.py#L465
             # extra_model_kwargs['metadata'] = message_create_params.Metadata(user_id=user)
 
-        system, prompt_message_dicts = self._convert_claude3_prompt_messages(prompt_messages)
+        system, prompt_message_dicts = self._convert_claude_prompt_messages(prompt_messages)
 
         if system:
             extra_model_kwargs['system'] = system
@@ -128,11 +128,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         )
 
         if stream:
-            return self._handle_claude3_stream_response(model, credentials, response, prompt_messages)
+            return self._handle_claude_stream_response(model, credentials, response, prompt_messages)
 
-        return self._handle_claude3_response(model, credentials, response, prompt_messages)
+        return self._handle_claude_response(model, credentials, response, prompt_messages)
 
-    def _handle_claude3_response(self, model: str, credentials: dict, response: Message,
+    def _handle_claude_response(self, model: str, credentials: dict, response: Message,
                                 prompt_messages: list[PromptMessage]) -> LLMResult:
         """
         Handle llm chat response
@@ -172,7 +172,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         return response
 
-    def _handle_claude3_stream_response(self, model: str, credentials: dict, response: Stream[MessageStreamEvent],
+    def _handle_claude_stream_response(self, model: str, credentials: dict, response: Stream[MessageStreamEvent],
                                         prompt_messages: list[PromptMessage], ) -> Generator:
         """
         Handle llm chat stream response
@@ -231,7 +231,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise InvokeError(str(ex))
 
-    def _calc_claude3_response_usage(self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int) -> LLMUsage:
+    def _calc_claude_response_usage(self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int) -> LLMUsage:
         """
         Calculate response usage
 
@@ -275,7 +275,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         return usage
 
-    def _convert_claude3_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
+    def _convert_claude_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
         """
         Convert prompt messages to dict list and system
         """
@@ -295,11 +295,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         prompt_message_dicts = []
         for message in prompt_messages:
             if not isinstance(message, SystemPromptMessage):
-                prompt_message_dicts.append(self._convert_claude3_prompt_message_to_dict(message))
+                prompt_message_dicts.append(self._convert_claude_prompt_message_to_dict(message))
 
         return system, prompt_message_dicts
 
-    def _convert_claude3_prompt_message_to_dict(self, message: PromptMessage) -> dict:
+    def _convert_claude_prompt_message_to_dict(self, message: PromptMessage) -> dict:
         """
         Convert PromptMessage to dict
         """
@@ -405,7 +405,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if "anthropic.claude-3" in model:
             try:
-                self._invoke_claude3(model=model,
+                self._invoke_claude(model=model,
                                         credentials=credentials,
                                         prompt_messages=[{"role": "user", "content": "ping"}],
                                         model_parameters={},
