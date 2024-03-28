@@ -10,12 +10,10 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
-    InvokeFrom,
     ModelConfigWithCredentialsEntity,
 )
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file.message_file_parser import FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -32,7 +30,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
-    ToolInvokeMessageBinary,
     ToolParameter,
     ToolRuntimeVariablePool,
 )
@@ -40,7 +37,7 @@ from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
-from models.model import Message, MessageAgentThought, MessageFile
+from models.model import Message, MessageAgentThought
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
@@ -156,7 +153,6 @@ class BaseAgentRunner(AppRunner):
         tool_entity = ToolManager.get_agent_tool_runtime(
             tenant_id=self.tenant_id,
             agent_tool=tool,
-            agent_callback=self.agent_callback
         )
         tool_entity.load_variables(self.variables_pool)
 
@@ -270,87 +266,6 @@ class BaseAgentRunner(AppRunner):
                     prompt_tool.parameters['required'].append(parameter.name)
 
         return prompt_tool
-    
-    def extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[ToolInvokeMessageBinary]:
-        """
-        Extract tool response binary
-        """
-        result = []
-
-        for response in tool_response:
-            if response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
-                response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result.append(ToolInvokeMessageBinary(
-                    mimetype=response.meta.get('mime_type', 'octet/stream'),
-                    url=response.message,
-                    save_as=response.save_as,
-                ))
-            elif response.type == ToolInvokeMessage.MessageType.BLOB:
-                result.append(ToolInvokeMessageBinary(
-                    mimetype=response.meta.get('mime_type', 'octet/stream'),
-                    url=response.message,
-                    save_as=response.save_as,
-                ))
-            elif response.type == ToolInvokeMessage.MessageType.LINK:
-                # check if there is a mime type in meta
-                if response.meta and 'mime_type' in response.meta:
-                    result.append(ToolInvokeMessageBinary(
-                        mimetype=response.meta.get('mime_type', 'octet/stream') if response.meta else 'octet/stream',
-                        url=response.message,
-                        save_as=response.save_as,
-                    ))
-
-        return result
-    
-    def create_message_files(self, messages: list[ToolInvokeMessageBinary]) -> list[tuple[MessageFile, bool]]:
-        """
-        Create message file
-
-        :param messages: messages
-        :return: message files, should save as variable
-        """
-        result = []
-
-        for message in messages:
-            file_type = 'bin'
-            if 'image' in message.mimetype:
-                file_type = 'image'
-            elif 'video' in message.mimetype:
-                file_type = 'video'
-            elif 'audio' in message.mimetype:
-                file_type = 'audio'
-            elif 'text' in message.mimetype:
-                file_type = 'text'
-            elif 'pdf' in message.mimetype:
-                file_type = 'pdf'
-            elif 'zip' in message.mimetype:
-                file_type = 'archive'
-            # ...
-
-            invoke_from = self.application_generate_entity.invoke_from
-
-            message_file = MessageFile(
-                message_id=self.message.id,
-                type=file_type,
-                transfer_method=FileTransferMethod.TOOL_FILE.value,
-                belongs_to='assistant',
-                url=message.url,
-                upload_file_id=None,
-                created_by_role=('account'if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end_user'),
-                created_by=self.user_id,
-            )
-            db.session.add(message_file)
-            db.session.commit()
-            db.session.refresh(message_file)
-
-            result.append((
-                message_file,
-                message.save_as
-            ))
-
-        db.session.close()
-
-        return result
         
     def create_agent_thought(self, message_id: str, message: str, 
                              tool_name: str, tool_input: str, messages_ids: list[str]
@@ -500,8 +415,12 @@ class BaseAgentRunner(AppRunner):
                         try:
                             tool_inputs = json.loads(agent_thought.tool_input)
                         except Exception as e:
-                            logging.warning("tool execution error: {}, tool_input: {}.".format(str(e), agent_thought.tool_input))
-                            tool_inputs = { agent_thought.tool: agent_thought.tool_input }
+                            tool_inputs = { tool: {} for tool in tools }
+                        try:
+                            tool_responses = json.loads(agent_thought.observation)
+                        except Exception as e:
+                            tool_responses = { tool: agent_thought.observation for tool in tools }
+
                         for tool in tools:
                             # generate a uuid for tool call
                             tool_call_id = str(uuid.uuid4())
@@ -514,7 +433,7 @@ class BaseAgentRunner(AppRunner):
                                 )
                             ))
                             tool_call_response.append(ToolPromptMessage(
-                                content=agent_thought.observation,
+                                content=tool_responses.get(tool, agent_thought.observation),
                                 name=tool,
                                 tool_call_id=tool_call_id,
                             ))
