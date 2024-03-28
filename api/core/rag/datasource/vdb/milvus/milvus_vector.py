@@ -144,6 +144,16 @@ class MilvusVector(BaseVector):
             utility.drop_collection(self._collection_name, None, using=alias)
 
     def text_exists(self, id: str) -> bool:
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+
+        from pymilvus import utility
+        if not utility.has_collection(self._collection_name, using=alias):
+            return False
 
         result = self._client.query(collection_name=self._collection_name,
                                     filter=f'metadata["doc_id"] == "{id}"',

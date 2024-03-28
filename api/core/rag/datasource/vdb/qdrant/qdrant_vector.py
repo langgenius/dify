@@ -275,6 +275,13 @@ class QdrantVector(BaseVector):
             )
 
     def text_exists(self, id: str) -> bool:
+        all_collection_name = []
+        collections_response = self._client.get_collections()
+        collection_list = collections_response.collections
+        for collection in collection_list:
+            all_collection_name.append(collection.name)
+        if self._collection_name not in all_collection_name:
+            return False
         response = self._client.retrieve(
             collection_name=self._collection_name,
             ids=[id]
