@@ -100,6 +100,12 @@ docker compose up -d
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization installation process.
 
+#### Deploy with Helm Charts
+
+[Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
+
+- [Helm Chart by LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
+- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 ### Configuration
 
 If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run `docker-compose up -d` again. You can see the full list of environment variables in our [docs](https://docs.dify.ai/getting-started/install-self-hosted/environments).
@@ -114,15 +120,6 @@ If you need to customize the configuration, please refer to the comments in our 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
 
 At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
-
-### Projects made by the community
-
-#### Deploy with Helm Charts
-
-[Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
-
-- [Helm Chart by LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 
 
 ### Contributors
