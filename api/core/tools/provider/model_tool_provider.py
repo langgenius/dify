@@ -74,7 +74,7 @@ class ModelToolProviderController(ToolProviderController):
         return ModelToolProviderController(
             is_active=is_active,
             identity=ToolProviderIdentity(
-                author='Dify',
+                author='FinRegHub',
                 name=configuration.provider.provider,
                 description=I18nObject(
                     zh_Hans=f'{label.zh_Hans} 模型能力提供商', 
@@ -144,7 +144,7 @@ class ModelToolProviderController(ToolProviderController):
                 
                 tools.append(ModelTool(
                     identity=ToolIdentity(
-                        author='Dify',
+                        author='FinRegHub',
                         name=model.model,
                         label=model_configuration.label,
                     ),
