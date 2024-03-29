@@ -278,21 +278,9 @@ class WorkflowConverter:
                 token=api_based_extension.api_key
             )
 
-            http_request_variables = []
             inputs = {}
             for v in variables:
-                http_request_variables.append({
-                    "variable": v.variable,
-                    "value_selector": ["start", v.variable]
-                })
-
-                inputs[v.variable] = '{{' + v.variable + '}}'
-
-            if app_model.mode == AppMode.CHAT.value:
-                http_request_variables.append({
-                    "variable": "_query",
-                    "value_selector": ["sys", ".query"]
-                })
+                inputs[v.variable] = '{{#start.' + v.variable + '#}}'
 
             request_body = {
                 'point': APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value,
@@ -300,7 +288,7 @@ class WorkflowConverter:
                     'app_id': app_model.id,
                     'tool_variable': tool_variable,
                     'inputs': inputs,
-                    'query': '{{_query}}' if app_model.mode == AppMode.CHAT.value else ''
+                    'query': '{{#sys.query#}}' if app_model.mode == AppMode.CHAT.value else ''
                 }
             }
 
@@ -313,7 +301,6 @@ class WorkflowConverter:
                 "data": {
                     "title": f"HTTP REQUEST {api_based_extension.name}",
                     "type": NodeType.HTTP_REQUEST.value,
-                    "variables": http_request_variables,
                     "method": "post",
                     "url": api_based_extension.api_endpoint,
                     "authorization": {
@@ -402,7 +389,7 @@ class WorkflowConverter:
                         }
                     }
                 }
-                if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE
+                if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
                 else None,
                 "multiple_retrieval_config": {
                     "top_k": retrieve_config.top_k,

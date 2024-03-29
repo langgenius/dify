@@ -1,5 +1,4 @@
 import json
-import re
 from copy import deepcopy
 from random import randint
 from typing import Any, Union
@@ -9,13 +8,16 @@ import httpx
 import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
+from core.workflow.entities.variable_pool import ValueType, VariablePool
 from core.workflow.nodes.http_request.entities import HttpRequestNodeData
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 HTTP_REQUEST_DEFAULT_TIMEOUT = (10, 60)
 MAX_BINARY_SIZE = 1024 * 1024 * 10  # 10MB
 READABLE_MAX_BINARY_SIZE = '10MB'
 MAX_TEXT_SIZE = 1024 * 1024 // 10  # 0.1MB
 READABLE_MAX_TEXT_SIZE = '0.1MB'
+
 
 class HttpExecutorResponse:
     headers: dict[str, str]
@@ -123,6 +125,7 @@ class HttpExecutorResponse:
         else:
             return f'{(self.size / 1024 / 1024):.2f} MB'
 
+
 class HttpExecutor:
     server_url: str
     method: str
@@ -133,7 +136,7 @@ class HttpExecutor:
     files: Union[None, dict[str, Any]]
     boundary: str
 
-    def __init__(self, node_data: HttpRequestNodeData, variables: dict[str, Any]):
+    def __init__(self, node_data: HttpRequestNodeData, variable_pool: VariablePool):
         """
         init
         """
@@ -146,49 +149,33 @@ class HttpExecutor:
         self.files = None
 
         # init template
-        self._init_template(node_data, variables)
+        self._init_template(node_data, variable_pool)
 
-    def _is_json_body(self, node_data: HttpRequestNodeData):
+    def _is_json_body(self, body: HttpRequestNodeData.Body):
         """
         check if body is json
         """
-        if node_data.body and node_data.body.type == 'json':
+        if body and body.type == 'json':
             try:
-                json.loads(node_data.body.data)
+                json.loads(body.data)
                 return True
             except:
                 return False
         
         return False
 
-    def _init_template(self, node_data: HttpRequestNodeData, variables: dict[str, Any]):
+    def _init_template(self, node_data: HttpRequestNodeData, variable_pool: VariablePool):
         """
         init template
         """
         # extract all template in url
-        url_template = re.findall(r'{{(.*?)}}', node_data.url) or []
-        url_template = list(set(url_template))
-        original_url = node_data.url
-        for url in url_template:
-            if not url:
-                continue
-
-            original_url = original_url.replace(f'{{{{{url}}}}}', str(variables.get(url, '')))
-        
-        self.server_url = original_url
+        self.server_url = self._format_template(node_data.url, variable_pool)
 
         # extract all template in params
-        param_template = re.findall(r'{{(.*?)}}', node_data.params) or []
-        param_template = list(set(param_template))
-        original_params = node_data.params
-        for param in param_template:
-            if not param:
-                continue
-
-            original_params = original_params.replace(f'{{{{{param}}}}}', str(variables.get(param, '')))
+        params = self._format_template(node_data.params, variable_pool)
 
         # fill in params
-        kv_paris = original_params.split('\n')
+        kv_paris = params.split('\n')
         for kv in kv_paris:
             if not kv.strip():
                 continue
@@ -204,17 +191,10 @@ class HttpExecutor:
             self.params[k.strip()] = v
 
         # extract all template in headers
-        header_template = re.findall(r'{{(.*?)}}', node_data.headers) or []
-        header_template = list(set(header_template))
-        original_headers = node_data.headers
-        for header in header_template:
-            if not header:
-                continue
-
-            original_headers = original_headers.replace(f'{{{{{header}}}}}', str(variables.get(header, '')))
+        headers = self._format_template(node_data.headers, variable_pool)
 
         # fill in headers
-        kv_paris = original_headers.split('\n')
+        kv_paris = headers.split('\n')
         for kv in kv_paris:
             if not kv.strip():
                 continue
@@ -232,19 +212,11 @@ class HttpExecutor:
         # extract all template in body
         if node_data.body:
             # check if it's a valid JSON
-            is_valid_json = self._is_json_body(node_data)
-            body_template = re.findall(r'{{(.*?)}}', node_data.body.data or '') or []
-            body_template = list(set(body_template))
-            original_body = node_data.body.data or ''
-            for body in body_template:
-                if not body:
-                    continue
-                
-                body_value = variables.get(body, '')
-                if is_valid_json:
-                    body_value = body_value.replace('"', '\\"')
-                
-                original_body = original_body.replace(f'{{{{{body}}}}}', body_value)
+            is_valid_json = self._is_json_body(node_data.body)
+
+            body_data = node_data.body.data or ''
+            if body_data:
+                body_data = self._format_template(body_data, variable_pool, is_valid_json)
 
             if node_data.body.type == 'json':
                 self.headers['Content-Type'] = 'application/json'
@@ -253,7 +225,7 @@ class HttpExecutor:
 
             if node_data.body.type in ['form-data', 'x-www-form-urlencoded']:
                 body = {}
-                kv_paris = original_body.split('\n')
+                kv_paris = body_data.split('\n')
                 for kv in kv_paris:
                     if not kv.strip():
                         continue
@@ -276,7 +248,7 @@ class HttpExecutor:
                 else:
                     self.body = urlencode(body)
             elif node_data.body.type in ['json', 'raw-text']:
-                self.body = original_body
+                self.body = body_data
             elif node_data.body.type == 'none':
                 self.body = ''
                 
@@ -391,3 +363,27 @@ class HttpExecutor:
             raw_request += self.body or ''
 
         return raw_request
+
+    def _format_template(self, template: str, variable_pool: VariablePool, escape_quotes: bool = False) -> str:
+        """
+        format template
+        """
+        variable_template_parser = VariableTemplateParser(template=template)
+        variable_selectors = variable_template_parser.extract_variable_selectors()
+
+        variable_value_mapping = {}
+        for variable_selector in variable_selectors:
+            value = variable_pool.get_variable_value(
+                variable_selector=variable_selector.value_selector,
+                target_value_type=ValueType.STRING
+            )
+
+            if value is None:
+                raise ValueError(f'Variable {variable_selector.variable} not found')
+
+            if escape_quotes:
+                value = value.replace('"', '\\"')
+
+            variable_value_mapping[variable_selector.variable] = value
+
+        return variable_template_parser.format(variable_value_mapping)

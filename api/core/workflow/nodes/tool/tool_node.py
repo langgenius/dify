@@ -7,10 +7,12 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -71,12 +73,25 @@ class ToolNode(BaseNode):
         """
             Generate parameters
         """
-        return {
-            k.variable:
-                k.value if k.variable_type == 'static' else
-                variable_pool.get_variable_value(k.value_selector) if k.variable_type == 'selector' else ''
-            for k in node_data.tool_parameters
-        }
+        result = {}
+        for parameter in node_data.tool_parameters:
+            if parameter.value_type == 'static':
+                result[parameter.parameter_name] = parameter.static_value
+            else:
+                if isinstance(parameter.variable_value, str):
+                    parser = VariableTemplateParser(parameter.variable_value)
+                    variable_selectors = parser.extract_variable_selectors()
+                    values = {
+                        selector.variable: variable_pool.get_variable_value(selector)
+                        for selector in variable_selectors
+                    }
+
+                    # if multiple values, use the parser to format the values into a string
+                    result[parameter.parameter_name] = parser.format(values)
+                elif isinstance(parameter.variable_value, list):
+                    result[parameter.parameter_name] = variable_pool.get_variable_value(parameter.variable_value)
+
+        return result
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
         """
@@ -148,12 +163,10 @@ class ToolNode(BaseNode):
         ])
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
         """
-        return {
-            k.variable: k.value_selector
-            for k in node_data.tool_parameters
-            if k.variable_type == 'selector'
-        }
+        return {}

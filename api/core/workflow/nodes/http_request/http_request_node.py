@@ -19,33 +19,29 @@ class HttpRequestNode(BaseNode):
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: HttpRequestNodeData = cast(self._node_data_cls, self.node_data)
 
-        # extract variables
-        variables = {
-            variable_selector.variable: variable_pool.get_variable_value(variable_selector=variable_selector.value_selector)
-            for variable_selector in node_data.variables
-        }
-
         # init http executor
+        http_executor = None
         try:
-            http_executor = HttpExecutor(node_data=node_data, variables=variables)
+            http_executor = HttpExecutor(node_data=node_data, variable_pool=variable_pool)
 
             # invoke http executor
             response = http_executor.invoke()
         except Exception as e:
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=variables,
-                error=str(e),
-                process_data={
+            process_data = {}
+            if http_executor:
+                process_data = {
                     'request': http_executor.to_raw_request(),
                 }
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(e),
+                process_data=process_data
             )
         
         files = self.extract_files(http_executor.server_url, response)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=variables,
             outputs={
                 'status_code': response.status_code,
                 'body': response.content if not files else '',
@@ -57,7 +53,6 @@ class HttpRequestNode(BaseNode):
             }
         )
 
-
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: HttpRequestNodeData) -> dict[str, list[str]]:
         """
@@ -65,9 +60,7 @@ class HttpRequestNode(BaseNode):
         :param node_data: node data
         :return:
         """
-        return {
-            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
-        }
+        return {}
 
     def extract_files(self, url: str, response: HttpExecutorResponse) -> list[FileVar]:
         """

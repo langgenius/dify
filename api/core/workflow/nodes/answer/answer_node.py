@@ -142,13 +142,4 @@ class AnswerNode(BaseNode):
         :param node_data: node data
         :return:
         """
-        node_data = cast(cls._node_data_cls, node_data)
-
-        variable_template_parser = VariableTemplateParser(template=node_data.answer)
-        variable_selectors = variable_template_parser.extract_variable_selectors()
-
-        variable_mapping = {}
-        for variable_selector in variable_selectors:
-            variable_mapping[variable_selector.variable] = variable_selector.value_selector
-
-        return variable_mapping
+        return {}

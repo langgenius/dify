@@ -16,23 +16,23 @@ class ToolEntity(BaseModel):
 
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
-        variable: str
-        variable_type: Literal['selector', 'static']
-        value_selector: Optional[list[str]]
-        value: Optional[str]
+        value_type: Literal['variable', 'static']
+        static_value: Optional[Union[int, float, str]]
+        variable_value: Optional[Union[str, list[str]]]
+        parameter_name: str
 
-        @validator('value')
-        def check_value(cls, value, values, **kwargs):
-            if values['variable_type'] == 'static' and value is None:
-                raise ValueError('value is required for static variable')
+        @validator('value_type', pre=True, always=True)
+        def check_value_type(cls, value, values):
+            if value == 'variable':
+                # check if template_value is None
+                if values.get('variable_value') is not None:
+                    raise ValueError('template_value must be None for value_type variable')
+            elif value == 'static':
+                # check if static_value is None
+                if values.get('static_value') is None:
+                    raise ValueError('static_value must be provided for value_type static')
             return value
-        
-        @validator('value_selector')
-        def check_value_selector(cls, value_selector, values, **kwargs):
-            if values['variable_type'] == 'selector' and value_selector is None:
-                raise ValueError('value_selector is required for selector variable')
-            return value_selector
-    
+
     """
     Tool Node Schema
     """

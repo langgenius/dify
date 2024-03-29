@@ -27,10 +27,10 @@ def test_tool_invoke():
                 'tool_configurations': {},
                 'tool_parameters': [
                     {
-                        'variable': 'expression',
-                        'value_selector': ['1', '123', 'args1'],
-                        'variable_type': 'selector',
-                        'value': None
+                        'value_type': 'variable',
+                        'static_value': None,
+                        'variable_value': ['1', '123', 'args1'],
+                        'parameter_name': 'expression',
                     },
                 ]
             }

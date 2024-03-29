@@ -3,7 +3,6 @@ from typing import Literal, Optional, Union
 from pydantic import BaseModel, validator
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.variable_entities import VariableSelector
 
 
 class HttpRequestNodeData(BaseNodeData):
@@ -36,7 +35,6 @@ class HttpRequestNodeData(BaseNodeData):
         type: Literal['none', 'form-data', 'x-www-form-urlencoded', 'raw-text', 'json']
         data: Union[None, str]
 
-    variables: list[VariableSelector]
     method: Literal['get', 'post', 'put', 'patch', 'delete', 'head']
     url: str
     authorization: Authorization
