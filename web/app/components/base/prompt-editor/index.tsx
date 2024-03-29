@@ -9,6 +9,7 @@ import {
   $getRoot,
   TextNode,
 } from 'lexical'
+import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -118,6 +119,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   const initialConfig = {
     namespace: 'prompt-editor',
     nodes: [
+      CodeNode,
       CustomTextNode,
       {
         replace: TextNode,
