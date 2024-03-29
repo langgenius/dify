@@ -78,7 +78,7 @@ const WorkflowChecklist = () => {
       placement='bottom-end'
       offset={{
         mainAxis: 12,
-        crossAxis: -4,
+        crossAxis: 4,
       }}
       open={open}
       onOpenChange={setOpen}
@@ -174,7 +174,7 @@ const WorkflowChecklist = () => {
             }
             {
               !needWarningNodes.length && (
-                <div className='mx-4 mb-3 py-4 rounded-lg bg-gray-50 text-gray-400 text-center'>
+                <div className='mx-4 mb-3 py-4 rounded-lg bg-gray-50 text-gray-400 text-xs text-center'>
                   <ChecklistSquare className='mx-auto mb-[5px] w-8 h-8 text-gray-300' />
                   {t('workflow.panel.checklistResolved')}
                 </div>

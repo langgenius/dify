@@ -16,14 +16,12 @@ import {
   BlockEnum,
   WorkflowRunningStatus,
 } from '../types'
+import ViewHistory from './view-history'
 import {
   Play,
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 
 const RunMode = memo(() => {
@@ -160,11 +158,7 @@ const PreviewMode = memo(() => {
 PreviewMode.displayName = 'PreviewMode'
 
 const RunAndHistory: FC = () => {
-  const { t } = useTranslation()
-  const { setCurrentLogItem, setShowMessageLogModal } = useAppStore()
-  const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()
-  const showRunHistory = useStore(state => state.showRunHistory)
 
   return (
     <div className='flex items-center px-0.5 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs'>
@@ -175,23 +169,7 @@ const RunAndHistory: FC = () => {
         isChatMode && <PreviewMode />
       }
       <div className='mx-0.5 w-[0.5px] h-8 bg-gray-200'></div>
-      <TooltipPlus
-        popupContent={t('workflow.common.viewRunHistory')}
-      >
-        <div
-          className={`
-            flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
-            ${showRunHistory && 'bg-primary-50'}
-          `}
-          onClick={() => {
-            workflowStore.setState({ showRunHistory: !showRunHistory })
-            setCurrentLogItem()
-            setShowMessageLogModal(false)
-          }}
-        >
-          <ClockPlay className={`w-4 h-4 ${showRunHistory ? 'text-primary-600' : 'text-gray-500'}`} />
-        </div>
-      </TooltipPlus>
+      <ViewHistory />
     </div>
   )
 }
