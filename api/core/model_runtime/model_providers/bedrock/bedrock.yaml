@@ -78,4 +78,3 @@ provider_credential_schema:
       placeholder:
         en_US: A model you have access to (e.g. amazon.titan-text-lite-v1) for validation.
         zh_Hans: 为了进行验证，请输入一个您可用的模型名称 (例如：amazon.titan-text-lite-v1)
-        
