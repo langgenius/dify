@@ -19,7 +19,7 @@ from services.workflow.workflow_converter import WorkflowConverter
 def default_variables():
     return [
         VariableEntity(
-            variable="text-input",
+            variable="text_input",
             label="text-input",
             type=VariableEntity.Type.TEXT_INPUT
         ),
@@ -43,7 +43,7 @@ def test__convert_to_start_node(default_variables):
     # assert
     assert isinstance(result["data"]["variables"][0]["type"], str)
     assert result["data"]["variables"][0]["type"] == "text-input"
-    assert result["data"]["variables"][0]["variable"] == "text-input"
+    assert result["data"]["variables"][0]["variable"] == "text_input"
     assert result["data"]["variables"][1]["variable"] == "paragraph"
     assert result["data"]["variables"][2]["variable"] == "select"
 
@@ -191,7 +191,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
 
 
 def test__convert_to_knowledge_retrieval_node_for_chatbot():
-    new_app_mode = AppMode.CHAT
+    new_app_mode = AppMode.ADVANCED_CHAT
 
     dataset_config = DatasetEntity(
         dataset_ids=["dataset_id_1", "dataset_id_2"],
@@ -221,7 +221,7 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
     )
 
     assert node["data"]["type"] == "knowledge-retrieval"
-    assert node["data"]["query_variable_selector"] == ["start", "sys.query"]
+    assert node["data"]["query_variable_selector"] == ["sys", "query"]
     assert node["data"]["dataset_ids"] == dataset_config.dataset_ids
     assert (node["data"]["retrieval_mode"]
             == dataset_config.retrieve_config.retrieve_strategy.value)
@@ -276,7 +276,7 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
 
 
 def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
-    new_app_mode = AppMode.CHAT
+    new_app_mode = AppMode.ADVANCED_CHAT
     model = "gpt-4"
     model_mode = LLMMode.CHAT
 
@@ -298,7 +298,7 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
 
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
-        simple_prompt_template="You are a helpful assistant {{text-input}}, {{paragraph}}, {{select}}."
+        simple_prompt_template="You are a helpful assistant {{text_input}}, {{paragraph}}, {{select}}."
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
@@ -311,16 +311,15 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
     assert llm_node["data"]["type"] == "llm"
     assert llm_node["data"]["model"]['name'] == model
     assert llm_node["data"]['model']["mode"] == model_mode.value
-    assert llm_node["data"]["variables"] == [{
-                    "variable": v.variable,
-                    "value_selector": ["start", v.variable]
-                } for v in default_variables]
-    assert llm_node["data"]["prompts"][0]['text'] == prompt_template.simple_prompt_template + '\n'
+    template = prompt_template.simple_prompt_template
+    for v in default_variables:
+        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
+    assert llm_node["data"]["prompt_template"][0]['text'] == template + '\n'
     assert llm_node["data"]['context']['enabled'] is False
 
 
 def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variables):
-    new_app_mode = AppMode.CHAT
+    new_app_mode = AppMode.ADVANCED_CHAT
     model = "gpt-3.5-turbo-instruct"
     model_mode = LLMMode.COMPLETION
 
@@ -342,7 +341,7 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
 
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
-        simple_prompt_template="You are a helpful assistant {{text-input}}, {{paragraph}}, {{select}}."
+        simple_prompt_template="You are a helpful assistant {{text_input}}, {{paragraph}}, {{select}}."
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
@@ -355,16 +354,15 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
     assert llm_node["data"]["type"] == "llm"
     assert llm_node["data"]["model"]['name'] == model
     assert llm_node["data"]['model']["mode"] == model_mode.value
-    assert llm_node["data"]["variables"] == [{
-                    "variable": v.variable,
-                    "value_selector": ["start", v.variable]
-                } for v in default_variables]
-    assert llm_node["data"]["prompts"]['text'] == prompt_template.simple_prompt_template + '\n'
+    template = prompt_template.simple_prompt_template
+    for v in default_variables:
+        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
+    assert llm_node["data"]["prompt_template"]['text'] == template + '\n'
     assert llm_node["data"]['context']['enabled'] is False
 
 
 def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables):
-    new_app_mode = AppMode.CHAT
+    new_app_mode = AppMode.ADVANCED_CHAT
     model = "gpt-4"
     model_mode = LLMMode.CHAT
 
@@ -404,17 +402,16 @@ def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables)
     assert llm_node["data"]["type"] == "llm"
     assert llm_node["data"]["model"]['name'] == model
     assert llm_node["data"]['model']["mode"] == model_mode.value
-    assert llm_node["data"]["variables"] == [{
-                    "variable": v.variable,
-                    "value_selector": ["start", v.variable]
-                } for v in default_variables]
-    assert isinstance(llm_node["data"]["prompts"], list)
-    assert len(llm_node["data"]["prompts"]) == len(prompt_template.advanced_chat_prompt_template.messages)
-    assert llm_node["data"]["prompts"][0]['text'] == prompt_template.advanced_chat_prompt_template.messages[0].text
+    assert isinstance(llm_node["data"]["prompt_template"], list)
+    assert len(llm_node["data"]["prompt_template"]) == len(prompt_template.advanced_chat_prompt_template.messages)
+    template = prompt_template.advanced_chat_prompt_template.messages[0].text
+    for v in default_variables:
+        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
+    assert llm_node["data"]["prompt_template"][0]['text'] == template
 
 
 def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_variables):
-    new_app_mode = AppMode.CHAT
+    new_app_mode = AppMode.ADVANCED_CHAT
     model = "gpt-3.5-turbo-instruct"
     model_mode = LLMMode.COMPLETION
 
@@ -456,9 +453,8 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     assert llm_node["data"]["type"] == "llm"
     assert llm_node["data"]["model"]['name'] == model
     assert llm_node["data"]['model']["mode"] == model_mode.value
-    assert llm_node["data"]["variables"] == [{
-                    "variable": v.variable,
-                    "value_selector": ["start", v.variable]
-                } for v in default_variables]
-    assert isinstance(llm_node["data"]["prompts"], dict)
-    assert llm_node["data"]["prompts"]['text'] == prompt_template.advanced_completion_prompt_template.prompt
+    assert isinstance(llm_node["data"]["prompt_template"], dict)
+    template = prompt_template.advanced_completion_prompt_template.prompt
+    for v in default_variables:
+        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
+    assert llm_node["data"]["prompt_template"]['text'] == template

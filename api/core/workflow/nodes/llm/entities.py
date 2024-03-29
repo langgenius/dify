@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.variable_entities import VariableSelector
 
 
 class ModelConfig(BaseModel):
@@ -44,7 +43,6 @@ class LLMNodeData(BaseNodeData):
     LLM Node Data.
     """
     model: ModelConfig
-    variables: list[VariableSelector] = []
     prompt_template: Union[list[ChatModelMessage], CompletionModelPromptTemplate]
     memory: Optional[MemoryConfig] = None
     context: ContextConfig

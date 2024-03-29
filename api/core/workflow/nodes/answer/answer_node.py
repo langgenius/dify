@@ -13,6 +13,7 @@ from core.workflow.nodes.answer.entities import (
     VarGenerateRouteChunk,
 )
 from core.workflow.nodes.base_node import BaseNode
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -66,32 +67,8 @@ class AnswerNode(BaseNode):
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
 
-        # re-fetch variable values
-        variable_values = {}
-        for variable_selector in node_data.variables:
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector
-            )
-
-            if isinstance(value, str | int | float):
-                value = str(value)
-            elif isinstance(value, FileVar):
-                value = value.to_dict()
-            elif isinstance(value, list):
-                new_value = []
-                for item in value:
-                    if isinstance(item, FileVar):
-                        new_value.append(item.to_dict())
-                    else:
-                        new_value.append(item)
-
-                value = new_value
-
-            variable_values[variable_selector.variable] = value
-
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=variable_values,
             outputs={
                 "answer": answer
             }
@@ -116,15 +93,18 @@ class AnswerNode(BaseNode):
         :param node_data: node data object
         :return:
         """
+        variable_template_parser = VariableTemplateParser(template=node_data.answer)
+        variable_selectors = variable_template_parser.extract_variable_selectors()
+
         value_selector_mapping = {
             variable_selector.variable: variable_selector.value_selector
-            for variable_selector in node_data.variables
+            for variable_selector in variable_selectors
         }
 
         variable_keys = list(value_selector_mapping.keys())
 
         # format answer template
-        template_parser = PromptTemplateParser(node_data.answer)
+        template_parser = PromptTemplateParser(template=node_data.answer, with_variable_tmpl=True)
         template_variable_keys = template_parser.variable_keys
 
         # Take the intersection of variable_keys and template_variable_keys
@@ -164,8 +144,11 @@ class AnswerNode(BaseNode):
         """
         node_data = cast(cls._node_data_cls, node_data)
 
+        variable_template_parser = VariableTemplateParser(template=node_data.answer)
+        variable_selectors = variable_template_parser.extract_variable_selectors()
+
         variable_mapping = {}
-        for variable_selector in node_data.variables:
+        for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         return variable_mapping
