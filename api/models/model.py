@@ -1164,6 +1164,10 @@ class MessageAgentThought(db.Model):
             return []
         
     @property
+    def tools(self) -> list[str]:
+        return self.tool.split(";") if self.tool else []
+        
+    @property
     def tool_labels(self) -> dict:
         try:
             if self.tool_labels_str:
@@ -1182,6 +1186,55 @@ class MessageAgentThought(db.Model):
                 return {}
         except Exception as e:
             return {}
+        
+    @property
+    def tool_inputs_dict(self) -> dict:
+        tools = self.tools
+        try:
+            if self.tool_input:
+                data = json.loads(self.tool_input)
+                result = {}
+                for tool in tools:
+                    if tool in data:
+                        result[tool] = data[tool]
+                    else:
+                        if len(tools) == 1:
+                            result[tool] = data
+                        else:
+                            result[tool] = {}
+                return result
+            else:
+                return {
+                    tool: {} for tool in tools
+                }
+        except Exception as e:
+            return {}
+    
+    @property
+    def tool_outputs_dict(self) -> dict:
+        tools = self.tools
+        try:
+            if self.observation:
+                data = json.loads(self.observation)
+                result = {}
+                for tool in tools:
+                    if tool in data:
+                        result[tool] = data[tool]
+                    else:
+                        if len(tools) == 1:
+                            result[tool] = data
+                        else:
+                            result[tool] = {}
+                return result
+            else:
+                return {
+                    tool: {} for tool in tools
+                }
+        except Exception as e:
+            if self.observation:
+                return {
+                    tool: self.observation for tool in tools
+                }
 
 class DatasetRetrieverResource(db.Model):
     __tablename__ = 'dataset_retriever_resources'
