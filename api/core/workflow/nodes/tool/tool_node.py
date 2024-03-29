@@ -11,6 +11,7 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -71,12 +72,26 @@ class ToolNode(BaseNode):
         """
             Generate parameters
         """
-        return {
-            k.variable:
-                k.value if k.variable_type == 'static' else
-                variable_pool.get_variable_value(k.value_selector) if k.variable_type == 'selector' else ''
-            for k in node_data.tool_parameters
-        }
+        result = {}
+        for parameter in node_data.tool_parameters:
+            if parameter.value_type == 'static':
+                result[parameter.parameter_name] = parameter.static_value
+            else:
+                parser = VariableTemplateParser(parameter.template_value)
+                variable_selectors = parser.extract_variable_selectors()
+                values = {
+                    selector.variable: variable_pool.get_variable_value(selector)
+                    for selector in variable_selectors
+                }
+
+                if len(values) == 1:
+                    # if only one value, use the value directly to avoid type transformation
+                    result[parameter.parameter_name] = list(values.values())[0]
+                else:
+                    # if multiple values, use the parser to format the values into a string
+                    result[parameter.parameter_name] = parser.format(values)
+
+        return result
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
         """
@@ -146,14 +161,3 @@ class ToolNode(BaseNode):
             f'Link: {message.message}\n' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
-
-    @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
-        """
-        Extract variable selector to variable mapping
-        """
-        return {
-            k.variable: k.value_selector
-            for k in node_data.tool_parameters
-            if k.variable_type == 'selector'
-        }
