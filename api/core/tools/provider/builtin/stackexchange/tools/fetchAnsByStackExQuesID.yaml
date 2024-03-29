@@ -1,0 +1,78 @@
+identity:
+  name: fetchAnsByStackExQuesID
+  author: Richards Tu
+  label:
+    en_US: Fetch Stack Exchange Answers
+    zh_Hans: 获取Stack Exchange答案
+description:
+  human:
+    en_US: A tool for retrieving answers for a specific Stack Exchange question ID. Specify the question ID, Stack Exchange site, sorting order, number of results per page, and page number.
+    zh_Hans: 用于检索特定Stack Exchange问题ID的答案的工具。指定问题ID、Stack Exchange站点、排序顺序、每页结果数和页码。
+  llm: A tool for retrieving answers for a specific Stack Exchange question ID based on the provided parameters.
+parameters:
+  - name: id
+    type: integer
+    required: true
+    label:
+      en_US: Question ID
+      zh_Hans: 问题ID
+    human_description:
+      en_US: The ID of the Stack Exchange question to fetch answers for.
+      zh_Hans: 要获取答案的Stack Exchange问题的ID。
+    llm_description: The ID of the Stack Exchange question.
+    form: llm
+  - name: site
+    type: string 
+    required: true
+    label:
+      en_US: Stack Exchange site
+      zh_Hans: Stack Exchange站点  
+    human_description:
+      en_US: The Stack Exchange site the question is from, e.g. stackoverflow, unix, etc.
+      zh_Hans: 问题所在的Stack Exchange站点，例如stackoverflow、unix等。
+    llm_description: The Stack Exchange site identifier. Pick from the following sites\:\ \"stackoverflow\", \"serverfault\", \"superuser\", \"askubuntu\", \"unix\", \"cs\", \"softwareengineering\", \"codegolf\", \"codereview\", \"cstheory\", \"security\", \"cryptography\", \"reverseengineering\", \"datascience\", \"devops\", \"ux\", \"dba\", \"gis\", \"webmasters\", \"arduino\", \"raspberrypi\", \"networkengineering\", \"iot\", \"tor\", \"sqa\", \"mathoverflow\", \"math\", \"mathematica\", \"dsp\", \"gamedev\", \"robotics\", \"genai\", \"computergraphics\"
+    form: llm  
+  - name: order
+    type: string
+    required: true
+    label:
+      en_US: Sort direction
+      zh_Hans: 排序方向
+    human_description:
+      en_US: The direction to sort the answers - ascending or descending. 
+      zh_Hans: 答案的排序方向 - 升序或降序。
+    llm_description: asc for ascending, desc for descending.
+    form: llm
+  - name: sort
+    type: string
+    required: true
+    label: 
+      en_US: Sort order
+      zh_Hans: 排序
+    human_description:
+      en_US: The sort order for the answers - activity, votes, or creation date.
+      zh_Hans: 答案的排序顺序 - 活动、投票或创建日期。
+    llm_description: activity, votes, or creation.
+    form: llm  
+  - name: pagesize
+    type: integer 
+    required: true
+    label:
+      en_US: Results per page
+      zh_Hans: 每页结果数
+    human_description:
+      en_US: The number of answers to return per page.
+      zh_Hans: 每页返回的答案数。
+    llm_description: The number of answers per page.
+    form: llm
+  - name: page
+    type: integer
+    required: true
+    label:
+      en_US: Page number
+      zh_Hans: 页码 
+    human_description:
+      en_US: The page number of answers to retrieve.
+      zh_Hans: 要检索的答案的页码。
+    llm_description: The page number to retrieve.
+    form: llm
