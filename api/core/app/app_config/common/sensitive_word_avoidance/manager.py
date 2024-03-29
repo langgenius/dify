@@ -39,12 +39,12 @@ class SensitiveWordAvoidanceConfigManager:
 
             if not only_structure_validate:
                 typ = config["sensitive_word_avoidance"]["type"]
-                config = config["sensitive_word_avoidance"]["config"]
+                sensitive_word_avoidance_config = config["sensitive_word_avoidance"]["config"]
 
                 ModerationFactory.validate_config(
                     name=typ,
                     tenant_id=tenant_id,
-                    config=config
+                    config=sensitive_word_avoidance_config
                 )
 
         return config, ["sensitive_word_avoidance"]

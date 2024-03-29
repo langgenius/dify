@@ -1,4 +1,3 @@
-from calendar import c
 import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
@@ -16,8 +15,8 @@ BASIC_NODE_DATA = {
 
 # construct variable pool
 pool = VariablePool(system_variables={}, user_inputs={})
-pool.append_variable(node_id='1', variable_key_list=['123', 'args1'], value=1)
-pool.append_variable(node_id='1', variable_key_list=['123', 'args2'], value=2)
+pool.append_variable(node_id='a', variable_key_list=['b123', 'args1'], value=1)
+pool.append_variable(node_id='a', variable_key_list=['b123', 'args2'], value=2)
 
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_get(setup_http_mock):
@@ -26,10 +25,6 @@ def test_get(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }],
             'method': 'get',
             'url': 'http://example.com',
             'authorization': {
@@ -61,10 +56,6 @@ def test_no_auth(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }],
             'method': 'get',
             'url': 'http://example.com',
             'authorization': {
@@ -91,10 +82,6 @@ def test_custom_authorization_header(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }],
             'method': 'get',
             'url': 'http://example.com',
             'authorization': {
@@ -126,12 +113,8 @@ def test_template(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args2'],
-            }],
             'method': 'get',
-            'url': 'http://example.com/{{args1}}',
+            'url': 'http://example.com/{{#a.b123.args2#}}',
             'authorization': {
                 'type': 'api-key',
                 'config': {
@@ -140,8 +123,8 @@ def test_template(setup_http_mock):
                     'header': 'api-key',
                 }
             },
-            'headers': 'X-Header:123\nX-Header2:{{args1}}',
-            'params': 'A:b\nTemplate:{{args1}}',
+            'headers': 'X-Header:123\nX-Header2:{{#a.b123.args2#}}',
+            'params': 'A:b\nTemplate:{{#a.b123.args2#}}',
             'body': None,
         }
     }, **BASIC_NODE_DATA)
@@ -162,10 +145,6 @@ def test_json(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }],
             'method': 'post',
             'url': 'http://example.com',
             'authorization': {
@@ -180,7 +159,7 @@ def test_json(setup_http_mock):
             'params': 'A:b',
             'body': {
                 'type': 'json',
-                'data': '{"a": "{{args1}}"}'
+                'data': '{"a": "{{#a.b123.args1#}}"}'
             },
         }
     }, **BASIC_NODE_DATA)
@@ -198,13 +177,6 @@ def test_x_www_form_urlencoded(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }, {
-                'variable': 'args2',
-                'value_selector': ['1', '123', 'args2'],
-            }],
             'method': 'post',
             'url': 'http://example.com',
             'authorization': {
@@ -219,7 +191,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
             'params': 'A:b',
             'body': {
                 'type': 'x-www-form-urlencoded',
-                'data': 'a:{{args1}}\nb:{{args2}}'
+                'data': 'a:{{#a.b123.args1#}}\nb:{{#a.b123.args2#}}'
             },
         }
     }, **BASIC_NODE_DATA)
@@ -237,13 +209,6 @@ def test_form_data(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }, {
-                'variable': 'args2',
-                'value_selector': ['1', '123', 'args2'],
-            }],
             'method': 'post',
             'url': 'http://example.com',
             'authorization': {
@@ -258,7 +223,7 @@ def test_form_data(setup_http_mock):
             'params': 'A:b',
             'body': {
                 'type': 'form-data',
-                'data': 'a:{{args1}}\nb:{{args2}}'
+                'data': 'a:{{#a.b123.args1#}}\nb:{{#a.b123.args2#}}'
             },
         }
     }, **BASIC_NODE_DATA)
@@ -279,13 +244,6 @@ def test_none_data(setup_http_mock):
         'data': {
             'title': 'http',
             'desc': '',
-            'variables': [{
-                'variable': 'args1',
-                'value_selector': ['1', '123', 'args1'],
-            }, {
-                'variable': 'args2',
-                'value_selector': ['1', '123', 'args2'],
-            }],
             'method': 'post',
             'url': 'http://example.com',
             'authorization': {
