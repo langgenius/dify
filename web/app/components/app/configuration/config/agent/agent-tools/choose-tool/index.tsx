@@ -59,11 +59,12 @@ const ChooseTool: FC<Props> = ({
                 provider_type: collection.type,
                 provider_name: collection.name,
                 tool_name: tool.name,
-                tool_label: tool.label[locale],
+                tool_label: tool.label[locale] || tool.label[locale.replaceAll('-', '_')],
                 tool_parameters: parameters,
                 enabled: true,
               })
             })
+            console.log('nexModelConfig', nexModelConfig, tool, locale)
             setModelConfig(nexModelConfig)
           }}
           addedTools={(modelConfig?.agentConfig?.tools as any) || []}
