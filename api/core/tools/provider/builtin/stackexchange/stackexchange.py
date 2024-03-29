@@ -1,9 +1,10 @@
-from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.errors import ToolProviderCredentialValidationError  
 from core.tools.provider.builtin.stackexchange.tools.searchStackExQuestions import SearchStackExQuestionsTool
+from core.tools.provider.builtin.stackexchange.tools.fetchAnsByStackExQuesID import FetchAnsByStackExQuesIDTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
-class DevDocsProvider(BuiltinToolProviderController):
+class StackExchangeProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             SearchStackExQuestionsTool().fork_tool_runtime(
@@ -13,8 +14,12 @@ class DevDocsProvider(BuiltinToolProviderController):
             ).invoke(
                 user_id='',
                 tool_parameters={
-                    "doc": "python~3.12",
-                    "topic": "library/code",
+                    "intitle": "Test",
+                    "sort": "relevance",  
+                    "order": "desc",
+                    "site": "stackoverflow",
+                    "accepted": True,
+                    "pagesize": 1
                 },
             )
         except Exception as e:
