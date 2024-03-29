@@ -105,6 +105,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           title={t(`${i18nPrefix}.body`)}
         >
           <EditBody
+            nodeId={id}
             readonly={readOnly}
             payload={inputs.body}
             onChange={setBody}

@@ -19,7 +19,6 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 type Props = {
   title: string | JSX.Element
   value: string
-  variables: string[]
   onChange: (value: string) => void
   readOnly?: boolean
   showRemove?: boolean
