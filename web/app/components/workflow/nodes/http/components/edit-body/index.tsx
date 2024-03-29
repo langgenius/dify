@@ -64,8 +64,6 @@ const EditBody: FC<Props> = ({
     list: body,
     setList: setBody,
     addItem: addBody,
-    isKeyValueEdit: isBodyKeyValueEdit,
-    toggleIsKeyValueEdit: toggleIsBodyKeyValueEdit,
   } = useKeyValueList(payload.data, (value) => {
     const newBody = produce(payload, (draft: Body) => {
       draft.data = value
@@ -151,6 +149,7 @@ const EditBody: FC<Props> = ({
             onChange={handleBodyValueChange}
             justVar
             nodesOutputVars={availableVarList}
+            readOnly={readonly}
           />
         )}
       </div>
