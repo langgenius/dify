@@ -203,6 +203,7 @@ const translation = {
     http: {
       inputVars: '输入变量',
       api: 'API',
+      notStartWithHttp: 'API 应该以 http:// 或 https:// 开头',
       key: '键',
       value: '值',
       bulkEdit: '批量编辑',

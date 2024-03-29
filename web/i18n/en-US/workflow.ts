@@ -203,6 +203,7 @@ const translation = {
     http: {
       inputVars: 'Input Variables',
       api: 'API',
+      notStartWithHttp: 'API should start with http:// or https://',
       key: 'Key',
       value: 'Value',
       bulkEdit: 'Bulk Edit',

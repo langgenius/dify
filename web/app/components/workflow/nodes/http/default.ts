@@ -29,15 +29,17 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
   },
-  checkValid(payload: HttpNodeType) {
-    let isValid = true
+  checkValid(payload: HttpNodeType, t: any) {
     let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
-    }
+
+    if (!errorMessages && !payload.url)
+      errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.http.api') })
+
+    if (!errorMessages && !payload.url.startsWith('http://') && !payload.url.startsWith('https://'))
+      errorMessages = t('workflow.nodes.http.notStartWithHttp')
+
     return {
-      isValid,
+      isValid: !errorMessages,
       errorMessage: errorMessages,
     }
   },
