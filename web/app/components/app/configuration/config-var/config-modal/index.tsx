@@ -9,10 +9,9 @@ import ConfigString from '../config-string'
 import SelectTypeItem from '../select-type-item'
 import Field from './field'
 import Toast from '@/app/components/base/toast'
-import { getNewVarInWorkflow } from '@/utils/var'
+import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
-
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import { ChangeType, InputVarType } from '@/app/components/workflow/types'
@@ -42,6 +41,16 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph
   const handlePayloadChange = useCallback((key: string) => {
     return (value: any) => {
+      if (key === 'variable') {
+        const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
+        if (!isValid) {
+          Toast.notify({
+            type: 'error',
+            message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+          })
+          return
+        }
+      }
       setTempPayload((prev) => {
         return {
           ...prev,
@@ -49,7 +58,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         }
       })
     }
-  }, [])
+  }, [t])
 
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
