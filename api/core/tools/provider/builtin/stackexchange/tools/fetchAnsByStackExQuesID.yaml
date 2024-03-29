@@ -132,6 +132,17 @@ parameters:
         label:
           en_US: computergraphics
     form: form
+  - name: filter
+    type: string
+    required: true
+    label:
+      en_US: Filter
+      zh_Hans: 过滤器
+    human_description:
+      en_US: This is required in order to actually get the body of the answer.
+      zh_Hans: 为了实际获取答案的正文，这是必需的。
+    llm_description: Required in order to actually get the body of the answer. Must be \"!nNPvSNdWme\".
+    form: llm
   - name: order
     type: string
     required: true
