@@ -134,6 +134,11 @@ class WeaviateVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         collection_name = self._collection_name
+        schema = self._default_schema(self._collection_name)
+
+        # check whether the index already exists
+        if not self._client.schema.contains(schema):
+            return False
         result = self._client.query.get(collection_name).with_additional(["id"]).with_where({
             "path": ["doc_id"],
             "operator": "Equal",
