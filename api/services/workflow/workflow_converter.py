@@ -291,7 +291,7 @@ class WorkflowConverter:
             if app_model.mode == AppMode.CHAT.value:
                 http_request_variables.append({
                     "variable": "_query",
-                    "value_selector": ["start", "sys.query"]
+                    "value_selector": ["sys", ".query"]
                 })
 
             request_body = {
@@ -375,7 +375,7 @@ class WorkflowConverter:
         """
         retrieve_config = dataset_config.retrieve_config
         if new_app_mode == AppMode.ADVANCED_CHAT:
-            query_variable_selector = ["start", "sys.query"]
+            query_variable_selector = ["sys", "query"]
         elif retrieve_config.query_variable:
             # fetch query variable
             query_variable_selector = ["start", retrieve_config.query_variable]
@@ -449,19 +449,31 @@ class WorkflowConverter:
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False
                 )
+
+                template = prompt_template_config['prompt_template'].template
+                for v in start_node['data']['variables']:
+                    template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+
                 prompts = [
                     {
                         "role": 'user',
-                        "text": prompt_template_config['prompt_template'].template
+                        "text": template
                     }
                 ]
             else:
                 advanced_chat_prompt_template = prompt_template.advanced_chat_prompt_template
-                prompts = [{
-                    "role": m.role.value,
-                    "text": m.text
-                } for m in advanced_chat_prompt_template.messages] \
-                    if advanced_chat_prompt_template else []
+
+                prompts = []
+                for m in advanced_chat_prompt_template.messages:
+                    if advanced_chat_prompt_template:
+                        text = m.text
+                        for v in start_node['data']['variables']:
+                            text = text.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+
+                        prompts.append({
+                            "role": m.role.value,
+                            "text": text
+                        })
         # Completion Model
         else:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
@@ -475,8 +487,13 @@ class WorkflowConverter:
                     has_context=knowledge_retrieval_node is not None,
                     query_in_prompt=False
                 )
+
+                template = prompt_template_config['prompt_template'].template
+                for v in start_node['data']['variables']:
+                    template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+
                 prompts = {
-                    "text": prompt_template_config['prompt_template'].template
+                    "text": template
                 }
 
                 prompt_rules = prompt_template_config['prompt_rules']
@@ -486,9 +503,16 @@ class WorkflowConverter:
                 }
             else:
                 advanced_completion_prompt_template = prompt_template.advanced_completion_prompt_template
+                if advanced_completion_prompt_template:
+                    text = advanced_completion_prompt_template.prompt
+                    for v in start_node['data']['variables']:
+                        text = text.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+                else:
+                    text = ""
+
                 prompts = {
-                    "text": advanced_completion_prompt_template.prompt,
-                } if advanced_completion_prompt_template else {"text": ""}
+                    "text": text,
+                }
 
                 if advanced_completion_prompt_template.role_prefix:
                     role_prefix = {
@@ -519,10 +543,6 @@ class WorkflowConverter:
                     "mode": model_config.mode,
                     "completion_params": completion_params
                 },
-                "variables": [{
-                    "variable": v['variable'],
-                    "value_selector": ["start", v['variable']]
-                } for v in start_node['data']['variables']],
                 "prompt_template": prompts,
                 "memory": memory,
                 "context": {
@@ -532,7 +552,7 @@ class WorkflowConverter:
                 },
                 "vision": {
                     "enabled": file_upload is not None,
-                    "variable_selector": ["start", "sys.files"] if file_upload is not None else None,
+                    "variable_selector": ["sys", "files"] if file_upload is not None else None,
                     "configs": {
                         "detail": file_upload.image_config['detail']
                     } if file_upload is not None else None
@@ -571,11 +591,7 @@ class WorkflowConverter:
             "data": {
                 "title": "ANSWER",
                 "type": NodeType.ANSWER.value,
-                "variables": [{
-                    "variable": "text",
-                    "value_selector": ["llm", "text"]
-                }],
-                "answer": "{{text}}"
+                "answer": "{{#llm.text#}}"
             }
         }
 

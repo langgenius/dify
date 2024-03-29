@@ -8,11 +8,14 @@ import { BodyType } from '../../types'
 import useKeyValueList from '../../hooks/use-key-value-list'
 import KeyValue from '../key-value'
 import TextEditor from '../../../_base/components/editor/text-editor'
-import CodeEditor from '../../../_base/components/editor/code-editor'
-import { CodeLanguage } from '../../../code/types'
+import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
+import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import type { Var } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 
 type Props = {
   readonly: boolean
+  nodeId: string
   payload: Body
   onChange: (payload: Body) => void
 }
@@ -34,10 +37,17 @@ const bodyTextMap = {
 
 const EditBody: FC<Props> = ({
   readonly,
+  nodeId,
   payload,
   onChange,
 }) => {
   const { type } = payload
+  const availableVarList = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number].includes(varPayload.type)
+    },
+  })
 
   const handleTypeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newType = e.target.value as BodyType
@@ -54,8 +64,6 @@ const EditBody: FC<Props> = ({
     list: body,
     setList: setBody,
     addItem: addBody,
-    isKeyValueEdit: isBodyKeyValueEdit,
-    toggleIsKeyValueEdit: toggleIsBodyKeyValueEdit,
   } = useKeyValueList(payload.data, (value) => {
     const newBody = produce(payload, (draft: Body) => {
       draft.data = value
@@ -111,11 +119,10 @@ const EditBody: FC<Props> = ({
         {(type === BodyType.formData || type === BodyType.xWwwFormUrlencoded) && (
           <KeyValue
             readonly={readonly}
+            nodeId={nodeId}
             list={body}
             onChange={setBody}
             onAdd={addBody}
-            isKeyValueEdit={isBodyKeyValueEdit}
-            toggleKeyValueEdit={toggleIsBodyKeyValueEdit}
           />
         )}
 
@@ -130,11 +137,19 @@ const EditBody: FC<Props> = ({
         )}
 
         {type === BodyType.json && (
-          <CodeEditor
+          // <CodeEditor
+          //   readOnly={readonly}
+          //   title={<div className='uppercase'>JSON</div>}
+          //   value={payload.data} onChange={handleBodyValueChange}
+          //   language={CodeLanguage.json}
+          // />
+          <InputWithVar
+            title='JSON'
+            value={payload.data}
+            onChange={handleBodyValueChange}
+            justVar
+            nodesOutputVars={availableVarList}
             readOnly={readonly}
-            title={<div className='uppercase'>JSON</div>}
-            value={payload.data} onChange={handleBodyValueChange}
-            language={CodeLanguage.json}
           />
         )}
       </div>

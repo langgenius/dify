@@ -110,6 +110,7 @@ const translation = {
     runThisStep: 'Run this step',
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
+    checklistResolved: 'All issues are resolved',
     organizeBlocks: 'Organize blocks',
     change: 'Change',
   },
@@ -231,6 +232,7 @@ const translation = {
         'api-key-title': 'API Key',
         'header': 'Header',
       },
+      insertVarPlaceholder: 'type \'/\' to insert variable',
     },
     code: {
       inputVars: 'Input Variables',

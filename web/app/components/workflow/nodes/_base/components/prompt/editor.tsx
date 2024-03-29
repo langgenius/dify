@@ -19,7 +19,6 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 type Props = {
   title: string | JSX.Element
   value: string
-  variables: string[]
   onChange: (value: string) => void
   readOnly?: boolean
   showRemove?: boolean
@@ -78,8 +77,8 @@ const Editor: FC<Props> = ({
 
   return (
     <div className={cn(wrapClassName)}>
-      <div ref={ref} className={cn(isFocus && s.gradientBorder, isExpand && 'h-full', '!rounded-[9px]')}>
-        <div className={cn(isFocus ? 'bg-white' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
+      <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
+        <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
             <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
             <div className='flex items-center'>

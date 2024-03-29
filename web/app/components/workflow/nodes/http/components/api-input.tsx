@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { Method } from '../types'
@@ -38,7 +38,6 @@ const ApiInput: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
   const availableVarList = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -47,10 +46,6 @@ const ApiInput: FC<Props> = ({
     },
   })
 
-  useEffect(() => {
-    if (isFocus)
-      inputRef.current?.focus()
-  }, [isFocus])
   return (
     <div className='flex items-start  space-x-1'>
       <Selector

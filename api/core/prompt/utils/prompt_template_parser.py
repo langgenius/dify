@@ -1,6 +1,9 @@
 import re
 
 REGEX = re.compile(r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#histories#|#query#|#context#)\}\}")
+WITH_VARIABLE_TMPL_REGEX = re.compile(
+    r"\{\{([a-zA-Z_][a-zA-Z0-9_]{0,29}|#[a-zA-Z0-9_]{1,50}\.[a-zA-Z0-9_\.]{1,100}#|#histories#|#query#|#context#)\}\}"
+)
 
 
 class PromptTemplateParser:
@@ -15,13 +18,15 @@ class PromptTemplateParser:
        `{{#histories#}}` `{{#query#}}` `{{#context#}}`. No other `{{##}}` template variables are allowed.
     """
 
-    def __init__(self, template: str):
+    def __init__(self, template: str, with_variable_tmpl: bool = False):
         self.template = template
+        self.with_variable_tmpl = with_variable_tmpl
+        self.regex = WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX
         self.variable_keys = self.extract()
 
     def extract(self) -> list:
         # Regular expression to match the template rules
-        return re.findall(REGEX, self.template)
+        return re.findall(self.regex, self.template)
 
     def format(self, inputs: dict, remove_template_variables: bool = True) -> str:
         def replacer(match):
@@ -29,12 +34,12 @@ class PromptTemplateParser:
             value = inputs.get(key, match.group(0))  # return original matched string if key not found
 
             if remove_template_variables:
-                return PromptTemplateParser.remove_template_variables(value)
+                return PromptTemplateParser.remove_template_variables(value, self.with_variable_tmpl)
             return value
 
-        prompt = re.sub(REGEX, replacer, self.template)
+        prompt = re.sub(self.regex, replacer, self.template)
         return re.sub(r'<\|.*?\|>', '', prompt)
 
     @classmethod
-    def remove_template_variables(cls, text: str):
-        return re.sub(REGEX, r'{\1}', text)
+    def remove_template_variables(cls, text: str, with_variable_tmpl: bool = False):
+        return re.sub(WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX, r'{\1}', text)

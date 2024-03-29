@@ -4,7 +4,6 @@ from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base_node import UserFrom
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -21,17 +20,7 @@ def test_execute_answer():
             'data': {
                 'title': '123',
                 'type': 'answer',
-                'variables': [
-                    {
-                        'value_selector': ['llm', 'text'],
-                        'variable': 'text'
-                    },
-                    {
-                        'value_selector': ['start', 'weather'],
-                        'variable': 'weather'
-                    },
-                ],
-                'answer': 'Today\'s weather is {{weather}}\n{{text}}\n{{img}}\nFin.'
+                'answer': 'Today\'s weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.'
             }
         }
     )

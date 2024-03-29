@@ -128,7 +128,7 @@ class QuestionClassifierNode(LLMNode):
         :param model_config: model config
         :return:
         """
-        prompt_transform = AdvancedPromptTransform()
+        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         prompt_template = self._get_prompt_template(node_data, query, memory)
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
