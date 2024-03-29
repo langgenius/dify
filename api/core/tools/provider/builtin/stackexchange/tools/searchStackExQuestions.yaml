@@ -88,7 +88,7 @@ parameters:
     llm_description: true to limit to only questions with accepted answers, false otherwise.
     form: llm
   - name: pagesize
-    type: integer
+    type: number
     required: true
     label:
       en_US: Results per page

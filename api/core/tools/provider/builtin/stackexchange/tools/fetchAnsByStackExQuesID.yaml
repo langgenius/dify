@@ -6,8 +6,8 @@ identity:
     zh_Hans: 获取Stack Exchange答案
 description:
   human:
-    en_US: A tool for retrieving answers for a specific Stack Exchange question ID. Specify the question ID, Stack Exchange site, sorting order, number of results per page, and page number.
-    zh_Hans: 用于检索特定Stack Exchange问题ID的答案的工具。指定问题ID、Stack Exchange站点、排序顺序、每页结果数和页码。
+    en_US: A tool for retrieving answers for a specific Stack Exchange question ID. Specify the question ID, Stack Exchange site, sorting order, number of results per page, and page number. Must be used with the searchStackExQuesID tool.
+    zh_Hans: 用于检索特定Stack Exchange问题ID的答案的工具。指定问题ID、Stack Exchange站点、排序顺序、每页结果数和页码。 必须与searchStackExQuesID工具一起使用。
   llm: A tool for retrieving answers for a specific Stack Exchange question ID based on the provided parameters.
 parameters:
   - name: id
@@ -55,7 +55,7 @@ parameters:
     llm_description: activity, votes, or creation.
     form: llm  
   - name: pagesize
-    type: integer 
+    type: number 
     required: true
     label:
       en_US: Results per page
@@ -66,7 +66,7 @@ parameters:
     llm_description: The number of answers per page.
     form: llm
   - name: page
-    type: integer
+    type: number
     required: true
     label:
       en_US: Page number
