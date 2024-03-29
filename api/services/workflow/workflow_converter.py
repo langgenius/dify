@@ -288,7 +288,7 @@ class WorkflowConverter:
                     'app_id': app_model.id,
                     'tool_variable': tool_variable,
                     'inputs': inputs,
-                    'query': '{{_query}}' if app_model.mode == AppMode.CHAT.value else ''
+                    'query': '{{#sys.query#}}' if app_model.mode == AppMode.CHAT.value else ''
                 }
             }
 
@@ -389,7 +389,7 @@ class WorkflowConverter:
                         }
                     }
                 }
-                if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE
+                if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
                 else None,
                 "multiple_retrieval_config": {
                     "top_k": retrieve_config.top_k,

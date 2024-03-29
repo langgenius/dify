@@ -378,6 +378,9 @@ class HttpExecutor:
                 target_value_type=ValueType.STRING
             )
 
+            if value is None:
+                raise ValueError(f'Variable {variable_selector.variable} not found')
+
             if escape_quotes:
                 value = value.replace('"', '\\"')
 
