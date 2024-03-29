@@ -94,6 +94,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           }
         >
           <ApiInput
+            nodeId={id}
             readonly={readOnly}
             method={inputs.method}
             onMethodChange={handleMethodChange}

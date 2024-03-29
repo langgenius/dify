@@ -1,12 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import { useBoolean } from 'ahooks'
 import { Method } from '../types'
 import Selector from '../../_base/components/selector'
+import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import { VarType } from '../../../types'
+import type { Var } from '../../../types'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-import SupportVarInput from '@/app/components/workflow/nodes/_base/components/support-var-input'
 
 const MethodOptions = [
   { label: 'GET', value: Method.get },
@@ -17,6 +19,7 @@ const MethodOptions = [
   { label: 'DELETE', value: Method.delete },
 ]
 type Props = {
+  nodeId: string
   readonly: boolean
   method: Method
   onMethodChange: (method: Method) => void
@@ -25,27 +28,28 @@ type Props = {
 }
 
 const ApiInput: FC<Props> = ({
+  nodeId,
   readonly,
   method,
   onMethodChange,
   url,
   onUrlChange,
 }) => {
-  const handleUrlChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onUrlChange(e.target.value)
-  }, [onUrlChange])
-
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isFocus, {
-    setTrue: onFocus,
-    setFalse: onBlur,
-  }] = useBoolean(false)
+  const [isFocus, setIsFocus] = useState(false)
+  const availableVarList = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number].includes(varPayload.type)
+    },
+  })
+
   useEffect(() => {
     if (isFocus)
       inputRef.current?.focus()
   }, [isFocus])
   return (
-    <div className='flex items-center h-8 rounded-lg bg-white border border-gray-200 shadow-xs'>
+    <div className='flex items-start  space-x-1'>
       <Selector
         value={method}
         onChange={onMethodChange}
@@ -60,14 +64,8 @@ const ApiInput: FC<Props> = ({
         showChecked
         readonly={readonly}
       />
-      <SupportVarInput
-        isFocus={isFocus}
-        onFocus={onFocus}
-        value={url}
-        wrapClassName='flex h-[30px] items-center'
-        textClassName='!h-6 leading-6 px-2.5 text-gray-900 text-[13px]'
-      >
-        <input
+
+      {/* <input
           type='text'
           readOnly={readonly}
           value={url}
@@ -76,8 +74,15 @@ const ApiInput: FC<Props> = ({
           onBlur={onBlur}
           className='w-full h-6 leading-6 px-2.5 border-0  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none'
           ref={inputRef}
-        />
-      </SupportVarInput>
+        /> */}
+      <Input
+        className='w-0 grow rounded-lg px-3 bg-white border border-gray-200 shadow-xs'
+        value={url}
+        onChange={onUrlChange}
+        readOnly={readonly}
+        nodesOutputVars={availableVarList}
+        onFocusChange={setIsFocus}
+      />
     </div >
   )
 }

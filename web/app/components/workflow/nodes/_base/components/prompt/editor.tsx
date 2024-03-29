@@ -53,8 +53,6 @@ const Editor: FC<Props> = ({
   const { t } = useTranslation()
   const { getNode } = useWorkflow()
 
-  console.log(nodesOutputVars, '2')
-
   const isShowHistory = !isChatModel && isChatApp
   const isShowQuery = isShowHistory
 
