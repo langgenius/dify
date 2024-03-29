@@ -17,9 +17,11 @@ class BedrockProvider(ModelProvider):
         """
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
-            bedrock_validate_model_name = credentials.get('model_for_validation', 'amazon.titan-text-lite-v1')
+
+            # Use `amazon.titan-text-lite-v1` model by default for validating credentials
+            model_for_validation = credentials.get('model_for_validation', 'amazon.titan-text-lite-v1')
             model_instance.validate_credentials(
-                model=bedrock_validate_model_name,
+                model=model_for_validation,
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:
