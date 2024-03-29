@@ -36,6 +36,7 @@ const translation = {
       title: 'Remove Variable',
       content: 'The variable is used in other nodes. Do you still want to remove it?',
     },
+    insertVarTip: 'Press the \'/\' key to insert quickly',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

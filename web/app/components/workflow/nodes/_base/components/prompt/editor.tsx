@@ -14,6 +14,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
   title: string | JSX.Element
@@ -110,7 +111,12 @@ const Editor: FC<Props> = ({
             footer={(
               <div className='pl-3 pb-2 flex'>
                 {isFocus
-                  ? <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
+                  ? (
+                    <TooltipPlus
+                      popupContent={`${t('workflow.common.insertVarTip')}`}
+                    >
+                      <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
+                    </TooltipPlus>)
                   : <div className='h-[18px]'></div>}
               </div>
             )}

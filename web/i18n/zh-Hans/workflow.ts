@@ -36,6 +36,7 @@ const translation = {
       title: '移除变量',
       content: '该变量在其他节点中使用。您是否仍要删除它？',
     },
+    insertVarTip: '按 \'/\' 键快速插入',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
