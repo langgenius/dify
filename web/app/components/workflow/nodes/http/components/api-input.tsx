@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
 import { Method } from '../types'
 import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -35,6 +36,8 @@ const ApiInput: FC<Props> = ({
   url,
   onUrlChange,
 }) => {
+  const { t } = useTranslation()
+
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
   const availableVarList = useAvailableVarList(nodeId, {
@@ -65,23 +68,15 @@ const ApiInput: FC<Props> = ({
         readonly={readonly}
       />
 
-      {/* <input
-          type='text'
-          readOnly={readonly}
-          value={url}
-          onChange={handleUrlChange}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          className='w-full h-6 leading-6 px-2.5 border-0  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none'
-          ref={inputRef}
-        /> */}
       <Input
-        className='w-0 grow rounded-lg px-3 bg-white border border-gray-200 shadow-xs'
+        className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
         value={url}
         onChange={onUrlChange}
         readOnly={readonly}
         nodesOutputVars={availableVarList}
         onFocusChange={setIsFocus}
+        placeholder={t('workflow.nodes.http.apiPlaceholder')!}
+        placeholderClassName='!leading-[21px]'
       />
     </div >
   )

@@ -9,6 +9,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 type Props = {
   className?: string
   placeholder?: string
+  placeholderClassName?: string
   promptMinHeightClassName?: string
   value: string
   onChange: (value: string) => void
@@ -21,14 +22,14 @@ type Props = {
 const Editor: FC<Props> = ({
   className,
   placeholder,
-  promptMinHeightClassName = 'min-h-[30px]',
+  placeholderClassName,
+  promptMinHeightClassName = 'min-h-[20px]',
   value,
   onChange,
   onFocusChange,
   readOnly,
   nodesOutputVars,
 }) => {
-  // const { t } = useTranslation()
   const { getNode } = useWorkflow()
 
   const [isFocus, {
@@ -45,9 +46,9 @@ const Editor: FC<Props> = ({
     <div className={cn(className, 'relative')}>
       <>
         <PromptEditor
-          className={cn(promptMinHeightClassName)}
-          // style={isExpand ? { height: editorExpandHeight - 5 } : {}}
+          className={cn(promptMinHeightClassName, '!leading-[18px]')}
           placeholder={placeholder}
+          placeholderClassName={placeholderClassName}
           value={value}
           outToolDisabled
           canNotAddContext

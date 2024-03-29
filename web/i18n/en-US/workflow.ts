@@ -203,6 +203,7 @@ const translation = {
     http: {
       inputVars: 'Input Variables',
       api: 'API',
+      apiPlaceholder: 'Enter URL, type ‘/’ insert variable',
       notStartWithHttp: 'API should start with http:// or https://',
       key: 'Key',
       value: 'Value',
