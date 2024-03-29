@@ -58,7 +58,7 @@ const ApiInput: FC<Props> = ({
         onChange={onMethodChange}
         options={MethodOptions}
         trigger={
-          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 border-r border-black/5')} >
+          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 bg-gray-100 border-black/5 rounded-lg')} >
             <div className='w-12 pl-0.5 leading-[18px] text-xs font-medium text-gray-900 uppercase'>{method}</div>
             {!readonly && <ChevronDown className='ml-1 w-3.5 h-3.5 text-gray-700' />}
           </div>

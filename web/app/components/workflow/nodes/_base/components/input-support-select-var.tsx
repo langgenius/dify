@@ -50,18 +50,11 @@ const Editor: FC<Props> = ({
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
           value={value}
-          outToolDisabled
-          canNotAddContext
           contextBlock={{
             show: false,
             selectable: false,
             datasets: [],
             onAddContext: () => { },
-          }}
-          variableBlock={{
-            variables: [],
-            externalTools: [],
-            onAddExternalTool: () => { },
           }}
           historyBlock={{
             show: false,
@@ -78,7 +71,6 @@ const Editor: FC<Props> = ({
           }}
           workflowVariableBlock={{
             show: true,
-            selectable: true,
             variables: nodesOutputVars || [],
             getWorkflowNode: getNode,
           }}
