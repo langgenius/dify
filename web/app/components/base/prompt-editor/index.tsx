@@ -16,19 +16,26 @@ import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 // import TreeView from './plugins/tree-view'
 import Placeholder from './plugins/placeholder'
-import ComponentPicker from './plugins/component-picker'
-import VariablePicker from './plugins/variable-picker'
-import ContextBlock from './plugins/context-block'
-import { ContextBlockNode } from './plugins/context-block/node'
-import ContextBlockReplacementBlock from './plugins/context-block-replacement-block'
-import HistoryBlock from './plugins/history-block'
-import { HistoryBlockNode } from './plugins/history-block/node'
-import HistoryBlockReplacementBlock from './plugins/history-block-replacement-block'
-import QueryBlock from './plugins/query-block'
-import { QueryBlockNode } from './plugins/query-block/node'
-import WorkflowVariableBlock from './plugins/workflow-variable-block'
-import { WorkflowVariableBlockNode } from './plugins/workflow-variable-block/node'
-import QueryBlockReplacementBlock from './plugins/query-block-replacement-block'
+import ComponentPickerBlock from './plugins/component-picker-block'
+import {
+  ContextBlock,
+  ContextBlockNode,
+  ContextBlockReplacementBlock,
+} from './plugins/context-block'
+import {
+  QueryBlock,
+  QueryBlockNode,
+  QueryBlockReplacementBlock,
+} from './plugins/query-block'
+import {
+  HistoryBlock,
+  HistoryBlockNode,
+  HistoryBlockReplacementBlock,
+} from './plugins/history-block'
+import {
+  WorkflowVariableBlock,
+  WorkflowVariableBlockNode,
+} from './plugins/workflow-variable-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
@@ -36,18 +43,19 @@ import { CustomTextNode } from './plugins/custom-text/node'
 import OnBlurBlock from './plugins/on-blur-or-focus-block'
 import UpdateBlock from './plugins/update-block'
 import { textToEditorState } from './utils'
-import type { Dataset } from './plugins/context-block'
-import type { RoleName } from './plugins/history-block'
-import type { ExternalToolOption, Option } from './plugins/variable-picker'
+import type {
+  ContextBlockType,
+  ExternalToolBlockType,
+  HistoryBlockType,
+  QueryBlockType,
+  VariableBlockType,
+  WorkflowVariableBlockType,
+} from './types'
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
 
 export type PromptEditorProps = {
   className?: string
@@ -55,47 +63,15 @@ export type PromptEditorProps = {
   style?: React.CSSProperties
   value?: string
   editable?: boolean
-  outToolDisabled?: boolean
-  canNotAddContext?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
   onFocus?: () => void
-  contextBlock?: {
-    show?: boolean
-    selectable?: boolean
-    datasets: Dataset[]
-    onInsert?: () => void
-    onDelete?: () => void
-    onAddContext: () => void
-  }
-  variableBlock?: {
-    selectable?: boolean
-    variables: Option[]
-    externalTools?: ExternalToolOption[]
-    onAddExternalTool?: () => void
-  }
-  historyBlock?: {
-    show?: boolean
-    selectable?: boolean
-    history: RoleName
-    onInsert?: () => void
-    onDelete?: () => void
-    onEditRole: () => void
-  }
-  queryBlock?: {
-    show?: boolean
-    selectable?: boolean
-    onInsert?: () => void
-    onDelete?: () => void
-  }
-  workflowVariableBlock?: {
-    show?: boolean
-    selectable?: boolean
-    variables: NodeOutPutVar[]
-    getWorkflowNode: (nodeId: string) => Node | undefined
-    onInsert?: () => void
-    onDelete?: () => void
-  }
+  contextBlock?: ContextBlockType
+  queryBlock?: QueryBlockType
+  historyBlock?: HistoryBlockType
+  variableBlock?: VariableBlockType
+  externalToolBlock?: ExternalToolBlockType
+  workflowVariableBlock?: WorkflowVariableBlockType
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -104,47 +80,15 @@ const PromptEditor: FC<PromptEditorProps> = ({
   style,
   value,
   editable = true,
-  outToolDisabled = false,
-  canNotAddContext = false,
   onChange,
   onBlur,
   onFocus,
-  contextBlock = {
-    show: true,
-    selectable: true,
-    datasets: [],
-    onAddContext: () => { },
-    onInsert: () => { },
-    onDelete: () => { },
-  },
-  historyBlock = {
-    show: true,
-    selectable: true,
-    history: {
-      user: '',
-      assistant: '',
-    },
-    onEditRole: () => { },
-    onInsert: () => { },
-    onDelete: () => { },
-  },
-  variableBlock = {
-    variables: [],
-  },
-  queryBlock = {
-    show: true,
-    selectable: true,
-    onInsert: () => { },
-    onDelete: () => { },
-  },
-  workflowVariableBlock = {
-    show: true,
-    selectable: true,
-    variables: [],
-    getWorkflowNode: () => { },
-    onInsert: () => { },
-    onDelete: () => { },
-  },
+  contextBlock,
+  queryBlock,
+  historyBlock,
+  variableBlock,
+  externalToolBlock,
+  workflowVariableBlock,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -176,15 +120,15 @@ const PromptEditor: FC<PromptEditorProps> = ({
   useEffect(() => {
     eventEmitter?.emit({
       type: UPDATE_DATASETS_EVENT_EMITTER,
-      payload: contextBlock.datasets,
+      payload: contextBlock?.datasets,
     } as any)
-  }, [eventEmitter, contextBlock.datasets])
+  }, [eventEmitter, contextBlock?.datasets])
   useEffect(() => {
     eventEmitter?.emit({
       type: UPDATE_HISTORY_EVENT_EMITTER,
-      payload: historyBlock.history,
+      payload: historyBlock?.history,
     } as any)
-  }, [eventEmitter, historyBlock.history])
+  }, [eventEmitter, historyBlock?.history])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
@@ -194,83 +138,63 @@ const PromptEditor: FC<PromptEditorProps> = ({
           placeholder={<Placeholder value={placeholder} />}
           ErrorBoundary={LexicalErrorBoundary}
         />
-        <ComponentPicker
-          contextDisabled={!contextBlock.selectable}
-          contextShow={contextBlock.show}
-          historyDisabled={!historyBlock.selectable}
-          historyShow={historyBlock.show}
-          queryDisabled={!queryBlock.selectable}
-          queryShow={queryBlock.show}
-          outToolDisabled={outToolDisabled}
-          workflowVariableShow={workflowVariableBlock.show}
-          workflowVariables={workflowVariableBlock.variables}
+        <ComponentPickerBlock
+          triggerString='/'
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
         />
-        <VariablePicker
-          items={variableBlock.variables}
-          externalTools={variableBlock.externalTools}
-          onAddExternalTool={variableBlock.onAddExternalTool}
-          outToolDisabled={outToolDisabled}
+        <ComponentPickerBlock
+          triggerString='{'
+          contextBlock={contextBlock}
+          historyBlock={historyBlock}
+          queryBlock={queryBlock}
+          variableBlock={variableBlock}
+          externalToolBlock={externalToolBlock}
+          workflowVariableBlock={workflowVariableBlock}
         />
         {
-          contextBlock.show && (
+          contextBlock?.show && (
             <>
-              <ContextBlock
-                datasets={contextBlock.datasets}
-                onAddContext={contextBlock.onAddContext}
-                onInsert={contextBlock.onInsert}
-                onDelete={contextBlock.onDelete}
-                canNotAddContext={canNotAddContext}
-              />
-              <ContextBlockReplacementBlock
-                datasets={contextBlock.datasets}
-                onAddContext={contextBlock.onAddContext}
-                onInsert={contextBlock.onInsert}
-                canNotAddContext={canNotAddContext}
-              />
-            </>
-          )
-        }
-        <VariableBlock />
-        {
-          historyBlock.show && (
-            <>
-              <HistoryBlock
-                roleName={historyBlock.history}
-                onEditRole={historyBlock.onEditRole}
-                onInsert={historyBlock.onInsert}
-                onDelete={historyBlock.onDelete}
-              />
-              <HistoryBlockReplacementBlock
-                roleName={historyBlock.history}
-                onEditRole={historyBlock.onEditRole}
-                onInsert={historyBlock.onInsert}
-              />
+              <ContextBlock {...contextBlock} />
+              <ContextBlockReplacementBlock {...contextBlock} />
             </>
           )
         }
         {
-          queryBlock.show && (
+          queryBlock?.show && (
             <>
-              <QueryBlock
-                onInsert={queryBlock.onInsert}
-                onDelete={queryBlock.onDelete}
-              />
+              <QueryBlock {...queryBlock} />
               <QueryBlockReplacementBlock />
             </>
           )
         }
         {
-          workflowVariableBlock.show && (
+          historyBlock?.show && (
             <>
-              <WorkflowVariableBlock
-                getWorkflowNode={workflowVariableBlock.getWorkflowNode as any}
-                onInsert={workflowVariableBlock.onInsert}
-                onDelete={workflowVariableBlock.onDelete}
-              />
+              <HistoryBlock {...historyBlock} />
+              <HistoryBlockReplacementBlock {...historyBlock} />
             </>
           )
         }
-        <VariableValueBlock />
+        {
+          (variableBlock?.show || externalToolBlock?.show) && (
+            <>
+              <VariableBlock />
+              <VariableValueBlock />
+            </>
+          )
+        }
+        {
+          workflowVariableBlock?.show && (
+            <>
+              <WorkflowVariableBlock {...workflowVariableBlock} />
+            </>
+          )
+        }
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock />

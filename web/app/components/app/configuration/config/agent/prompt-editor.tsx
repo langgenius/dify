@@ -102,10 +102,14 @@ const Editor: FC<Props> = ({
               onAddContext: showSelectDataSet,
             }}
             variableBlock={{
+              show: true,
               variables: modelConfig.configs.prompt_variables.map(item => ({
                 name: item.name,
                 value: item.key,
               })),
+            }}
+            externalToolBlock={{
+              show: true,
               externalTools: externalDataToolsConfig.map(item => ({
                 name: item.label!,
                 variableName: item.variable!,

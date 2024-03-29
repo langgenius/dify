@@ -1,28 +1,28 @@
-import type { FC } from 'react'
 import {
+  memo,
   useCallback,
   useEffect,
 } from 'react'
 import { $applyNodeReplacement } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../utils'
-import { CONTEXT_PLACEHOLDER_TEXT } from '../constants'
+import { decoratorTransform } from '../../utils'
+import { CONTEXT_PLACEHOLDER_TEXT } from '../../constants'
+import type { ContextBlockType } from '../../types'
 import {
   $createContextBlockNode,
   ContextBlockNode,
-} from './context-block/node'
-import type { ContextBlockProps } from './context-block/index'
-import { CustomTextNode } from './custom-text/node'
+} from '../context-block/node'
+import { CustomTextNode } from '../custom-text/node'
 
 const REGEX = new RegExp(CONTEXT_PLACEHOLDER_TEXT)
 
-const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
-  datasets,
-  onAddContext,
+const ContextBlockReplacementBlock = ({
+  datasets = [],
+  onAddContext = () => {},
   onInsert,
   canNotAddContext,
-}) => {
+}: ContextBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -34,7 +34,7 @@ const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
     if (onInsert)
       onInsert()
     return $applyNodeReplacement($createContextBlockNode(datasets, onAddContext, canNotAddContext))
-  }, [datasets, onAddContext, onInsert])
+  }, [datasets, onAddContext, onInsert, canNotAddContext])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
@@ -54,9 +54,9 @@ const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createContextBlockNode)),
     )
-  }, [])
+  }, [editor, getMatch, createContextBlockNode])
 
   return null
 }
 
-export default ContextBlockReplacementBlock
+export default memo(ContextBlockReplacementBlock)

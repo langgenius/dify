@@ -1,25 +1,25 @@
-import type { FC } from 'react'
 import {
+  memo,
   useCallback,
   useEffect,
 } from 'react'
 import { $applyNodeReplacement } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../utils'
-import { QUERY_PLACEHOLDER_TEXT } from '../constants'
+import { decoratorTransform } from '../../utils'
+import { QUERY_PLACEHOLDER_TEXT } from '../../constants'
+import type { QueryBlockType } from '../../types'
 import {
   $createQueryBlockNode,
   QueryBlockNode,
-} from './query-block/node'
-import type { QueryBlockProps } from './query-block/index'
-import { CustomTextNode } from './custom-text/node'
+} from '../query-block/node'
+import { CustomTextNode } from '../custom-text/node'
 
 const REGEX = new RegExp(QUERY_PLACEHOLDER_TEXT)
 
-const QueryBlockReplacementBlock: FC<QueryBlockProps> = ({
+const QueryBlockReplacementBlock = ({
   onInsert,
-}) => {
+}: QueryBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -51,9 +51,9 @@ const QueryBlockReplacementBlock: FC<QueryBlockProps> = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createQueryBlockNode)),
     )
-  }, [])
+  }, [editor, getMatch, createQueryBlockNode])
 
   return null
 }
 
-export default QueryBlockReplacementBlock
+export default memo(QueryBlockReplacementBlock)

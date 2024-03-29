@@ -1,5 +1,7 @@
-import type { FC } from 'react'
-import { useEffect } from 'react'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
@@ -7,6 +9,7 @@ import {
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import type { WorkflowVariableBlockType } from '../../types'
 import {
   $createWorkflowVariableBlockNode,
   WorkflowVariableBlockNode,
@@ -21,11 +24,11 @@ export type WorkflowVariableBlockProps = {
   onInsert?: () => void
   onDelete?: () => void
 }
-const WorkflowVariableBlock: FC<WorkflowVariableBlockProps> = ({
-  getWorkflowNode,
+const WorkflowVariableBlock = memo(({
+  getWorkflowNode = () => undefined,
   onInsert,
   onDelete,
-}) => {
+}: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -60,6 +63,8 @@ const WorkflowVariableBlock: FC<WorkflowVariableBlockProps> = ({
   }, [editor, onInsert, onDelete, getWorkflowNode])
 
   return null
-}
+})
+WorkflowVariableBlock.displayName = 'WorkflowVariableBlock'
 
-export default WorkflowVariableBlock
+export { WorkflowVariableBlock }
+export { WorkflowVariableBlockNode } from './node'
