@@ -52,7 +52,7 @@ parameters:
     human_description: 
       en_US: The Stack Exchange site to search, e.g. stackoverflow, unix, etc.
       zh_Hans: 要搜索的Stack Exchange站点，例如stackoverflow、unix等。
-  llm_description: The Stack Exchange site identifier. Pick from the following sites\:\ \"stackoverflow\", \"serverfault\", \"superuser\", \"askubuntu\", \"unix\", \"cs\", \"softwareengineering\", \"codegolf\", \"codereview\", \"cstheory\", \"security\", \"cryptography\", \"reverseengineering\", \"datascience\", \"devops\", \"ux\", \"dba\", \"gis\", \"webmasters\", \"arduino\", \"raspberrypi\", \"networkengineering\", \"iot\", \"tor\", \"sqa\", \"mathoverflow\", \"math\", \"mathematica\", \"dsp\", \"gamedev\", \"robotics\", \"genai\", \"computergraphics\".
+  llm_description: The Stack Exchange site identifier. \"stackoverflow\", \"serverfault\", \"superuser\", \"askubuntu\", \"unix\", \"cs\", \"softwareengineering\", \"codegolf\", \"codereview\", \"cstheory\", \"security\", \"cryptography\", \"reverseengineering\", \"datascience\", \"devops\", \"ux\", \"dba\", \"gis\", \"webmasters\", \"arduino\", \"raspberrypi\", \"networkengineering\", \"iot\", \"tor\", \"sqa\", \"mathoverflow\", \"math\", \"mathematica\", \"dsp\", \"gamedev\", \"robotics\", \"genai\", \"computergraphics\".
     form: llm
   - name: tagged
     type: string
