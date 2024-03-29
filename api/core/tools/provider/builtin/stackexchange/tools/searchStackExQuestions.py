@@ -1,6 +1,5 @@
 from typing import Any, Union
 
-import requests
 from pydantic import BaseModel, Field
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
