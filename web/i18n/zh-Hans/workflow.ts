@@ -36,6 +36,7 @@ const translation = {
       title: '移除变量',
       content: '该变量在其他节点中使用。您是否仍要删除它？',
     },
+    insertVarTip: '按 \'/\' 键快速插入',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
@@ -109,6 +110,7 @@ const translation = {
     runThisStep: '运行此步骤',
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
+    checklistResolved: '所有问题均已解决',
     organizeBlocks: '整理节点',
     change: '更改',
   },
@@ -203,6 +205,7 @@ const translation = {
     http: {
       inputVars: '输入变量',
       api: 'API',
+      apiPlaceholder: '输入 URL，输入变量时请键入‘/’',
       notStartWithHttp: 'API 应该以 http:// 或 https:// 开头',
       key: '键',
       value: '值',
@@ -229,6 +232,7 @@ const translation = {
         'api-key-title': 'API Key',
         'header': 'Header',
       },
+      insertVarPlaceholder: '键入 \'/\' 键快速插入变量',
     },
     code: {
       inputVars: '输入变量',

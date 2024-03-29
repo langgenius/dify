@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState } from 'react'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
 import { Method } from '../types'
 import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -35,7 +36,8 @@ const ApiInput: FC<Props> = ({
   url,
   onUrlChange,
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const { t } = useTranslation()
+
   const [isFocus, setIsFocus] = useState(false)
   const availableVarList = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -44,10 +46,6 @@ const ApiInput: FC<Props> = ({
     },
   })
 
-  useEffect(() => {
-    if (isFocus)
-      inputRef.current?.focus()
-  }, [isFocus])
   return (
     <div className='flex items-start  space-x-1'>
       <Selector
@@ -55,7 +53,7 @@ const ApiInput: FC<Props> = ({
         onChange={onMethodChange}
         options={MethodOptions}
         trigger={
-          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 border-r border-black/5')} >
+          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 bg-gray-100 border-black/5 rounded-lg')} >
             <div className='w-12 pl-0.5 leading-[18px] text-xs font-medium text-gray-900 uppercase'>{method}</div>
             {!readonly && <ChevronDown className='ml-1 w-3.5 h-3.5 text-gray-700' />}
           </div>
@@ -65,23 +63,15 @@ const ApiInput: FC<Props> = ({
         readonly={readonly}
       />
 
-      {/* <input
-          type='text'
-          readOnly={readonly}
-          value={url}
-          onChange={handleUrlChange}
-          onFocus={onFocus}
-          onBlur={onBlur}
-          className='w-full h-6 leading-6 px-2.5 border-0  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none'
-          ref={inputRef}
-        /> */}
       <Input
-        className='w-0 grow rounded-lg px-3 bg-white border border-gray-200 shadow-xs'
+        className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
         value={url}
         onChange={onUrlChange}
         readOnly={readonly}
         nodesOutputVars={availableVarList}
         onFocusChange={setIsFocus}
+        placeholder={t('workflow.nodes.http.apiPlaceholder')!}
+        placeholderClassName='!leading-[21px]'
       />
     </div >
   )

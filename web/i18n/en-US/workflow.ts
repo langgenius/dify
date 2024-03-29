@@ -36,6 +36,7 @@ const translation = {
       title: 'Remove Variable',
       content: 'The variable is used in other nodes. Do you still want to remove it?',
     },
+    insertVarTip: 'Press the \'/\' key to insert quickly',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -109,6 +110,7 @@ const translation = {
     runThisStep: 'Run this step',
     checklist: 'Checklist',
     checklistTip: 'Make sure all issues are resolved before publishing',
+    checklistResolved: 'All issues are resolved',
     organizeBlocks: 'Organize blocks',
     change: 'Change',
   },
@@ -203,6 +205,7 @@ const translation = {
     http: {
       inputVars: 'Input Variables',
       api: 'API',
+      apiPlaceholder: 'Enter URL, type ‘/’ insert variable',
       notStartWithHttp: 'API should start with http:// or https://',
       key: 'Key',
       value: 'Value',
@@ -229,6 +232,7 @@ const translation = {
         'api-key-title': 'API Key',
         'header': 'Header',
       },
+      insertVarPlaceholder: 'type \'/\' to insert variable',
     },
     code: {
       inputVars: 'Input Variables',

@@ -61,6 +61,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 export type PromptEditorProps = {
   className?: string
   placeholder?: string
+  placeholderClassName?: string
   style?: React.CSSProperties
   value?: string
   editable?: boolean
@@ -78,6 +79,7 @@ export type PromptEditorProps = {
 const PromptEditor: FC<PromptEditorProps> = ({
   className,
   placeholder,
+  placeholderClassName,
   style,
   value,
   editable = true,
@@ -136,7 +138,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       <div className='relative'>
         <RichTextPlugin
           contentEditable={<ContentEditable className={`${className} outline-none text-sm text-gray-700 leading-6`} style={style || {}} />}
-          placeholder={<Placeholder value={placeholder} />}
+          placeholder={<Placeholder value={placeholder} className={placeholderClassName} />}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPickerBlock
