@@ -11,7 +11,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.tools.entities.tool_entities import ModelToolPropertyKey, ToolInvokeMessage
+from core.tools.entities.tool_entities import ModelToolPropertyKey, ToolInvokeMessage, ToolProviderType
 from core.tools.tool.tool import Tool
 
 VISION_PROMPT = """## Image Recognition Task
@@ -78,6 +78,9 @@ class ModelTool(Tool):
             validate the credentials for Model tool
         """
         pass
+
+    def tool_provider_type(self) -> ToolProviderType:
+        return ToolProviderType.BUILT_IN
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """

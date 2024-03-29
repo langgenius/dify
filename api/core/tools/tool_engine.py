@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Union
 
@@ -55,11 +56,7 @@ class ToolEngine:
                 tool_inputs=tool_parameters
             )
 
-            try:
-                meta, response = ToolEngine._invoke(tool, tool_parameters, user_id)
-            except ToolEngineInvokeError as e:
-                meta = e.meta
-
+            meta, response = ToolEngine._invoke(tool, tool_parameters, user_id)
             response = ToolFileMessageTransformer.transform_tool_invoke_messages(
                 messages=response, 
                 user_id=user_id, 
@@ -104,11 +101,16 @@ class ToolEngine:
         except ToolInvokeError as e:
             error_response = f"tool invoke error: {e}"
             agent_tool_callback.on_tool_error(e)
+        except ToolEngineInvokeError as e:
+            meta = e.args[0]
+            error_response = f"tool invoke error: {meta.error}"
+            agent_tool_callback.on_tool_error(e)
+            return error_response, [], meta
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
 
-        return error_response, [], meta
+        return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
     @staticmethod
     def workflow_invoke(tool: Tool, tool_parameters: dict,
@@ -146,12 +148,18 @@ class ToolEngine:
         Invoke the tool with the given arguments.
         """
         started_at = datetime.now(timezone.utc)
-        meta = ToolInvokeMeta(time_cost=0.0, error=None)
+        meta = ToolInvokeMeta(time_cost=0.0, error=None, tool_config={
+            'tool_name': tool.identity.name,
+            'tool_provider': tool.identity.provider,
+            'tool_provider_type': tool.tool_provider_type().value,
+            'tool_parameters': deepcopy(tool.runtime.runtime_parameters),
+            'tool_icon': tool.identity.icon
+        })
         try:
             response = tool.invoke(user_id, tool_parameters)
         except Exception as e:
             meta.error = str(e)
-            raise ToolEngineInvokeError(meta=meta)
+            raise ToolEngineInvokeError(meta)
         finally:
             ended_at = datetime.now(timezone.utc)
             meta.time_cost = (ended_at - started_at).total_seconds()

@@ -40,32 +40,17 @@ def test_execute_llm(setup_openai_mock):
                     'mode': 'chat',
                     'completion_params': {}
                 },
-                'variables': [
-                    {
-                        'variable': 'weather',
-                        'value_selector': ['abc', 'output'],
-                    },
-                    {
-                        'variable': 'query',
-                        'value_selector': ['sys', 'query']
-                    }
-                ],
                 'prompt_template': [
                     {
                         'role': 'system',
-                        'text': 'you are a helpful assistant.\ntoday\'s weather is {{weather}}.'
+                        'text': 'you are a helpful assistant.\ntoday\'s weather is {{#abc.output#}}.'
                     },
                     {
                         'role': 'user',
-                        'text': '{{query}}'
+                        'text': '{{#sys.query#}}'
                     }
                 ],
-                'memory': {
-                    'window': {
-                        'enabled': True,
-                        'size': 2
-                    }
-                },
+                'memory': None,
                 'context': {
                     'enabled': False
                 },

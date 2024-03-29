@@ -9,6 +9,7 @@ from core.tools.entities.tool_entities import (
     ToolIdentity,
     ToolInvokeMessage,
     ToolParameter,
+    ToolProviderType,
     ToolRuntimeImageVariable,
     ToolRuntimeVariable,
     ToolRuntimeVariablePool,
@@ -58,6 +59,14 @@ class Tool(BaseModel, ABC):
             description=self.description.copy() if self.description else None,
             runtime=Tool.Runtime(**meta),
         )
+    
+    @abstractmethod
+    def tool_provider_type(self) -> ToolProviderType:
+        """
+            get the tool provider type
+
+            :return: the tool provider type
+        """
     
     def load_variables(self, variables: ToolRuntimeVariablePool):
         """

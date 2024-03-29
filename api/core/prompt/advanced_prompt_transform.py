@@ -21,6 +21,8 @@ class AdvancedPromptTransform(PromptTransform):
     """
     Advanced Prompt Transform for Workflow LLM Node.
     """
+    def __init__(self, with_variable_tmpl: bool = False) -> None:
+        self.with_variable_tmpl = with_variable_tmpl
 
     def get_prompt(self, prompt_template: Union[list[ChatModelMessage], CompletionModelPromptTemplate],
                    inputs: dict,
@@ -74,7 +76,7 @@ class AdvancedPromptTransform(PromptTransform):
 
         prompt_messages = []
 
-        prompt_template = PromptTemplateParser(template=raw_prompt)
+        prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
         prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
         prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
@@ -128,7 +130,7 @@ class AdvancedPromptTransform(PromptTransform):
         for prompt_item in raw_prompt_list:
             raw_prompt = prompt_item.text
 
-            prompt_template = PromptTemplateParser(template=raw_prompt)
+            prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
             prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
@@ -211,7 +213,7 @@ class AdvancedPromptTransform(PromptTransform):
         if '#histories#' in prompt_template.variable_keys:
             if memory:
                 inputs = {'#histories#': '', **prompt_inputs}
-                prompt_template = PromptTemplateParser(raw_prompt)
+                prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
                 prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
                 tmp_human_message = UserPromptMessage(
                     content=prompt_template.format(prompt_inputs)
