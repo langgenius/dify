@@ -11,7 +11,7 @@ description:
   llm: A tool for retrieving answers for a specific Stack Exchange question ID based on the provided parameters.
 parameters:
   - name: id
-    type: integer
+    type: string
     required: true
     label:
       en_US: Question ID
