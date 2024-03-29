@@ -382,7 +382,7 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'status_code',
-    type: VarType.string,
+    type: VarType.number,
   },
   {
     variable: 'headers',

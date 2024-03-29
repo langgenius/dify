@@ -40,7 +40,7 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) 
   }
 }
 
-const checkKey = (key: string, canBeEmpty?: boolean) => {
+export const checkKey = (key: string, canBeEmpty?: boolean) => {
   if (key.length === 0 && !canBeEmpty)
     return 'canNoBeEmpty'
 

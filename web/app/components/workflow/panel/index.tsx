@@ -14,6 +14,7 @@ import RunHistory from './run-history'
 import Record from './record'
 import InputsPanel from './inputs-panel'
 import WorkflowPreview from './workflow-preview'
+import ChatRecord from './chat-record'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 
@@ -46,12 +47,7 @@ const Panel: FC = () => {
   ])
 
   return (
-    <div
-      className={`
-        absolute top-14 right-0 bottom-2 flex pr-2 z-10
-        ${(showRunHistory || showDebugAndPreviewPanel) && '!pr-0'}
-      `}
-    >
+    <div className='absolute top-14 right-0 bottom-2 flex z-10'>
       {
         showMessageLogModal && (
           <MessageLogModal
@@ -66,8 +62,13 @@ const Panel: FC = () => {
         )
       }
       {
-        historyWorkflowData && (
+        historyWorkflowData && !isChatMode && (
           <Record />
+        )
+      }
+      {
+        historyWorkflowData && isChatMode && (
+          <ChatRecord />
         )
       }
       {

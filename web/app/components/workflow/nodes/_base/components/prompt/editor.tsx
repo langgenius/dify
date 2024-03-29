@@ -38,7 +38,6 @@ type Props = {
 const Editor: FC<Props> = ({
   title,
   value,
-  variables,
   onChange,
   readOnly,
   showRemove,
@@ -52,8 +51,6 @@ const Editor: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { getNode } = useWorkflow()
-
-  console.log(nodesOutputVars, '2')
 
   const isShowHistory = !isChatModel && isChatApp
   const isShowQuery = isShowHistory
@@ -124,21 +121,10 @@ const Editor: FC<Props> = ({
                 className={cn('min-h-[84px]')}
                 style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                 value={value}
-                outToolDisabled
-                canNotAddContext
                 contextBlock={{
                   show: justVar ? false : isShowContext,
                   selectable: !hasSetBlockStatus?.context,
-                  datasets: [],
-                  onAddContext: () => { },
-                }}
-                variableBlock={{
-                  variables: variables.map(item => ({
-                    name: item,
-                    value: item,
-                  })),
-                  externalTools: [],
-                  onAddExternalTool: () => { },
+                  canNotAddContext: true,
                 }}
                 historyBlock={{
                   show: justVar ? false : isShowHistory,
@@ -147,7 +133,6 @@ const Editor: FC<Props> = ({
                     user: 'Human',
                     assistant: 'Assistant',
                   },
-                  onEditRole: () => { },
                 }}
                 queryBlock={{
                   show: justVar ? false : isShowQuery,
@@ -155,7 +140,6 @@ const Editor: FC<Props> = ({
                 }}
                 workflowVariableBlock={{
                   show: true,
-                  selectable: true,
                   variables: nodesOutputVars || [],
                   getWorkflowNode: getNode,
                 }}

@@ -1,5 +1,7 @@
-import type { FC } from 'react'
-import { useEffect } from 'react'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
@@ -7,6 +9,7 @@ import {
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import type { HistoryBlockType } from '../../types'
 import {
   $createHistoryBlockNode,
   HistoryBlockNode,
@@ -27,12 +30,12 @@ export type HistoryBlockProps = {
   onDelete?: () => void
 }
 
-const HistoryBlock: FC<HistoryBlockProps> = ({
-  roleName,
-  onEditRole,
+const HistoryBlock = memo(({
+  history = { user: '', assistant: '' },
+  onEditRole = () => {},
   onInsert,
   onDelete,
-}) => {
+}: HistoryBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -43,7 +46,7 @@ const HistoryBlock: FC<HistoryBlockProps> = ({
       editor.registerCommand(
         INSERT_HISTORY_BLOCK_COMMAND,
         () => {
-          const historyBlockNode = $createHistoryBlockNode(roleName, onEditRole)
+          const historyBlockNode = $createHistoryBlockNode(history, onEditRole)
 
           $insertNodes([historyBlockNode])
 
@@ -65,9 +68,12 @@ const HistoryBlock: FC<HistoryBlockProps> = ({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, roleName, onEditRole, onInsert, onDelete])
+  }, [editor, history, onEditRole, onInsert, onDelete])
 
   return null
-}
+})
+HistoryBlock.displayName = 'HistoryBlock'
 
-export default HistoryBlock
+export { HistoryBlock }
+export { HistoryBlockNode } from './node'
+export { default as HistoryBlockReplacementBlock } from './history-block-replacement-block'

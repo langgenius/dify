@@ -2,10 +2,13 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
+import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
 import type { VarType } from '@/app/components/workflow/types'
+import { checkKeys } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   readonly: boolean
@@ -22,6 +25,8 @@ const OutputVarList: FC<Props> = ({
   onChange,
   onRemove,
 }) => {
+  const { t } = useTranslation()
+
   const list = outputKeyOrders.map((key) => {
     return {
       variable: key,
@@ -32,6 +37,23 @@ const OutputVarList: FC<Props> = ({
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
       const newKey = e.target.value
+
+      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
+      if (!isValid) {
+        Toast.notify({
+          type: 'error',
+          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        })
+        return
+      }
+
+      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
+        Toast.notify({
+          type: 'error',
+          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        })
+        return
+      }
 
       const newOutputs = produce(outputs, (draft) => {
         draft[newKey] = draft[oldKey]

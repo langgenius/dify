@@ -443,10 +443,6 @@ const varsToValueSelectorList = (vars: Var | Var[], parentValueSelector: ValueSe
   varToValueSelectorList(vars as Var, parentValueSelector, res)
 }
 
-// const test: ValueSelector[] = []
-// varsToValueSelectorList(LLM_OUTPUT_STRUCT, ['ttt'], test)
-// console.log(test)
-
 export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelector[] => {
   const { data, id } = node
   const { type } = data

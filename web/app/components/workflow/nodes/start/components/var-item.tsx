@@ -16,6 +16,7 @@ type Props = {
   onChange?: (item: InputVar, moreInfo?: MoreInfo) => void
   onRemove?: () => void
   rightContent?: JSX.Element
+  varKeys?: string[]
 }
 
 const VarItem: FC<Props> = ({
@@ -24,6 +25,7 @@ const VarItem: FC<Props> = ({
   onChange = () => { },
   onRemove = () => { },
   rightContent,
+  varKeys = [],
 }) => {
   const { t } = useTranslation()
 
@@ -78,6 +80,7 @@ const VarItem: FC<Props> = ({
             payload={payload}
             onClose={hideEditVarModal}
             onConfirm={handlePayloadChange}
+            varKeys={varKeys}
           />
         )
       }

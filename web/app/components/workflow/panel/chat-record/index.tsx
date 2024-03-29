@@ -70,18 +70,30 @@ const ChatRecord = () => {
   }
 
   return (
-    <Chat
-      config={{} as any}
-      chatList={chatMessageList}
-      chatContainerclassName='px-4'
-      chatContainerInnerClassName='pt-6'
-      chatFooterClassName='px-4 rounded-b-2xl'
-      chatFooterInnerClassName='pb-4'
-      chatNode={<UserInput />}
-      noChatInput
-      allToolIcons={{}}
-      showPromptLog
-    />
+    <div
+      className={`
+        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/[0.02] shadow-xl
+      `}
+      style={{
+        background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
+      }}
+    >
+      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
+        {`TEST CHAT#${historyWorkflowData?.sequence_number}`}
+      </div>
+      <Chat
+        config={{} as any}
+        chatList={chatMessageList}
+        chatContainerclassName='px-4'
+        chatContainerInnerClassName='pt-6'
+        chatFooterClassName='px-4 rounded-b-2xl'
+        chatFooterInnerClassName='pb-4'
+        chatNode={<UserInput />}
+        noChatInput
+        allToolIcons={{}}
+        showPromptLog
+      />
+    </div>
   )
 }
 

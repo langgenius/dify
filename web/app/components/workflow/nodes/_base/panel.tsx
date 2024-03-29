@@ -79,7 +79,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   return (
-    <div className='relative h-full'>
+    <div className='relative mr-2 h-full'>
       <div
         ref={triggerRef}
         className='absolute top-1/2 -translate-y-1/2 -left-2 w-1 h-6 bg-gray-300 rounded-sm cursor-col-resize resize-x'></div>

@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import {
   useCallback,
   useEffect,
@@ -6,22 +5,22 @@ import {
 import { $applyNodeReplacement } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../utils'
-import { HISTORY_PLACEHOLDER_TEXT } from '../constants'
+import { decoratorTransform } from '../../utils'
+import { HISTORY_PLACEHOLDER_TEXT } from '../../constants'
+import type { HistoryBlockType } from '../../types'
 import {
   $createHistoryBlockNode,
   HistoryBlockNode,
-} from './history-block/node'
-import type { HistoryBlockProps } from './history-block/index'
-import { CustomTextNode } from './custom-text/node'
+} from '../history-block/node'
+import { CustomTextNode } from '../custom-text/node'
 
 const REGEX = new RegExp(HISTORY_PLACEHOLDER_TEXT)
 
-const HistoryBlockReplacementBlock: FC<HistoryBlockProps> = ({
-  roleName,
-  onEditRole,
+const HistoryBlockReplacementBlock = ({
+  history = { user: '', assistant: '' },
+  onEditRole = () => {},
   onInsert,
-}) => {
+}: HistoryBlockType) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -32,8 +31,8 @@ const HistoryBlockReplacementBlock: FC<HistoryBlockProps> = ({
   const createHistoryBlockNode = useCallback((): HistoryBlockNode => {
     if (onInsert)
       onInsert()
-    return $applyNodeReplacement($createHistoryBlockNode(roleName, onEditRole))
-  }, [roleName, onEditRole, onInsert])
+    return $applyNodeReplacement($createHistoryBlockNode(history, onEditRole))
+  }, [history, onEditRole, onInsert])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

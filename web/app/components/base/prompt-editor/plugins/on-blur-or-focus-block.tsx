@@ -40,7 +40,7 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onBlur])
+  }, [editor, onBlur, onFocus])
 
   return null
 }

@@ -190,7 +190,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
 export const decoratorTransform = (
   node: CustomTextNode,
   getMatch: (text: string) => null | EntityMatch,
-  createNode: () => LexicalNode,
+  createNode: (textNode: TextNode) => LexicalNode,
 ) => {
   if (!node.isSimpleText())
     return
@@ -241,7 +241,7 @@ export const decoratorTransform = (
     else
       [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
 
-    const replacementNode = createNode()
+    const replacementNode = createNode(nodeToReplace)
     nodeToReplace.replace(replacementNode)
 
     if (currentNode == null)

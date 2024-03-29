@@ -16,6 +16,7 @@ import {
   SearchLg,
 } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { checkKeys } from '@/utils/var'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -200,17 +201,21 @@ const VarReferenceVars: FC<Props> = ({
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const filteredVars = vars.filter((v) => {
+    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
+    return children.length > 0
+  }).filter((v) => {
     if (!searchText)
       return v
     const children = v.vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
     return children.length > 0
   }).map((v) => {
-    if (!searchText)
-      return v
-    const children = v.vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+    let vars = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
+    if (searchText)
+      vars = vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+
     return {
       ...v,
-      vars: children,
+      vars,
     }
   })
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list

@@ -94,6 +94,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           }
         >
           <ApiInput
+            nodeId={id}
             readonly={readOnly}
             method={inputs.method}
             onMethodChange={handleMethodChange}
@@ -154,7 +155,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             />
             <VarItem
               name='status_code'
-              type='string'
+              type='number'
               description={t(`${i18nPrefix}.outputVars.statusCode`)}
             />
             <VarItem

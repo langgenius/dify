@@ -38,7 +38,7 @@ const RunHistory = () => {
     return null
 
   return (
-    <div className='flex flex-col ml-2 w-[200px] h-full bg-white border-[0.5px] border-gray-200 shadow-xl rounded-l-2xl'>
+    <div className='absolute -top-2 right-2 flex flex-col ml-2 w-[240px] min-h-[214px] bg-white border-[0.5px] border-gray-200 shadow-xl rounded-xl overflow-y-auto z-[11]'>
       <div className='shrink-0 flex items-center justify-between px-4 pt-3 text-base font-semibold text-gray-900'>
         {t('workflow.common.runHistory')}
         <div

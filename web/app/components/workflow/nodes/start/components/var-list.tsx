@@ -61,6 +61,7 @@ const VarList: FC<Props> = ({
           payload={item}
           onChange={handleVarChange(index)}
           onRemove={handleVarRemove(index)}
+          varKeys={list.map(item => item.variable)}
         />
       ))}
     </div>

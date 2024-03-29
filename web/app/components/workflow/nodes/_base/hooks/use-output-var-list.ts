@@ -44,7 +44,7 @@ function useOutputVarList<T>({
   }, [inputs, setInputs, handleOutVarRenameChange, id, outputKeyOrders, varKey, onOutputKeyOrdersChange])
 
   const handleAddVariable = useCallback(() => {
-    const newKey = `var-${Object.keys((inputs as any)[varKey]).length + 1}`
+    const newKey = `var_${Object.keys((inputs as any)[varKey]).length + 1}`
     const newInputs = produce(inputs, (draft: any) => {
       draft[varKey] = {
         ...draft[varKey],

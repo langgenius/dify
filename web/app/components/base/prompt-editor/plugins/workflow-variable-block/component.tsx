@@ -10,7 +10,7 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
-  getWorkflowNode: (nodeId: string) => Node
+  getWorkflowNode: (nodeId: string) => Node | undefined
 }
 
 const WorkflowVariableBlockComponent: FC<WorkflowVariableBlockComponentProps> = ({
@@ -20,7 +20,7 @@ const WorkflowVariableBlockComponent: FC<WorkflowVariableBlockComponentProps> = 
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const node = getWorkflowNode(variables[0])
-  const outputVarNode = node.data
+  const outputVarNode = node?.data
   const variablesLength = variables.length
   const lastVariable = variables[variablesLength - 1]
 

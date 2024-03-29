@@ -54,7 +54,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const {
     mode,
     dataSets,
-    externalDataToolsConfig,
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -381,6 +380,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             updatePromptVariableItem(item)
             hideEditModal()
           }}
+          varKeys={promptVariables.map(v => v.key)}
         />
       )}
 
