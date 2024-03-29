@@ -8,9 +8,7 @@ import KeyValue from './components/key-value'
 import EditBody from './components/edit-body'
 import AuthorizationModal from './components/authorization'
 import type { HttpNodeType } from './types'
-import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import AddButton from '@/app/components/base/button/add-button'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
@@ -29,9 +27,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   const {
     readOnly,
     inputs,
-    handleVarListChange,
-    handleAddVariable,
-    filterVar,
     handleMethodChange,
     handleUrlChange,
     headers,
@@ -60,20 +55,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.inputVars`)}
-          operations={
-            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
-          }
-        >
-          <VarList
-            nodeId={id}
-            readonly={readOnly}
-            list={inputs.variables}
-            onChange={handleVarListChange}
-            filterVar={filterVar}
-          />
-        </Field>
         <Field
           title={t(`${i18nPrefix}.api`)}
           operations={
