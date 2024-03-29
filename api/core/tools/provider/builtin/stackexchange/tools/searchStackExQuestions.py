@@ -35,7 +35,7 @@ class SearchStackExQuestionsTool(BuiltinTool):
         if input.nottagged:
             params["nottagged"] = input.nottagged
 
-        response = requests.get(f"https://api.stackexchange.com/2.3/search", params=params)
+        response = requests.get("https://api.stackexchange.com/2.3/search", params=params)
 
         if response.status_code == 200:
             return self.create_text_message(self.summary(user_id=user_id, content=response.text))
