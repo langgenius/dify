@@ -130,6 +130,8 @@ const EditBody: FC<Props> = ({
             title={<div className='uppercase'>Raw text</div>}
             onChange={handleBodyValueChange}
             value={payload.data}
+            justVar
+            nodesOutputVars={availableVarList}
             readOnly={readonly}
           />
         )}
