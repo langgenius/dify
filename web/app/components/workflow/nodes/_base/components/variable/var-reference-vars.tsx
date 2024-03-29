@@ -23,7 +23,7 @@ type ObjectChildrenProps = {
   title: string
   data: Var[]
   objPath: string[]
-  onChange: (value: ValueSelector) => void
+  onChange: (value: ValueSelector, item: Var) => void
   onHovering?: (value: boolean) => void
   itemWidth?: number
 }
@@ -33,7 +33,7 @@ type ItemProps = {
   title: string
   objPath: string[]
   itemData: Var
-  onChange: (value: ValueSelector) => void
+  onChange: (value: ValueSelector, item: Var) => void
   onHovering?: (value: boolean) => void
   itemWidth?: number
 }
@@ -76,7 +76,7 @@ const Item: FC<ItemProps> = ({
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onChange([nodeId, ...objPath, itemData.variable])
+    onChange([nodeId, ...objPath, itemData.variable], itemData)
   }
   return (
     <PortalToFollowElem
@@ -188,7 +188,7 @@ type Props = {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
-  onChange: (value: ValueSelector) => void
+  onChange: (value: ValueSelector, item: Var) => void
   itemWidth?: number
 }
 const VarReferenceVars: FC<Props> = ({

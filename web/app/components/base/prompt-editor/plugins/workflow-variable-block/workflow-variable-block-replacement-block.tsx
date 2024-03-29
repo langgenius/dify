@@ -40,7 +40,6 @@ const WorkflowVariableBlockReplacementBlock = ({
     if (matchArr === null)
       return null
 
-    console.log(matchArr, 'ma')
     const startOffset = matchArr.index
     const endOffset = startOffset + matchArr[0].length
     return {

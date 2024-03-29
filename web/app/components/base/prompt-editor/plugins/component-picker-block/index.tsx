@@ -64,12 +64,14 @@ const ComponentPicker = ({
     promptOptions,
     variableOptions,
     externalToolOptions,
+    workflowVariableOptions,
   } = useOptions(
     contextBlock,
     queryBlock,
     historyBlock,
     variableBlock,
     externalToolBlock,
+    workflowVariableBlock,
   )
 
   const onSelectOption = useCallback(
@@ -83,7 +85,8 @@ const ComponentPicker = ({
         if (nodeToRemove)
           nodeToRemove.remove()
 
-        selectedOption.onSelect(matchingString)
+        if (selectedOption?.onSelect)
+          selectedOption.onSelect(matchingString)
         closeMenu()
       })
     },
@@ -180,7 +183,7 @@ const ComponentPicker = ({
             )
           }
           {
-            workflowVariableBlock?.show && !!workflowVariableBlock?.variables?.length && (
+            !!workflowVariableOptions.length && (
               <>
                 {
                   (!!promptOptions.length || !!variableOptions.length || !!externalToolOptions.length) && (
@@ -189,8 +192,11 @@ const ComponentPicker = ({
                 }
                 <VarReferenceVars
                   hideSearch
-                  vars={workflowVariableBlock?.variables}
-                  onChange={handleSelectWorkflowVariable}
+                  vars={workflowVariableOptions}
+                  onChange={(variables: string[], item: any) => {
+                    selectOptionAndCleanUp(item)
+                    handleSelectWorkflowVariable(variables)
+                  }}
                 />
               </>
             )
@@ -206,14 +212,14 @@ const ComponentPicker = ({
     promptOptions,
     variableOptions,
     externalToolOptions,
+    workflowVariableOptions,
     queryString,
-    workflowVariableBlock,
     handleSelectWorkflowVariable,
   ])
 
   return (
     <LexicalTypeaheadMenuPlugin
-      options={allOptions}
+      options={allOptions as any}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       anchorClassName='z-[999999]'

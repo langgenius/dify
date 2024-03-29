@@ -8,6 +8,7 @@ import type {
   HistoryBlockType,
   QueryBlockType,
   VariableBlockType,
+  WorkflowVariableBlockType,
 } from '../../types'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
 import { INSERT_HISTORY_BLOCK_COMMAND } from '../history-block'
@@ -175,18 +176,26 @@ export const useOptions = (
   historyBlock?: HistoryBlockType,
   variableBlock?: VariableBlockType,
   externalToolBlockType?: ExternalToolBlockType,
+  workflowVariableBlockType?: WorkflowVariableBlockType,
   queryString?: string,
 ) => {
   const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
   const variableOptions = useVariableOptions(variableBlock, queryString)
   const externalToolOptions = useExternalToolOptions(externalToolBlockType, queryString)
+  const workflowVariableOptions = useMemo(() => {
+    if (!workflowVariableBlockType?.show)
+      return []
+
+    return workflowVariableBlockType.variables || []
+  }, [workflowVariableBlockType])
 
   return useMemo(() => {
     return {
       promptOptions,
       variableOptions,
       externalToolOptions,
-      allOptions: [...promptOptions, ...variableOptions, ...externalToolOptions],
+      workflowVariableOptions,
+      allOptions: [...promptOptions, ...variableOptions, ...externalToolOptions, ...workflowVariableOptions],
     }
-  }, [promptOptions, variableOptions, externalToolOptions])
+  }, [promptOptions, variableOptions, externalToolOptions, workflowVariableOptions])
 }
