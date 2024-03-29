@@ -3,7 +3,7 @@ identity:
   author: Richards Tu
   label:
     en_US: Fetch Stack Exchange Answers
-    zh_Hans: 获取Stack Exchange答案
+    zh_Hans: 获取 Stack Exchange 答案
 description:
   human:
     en_US: A tool for retrieving answers for a specific Stack Exchange question ID. Specify the question ID, Stack Exchange site, sorting order, number of results per page, and page number. Must be used with the searchStackExQuesID tool.
@@ -22,16 +22,16 @@ parameters:
     llm_description: The ID of the Stack Exchange question.
     form: llm
   - name: site
-    type: string 
+    type: string
     required: true
     label:
       en_US: Stack Exchange site
-      zh_Hans: Stack Exchange站点  
+      zh_Hans: Stack Exchange站点
     human_description:
       en_US: The Stack Exchange site the question is from, e.g. stackoverflow, unix, etc.
       zh_Hans: 问题所在的Stack Exchange站点，例如stackoverflow、unix等。
-    llm_description: The Stack Exchange site identifier. Pick from the following sites\:\ \"stackoverflow\", \"serverfault\", \"superuser\", \"askubuntu\", \"unix\", \"cs\", \"softwareengineering\", \"codegolf\", \"codereview\", \"cstheory\", \"security\", \"cryptography\", \"reverseengineering\", \"datascience\", \"devops\", \"ux\", \"dba\", \"gis\", \"webmasters\", \"arduino\", \"raspberrypi\", \"networkengineering\", \"iot\", \"tor\", \"sqa\", \"mathoverflow\", \"math\", \"mathematica\", \"dsp\", \"gamedev\", \"robotics\", \"genai\", \"computergraphics\".
-    form: llm  
+    llm_description: The Stack Exchange site identifier - \"stackoverflow\", \"serverfault\", \"superuser\", \"askubuntu\", \"unix\", \"cs\", \"softwareengineering\", \"codegolf\", \"codereview\", \"cstheory\", \"security\", \"cryptography\", \"reverseengineering\", \"datascience\", \"devops\", \"ux\", \"dba\", \"gis\", \"webmasters\", \"arduino\", \"raspberrypi\", \"networkengineering\", \"iot\", \"tor\", \"sqa\", \"mathoverflow\", \"math\", \"mathematica\", \"dsp\", \"gamedev\", \"robotics\", \"genai\", \"computergraphics\".
+    form: llm
   - name: order
     type: string
     required: true
@@ -46,16 +46,16 @@ parameters:
   - name: sort
     type: string
     required: true
-    label: 
+    label:
       en_US: Sort order
       zh_Hans: 排序
     human_description:
       en_US: The sort order for the answers - activity, votes, or creation date.
       zh_Hans: 答案的排序顺序 - 活动、投票或创建日期。
     llm_description: activity, votes, or creation.
-    form: llm  
+    form: llm
   - name: pagesize
-    type: number 
+    type: number
     required: true
     label:
       en_US: Results per page
@@ -70,7 +70,7 @@ parameters:
     required: true
     label:
       en_US: Page number
-      zh_Hans: 页码 
+      zh_Hans: 页码
     human_description:
       en_US: The page number of answers to retrieve.
       zh_Hans: 要检索的答案的页码。
