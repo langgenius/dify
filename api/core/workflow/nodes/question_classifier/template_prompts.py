@@ -9,6 +9,11 @@ QUESTION_CLASSIFIER_SYSTEM_PROMPT = """
     The input text is in the variable text_field.Categories are specified as a comma-separated list in the variable categories or left empty for automatic determination.Classification instructions may be included to improve the classification accuracy.
     ### Constraint
     DO NOT include anything other than the JSON array in your response.
+    ### Memory
+    Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+    <histories>
+    {histories}
+    </histories>
 """
 
 QUESTION_CLASSIFIER_USER_PROMPT_1 = """
@@ -58,6 +63,9 @@ Assistant:{{"keywords": ["recently", "great experience", "company", "service", "
 </example> 
 ### Memory
 Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+<histories>
+{histories}
+</histories>
 ### User Input
 {{"input_text" : ["{input_text}"], "categories" : ["{categories}"],"classification_instruction" : ["{classification_instructions}"]}}
 ### Assistant Output
