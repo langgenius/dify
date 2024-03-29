@@ -154,7 +154,7 @@ def test_invoke_stream_model():
     model = ErnieBotLargeLanguageModel()
 
     response = model.invoke(
-        model='ernie-bot',
+        model='ernie-3.5-8k',
         credentials={
             'api_key': os.environ.get('WENXIN_API_KEY'),
             'secret_key': os.environ.get('WENXIN_SECRET_KEY')
