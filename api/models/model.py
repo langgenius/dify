@@ -129,6 +129,20 @@ class App(db.Model):
 
         return deleted_tools
 
+    @property
+    def tags(self):
+        tags = db.session.query(Tag).join(
+            TagBinding,
+            Tag.id == TagBinding.tag_id
+        ).filter(
+            TagBinding.target_id == self.id,
+            TagBinding.tenant_id == self.tenant_id,
+            Tag.tenant_id == self.tenant_id,
+            Tag.type == 'knowledge'
+        ).all()
+
+        return tags if tags else []
+
 
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'

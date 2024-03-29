@@ -63,6 +63,12 @@ model_config_partial_fields = {
     'pre_prompt': fields.String,
 }
 
+tag_fields = {
+    'id': fields.String,
+    'name': fields.String,
+    'type': fields.String
+}
+
 app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
@@ -74,8 +80,10 @@ app_partial_fields = {
     'enable_api': fields.Boolean,
     'is_demo': fields.Boolean,
     'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config'),
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'tags': fields.List(fields.Nested(tag_fields))
 }
+
 
 app_pagination_fields = {
     'page': fields.Integer,
