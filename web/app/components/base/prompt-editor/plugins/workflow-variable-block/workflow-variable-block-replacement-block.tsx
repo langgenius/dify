@@ -13,7 +13,7 @@ import { CustomTextNode } from '../custom-text/node'
 import { $createWorkflowVariableBlockNode } from './node'
 import { WorkflowVariableBlockNode } from './index'
 
-const REGEX = /\{\{#(\d+|sys)(\.[a-zA-Z_][a-zA-Z0-9_]{0,29})+#\}\}/gi
+const REGEX = /\{\{(#[a-zA-Z0-9_]{1,50}(\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10}#)\}\}/gi
 
 const WorkflowVariableBlockReplacementBlock = ({
   getWorkflowNode = () => undefined,

@@ -8,7 +8,6 @@ import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import { useIsChatMode } from '../hooks'
-import WorkflowInfo from './workflow-info'
 import DebugAndPreview from './debug-and-preview'
 import RunHistory from './run-history'
 import Record from './record'
@@ -28,13 +27,11 @@ const Panel: FC = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const {
-    showWorkflowInfoPanel,
     showNodePanel,
     showDebugAndPreviewPanel,
     showWorkflowPreview,
   } = useMemo(() => {
     return {
-      showWorkflowInfoPanel: !selectedNode && !workflowRunningData && !historyWorkflowData,
       showNodePanel: !!selectedNode && !workflowRunningData && !historyWorkflowData,
       showDebugAndPreviewPanel: isChatMode && workflowRunningData && !historyWorkflowData,
       showWorkflowPreview: !isChatMode && workflowRunningData && !historyWorkflowData,
@@ -89,11 +86,6 @@ const Panel: FC = () => {
       {
         showNodePanel && (
           <NodePanel {...selectedNode!} />
-        )
-      }
-      {
-        showWorkflowInfoPanel && (
-          <WorkflowInfo />
         )
       }
       {

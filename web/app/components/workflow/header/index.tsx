@@ -119,7 +119,14 @@ const Header: FC = () => {
               {t('workflow.common.features')}
             </Button>
             <Publish />
-            <Checklist />
+            {
+              !nodesReadOnly && (
+                <>
+                  <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+                  <Checklist />
+                </>
+              )
+            }
           </div>
         )
       }
@@ -150,7 +157,6 @@ const Header: FC = () => {
             >
               {t('workflow.common.restore')}
             </Button>
-            <Checklist />
           </div>
         )
       }
