@@ -1,5 +1,6 @@
 from typing import Any, Union
 
+import requests
 from pydantic import BaseModel, Field
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -34,8 +35,8 @@ class SearchStackExQuestionsTool(BuiltinTool):
         if input.nottagged:
             params["nottagged"] = input.nottagged
 
-        return self.create_text_message(f"API request failed with status code {response.status_code}")
-        
+        response = requests.get(f"https://api.stackexchange.com/2.3/search", params=params)
+
         if response.status_code == 200:
             return self.create_text_message(self.summary(user_id=user_id, content=response.text))
         else:
