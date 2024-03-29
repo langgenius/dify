@@ -1,12 +1,12 @@
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.devdocs.tools.searchDevDocs import SearchDevDocsTool
+from core.tools.provider.builtin.stackexchange.tools.searchStackExQuestions import SearchStackExQuestionsTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
 class DevDocsProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
-            SearchDevDocsTool().fork_tool_runtime(
+            SearchStackExQuestionsTool().fork_tool_runtime(
                 meta={
                     "credentials": credentials,
                 }
