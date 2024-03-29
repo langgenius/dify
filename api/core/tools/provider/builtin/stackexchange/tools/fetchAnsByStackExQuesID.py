@@ -1,4 +1,5 @@
 import requests
+
 from typing import Any, Union
 
 from pydantic import BaseModel, Field
