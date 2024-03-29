@@ -193,7 +193,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 </div>}
                 value={QUERY_PLACEHOLDER_TEXT}
                 onChange={() => { }}
-                variables={[]}
                 readOnly
                 isShowContext={false}
                 isChatApp
@@ -243,7 +242,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='output'
+              name='text'
               type='string'
               description={t(`${i18nPrefix}.outputVars.output`)}
             />

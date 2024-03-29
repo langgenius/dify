@@ -7,7 +7,6 @@ import type { Body } from '../../types'
 import { BodyType } from '../../types'
 import useKeyValueList from '../../hooks/use-key-value-list'
 import KeyValue from '../key-value'
-import TextEditor from '../../../_base/components/editor/text-editor'
 import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import type { Var } from '@/app/components/workflow/types'
@@ -127,22 +126,17 @@ const EditBody: FC<Props> = ({
         )}
 
         {type === BodyType.rawText && (
-          <TextEditor
+          <InputWithVar
             title={<div className='uppercase'>Raw text</div>}
             onChange={handleBodyValueChange}
             value={payload.data}
-            minHeight={150}
-            readonly={readonly}
+            justVar
+            nodesOutputVars={availableVarList}
+            readOnly={readonly}
           />
         )}
 
         {type === BodyType.json && (
-          // <CodeEditor
-          //   readOnly={readonly}
-          //   title={<div className='uppercase'>JSON</div>}
-          //   value={payload.data} onChange={handleBodyValueChange}
-          //   language={CodeLanguage.json}
-          // />
           <InputWithVar
             title='JSON'
             value={payload.data}

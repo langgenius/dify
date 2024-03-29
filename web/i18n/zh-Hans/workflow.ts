@@ -247,7 +247,6 @@ const translation = {
       },
     },
     ifElse: {
-      conditions: '条件',
       if: 'If',
       else: 'Else',
       elseDescription: '用于定义当 if 条件不满足时应执行的逻辑。',
@@ -269,6 +268,7 @@ const translation = {
       },
       enterValue: '输入值',
       addCondition: '添加条件',
+      conditionNotSetup: '条件未设置',
     },
     variableAssigner: {
       title: '变量赋值',

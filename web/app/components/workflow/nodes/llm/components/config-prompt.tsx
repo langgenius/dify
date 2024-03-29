@@ -38,7 +38,6 @@ const ConfigPrompt: FC<Props> = ({
   isChatModel,
   isChatApp,
   payload,
-  variables,
   onChange,
   isShowContext,
   hasSetBlockStatus,
@@ -137,7 +136,6 @@ const ConfigPrompt: FC<Props> = ({
                       }
                       value={item.text}
                       onChange={handleChatModePromptChange(index)}
-                      variables={variables}
                       readOnly={readOnly}
                       showRemove={(payload as PromptItem[]).length > 1}
                       onRemove={handleRemove(index)}
@@ -165,7 +163,6 @@ const ConfigPrompt: FC<Props> = ({
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
               value={(payload as PromptItem).text}
               onChange={handleCompletionPromptChange}
-              variables={variables}
               readOnly={readOnly}
               isChatModel={isChatModel}
               isChatApp={isChatApp}
