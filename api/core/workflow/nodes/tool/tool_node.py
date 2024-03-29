@@ -7,6 +7,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -77,19 +78,18 @@ class ToolNode(BaseNode):
             if parameter.value_type == 'static':
                 result[parameter.parameter_name] = parameter.static_value
             else:
-                parser = VariableTemplateParser(parameter.template_value)
-                variable_selectors = parser.extract_variable_selectors()
-                values = {
-                    selector.variable: variable_pool.get_variable_value(selector)
-                    for selector in variable_selectors
-                }
+                if isinstance(parameter.variable_value, str):
+                    parser = VariableTemplateParser(parameter.variable_value)
+                    variable_selectors = parser.extract_variable_selectors()
+                    values = {
+                        selector.variable: variable_pool.get_variable_value(selector)
+                        for selector in variable_selectors
+                    }
 
-                if len(values) == 1:
-                    # if only one value, use the value directly to avoid type transformation
-                    result[parameter.parameter_name] = list(values.values())[0]
-                else:
                     # if multiple values, use the parser to format the values into a string
                     result[parameter.parameter_name] = parser.format(values)
+                elif isinstance(parameter.variable_value, list):
+                    result[parameter.parameter_name] = variable_pool.get_variable_value(parameter.variable_value)
 
         return result
 
@@ -161,3 +161,12 @@ class ToolNode(BaseNode):
             f'Link: {message.message}\n' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
+        """
+        return {}
