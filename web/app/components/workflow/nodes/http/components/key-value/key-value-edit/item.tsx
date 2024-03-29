@@ -45,10 +45,9 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'group flex items-center h-7 border-t border-gray-200')}>
+    <div className={cn(className, 'group flex items-center h-min-7 border-t border-gray-200')}>
       <div className='w-1/2 h-full border-r border-gray-200'>
         <InputItem
-          className='pr-2.5'
           value={payload.key}
           onChange={handleChange('key')}
           hasRemove={false}
@@ -58,7 +57,6 @@ const KeyValueItem: FC<Props> = ({
       </div>
       <div className='w-1/2  h-full'>
         <InputItem
-          className='pr-1'
           value={payload.value}
           onChange={handleChange('value')}
           hasRemove={!readonly && canRemove}

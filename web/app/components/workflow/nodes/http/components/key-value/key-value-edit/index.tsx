@@ -5,8 +5,8 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { KeyValue } from '../../../types'
 import KeyValueItem from './item'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { EditList } from '@/app/components/base/icons/src/vender/solid/communication'
+// import TooltipPlus from '@/app/components/base/tooltip-plus'
+// import { EditList } from '@/app/components/base/icons/src/vender/solid/communication'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -15,7 +15,7 @@ type Props = {
   list: KeyValue[]
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
-  onSwitchToBulkEdit: () => void
+  // onSwitchToBulkEdit: () => void
 }
 
 const KeyValueList: FC<Props> = ({
@@ -23,7 +23,7 @@ const KeyValueList: FC<Props> = ({
   list,
   onChange,
   onAdd,
-  onSwitchToBulkEdit,
+  // onSwitchToBulkEdit,
 }) => {
   const { t } = useTranslation()
 
@@ -51,7 +51,7 @@ const KeyValueList: FC<Props> = ({
         <div className='w-1/2 h-full pl-3 border-r border-gray-200'>{t(`${i18nPrefix}.key`)}</div>
         <div className='flex w-1/2 h-full pl-3 pr-1 items-center justify-between'>
           <div>{t(`${i18nPrefix}.value`)}</div>
-          {!readonly && (
+          {/* {!readonly && (
             <TooltipPlus
               popupContent={t(`${i18nPrefix}.bulkEdit`)}
             >
@@ -61,7 +61,7 @@ const KeyValueList: FC<Props> = ({
               >
                 <EditList className='w-3 h-3' />
               </div>
-            </TooltipPlus>)}
+            </TooltipPlus>)} */}
         </div>
       </div>
       {

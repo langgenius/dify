@@ -37,13 +37,9 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     headers,
     setHeaders,
     addHeader,
-    isHeaderKeyValueEdit,
-    toggleIsHeaderKeyValueEdit,
     params,
     setParams,
     addParam,
-    isParamKeyValueEdit,
-    toggleIsParamKeyValueEdit,
     setBody,
     isShowAuthorization,
     showAuthorization,
@@ -110,8 +106,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             onChange={setHeaders}
             onAdd={addHeader}
             readonly={readOnly}
-            isKeyValueEdit={isHeaderKeyValueEdit}
-            toggleKeyValueEdit={toggleIsHeaderKeyValueEdit}
           />
         </Field>
         <Field
@@ -122,8 +116,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             onChange={setParams}
             onAdd={addParam}
             readonly={readOnly}
-            isKeyValueEdit={isParamKeyValueEdit}
-            toggleKeyValueEdit={toggleIsParamKeyValueEdit}
           />
         </Field>
         <Field
