@@ -331,15 +331,14 @@ class ApiBasedToolSchemaParser:
             openapi_error = e
         
         # openai parse error, fallback to swagger
-        # convert to openapi, if faield, raise Exception directly
-        converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(loaded_content, extra_info=extra_info, warning=warning)
-        schema_type = ApiProviderSchemaType.SWAGGER.value
-        
         try:
+            converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(loaded_content, extra_info=extra_info, warning=warning)
+            schema_type = ApiProviderSchemaType.SWAGGER.value
             return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(converted_swagger, extra_info=extra_info, warning=warning), schema_type
         except ToolApiSchemaError as e:
-            openapi_error = e
+            swagger_error = e
         
+        # swagger parse error, fallback to openai plugin
         try:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(json_dumps(loaded_content), extra_info=extra_info, warning=warning)
             return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN.value
