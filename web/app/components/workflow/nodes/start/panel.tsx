@@ -93,6 +93,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}
+          varKeys={inputs.variables.map(v => v.variable)}
         />
       )}
 

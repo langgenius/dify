@@ -20,6 +20,7 @@ export type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
   isShow: boolean
+  varKeys?: string[]
   onClose: () => void
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
 }
@@ -30,6 +31,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   isCreate,
   payload,
   isShow,
+  varKeys = [],
   onClose,
   onConfirm,
 }) => {
@@ -52,13 +54,27 @@ const ConfigModal: FC<IConfigModalProps> = ({
         }
       }
       setTempPayload((prev) => {
-        return {
+        const newPayload = {
           ...prev,
           [key]: value,
         }
+
+        return newPayload
       })
     }
   }, [t])
+
+  const handleVarKeyBlur = useCallback((e: any) => {
+    if (tempPayload.label)
+      return
+
+    setTempPayload((prev) => {
+      return {
+        ...prev,
+        label: e.target.value,
+      }
+    })
+  }, [tempPayload])
 
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
@@ -69,6 +85,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }
     if (!tempPayload.variable) {
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.varNameRequired') })
+      return
+    }
+    if (varKeys.map(key => key?.trim()).includes(tempPayload.variable.trim())) {
+      Toast.notify({
+        type: 'error',
+        message: t('appDebug.varKeyError.keyAlreadyExists', { key: tempPayload.variable }),
+      })
       return
     }
     if (!tempPayload.label) {
@@ -125,6 +148,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
               className={inputClassName}
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
+              onBlur={handleVarKeyBlur}
             />
           </Field>
           <Field title={t('appDebug.variableConig.labelName')}>
