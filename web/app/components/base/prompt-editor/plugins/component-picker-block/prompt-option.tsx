@@ -49,7 +49,7 @@ export const PromptMenuItem = memo(({
     <div
       key={option.key}
       className={`
-        flex items-center px-3 h-6 cursor-pointer hover:bg-gray-50
+        flex items-center px-3 h-6 cursor-pointer hover:bg-gray-50 rounded-md
         ${isSelected && !option.disabled && '!bg-gray-50'}
         ${option.disabled ? 'cursor-not-allowed opacity-30' : 'hover:bg-gray-50 cursor-pointer'}
       `}

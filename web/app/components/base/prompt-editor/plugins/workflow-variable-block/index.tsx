@@ -68,3 +68,4 @@ WorkflowVariableBlock.displayName = 'WorkflowVariableBlock'
 
 export { WorkflowVariableBlock }
 export { WorkflowVariableBlockNode } from './node'
+export { default as WorkflowVariableBlockReplacementBlock } from './workflow-variable-block-replacement-block'

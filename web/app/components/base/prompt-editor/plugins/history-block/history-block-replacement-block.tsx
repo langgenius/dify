@@ -52,7 +52,7 @@ const HistoryBlockReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createHistoryBlockNode)),
     )
-  }, [editor, getMatch, createHistoryBlockNode])
+  }, [])
 
   return null
 }

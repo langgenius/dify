@@ -35,6 +35,7 @@ import {
 import {
   WorkflowVariableBlock,
   WorkflowVariableBlockNode,
+  WorkflowVariableBlockReplacementBlock,
 } from './plugins/workflow-variable-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
@@ -156,6 +157,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
         />
+        <ContextBlockReplacementBlock {...contextBlock} />
         {
           contextBlock?.show && (
             <>
@@ -192,6 +194,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           workflowVariableBlock?.show && (
             <>
               <WorkflowVariableBlock {...workflowVariableBlock} />
+              <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
             </>
           )
         }

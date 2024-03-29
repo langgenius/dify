@@ -51,7 +51,7 @@ const QueryBlockReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createQueryBlockNode)),
     )
-  }, [editor, getMatch, createQueryBlockNode])
+  }, [])
 
   return null
 }

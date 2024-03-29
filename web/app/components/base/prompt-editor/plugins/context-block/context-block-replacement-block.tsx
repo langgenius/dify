@@ -54,7 +54,7 @@ const ContextBlockReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createContextBlockNode)),
     )
-  }, [editor, getMatch, createContextBlockNode])
+  }, [])
 
   return null
 }

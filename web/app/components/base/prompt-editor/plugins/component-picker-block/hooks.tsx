@@ -41,11 +41,11 @@ export const usePromptOptions = (
           new PromptOption(t('common.promptEditor.context.item.title'), {
             icon: <File05 className='w-4 h-4 text-[#6938EF]' />,
             onSelect: () => {
-              if (contextBlock?.selectable)
+              if (!contextBlock?.selectable)
                 return
               editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
             },
-            disabled: contextBlock?.selectable,
+            disabled: !contextBlock?.selectable,
           }),
         ]
         : [],
@@ -54,11 +54,11 @@ export const usePromptOptions = (
           new PromptOption(t('common.promptEditor.query.item.title'), {
             icon: <UserEdit02 className='w-4 h-4 text-[#FD853A]' />,
             onSelect: () => {
-              if (queryBlock?.selectable)
+              if (!queryBlock?.selectable)
                 return
               editor.dispatchCommand(INSERT_QUERY_BLOCK_COMMAND, undefined)
             },
-            disabled: queryBlock?.selectable,
+            disabled: !queryBlock?.selectable,
           }),
         ]
         : [],
@@ -67,11 +67,11 @@ export const usePromptOptions = (
           new PromptOption(t('common.promptEditor.history.item.title'), {
             icon: <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />,
             onSelect: () => {
-              if (historyBlock?.selectable)
+              if (!historyBlock?.selectable)
                 return
               editor.dispatchCommand(INSERT_HISTORY_BLOCK_COMMAND, undefined)
             },
-            disabled: historyBlock?.selectable,
+            disabled: !historyBlock?.selectable,
           }),
         ]
         : [],

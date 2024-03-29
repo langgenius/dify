@@ -124,8 +124,6 @@ const Editor: FC<Props> = ({
                 contextBlock={{
                   show: justVar ? false : isShowContext,
                   selectable: !hasSetBlockStatus?.context,
-                  datasets: [],
-                  onAddContext: () => { },
                   canNotAddContext: true,
                 }}
                 historyBlock={{
@@ -135,7 +133,6 @@ const Editor: FC<Props> = ({
                     user: 'Human',
                     assistant: 'Assistant',
                   },
-                  onEditRole: () => { },
                 }}
                 queryBlock={{
                   show: justVar ? false : isShowQuery,
