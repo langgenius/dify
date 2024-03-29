@@ -8,7 +8,7 @@ from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
@@ -30,6 +30,12 @@ class ToolNode(BaseNode):
 
         node_data = cast(ToolNodeData, self.node_data)
 
+        # fetch tool icon
+        tool_info = {
+            'provider_type': node_data.provider_type,
+            'provider_id': node_data.provider_id
+        }
+
         # get parameters
         parameters = self._generate_parameters(variable_pool, node_data)
         # get tool runtime
@@ -39,6 +45,9 @@ class ToolNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters,
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info
+                },
                 error=f'Failed to get tool runtime: {str(e)}'
             )
 
@@ -54,6 +63,9 @@ class ToolNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters,
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info
+                },
                 error=f'Failed to invoke tool: {str(e)}',
             )
 
@@ -65,6 +77,9 @@ class ToolNode(BaseNode):
             outputs={
                 'text': plain_text,
                 'files': files
+            },
+            metadata={
+                NodeRunMetadataKey.TOOL_INFO: tool_info
             },
             inputs=parameters
         )
