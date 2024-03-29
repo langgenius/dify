@@ -64,7 +64,6 @@ const ChooseTool: FC<Props> = ({
                 enabled: true,
               })
             })
-            console.log('nexModelConfig', nexModelConfig, tool, locale)
             setModelConfig(nexModelConfig)
           }}
           addedTools={(modelConfig?.agentConfig?.tools as any) || []}
