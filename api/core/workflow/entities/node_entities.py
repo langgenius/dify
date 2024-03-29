@@ -66,6 +66,7 @@ class NodeRunMetadataKey(Enum):
     TOTAL_TOKENS = 'total_tokens'
     TOTAL_PRICE = 'total_price'
     CURRENCY = 'currency'
+    TOOL_INFO = 'tool_info'
 
 
 class NodeRunResult(BaseModel):

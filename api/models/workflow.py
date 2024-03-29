@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 from sqlalchemy.dialects.postgresql import UUID
 
+from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.account import Account
 
@@ -450,6 +451,21 @@ class WorkflowNodeExecution(db.Model):
     @property
     def execution_metadata_dict(self):
         return json.loads(self.execution_metadata) if self.execution_metadata else None
+
+    @property
+    def extras(self):
+        extras = {}
+        if self.execution_metadata_dict:
+            from core.workflow.entities.node_entities import NodeType
+            if self.node_type == NodeType.TOOL.value and 'tool_info' in self.execution_metadata_dict:
+                tool_info = self.execution_metadata_dict['tool_info']
+                extras['icon'] = ToolManager.get_tool_icon(
+                    tenant_id=self.tenant_id,
+                    provider_type=tool_info['provider_type'],
+                    provider_id=tool_info['provider_id']
+                )
+
+        return extras
 
 
 class WorkflowAppLogCreatedFrom(Enum):

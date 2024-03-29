@@ -89,6 +89,7 @@ workflow_run_node_execution_fields = {
     "error": fields.String,
     "elapsed_time": fields.Float,
     "execution_metadata": fields.Raw(attribute='execution_metadata_dict'),
+    "extras": fields.Raw,
     "created_at": TimestampField,
     "created_by_role": fields.String,
     "created_by_account": fields.Nested(simple_account_fields, attribute='created_by_account', allow_null=True),
