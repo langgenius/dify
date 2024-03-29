@@ -9,7 +9,6 @@ import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import { useIsChatMode } from '../hooks'
 import DebugAndPreview from './debug-and-preview'
-import RunHistory from './run-history'
 import Record from './record'
 import InputsPanel from './inputs-panel'
 import WorkflowPreview from './workflow-preview'
@@ -21,7 +20,6 @@ const Panel: FC = () => {
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
   const selectedNode = nodes.find(node => node.data.selected)
-  const showRunHistory = useStore(state => state.showRunHistory)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
@@ -86,11 +84,6 @@ const Panel: FC = () => {
       {
         showNodePanel && (
           <NodePanel {...selectedNode!} />
-        )
-      }
-      {
-        showRunHistory && (
-          <RunHistory />
         )
       }
     </div>
