@@ -3,11 +3,14 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-
+import type { Var } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 type Props = {
   className?: string
+  nodeId: string
   value: string
   onChange: (newValue: string) => void
   hasRemove: boolean
@@ -18,6 +21,7 @@ type Props = {
 
 const InputItem: FC<Props> = ({
   className,
+  nodeId,
   value,
   onChange,
   hasRemove,
@@ -30,6 +34,12 @@ const InputItem: FC<Props> = ({
   const hasValue = !!value
 
   const [isFocus, setIsFocus] = useState(false)
+  const availableVarList = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number].includes(varPayload.type)
+    },
+  })
 
   const handleRemove = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -55,9 +65,9 @@ const InputItem: FC<Props> = ({
             value={value}
             onChange={onChange}
             readOnly={readOnly}
-            nodesOutputVars={[]}
+            nodesOutputVars={availableVarList}
             onFocusChange={setIsFocus}
-            placeholder={t('workflow.nodes.http.apiPlaceholder')!}
+            placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
             placeholderClassName='!leading-[21px]'
           />
         )
@@ -71,9 +81,9 @@ const InputItem: FC<Props> = ({
               value={value}
               onChange={onChange}
               readOnly={readOnly}
-              nodesOutputVars={[]}
+              nodesOutputVars={availableVarList}
               onFocusChange={setIsFocus}
-              placeholder={t('workflow.nodes.http.apiPlaceholder')!}
+              placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
               placeholderClassName='!leading-[21px]'
             />
           )}

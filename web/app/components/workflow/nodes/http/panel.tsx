@@ -102,6 +102,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           title={t(`${i18nPrefix}.headers`)}
         >
           <KeyValue
+            nodeId={id}
             list={headers}
             onChange={setHeaders}
             onAdd={addHeader}
@@ -112,6 +113,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           title={t(`${i18nPrefix}.params`)}
         >
           <KeyValue
+            nodeId={id}
             list={params}
             onChange={setParams}
             onAdd={addParam}

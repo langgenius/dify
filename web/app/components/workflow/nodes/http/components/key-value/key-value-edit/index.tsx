@@ -12,6 +12,7 @@ const i18nPrefix = 'workflow.nodes.http'
 
 type Props = {
   readonly: boolean
+  nodeId: string
   list: KeyValue[]
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
@@ -20,6 +21,7 @@ type Props = {
 
 const KeyValueList: FC<Props> = ({
   readonly,
+  nodeId,
   list,
   onChange,
   onAdd,
@@ -68,6 +70,7 @@ const KeyValueList: FC<Props> = ({
         list.map((item, index) => (
           <KeyValueItem
             key={index}
+            nodeId={nodeId}
             payload={item}
             onChange={handleChange(index)}
             onRemove={handleRemove(index)}

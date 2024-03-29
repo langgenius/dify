@@ -6,6 +6,7 @@ import KeyValueEdit from './key-value-edit'
 
 type Props = {
   readonly: boolean
+  nodeId: string
   list: KeyValue[]
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
@@ -14,6 +15,7 @@ type Props = {
 
 const KeyValueList: FC<Props> = ({
   readonly,
+  nodeId,
   list,
   onChange,
   onAdd,
@@ -42,6 +44,7 @@ const KeyValueList: FC<Props> = ({
   // })()
   return <KeyValueEdit
     readonly={readonly}
+    nodeId={nodeId}
     list={list}
     onChange={onChange}
     onAdd={onAdd}

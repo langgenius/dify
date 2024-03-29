@@ -231,6 +231,7 @@ const translation = {
         'api-key-title': 'API Key',
         'header': 'Header',
       },
+      insertVarPlaceholder: '键入 \'/\' 键快速插入变量',
     },
     code: {
       inputVars: '输入变量',

@@ -231,6 +231,7 @@ const translation = {
         'api-key-title': 'API Key',
         'header': 'Header',
       },
+      insertVarPlaceholder: 'type \'/\' to insert variable',
     },
     code: {
       inputVars: 'Input Variables',
