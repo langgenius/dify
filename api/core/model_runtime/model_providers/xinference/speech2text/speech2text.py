@@ -1,11 +1,9 @@
 from typing import IO, Optional
 
 from xinference_client.client.restful.restful_client import Client, RESTfulAudioModelHandle
+
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-
-from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -15,8 +13,10 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 
-class XinferenceSpeech2TextModel(_CommonOpenAI, Speech2TextModel):
+
+class XinferenceSpeech2TextModel(Speech2TextModel):
     """
     Model class for Xinference speech to text model.
     """
@@ -125,10 +125,10 @@ class XinferenceSpeech2TextModel(_CommonOpenAI, Speech2TextModel):
             language = language,
             prompt = prompt,
             response_format = response_format,
-            temperature = remperature
+            temperature = temperature
         )
 
-        return response.text
+        return response["text"]
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
