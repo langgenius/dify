@@ -1,0 +1,27 @@
+identity:
+  name: delete_board
+  author: Yash Parmar
+  label:
+    en_US: Delete Board
+    zh_Hans: 删除看板
+    pt_BR: Excluir Quadro
+description:
+  human:
+    en_US: Deletes a Trello board using its unique ID. This tool allows for the removal of boards that are no longer needed, ensuring a tidy workspace.
+    zh_Hans: 使用其唯一 ID 删除 Trello 看板。此工具允许删除不再需要的看板，确保工作区整洁。
+    pt_BR: Exclui um quadro Trello usando seu ID único. Esta ferramenta permite a remoção de quadros que não são mais necessários, garantindo um espaço de trabalho organizado.
+  llm: Remove a Trello board by specifying its ID. This functionality is helpful for cleaning up unnecessary boards from your Trello account.
+parameters:
+  - name: boardId
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier for the Trello board you wish to delete. This ensures the specific board is accurately targeted for deletion.
+      zh_Hans: 您希望删除的 Trello 看板的唯一标识符。这确保了准确地针对特定看板进行删除。
+      pt_BR: O identificador único para o quadro Trello que você deseja excluir. Isso garante que o quadro específico seja precisamente direcionado para exclusão.
+    llm_description: Enter the ID of the Trello board you want to remove. This ID is essential to identify the board precisely and perform the deletion.
+    form: llm
