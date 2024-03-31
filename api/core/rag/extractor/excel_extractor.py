@@ -48,7 +48,8 @@ class ExcelExtractor(BaseExtractor):
                     row_dict = dict(zip(keys, list(map(str, row))))
                     row_dict = {k: v for k, v in row_dict.items() if v}
                     item = ''.join(f'{k}:{v};' for k, v in row_dict.items())
-                    all_text.append(item).append("\n")
+                    all_text.append(item)
+                    all_text.append("\n")
             all_text.append("\n")
         document = Document(page_content=''.join(all_text), metadata={'source': self._file_path})
         data.append(document)
