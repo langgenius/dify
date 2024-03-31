@@ -31,8 +31,11 @@ class ExcelExtractor(BaseExtractor):
         data = []
         wb = load_workbook(filename=self._file_path, read_only=True)
         # loop over all sheets
+        all_text = []
         for sheet in wb:
             keys = []
+            all_text.append('Sheet Title: ' + sheet.title + "\n")
+            all_text.append("Rows:\n")
             if 'A1:A1' == sheet.calculate_dimension():
                 sheet.reset_dimensions()
             for row in sheet.iter_rows(values_only=True):
@@ -40,11 +43,13 @@ class ExcelExtractor(BaseExtractor):
                     continue
                 if keys == []:
                     keys = list(map(str, row))
+
                 else:
                     row_dict = dict(zip(keys, list(map(str, row))))
                     row_dict = {k: v for k, v in row_dict.items() if v}
                     item = ''.join(f'{k}:{v};' for k, v in row_dict.items())
-                    document = Document(page_content=item, metadata={'source': self._file_path})
-                    data.append(document)
-
+                    all_text.append(item).append("\n")
+            all_text.append("\n")
+        document = Document(page_content=''.join(all_text), metadata={'source': self._file_path})
+        data.append(document)
         return data
