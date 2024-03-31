@@ -26,6 +26,7 @@ import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const Config: FC = () => {
   const {
@@ -61,8 +62,8 @@ const Config: FC = () => {
     setModerationConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
-  const { data: speech2textDefaultModel } = useDefaultModel(4)
-  const { data: text2speechDefaultModel } = useDefaultModel(5)
+  const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
+  const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { setShowModerationSettingModal } = useModalContext()
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
