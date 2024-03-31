@@ -26,7 +26,7 @@ credentials_for_provider:
       en_US: Obtain your API key from Trello's website.
       zh_Hans: 从 Trello 网站获取您的 API key。
       pt_BR: Obtenha sua chave API no site do Trello.
-    url: https://trello.com
+    url: https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/
   trello_api_token:
     type: secret-input
     required: true
@@ -42,4 +42,4 @@ credentials_for_provider:
       en_US: Secure your API token from Trello's website.
       zh_Hans: 从 Trello 网站获取您的 API token。
       pt_BR: Garanta seu token API no site do Trello.
-    url: https://trello.com
+    url: https://developer.atlassian.com/cloud/trello/guides/rest-api/api-introduction/
