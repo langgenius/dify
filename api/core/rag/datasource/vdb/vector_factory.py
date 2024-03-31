@@ -128,8 +128,8 @@ class Vector:
         if kwargs.get('duplicate_check', False):
             documents = self._filter_duplicate_texts(documents)
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
-        self._vector_processor.add_texts(
-            documents=documents,
+        self._vector_processor.create(
+            texts=documents,
             embeddings=embeddings,
             **kwargs
         )
