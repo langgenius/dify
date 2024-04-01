@@ -303,6 +303,7 @@ export const useNodesInteractions = () => {
         targetType: nodes.find(node => node.id === target)!.data.type,
       },
     }
+    console.log(needDeleteEdges, '1')
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
         ...needDeleteEdges.map(edge => ({ type: 'remove', edge })),

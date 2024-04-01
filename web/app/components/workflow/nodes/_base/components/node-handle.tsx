@@ -88,7 +88,7 @@ export const NodeTargetHandle = memo(({
               triggerClassName={open => `
                 hidden absolute left-0 top-0 pointer-events-none
                 ${nodeSelectorClassName}
-                group-hover:flex
+                ${data.selected && '!flex'}
                 ${open && '!flex'}
               `}
               availableBlocksTypes={availablePrevNodes}
@@ -167,7 +167,7 @@ export const NodeSourceHandle = memo(({
               triggerClassName={open => `
                 hidden absolute top-0 left-0 pointer-events-none 
                 ${nodeSelectorClassName}
-                group-hover:flex
+                ${data.selected && '!flex'}
                 ${open && '!flex'}
               `}
               availableBlocksTypes={availableNextNodes}
