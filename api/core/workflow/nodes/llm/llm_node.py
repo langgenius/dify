@@ -545,7 +545,7 @@ class LLMNode(BaseNode):
                         "prompt": {
                             "text": "Here is the chat histories between human and assistant, inside "
                                     "<histories></histories> XML tags.\n\n<histories>\n{{"
-                                    "#histories#}}\n</histories>\n\n\nHuman: {{#query#}}\n\nAssistant:"
+                                    "#histories#}}\n</histories>\n\n\nHuman: {{#sys.query#}}\n\nAssistant:"
                         },
                         "stop": ["Human:"]
                     }
