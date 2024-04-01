@@ -1,8 +1,8 @@
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
+from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
-from services.tools_transform_service import ToolTransformService
 
 
 class AgentService:
@@ -82,18 +82,18 @@ class AgentService:
                 tool_output = tool_outputs.get(tool_name, {})
                 tool_meta_data = tool_meta.get(tool_name, {})
                 tool_config = tool_meta_data.get('tool_config', {})
-                tool_icon = ToolTransformService.get_tool_provider_icon_url(
+                tool_icon = ToolManager.get_tool_icon(
+                    tenant_id=app_model.tenant_id,
                     provider_type=tool_config.get('tool_provider_type', ''),
-                    provider_name=tool_config.get('tool_provider', ''),
-                    icon=tool_config.get('tool_icon', '')
+                    provider_id=tool_config.get('tool_provider', ''),
                 )
                 if not tool_icon:
                     tool_entity = find_agent_tool(tool_name)
                     if tool_entity:
-                        tool_icon = ToolTransformService.get_tool_provider_icon_url(
+                        tool_icon = ToolManager.get_tool_icon(
+                            tenant_id=app_model.tenant_id,
                             provider_type=tool_entity.provider_type,
-                            provider_name=tool_entity.provider_id,
-                            icon=''
+                            provider_id=tool_entity.provider_id,
                         )
 
                 tool_calls.append({

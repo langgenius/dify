@@ -94,7 +94,10 @@ const ComponentPicker = ({
   )
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
-    editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
+    if (variables[1] === 'sys.query' || variables[1] === 'sys.files')
+      editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
+    else
+      editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
   }, [editor])
 
   const renderMenu = useCallback<MenuRenderFn<PromptOption | VariableOption>>((

@@ -342,10 +342,11 @@ export const useWorkflow = () => {
       setViewport(viewport)
   }, [store, reactflow])
 
-  const getNode = useCallback((nodeId: string) => {
+  const getNode = useCallback((nodeId?: string) => {
     const { getNodes } = store.getState()
+    const nodes = getNodes()
 
-    return getNodes().find(node => node.id === nodeId)
+    return nodes.find(node => node.id === nodeId) || nodes.find(node => node.data.type === BlockEnum.Start)
   }, [store])
 
   return {

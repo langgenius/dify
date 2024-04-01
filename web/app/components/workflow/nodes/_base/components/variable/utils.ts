@@ -1,4 +1,5 @@
 import produce from 'immer'
+import { isArray } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
 import type { AnswerNodeType } from '../../../answer/types'
@@ -175,6 +176,12 @@ export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = 
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
+
+export const getNodeInfoById = (nodes: any, id: string) => {
+  if (!isArray(nodes))
+    return
+  return nodes.find((node: any) => node.id === id)
 }
 
 export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMode: boolean): VarType | undefined => {
