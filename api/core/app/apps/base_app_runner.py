@@ -169,10 +169,11 @@ class AppRunner:
                     text=advanced_completion_prompt_template.prompt
                 )
 
-                memory_config.role_prefix = MemoryConfig.RolePrefix(
-                    user=advanced_completion_prompt_template.role_prefix.user,
-                    assistant=advanced_completion_prompt_template.role_prefix.assistant
-                )
+                if advanced_completion_prompt_template.role_prefix:
+                    memory_config.role_prefix = MemoryConfig.RolePrefix(
+                        user=advanced_completion_prompt_template.role_prefix.user,
+                        assistant=advanced_completion_prompt_template.role_prefix.assistant
+                    )
             else:
                 prompt_template = []
                 for message in prompt_template_entity.advanced_chat_prompt_template.messages:
