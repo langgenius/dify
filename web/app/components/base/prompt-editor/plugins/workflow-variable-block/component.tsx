@@ -6,6 +6,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -22,7 +23,7 @@ const WorkflowVariableBlockComponent: FC<WorkflowVariableBlockComponentProps> = 
   const node = getWorkflowNode(variables[0])
   const outputVarNode = node?.data
   const variablesLength = variables.length
-  const lastVariable = variables[variablesLength - 1]
+  const lastVariable = isSystemVar(variables) ? variables.join('.') : variables[variablesLength - 1]
 
   return (
     <div
