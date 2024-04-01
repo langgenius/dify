@@ -247,21 +247,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
             <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
-              {app.mode === 'advanced-chat' && (
-                <div className='truncate text-[#1570EF]'>{t('app.types.chatbot').toUpperCase()}</div>
-              )}
-              {app.mode === 'agent-chat' && (
-                <div className='truncate text-indigo-600'>{t('app.types.agent').toUpperCase()}</div>
-              )}
-              {app.mode === 'chat' && (
-                <div className='truncate text-[#1570EF]'>{t('app.types.chatbot').toUpperCase()}</div>
-              )}
-              {app.mode === 'completion' && (
-                <div className='truncate text-[#0E9384]'>{t('app.newApp.completeApp').toUpperCase()}</div>
-              )}
-              {app.mode === 'workflow' && (
-                <div className='truncate text-[#f79009]'>{t('app.types.workflow').toUpperCase()}</div>
-              )}
+              <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>
             </div>
           </div>
           {isCurrentWorkspaceManager && <CustomPopover
