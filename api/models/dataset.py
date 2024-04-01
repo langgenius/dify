@@ -443,7 +443,7 @@ class DatasetKeywordTable(db.Model):
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
     dataset_id = db.Column(UUID, nullable=False, unique=True)
     keyword_table = db.Column(db.Text, nullable=False)
-    storage_type = db.Column(db.String(255), nullable=False, server_default=db.text("'local'::character varying"))
+    data_source_type = db.Column(db.String(255), nullable=False, server_default=db.text("'database'::character varying"))
 
     @property
     def keyword_table_dict(self):
@@ -463,7 +463,7 @@ class DatasetKeywordTable(db.Model):
         ).first()
         if not dataset:
             return None
-        if self.storage_type == 'local':
+        if self.data_source_type == 'database':
             return json.loads(self.keyword_table, cls=SetDecoder) if self.keyword_table else None
         else:
             file_key = 'keyword_files/' + dataset.tenant_id + '/' + self.dataset_id + '.txt'

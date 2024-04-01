@@ -124,8 +124,8 @@ class Jieba(BaseKeyword):
             }
         }
 
-        storage_type = current_app.config['STORAGE_TYPE']
-        if storage_type == 'local':
+        keyword_data_source_type = current_app.config['KEYWORD_DATA_SOURCE_TYPE']
+        if keyword_data_source_type == 'database':
             self.dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
             db.session.commit()
         else:
@@ -143,13 +143,13 @@ class Jieba(BaseKeyword):
                 if keyword_table_dict:
                     return keyword_table_dict['__data__']['table']
             else:
-                storage_type = current_app.config['STORAGE_TYPE']
+                keyword_data_source_type = current_app.config['KEYWORD_DATA_SOURCE_TYPE']
                 dataset_keyword_table = DatasetKeywordTable(
                     dataset_id=self.dataset.id,
                     keyword_table='',
-                    storage_type=storage_type,
+                    data_source_type=keyword_data_source_type,
                 )
-                if storage_type == 'local':
+                if keyword_data_source_type == 'database':
                     dataset_keyword_table.keyword_table = json.dumps({
                         '__type__': 'keyword_table',
                         '__data__': {
