@@ -63,6 +63,7 @@ export type ValueSelector = string[] // [nodeId, key | obj key path]
 
 export type Variable = {
   variable: string
+  label?: string
   value_selector: ValueSelector
   variable_type?: VarKindType
   value?: string
