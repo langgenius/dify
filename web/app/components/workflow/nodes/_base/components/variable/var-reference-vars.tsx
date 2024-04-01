@@ -76,7 +76,12 @@ const Item: FC<ItemProps> = ({
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onChange([nodeId, ...objPath, itemData.variable], itemData)
+    if (itemData.variable.startsWith('sys.')) { // system variable
+      onChange([...objPath, ...itemData.variable.split('.')], itemData)
+    }
+    else {
+      onChange([nodeId, ...objPath, itemData.variable], itemData)
+    }
   }
   return (
     <PortalToFollowElem

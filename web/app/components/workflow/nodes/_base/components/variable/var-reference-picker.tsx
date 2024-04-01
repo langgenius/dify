@@ -88,7 +88,7 @@ const VarReferencePicker: FC<Props> = ({
 
     return getNodeInfoById(availableNodes, outputVarNodeId)?.data
   })()
-  const varName = hasValue ? value[value.length - 1] : ''
+  const varName = hasValue ? `${isSystemVar(value as ValueSelector) ? 'sys.' : ''}${value[value.length - 1]}` : ''
 
   const getVarType = () => {
     if (isConstant)

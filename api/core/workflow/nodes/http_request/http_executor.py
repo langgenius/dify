@@ -8,6 +8,7 @@ import httpx
 import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
+from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import ValueType, VariablePool
 from core.workflow.nodes.http_request.entities import HttpRequestNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
@@ -135,6 +136,7 @@ class HttpExecutor:
     body: Union[None, str]
     files: Union[None, dict[str, Any]]
     boundary: str
+    variable_selectors: list[VariableSelector]
 
     def __init__(self, node_data: HttpRequestNodeData, variable_pool: VariablePool):
         """
@@ -149,6 +151,7 @@ class HttpExecutor:
         self.files = None
 
         # init template
+        self.variable_selectors = []
         self._init_template(node_data, variable_pool)
 
     def _is_json_body(self, body: HttpRequestNodeData.Body):
@@ -168,11 +171,13 @@ class HttpExecutor:
         """
         init template
         """
+        variable_selectors = []
+
         # extract all template in url
-        self.server_url = self._format_template(node_data.url, variable_pool)
+        self.server_url, server_url_variable_selectors = self._format_template(node_data.url, variable_pool)
 
         # extract all template in params
-        params = self._format_template(node_data.params, variable_pool)
+        params, params_variable_selectors = self._format_template(node_data.params, variable_pool)
 
         # fill in params
         kv_paris = params.split('\n')
@@ -191,7 +196,7 @@ class HttpExecutor:
             self.params[k.strip()] = v
 
         # extract all template in headers
-        headers = self._format_template(node_data.headers, variable_pool)
+        headers, headers_variable_selectors = self._format_template(node_data.headers, variable_pool)
 
         # fill in headers
         kv_paris = headers.split('\n')
@@ -210,13 +215,14 @@ class HttpExecutor:
             self.headers[k.strip()] = v.strip()
 
         # extract all template in body
+        body_data_variable_selectors = []
         if node_data.body:
             # check if it's a valid JSON
             is_valid_json = self._is_json_body(node_data.body)
 
             body_data = node_data.body.data or ''
             if body_data:
-                body_data = self._format_template(body_data, variable_pool, is_valid_json)
+                body_data, body_data_variable_selectors = self._format_template(body_data, variable_pool, is_valid_json)
 
             if node_data.body.type == 'json':
                 self.headers['Content-Type'] = 'application/json'
@@ -251,6 +257,9 @@ class HttpExecutor:
                 self.body = body_data
             elif node_data.body.type == 'none':
                 self.body = ''
+
+        self.variable_selectors = (server_url_variable_selectors + params_variable_selectors
+                                   + headers_variable_selectors + body_data_variable_selectors)
                 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.authorization)
@@ -364,7 +373,8 @@ class HttpExecutor:
 
         return raw_request
 
-    def _format_template(self, template: str, variable_pool: VariablePool, escape_quotes: bool = False) -> str:
+    def _format_template(self, template: str, variable_pool: VariablePool, escape_quotes: bool = False) \
+            -> tuple[str, list[VariableSelector]]:
         """
         format template
         """
@@ -386,4 +396,4 @@ class HttpExecutor:
 
             variable_value_mapping[variable_selector.variable] = value
 
-        return variable_template_parser.format(variable_value_mapping)
+        return variable_template_parser.format(variable_value_mapping), variable_selectors

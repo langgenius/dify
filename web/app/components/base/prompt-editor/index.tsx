@@ -60,6 +60,7 @@ import {
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export type PromptEditorProps = {
+  instanceId?: string
   className?: string
   placeholder?: string
   placeholderClassName?: string
@@ -78,6 +79,7 @@ export type PromptEditorProps = {
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
+  instanceId,
   className,
   placeholder,
   placeholderClassName,
@@ -204,7 +206,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         }
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
-        <UpdateBlock />
+        <UpdateBlock instanceId={instanceId} />
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

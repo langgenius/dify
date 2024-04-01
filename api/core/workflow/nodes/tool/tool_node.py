@@ -7,7 +7,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -89,24 +88,27 @@ class ToolNode(BaseNode):
             Generate parameters
         """
         result = {}
-        for parameter in node_data.tool_parameters:
-            if parameter.value_type == 'static':
-                result[parameter.parameter_name] = parameter.static_value
-            else:
-                if isinstance(parameter.variable_value, str):
-                    parser = VariableTemplateParser(parameter.variable_value)
-                    variable_selectors = parser.extract_variable_selectors()
-                    values = {
-                        selector.variable: variable_pool.get_variable_value(selector)
-                        for selector in variable_selectors
-                    }
-
-                    # if multiple values, use the parser to format the values into a string
-                    result[parameter.parameter_name] = parser.format(values)
-                elif isinstance(parameter.variable_value, list):
-                    result[parameter.parameter_name] = variable_pool.get_variable_value(parameter.variable_value)
+        for parameter_name in node_data.tool_parameters:
+            input = node_data.tool_parameters[parameter_name]
+            if input.type == 'mixed':
+                result[parameter_name] = self._format_variable_template(input.value, variable_pool)
+            elif input.type == 'variable':
+                result[parameter_name] = variable_pool.get_variable_value(input.value)
+            elif input.type == 'constant':
+                result[parameter_name] = input.value
 
         return result
+    
+    def _format_variable_template(self, template: str, variable_pool: VariablePool) -> str:
+        """
+        Format variable template
+        """
+        inputs = {}
+        template_parser = VariableTemplateParser(template)
+        for selector in template_parser.extract_variable_selectors():
+            inputs[selector.variable] = variable_pool.get_variable_value(selector.value_selector)
+        
+        return template_parser.format(inputs)
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
         """
@@ -178,10 +180,22 @@ class ToolNode(BaseNode):
         ])
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
         :return:
         """
-        return {}
+        result = {}
+        for parameter_name in node_data.tool_parameters:
+            input = node_data.tool_parameters[parameter_name]
+            if input.type == 'mixed':
+                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                for selector in selectors:
+                    result[selector.variable] = selector.value_selector
+            elif input.type == 'variable':
+                result[parameter_name] = input.value
+            elif input.type == 'constant':
+                pass
+
+        return result

@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
+import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import s from './style.module.css'
@@ -13,6 +14,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
+import type { AutomaticRes } from '@/service/debug'
+import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
@@ -21,6 +25,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
+import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -42,9 +47,13 @@ const Prompt: FC<ISimplePromptInput> = ({
   const {
     modelConfig,
     dataSets,
+    setModelConfig,
+    setPrevPromptConfig,
+    setIntroduction,
     hasSetBlockStatus,
     showSelectDataSet,
     externalDataToolsConfig,
+    isAgent,
   } = useContext(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
@@ -103,6 +112,22 @@ const Prompt: FC<ISimplePromptInput> = ({
     }
   }
 
+  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
+  const handleAutomaticRes = (res: AutomaticRes) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.configs.prompt_template = res.prompt
+      draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
+    })
+    setModelConfig(newModelConfig)
+    setPrevPromptConfig(modelConfig.configs)
+    if (mode !== AppType.completion)
+      setIntroduction(res.opening_statement)
+    showAutomaticFalse()
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      payload: res.prompt,
+    } as any)
+  }
   const minHeight = 228
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
@@ -123,6 +148,9 @@ const Prompt: FC<ISimplePromptInput> = ({
             )}
           </div>
           <div className='flex items-center'>
+            {!isAgent && (
+              <AutomaticBtn onClick={showAutomaticTrue} />
+            )}
           </div>
         </div>
         <PromptEditorHeightResizeWrap
@@ -195,6 +223,15 @@ const Prompt: FC<ISimplePromptInput> = ({
           onConfrim={handleAutoAdd(true)}
           onCancel={handleAutoAdd(false)}
           onHide={hideConfirmAddVar}
+        />
+      )}
+
+      {showAutomatic && (
+        <GetAutomaticResModal
+          mode={mode as AppType}
+          isShow={showAutomatic}
+          onClose={showAutomaticFalse}
+          onFinished={handleAutomaticRes}
         />
       )}
     </div>

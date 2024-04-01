@@ -56,6 +56,12 @@ class RecommendedAppService:
             RecommendedApp.language == language
         ).all()
 
+        if len(recommended_apps) == 0:
+            recommended_apps = db.session.query(RecommendedApp).filter(
+                RecommendedApp.is_listed == True,
+                RecommendedApp.language == languages[0]
+            ).all()
+
         categories = set()
         recommended_apps_result = []
         for recommended_app in recommended_apps:
