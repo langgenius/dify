@@ -495,7 +495,21 @@ class LLMNode(BaseNode):
         node_data = node_data
         node_data = cast(cls._node_data_cls, node_data)
 
+        prompt_template = node_data.prompt_template
+
+        variable_selectors = []
+        if isinstance(prompt_template, list):
+            for prompt in prompt_template:
+                variable_template_parser = VariableTemplateParser(template=prompt.text)
+                variable_selectors.extend(variable_template_parser.extract_variable_selectors())
+        else:
+            variable_template_parser = VariableTemplateParser(template=prompt_template.text)
+            variable_selectors = variable_template_parser.extract_variable_selectors()
+
         variable_mapping = {}
+        for variable_selector in variable_selectors:
+            variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
         if node_data.context.enabled:
             variable_mapping['#context#'] = node_data.context.variable_selector
 

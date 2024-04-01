@@ -1,3 +1,4 @@
+import logging
 from mimetypes import guess_extension
 from os import path
 from typing import cast
@@ -60,7 +61,22 @@ class HttpRequestNode(BaseNode):
         :param node_data: node data
         :return:
         """
-        return {}
+        try:
+            http_executor = HttpExecutor(node_data=node_data, variable_pool=VariablePool(
+                system_variables={},
+                user_inputs={}
+            ))
+
+            variable_selectors = http_executor.variable_selectors
+
+            variable_mapping = {}
+            for variable_selector in variable_selectors:
+                variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
+            return variable_mapping
+        except Exception as e:
+            logging.exception(f"Failed to extract variable selector to variable mapping: {e}")
+            return {}
 
     def extract_files(self, url: str, response: HttpExecutorResponse) -> list[FileVar]:
         """
