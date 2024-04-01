@@ -11,7 +11,6 @@ import AddButton from '@/app/components/workflow/nodes/_base/components/add-butt
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
@@ -104,6 +103,8 @@ const ConfigPrompt: FC<Props> = ({
     })
     onChange(newPrompt)
   }, [onChange, payload])
+
+  // console.log(getInputVars((payload as PromptItem).text))
 
   return (
     <div>
