@@ -3,6 +3,8 @@ import {
   useEffect,
 } from 'react'
 import {
+  $getNodeByKey,
+  $getPreviousSelection,
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
@@ -39,9 +41,16 @@ const WorkflowVariableBlock = memo(({
       editor.registerCommand(
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
-          const contextBlockNode = $createWorkflowVariableBlockNode(variables, getWorkflowNode)
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, getWorkflowNode)
+          const prevNodeKey = ($getPreviousSelection() as any)?.anchor?.key
 
-          $insertNodes([contextBlockNode])
+          if (prevNodeKey) {
+            const prevNode = $getNodeByKey(prevNodeKey)
+
+            prevNode?.remove()
+          }
+
+          $insertNodes([workflowVariableBlockNode])
           if (onInsert)
             onInsert()
 

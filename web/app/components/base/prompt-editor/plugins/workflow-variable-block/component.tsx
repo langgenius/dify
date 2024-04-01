@@ -27,7 +27,7 @@ const WorkflowVariableBlockComponent: FC<WorkflowVariableBlockComponentProps> = 
   return (
     <div
       className={`
-        mr-[2px] relative group/wrap flex items-center h-[20px] pl-0.5 pr-[3px] rounded-[5px] border
+        mx-0.5 relative group/wrap flex items-center h-[18px] pl-0.5 pr-[3px] rounded-[5px] border
         ${isSelected ? ' border-[#84ADFF] bg-[#F5F8FF]' : ' border-black/5 bg-white'}
       `}
       ref={ref}

@@ -115,6 +115,7 @@ const ConfigPrompt: FC<Props> = ({
                 (payload as PromptItem[]).map((item, index) => {
                   return (
                     <Editor
+                      instanceId={`${nodeId}-chat-workflow-llm-prompt-editor-${item.role}-${index}`}
                       key={index}
                       title={
                         <div className='relative left-1 flex items-center'>
@@ -160,6 +161,7 @@ const ConfigPrompt: FC<Props> = ({
         : (
           <div>
             <Editor
+              instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
               value={(payload as PromptItem).text}
               onChange={handleCompletionPromptChange}

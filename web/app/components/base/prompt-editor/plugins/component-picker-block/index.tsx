@@ -82,11 +82,12 @@ const ComponentPicker = ({
       matchingString: string,
     ) => {
       editor.update(() => {
-        if (nodeToRemove)
+        if (nodeToRemove && selectedOption?.key)
           nodeToRemove.remove()
 
         if (selectedOption?.onSelect)
           selectedOption.onSelect(matchingString)
+
         closeMenu()
       })
     },
@@ -104,9 +105,9 @@ const ComponentPicker = ({
     anchorElementRef,
     { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    if (anchorElementRef.current && allOptions.length) {
+    if (anchorElementRef.current && (allOptions.length || workflowVariableOptions.length)) {
       return ReactDOM.createPortal(
-        <div className='mt-[25px] w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
+        <div className='w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
           {
             !!promptOptions.length && (
               <>
@@ -196,8 +197,7 @@ const ComponentPicker = ({
                 <VarReferenceVars
                   hideSearch
                   vars={workflowVariableOptions}
-                  onChange={(variables: string[], item: any) => {
-                    selectOptionAndCleanUp(item)
+                  onChange={(variables: string[]) => {
                     handleSelectWorkflowVariable(variables)
                   }}
                 />

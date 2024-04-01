@@ -15,8 +15,11 @@ import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vende
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 
 type Props = {
+  instanceId?: string
   title: string | JSX.Element
   value: string
   onChange: (value: string) => void
@@ -36,6 +39,7 @@ type Props = {
 }
 
 const Editor: FC<Props> = ({
+  instanceId,
   title,
   value,
   onChange,
@@ -51,6 +55,7 @@ const Editor: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { getNode } = useWorkflow()
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const isShowHistory = !isChatModel && isChatApp
   const isShowQuery = isShowHistory
@@ -74,6 +79,11 @@ const Editor: FC<Props> = ({
     setTrue: setFocus,
     setFalse: setBlur,
   }] = useBoolean(false)
+
+  const handleInsertVariable = () => {
+    setFocus()
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
+  }
 
   return (
     <div className={cn(wrapClassName)}>
@@ -114,7 +124,10 @@ const Editor: FC<Props> = ({
                     <TooltipPlus
                       popupContent={`${t('workflow.common.insertVarTip')}`}
                     >
-                      <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
+                      <div
+                        className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500"
+                        onClick={handleInsertVariable}
+                      >{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
                     </TooltipPlus>)
                   : <div className='h-[18px]'></div>}
               </div>
@@ -123,7 +136,9 @@ const Editor: FC<Props> = ({
           >
             <>
               <PromptEditor
+                instanceId={instanceId}
                 className={cn('min-h-[84px]')}
+                compact
                 style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                 value={value}
                 contextBlock={{
