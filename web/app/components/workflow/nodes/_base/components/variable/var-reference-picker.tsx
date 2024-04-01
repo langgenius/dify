@@ -3,10 +3,9 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { isArray } from 'lodash-es'
 import produce from 'immer'
 import VarReferencePopup from './var-reference-popup'
-import { isSystemVar, toNodeOutputVars } from './utils'
+import { getNodeInfoById, isSystemVar, toNodeOutputVars } from './utils'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -40,12 +39,6 @@ type Props = {
   defaultVarKindType?: VarKindType
   onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
-}
-
-const getNodeInfoById = (nodes: any, id: string) => {
-  if (!isArray(nodes))
-    return
-  return nodes.find((node: any) => node.id === id)
 }
 
 const VarReferencePicker: FC<Props> = ({
