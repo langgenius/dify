@@ -32,7 +32,11 @@ class WorkflowConverter:
     App Convert to Workflow Mode
     """
 
-    def convert_to_workflow(self, app_model: App, account: Account) -> App:
+    def convert_to_workflow(self, app_model: App,
+                            account: Account,
+                            name: str,
+                            icon: str,
+                            icon_background: str) -> App:
         """
         Convert app to workflow
 
@@ -44,6 +48,9 @@ class WorkflowConverter:
 
         :param app_model: App instance
         :param account: Account
+        :param name: new app name
+        :param icon: new app icon
+        :param icon_background: new app icon background
         :return: new App instance
         """
         # convert app model config
@@ -56,11 +63,11 @@ class WorkflowConverter:
         # create new app
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
-        new_app.name = app_model.name + '(workflow)'
+        new_app.name = name if name else app_model.name + '(workflow)'
         new_app.mode = AppMode.ADVANCED_CHAT.value \
             if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
-        new_app.icon = app_model.icon
-        new_app.icon_background = app_model.icon_background
+        new_app.icon = icon if icon else app_model.icon
+        new_app.icon_background = icon_background if icon_background else app_model.icon_background
         new_app.enable_site = app_model.enable_site
         new_app.enable_api = app_model.enable_api
         new_app.api_rpm = app_model.api_rpm
@@ -143,6 +150,7 @@ class WorkflowConverter:
 
         # convert to llm node
         llm_node = self._convert_to_llm_node(
+            original_app_mode=AppMode.value_of(app_model.mode),
             new_app_mode=new_app_mode,
             graph=graph,
             model_config=app_config.model,
@@ -400,13 +408,15 @@ class WorkflowConverter:
             }
         }
 
-    def _convert_to_llm_node(self, new_app_mode: AppMode,
+    def _convert_to_llm_node(self, original_app_mode: AppMode,
+                             new_app_mode: AppMode,
                              graph: dict,
                              model_config: ModelConfigEntity,
                              prompt_template: PromptTemplateEntity,
                              file_upload: Optional[FileExtraConfig] = None) -> dict:
         """
         Convert to LLM Node
+        :param original_app_mode: original app mode
         :param new_app_mode: new app mode
         :param graph: graph
         :param model_config: model config
@@ -428,7 +438,7 @@ class WorkflowConverter:
                 # get prompt template
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
-                    app_mode=AppMode.WORKFLOW,
+                    app_mode=original_app_mode,
                     provider=model_config.provider,
                     model=model_config.model,
                     pre_prompt=prompt_template.simple_prompt_template,
@@ -437,15 +447,18 @@ class WorkflowConverter:
                 )
 
                 template = prompt_template_config['prompt_template'].template
-                for v in start_node['data']['variables']:
-                    template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+                if not template:
+                    prompts = []
+                else:
+                    for v in start_node['data']['variables']:
+                        template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
 
-                prompts = [
-                    {
-                        "role": 'user',
-                        "text": template
-                    }
-                ]
+                    prompts = [
+                        {
+                            "role": 'user',
+                            "text": template
+                        }
+                    ]
             else:
                 advanced_chat_prompt_template = prompt_template.advanced_chat_prompt_template
 
@@ -466,7 +479,7 @@ class WorkflowConverter:
                 # get prompt template
                 prompt_transform = SimplePromptTransform()
                 prompt_template_config = prompt_transform.get_prompt_template(
-                    app_mode=AppMode.WORKFLOW,
+                    app_mode=original_app_mode,
                     provider=model_config.provider,
                     model=model_config.model,
                     pre_prompt=prompt_template.simple_prompt_template,

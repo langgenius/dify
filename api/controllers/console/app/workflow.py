@@ -289,11 +289,21 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
+        if request.data:
+            parser = reqparse.RequestParser()
+            parser.add_argument('name', type=str, required=False, nullable=True, location='json')
+            parser.add_argument('icon', type=str, required=False, nullable=True, location='json')
+            parser.add_argument('icon_background', type=str, required=False, nullable=True, location='json')
+            args = parser.parse_args()
+        else:
+            args = {}
+
         # convert to workflow mode
         workflow_service = WorkflowService()
         new_app_model = workflow_service.convert_to_workflow(
             app_model=app_model,
-            account=current_user
+            account=current_user,
+            args=args
         )
 
         # return app id

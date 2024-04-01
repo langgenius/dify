@@ -258,13 +258,14 @@ class WorkflowService:
 
         return workflow_node_execution
 
-    def convert_to_workflow(self, app_model: App, account: Account) -> App:
+    def convert_to_workflow(self, app_model: App, account: Account, args: dict) -> App:
         """
         Basic mode of chatbot app(expert mode) to workflow
         Completion App to Workflow App
 
         :param app_model: App instance
         :param account: Account instance
+        :param args: dict
         :return:
         """
         # chatbot convert to workflow mode
@@ -276,7 +277,10 @@ class WorkflowService:
         # convert to workflow
         new_app = workflow_converter.convert_to_workflow(
             app_model=app_model,
-            account=account
+            account=account,
+            name=args.get('name'),
+            icon=args.get('icon'),
+            icon_background=args.get('icon_background'),
         )
 
         return new_app
