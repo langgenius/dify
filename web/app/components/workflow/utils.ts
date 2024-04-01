@@ -121,36 +121,31 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
       edge,
       type,
     } = change
-    const sourceNode = nodes.find(node => node.id === edge.source)
+    const sourceNode = nodes.find(node => node.id === edge.source)!
     const sourceNodeConnectedSourceHandleIds = sourceNode?.data._connectedSourceHandleIds || []
-    const targetNode = nodes.find(node => node.id === edge.target)
+    nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id] = nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id] || {
+      _connectedSourceHandleIds: sourceNodeConnectedSourceHandleIds,
+    }
+    const targetNode = nodes.find(node => node.id === edge.target)!
     const targetNodeConnectedTargetHandleIds = targetNode?.data._connectedTargetHandleIds || []
+    nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] = nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] || {
+      _connectedTargetHandleIds: targetNodeConnectedTargetHandleIds,
+    }
 
     if (sourceNode) {
-      const newSourceNodeConnectedSourceHandleIds = type === 'remove'
-        ? sourceNodeConnectedSourceHandleIds.filter(handleId => handleId !== edge.sourceHandle)
-        : sourceNodeConnectedSourceHandleIds.concat(edge.sourceHandle || 'source')
-      if (!nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]) {
-        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id] = {
-          _connectedSourceHandleIds: newSourceNodeConnectedSourceHandleIds,
-        }
-      }
-      else {
-        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds = newSourceNodeConnectedSourceHandleIds
-      }
+      if (type === 'remove')
+        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds = nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.filter((handleId: string) => handleId !== edge.sourceHandle)
+
+      if (type === 'add')
+        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.push(edge.sourceHandle || 'source')
     }
+
     if (targetNode) {
-      const newTargetNodeConnectedTargetHandleIds = type === 'remove'
-        ? targetNodeConnectedTargetHandleIds.filter(handleId => handleId !== edge.targetHandle)
-        : targetNodeConnectedTargetHandleIds.concat(edge.targetHandle || 'target')
-      if (!nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]) {
-        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] = {
-          _connectedTargetHandleIds: newTargetNodeConnectedTargetHandleIds,
-        }
-      }
-      else {
-        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds = newTargetNodeConnectedTargetHandleIds
-      }
+      if (type === 'remove')
+        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds = nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.filter((handleId: string) => handleId !== edge.targetHandle)
+
+      if (type === 'add')
+        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.push(edge.targetHandle || 'target')
     }
   })
 
