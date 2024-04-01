@@ -45,6 +45,7 @@ export type CommonNodeType<T = {}> = {
 export type CommonEdgeType = {
   _hovering?: boolean
   _connectedNodeIsHovering?: boolean
+  _connectedNodeIsSelected?: boolean
   _runned?: boolean
   sourceType: BlockEnum
   targetType: BlockEnum

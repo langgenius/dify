@@ -246,6 +246,8 @@ export const useNodesInteractions = () => {
     const {
       getNodes,
       setNodes,
+      edges,
+      setEdges,
     } = store.getState()
 
     const nodes = getNodes()
@@ -263,6 +265,26 @@ export const useNodesInteractions = () => {
       })
     })
     setNodes(newNodes)
+
+    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges).map(edge => edge.id)
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        if (connectedEdges.includes(edge.id)) {
+          edge.data = {
+            ...edge.data,
+            _connectedNodeIsSelected: !cancelSelection,
+          }
+        }
+        else {
+          edge.data = {
+            ...edge.data,
+            _connectedNodeIsSelected: false,
+          }
+        }
+      })
+    })
+    setEdges(newEdges)
+
     handleSyncWorkflowDraft()
   }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore])
 
