@@ -286,7 +286,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       variable[0] = varInfo?.title || availableNodes[0]?.data.title // default start node title
 
       return {
-        variable: variable.join('/'),
+        variable: `${variable[0]}/${variable[variable.length - 1]}`,
         value_selector: item,
       }
     })
