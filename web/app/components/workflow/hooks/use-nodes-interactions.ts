@@ -463,6 +463,7 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
+          _connectedNodeIsSelected: true,
         },
       }
       const newNodes = produce(nodes, (draft: Node[]) => {
@@ -476,6 +477,12 @@ export const useNodesInteractions = () => {
       })
       setNodes(newNodes)
       const newEdges = produce(edges, (draft) => {
+        draft.forEach((item) => {
+          item.data = {
+            ...item.data,
+            _connectedNodeIsSelected: false,
+          }
+        })
         draft.push(newEdge)
       })
       setEdges(newEdges)
@@ -500,6 +507,7 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: newNode.data.type,
           targetType: nextNode.data.type,
+          _connectedNodeIsSelected: true,
         },
       }
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
@@ -518,6 +526,12 @@ export const useNodesInteractions = () => {
       })
       setNodes(newNodes)
       const newEdges = produce(edges, (draft) => {
+        draft.forEach((item) => {
+          item.data = {
+            ...item.data,
+            _connectedNodeIsSelected: false,
+          }
+        })
         draft.push(newEdge)
       })
       setEdges(newEdges)
@@ -543,6 +557,7 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
+          _connectedNodeIsSelected: true,
         },
       }
       let newNextEdge: Edge | null = null
@@ -557,6 +572,7 @@ export const useNodesInteractions = () => {
           data: {
             sourceType: newNode.data.type,
             targetType: nextNode.data.type,
+            _connectedNodeIsSelected: true,
           },
         }
       }
@@ -589,6 +605,12 @@ export const useNodesInteractions = () => {
       setNodes(newNodes)
       const newEdges = produce(edges, (draft) => {
         draft.splice(currentEdgeIndex, 1)
+        draft.forEach((item) => {
+          item.data = {
+            ...item.data,
+            _connectedNodeIsSelected: false,
+          }
+        })
         draft.push(newPrevEdge)
 
         if (newNextEdge)
