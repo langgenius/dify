@@ -62,10 +62,7 @@ class HttpRequestNode(BaseNode):
         :return:
         """
         try:
-            http_executor = HttpExecutor(node_data=node_data, variable_pool=VariablePool(
-                system_variables={},
-                user_inputs={}
-            ))
+            http_executor = HttpExecutor(node_data=node_data)
 
             variable_selectors = http_executor.variable_selectors
 
