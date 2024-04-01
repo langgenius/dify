@@ -296,7 +296,7 @@ class WorkflowConverter:
             request_body_json = request_body_json.replace('\{\{', '{{').replace('\}\}', '}}')
 
             http_request_node = {
-                "id": f"http-request-{index}",
+                "id": f"http_request_{index}",
                 "position": None,
                 "data": {
                     "title": f"HTTP REQUEST {api_based_extension.name}",
@@ -323,7 +323,7 @@ class WorkflowConverter:
 
             # append code node for response body parsing
             code_node = {
-                "id": f"code-{index}",
+                "id": f"code_{index}",
                 "position": None,
                 "data": {
                     "title": f"Parse {api_based_extension.name} Response",
@@ -335,12 +335,11 @@ class WorkflowConverter:
                     "code_language": "python3",
                     "code": "import json\n\ndef main(response_json: str) -> str:\n    response_body = json.loads("
                             "response_json)\n    return {\n        \"result\": response_body[\"result\"]\n    }",
-                    "outputs": [
-                        {
-                            "variable": "result",
-                            "variable_type": "string"
+                    "outputs": {
+                        "result": {
+                            "type": "string"
                         }
-                    ]
+                    }
                 }
             }
 
@@ -370,7 +369,7 @@ class WorkflowConverter:
             return None
 
         return {
-            "id": "knowledge-retrieval",
+            "id": "knowledge_retrieval",
             "position": None,
             "data": {
                 "title": "KNOWLEDGE RETRIEVAL",
@@ -497,6 +496,8 @@ class WorkflowConverter:
                 else:
                     text = ""
 
+                text = text.replace('{{#query#}}', '{{#sys.query#}}')
+
                 prompts = {
                     "text": text,
                 }
@@ -534,7 +535,7 @@ class WorkflowConverter:
                 "memory": memory,
                 "context": {
                     "enabled": knowledge_retrieval_node is not None,
-                    "variable_selector": ["knowledge-retrieval", "result"]
+                    "variable_selector": ["knowledge_retrieval", "result"]
                     if knowledge_retrieval_node is not None else None
                 },
                 "vision": {

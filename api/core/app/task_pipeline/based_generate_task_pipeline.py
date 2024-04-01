@@ -14,7 +14,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     TaskState,
 )
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_database import db
@@ -83,24 +83,12 @@ class BasedGenerateTaskPipeline:
         :param e: exception
         :return:
         """
-        error_responses = {
-            ValueError: None,
-            ProviderTokenNotInitError: None,
-            QuotaExceededError: "Your quota for Dify Hosted Model Provider has been exhausted. "
-                                "Please go to Settings -> Model Provider to complete your own provider credentials.",
-            ModelCurrentlyNotSupportError: None,
-            InvokeError: None
-        }
+        if isinstance(e, QuotaExceededError):
+            return ("Your quota for Dify Hosted Model Provider has been exhausted. "
+                    "Please go to Settings -> Model Provider to complete your own provider credentials.")
 
-        # Determine the response based on the type of exception
-        data = None
-        for k, v in error_responses.items():
-            if isinstance(e, k):
-                data = v
-
-        if data:
-            message = getattr(e, 'description', str(e)) if data is None else data
-        else:
+        message = getattr(e, 'description', str(e))
+        if not message:
             message = 'Internal Server Error, please contact support.'
 
         return message

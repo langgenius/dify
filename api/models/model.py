@@ -126,8 +126,17 @@ class App(db.Model):
             return False
         if self.app_model_config.agent_mode_dict.get('enabled', False) \
                 and self.app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
+            self.mode = AppMode.AGENT_CHAT.value
+            db.session.commit()
             return True
         return False
+
+    @property
+    def mode_compatible_with_agent(self) -> str:
+        if self.mode == AppMode.CHAT.value and self.is_agent:
+            return AppMode.AGENT_CHAT.value
+
+        return self.mode
 
     @property
     def deleted_tools(self) -> list:

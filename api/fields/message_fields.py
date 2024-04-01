@@ -73,7 +73,9 @@ message_fields = {
     'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
     'created_at': TimestampField,
     'agent_thoughts': fields.List(fields.Nested(agent_thought_fields)),
-    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files')
+    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
+    'status': fields.String,
+    'error': fields.String,
 }
 
 message_infinite_scroll_pagination_fields = {
