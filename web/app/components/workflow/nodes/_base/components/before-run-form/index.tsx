@@ -58,7 +58,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       form.inputs.forEach((input) => {
         const value = form.values[input.variable]
         if (!errMsg && input.required && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
-          errMsg = t('workflow.errorMsg.fieldRequired', { field: input.label })
+          errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
       })
     })
     if (errMsg) {
