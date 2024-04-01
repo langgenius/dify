@@ -110,7 +110,7 @@ class Jieba(BaseKeyword):
         if dataset_keyword_table:
             db.session.delete(dataset_keyword_table)
             db.session.commit()
-            if dataset_keyword_table.storage_type != 'local':
+            if dataset_keyword_table.data_source_type != 'database':
                 file_key = 'keyword_files/' + self.dataset.tenant_id + '/' + self.dataset.id + '.txt'
                 storage.delete(file_key)
 
