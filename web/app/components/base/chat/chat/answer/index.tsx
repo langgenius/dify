@@ -29,6 +29,7 @@ type AnswerProps = {
   responding?: boolean
   allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
+  chatAnswerContainerInner?: string
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -39,6 +40,7 @@ const Answer: FC<AnswerProps> = ({
   responding,
   allToolIcons,
   showPromptLog,
+  chatAnswerContainerInner,
 }) => {
   const { t } = useTranslation()
   const {
@@ -70,7 +72,7 @@ const Answer: FC<AnswerProps> = ({
         }
       </div>
       <div className='chat-answer-container grow w-0 ml-4'>
-        <div className='relative pr-10'>
+        <div className={`relative pr-10 ${chatAnswerContainerInner}`}>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div
             className={`
