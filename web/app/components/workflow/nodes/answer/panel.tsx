@@ -34,7 +34,6 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
         title={t(`${i18nPrefix}.answer`)!}
         value={inputs.answer}
         onChange={handleAnswerChange}
-        variables={inputs.variables.map(item => item.variable)}
         nodesOutputVars={availableVarList}
       />
     </div>

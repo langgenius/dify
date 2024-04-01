@@ -20,7 +20,6 @@ type Props = {
   isChatModel: boolean
   isChatApp: boolean
   payload: PromptItem | PromptItem[]
-  variables: string[]
   onChange: (payload: PromptItem | PromptItem[]) => void
   isShowContext: boolean
   hasSetBlockStatus: {

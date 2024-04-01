@@ -16,6 +16,11 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Default,
+    type: BlockEnum.KnowledgeRetrieval,
+    title: 'Knowledge Retrieval',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
     type: BlockEnum.End,
     title: 'End',
   },
@@ -23,11 +28,6 @@ export const BLOCKS: Block[] = [
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Answer,
     title: 'Direct Answer',
-  },
-  {
-    classification: BlockClassificationEnum.QuestionUnderstand,
-    type: BlockEnum.KnowledgeRetrieval,
-    title: 'Knowledge Retrieval',
   },
   {
     classification: BlockClassificationEnum.QuestionUnderstand,
