@@ -203,7 +203,7 @@ export const useChat = (
     handleRun(
       params,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId, errorMessage }: any) => {
           responseItem.content = responseItem.content + message
 
           if (messageId && !hasSetResponseId) {
@@ -257,10 +257,6 @@ export const useChat = (
         },
         onError() {
           handleResponding(false)
-          const newChatList = produce(chatListRef.current, (draft) => {
-            draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
-          })
-          handleUpdateChatList(newChatList)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {
           taskIdRef.current = task_id

@@ -112,6 +112,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       )}
       suggestedQuestions={suggestedQuestions}
       showPromptLog
+      chatAnswerContainerInner='!pr-2'
     />
   )
 })

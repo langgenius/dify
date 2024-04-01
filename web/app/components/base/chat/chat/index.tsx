@@ -50,6 +50,7 @@ export type ChatProps = {
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
   onFeedback?: (messageId: string, feedback: Feedback) => void
+  chatAnswerContainerInner?: string
 }
 const Chat: FC<ChatProps> = ({
   config,
@@ -73,6 +74,7 @@ const Chat: FC<ChatProps> = ({
   onAnnotationRemoved,
   chatNode,
   onFeedback,
+  chatAnswerContainerInner,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore()
@@ -191,6 +193,7 @@ const Chat: FC<ChatProps> = ({
                       responding={isLast && isResponding}
                       allToolIcons={allToolIcons}
                       showPromptLog={showPromptLog}
+                      chatAnswerContainerInner={chatAnswerContainerInner}
                     />
                   )
                 }
