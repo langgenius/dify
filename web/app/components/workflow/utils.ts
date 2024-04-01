@@ -57,20 +57,38 @@ export const initialNodes = (nodes: Node[], edges: Edge[]) => {
 }
 
 export const initialEdges = (edges: Edge[], nodes: Node[]) => {
+  let selectedNode: Node | null = null
   const nodesMap = nodes.reduce((acc, node) => {
     acc[node.id] = node
+
+    if (node.data?.selected)
+      selectedNode = node
 
     return acc
   }, {} as Record<string, Node>)
   return edges.map((edge) => {
     edge.type = 'custom'
 
-    if (!edge.data?.sourceType)
-      edge.data = { ...edge.data, sourceType: nodesMap[edge.source].data.type! } as any
+    if (!edge.data?.sourceType) {
+      edge.data = {
+        ...edge.data,
+        sourceType: nodesMap[edge.source].data.type!,
+      } as any
+    }
 
-    if (!edge.data?.targetType)
-      edge.data = { ...edge.data, targetType: nodesMap[edge.target].data.type! } as any
+    if (!edge.data?.targetType) {
+      edge.data = {
+        ...edge.data,
+        targetType: nodesMap[edge.target].data.type!,
+      } as any
+    }
 
+    if (selectedNode) {
+      edge.data = {
+        ...edge.data,
+        _connectedNodeIsSelected: edge.source === selectedNode.id || edge.target === selectedNode.id,
+      } as any
+    }
     return edge
   })
 }
