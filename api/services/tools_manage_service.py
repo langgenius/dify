@@ -1,4 +1,5 @@
 import json
+import logging
 
 from httpx import get
 
@@ -23,6 +24,8 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 from services.model_provider_service import ModelProviderService
 from services.tools_transform_service import ToolTransformService
+
+logger = logging.getLogger(__name__)
 
 
 class ToolManageService:
@@ -257,6 +260,7 @@ class ToolManageService:
             # try to parse schema, avoid SSRF attack
             ToolManageService.parser_api_schema(schema)
         except Exception as e:
+            logger.error(f"parse api schema error: {str(e)}")
             raise ValueError('invalid schema, please check the url you provided')
         
         return {
