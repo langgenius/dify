@@ -76,7 +76,7 @@ const CustomEdge = ({
         id={id}
         path={edgePath}
         style={{
-          stroke: (selected || data?._connectedNodeIsHovering || data?._runned || data?._connectedNodeIsSelected) ? '#2970FF' : '#D0D5DD',
+          stroke: (selected || data?._connectedNodeIsHovering || data?._runned) ? '#2970FF' : '#D0D5DD',
           strokeWidth: 2,
         }}
       />
@@ -85,7 +85,6 @@ const CustomEdge = ({
           className={`
             nopan nodrag hover:scale-150
             ${data?._hovering ? 'block' : 'hidden'}
-            ${data?._connectedNodeIsSelected && '!block'}
             ${open && '!block'}
           `}
           style={{

@@ -1,3 +1,4 @@
+import os
 from typing import Optional, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor
@@ -7,7 +8,7 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
-MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = 50000
+MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get('TEMPLATE_TRANSFORM_MAX_LENGTH', '80000'))
 
 class TemplateTransformNode(BaseNode):
     _node_data_cls = TemplateTransformNodeData
