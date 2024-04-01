@@ -52,6 +52,12 @@ class RecommendedAppListApi(Resource):
             RecommendedApp.language == language_prefix
         ).all()
 
+        if len(recommended_apps) == 0:
+            recommended_apps = db.session.query(RecommendedApp).filter(
+                RecommendedApp.is_listed == True,
+                RecommendedApp.language == languages[0]
+            ).all()
+
         categories = set()
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         recommended_apps_result = []

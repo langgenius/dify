@@ -8,6 +8,7 @@ from pydantic import BaseModel, root_validator
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 
@@ -79,15 +80,22 @@ class WeaviateVector(BaseVector):
         }
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-
-        schema = self._default_schema(self._collection_name)
-
-        # check whether the index already exists
-        if not self._client.schema.contains(schema):
-            # create collection
-            self._client.schema.create_class(schema)
+        # create collection
+        self._create_collection()
         # create vector
         self.add_texts(texts, embeddings)
+
+    def _create_collection(self):
+        lock_name = 'vector_indexing_lock_{}'.format(self._collection_name)
+        with redis_client.lock(lock_name, timeout=20):
+            collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+            if redis_client.get(collection_exist_cache_key):
+                return
+            schema = self._default_schema(self._collection_name)
+            if not self._client.schema.contains(schema):
+                # create collection
+                self._client.schema.create_class(schema)
+            redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
@@ -134,6 +142,11 @@ class WeaviateVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         collection_name = self._collection_name
+        schema = self._default_schema(self._collection_name)
+
+        # check whether the index already exists
+        if not self._client.schema.contains(schema):
+            return False
         result = self._client.query.get(collection_name).with_additional(["id"]).with_where({
             "path": ["doc_id"],
             "operator": "Equal",

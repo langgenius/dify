@@ -1,0 +1,28 @@
+identity:
+  name: fetch_all_boards
+  author: Yash Parmar
+  label:
+    en_US: Fetch All Boards
+    zh_Hans: 获取所有看板
+    pt_BR: Buscar Todos os Quadros
+description:
+  human:
+    en_US: Retrieves all the Trello boards associated with the user's account. This tool provides a quick overview of all open boards, aiding in efficient project management and organization.
+    zh_Hans: 检索与用户账户关联的所有 Trello 看板。该工具提供了所有打开的看板的快速概览，有助于高效的项目管理和组织。
+    pt_BR: Recupera todos os quadros do Trello associados à conta do usuário. Esta ferramenta oferece uma visão geral rápida de todos os quadros abertos, auxiliando na gestão e organização eficiente do projeto.
+  llm: This tool fetches all Trello boards linked to the user's account, offering a swift snapshot of open boards to streamline project management and organization tasks.
+parameters:
+  - name: boards
+    type: string
+    required: false
+    default: open
+    label:
+      en_US: Boards filter
+      zh_Hans: 看板过滤器
+      pt_BR: Filtro de quadros
+    human_description:
+      en_US: Specifies the type of boards to retrieve. Default is 'open', fetching all open boards. Other options include 'closed', 'members', 'organization', etc.
+      zh_Hans: 指定要检索的看板类型。默认为“open”，获取所有打开的看板。其他选项包括“closed”，“members”，“organization”等。
+      pt_BR: Especifica o tipo de quadros a serem recuperados. O padrão é 'open', buscando todos os quadros abertos. Outras opções incluem 'closed', 'members', 'organization', etc.
+    llm_description: Determines the category of boards to be displayed, with 'open' as the default setting to show all open boards. Variants like 'closed', 'members', and 'organization' are also selectable.
+    form: llm
