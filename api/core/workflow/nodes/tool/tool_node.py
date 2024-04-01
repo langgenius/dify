@@ -7,7 +7,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -178,10 +177,21 @@ class ToolNode(BaseNode):
         ])
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
         :return:
         """
-        return {}
+        result = {}
+        for parameter in node_data.tool_parameters:
+            if parameter.value_type == 'variable':
+                if isinstance(parameter.variable_value, str):
+                    parser = VariableTemplateParser(parameter.variable_value)
+                    variable_selectors = parser.extract_variable_selectors()
+                    for selector in variable_selectors:
+                        result[selector.variable] = selector.value_selector
+                elif isinstance(parameter.variable_value, list):
+                    result[parameter.parameter_name] = parameter.variable_value
+
+        return result
