@@ -92,7 +92,6 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
 
     http_request_node = nodes[0]
 
-    assert len(http_request_node["data"]["variables"]) == 4  # appended _query variable
     assert http_request_node["data"]["method"] == "post"
     assert http_request_node["data"]["url"] == mock_api_based_extension.api_endpoint
     assert http_request_node["data"]["authorization"]["type"] == "api-key"
@@ -113,7 +112,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     assert body_params["app_id"] == app_model.id
     assert body_params["tool_variable"] == external_data_variables[0].variable
     assert len(body_params["inputs"]) == 3
-    assert body_params["query"] == "{{_query}}"  # for chatbot
+    assert body_params["query"] == "{{#sys.query#}}"  # for chatbot
 
     code_node = nodes[1]
     assert code_node["data"]["type"] == "code"
@@ -163,7 +162,6 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
 
     http_request_node = nodes[0]
 
-    assert len(http_request_node["data"]["variables"]) == 3
     assert http_request_node["data"]["method"] == "post"
     assert http_request_node["data"]["url"] == mock_api_based_extension.api_endpoint
     assert http_request_node["data"]["authorization"]["type"] == "api-key"
@@ -302,6 +300,7 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
+        original_app_mode=AppMode.CHAT,
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
@@ -345,6 +344,7 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
+        original_app_mode=AppMode.CHAT,
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
@@ -393,6 +393,7 @@ def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables)
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
+        original_app_mode=AppMode.CHAT,
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
@@ -444,6 +445,7 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
+        original_app_mode=AppMode.CHAT,
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
