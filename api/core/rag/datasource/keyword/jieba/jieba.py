@@ -123,10 +123,10 @@ class Jieba(BaseKeyword):
                 "table": keyword_table
             }
         }
-
-        keyword_data_source_type = current_app.config['KEYWORD_DATA_SOURCE_TYPE']
+        dataset_keyword_table = self.dataset.dataset_keyword_table
+        keyword_data_source_type = dataset_keyword_table.data_source_type
         if keyword_data_source_type == 'database':
-            self.dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
+            dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
             db.session.commit()
         else:
             file_key = 'keyword_files/' + self.dataset.tenant_id + '/' + self.dataset.id + '.txt'
