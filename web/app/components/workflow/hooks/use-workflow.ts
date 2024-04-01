@@ -19,7 +19,6 @@ import type {
   Viewport,
 } from 'reactflow'
 import {
-  generateNewNode,
   getLayoutByDagre,
   initialEdges,
   initialNodes,
@@ -39,14 +38,11 @@ import {
 } from '../store'
 import {
   AUTO_LAYOUT_OFFSET,
-  START_INITIAL_POSITION,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
-import {
-  useNodesExtraData,
-  useNodesInitialData,
-} from './use-nodes-data'
+import { useNodesExtraData } from './use-nodes-data'
+import { useWorkflowTemplate } from './use-workflow-template'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -393,7 +389,10 @@ export const useFetchToolsData = () => {
 
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
-  const nodesInitialData = useNodesInitialData()
+  const {
+    nodes: nodesTemplate,
+    edges: edgesTemplate,
+  } = useWorkflowTemplate()
   const { handleFetchAllTools } = useFetchToolsData()
   const appDetail = useAppStore(state => state.appDetail)!
   const { data, isLoading, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
@@ -435,14 +434,8 @@ export const useWorkflowInit = () => {
           url: `/apps/${appDetail.id}/workflows/draft`,
           params: {
             graph: {
-              nodes: [generateNewNode({
-                data: {
-                  ...nodesInitialData.start,
-                  selected: true,
-                },
-                position: START_INITIAL_POSITION,
-              })],
-              edges: [],
+              nodes: nodesTemplate,
+              edges: edgesTemplate,
             },
             features: {},
           },
