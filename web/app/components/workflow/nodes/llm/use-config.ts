@@ -282,11 +282,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
     const variables = uniqBy(valueSelectors, item => item.join('.')).map((item) => {
       const varInfo = getNodeInfoById(availableNodes, item[0])?.data
-      const variable = [...item]
-      variable[0] = varInfo?.title || availableNodes[0]?.data.title // default start node title
 
       return {
-        label: `${variable[0]}/${variable[variable.length - 1]}`,
+        label: {
+          nodeType: varInfo?.type,
+          nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
+          variable: item[item.length - 1],
+        },
         variable: `#${item.join('.')}#`,
         value_selector: item,
       }
