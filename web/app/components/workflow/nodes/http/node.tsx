@@ -32,7 +32,7 @@ const Node: FC<NodeProps<HttpNodeType>> = ({
           readOnly
           nodesOutputVars={availableVarList}
           onFocusChange={() => { }}
-          placeholder={t('workflow.nodes.http.apiPlaceholder')!}
+          placeholder={' '}
           placeholderClassName='!leading-[21px]'
         />
       </div>

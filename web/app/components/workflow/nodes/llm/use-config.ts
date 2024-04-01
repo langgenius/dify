@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
-import { flatten, uniqBy } from 'lodash'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
@@ -8,9 +7,7 @@ import { useStore } from '../../store'
 import {
   useIsChatMode,
   useNodesReadOnly,
-  useWorkflow,
 } from '../../hooks'
-import { getNodeInfoById } from '../_base/components/variable/utils'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -19,14 +16,11 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import type { PromptItem } from '@/models/debug'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
-import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock, getInputVars } from '@/app/components/base/prompt-editor/constants'
+import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
-  const { getBeforeNodesInSameBranch } = useWorkflow()
-
-  const availableNodes = getBeforeNodesInSameBranch(id)
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
@@ -201,7 +195,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const {
     isShowSingleRun,
     hideSingleRun,
-    toVarInputs,
+    getInputVars,
     runningStatus,
     handleRun,
     handleStop,
@@ -268,35 +262,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       '#files#': newFiles,
     })
   }, [runInputData, setRunInputData])
-  const variables = (() => {
-    let valueSelectors: ValueSelector[] = []
-    if (isChatModel) {
-      valueSelectors = flatten(
-        (inputs.prompt_template as PromptItem[])
-          .map(item => getInputVars(item.text)),
-      )
-    }
-    else {
-      valueSelectors = getInputVars((inputs.prompt_template as PromptItem).text)
-    }
 
-    const variables = uniqBy(valueSelectors, item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodes, item[0])?.data
-
-      return {
-        label: {
-          nodeType: varInfo?.type,
-          nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
-          variable: item[item.length - 1],
-        },
-        variable: `#${item.join('.')}#`,
-        value_selector: item,
-      }
-    })
-
-    return variables
-  })()
-  const varInputs = toVarInputs(variables)
+  const varInputs = getInputVars(isChatModel ? (inputs.prompt_template as PromptItem[]).map(item => item.text) : [(inputs.prompt_template as PromptItem).text])
 
   return {
     readOnly,

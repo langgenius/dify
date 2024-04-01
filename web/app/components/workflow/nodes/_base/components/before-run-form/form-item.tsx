@@ -51,7 +51,7 @@ const FormItem: FC<Props> = ({
     if (typeof payload.label === 'object') {
       const { nodeType, nodeName, variable } = payload.label
       return (
-        <div className='flex items-center'>
+        <div className='h-full flex items-center'>
           <div className='flex items-center'>
             <div className='p-[1px]'>
               <VarBlockIcon type={nodeType || BlockEnum.Start} />

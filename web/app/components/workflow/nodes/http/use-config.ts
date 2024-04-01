@@ -88,7 +88,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   const {
     isShowSingleRun,
     hideSingleRun,
-    toVarInputs,
+    getInputVars,
     runningStatus,
     handleRun,
     handleStop,
@@ -100,7 +100,15 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     data: inputs,
     defaultRunInputData: {},
   })
-  const varInputs = toVarInputs(inputs.variables)
+  const hasVarTexts = (() => {
+    return [
+      inputs.url,
+      // inputs.headers,
+      // inputs.params,
+      // inputs.body.data,
+    ]
+  })()
+  const varInputs = getInputVars(hasVarTexts)
 
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
