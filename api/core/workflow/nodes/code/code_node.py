@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Union, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor
@@ -7,14 +8,14 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
-MAX_NUMBER = 2 ** 63 - 1
-MIN_NUMBER = -2 ** 63
+MAX_NUMBER = int(os.environ.get('CODE_MAX_NUMBER', '9223372036854775807'))
+MIN_NUMBER = int(os.environ.get('CODE_MIN_NUMBER', '-9223372036854775808'))
 MAX_PRECISION = 20
 MAX_DEPTH = 5
-MAX_STRING_LENGTH = 5000
-MAX_STRING_ARRAY_LENGTH = 30
-MAX_OBJECT_ARRAY_LENGTH = 30
-MAX_NUMBER_ARRAY_LENGTH = 1000
+MAX_STRING_LENGTH = int(os.environ.get('CODE_MAX_STRING_LENGTH', '80000'))
+MAX_STRING_ARRAY_LENGTH = int(os.environ.get('CODE_MAX_STRING_ARRAY_LENGTH', '30'))
+MAX_OBJECT_ARRAY_LENGTH = int(os.environ.get('CODE_MAX_OBJECT_ARRAY_LENGTH', '30'))
+MAX_NUMBER_ARRAY_LENGTH = int(os.environ.get('CODE_MAX_NUMBER_ARRAY_LENGTH', '1000'))
 
 JAVASCRIPT_DEFAULT_CODE = """function main({arg1, arg2}) {
     return {
