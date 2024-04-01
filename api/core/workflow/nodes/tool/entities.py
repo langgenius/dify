@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel, validator
 
@@ -16,24 +16,22 @@ class ToolEntity(BaseModel):
 
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
-        value_type: Literal['variable', 'static']
-        static_value: Optional[Union[int, float, str]]
-        variable_value: Optional[Union[str, list[str]]]
-        parameter_name: str
+        type: Literal['mixed', 'variable', 'constant']
+        value: Union[ToolParameterValue, list[str]]
 
-        @validator('value_type', pre=True, always=True)
-        def check_value_type(cls, value, values):
-            if value == 'variable':
-                # check if template_value is None
-                if values.get('variable_value') is not None:
-                    raise ValueError('template_value must be None for value_type variable')
-            elif value == 'static':
-                # check if static_value is None
-                if values.get('static_value') is None:
-                    raise ValueError('static_value must be provided for value_type static')
+        @validator('type', pre=True, always=True)
+        def check_type(cls, value, values):
+            typ = value
+            value = values.get('value')
+            if typ == 'mixed' and not isinstance(value, str):
+                raise ValueError('value must be a string')
+            elif typ == 'variable' and not isinstance(value, list):
+                raise ValueError('value must be a list')
+            elif typ == 'constant' and not isinstance(value, ToolParameterValue):
+                raise ValueError('value must be a string, int, float, or bool')
             return value
-
+            
     """
     Tool Node Schema
     """
-    tool_parameters: list[ToolInput]
+    tool_parameters: dict[str, ToolInput]
