@@ -6,14 +6,13 @@ import {
   useNodeDataUpdate,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
-import { getNodeInfoById, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
-
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
@@ -247,7 +246,7 @@ const useOneStepRun = <T>({
         label: {
           nodeType: varInfo?.type,
           nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
-          variable: item[item.length - 1],
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
         },
         variable: `#${item.join('.')}#`,
         value_selector: item,
