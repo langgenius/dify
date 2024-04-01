@@ -195,7 +195,7 @@ export const useOptions = (
       variableOptions,
       externalToolOptions,
       workflowVariableOptions,
-      allOptions: [...promptOptions, ...variableOptions, ...externalToolOptions, ...workflowVariableOptions],
+      allOptions: [...promptOptions, ...variableOptions, ...externalToolOptions],
     }
   }, [promptOptions, variableOptions, externalToolOptions, workflowVariableOptions])
 }

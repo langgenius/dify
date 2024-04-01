@@ -9,7 +9,10 @@ import {
   $getRoot,
   TextNode,
 } from 'lexical'
-import { CodeNode } from '@lexical/code'
+import {
+  CodeHighlightNode,
+  CodeNode,
+} from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -44,6 +47,7 @@ import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
 import OnBlurBlock from './plugins/on-blur-or-focus-block'
 import UpdateBlock from './plugins/update-block'
+import CodeHighlightBlock from './plugins/code-highlight-block'
 import { textToEditorState } from './utils'
 import type {
   ContextBlockType,
@@ -61,6 +65,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export type PromptEditorProps = {
   instanceId?: string
+  compact?: boolean
   className?: string
   placeholder?: string
   placeholderClassName?: string
@@ -80,6 +85,7 @@ export type PromptEditorProps = {
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
+  compact,
   className,
   placeholder,
   placeholderClassName,
@@ -101,6 +107,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     namespace: 'prompt-editor',
     nodes: [
       CodeNode,
+      CodeHighlightNode,
       CustomTextNode,
       {
         replace: TextNode,
@@ -141,8 +148,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className='relative'>
         <RichTextPlugin
-          contentEditable={<ContentEditable className={`${className} outline-none text-sm text-gray-700 leading-6`} style={style || {}} />}
-          placeholder={<Placeholder value={placeholder} className={placeholderClassName} />}
+          contentEditable={<ContentEditable className={`${className} outline-none ${compact ? 'leading-5 text-[13px]' : 'leading-6 text-sm'} text-gray-700`} style={style || {}} />}
+          placeholder={<Placeholder value={placeholder} className={placeholderClassName} compact={compact} />}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPickerBlock
@@ -207,6 +214,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock instanceId={instanceId} />
+        <CodeHighlightBlock />
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

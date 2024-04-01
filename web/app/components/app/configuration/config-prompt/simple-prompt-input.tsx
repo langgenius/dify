@@ -166,6 +166,7 @@ const Prompt: FC<ISimplePromptInput> = ({
         >
           <PromptEditor
             className='min-h-[210px]'
+            compact
             value={promptTemplate}
             contextBlock={{
               show: false,
