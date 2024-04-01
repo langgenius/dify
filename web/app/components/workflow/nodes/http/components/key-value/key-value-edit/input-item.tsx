@@ -50,16 +50,6 @@ const InputItem: FC<Props> = ({
     <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full items-center')}>
       {(!readOnly)
         ? (
-          // <input
-          //   type='text'
-          //   className='w-full h-[18px] leading-[18px] pl-0.5  text-gray-900 text-xs font-normal placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
-          //   value={value}
-          //   onChange={handleChange}
-          //   onBlur={setIsEditFalse}
-          //   autoFocus
-          //   placeholder={placeholder}
-          //   readOnly={readOnly}
-          // />
           <Input
             className={cn(isFocus ? 'bg-gray-100' : 'bg-width', 'w-0 grow px-3 py-1')}
             value={value}
@@ -87,13 +77,14 @@ const InputItem: FC<Props> = ({
               placeholderClassName='!leading-[21px]'
             />
           )}
-          {hasRemove && !isFocus && (
-            <RemoveButton
-              className='group-hover:block hidden absolute right-1 top-0.5'
-              onClick={handleRemove}
-            />
-          )}
+
         </div>}
+      {hasRemove && !isFocus && (
+        <RemoveButton
+          className='group-hover:block hidden absolute right-1 top-0.5'
+          onClick={handleRemove}
+        />
+      )}
     </div>
   )
 }
