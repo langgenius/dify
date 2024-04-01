@@ -45,7 +45,7 @@ const FormItem: FC<Props> = ({
     }
   }, [value, onChange])
   return (
-    <div className={`flex justify-between items-start ${className}`}>
+    <div className={`${className}`}>
       {type !== InputVarType.contexts && <div className='shrink-0 w-[96px] pr-1 h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{payload.label}</div>}
       <div className='grow'>
         {
@@ -73,7 +73,7 @@ const FormItem: FC<Props> = ({
         {
           type === InputVarType.paragraph && (
             <textarea
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+              className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
             />
