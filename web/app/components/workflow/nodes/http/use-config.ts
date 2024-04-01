@@ -100,15 +100,13 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     data: inputs,
     defaultRunInputData: {},
   })
-  const hasVarTexts = (() => {
-    return [
-      inputs.url,
-      // inputs.headers,
-      // inputs.params,
-      // inputs.body.data,
-    ]
-  })()
-  const varInputs = getInputVars(hasVarTexts)
+
+  const varInputs = getInputVars([
+    inputs.url,
+    inputs.headers,
+    inputs.params,
+    inputs.body.data,
+  ])
 
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
