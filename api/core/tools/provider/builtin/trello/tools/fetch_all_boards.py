@@ -40,7 +40,7 @@ class FetchAllBoardsTool(BuiltinTool):
             response = requests.get(url)
             response.raise_for_status()  # Raises stored HTTPError, if one occurred.
         except requests.exceptions.RequestException as e:
-            return self.create_text_message(f"Failed to fetch boards: {e}")
+            return self.create_text_message("Failed to fetch boards")
 
         boards = response.json()
 

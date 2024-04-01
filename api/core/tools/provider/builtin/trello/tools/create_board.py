@@ -40,7 +40,7 @@ class CreateBoardTool(BuiltinTool):
             response = requests.post(url, params=query_params)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return self.create_text_message(f"Failed to create board: {e}")
+            return self.create_text_message("Failed to create board")
 
         board = response.json()
         return self.create_text_message(text=f"Board created successfully! Board name: {board['name']}, ID: {board['id']}")

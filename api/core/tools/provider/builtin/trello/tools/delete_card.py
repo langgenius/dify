@@ -35,7 +35,7 @@ class DeleteCardByIdTool(BuiltinTool):
             response = requests.delete(url)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return self.create_text_message(f"Failed to delete card: {e}")
+            return self.create_text_message("Failed to delete card")
 
         return self.create_text_message(text=f"Card with ID {card_id} has been successfully deleted.")
 

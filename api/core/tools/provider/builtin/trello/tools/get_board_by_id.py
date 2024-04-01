@@ -37,7 +37,7 @@ class GetBoardByIdTool(BuiltinTool):
             board = response.json()
             board_details = self.format_board_details(board)
         except requests.exceptions.RequestException as e:
-            return self.create_text_message(f"Failed to retrieve board: {e}")
+            return self.create_text_message("Failed to retrieve board")
 
         return self.create_text_message(text=board_details)
 

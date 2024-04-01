@@ -37,7 +37,7 @@ class CreateNewCardOnBoardTool(BuiltinTool):
             response.raise_for_status()
             new_card = response.json()
         except requests.exceptions.RequestException as e:
-            return self.create_text_message(f"Failed to create card: {e}")
+            return self.create_text_message("Failed to create card")
 
         return self.create_text_message(text=f"New card '{new_card['name']}' created successfully with ID {new_card['id']}.")
 

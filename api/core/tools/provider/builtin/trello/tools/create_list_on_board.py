@@ -41,7 +41,7 @@ class CreateListOnBoardTool(BuiltinTool):
             response = requests.post(url, params=params)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            return self.create_text_message(f"Failed to create list: {e}")
+            return self.create_text_message("Failed to create list")
 
         new_list = response.json()
         return self.create_text_message(text=f"List '{new_list['name']}' created successfully with Id {new_list['id']} on board {board_id}.")
