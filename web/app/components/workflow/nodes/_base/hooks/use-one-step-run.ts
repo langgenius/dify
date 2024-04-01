@@ -211,14 +211,14 @@ const useOneStepRun = <T>({
       const originalVar = getVar(item.value_selector)
       if (!originalVar) {
         return {
-          label: item.variable,
+          label: item.label || item.variable,
           variable: item.variable,
           type: InputVarType.textInput,
           required: true,
         }
       }
       return {
-        label: item.variable,
+        label: item.label || item.variable,
         variable: item.variable,
         type: varTypeToInputVarType(originalVar.type, {
           isSelect: !!originalVar.isSelect,
