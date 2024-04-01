@@ -77,6 +77,13 @@ const translation = {
   switchLabel: '新应用创建为',
   removeOriginal: '删除原应用',
   switchStart: '开始迁移',
+  typeSelector: {
+    all: '所有类型',
+    chatbot: '聊天助手',
+    agent: 'Agent',
+    workflow: '工作流',
+    completion: '文本生成',
+  },
 }
 
 export default translation

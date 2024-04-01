@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import cn from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -16,19 +16,12 @@ import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { importApp } from '@/service/apps'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
+import AppTypeSelector from '@/app/components/app/type-selector'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
-import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
-import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
-import {
-  AiText,
-  ChatBot,
-  CuteRobot,
-} from '@/app/components/base/icons/src/vender/line/communication'
 
 type AppsProps = {
   pageType?: PageType
@@ -48,17 +41,11 @@ const Apps = ({
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 
+  const [currentType, setCurrentType] = useState<string>('')
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
     disableSearchParams: pageType !== PageType.EXPLORE,
   })
-  const options = [
-    { value: allCategoriesEn, text: t('app.types.all'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1'/> },
-    { value: 'chat', text: t('app.types.chatbot'), icon: <ChatBot className='w-[14px] h-[14px] mr-1'/> },
-    { value: 'agent-chat', text: t('app.types.agent'), icon: <CuteRobot className='w-[14px] h-[14px] mr-1'/> },
-    { value: 'completion', text: t('app.newApp.completeApp'), icon: <AiText className='w-[14px] h-[14px] mr-1'/> },
-    { value: 'workflow', text: t('app.types.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1'/> },
-  ]
 
   const {
     data: { categories, allList },
@@ -77,17 +64,28 @@ const Apps = ({
     },
   )
 
-  const currList
-    = currCategory === allCategoriesEn
-      ? allList
-      : allList.filter((item) => {
-        if (pageType === PageType.EXPLORE)
-          return item.category === currCategory
-        else if (currCategory === 'chat')
-          return item.app.mode === 'chat' || item.app.mode === 'advanced-chat'
-        else
-          return item.app.mode === currCategory
-      })
+  const filteredList = useMemo(() => {
+    if (currCategory === allCategoriesEn) {
+      if (!currentType)
+        return allList
+      else if (currentType === 'chatbot')
+        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat'))
+      else if (currentType === 'agent')
+        return allList.filter(item => (item.app.mode === 'agent-chat'))
+      else
+        return allList.filter(item => (item.app.mode === 'workflow'))
+    }
+    else {
+      if (!currentType)
+        return allList.filter(item => item.category === currCategory)
+      else if (currentType === 'chatbot')
+        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat') && item.category === currCategory)
+      else if (currentType === 'agent')
+        return allList.filter(item => (item.app.mode === 'agent-chat') && item.category === currCategory)
+      else
+        return allList.filter(item => (item.app.mode === 'workflow') && item.category === currCategory)
+    }
+  }, [currentType, currCategory, allCategoriesEn, allList])
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
@@ -140,23 +138,23 @@ const Apps = ({
           <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
         </div>
       )}
-      {pageType === PageType.EXPLORE && (
+      <div className={cn(
+        'flex items-center mt-6',
+        pageType === PageType.EXPLORE ? 'px-12' : 'px-8',
+      )}>
+        {pageType !== PageType.EXPLORE && (
+          <>
+            <AppTypeSelector value={currentType} onChange={setCurrentType} />
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
+          </>
+        )}
         <Category
-          className='mt-6 px-12'
           list={categories}
           value={currCategory}
           onChange={setCurrCategory}
           allCategoriesEn={allCategoriesEn}
         />
-      )}
-      {pageType !== PageType.EXPLORE && (
-        <TabSliderNew
-          className='px-8 py-2'
-          value={currCategory}
-          onChange={setCurrCategory}
-          options={options}
-        />
-      )}
+      </div>
       <div className={cn(
         'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
         pageType === PageType.EXPLORE ? 'mt-6' : 'mt-0 pt-2',
@@ -167,7 +165,7 @@ const Apps = ({
             'grid content-start shrink-0',
             pageType === PageType.EXPLORE ? 'gap-4 px-6 sm:px-12' : 'gap-3 px-8  sm:!grid-cols-2 md:!grid-cols-3 lg:!grid-cols-4',
           )}>
-          {currList.map(app => (
+          {filteredList.map(app => (
             <AppCard
               key={app.app_id}
               isExplore={pageType === PageType.EXPLORE}

@@ -78,6 +78,13 @@ const translation = {
   switchLabel: 'The app copy to be created',
   removeOriginal: 'Delete the original app',
   switchStart: 'Start swtich',
+  typeSelector: {
+    all: 'ALL Types',
+    chatbot: 'Chatbot',
+    agent: 'Agent',
+    workflow: 'Workflow',
+    completion: 'Completion',
+  },
 }
 
 export default translation
