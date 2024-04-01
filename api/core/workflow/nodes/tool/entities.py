@@ -16,8 +16,8 @@ class ToolEntity(BaseModel):
 
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
-        type: Literal['mixed', 'variable', 'constant']
         value: Union[ToolParameterValue, list[str]]
+        type: Literal['mixed', 'variable', 'constant']
 
         @validator('type', pre=True, always=True)
         def check_type(cls, value, values):
@@ -29,7 +29,7 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 raise ValueError('value must be a list')
             elif typ == 'constant' and not isinstance(value, ToolParameterValue):
                 raise ValueError('value must be a string, int, float, or bool')
-            return value
+            return typ
             
     """
     Tool Node Schema
