@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
 from random import randint
-from typing import Any, Union
+from typing import Any, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -138,7 +138,7 @@ class HttpExecutor:
     boundary: str
     variable_selectors: list[VariableSelector]
 
-    def __init__(self, node_data: HttpRequestNodeData, variable_pool: VariablePool):
+    def __init__(self, node_data: HttpRequestNodeData, variable_pool: Optional[VariablePool] = None):
         """
         init
         """
@@ -167,7 +167,7 @@ class HttpExecutor:
         
         return False
 
-    def _init_template(self, node_data: HttpRequestNodeData, variable_pool: VariablePool):
+    def _init_template(self, node_data: HttpRequestNodeData, variable_pool: Optional[VariablePool] = None):
         """
         init template
         """
@@ -381,19 +381,22 @@ class HttpExecutor:
         variable_template_parser = VariableTemplateParser(template=template)
         variable_selectors = variable_template_parser.extract_variable_selectors()
 
-        variable_value_mapping = {}
-        for variable_selector in variable_selectors:
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector,
-                target_value_type=ValueType.STRING
-            )
+        if variable_pool:
+            variable_value_mapping = {}
+            for variable_selector in variable_selectors:
+                value = variable_pool.get_variable_value(
+                    variable_selector=variable_selector.value_selector,
+                    target_value_type=ValueType.STRING
+                )
 
-            if value is None:
-                raise ValueError(f'Variable {variable_selector.variable} not found')
+                if value is None:
+                    raise ValueError(f'Variable {variable_selector.variable} not found')
 
-            if escape_quotes:
-                value = value.replace('"', '\\"')
+                if escape_quotes:
+                    value = value.replace('"', '\\"')
 
-            variable_value_mapping[variable_selector.variable] = value
+                variable_value_mapping[variable_selector.variable] = value
 
-        return variable_template_parser.format(variable_value_mapping), variable_selectors
+            return variable_template_parser.format(variable_value_mapping), variable_selectors
+        else:
+            return template, variable_selectors
