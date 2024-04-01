@@ -122,14 +122,14 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
       type,
     } = change
     const sourceNode = nodes.find(node => node.id === edge.source)!
-    const sourceNodeConnectedSourceHandleIds = sourceNode?.data._connectedSourceHandleIds || []
     nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id] = nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id] || {
-      _connectedSourceHandleIds: sourceNodeConnectedSourceHandleIds,
+      _connectedSourceHandleIds: sourceNode?.data._connectedSourceHandleIds || [],
+      _connectedTargetHandleIds: sourceNode?.data._connectedTargetHandleIds || [],
     }
     const targetNode = nodes.find(node => node.id === edge.target)!
-    const targetNodeConnectedTargetHandleIds = targetNode?.data._connectedTargetHandleIds || []
     nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] = nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] || {
-      _connectedTargetHandleIds: targetNodeConnectedTargetHandleIds,
+      _connectedSourceHandleIds: sourceNode?.data._connectedSourceHandleIds || [],
+      _connectedTargetHandleIds: targetNode?.data._connectedTargetHandleIds || [],
     }
 
     if (sourceNode) {

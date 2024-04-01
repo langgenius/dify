@@ -303,7 +303,6 @@ export const useNodesInteractions = () => {
         targetType: nodes.find(node => node.id === target)!.data.type,
       },
     }
-    console.log(needDeleteEdges, '1')
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
         ...needDeleteEdges.map(edge => ({ type: 'remove', edge })),
@@ -545,7 +544,7 @@ export const useNodesInteractions = () => {
           { type: 'add', edge: newPrevEdge },
           ...(newNextEdge ? [{ type: 'add', edge: newNextEdge }] : []),
         ],
-        nodes,
+        [...nodes, newNode],
       )
 
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
