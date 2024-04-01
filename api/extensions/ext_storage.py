@@ -172,6 +172,20 @@ class Storage:
 
             return os.path.exists(filename)
 
+    def delete(self, filename):
+        if self.storage_type == 's3':
+            self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+        elif self.storage_type == 'azure-blob':
+            blob_container = self.client.get_container_client(container=self.bucket_name)
+            blob_container.delete_blob(filename)
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+            if os.path.exists(filename):
+                os.remove(filename)
+
 
 storage = Storage()
 
