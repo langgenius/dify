@@ -43,8 +43,8 @@ const ViewHistory = () => {
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore()
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
-  const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
-  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetcChatRunHistory)
+  const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
+  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetcChatRunHistory)
 
   const data = isChatMode ? chatList : runList
   const isLoading = isChatMode ? chatListLoading : runListLoading
@@ -100,70 +100,74 @@ const ViewHistory = () => {
             </div>
             {
               isLoading && (
-                <div className='grow flex items-center justify-center h-full'>
+                <div className='flex items-center justify-center h-10'>
                   <Loading />
                 </div>
               )
             }
-            <div className='p-2'>
-              {
-                !data?.data.length && (
-                  <div className='py-12'>
-                    <ClockPlaySlim className='mx-auto mb-2 w-8 h-8 text-gray-300' />
-                    <div className='text-center text-[13px] text-gray-400'>
-                      {t('workflow.common.notRunning')}
-                    </div>
-                  </div>
-                )
-              }
-              {
-                data?.data.map(item => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
-                      item.id === historyWorkflowData?.id && 'bg-primary-50',
-                    )}
-                    onClick={() => {
-                      workflowStore.setState({
-                        historyWorkflowData: item,
-                      })
-                      handleBackupDraft()
-                      setOpen(false)
-                    }}
-                  >
-                    {
-                      !isChatMode && item.status === WorkflowRunningStatus.Stopped && (
-                        <AlertTriangle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
-                      )
-                    }
-                    {
-                      !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                        <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
-                      )
-                    }
-                    {
-                      !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                        <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
-                      )
-                    }
-                    <div>
+            {
+              !isLoading && (
+                <div className='p-2'>
+                  {
+                    !data?.data.length && (
+                      <div className='py-12'>
+                        <ClockPlaySlim className='mx-auto mb-2 w-8 h-8 text-gray-300' />
+                        <div className='text-center text-[13px] text-gray-400'>
+                          {t('workflow.common.notRunning')}
+                        </div>
+                      </div>
+                    )
+                  }
+                  {
+                    data?.data.map(item => (
                       <div
+                        key={item.id}
                         className={cn(
-                          'flex items-center text-[13px] font-medium leading-[18px]',
-                          item.id === historyWorkflowData?.id && 'text-primary-600',
+                          'flex mb-0.5 px-2 py-[7px] rounded-lg hover:bg-primary-50 cursor-pointer',
+                          item.id === historyWorkflowData?.id && 'bg-primary-50',
                         )}
+                        onClick={() => {
+                          workflowStore.setState({
+                            historyWorkflowData: item,
+                          })
+                          handleBackupDraft()
+                          setOpen(false)
+                        }}
                       >
-                        {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}
+                        {
+                          !isChatMode && item.status === WorkflowRunningStatus.Stopped && (
+                            <AlertTriangle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F79009]' />
+                          )
+                        }
+                        {
+                          !isChatMode && item.status === WorkflowRunningStatus.Failed && (
+                            <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
+                          )
+                        }
+                        {
+                          !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
+                            <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
+                          )
+                        }
+                        <div>
+                          <div
+                            className={cn(
+                              'flex items-center text-[13px] font-medium leading-[18px]',
+                              item.id === historyWorkflowData?.id && 'text-primary-600',
+                            )}
+                          >
+                            {`Test ${isChatMode ? 'Chat' : 'Run'}#${item.sequence_number}`}
+                          </div>
+                          <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
+                            {item.created_by_account.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
+                          </div>
+                        </div>
                       </div>
-                      <div className='flex items-center text-xs text-gray-500 leading-[18px]'>
-                        {item.created_by_account.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
+                    ))
+                  }
+                </div>
+              )
+            }
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
