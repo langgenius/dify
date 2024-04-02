@@ -57,6 +57,7 @@ export type WorkflowProcess = {
 }
 
 export type ChatItem = IChatItem & {
+  isError?: boolean
   workflowProcess?: WorkflowProcess
 }
 

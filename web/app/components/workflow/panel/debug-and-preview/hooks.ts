@@ -225,11 +225,25 @@ export const useChat = (
             questionItem,
           })
         },
-        async onCompleted(hasError?: boolean) {
+        async onCompleted(hasError?: boolean, errorMessage?: string) {
           handleResponding(false)
 
-          if (hasError)
+          if (hasError) {
+            if (errorMessage) {
+              responseItem.content = errorMessage
+              responseItem.isError = true
+              const newListWithAnswer = produce(
+                chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+                (draft) => {
+                  if (!draft.find(item => item.id === questionId))
+                    draft.push({ ...questionItem })
+
+                  draft.push({ ...responseItem })
+                })
+              handleUpdateChatList(newListWithAnswer)
+            }
             return
+          }
 
           if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
             const { data }: any = await onGetSuggestedQuestions(
