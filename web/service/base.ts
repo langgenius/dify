@@ -44,7 +44,7 @@ export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
-export type IOnCompleted = (hasError?: boolean) => void
+export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
 export type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
@@ -159,7 +159,7 @@ const handleStream = (
                 errorCode: bufferObj?.code,
               })
               hasError = true
-              onCompleted?.(true)
+              onCompleted?.(true, bufferObj?.message)
               return
             }
             if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
@@ -212,7 +212,7 @@ const handleStream = (
           errorMessage: `${e}`,
         })
         hasError = true
-        onCompleted?.(true)
+        onCompleted?.(true, e as string)
         return
       }
       if (!hasError)
