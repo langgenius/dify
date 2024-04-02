@@ -8,7 +8,7 @@ const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<ToolNodeType> = {
   defaultValue: {
-    tool_parameters: [],
+    tool_parameters: {},
     tool_configurations: {},
   },
   getAvailablePrevNodes(isChatMode: boolean) {
@@ -32,15 +32,15 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     toolInputsSchema.filter((field: any) => {
       return field.required
     }).forEach((field: any) => {
-      const targetVar = payload.tool_parameters.find((item: any) => item.variable === field.variable)
+      const targetVar = payload.tool_parameters[field.variable]
       if (!targetVar)
         return
-      const { variable_type, value, value_selector } = targetVar
-      if (variable_type === VarKindType.selector) {
-        if (!errorMessages && (!value_selector || value_selector.length === 0))
+      const { type: variable_type, value } = targetVar
+      if (variable_type === VarKindType.variable) {
+        if (!errorMessages && (!value || value.length === 0))
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
       }
-      if (variable_type === VarKindType.static) {
+      else {
         if (!errorMessages && (value === undefined || value === null || value === ''))
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
       }
