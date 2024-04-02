@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'next/navigation'
-// import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import produce from 'immer'
@@ -11,7 +10,9 @@ import Nav from '../nav'
 import { type NavItem } from '../nav/nav-selector'
 import { Robot, RobotActive } from '../../base/icons/src/public/header-nav/studio'
 import { fetchAppList } from '@/service/apps'
-import CreateAppDialog from '@/app/components/app/create-app-dialog'
+import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
+import CreateAppModal from '@/app/components/app/create-app-modal'
+import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
 import type { AppListResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -28,6 +29,8 @@ const AppNav = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const { appDetail } = useAppStore()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
+  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
+  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [navItems, setNavItems] = useState<NavItem[]>([])
 
   const { data: appsData, setSize } = useSWRInfinite(appId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
@@ -35,6 +38,15 @@ const AppNav = () => {
   const handleLoadmore = useCallback(() => {
     setSize(size => size + 1)
   }, [setSize])
+
+  const openModal = (state: string) => {
+    if (state === 'blank')
+      setShowNewAppDialog(true)
+    if (state === 'template')
+      setShowNewAppTemplateDialog(true)
+    if (state === 'dsl')
+      setShowCreateFromDSLModal(true)
+  }
 
   useEffect(() => {
     if (appsData) {
@@ -87,12 +99,22 @@ const AppNav = () => {
         curNav={appDetail}
         navs={navItems}
         createText={t('common.menus.newApp')}
-        onCreate={() => setShowNewAppDialog(true)}
+        onCreate={openModal}
         onLoadmore={handleLoadmore}
       />
-      <CreateAppDialog
+      <CreateAppModal
         show={showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}
+        onSuccess={() => {}}
+      />
+      <CreateAppTemplateDialog
+        show={showNewAppTemplateDialog}
+        onClose={() => setShowNewAppTemplateDialog(false)}
+        onSuccess={() => {}}
+      />
+      <CreateFromDSLModal
+        show={showCreateFromDSLModal}
+        onClose={() => setShowCreateFromDSLModal(false)}
         onSuccess={() => {}}
       />
     </>
