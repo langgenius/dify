@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import { useStore } from '../../store'
-import { type ToolNodeType, type ToolVarInput, VarType } from './types'
+import { type ToolNodeType, type ToolVarInputs, VarType } from './types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
@@ -12,7 +12,7 @@ import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/t
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { VarType as VarVarType } from '@/app/components/workflow/types'
-import type { InputVar, Var } from '@/app/components/workflow/types'
+import type { InputVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
   useFetchToolsData,
@@ -79,40 +79,24 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
         draft.tool_configurations = addDefaultValue(tool_configurations, toolSettingSchema)
 
-      if (!draft.tool_parameters || draft.tool_parameters.length === 0) {
-        draft.tool_parameters = toolInputVarSchema.map((item: any) => {
-          return {
-            variable: item.variable,
-            variable_type: VarType.static,
-            value: '',
-          }
-        })
-      }
+      if (!draft.tool_parameters)
+        draft.tool_parameters = {}
     })
     setInputs(inputsWithDefaultValue)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
 
   // setting when call
-  const setInputVar = useCallback((value: ToolVarInput[]) => {
+  const setInputVar = useCallback((value: ToolVarInputs) => {
     setInputs({
       ...inputs,
       tool_parameters: value,
     })
   }, [inputs, setInputs])
 
-  const [currVarIndex, setCurrVarIndex] = useState(-1)
-  const currVarType = toolInputVarSchema[currVarIndex]?._type
-  const handleOnVarOpen = useCallback((index: number) => {
-    setCurrVarIndex(index)
-  }, [])
-
   const filterVar = useCallback((varPayload: Var) => {
-    if (currVarType)
-      return varPayload.type === currVarType
-
-    return varPayload.type !== VarVarType.arrayFile
-  }, [currVarType])
+    return [VarVarType.string, VarVarType.number].includes(varPayload.type)
+  }, [])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -126,13 +110,45 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   // fill single run form variable with constant value first time
   const inputVarValuesWithConstantValue = () => {
     const res = produce(inputVarValues, (draft) => {
-      inputs.tool_parameters.forEach(({ variable, variable_type, value }: any) => {
-        if (variable_type === VarType.static && (draft[variable] === undefined || draft[variable] === null))
-          draft[variable] = value
+      Object.keys(inputs.tool_parameters).forEach((key: string) => {
+        const { type, value } = inputs.tool_parameters[key]
+        if (type === VarType.constant && (value === undefined || value === null))
+          draft.tool_parameters[key].value = value
       })
     })
     return res
   }
+
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    getInputVars,
+    runningStatus,
+    setRunInputData,
+    handleRun,
+    handleStop,
+    runResult,
+  } = useOneStepRun<ToolNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {},
+    moreDataForCheckValid: {
+      toolInputsSchema: [],
+      toolSettingSchema,
+      language,
+    },
+  })
+  const hadVarParams = Object.keys(inputs.tool_parameters)
+    .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
+    .map(k => inputs.tool_parameters[k])
+
+  const varInputs = getInputVars(hadVarParams.map((p) => {
+    if (p.type === VarType.variable)
+      return `#${[p.value as ValueSelector].join('.')}#`
+
+    return p.value as string
+  }))
+
   const singleRunForms = (() => {
     const formInputs: InputVar[] = []
     toolInputVarSchema.forEach((item: any) => {
@@ -144,30 +160,12 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       })
     })
     const forms: FormProps[] = [{
-      inputs: formInputs,
+      inputs: varInputs,
       values: inputVarValuesWithConstantValue(),
       onChange: setInputVarValues,
     }]
     return forms
   })()
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    setRunInputData,
-    handleRun,
-    handleStop,
-    runResult,
-  } = useOneStepRun<ToolNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-    moreDataForCheckValid: {
-      toolInputsSchema: singleRunForms[0].inputs,
-      toolSettingSchema,
-      language,
-    },
-  })
 
   return {
     readOnly,
@@ -178,7 +176,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
     filterVar,
     currCollection,
     isShowAuthBtn,
@@ -190,6 +187,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     isShowSingleRun,
     hideSingleRun,
     inputVarValues,
+    varInputs,
     setInputVarValues,
     singleRunForms,
     runningStatus,

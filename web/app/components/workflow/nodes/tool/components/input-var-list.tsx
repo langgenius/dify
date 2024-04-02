@@ -1,21 +1,25 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import produce from 'immer'
-import type { ToolVarInput } from '../types'
+import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
+import type { ToolVarInputs } from '../types'
 import { VarType as VarKindType } from '../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { VarType } from '@/app/components/workflow/types'
 type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
-  value: ToolVarInput[]
-  onChange: (value: ToolVarInput[]) => void
+  value: ToolVarInputs
+  onChange: (value: ToolVarInputs) => void
   onOpen?: (index: number) => void
   isSupportConstantValue?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
@@ -33,41 +37,70 @@ const InputVarList: FC<Props> = ({
 }) => {
   const language = useLanguage()
 
-  const keyValues = (() => {
-    const res: Record<string, ToolVarInput> = {}
-    value.forEach((item) => {
-      res[item.variable] = item
-    })
-    return res
-  })()
+  // const valueList = (() => {
+  //   const list = []
+  //   Object.keys(value).forEach((key) => {
+  //     list.push({
+  //       variable: key,
+  //       ...value[key],
+  //     })
+  //   })
+  // })()
 
-  const handleChange = useCallback((variable: string) => {
+  const { t } = useTranslation()
+  const availableVarList = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number].includes(varPayload.type)
+    },
+  })
+
+  const handleNotMixedTypeChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string, varKindType: VarKindType) => {
-      const newValue = produce(value, (draft: ToolVarInput[]) => {
-        const target = draft.find(item => item.variable === variable)
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        const target = draft[variable]
         if (target) {
-          if (!isSupportConstantValue || varKindType === VarKindType.selector) {
+          if (!isSupportConstantValue || varKindType === VarKindType.variable) {
             if (isSupportConstantValue)
-              target.variable_type = VarKindType.selector
+              target.type = VarKindType.variable
 
-            target.value_selector = varValue as ValueSelector
+            target.value = varValue as ValueSelector
           }
           else {
-            target.variable_type = VarKindType.static
+            target.type = VarKindType.constant
             target.value = varValue as string
           }
         }
         else {
-          draft.push({
-            variable,
-            variable_type: VarKindType.static,
-            value: '',
-          })
+          draft[variable] = {
+            type: varKindType,
+            value: varValue,
+          }
         }
       })
       onChange(newValue)
     }
   }, [value, onChange, isSupportConstantValue])
+
+  const handleMixedTypeChange = useCallback((variable: string) => {
+    return (itemValue: string) => {
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        const target = draft[variable]
+        if (target) {
+          target.value = itemValue
+        }
+        else {
+          draft[variable] = {
+            type: VarKindType.mixed,
+            value: itemValue,
+          }
+        }
+      })
+      onChange(newValue)
+    }
+  }, [value, onChange])
+
+  const [isFocus, setIsFocus] = useState(false)
 
   const handleOpen = useCallback((index: number) => {
     return () => onOpen(index)
@@ -82,25 +115,40 @@ const InputVarList: FC<Props> = ({
           required,
           tooltip,
         }, index) => {
-          const varInput = keyValues[variable]
+          const varInput = value[variable]
+          const isString = type !== FormTypeEnum.textNumber
           return (
             <div key={variable} className='space-y-1'>
               <div className='flex items-center h-[18px] space-x-2'>
                 <span className='text-[13px] font-medium text-gray-900'>{label[language] || label.en_US}</span>
-                <span className='text-xs font-normal text-gray-500'>{type === FormTypeEnum.textNumber ? 'Number' : 'String'}</span>
+                <span className='text-xs font-normal text-gray-500'>{!isString ? 'Number' : 'String'}</span>
                 {required && <span className='leading-[18px] text-xs font-normal text-[#EC4A0A]'>Required</span>}
               </div>
-              <VarReferencePicker
-                readonly={readOnly}
-                isShowNodeName
-                nodeId={nodeId}
-                value={varInput?.variable_type === VarKindType.static ? (varInput?.value || '') : (varInput?.value_selector || [])}
-                onChange={handleChange(variable)}
-                onOpen={handleOpen(index)}
-                isSupportConstantValue={isSupportConstantValue}
-                defaultVarKindType={varInput?.variable_type}
-                filterVar={filterVar}
-              />
+              {isString
+                ? (<Input
+                  className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
+                  value={varInput?.value as string || ''}
+                  onChange={handleMixedTypeChange(variable)}
+                  readOnly={readOnly}
+                  nodesOutputVars={availableVarList}
+                  onFocusChange={setIsFocus}
+                  placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+                  placeholderClassName='!leading-[21px]'
+                />)
+                : (
+                  <VarReferencePicker
+                    readonly={readOnly}
+                    isShowNodeName
+                    nodeId={nodeId}
+                    value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
+                    onChange={handleNotMixedTypeChange(variable)}
+                    onOpen={handleOpen(index)}
+                    isSupportConstantValue={isSupportConstantValue}
+                    defaultVarKindType={varInput?.type}
+                    filterVar={filterVar}
+                  />
+                )}
+
               {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )

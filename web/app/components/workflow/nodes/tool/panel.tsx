@@ -28,7 +28,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     inputs,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
     filterVar,
     toolSettingSchema,
     toolSettingValue,
@@ -84,7 +83,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 onChange={setInputVar}
                 filterVar={filterVar}
                 isSupportConstantValue
-                onOpen={handleOnVarOpen}
               />
             </Field>
           )}

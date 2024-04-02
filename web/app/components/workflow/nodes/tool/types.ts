@@ -1,16 +1,15 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 
 export enum VarType {
-  selector = 'selector',
-  static = 'static',
+  variable = 'variable',
+  constant = 'constant',
+  mixed = 'mixed',
 }
 
-export type ToolVarInput = {
-  variable: string
-  variable_type: VarType
-  value?: string
-  value_selector?: string[]
-}
+export type ToolVarInputs = Record<string, {
+  type: VarType
+  value?: string | ValueSelector
+}>
 
 export type ToolNodeType = CommonNodeType & {
   provider_id: string
@@ -18,6 +17,6 @@ export type ToolNodeType = CommonNodeType & {
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_parameters: ToolVarInput[]
+  tool_parameters: ToolVarInputs
   tool_configurations: Record<string, any>
 }

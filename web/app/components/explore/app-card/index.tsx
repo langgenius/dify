@@ -50,21 +50,7 @@ const AppCard = ({
             <div className='truncate' title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
           <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
-            {appBasicInfo.mode === 'advanced-chat' && (
-              <div className='truncate text-[#1570EF]'>{t('app.types.chatbot').toUpperCase()}</div>
-            )}
-            {appBasicInfo.mode === 'agent-chat' && (
-              <div className='truncate text-indigo-600'>{t('app.types.agent').toUpperCase()}</div>
-            )}
-            {appBasicInfo.mode === 'chat' && (
-              <div className='truncate text-[#1570EF]'>{t('app.types.chatbot').toUpperCase()}</div>
-            )}
-            {appBasicInfo.mode === 'completion' && (
-              <div className='truncate text-[#0E9384]'>{t('app.newApp.completeApp').toUpperCase()}</div>
-            )}
-            {appBasicInfo.mode === 'workflow' && (
-              <div className='truncate text-[#f79009]'>{t('app.types.workflow').toUpperCase()}</div>
-            )}
+            <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>
           </div>
         </div>
       </div>
