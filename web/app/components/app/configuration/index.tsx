@@ -347,11 +347,11 @@ const Configuration: FC = () => {
 
       if (modeMode === ModelModeType.completion) {
         if (appMode !== AppType.completion) {
-          if (!completionPromptConfig.prompt.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
+          if (!completionPromptConfig.prompt?.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
             await migrateToDefaultPrompt(true, ModelModeType.completion)
         }
         else {
-          if (!completionPromptConfig.prompt.text)
+          if (!completionPromptConfig.prompt?.text)
             await migrateToDefaultPrompt(true, ModelModeType.completion)
         }
       }
@@ -519,7 +519,7 @@ const Configuration: FC = () => {
         return chatPromptConfig.prompt.every(({ text }: any) => !text)
 
       else
-        return !completionPromptConfig.prompt.text
+        return !completionPromptConfig.prompt?.text
     }
 
     else { return !modelConfig.configs.prompt_template }
