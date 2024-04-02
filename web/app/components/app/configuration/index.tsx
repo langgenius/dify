@@ -663,7 +663,7 @@ const Configuration: FC = () => {
   }
 
   if (isLoading) {
-    return <div className='flex h-full items-center justify-center'>
+    return <div className='flex items-center justify-center h-full'>
       <Loading type='area' />
     </div>
   }
@@ -743,10 +743,10 @@ const Configuration: FC = () => {
         <div className="flex flex-col h-full">
           <div className='relative flex grow h-[200px] pt-14'>
             {/* Header */}
-            <div className='absolute top-0 left-0 w-full h-14 bg-white'>
-              <div className='flex justify-between items-center px-6 h-14'>
+            <div className='absolute top-0 left-0 w-full bg-white h-14'>
+              <div className='flex items-center justify-between px-6 h-14'>
                 <div className='flex items-center'>
-                  <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
+                  <div className='text-base font-semibold leading-6 text-gray-900'>{t('appDebug.orchestrate')}</div>
                   <div className='flex items-center h-[14px] space-x-1 text-xs'>
                     {isAdvancedMode && (
                       <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
@@ -792,7 +792,7 @@ const Configuration: FC = () => {
                   {isMobile && (
                     <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
                       <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                      <CodeBracketIcon className="h-4 w-4 text-gray-500" />
+                      <CodeBracketIcon className="w-4 h-4 text-gray-500" />
                     </Button>
                   )}
                   {debugWithMultipleModel
@@ -807,14 +807,15 @@ const Configuration: FC = () => {
                     >
                       {t('appDebug.operation.applyConfig')}
                     </Button>)}
+                  {/* <Publish /> */}
                 </div>
               </div>
             </div>
             <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
               <Config />
             </div>
-            {!isMobile && <div className="grow relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <div className='flex flex-col grow h-0 rounded-tl-2xl border-t border-l bg-gray-50 '>
+            {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              <div className='flex flex-col h-0 border-t border-l grow rounded-tl-2xl bg-gray-50 '>
                 <Debug
                   hasSetAPIKEY={hasSettedApiKey}
                   onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}

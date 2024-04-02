@@ -4,6 +4,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import {
   useStore,
   useWorkflowStore,
@@ -13,32 +14,41 @@ import {
   useNodesSyncDraft,
   useWorkflowRun,
 } from '../hooks'
+import AppPublisher from '../../app/app-publisher'
+import { ToastContext } from '../../base/toast'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
 import RestoringTitle from './restoring-title'
-import Publish from './publish'
 import Checklist from './checklist'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { publishWorkflow } from '@/service/workflow'
 
 const Header: FC = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
+  const appID = useAppStore(state => state.appDetail?.id)
   const {
     nodesReadOnly,
     getNodesReadOnly,
   } = useNodesReadOnly()
   const isRestoring = useStore(s => s.isRestoring)
+  const publishedAt = useStore(s => s.publishedAt)
+  const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const {
     handleLoadBackupDraft,
     handleRunSetting,
+    handleCheckBeforePublish,
+    handleBackupDraft,
+    handleRestoreFromPublishedWorkflow,
   } = useWorkflowRun()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { notify } = useContext(ToastContext)
 
   const handleShowFeatures = useCallback(() => {
     const {
@@ -65,9 +75,31 @@ const Header: FC = () => {
     handleSyncWorkflowDraft(true)
   }, [handleSyncWorkflowDraft, workflowStore])
 
+  const onPublish = useCallback(async () => {
+    if (handleCheckBeforePublish()) {
+      const res = await publishWorkflow(`/apps/${appID}/workflows/publish`)
+
+      if (res) {
+        notify({ type: 'success', message: t('common.api.actionSuccess') })
+        workflowStore.getState().setPublishedAt(res.created_at)
+      }
+    }
+  }, [appID, handleCheckBeforePublish, notify, t, workflowStore])
+
+  const onStartRestoring = useCallback(() => {
+    workflowStore.setState({ isRestoring: true })
+    handleBackupDraft()
+    handleRestoreFromPublishedWorkflow()
+  }, [handleBackupDraft, handleRestoreFromPublishedWorkflow, workflowStore])
+
+  const onPublisherToggle = useCallback((state: boolean) => {
+    if (state)
+      handleSyncWorkflowDraft(true)
+  }, [handleSyncWorkflowDraft])
+
   return (
     <div
-      className='absolute top-0 left-0 flex items-center justify-between px-3 w-full h-14 z-10'
+      className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14'
       style={{
         background: 'linear-gradient(180deg, #F9FAFB 0%, rgba(249, 250, 251, 0.00) 100%)',
       }}
@@ -100,7 +132,7 @@ const Header: FC = () => {
                   `}
                   onClick={handleGoBackToEdit}
                 >
-                  <ArrowNarrowLeft className='mr-1 w-4 h-4' />
+                  <ArrowNarrowLeft className='w-4 h-4 mr-1' />
                   {t('workflow.common.goBackToEdit')}
                 </Button>
               )
@@ -115,10 +147,19 @@ const Header: FC = () => {
               `}
               onClick={handleShowFeatures}
             >
-              <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
+              <Grid01 className='w-4 h-4 mr-1 text-gray-500' />
               {t('workflow.common.features')}
             </Button>
-            <Publish />
+            <AppPublisher
+              {...{
+                publishedAt,
+                draftUpdatedAt,
+                disabled: Boolean(getNodesReadOnly()),
+                onPublish,
+                onRestore: onStartRestoring,
+                onToggle: onPublisherToggle,
+              }}
+            />
             {
               !nodesReadOnly && (
                 <>
@@ -140,7 +181,7 @@ const Header: FC = () => {
               `}
               onClick={handleShowFeatures}
             >
-              <Grid01 className='mr-1 w-4 h-4 text-gray-500' />
+              <Grid01 className='w-4 h-4 mr-1 text-gray-500' />
               {t('workflow.common.features')}
             </Button>
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>

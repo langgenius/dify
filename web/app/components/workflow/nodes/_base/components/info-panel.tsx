@@ -4,7 +4,7 @@ import React from 'react'
 
 type Props = {
   title: string
-  content: string
+  content: string | JSX.Element
 }
 
 const InfoPanel: FC<Props> = ({

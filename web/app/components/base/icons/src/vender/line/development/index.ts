@@ -1,6 +1,7 @@
 export { default as ArtificialBrain } from './ArtificialBrain'
 export { default as BarChartSquare02 } from './BarChartSquare02'
 export { default as BracketsX } from './BracketsX'
+export { default as CodeBrowser } from './CodeBrowser'
 export { default as Container } from './Container'
 export { default as Database01 } from './Database01'
 export { default as Database03 } from './Database03'
