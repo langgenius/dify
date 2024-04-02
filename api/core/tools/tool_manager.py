@@ -9,6 +9,7 @@ from typing import Any, Union
 from flask import current_app
 
 from core.agent.entities import AgentToolEntity
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.provider_manager import ProviderManager
 from core.tools import *
 from core.tools.entities.common_entities import I18nObject
@@ -29,7 +30,6 @@ from core.tools.utils.configuration import (
     ToolConfigurationManager,
     ToolParameterConfigurationManager,
 )
-from core.tools.utils.encoder import serialize_base_model_dict
 from core.utils.module_import_helper import load_single_subclass_from_source
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
@@ -545,7 +545,7 @@ class ToolManager:
                 "content": "\ud83d\ude01"
             }
 
-        return json.loads(serialize_base_model_dict({
+        return jsonable_encoder({
             'schema_type': provider.schema_type,
             'schema': provider.schema,
             'tools': provider.tools,
@@ -553,7 +553,7 @@ class ToolManager:
             'description': provider.description,
             'credentials': masked_credentials,
             'privacy_policy': provider.privacy_policy
-        }))
+        })
 
     @classmethod
     def get_tool_icon(cls, tenant_id: str, provider_type: str, provider_id: str) -> Union[str, dict]:
