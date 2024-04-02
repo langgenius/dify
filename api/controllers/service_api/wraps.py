@@ -107,6 +107,27 @@ def cloud_edition_billing_resource_check(resource: str,
     return interceptor
 
 
+def cloud_edition_billing_knowledge_limit_check(resource: str,
+                                                api_token_type: str,
+                                                error_msg: str = "Please upgrade your plan to unlock this function."):
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            api_token = validate_and_get_api_token(api_token_type)
+            features = FeatureService.get_features(api_token.tenant_id)
+            if features.billing.enabled:
+                if resource == 'add_segment':
+                    if features.billing.subscription.plan == 'sandbox':
+                        raise Unauthorized(error_msg)
+                else:
+                    return view(*args, **kwargs)
+
+            return view(*args, **kwargs)
+
+        return decorated
+
+    return interceptor
+
 def validate_dataset_token(view=None):
     def decorator(view):
         @wraps(view)
