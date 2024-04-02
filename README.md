@@ -27,7 +27,7 @@
   </a>
 </p>
 
-**Dify** is an LLM application development platform that has helped built over **100,000** applications. It integrates BaaS and LLMOps, covering the essential tech stack for building generative AI-native applications, including a built-in RAG engine. Dify allows you to **deploy your own version of Assistants API and GPTs, based on any LLMs.**
+**Dify** is an LLM application development platform. It integrates BaaS and LLMOps, orchestrate LLM apps from prompt flow to AI workflow, including RAG, agent capabilities, model management, observability and more. **More production-ready than LangChain and Flowise**.
 
 ![](./images/demo.png)
 
