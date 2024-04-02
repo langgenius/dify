@@ -37,6 +37,7 @@ model_config_fields = {
     'completion_prompt_config': fields.Raw(attribute='completion_prompt_config_dict'),
     'dataset_configs': fields.Raw(attribute='dataset_configs_dict'),
     'file_upload': fields.Raw(attribute='file_upload_dict'),
+    'created_at': TimestampField
 }
 
 app_detail_fields = {
