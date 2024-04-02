@@ -313,6 +313,7 @@ const translation = {
       class: 'Class',
       classNamePlaceholder: 'Write your class name',
       advancedSetting: 'Advanced Setting',
+      topicName: 'Topic Name',
       topicPlaceholder: 'Write your topic name',
       addClass: 'Add Class',
       instruction: 'Instruction',

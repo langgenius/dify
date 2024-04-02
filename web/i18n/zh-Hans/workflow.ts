@@ -313,6 +313,7 @@ const translation = {
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
       advancedSetting: '高级设置',
+      topicName: '主题内容',
       topicPlaceholder: '在这里输入你的主题内容',
       addClass: '添加分类',
       instruction: '指令',
