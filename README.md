@@ -27,7 +27,7 @@
   </a>
 </p>
 
-**Dify** is an LLM application development platform that has helped built over **100,000** applications. It integrates BaaS and LLMOps, covering the essential tech stack for building generative AI-native applications, including a built-in RAG engine. Dify allows you to **deploy your own version of Assistants API and GPTs, based on any LLMs.**
+**Dify** is an open-source LLM app development platform. Dify's intuitive interface combines a RAG pipeline, AI workflow orchestration, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production.
 
 ![](./images/demo.png)
 
@@ -122,6 +122,9 @@ For those who'd like to contribute code, see our [Contribution Guide](https://gi
 
 At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
 
+### Projects made by community
+
+- [Chatbot Chrome Extension by @charli117](https://github.com/langgenius/chatbot-chrome-extension)
 
 ### Contributors
 
