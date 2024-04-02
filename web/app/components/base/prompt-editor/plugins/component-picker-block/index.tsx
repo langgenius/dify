@@ -125,7 +125,7 @@ const ComponentPicker = ({
     anchorElementRef,
     { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    if (anchorElementRef.current && (allOptions.length || workflowVariableOptions.length)) {
+    if (anchorElementRef.current && (allOptions.length || workflowVariableBlock?.show)) {
       return (
         <>
           {
@@ -224,7 +224,7 @@ const ComponentPicker = ({
                     )
                   }
                   {
-                    !!workflowVariableOptions.length && (
+                    workflowVariableBlock?.show && (
                       <>
                         {
                           (!!promptOptions.length || !!variableOptions.length || !!externalToolOptions.length) && (
@@ -257,8 +257,9 @@ const ComponentPicker = ({
     promptOptions,
     variableOptions,
     externalToolOptions,
-    workflowVariableOptions,
     queryString,
+    workflowVariableBlock?.show,
+    workflowVariableOptions,
     handleSelectWorkflowVariable,
     elements,
     floatingStyles,
