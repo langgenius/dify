@@ -69,6 +69,12 @@ export const initialEdges = (edges: Edge[], nodes: Node[]) => {
   return edges.map((edge) => {
     edge.type = 'custom'
 
+    if (!edge.sourceHandle)
+      edge.sourceHandle = 'source'
+
+    if (!edge.targetHandle)
+      edge.targetHandle = 'target'
+
     if (!edge.data?.sourceType) {
       edge.data = {
         ...edge.data,
@@ -146,7 +152,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
     }
     const targetNode = nodes.find(node => node.id === edge.target)!
     nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] = nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id] || {
-      _connectedSourceHandleIds: sourceNode?.data._connectedSourceHandleIds || [],
+      _connectedSourceHandleIds: targetNode?.data._connectedSourceHandleIds || [],
       _connectedTargetHandleIds: targetNode?.data._connectedTargetHandleIds || [],
     }
 
