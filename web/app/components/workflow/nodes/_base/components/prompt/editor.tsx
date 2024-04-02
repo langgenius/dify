@@ -58,7 +58,6 @@ const Editor: FC<Props> = ({
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isShowHistory = !isChatModel && isChatApp
-  const isShowQuery = isShowHistory
 
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -155,8 +154,8 @@ const Editor: FC<Props> = ({
                   },
                 }}
                 queryBlock={{
-                  show: justVar ? false : isShowQuery,
-                  selectable: !hasSetBlockStatus?.query,
+                  show: false, // use [sys.query] instead of query block
+                  selectable: false,
                 }}
                 workflowVariableBlock={{
                   show: true,
