@@ -124,7 +124,7 @@ At the same time, please consider supporting Dify by sharing it on social media 
 
 ### Projects made by community
 
-- [Chorme Extension by @charli117](https://github.com/langgenius/chrome-extension)
+- [Chatbot Chrome Extension by @charli117](https://github.com/langgenius/chatbot-chrome-extension)
 
 ### Contributors
 
