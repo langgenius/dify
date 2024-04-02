@@ -82,7 +82,9 @@ const BasePanel: FC<BasePanelProps> = ({
     <div className='relative mr-2 h-full'>
       <div
         ref={triggerRef}
-        className='absolute top-1/2 -translate-y-1/2 -left-2 w-1 h-6 bg-gray-300 rounded-sm cursor-col-resize resize-x'></div>
+        className='absolute top-1/2 -translate-y-1/2 -left-2 w-3 h-6 cursor-col-resize resize-x'>
+        <div className='w-1 h-6 bg-gray-300 rounded-sm'></div>
+      </div>
       <div
         ref={containerRef}
         className='relative h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'

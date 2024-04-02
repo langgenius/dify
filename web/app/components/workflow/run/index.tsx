@@ -15,12 +15,13 @@ import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type RunProps = {
+  hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
 }
 
-const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID, getResultCallback }) => {
+const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
@@ -94,13 +95,15 @@ const RunPanel: FC<RunProps> = ({ activeTab = 'RESULT', runID, getResultCallback
     <div className='grow relative flex flex-col'>
       {/* tab */}
       <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
-        <div
-          className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
-          )}
-          onClick={() => switchTab('RESULT')}
-        >{t('runLog.result')}</div>
+        {!hideResult && (
+          <div
+            className={cn(
+              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
+              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
+            )}
+            onClick={() => switchTab('RESULT')}
+          >{t('runLog.result')}</div>
+        )}
         <div
           className={cn(
             'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
