@@ -69,7 +69,7 @@ const KeyValueList: FC<Props> = ({
       {
         list.map((item, index) => (
           <KeyValueItem
-            key={item.key + index}
+            key={item.id}
             nodeId={nodeId}
             payload={item}
             onChange={handleChange(index)}

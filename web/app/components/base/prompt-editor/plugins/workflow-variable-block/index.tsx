@@ -3,13 +3,12 @@ import {
   useEffect,
 } from 'react'
 import {
-  $getNodeByKey,
-  $getPreviousSelection,
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
+import { } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type { WorkflowVariableBlockType } from '../../types'
 import {
@@ -42,13 +41,6 @@ const WorkflowVariableBlock = memo(({
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
           const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, getWorkflowNode)
-          const prevNodeKey = ($getPreviousSelection() as any)?.anchor?.key
-
-          if (prevNodeKey) {
-            const prevNode = $getNodeByKey(prevNodeKey)
-
-            prevNode?.remove()
-          }
 
           $insertNodes([workflowVariableBlockNode])
           if (onInsert)
