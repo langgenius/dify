@@ -96,11 +96,15 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
       log: [
         ...item.message,
-        {
-          role: 'assistant',
-          text: item.answer,
-          files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-        },
+        ...(item.message[item.message.length - 1].role !== 'assistant'
+          ? [
+            {
+              role: 'assistant',
+              text: item.answer,
+              files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+            },
+          ]
+          : []),
       ],
       workflow_run_id: item.workflow_run_id,
       more: {

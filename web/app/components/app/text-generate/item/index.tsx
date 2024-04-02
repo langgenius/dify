@@ -200,11 +200,15 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       ...data,
       log: [
         ...data.message,
-        {
-          role: 'assistant',
-          text: data.answer,
-          files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-        },
+        ...(data.message[data.message.length - 1].role !== 'assistant'
+          ? [
+            {
+              role: 'assistant',
+              text: data.answer,
+              files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+            },
+          ]
+          : []),
       ],
     }
     setCurrentLogItem(logItem)

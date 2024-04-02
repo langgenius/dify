@@ -324,11 +324,15 @@ export const useChat = (
                   ...draft[index],
                   log: [
                     ...newResponseItem.message,
-                    {
-                      role: 'assistant',
-                      text: newResponseItem.answer,
-                      files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-                    },
+                    ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
+                      ? [
+                        {
+                          role: 'assistant',
+                          text: newResponseItem.answer,
+                          files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                        },
+                      ]
+                      : []),
                   ],
                   more: {
                     time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
