@@ -64,6 +64,7 @@ class ToolTransformService:
     def builtin_provider_to_user_provider(
         provider_controller: BuiltinToolProviderController,
         db_provider: Optional[BuiltinToolProvider],
+        decrypt_credentials: bool = True
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
@@ -100,19 +101,20 @@ class ToolTransformService:
         elif db_provider:
             result.is_team_authorization = True
 
-            credentials = db_provider.credentials
+            if decrypt_credentials:
+                credentials = db_provider.credentials
 
-            # init tool configuration
-            tool_configuration = ToolConfigurationManager(
-                tenant_id=db_provider.tenant_id, 
-                provider_controller=provider_controller
-            )
-            # decrypt the credentials and mask the credentials
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
+                # init tool configuration
+                tool_configuration = ToolConfigurationManager(
+                    tenant_id=db_provider.tenant_id, 
+                    provider_controller=provider_controller
+                )
+                # decrypt the credentials and mask the credentials
+                decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
+                masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
 
-            result.masked_credentials = masked_credentials
-            result.original_credentials = decrypted_credentials
+                result.masked_credentials = masked_credentials
+                result.original_credentials = decrypted_credentials
 
         return result
     
@@ -126,7 +128,8 @@ class ToolTransformService:
         # package tool provider controller
         controller = ApiBasedToolProviderController.from_db(
             db_provider=db_provider,
-            auth_type=ApiProviderAuthType.API_KEY if db_provider.credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
+            auth_type=ApiProviderAuthType.API_KEY if db_provider.credentials['auth_type'] == 'api_key' else 
+            ApiProviderAuthType.NONE
         )
 
         return controller
@@ -135,6 +138,7 @@ class ToolTransformService:
     def api_provider_to_user_provider(
         provider_controller: ApiBasedToolProviderController,
         db_provider: ApiToolProvider,
+        decrypt_credentials: bool = True
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
@@ -165,17 +169,18 @@ class ToolTransformService:
             tools=[]
         )
 
-        # init tool configuration
-        tool_configuration = ToolConfigurationManager(
-            tenant_id=db_provider.tenant_id, 
-            provider_controller=provider_controller
-        )
+        if decrypt_credentials:
+            # init tool configuration
+            tool_configuration = ToolConfigurationManager(
+                tenant_id=db_provider.tenant_id, 
+                provider_controller=provider_controller
+            )
 
-        # decrypt the credentials and mask the credentials
-        decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-        masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
+            # decrypt the credentials and mask the credentials
+            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
+            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
 
-        result.masked_credentials = masked_credentials
+            result.masked_credentials = masked_credentials
 
         return result
     

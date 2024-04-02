@@ -10,7 +10,6 @@ import { useStore } from '../store'
 import { useIsChatMode } from '../hooks'
 import DebugAndPreview from './debug-and-preview'
 import Record from './record'
-import InputsPanel from './inputs-panel'
 import WorkflowPreview from './workflow-preview'
 import ChatRecord from './chat-record'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -30,11 +29,12 @@ const Panel: FC = () => {
     showWorkflowPreview,
   } = useMemo(() => {
     return {
-      showNodePanel: !!selectedNode && !workflowRunningData && !historyWorkflowData,
+      showNodePanel: !!selectedNode && !workflowRunningData && !historyWorkflowData && !showInputsPanel,
       showDebugAndPreviewPanel: isChatMode && workflowRunningData && !historyWorkflowData,
-      showWorkflowPreview: !isChatMode && workflowRunningData && !historyWorkflowData,
+      showWorkflowPreview: !isChatMode && !historyWorkflowData && (workflowRunningData || showInputsPanel),
     }
   }, [
+    showInputsPanel,
     selectedNode,
     isChatMode,
     workflowRunningData,
@@ -69,11 +69,6 @@ const Panel: FC = () => {
       {
         showDebugAndPreviewPanel && (
           <DebugAndPreview />
-        )
-      }
-      {
-        showInputsPanel && (
-          <InputsPanel />
         )
       }
       {

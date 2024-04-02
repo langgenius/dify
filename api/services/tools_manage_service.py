@@ -355,6 +355,27 @@ class ToolManageService:
         return { 'result': 'success' }
     
     @staticmethod
+    def get_builtin_tool_provider_credentials(
+        user_id: str, tenant_id: str, provider: str
+    ):
+        """
+            get builtin tool provider credentials
+        """
+        provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider == provider,
+        ).first()
+
+        if provider is None:
+            raise ValueError(f'you have not added provider {provider}')
+        
+        provider_controller = ToolManager.get_builtin_provider(provider.provider)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
+        credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
+        credentials = tool_configuration.mask_tool_credentials(credentials)
+        return credentials
+
+    @staticmethod
     def update_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
         schema_type: str, schema: str, privacy_policy: str
@@ -631,7 +652,8 @@ class ToolManageService:
             # convert provider controller to user provider
             user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
                 provider_controller=provider_controller,
-                db_provider=find_provider(provider_controller.identity.name)
+                db_provider=find_provider(provider_controller.identity.name),
+                decrypt_credentials=True
             )
 
             # add icon
@@ -668,7 +690,8 @@ class ToolManageService:
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
             user_provider = ToolTransformService.api_provider_to_user_provider(
                 provider_controller,
-                db_provider=provider
+                db_provider=provider,
+                decrypt_credentials=True
             )
 
             # add icon

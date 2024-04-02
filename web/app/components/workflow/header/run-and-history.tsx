@@ -44,7 +44,6 @@ const RunMode = memo(() => {
 
   const handleClick = useCallback(async () => {
     const {
-      setShowInputsPanel,
       workflowRunningData,
     } = workflowStore.getState()
 
@@ -63,7 +62,10 @@ const RunMode = memo(() => {
       handleRun({ inputs: {}, files: [] })
     }
     else {
-      setShowInputsPanel(true)
+      workflowStore.setState({
+        historyWorkflowData: undefined,
+        showInputsPanel: true,
+      })
       handleSyncWorkflowDraft(true)
     }
   }, [

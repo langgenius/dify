@@ -3,24 +3,34 @@ import type { FC } from 'react'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { Markdown } from '@/app/components/base/markdown'
+import LoadingAnim from '@/app/components/app/chat/loading-anim'
 
 type OutputPanelProps = {
+  isRunning?: boolean
   outputs?: any
   error?: string
 }
 
 const OutputPanel: FC<OutputPanelProps> = ({
+  isRunning,
   outputs,
   error,
 }) => {
   return (
     <div className='bg-gray-50 py-2'>
-      {error && (
-        <div className='px-3 py-[10px] rounded-lg !bg-[#fef3f2] border-[0.5px] border-[rbga(0,0,0,0.05)] shadow-xs'>
-          <div className='text-xs leading-[18px] text-[#d92d20]'>{error}</div>
+      {isRunning && (
+        <div className='pt-4 pl-[26px]'>
+          <LoadingAnim type='text' />
         </div>
       )}
-      {!outputs && (
+      {!isRunning && error && (
+        <div className='px-4'>
+          <div className='px-3 py-[10px] rounded-lg !bg-[#fef3f2] border-[0.5px] border-[rbga(0,0,0,0.05)] shadow-xs'>
+            <div className='text-xs leading-[18px] text-[#d92d20]'>{error}</div>
+          </div>
+        </div>
+      )}
+      {!isRunning && !outputs && (
         <div className='px-4 py-2'>
           <Markdown content='No Output' />
         </div>
