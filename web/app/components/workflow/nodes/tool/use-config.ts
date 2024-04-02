@@ -153,7 +153,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const varInputs = getInputVars(hadVarParams.map((p) => {
     if (p.type === VarType.variable)
-      return `{{#${[p.value as ValueSelector].join('.')}#}}`
+      return `{{#${(p.value as ValueSelector).join('.')}#}}`
 
     return p.value as string
   }))
