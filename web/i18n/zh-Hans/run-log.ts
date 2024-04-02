@@ -1,4 +1,5 @@
 const translation = {
+  input: '输入',
   result: '结果',
   detail: '详情',
   tracing: '追踪',

@@ -86,6 +86,7 @@ export const useWorkflowRun = () => {
       workflowStore.setState({
         workflowRunningData: undefined,
         historyWorkflowData: undefined,
+        showInputsPanel: false,
       })
     }
     else {
@@ -154,6 +155,17 @@ export const useWorkflowRun = () => {
       url = `/apps/${appDetail.id}/workflows/draft/run`
 
     let prevNodeId = ''
+
+    const {
+      workflowRunningData,
+      setWorkflowRunningData,
+    } = workflowStore.getState()
+    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+      draft.result = {
+        ...draft?.result,
+        status: WorkflowRunningStatus.Running,
+      }
+    }))
 
     ssePost(
       url,
