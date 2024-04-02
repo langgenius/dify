@@ -61,3 +61,9 @@ export type WorkflowVariableBlockType = {
   onInsert?: () => void
   onDelete?: () => void
 }
+
+export type MenuTextMatch = {
+  leadOffset: number
+  matchingString: string
+  replaceableString: string
+}

@@ -19,6 +19,7 @@ import type {
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
+import { $splitNodeContainingQuery } from '../../utils'
 import type { PromptOption } from './prompt-option'
 import PromptMenu from './prompt-menu'
 import VariableMenu from './variable-menu'
@@ -95,11 +96,17 @@ const ComponentPicker = ({
   )
 
   const handleSelectWorkflowVariable = useCallback((variables: string[]) => {
+    editor.update(() => {
+      const needRemove = $splitNodeContainingQuery(checkForTriggerMatch(triggerString, editor)!)
+      if (needRemove)
+        needRemove.remove()
+    })
+
     if (variables[1] === 'sys.query' || variables[1] === 'sys.files')
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
     else
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
-  }, [editor])
+  }, [editor, checkForTriggerMatch, triggerString])
 
   const renderMenu = useCallback<MenuRenderFn<PromptOption | VariableOption>>((
     anchorElementRef,
