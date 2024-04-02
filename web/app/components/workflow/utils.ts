@@ -10,7 +10,9 @@ import {
 } from 'lodash-es'
 import type {
   Edge,
+  InputVar,
   Node,
+  ToolWithProvider,
 } from './types'
 import { BlockEnum } from './types'
 import {
@@ -18,6 +20,9 @@ import {
   START_INITIAL_POSITION,
 } from './constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
+import type { ToolNodeType } from './nodes/tool/types'
+import { CollectionType } from '@/app/components/tools/types'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 export const initialNodes = (nodes: Node[], edges: Edge[]) => {
   const firstNode = nodes[0]
@@ -226,5 +231,38 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
   return {
     validNodes: uniqBy(list, 'id'),
     maxDepth,
+  }
+}
+
+export const getToolCheckParams = (
+  toolData: ToolNodeType,
+  buildInTools: ToolWithProvider[],
+  customTools: ToolWithProvider[],
+  language: string,
+) => {
+  const { provider_id, provider_type, tool_name } = toolData
+  const isBuiltIn = provider_type === CollectionType.builtIn
+  const currentTools = isBuiltIn ? buildInTools : customTools
+  const currCollection = currentTools.find(item => item.id === provider_id)
+  const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
+  const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
+  const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
+  const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
+
+  return {
+    toolInputsSchema: (() => {
+      const formInputs: InputVar[] = []
+      toolInputVarSchema.forEach((item: any) => {
+        formInputs.push({
+          label: item.label[language] || item.label.en_US,
+          variable: item.variable,
+          type: item.type,
+          required: item.required,
+        })
+      })
+      return formInputs
+    })(),
+    toolSettingSchema,
+    language,
   }
 }
