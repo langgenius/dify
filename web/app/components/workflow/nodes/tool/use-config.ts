@@ -142,7 +142,18 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     data: inputs,
     defaultRunInputData: {},
     moreDataForCheckValid: {
-      toolInputsSchema: [],
+      toolInputsSchema: (() => {
+        const formInputs: InputVar[] = []
+        toolInputVarSchema.forEach((item: any) => {
+          formInputs.push({
+            label: item.label[language] || item.label.en_US,
+            variable: item.variable,
+            type: item.type,
+            required: item.required,
+          })
+        })
+        return formInputs
+      })(),
       toolSettingSchema,
       language,
     },
@@ -160,15 +171,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }))
 
   const singleRunForms = (() => {
-    const formInputs: InputVar[] = []
-    toolInputVarSchema.forEach((item: any) => {
-      formInputs.push({
-        label: item.label[language] || item.label.en_US,
-        variable: item.variable,
-        type: item.type,
-        required: item.required,
-      })
-    })
     const forms: FormProps[] = [{
       inputs: varInputs,
       values: inputVarValuesWithConstantValue(),
