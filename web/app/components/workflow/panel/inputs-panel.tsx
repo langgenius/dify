@@ -1,6 +1,5 @@
 import {
   memo,
-  useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +8,7 @@ import FormItem from '../nodes/_base/components/before-run-form/form-item'
 import {
   BlockEnum,
   InputVarType,
+  WorkflowRunningStatus,
 } from '../types'
 import {
   useStore,
@@ -19,13 +19,18 @@ import type { StartNodeType } from '../nodes/start/types'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
 
-const InputsPanel = () => {
+type Props = {
+  onRun: () => void
+}
+
+const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const fileSettings = useFeatures(s => s.features.file)
   const nodes = useNodes<StartNodeType>()
   const inputs = useStore(s => s.inputs)
   const files = useStore(s => s.files)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
   const {
     handleRun,
     handleRunSetting,
@@ -64,56 +69,42 @@ const InputsPanel = () => {
     }
   }
 
-  const handleCancel = useCallback(() => {
-    workflowStore.setState({ showInputsPanel: false })
-  }, [workflowStore])
-
   const doRun = () => {
-    handleCancel()
+    onRun()
     handleRunSetting()
     handleRun({ inputs, files })
   }
 
   return (
-    <div className='absolute top-0 right-2 w-[420px] h-full z-[11] overflow-y-auto'>
-      <div className='pb-2 rounded-2xl border-[0.5px] border-gray-200 bg-white shadow-xl'>
-        <div className='flex items-center pt-3 px-4 h-[44px] text-base font-semibold text-gray-900'>
-          {t('workflow.singleRun.testRun')}
-        </div>
-        <div className='px-4 pb-2'>
-          {
-            variables.map(variable => (
-              <div
-                key={variable.variable}
-                className='mb-2 last-of-type:mb-0'
-              >
-                <FormItem
-                  className='!block'
-                  payload={variable}
-                  value={inputs[variable.variable]}
-                  onChange={v => handleValueChange(variable.variable, v)}
-                />
-              </div>
-            ))
-          }
-        </div>
-        <div className='flex items-center justify-between px-4 py-2'>
-          <Button
-            className='py-0 w-[190px] h-8 rounded-lg border-[0.5px] border-gray-200 shadow-xs text-[13px] font-medium text-gray-700'
-            onClick={handleCancel}
-          >
-            {t('common.operation.cancel')}
-          </Button>
-          <Button
-            type='primary'
-            className='py-0 w-[190px] h-8 rounded-lg text-[13px] font-medium'
-            onClick={doRun}
-          >
-            {t('workflow.singleRun.startRun')}
-          </Button>
-        </div>
+    <>
+      <div className='px-4 pb-2'>
+        {
+          variables.map(variable => (
+            <div
+              key={variable.variable}
+              className='mb-2 last-of-type:mb-0'
+            >
+              <FormItem
+                className='!block'
+                payload={variable}
+                value={inputs[variable.variable]}
+                onChange={v => handleValueChange(variable.variable, v)}
+              />
+            </div>
+          ))
+        }
       </div>
-    </div>
+      <div className='flex items-center justify-between px-4 py-2'>
+        <Button
+          type='primary'
+          disabled={workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
+          className='py-0 w-full h-8 rounded-lg text-[13px] font-medium'
+          onClick={doRun}
+        >
+          {t('workflow.singleRun.startRun')}
+        </Button>
+      </div>
+    </>
   )
 }
 

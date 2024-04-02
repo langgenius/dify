@@ -1,4 +1,5 @@
 const translation = {
+  input: 'INPUT',
   result: 'RESULT',
   detail: 'DETAIL',
   tracing: 'TRACING',

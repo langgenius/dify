@@ -127,7 +127,8 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: whether the provider needs credentials
         """
-        return self.credentials_schema is not None and len(self.credentials_schema) != 0
+        return self.credentials_schema is not None and \
+            len(self.credentials_schema) != 0
 
     @property
     def app_type(self) -> ToolProviderType:
