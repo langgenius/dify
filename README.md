@@ -122,6 +122,9 @@ For those who'd like to contribute code, see our [Contribution Guide](https://gi
 
 At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
 
+### Projects made by community
+
+- [Chatbot Chrome Extension by @charli117](https://github.com/langgenius/chatbot-chrome-extension)
 
 ### Contributors
 
