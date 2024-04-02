@@ -203,7 +203,7 @@ export const useChat = (
     handleRun(
       params,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId, errorMessage }: any) => {
+        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           responseItem.content = responseItem.content + message
 
           if (messageId && !hasSetResponseId) {

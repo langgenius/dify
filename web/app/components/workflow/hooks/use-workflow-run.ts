@@ -126,6 +126,7 @@ export const useWorkflowRun = () => {
       onWorkflowFinished,
       onNodeStarted,
       onNodeFinished,
+      onError,
       ...restCallback
     } = callback || {}
     workflowStore.setState({ historyWorkflowData: undefined })
@@ -210,6 +211,22 @@ export const useWorkflowRun = () => {
 
           if (onWorkflowFinished)
             onWorkflowFinished(params)
+        },
+        onError: (params) => {
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.result = {
+              ...draft.result,
+              status: WorkflowRunningStatus.Failed,
+            }
+          }))
+
+          if (onError)
+            onError(params)
         },
         onNodeStarted: (params) => {
           const { data } = params
