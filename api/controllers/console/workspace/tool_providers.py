@@ -76,13 +76,27 @@ class ToolBuiltinProviderUpdateApi(Resource):
             provider,
             args['credentials'],
         )
+    
+class ToolBuiltinProviderGetCredentialsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        return ToolManageService.get_builtin_tool_provider_credentials(
+            user_id,
+            tenant_id,
+            provider,
+        )
 
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
-        icon_bytes, minetype = ToolManageService.get_builtin_tool_provider_icon(provider)
+        icon_bytes, mimetype = ToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = int(current_app.config.get('TOOL_ICON_CACHE_MAX_AGE'))
-        return send_file(io.BytesIO(icon_bytes), mimetype=minetype, max_age=icon_cache_max_age)
+        return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 class ToolModelProviderIconApi(Resource):
     @setup_required
@@ -333,6 +347,7 @@ api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
 api.add_resource(ToolBuiltinProviderListToolsApi, '/workspaces/current/tool-provider/builtin/<provider>/tools')
 api.add_resource(ToolBuiltinProviderDeleteApi, '/workspaces/current/tool-provider/builtin/<provider>/delete')
 api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provider/builtin/<provider>/update')
+api.add_resource(ToolBuiltinProviderGetCredentialsApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
 api.add_resource(ToolModelProviderIconApi, '/workspaces/current/tool-provider/model/<provider>/icon')
@@ -340,7 +355,7 @@ api.add_resource(ToolModelProviderListToolsApi, '/workspaces/current/tool-provid
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
 api.add_resource(ToolApiProviderGetRemoteSchemaApi, '/workspaces/current/tool-provider/api/remote')
 api.add_resource(ToolApiProviderListToolsApi, '/workspaces/current/tool-provider/api/tools')
-api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update') 
+api.add_resource(ToolApiProviderUpdateApi, '/workspaces/current/tool-provider/api/update')
 api.add_resource(ToolApiProviderDeleteApi, '/workspaces/current/tool-provider/api/delete')
 api.add_resource(ToolApiProviderGetApi, '/workspaces/current/tool-provider/api/get')
 api.add_resource(ToolApiProviderSchemaApi, '/workspaces/current/tool-provider/api/schema')
