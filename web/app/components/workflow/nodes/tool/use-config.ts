@@ -12,7 +12,7 @@ import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/t
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { VarType as VarVarType } from '@/app/components/workflow/types'
-import type { InputVar, Var } from '@/app/components/workflow/types'
+import type { InputVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
   useFetchToolsData,
@@ -94,18 +94,9 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
   }, [inputs, setInputs])
 
-  const [currVarIndex, setCurrVarIndex] = useState(-1)
-  const currVarType = toolInputVarSchema[currVarIndex]?._type
-  const handleOnVarOpen = useCallback((index: number) => {
-    setCurrVarIndex(index)
-  }, [])
-
   const filterVar = useCallback((varPayload: Var) => {
-    if (currVarType)
-      return varPayload.type === currVarType
-
-    return varPayload.type !== VarVarType.arrayFile
-  }, [currVarType])
+    return [VarVarType.string, VarVarType.number].includes(varPayload.type)
+  }, [])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -148,10 +139,15 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     },
   })
   const hadVarParams = Object.keys(inputs.tool_parameters)
-    .filter(key => inputs.tool_parameters[key].type === VarType.mixed)
+    .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
     .map(k => inputs.tool_parameters[k])
 
-  const varInputs = getInputVars(hadVarParams.map(p => p.value as string))
+  const varInputs = getInputVars(hadVarParams.map((p) => {
+    if (p.type === VarType.variable)
+      return `#${[p.value as ValueSelector].join('.')}#`
+
+    return p.value as string
+  }))
 
   const singleRunForms = (() => {
     const formInputs: InputVar[] = []
@@ -180,7 +176,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
     filterVar,
     currCollection,
     isShowAuthBtn,

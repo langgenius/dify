@@ -50,7 +50,7 @@ const VarReferencePicker: FC<Props> = ({
   onOpen = () => { },
   onChange,
   isSupportConstantValue,
-  defaultVarKindType = VarKindType.static,
+  defaultVarKindType = VarKindType.constant,
   onlyLeafNodeVar,
   filterVar = () => true,
 }) => {
@@ -65,7 +65,7 @@ const VarReferencePicker: FC<Props> = ({
 
   const isChatMode = useIsChatMode()
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
-  const isConstant = isSupportConstantValue && varKindType === VarKindType.static
+  const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
   const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
@@ -124,17 +124,17 @@ const VarReferencePicker: FC<Props> = ({
   const varKindTypes = [
     {
       label: 'Variable',
-      value: VarKindType.selector,
+      value: VarKindType.variable,
     },
     {
       label: 'Constant',
-      value: VarKindType.static,
+      value: VarKindType.constant,
     },
   ]
 
   const handleVarKindTypeChange = useCallback((value: VarKindType) => {
     setVarKindType(value)
-    if (value === VarKindType.static)
+    if (value === VarKindType.constant)
       onChange('', value)
     else
       onChange([], value)
@@ -170,7 +170,7 @@ const VarReferencePicker: FC<Props> = ({
   }, [onChange, varKindType])
 
   const handleClearVar = useCallback(() => {
-    if (varKindType === VarKindType.static)
+    if (varKindType === VarKindType.constant)
       onChange('', varKindType)
     else
       onChange([], varKindType)
