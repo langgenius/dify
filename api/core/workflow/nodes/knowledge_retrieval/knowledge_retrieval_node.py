@@ -4,7 +4,7 @@ from typing import Any, cast
 from flask import Flask, current_app
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -17,12 +17,12 @@ from core.rerank.rerank import RerankRunner
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.base_node import BaseNode, UserFrom
+from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.knowledge_retrieval.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.workflow.nodes.knowledge_retrieval.multi_dataset_react_route import ReactMultiDatasetRouter
 from extensions.ext_database import db
-from models.dataset import Dataset, Document, DocumentSegment, DatasetQuery
+from models.dataset import Dataset, DatasetQuery, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
 
 default_retrieval_model = {
