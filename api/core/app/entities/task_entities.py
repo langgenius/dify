@@ -179,6 +179,7 @@ class WorkflowStartStreamResponse(StreamResponse):
         id: str
         workflow_id: str
         sequence_number: int
+        inputs: dict
         created_at: int
 
     event: StreamEvent = StreamEvent.WORKFLOW_STARTED
