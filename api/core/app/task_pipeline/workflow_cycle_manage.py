@@ -71,6 +71,9 @@ class WorkflowCycleManage:
 
         inputs = {**user_inputs}
         for key, value in (system_inputs or {}).items():
+            if key.value == 'conversation':
+                continue
+
             inputs[f'sys.{key.value}'] = value
         inputs = WorkflowEngineManager.handle_special_values(inputs)
 
@@ -267,8 +270,6 @@ class WorkflowCycleManage:
         :param workflow_run: workflow run
         :return:
         """
-        inputs = {variable: value for variable, value in workflow_run.inputs_dict.items()
-                  if variable != 'sys.conversation'}
         return WorkflowStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -276,7 +277,7 @@ class WorkflowCycleManage:
                 id=workflow_run.id,
                 workflow_id=workflow_run.workflow_id,
                 sequence_number=workflow_run.sequence_number,
-                inputs=inputs,
+                inputs=workflow_run.inputs_dict,
                 created_at=int(workflow_run.created_at.timestamp())
             )
         )
