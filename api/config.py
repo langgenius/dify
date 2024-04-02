@@ -67,6 +67,7 @@ DEFAULTS = {
     'CODE_EXECUTION_ENDPOINT': '',
     'CODE_EXECUTION_API_KEY': '',
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'KEYWORD_DATA_SOURCE_TYPE': 'database',
 }
 
 
@@ -97,7 +98,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.5.11"
+        self.CURRENT_VERSION = "0.5.11-fix1"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -316,6 +317,7 @@ class Config:
         self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
         self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
 
+        self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
 
 class CloudEditionConfig(Config):
 
