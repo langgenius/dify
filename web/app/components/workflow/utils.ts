@@ -1,9 +1,13 @@
 import {
   Position,
   getConnectedEdges,
+  getOutgoers,
 } from 'reactflow'
 import dagre from 'dagre'
-import { cloneDeep } from 'lodash-es'
+import {
+  cloneDeep,
+  uniqBy,
+} from 'lodash-es'
 import type {
   Edge,
   Node,
@@ -185,4 +189,42 @@ export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'pos
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
   } as Node
+}
+
+export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+
+  if (!startNode) {
+    return {
+      validNodes: [],
+      maxDepth: 0,
+    }
+  }
+
+  const list: Node[] = [startNode]
+  let maxDepth = 1
+
+  const traverse = (root: Node, depth: number) => {
+    if (depth > maxDepth)
+      maxDepth = depth
+
+    const outgoers = getOutgoers(root, nodes, edges)
+
+    if (outgoers.length) {
+      outgoers.forEach((outgoer) => {
+        list.push(outgoer)
+        traverse(outgoer, depth + 1)
+      })
+    }
+    else {
+      list.push(root)
+    }
+  }
+
+  traverse(startNode, maxDepth)
+
+  return {
+    validNodes: uniqBy(list, 'id'),
+    maxDepth,
+  }
 }

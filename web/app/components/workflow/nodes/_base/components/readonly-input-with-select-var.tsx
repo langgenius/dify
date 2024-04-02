@@ -34,7 +34,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
     const html: JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
       if (!vars[index])
-        return <span className='leading-[20px]'>{str}</span>
+        return <span className='leading-[20px]' key={index}>{str}</span>
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
@@ -64,7 +64,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
           return type
         }
       })()
-      return (<>
+      return (<span key={index}>
         <span className='leading-[20px]'>{str}</span>
         <div className=' inline-flex h-[26px] items-center px-1.5 rounded-[5px] bg-white'>
           <div className='flex items-center'>
@@ -83,7 +83,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
           </div>
           <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} >{type}</div>
         </div>
-      </>)
+      </span>)
     })
     return html
   })()

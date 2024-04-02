@@ -19,7 +19,6 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import { QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({
@@ -190,7 +189,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                     <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
                   </TooltipPlus>
                 </div>}
-                value={QUERY_PLACEHOLDER_TEXT}
+                value={'{{#sys.query#}}'}
                 onChange={() => { }}
                 readOnly
                 isShowContext={false}

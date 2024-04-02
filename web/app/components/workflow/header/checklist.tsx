@@ -1,23 +1,21 @@
 import {
   memo,
-  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  getIncomers,
-  getOutgoers,
   useEdges,
   useNodes,
 } from 'reactflow'
 import BlockIcon from '../block-icon'
 import {
-  useNodesExtraData,
+  useChecklist,
   useNodesInteractions,
 } from '../hooks'
-import type { CommonNodeType } from '../types'
-import { BlockEnum } from '../types'
-import { useStore } from '../store'
+import type {
+  CommonEdgeType,
+  CommonNodeType,
+} from '../types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -34,44 +32,9 @@ const WorkflowChecklist = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const nodes = useNodes<CommonNodeType>()
-  const edges = useEdges()
-  const nodesExtraData = useNodesExtraData()
+  const edges = useEdges<CommonEdgeType>()
+  const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-
-  const needWarningNodes = useMemo(() => {
-    const list = []
-
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
-      const incomers = getIncomers(node, nodes, edges)
-      const outgoers = getOutgoers(node, nodes, edges)
-      const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t)
-      let toolIcon
-
-      if (node.data.type === BlockEnum.Tool) {
-        if (node.data.provider_type === 'builtin')
-          toolIcon = buildInTools.find(tool => tool.id === node.data.provider_id)?.icon
-
-        if (node.data.provider_type === 'custom')
-          toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon
-      }
-
-      if (errorMessage || ((!incomers.length && !outgoers.length))) {
-        list.push({
-          id: node.id,
-          type: node.data.type,
-          title: node.data.title,
-          toolIcon,
-          unConnected: !incomers.length && !outgoers.length,
-          errorMessage,
-        })
-      }
-    }
-
-    return list
-  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools])
 
   return (
     <PortalToFollowElem

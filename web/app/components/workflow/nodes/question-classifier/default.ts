@@ -16,7 +16,16 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
         temperature: 0.7,
       },
     },
-    classes: [],
+    classes: [
+      {
+        id: '1',
+        name: '',
+      },
+      {
+        id: '2',
+        name: '',
+      },
+    ],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
@@ -39,6 +48,8 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
     if (!errorMessages && (!payload.classes || payload.classes.length === 0))
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.class`) })
 
+    if (!errorMessages && (payload.classes.some(item => !item.name)))
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.topicName`) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

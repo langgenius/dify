@@ -10,6 +10,7 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
+  useChecklistBeforePublish,
   useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflowRun,
@@ -43,10 +44,10 @@ const Header: FC = () => {
   const {
     handleLoadBackupDraft,
     handleRunSetting,
-    handleCheckBeforePublish,
     handleBackupDraft,
     handleRestoreFromPublishedWorkflow,
   } = useWorkflowRun()
+  const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { notify } = useContext(ToastContext)
 
@@ -83,6 +84,9 @@ const Header: FC = () => {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
         workflowStore.getState().setPublishedAt(res.created_at)
       }
+    }
+    else {
+      throw new Error('Checklist failed')
     }
   }, [appID, handleCheckBeforePublish, notify, t, workflowStore])
 

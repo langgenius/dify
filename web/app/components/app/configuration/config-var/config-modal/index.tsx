@@ -87,13 +87,15 @@ const ConfigModal: FC<IConfigModalProps> = ({
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.varNameRequired') })
       return
     }
-    if (varKeys.map(key => key?.trim()).includes(tempPayload.variable.trim())) {
-      Toast.notify({
-        type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', { key: tempPayload.variable }),
-      })
-      return
-    }
+    // TODO: check if key already exists. should the consider the edit case
+    // if (varKeys.map(key => key?.trim()).includes(tempPayload.variable.trim())) {
+    //   Toast.notify({
+    //     type: 'error',
+    //     message: t('appDebug.varKeyError.keyAlreadyExists', { key: tempPayload.variable }),
+    //   })
+    //   return
+    // }
+
     if (!tempPayload.label) {
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
       return

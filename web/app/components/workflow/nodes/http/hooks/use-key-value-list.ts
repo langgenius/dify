@@ -47,7 +47,7 @@ const useKeyValueList = (value: string, onChange: (value: string) => void, noFil
   }] = useBoolean(true)
 
   return {
-    list: list.length === 0 ? [{ key: '', value: '' }] : list, // no item can not add new item
+    list: list.length === 0 ? [{ id: uniqueId(UNIQUE_ID_PREFIX), key: '', value: '' }] : list, // no item can not add new item
     setList,
     addItem,
     isKeyValueEdit,
