@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 import requests
-from huggingface_hub import HfApi, InferenceClient
+from huggingface_hub import HfApi
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
@@ -12,6 +12,7 @@ from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.huggingface_hub._common import _CommonHuggingfaceHub
+from core.model_runtime.model_providers.huggingface_hub.huggingface_hub import HuggingfaceHubProvider
 
 HUGGINGFACE_ENDPOINT_API = 'https://api.endpoints.huggingface.cloud/v2/endpoint/'
 
@@ -20,7 +21,7 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
 
     def _invoke(self, model: str, credentials: dict, texts: list[str],
                 user: Optional[str] = None) -> TextEmbeddingResult:
-        client = InferenceClient(token=credentials['huggingfacehub_api_token'])
+        client = HuggingfaceHubProvider.get_service_client(credentials=credentials)
 
         execute_model = model
 
@@ -85,7 +86,7 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
             else:
                 raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
 
-            client = InferenceClient(token=credentials['huggingfacehub_api_token'])
+            client = HuggingfaceHubProvider.get_service_client(credentials=credentials)
             client.feature_extraction(text='hello world', model=model)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))

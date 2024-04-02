@@ -17,6 +17,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.cohere.cohere import CohereProvider
 
 
 class CohereTextEmbeddingModel(TextEmbeddingModel):
@@ -141,7 +142,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
             return []
 
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = CohereProvider.get_service_client(credentials)
 
         response = client.tokenize(
             text=text,
@@ -180,7 +181,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         :return: embeddings and used tokens
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = CohereProvider.get_service_client(credentials)
 
         # call embedding model
         response = client.embed(

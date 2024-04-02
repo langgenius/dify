@@ -6,6 +6,7 @@ from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
+from core.model_runtime.model_providers.zhipuai.zhipuai import ZhipuaiProvider
 from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
 
 
@@ -27,9 +28,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         :return: embeddings result
         """
         credentials_kwargs = self._to_credential_kwargs(credentials)
-        client = ZhipuAI(
-            api_key=credentials_kwargs['api_key']
-        )
+        client = ZhipuaiProvider.get_service_client(credentials=credentials_kwargs)
 
         embeddings, embedding_used_tokens = self.embed_documents(model, client, texts)
 
@@ -68,9 +67,7 @@ class ZhipuAITextEmbeddingModel(_CommonZhipuaiAI, TextEmbeddingModel):
         try:
             # transform credentials to kwargs for model instance
             credentials_kwargs = self._to_credential_kwargs(credentials)
-            client = ZhipuAI(
-                api_key=credentials_kwargs['api_key']
-            )
+            client = ZhipuaiProvider.get_service_client(credentials=credentials_kwargs)
 
             # call embedding model
             self.embed_documents(

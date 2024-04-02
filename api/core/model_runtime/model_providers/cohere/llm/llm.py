@@ -46,6 +46,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.cohere.cohere import CohereProvider
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +174,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = CohereProvider.get_service_client(credentials)
 
         if stop:
             model_parameters['end_sequences'] = stop
@@ -317,7 +318,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = CohereProvider.get_service_client(credentials)
 
         if stop:
             model_parameters['stop_sequences'] = stop
@@ -636,7 +637,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: number of tokens
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = CohereProvider.get_service_client(credentials)
 
         response = client.tokenize(
             text=text,

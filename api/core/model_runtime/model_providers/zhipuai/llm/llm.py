@@ -15,7 +15,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
+from core.model_runtime.model_providers.zhipuai.zhipuai import ZhipuaiProvider
 from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion import Completion
 from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion_chunk import ChatCompletionChunk
 from core.model_runtime.utils import helper
@@ -155,9 +155,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         if stop:
             extra_model_kwargs['stop'] = stop
 
-        client = ZhipuAI(
-            api_key=credentials_kwargs['api_key']
-        )
+        client = ZhipuaiProvider.get_service_client(credentials=credentials_kwargs)
 
         if len(prompt_messages) == 0:
             raise ValueError('At least one message is required')

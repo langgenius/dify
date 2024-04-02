@@ -19,8 +19,9 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.baichuan.baichuan import BaichuanProvider
 from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import BaichuanTokenizer
-from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo import BaichuanMessage, BaichuanModel
+from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo import BaichuanMessage
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
     InsufficientAccountBalance,
@@ -92,10 +93,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         # ping
-        instance = BaichuanModel(
-            api_key=credentials['api_key'],
-            secret_key=credentials.get('secret_key', '')
-        )
+        instance = BaichuanProvider.get_service_client(credentials=credentials)
 
         try:
             instance.generate(model=model, stream=False, messages=[
@@ -113,10 +111,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
         if tools is not None and len(tools) > 0:
             raise InvokeBadRequestError("Baichuan model doesn't support tools")
         
-        instance = BaichuanModel(
-            api_key=credentials['api_key'],
-            secret_key=credentials.get('secret_key', '')
-        )
+        instance = BaichuanProvider.get_service_client(credentials=credentials)
 
         # convert prompt messages to baichuan messages
         messages = [

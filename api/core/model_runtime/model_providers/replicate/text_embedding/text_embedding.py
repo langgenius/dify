@@ -10,13 +10,14 @@ from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.replicate._common import _CommonReplicate
+from core.model_runtime.model_providers.replicate.replicate import ReplicateProvider
 
 
 class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
     def _invoke(self, model: str, credentials: dict, texts: list[str],
                 user: Optional[str] = None) -> TextEmbeddingResult:
 
-        client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
+        client = ReplicateProvider.get_service_client(credentials)
         replicate_model_version = f'{model}:{credentials["model_version"]}'
 
         text_input_key = self._get_text_input_key(model, credentials['model_version'], client)
@@ -47,7 +48,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
             raise CredentialsValidateFailedError('Replicate Model Version must be provided.')
 
         try:
-            client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
+            client = ReplicateProvider.get_service_client(credentials)
             replicate_model_version = f'{model}:{credentials["model_version"]}'
 
             text_input_key = self._get_text_input_key(model, credentials['model_version'], client)

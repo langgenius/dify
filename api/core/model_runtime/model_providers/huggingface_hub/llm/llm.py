@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from huggingface_hub import InferenceClient
 from huggingface_hub.hf_api import HfApi
 from huggingface_hub.utils import BadRequestError
 
@@ -26,6 +25,7 @@ from core.model_runtime.entities.model_entities import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.huggingface_hub._common import _CommonHuggingfaceHub
+from core.model_runtime.model_providers.huggingface_hub.huggingface_hub import HuggingfaceHubProvider
 
 
 class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel):
@@ -33,7 +33,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None, stream: bool = True,
                 user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
-        client = InferenceClient(token=credentials['huggingfacehub_api_token'])
+        client = HuggingfaceHubProvider.get_service_client(credentials=credentials)
 
         if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             model = credentials['huggingfacehub_endpoint_url']
@@ -84,7 +84,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
                 raise CredentialsValidateFailedError('Huggingface Hub Task Type must be one of text2text-generation, '
                                                      'text-generation.')
 
-            client = InferenceClient(token=credentials['huggingfacehub_api_token'])
+            client = HuggingfaceHubProvider.get_service_client(credentials=credentials)
 
             if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
                 model = credentials['huggingfacehub_endpoint_url']

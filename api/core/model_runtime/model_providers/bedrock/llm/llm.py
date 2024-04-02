@@ -8,7 +8,7 @@ from typing import Optional, Union, cast
 
 import boto3
 import requests
-from anthropic import AnthropicBedrock, Stream
+from anthropic import Stream
 from anthropic.types import (
     ContentBlockDeltaEvent,
     Message,
@@ -48,6 +48,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.bedrock.bedrock import BedrockProvider
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +95,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         # use Anthropic official SDK references
         # - https://docs.anthropic.com/claude/reference/claude-on-amazon-bedrock
         # - https://github.com/anthropics/anthropic-sdk-python
-        client = AnthropicBedrock(
-            aws_access_key=credentials["aws_access_key_id"],
-            aws_secret_key=credentials["aws_secret_access_key"],
-            aws_region=credentials["aws_region"],
-        )
+        client = BedrockProvider.get_service_client(credentials=credentials)
 
         extra_model_kwargs = {}
         if stop:

@@ -42,6 +42,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.anthropic.anthropic import AnthropicProvider
 
 ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
 The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
@@ -76,7 +77,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         return self._chat_generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _chat_generate(self, model: str, credentials: dict,
-                       prompt_messages: list[PromptMessage], model_parameters: dict, 
+                       prompt_messages: list[PromptMessage], model_parameters: dict,
                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
@@ -215,7 +216,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         """
         prompt = self._convert_messages_to_prompt_anthropic(prompt_messages)
 
-        client = Anthropic(api_key="")
+        client = AnthropicProvider.get_service_client(api_key="")
         tokens = client.count_tokens(prompt)
 
         tool_call_inner_prompts_tokens_map = {
@@ -465,7 +466,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                             "type": "text",
                             "text": message.content
                         })
-                    
+
                     if prompt_message_dicts[-1]["role"] == "assistant":
                         prompt_message_dicts[-1]["content"].extend(content)
                     else:

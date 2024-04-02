@@ -6,7 +6,6 @@ from typing import Optional, Union
 import google.ai.generativelanguage as glm
 import google.api_core.exceptions as exceptions
 import google.generativeai as genai
-import google.generativeai.client as client
 from google.generativeai.types import ContentType, GenerateContentResponse, HarmBlockThreshold, HarmCategory
 from google.generativeai.types.content_types import to_part
 
@@ -30,6 +29,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.google.google import GoogleProvider
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         )
 
         return text.rstrip()
-    
+
     def _convert_tools_to_glm_tool(self, tools: list[PromptMessageTool]) -> glm.Tool:
         """
         Convert tool messages to glm tools
@@ -142,7 +142,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
-                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None, 
+                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                   stream: bool = True, user: Optional[str] = None
         ) -> Union[LLMResult, Generator]:
         """
@@ -182,12 +182,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 else:
                     history.append(content)
 
-        # Create a new ClientManager with tenant's API key
-        new_client_manager = client._ClientManager()
-        new_client_manager.configure(api_key=credentials["google_api_key"])
-        new_custom_client = new_client_manager.make_client("generative")
-
-        google_model._client = new_custom_client
+        google_model._client = GoogleProvider.get_service_client(credentials=credentials, name="generative")
 
         safety_settings={
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
@@ -273,7 +268,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                             function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                 name=part.function_call.name,
                                 arguments=json.dumps({
-                                    key: value 
+                                    key: value
                                     for key, value in part.function_call.args.items()
                                 })
                             )
@@ -281,9 +276,9 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     ]
 
                 index += 1
-    
+
                 if not response._done:
-                    
+
                     # transform assistant message to prompt message
                     yield LLMResultChunk(
                         model=model,
@@ -294,14 +289,14 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                         )
                     )
                 else:
-                    
+
                     # calculate num tokens
                     prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
                     completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
                     # transform usage
                     usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
-                    
+
                     yield LLMResultChunk(
                         model=model,
                         prompt_messages=prompt_messages,

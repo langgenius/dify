@@ -1,7 +1,6 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from replicate import Client as ReplicateClient
 from replicate.exceptions import ReplicateError
 from replicate.prediction import Prediction
 
@@ -25,6 +24,7 @@ from core.model_runtime.entities.model_entities import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.replicate._common import _CommonReplicate
+from core.model_runtime.model_providers.replicate.replicate import ReplicateProvider
 
 
 class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
@@ -35,7 +35,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
         version = credentials['model_version']
 
-        client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
+        client = ReplicateProvider.get_service_client(credentials)
         model_info = client.models.get(model)
         model_info_version = model_info.versions.get(version)
 
@@ -75,7 +75,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
         version = credentials['model_version']
 
         try:
-            client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
+            client = ReplicateProvider.get_service_client(credentials)
             model_info = client.models.get(model)
             model_info_version = model_info.versions.get(version)
 
@@ -115,7 +115,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
     def _get_customizable_model_parameter_rules(cls, model: str, credentials: dict) -> list[ParameterRule]:
         version = credentials['model_version']
 
-        client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
+        client = ReplicateProvider.get_service_client(credentials)
         model_info = client.models.get(model)
         model_info_version = model_info.versions.get(version)
 

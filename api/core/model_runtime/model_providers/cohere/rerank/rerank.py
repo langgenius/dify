@@ -14,6 +14,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
+from core.model_runtime.model_providers.cohere.cohere import CohereProvider
 
 
 class CohereRerankModel(RerankModel):
@@ -44,7 +45,7 @@ class CohereRerankModel(RerankModel):
             )
 
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = CohereProvider.get_service_client(credentials)
         response = client.rerank(
             query=query,
             documents=docs,
