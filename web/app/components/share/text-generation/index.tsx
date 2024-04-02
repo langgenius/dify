@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
@@ -71,10 +72,22 @@ const TextGeneration: FC<IMainProps> = ({
   const isTablet = media === MediaType.tablet
   const isMobile = media === MediaType.mobile
 
-  const [currTab, setCurrTab] = useState<string>('create')
+  const searchParams = useSearchParams()
+  const mode = searchParams.get('mode') || 'create'
+  const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
+
+  const router = useRouter()
+  const pathname = usePathname()
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('mode')
+    router.replace(`${pathname}?${params.toString()}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
-  const isInBatchTab = currTab === 'batch'
+  const isInBatchTab = currentTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
@@ -361,7 +374,7 @@ const TextGeneration: FC<IMainProps> = ({
       setCanReplaceLogo(can_replace_logo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this, file_upload, text_to_speech, sensitive_word_avoidance }: any = appParams
+      const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({
         ...file_upload.image,
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
@@ -447,10 +460,10 @@ const TextGeneration: FC<IMainProps> = ({
       }
     >
       <>
-        <div className='shrink-0 flex items-center justify-between'>
+        <div className='flex items-center justify-between shrink-0'>
           <div className='flex items-center space-x-3'>
             <div className={s.starIcon}></div>
-            <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
+            <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-2'>
             {allFailedTaskList.length > 0 && (
@@ -482,7 +495,7 @@ const TextGeneration: FC<IMainProps> = ({
           </div>
         </div>
 
-        <div className='grow overflow-y-auto'>
+        <div className='overflow-y-auto grow'>
           {!isCallBatchAPI ? renderRes() : renderBatchRes()}
           {!noPendingTask && (
             <div className='mt-4'>
@@ -515,10 +528,10 @@ const TextGeneration: FC<IMainProps> = ({
           'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
         )}>
           <div className='mb-6'>
-            <div className='flex justify-between items-center'>
+            <div className='flex items-center justify-between'>
               <div className='flex items-center space-x-3'>
                 <AppIcon size="small" icon={siteInfo.icon} background={siteInfo.icon_background || appDefaultIconBackground} />
-                <div className='text-lg text-gray-800 font-semibold'>{siteInfo.title}</div>
+                <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
               </div>
               {!isPC && (
                 <Button
@@ -555,11 +568,11 @@ const TextGeneration: FC<IMainProps> = ({
                 }]
                 : []),
             ]}
-            value={currTab}
-            onChange={setCurrTab}
+            value={currentTab}
+            onChange={setCurrentTab}
           />
-          <div className='grow h-20 overflow-y-auto'>
-            <div className={cn(currTab === 'create' ? 'block' : 'hidden')}>
+          <div className='h-20 overflow-y-auto grow'>
+            <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
               <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
@@ -578,13 +591,13 @@ const TextGeneration: FC<IMainProps> = ({
               />
             </div>
 
-            {currTab === 'saved' && (
+            {currentTab === 'saved' && (
               <SavedItems
                 className='mt-4'
                 isShowTextToSpeech={textToSpeechConfig?.enabled}
                 list={savedMessages}
                 onRemove={handleRemoveSavedMessage}
-                onStartCreateContent={() => setCurrTab('create')}
+                onStartCreateContent={() => setCurrentTab('create')}
               />
             )}
           </div>
