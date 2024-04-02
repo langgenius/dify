@@ -127,8 +127,9 @@ class WorkflowConverter:
         graph['nodes'].append(start_node)
 
         # convert to http request node
+        external_data_variable_node_mapping = {}
         if app_config.external_data_variables:
-            http_request_nodes = self._convert_to_http_request_node(
+            http_request_nodes, external_data_variable_node_mapping = self._convert_to_http_request_node(
                 app_model=app_model,
                 variables=app_config.variables,
                 external_data_variables=app_config.external_data_variables
@@ -155,7 +156,8 @@ class WorkflowConverter:
             graph=graph,
             model_config=app_config.model,
             prompt_template=app_config.prompt_template,
-            file_upload=app_config.additional_features.file_upload
+            file_upload=app_config.additional_features.file_upload,
+            external_data_variable_node_mapping=external_data_variable_node_mapping
         )
 
         graph = self._append_node(graph, llm_node)
@@ -247,7 +249,8 @@ class WorkflowConverter:
 
     def _convert_to_http_request_node(self, app_model: App,
                                       variables: list[VariableEntity],
-                                      external_data_variables: list[ExternalDataVariableEntity]) -> list[dict]:
+                                      external_data_variables: list[ExternalDataVariableEntity]) \
+            -> tuple[list[dict], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
         :param app_model: App instance
@@ -257,6 +260,7 @@ class WorkflowConverter:
         """
         index = 1
         nodes = []
+        external_data_variable_node_mapping = {}
         tenant_id = app_model.tenant_id
         for external_data_variable in external_data_variables:
             tool_type = external_data_variable.type
@@ -352,9 +356,11 @@ class WorkflowConverter:
             }
 
             nodes.append(code_node)
+
+            external_data_variable_node_mapping[external_data_variable.variable] = code_node['id']
             index += 1
 
-        return nodes
+        return nodes, external_data_variable_node_mapping
 
     def _convert_to_knowledge_retrieval_node(self, new_app_mode: AppMode,
                                              dataset_config: DatasetEntity,
@@ -413,7 +419,8 @@ class WorkflowConverter:
                              graph: dict,
                              model_config: ModelConfigEntity,
                              prompt_template: PromptTemplateEntity,
-                             file_upload: Optional[FileExtraConfig] = None) -> dict:
+                             file_upload: Optional[FileExtraConfig] = None,
+                             external_data_variable_node_mapping: dict[str, str] = None) -> dict:
         """
         Convert to LLM Node
         :param original_app_mode: original app mode
@@ -422,6 +429,7 @@ class WorkflowConverter:
         :param model_config: model config
         :param prompt_template: prompt template
         :param file_upload: file upload config (optional)
+        :param external_data_variable_node_mapping: external data variable node mapping
         """
         # fetch start and knowledge retrieval node
         start_node = next(filter(lambda n: n['data']['type'] == NodeType.START.value, graph['nodes']))
@@ -450,8 +458,11 @@ class WorkflowConverter:
                 if not template:
                     prompts = []
                 else:
-                    for v in start_node['data']['variables']:
-                        template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+                    template = self._replace_template_variables(
+                        template,
+                        start_node['data']['variables'],
+                        external_data_variable_node_mapping
+                    )
 
                     prompts = [
                         {
@@ -466,8 +477,11 @@ class WorkflowConverter:
                 for m in advanced_chat_prompt_template.messages:
                     if advanced_chat_prompt_template:
                         text = m.text
-                        for v in start_node['data']['variables']:
-                            text = text.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+                        text = self._replace_template_variables(
+                            text,
+                            start_node['data']['variables'],
+                            external_data_variable_node_mapping
+                        )
 
                         prompts.append({
                             "role": m.role.value,
@@ -488,8 +502,11 @@ class WorkflowConverter:
                 )
 
                 template = prompt_template_config['prompt_template'].template
-                for v in start_node['data']['variables']:
-                    template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+                template = self._replace_template_variables(
+                    template,
+                    start_node['data']['variables'],
+                    external_data_variable_node_mapping
+                )
 
                 prompts = {
                     "text": template
@@ -504,8 +521,11 @@ class WorkflowConverter:
                 advanced_completion_prompt_template = prompt_template.advanced_completion_prompt_template
                 if advanced_completion_prompt_template:
                     text = advanced_completion_prompt_template.prompt
-                    for v in start_node['data']['variables']:
-                        text = text.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+                    text = self._replace_template_variables(
+                        text,
+                        start_node['data']['variables'],
+                        external_data_variable_node_mapping
+                    )
                 else:
                     text = ""
 
@@ -560,6 +580,25 @@ class WorkflowConverter:
                 }
             }
         }
+
+    def _replace_template_variables(self, template: str,
+                                    variables: list[dict],
+                                    external_data_variable_node_mapping: dict[str, str] = None) -> str:
+        """
+        Replace Template Variables
+        :param template: template
+        :param variables: list of variables
+        :return:
+        """
+        for v in variables:
+            template = template.replace('{{' + v['variable'] + '}}', '{{#start.' + v['variable'] + '#}}')
+
+        if external_data_variable_node_mapping:
+            for variable, code_node_id in external_data_variable_node_mapping.items():
+                template = template.replace('{{' + variable + '}}',
+                                            '{{#' + code_node_id + '.result#}}')
+
+        return template
 
     def _convert_to_end_node(self) -> dict:
         """
