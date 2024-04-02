@@ -283,50 +283,6 @@ export const useWorkflow = () => {
     return dayjs(time).locale(locale === 'zh-Hans' ? 'zh-cn' : locale).fromNow()
   }, [locale])
 
-  const getValidTreeNodes = useCallback(() => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
-
-    const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-
-    if (!startNode) {
-      return {
-        validNodes: [],
-        maxDepth: 0,
-      }
-    }
-
-    const list: Node[] = [startNode]
-    let maxDepth = 1
-
-    const traverse = (root: Node, depth: number) => {
-      if (depth > maxDepth)
-        maxDepth = depth
-
-      const outgoers = getOutgoers(root, nodes, edges)
-
-      if (outgoers.length) {
-        outgoers.forEach((outgoer) => {
-          list.push(outgoer)
-          traverse(outgoer, depth + 1)
-        })
-      }
-      else {
-        list.push(root)
-      }
-    }
-
-    traverse(startNode, maxDepth)
-
-    return {
-      validNodes: uniqBy(list, 'id'),
-      maxDepth,
-    }
-  }, [store])
-
   const renderTreeFromRecord = useCallback((nodes: Node[], edges: Edge[], viewport?: Viewport) => {
     const { setNodes } = store.getState()
     const { setViewport, setEdges } = reactflow
@@ -356,7 +312,6 @@ export const useWorkflow = () => {
     isNodeVarsUsedInNodes,
     isValidConnection,
     formatTimeFromNow,
-    getValidTreeNodes,
     renderTreeFromRecord,
     getNode,
   }

@@ -36,6 +36,8 @@ const translation = {
     setVarValuePlaceholder: 'Set variable',
     needConnecttip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
+    needEndNode: 'Please add an end node',
+    needAnswerNode: 'Please add a answer node',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
     previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',

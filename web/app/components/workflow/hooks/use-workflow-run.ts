@@ -3,15 +3,12 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useWorkflowStore } from '../store'
 import {
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from '../types'
-import { MAX_TREE_DEEPTH } from '../constants'
-import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflow } from './use-workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
@@ -21,20 +18,13 @@ import {
   stopWorkflowRun,
 } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useToastContext } from '@/app/components/base/toast'
 
 export const useWorkflowRun = () => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
-  const nodesExtraData = useNodesExtraData()
-  const {
-    getValidTreeNodes,
-    renderTreeFromRecord,
-  } = useWorkflow()
+  const { renderTreeFromRecord } = useWorkflow()
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -331,33 +321,6 @@ export const useWorkflowRun = () => {
     }
   }, [featuresStore, workflowStore, renderTreeFromRecord])
 
-  const handleCheckBeforePublish = useCallback(() => {
-    const {
-      validNodes,
-      maxDepth,
-    } = getValidTreeNodes()
-
-    if (!validNodes.length)
-      return false
-
-    if (maxDepth > MAX_TREE_DEEPTH) {
-      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEEPTH }) })
-      return false
-    }
-
-    for (let i = 0; i < validNodes.length; i++) {
-      const node = validNodes[i]
-      const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t)
-
-      if (errorMessage) {
-        notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
-        return false
-      }
-    }
-
-    return true
-  }, [getValidTreeNodes, nodesExtraData, notify, t])
-
   return {
     handleBackupDraft,
     handleLoadBackupDraft,
@@ -365,6 +328,5 @@ export const useWorkflowRun = () => {
     handleRun,
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
-    handleCheckBeforePublish,
   }
 }

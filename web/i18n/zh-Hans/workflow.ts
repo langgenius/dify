@@ -36,6 +36,8 @@ const translation = {
     setVarValuePlaceholder: '设置变量值',
     needConnecttip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
+    needEndNode: '请添加结束节点',
+    needAnswerNode: '请添加直接回复节点',
     workflowProcess: '工作流',
     notRunning: '尚未运行',
     previewPlaceholder: '在下面的框中输入内容开始调试聊天机器人',
