@@ -94,7 +94,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str,
             if features.billing.enabled:
                 if resource == 'add_segment':
                     if features.billing.subscription.plan == 'sandbox':
-                        abort(403, 'Please upgrade your plan to unlock this function.')
+                        abort(403, 'To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.')
                 else:
                     return view(*args, **kwargs)
 
