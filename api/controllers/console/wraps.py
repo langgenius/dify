@@ -5,7 +5,6 @@ from flask import abort, current_app, request
 from flask_login import current_user
 
 from controllers.console.workspace.error import AccountNotInitializedError
-from extensions.ext_redis import redis_client
 from services.feature_service import FeatureService
 from services.operation_service import OperationService
 
