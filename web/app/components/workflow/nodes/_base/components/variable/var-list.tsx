@@ -41,16 +41,16 @@ const VarList: FC<Props> = ({
   const handleVarReferenceChange = useCallback((index: number) => {
     return (value: ValueSelector | string, varKindType: VarKindType) => {
       const newList = produce(list, (draft) => {
-        if (!isSupportConstantValue || varKindType === VarKindType.selector) {
+        if (!isSupportConstantValue || varKindType === VarKindType.variable) {
           draft[index].value_selector = value as ValueSelector
           if (isSupportConstantValue)
-            draft[index].variable_type = VarKindType.selector
+            draft[index].variable_type = VarKindType.variable
 
           if (!draft[index].variable)
             draft[index].variable = value[value.length - 1]
         }
         else {
-          draft[index].variable_type = VarKindType.static
+          draft[index].variable_type = VarKindType.constant
           draft[index].value_selector = value as ValueSelector
           draft[index].value = value as string
         }
@@ -85,7 +85,7 @@ const VarList: FC<Props> = ({
             readonly={readonly}
             isShowNodeName
             className='grow'
-            value={item.variable_type === VarKindType.static ? (item.value || '') : (item.value_selector || [])}
+            value={item.variable_type === VarKindType.constant ? (item.value || '') : (item.value_selector || [])}
             isSupportConstantValue={isSupportConstantValue}
             onChange={handleVarReferenceChange(index)}
             defaultVarKindType={item.variable_type}
