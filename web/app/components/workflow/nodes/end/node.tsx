@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import React from 'react'
 import type { EndNodeType } from './types'
 import type { NodeProps, ValueSelector, Variable } from '@/app/components/workflow/types'
-import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {
   useIsChatMode,
   useWorkflow,
@@ -21,8 +21,12 @@ const Node: FC<NodeProps<EndNodeType>> = ({
   const isChatMode = useIsChatMode()
   const outputVars = toNodeOutputVars(availableNodes, isChatMode)
 
+  const startNode = availableNodes.find((node: any) => {
+    return node.data.type === BlockEnum.Start
+  })
+
   const getNode = (id: string) => {
-    return availableNodes.find(node => node.id === id)
+    return availableNodes.find(node => node.id === id) || startNode
   }
 
   const getVarType = (nodeId: string, value: ValueSelector) => {
@@ -31,10 +35,11 @@ const Node: FC<NodeProps<EndNodeType>> = ({
       return 'undefined'
 
     let type: VarType = VarType.string
-    let curr: any = targetVar.vars;
+    let curr: any = targetVar.vars
+    const isSystem = isSystemVar(value);
     (value).slice(1).forEach((key, i) => {
       const isLast = i === value.length - 2
-      curr = curr.find((v: any) => v.variable === key)
+      curr = curr.find((v: any) => v.variable === isSystem ? `sys.${key}` : key)
       if (isLast) {
         type = curr.type
       }
@@ -55,14 +60,15 @@ const Node: FC<NodeProps<EndNodeType>> = ({
     <div className='mb-1 px-3 py-1 space-y-0.5'>
       {filteredOutputs.map(({ value_selector }, index) => {
         const node = getNode(value_selector[0])
-        const varName = value_selector[value_selector.length - 1]
+        const isSystem = isSystemVar(value_selector)
+        const varName = isSystem ? `sys.${value_selector[value_selector.length - 1]}` : value_selector[value_selector.length - 1]
         return (
           <div key={index} className='flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
             <div className='flex items-center text-xs font-medium text-gray-500'>
               <div className='p-[1px]'>
                 <VarBlockIcon
                   className='!text-gray-900'
-                  type={node?.data.type || BlockEnum.Tool}
+                  type={node?.data.type || BlockEnum.Start}
                 />
               </div>
               <div>{node?.data.title}</div>
