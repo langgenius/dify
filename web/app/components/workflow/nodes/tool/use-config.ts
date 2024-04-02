@@ -94,9 +94,18 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
   }, [inputs, setInputs])
 
-  const filterVar = useCallback((varPayload: Var) => {
-    return [VarVarType.string, VarVarType.number].includes(varPayload.type)
+  const [currVarIndex, setCurrVarIndex] = useState(-1)
+  const currVarType = toolInputVarSchema[currVarIndex]?._type
+  const handleOnVarOpen = useCallback((index: number) => {
+    setCurrVarIndex(index)
   }, [])
+
+  const filterVar = useCallback((varPayload: Var) => {
+    if (currVarType)
+      return varPayload.type === currVarType
+
+    return varPayload.type !== VarVarType.arrayFile
+  }, [currVarType])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -144,7 +153,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const varInputs = getInputVars(hadVarParams.map((p) => {
     if (p.type === VarType.variable)
-      return `#${[p.value as ValueSelector].join('.')}#`
+      return `{{#${[p.value as ValueSelector].join('.')}#}}`
 
     return p.value as string
   }))
@@ -176,6 +185,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
+    handleOnVarOpen,
     filterVar,
     currCollection,
     isShowAuthBtn,
