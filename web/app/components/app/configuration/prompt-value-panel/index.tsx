@@ -54,7 +54,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
         return chatPromptConfig.prompt.every(({ text }) => !text)
-      return !completionPromptConfig.prompt.text
+      return !completionPromptConfig.prompt?.text
     }
 
     else { return !modelConfig.configs.prompt_template }
