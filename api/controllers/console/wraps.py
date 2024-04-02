@@ -5,6 +5,7 @@ from flask import abort, current_app, request
 from flask_login import current_user
 
 from controllers.console.workspace.error import AccountNotInitializedError
+from extensions.ext_redis import redis_client
 from services.feature_service import FeatureService
 from services.operation_service import OperationService
 
@@ -51,14 +52,12 @@ def cloud_edition_billing_resource_check(resource: str,
         @wraps(view)
         def decorated(*args, **kwargs):
             features = FeatureService.get_features(current_user.current_tenant_id)
-
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
                 vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
                 annotation_quota_limit = features.annotation_quota_limit
-
                 if resource == 'members' and 0 < members.limit <= members.size:
                     abort(403, error_msg)
                 elif resource == 'apps' and 0 < apps.limit <= apps.size:
@@ -80,7 +79,29 @@ def cloud_edition_billing_resource_check(resource: str,
                     return view(*args, **kwargs)
 
             return view(*args, **kwargs)
+
         return decorated
+
+    return interceptor
+
+
+def cloud_edition_billing_knowledge_limit_check(resource: str,
+                                                error_msg: str = "You have reached the limit of your subscription."):
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            features = FeatureService.get_features(current_user.current_tenant_id)
+            if features.billing.enabled:
+                if resource == 'add_segment':
+                    if features.billing.subscription.plan == 'sandbox':
+                        abort(403, 'Please upgrade your plan to unlock this function.')
+                else:
+                    return view(*args, **kwargs)
+
+            return view(*args, **kwargs)
+
+        return decorated
+
     return interceptor
 
 
@@ -99,4 +120,5 @@ def cloud_utm_record(view):
         except Exception as e:
             pass
         return view(*args, **kwargs)
+
     return decorated
