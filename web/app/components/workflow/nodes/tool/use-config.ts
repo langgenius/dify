@@ -134,7 +134,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     getInputVars,
     runningStatus,
     setRunInputData,
-    handleRun,
+    handleRun: doHandleRun,
     handleStop,
     runResult,
   } = useOneStepRun<ToolNodeType>({
@@ -147,6 +147,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       language,
     },
   })
+
   const hadVarParams = Object.keys(inputs.tool_parameters)
     .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
     .map(k => inputs.tool_parameters[k])
@@ -175,6 +176,26 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     }]
     return forms
   })()
+
+  const handleRun = (submitData: Record<string, any>) => {
+    const varTypeInputKeys = Object.keys(inputs.tool_parameters)
+      .filter(key => inputs.tool_parameters[key].type === VarType.variable)
+    const shouldAdd = varTypeInputKeys.length > 0
+    if (!shouldAdd) {
+      doHandleRun(submitData)
+      return
+    }
+    const addMissedVarData = { ...submitData }
+    Object.keys(submitData).forEach((key) => {
+      const value = submitData[key]
+      varTypeInputKeys.forEach((inputKey) => {
+        const inputValue = inputs.tool_parameters[inputKey].value as ValueSelector
+        if (`#${inputValue.join('.')}#` === key)
+          addMissedVarData[inputKey] = value
+      })
+    })
+    doHandleRun(addMissedVarData)
+  }
 
   return {
     readOnly,
