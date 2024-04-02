@@ -4,6 +4,12 @@ import {
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
+import {
+  FloatingPortal,
+  flip,
+  shift,
+  useFloating,
+} from '@floating-ui/react'
 import type { TextNode } from 'lexical'
 import type { MenuRenderFn } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -47,6 +53,13 @@ const ComponentPicker = ({
   workflowVariableBlock,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
+  const { refs, floatingStyles, elements } = useFloating({
+    placement: 'bottom-start',
+    middleware: [
+      shift(),
+      flip(),
+    ],
+  })
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
@@ -113,106 +126,128 @@ const ComponentPicker = ({
     { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
     if (anchorElementRef.current && (allOptions.length || workflowVariableOptions.length)) {
-      return ReactDOM.createPortal(
-        <div className='w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
+      return (
+        <>
           {
-            !!promptOptions.length && (
-              <>
-                <PromptMenu
-                  startIndex={0}
-                  selectedIndex={selectedIndex}
-                  options={promptOptions}
-                  onClick={(index, option) => {
-                    if (option.disabled)
-                      return
-                    setHighlightedIndex(index)
-                    selectOptionAndCleanUp(option)
-                  }}
-                  onMouseEnter={(index, option) => {
-                    if (option.disabled)
-                      return
-                    setHighlightedIndex(index)
-                  }}
-                />
-              </>
+            ReactDOM.createPortal(
+              <div ref={refs.setReference}></div>,
+              anchorElementRef.current,
             )
           }
           {
-            !!variableOptions.length && (
-              <>
-                {
-                  !!promptOptions.length && (
-                    <div className='h-[1px] bg-gray-100'></div>
-                  )
-                }
-                <VariableMenu
-                  startIndex={promptOptions.length}
-                  selectedIndex={selectedIndex}
-                  options={variableOptions}
-                  onClick={(index, option) => {
-                    if (option.disabled)
-                      return
-                    setHighlightedIndex(index)
-                    selectOptionAndCleanUp(option)
+            elements.reference && (
+              <FloatingPortal id='typeahead-menu'>
+                <div
+                  className='w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg overflow-y-auto'
+                  style={{
+                    ...floatingStyles,
+                    maxHeight: 'calc(1 / 3 * 100vh)',
                   }}
-                  onMouseEnter={(index, option) => {
-                    if (option.disabled)
-                      return
-                    setHighlightedIndex(index)
-                  }}
-                  queryString={queryString}
-                />
-              </>
+                  ref={refs.setFloating}
+                >
+                  {
+                    !!promptOptions.length && (
+                      <>
+                        <PromptMenu
+                          startIndex={0}
+                          selectedIndex={selectedIndex}
+                          options={promptOptions}
+                          onClick={(index, option) => {
+                            if (option.disabled)
+                              return
+                            setHighlightedIndex(index)
+                            selectOptionAndCleanUp(option)
+                          }}
+                          onMouseEnter={(index, option) => {
+                            if (option.disabled)
+                              return
+                            setHighlightedIndex(index)
+                          }}
+                        />
+                      </>
+                    )
+                  }
+                  {
+                    !!variableOptions.length && (
+                      <>
+                        {
+                          !!promptOptions.length && (
+                            <div className='h-[1px] bg-gray-100'></div>
+                          )
+                        }
+                        <VariableMenu
+                          startIndex={promptOptions.length}
+                          selectedIndex={selectedIndex}
+                          options={variableOptions}
+                          onClick={(index, option) => {
+                            if (option.disabled)
+                              return
+                            setHighlightedIndex(index)
+                            selectOptionAndCleanUp(option)
+                          }}
+                          onMouseEnter={(index, option) => {
+                            if (option.disabled)
+                              return
+                            setHighlightedIndex(index)
+                          }}
+                          queryString={queryString}
+                        />
+                      </>
+                    )
+                  }
+                  {
+                    !!externalToolOptions.length && (
+                      <>
+                        {
+                          (!!promptOptions.length || !!variableOptions.length) && (
+                            <div className='h-[1px] bg-gray-100'></div>
+                          )
+                        }
+                        <VariableMenu
+                          startIndex={promptOptions.length + variableOptions.length}
+                          selectedIndex={selectedIndex}
+                          options={externalToolOptions}
+                          onClick={(index, option) => {
+                            if (option.disabled)
+                              return
+                            setHighlightedIndex(index)
+                            selectOptionAndCleanUp(option)
+                          }}
+                          onMouseEnter={(index, option) => {
+                            if (option.disabled)
+                              return
+                            setHighlightedIndex(index)
+                          }}
+                          queryString={queryString}
+                        />
+                      </>
+                    )
+                  }
+                  {
+                    !!workflowVariableOptions.length && (
+                      <>
+                        {
+                          (!!promptOptions.length || !!variableOptions.length || !!externalToolOptions.length) && (
+                            <div className='h-[1px] bg-gray-100'></div>
+                          )
+                        }
+                        <div className='p-1'>
+                          <VarReferenceVars
+                            hideSearch
+                            vars={workflowVariableOptions}
+                            onChange={(variables: string[]) => {
+                              handleSelectWorkflowVariable(variables)
+                            }}
+                          />
+                        </div>
+                      </>
+                    )
+                  }
+                </div>
+              </FloatingPortal>
             )
           }
-          {
-            !!externalToolOptions.length && (
-              <>
-                {
-                  (!!promptOptions.length || !!variableOptions.length) && (
-                    <div className='h-[1px] bg-gray-100'></div>
-                  )
-                }
-                <VariableMenu
-                  startIndex={promptOptions.length + variableOptions.length}
-                  selectedIndex={selectedIndex}
-                  options={externalToolOptions}
-                  onClick={(index, option) => {
-                    if (option.disabled)
-                      return
-                    setHighlightedIndex(index)
-                    selectOptionAndCleanUp(option)
-                  }}
-                  onMouseEnter={(index, option) => {
-                    if (option.disabled)
-                      return
-                    setHighlightedIndex(index)
-                  }}
-                  queryString={queryString}
-                />
-              </>
-            )
-          }
-          {
-            !!workflowVariableOptions.length && (
-              <>
-                {
-                  (!!promptOptions.length || !!variableOptions.length || !!externalToolOptions.length) && (
-                    <div className='h-[1px] bg-gray-100'></div>
-                  )
-                }
-                <VarReferenceVars
-                  hideSearch
-                  vars={workflowVariableOptions}
-                  onChange={(variables: string[]) => {
-                    handleSelectWorkflowVariable(variables)
-                  }}
-                />
-              </>
-            )
-          }
-        </div>,
-        anchorElementRef.current,
+        </>
       )
     }
 
@@ -225,6 +260,9 @@ const ComponentPicker = ({
     workflowVariableOptions,
     queryString,
     handleSelectWorkflowVariable,
+    elements,
+    floatingStyles,
+    refs,
   ])
 
   return (
