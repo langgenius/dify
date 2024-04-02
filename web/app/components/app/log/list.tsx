@@ -96,7 +96,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
       log: [
         ...item.message,
-        ...(item.message[item.message.length - 1].role !== 'assistant'
+        ...(item.message[item.message.length - 1]?.role !== 'assistant'
           ? [
             {
               role: 'assistant',
