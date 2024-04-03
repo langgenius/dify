@@ -228,6 +228,7 @@ export type ModelConfig = {
     image: VisionSettings
   }
   files?: VisionFile[]
+  created_at?: number
 }
 
 export type Language = typeof LanguagesSupported[number]

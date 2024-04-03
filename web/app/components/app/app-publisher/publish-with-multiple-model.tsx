@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ModelAndParameter } from '../types'
+import type { ModelAndParameter } from '../configuration/debug/types'
+import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -10,15 +11,17 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useProviderContext } from '@/context/provider-context'
-import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type PublishWithMultipleModelProps = {
   multipleModelConfigs: ModelAndParameter[]
+  // textGenerationModelList?: Model[]
   onSelect: (v: ModelAndParameter) => void
 }
 const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   multipleModelConfigs,
+  // textGenerationModelList = [],
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -26,7 +29,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
   const { textGenerationModelList } = useProviderContext()
   const [open, setOpen] = useState(false)
 
-  const validModelConfigs: (ModelAndParameter & { modelItem: ModelItem })[] = []
+  const validModelConfigs: (ModelAndParameter & { modelItem: ModelItem; providerItem: Model })[] = []
 
   multipleModelConfigs.forEach((item) => {
     const provider = textGenerationModelList.find(model => model.provider === item.provider)
@@ -40,6 +43,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           model: item.model,
           provider: item.provider,
           modelItem: model,
+          providerItem: provider,
           parameters: item.parameters,
         })
       }
@@ -62,18 +66,18 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
       onOpenChange={setOpen}
       placement='bottom-end'
     >
-      <PortalToFollowElemTrigger onClick={handleToggle}>
+      <PortalToFollowElemTrigger className='w-full' onClick={handleToggle}>
         <Button
           type='primary'
           disabled={!validModelConfigs.length}
-          className='pl-3 pr-2 h-8 text-[13px]'
+          className='mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium'
         >
           {t('appDebug.operation.applyConfig')}
           <ChevronDown className='ml-0.5 w-3 h-3' />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
-        <div className='p-1 w-[168px] rounded-lg border-[0.5px] border-gray-200 shadow-lg bg-white'>
+      <PortalToFollowElemContent className='mt-1 w-[288px] z-50'>
+        <div className='p-1 rounded-lg border-[0.5px] border-gray-200 shadow-lg bg-white'>
           <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
             {t('appDebug.publishAs')}
           </div>
@@ -81,10 +85,11 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
             validModelConfigs.map((item, index) => (
               <div
                 key={item.id}
-                className='flex items-center px-3 h-8 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-500'
+                className='flex items-center h-8 px-3 text-sm text-gray-500 rounded-lg cursor-pointer hover:bg-gray-100'
                 onClick={() => handleSelect(item)}
               >
-                #{index + 1}
+                <span className='italic min-w-[18px]'>#{index + 1}</span>
+                <ModelIcon modelName={item.model} provider={item.providerItem} className='ml-2' />
                 <div
                   className='ml-1 text-gray-700 truncate'
                   title={item.modelItem.label[language]}

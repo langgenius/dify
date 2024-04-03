@@ -162,6 +162,7 @@ const Header: FC = () => {
                 onPublish,
                 onRestore: onStartRestoring,
                 onToggle: onPublisherToggle,
+                crossAxisOffset: 53,
               }}
             />
             {
