@@ -128,6 +128,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       notify({ type: 'success', message: t('app.appDeleted') })
       mutateApps()
       onPlanInfoChanged()
+      setAppDetail()
       replace('/apps')
     }
     catch (e: any) {
