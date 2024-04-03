@@ -76,10 +76,21 @@ const Editor: FC<Props> = ({
 
   const [isFocus, {
     setTrue: setFocus,
-    setFalse: setBlur,
+    setFalse: doSetBlur,
   }] = useBoolean(false)
+  const notBlur = useRef(false)
+
+  const setBlur = () => {
+    // delay to avoid to not handle click event(handleInsertVariable)
+    setTimeout(() => {
+      if (!notBlur.current)
+        doSetBlur()
+      notBlur.current = false
+    }, 500)
+  }
 
   const handleInsertVariable = () => {
+    notBlur.current = true
     setFocus()
     eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
   }
