@@ -5,6 +5,7 @@ from typing import Optional, Union
 from flask import current_app
 
 from core.model_runtime.entities.common_entities import I18nObject
+from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderCredentials
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
@@ -211,40 +212,56 @@ class ToolTransformService:
     
     @staticmethod
     def tool_to_user_tool(
-        tool: Tool, credentials: dict = None, tenant_id: str = None
+        tool: Union[ApiBasedToolBundle, Tool], credentials: dict = None, tenant_id: str = None
     ) -> UserTool:
         """
         convert tool to user tool
         """
-        # fork tool runtime
-        tool = tool.fork_tool_runtime(meta={
-            'credentials': credentials,
-            'tenant_id': tenant_id,
-        })
+        if isinstance(tool, Tool):
+            # fork tool runtime
+            tool = tool.fork_tool_runtime(meta={
+                'credentials': credentials,
+                'tenant_id': tenant_id,
+            })
 
-        # get tool parameters
-        parameters = tool.parameters or []
-        # get tool runtime parameters
-        runtime_parameters = tool.get_runtime_parameters() or []
-        # override parameters
-        current_parameters = parameters.copy()
-        for runtime_parameter in runtime_parameters:
-            found = False
-            for index, parameter in enumerate(current_parameters):
-                if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
-                    current_parameters[index] = runtime_parameter
-                    found = True
-                    break
+            # get tool parameters
+            parameters = tool.parameters or []
+            # get tool runtime parameters
+            runtime_parameters = tool.get_runtime_parameters() or []
+            # override parameters
+            current_parameters = parameters.copy()
+            for runtime_parameter in runtime_parameters:
+                found = False
+                for index, parameter in enumerate(current_parameters):
+                    if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
+                        current_parameters[index] = runtime_parameter
+                        found = True
+                        break
 
-            if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
-                current_parameters.append(runtime_parameter)
+                if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
+                    current_parameters.append(runtime_parameter)
 
-        user_tool = UserTool(
-            author=tool.identity.author,
-            name=tool.identity.name,
-            label=tool.identity.label,
-            description=tool.description.human,
-            parameters=current_parameters
-        )
+            user_tool = UserTool(
+                author=tool.identity.author,
+                name=tool.identity.name,
+                label=tool.identity.label,
+                description=tool.description.human,
+                parameters=current_parameters
+            )
 
-        return user_tool
+            return user_tool
+        
+        if isinstance(tool, ApiBasedToolBundle):
+            return UserTool(
+                author=tool.author,
+                name=tool.operation_id,
+                label=I18nObject(
+                    en_US=tool.operation_id,
+                    zh_Hans=tool.operation_id
+                ),
+                description=I18nObject(
+                    en_US=tool.summary or '',
+                    zh_Hans=tool.summary or ''
+                ),
+                parameters=tool.parameters
+            )

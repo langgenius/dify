@@ -281,19 +281,7 @@ class ToolManageService:
             raise ValueError(f'you have not added provider {provider}')
         
         return [
-            UserTool(
-                author=tool_bundle.author,
-                name=tool_bundle.operation_id,
-                label=I18nObject(
-                    en_US=tool_bundle.operation_id,
-                    zh_Hans=tool_bundle.operation_id
-                ),
-                description=I18nObject(
-                    en_US=tool_bundle.summary or '',
-                    zh_Hans=tool_bundle.summary or ''
-                ),
-                parameters=tool_bundle.parameters
-            ) for tool_bundle in provider.tools
+            ToolTransformService.tool_to_user_tool(tool_bundle) for tool_bundle in provider.tools
         ]
 
     @staticmethod
