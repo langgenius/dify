@@ -8,7 +8,6 @@ import {
   useLayoutEffect,
   useMemo,
 } from 'react'
-import { useParams } from 'next/navigation'
 import { setAutoFreeze } from 'immer'
 import {
   useKeyPress,
@@ -51,7 +50,6 @@ import {
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -78,7 +76,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useNodesSyncDraft()
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
-  const params = useParams()
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -89,12 +86,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   }, [])
 
   useLayoutEffect(() => {
-    const appId = params.appId
     return () => {
-      const appIdParams = useAppStore.getState().appDetail?.id
-
-      if (appId !== appIdParams)
-        handleSyncWorkflowDraft(true, appId as string)
+      handleSyncWorkflowDraft(true)
     }
   }, [])
 
@@ -258,9 +251,9 @@ const WorkflowWrap = memo(() => {
 })
 WorkflowWrap.displayName = 'WorkflowWrap'
 
-const WorkflowContainer = () => {
+const WorkflowContainer = ({ appId }: any) => {
   return (
-    <WorkflowContextProvider>
+    <WorkflowContextProvider appId={appId}>
       <WorkflowWrap />
     </WorkflowContextProvider>
   )

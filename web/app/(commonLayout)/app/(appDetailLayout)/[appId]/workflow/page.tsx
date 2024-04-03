@@ -1,13 +1,12 @@
-'use client'
-
-import { memo } from 'react'
 import Workflow from '@/app/components/workflow'
 
-const Page = () => {
+const Page = async ({
+  params: { appId },
+}: any) => {
   return (
     <div className='w-full h-full overflow-x-auto'>
-      <Workflow />
+      <Workflow appId={appId} />
     </div>
   )
 }
-export default memo(Page)
+export default Page

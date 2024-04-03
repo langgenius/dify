@@ -10,7 +10,6 @@ import { BlockEnum } from '../types'
 import { useNodesReadOnly } from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { API_PREFIX } from '@/config'
 
 export const useNodesSyncDraft = () => {
@@ -28,7 +27,7 @@ export const useNodesSyncDraft = () => {
       transform,
     } = store.getState()
     const [x, y, zoom] = transform
-    const appId = useAppStore.getState().appDetail?.id
+    const appId = workflowStore.getState().appId
 
     if (appId || appIdParams) {
       const nodes = getNodes()
@@ -79,7 +78,7 @@ export const useNodesSyncDraft = () => {
         },
       }
     }
-  }, [store, featuresStore])
+  }, [store, featuresStore, workflowStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     const postParams = getPostParams()
