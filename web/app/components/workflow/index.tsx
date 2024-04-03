@@ -84,11 +84,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [])
 
-  // useEffect(() => {
-  //   return () => {
-  //     handleSyncWorkflowDraft(true)
-  //   }
-  // }, [])
+  useEffect(() => {
+    return () => {
+      handleSyncWorkflowDraft(true)
+    }
+  }, [])
 
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
@@ -250,9 +250,9 @@ const WorkflowWrap = memo(() => {
 })
 WorkflowWrap.displayName = 'WorkflowWrap'
 
-const WorkflowContainer = ({ appId }: any) => {
+const WorkflowContainer = () => {
   return (
-    <WorkflowContextProvider appId={appId}>
+    <WorkflowContextProvider>
       <WorkflowWrap />
     </WorkflowContextProvider>
   )

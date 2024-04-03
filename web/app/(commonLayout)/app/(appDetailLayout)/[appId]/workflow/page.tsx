@@ -1,11 +1,11 @@
+'use client'
+
 import Workflow from '@/app/components/workflow'
 
-const Page = async ({
-  params: { appId },
-}: any) => {
+const Page = () => {
   return (
     <div className='w-full h-full overflow-x-auto'>
-      <Workflow appId={appId} />
+      <Workflow />
     </div>
   )
 }
