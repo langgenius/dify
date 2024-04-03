@@ -21,7 +21,7 @@ export const useNodesSyncDraft = () => {
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
   const params = useParams()
 
-  const getPostParams = useCallback(() => {
+  const getPostParams = useCallback((appIdParams?: string) => {
     const {
       getNodes,
       edges,
@@ -30,7 +30,7 @@ export const useNodesSyncDraft = () => {
     const [x, y, zoom] = transform
     const appId = useAppStore.getState().appDetail?.id
 
-    if (appId || params.appId) {
+    if (appId || appIdParams) {
       const nodes = getNodes()
       const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
 
@@ -55,7 +55,7 @@ export const useNodesSyncDraft = () => {
         })
       })
       return {
-        url: `/apps/${appId || params.appId}/workflows/draft`,
+        url: `/apps/${appId || appIdParams}/workflows/draft`,
         params: {
           graph: {
             nodes: producedNodes,
@@ -79,7 +79,7 @@ export const useNodesSyncDraft = () => {
         },
       }
     }
-  }, [store, featuresStore, params.appId])
+  }, [store, featuresStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     const postParams = getPostParams()
@@ -92,8 +92,8 @@ export const useNodesSyncDraft = () => {
     }
   }, [getPostParams, params.appId])
 
-  const doSyncWorkflowDraft = useCallback(async () => {
-    const postParams = getPostParams()
+  const doSyncWorkflowDraft = useCallback(async (appId?: string) => {
+    const postParams = getPostParams(appId)
 
     if (postParams) {
       const res = await syncWorkflowDraft(postParams)
@@ -101,12 +101,12 @@ export const useNodesSyncDraft = () => {
     }
   }, [workflowStore, getPostParams])
 
-  const handleSyncWorkflowDraft = useCallback((sync?: boolean) => {
+  const handleSyncWorkflowDraft = useCallback((sync?: boolean, appId?: string) => {
     if (getNodesReadOnly())
       return
 
     if (sync)
-      doSyncWorkflowDraft()
+      doSyncWorkflowDraft(appId)
     else
       debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
   }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly])
