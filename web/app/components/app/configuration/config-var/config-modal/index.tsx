@@ -25,13 +25,12 @@ export type IConfigModalProps = {
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
 }
 
-const inputClassName = 'w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+const inputClassName = 'w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
 
 const ConfigModal: FC<IConfigModalProps> = ({
   isCreate,
   payload,
   isShow,
-  varKeys = [],
   onClose,
   onConfirm,
 }) => {
@@ -151,14 +150,16 @@ const ConfigModal: FC<IConfigModalProps> = ({
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
               onBlur={handleVarKeyBlur}
+              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
             />
           </Field>
           <Field title={t('appDebug.variableConig.labelName')}>
             <input
               type='text'
               className={inputClassName}
-              value={label}
+              value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
+              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
             />
           </Field>
 
