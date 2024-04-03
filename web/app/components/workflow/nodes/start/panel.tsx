@@ -54,10 +54,10 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
               onChange={handleVarListChange}
             />
 
-            {
-              isChatMode && (
-                <div className='mt-1 space-y-1'>
-                  <Split className='my-2' />
+            <div className='mt-1 space-y-1'>
+              <Split className='my-2' />
+              {
+                isChatMode && (
                   <VarItem
                     readonly
                     payload={{
@@ -68,21 +68,21 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                         String
                       </div>
                     }
-                  />
-                  <VarItem
-                    readonly
-                    payload={{
-                      variable: 'sys.files',
-                    } as any}
-                    rightContent={
-                      <div className='text-xs font-normal text-gray-500'>
-                        Array[File]
-                      </div>
-                    }
-                  />
-                </div>
-              )
-            }
+                  />)
+              }
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.files',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-gray-500'>
+                    Array[File]
+                  </div>
+                }
+              />
+            </div>
+
           </>
         </Field>
       </div>
