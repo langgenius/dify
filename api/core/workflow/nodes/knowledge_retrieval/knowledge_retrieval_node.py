@@ -49,6 +49,12 @@ class KnowledgeRetrievalNode(BaseNode):
         variables = {
             'query': query
         }
+        if not query:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=variables,
+                error="Query is required."
+            )
         # retrieve knowledge
         try:
             results = self._fetch_dataset_retriever(
