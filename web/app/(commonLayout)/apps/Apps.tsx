@@ -53,7 +53,7 @@ const Apps = () => {
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
     (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, searchKeywords),
     fetchAppList,
-    { revalidateFirstPage: false },
+    { revalidateFirstPage: true },
   )
 
   const anchorRef = useRef<HTMLDivElement>(null)
@@ -71,7 +71,7 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [mutate, t])
+  }, [])
 
   useEffect(() => {
     let observer: IntersectionObserver | undefined

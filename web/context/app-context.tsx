@@ -58,6 +58,7 @@ const AppContext = createContext<AppContextValue>({
   },
   currentWorkspace: initialWorkspaceInfo,
   isCurrentWorkspaceManager: false,
+  isCurrentWorkspaceOwner: false,
   mutateUserProfile: () => { },
   mutateCurrentWorkspace: () => { },
   pageContainerRef: createRef(),
@@ -76,7 +77,7 @@ export type AppContextProviderProps = {
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const pageContainerRef = useRef<HTMLDivElement>(null)
 
-  const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1 } }, fetchAppList)
+  const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1, limit: 30, name: '' } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
