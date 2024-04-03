@@ -17,7 +17,7 @@
    ```bash
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
-3.5 If you use annaconda, create a new environment and activate it
+3.5 If you use Anaconda, create a new environment and activate it
    ```bash
    conda create --name dify python=3.10
    conda activate dify
