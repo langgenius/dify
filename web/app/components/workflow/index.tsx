@@ -5,7 +5,6 @@ import {
   memo,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
 } from 'react'
 import { setAutoFreeze } from 'immer'
@@ -85,11 +84,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [])
 
-  useLayoutEffect(() => {
-    return () => {
-      handleSyncWorkflowDraft(true)
-    }
-  }, [])
+  // useEffect(() => {
+  //   return () => {
+  //     handleSyncWorkflowDraft(true)
+  //   }
+  // }, [])
 
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
