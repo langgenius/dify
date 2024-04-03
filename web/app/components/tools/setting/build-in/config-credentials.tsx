@@ -7,7 +7,7 @@ import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-for
 import type { Collection } from '../../types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
-import { fetchBuiltInToolCredentialSchema } from '@/service/tools'
+import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -29,11 +29,13 @@ const ConfigCredential: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
-  const { team_credentials: credentialValue, name: collectionName } = collection
-  const [tempCredential, setTempCredential] = React.useState<any>(credentialValue)
+  const { name: collectionName } = collection
+  const [tempCredential, setTempCredential] = React.useState<any>({})
   useEffect(() => {
-    fetchBuiltInToolCredentialSchema(collectionName).then((res) => {
+    fetchBuiltInToolCredentialSchema(collectionName).then(async (res) => {
       const toolCredentialSchemas = toolCredentialToFormSchemas(res)
+      const credentialValue = await fetchBuiltInToolCredential(collectionName)
+      setTempCredential(credentialValue)
       const defaultCredentials = addDefaultValue(credentialValue, toolCredentialSchemas)
       setCredentialSchema(toolCredentialSchemas)
       setTempCredential(defaultCredentials)
