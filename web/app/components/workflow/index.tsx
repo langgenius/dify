@@ -5,11 +5,14 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
 } from 'react'
 import { useParams } from 'next/navigation'
 import { setAutoFreeze } from 'immer'
-import { useKeyPress } from 'ahooks'
+import {
+  useKeyPress,
+} from 'ahooks'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
@@ -48,6 +51,7 @@ import {
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -84,10 +88,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const appId = params.appId
     return () => {
-      handleSyncWorkflowDraft(true, appId as string)
+      const appIdParams = useAppStore.getState().appDetail?.id
+
+      if (appId !== appIdParams)
+        handleSyncWorkflowDraft(true, appId as string)
     }
   }, [])
 

@@ -353,7 +353,7 @@ class ToolManageService:
         ).first()
 
         if provider is None:
-            raise ValueError(f'you have not added provider {provider}')
+            return {}
         
         provider_controller = ToolManager.get_builtin_provider(provider.provider)
         tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)

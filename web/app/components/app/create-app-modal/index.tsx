@@ -20,6 +20,7 @@ import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/ven
 import { HelpCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 
 type CreateAppDialogProps = {
@@ -70,6 +71,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       onSuccess()
       onClose()
       mutateApps()
+      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceManager, app, push)
     }
     catch (e) {

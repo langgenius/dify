@@ -25,6 +25,7 @@ import { getRedirection } from '@/utils/app-redirection'
 
 type AppsProps = {
   pageType?: PageType
+  onSuccess?: () => void
 }
 
 export enum PageType {
@@ -34,6 +35,7 @@ export enum PageType {
 
 const Apps = ({
   pageType = PageType.EXPLORE,
+  onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
@@ -111,6 +113,8 @@ const Apps = ({
         type: 'success',
         message: t('app.newApp.appCreated'),
       })
+      if (onSuccess)
+        onSuccess()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(isCurrentWorkspaceManager, app, push)
     }
