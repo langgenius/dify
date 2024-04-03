@@ -278,6 +278,7 @@ const translation = {
     'addOption': '添加选项',
     'apiBasedVar': '基于 API 的变量',
     'varName': '变量名称',
+    'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
     'errorMsg': {

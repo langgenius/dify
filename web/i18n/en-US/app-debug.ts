@@ -283,6 +283,7 @@ const translation = {
     'apiBasedVar': 'API-based Variable',
     'varName': 'Variable Name',
     'labelName': 'Label Name',
+    'inputPlaceholder': 'Please input',
     'required': 'Required',
     'errorMsg': {
       varNameRequired: 'Variable name is required',
