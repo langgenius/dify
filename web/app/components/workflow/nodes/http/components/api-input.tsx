@@ -64,6 +64,7 @@ const ApiInput: FC<Props> = ({
       />
 
       <Input
+        instanceId='http-api-url'
         className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
         value={url}
         onChange={onUrlChange}
