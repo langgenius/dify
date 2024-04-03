@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
 } from 'react'
+import { useParams } from 'next/navigation'
 import { setAutoFreeze } from 'immer'
 import { useKeyPress } from 'ahooks'
 import ReactFlow, {
@@ -73,6 +74,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useNodesSyncDraft()
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
+  const params = useParams()
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -83,8 +85,9 @@ const Workflow: FC<WorkflowProps> = memo(({
   }, [])
 
   useEffect(() => {
+    const appId = params.appId
     return () => {
-      handleSyncWorkflowDraft(true)
+      handleSyncWorkflowDraft(true, appId as string)
     }
   }, [])
 
