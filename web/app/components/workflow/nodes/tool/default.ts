@@ -22,10 +22,6 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     return nodes
   },
   checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
-    // TODO: wait for publish add moreDataForCheckValid
-    if (!moreDataForCheckValid)
-      return { isValid: true }
-
     const { toolInputsSchema, toolSettingSchema, language } = moreDataForCheckValid
     let errorMessages = ''
 
@@ -33,8 +29,10 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
       return field.required
     }).forEach((field: any) => {
       const targetVar = payload.tool_parameters[field.variable]
-      if (!targetVar)
+      if (!targetVar) {
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
         return
+      }
       const { type: variable_type, value } = targetVar
       if (variable_type === VarKindType.variable) {
         if (!errorMessages && (!value || value.length === 0))

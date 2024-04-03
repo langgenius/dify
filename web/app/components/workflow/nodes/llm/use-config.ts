@@ -263,7 +263,15 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     })
   }, [runInputData, setRunInputData])
 
-  const varInputs = getInputVars(isChatModel ? (inputs.prompt_template as PromptItem[]).map(item => item.text) : [(inputs.prompt_template as PromptItem).text])
+  const allVarStrArr = (() => {
+    const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
+    if (isChatMode && isChatModel && !!inputs.memory)
+      arr.push('{{#sys.query#}}')
+
+    return arr
+  })()
+
+  const varInputs = getInputVars(allVarStrArr)
 
   return {
     readOnly,
