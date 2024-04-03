@@ -64,9 +64,9 @@ type Shape = {
   setCustomTools: (tools: ToolWithProvider[]) => void
 }
 
-export const createWorkflowStore = (appId: string) => {
+export const createWorkflowStore = () => {
   return create<Shape>(set => ({
-    appId,
+    appId: '',
     workflowData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,

@@ -64,11 +64,11 @@ class CodeExecutor:
             if response.status_code == 503:
                 raise CodeExecutionException('Code execution service is unavailable')
             elif response.status_code != 200:
-                raise Exception('Failed to execute code')
+                raise Exception(f'Failed to execute code, got status code {response.status_code}, please check if the sandbox service is running')
         except CodeExecutionException as e:
             raise e
         except Exception as e:
-            raise CodeExecutionException('Failed to execute code')
+            raise CodeExecutionException('Failed to execute code, this is likely a network issue, please check if the sandbox service is running')
         
         try:
             response = response.json()
