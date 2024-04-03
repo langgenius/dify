@@ -19,6 +19,7 @@ import type { Node } from '@/app/components/workflow/types'
 
 export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND')
+export const CLEAR_HIDE_MENU_TIMEOUT = createCommand('CLEAR_HIDE_MENU_TIMEOUT')
 
 export type WorkflowVariableBlockProps = {
   getWorkflowNode: (nodeId: string) => Node
@@ -40,6 +41,7 @@ const WorkflowVariableBlock = memo(({
       editor.registerCommand(
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
+          editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
           const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, getWorkflowNode)
 
           $insertNodes([workflowVariableBlockNode])

@@ -2,6 +2,7 @@ import { $insertNodes } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { textToEditorState } from '../utils'
 import { CustomTextNode } from './custom-text/node'
+import { CLEAR_HIDE_MENU_TIMEOUT } from './workflow-variable-block'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER = 'PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER'
@@ -29,6 +30,8 @@ const UpdateBlock = ({
       editor.update(() => {
         const textNode = new CustomTextNode('/')
         $insertNodes([textNode])
+
+        editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
       })
     }
   })
