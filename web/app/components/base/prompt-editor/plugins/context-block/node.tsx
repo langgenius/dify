@@ -15,7 +15,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   static clone(node: ContextBlockNode): ContextBlockNode {
-    return new ContextBlockNode(node.__datasets, node.__onAddContext)
+    return new ContextBlockNode(node.__datasets, node.__onAddContext, node.getKey(), node.__canNotAddContext)
   }
 
   isInline(): boolean {
@@ -46,7 +46,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
         nodeKey={this.getKey()}
         datasets={this.getDatasets()}
         onAddContext={this.getOnAddContext()}
-        canNotAddContext={this.__canNotAddContext}
+        canNotAddContext={this.getCanNotAddContext()}
       />
     )
   }
@@ -63,6 +63,12 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return self.__onAddContext
   }
 
+  getCanNotAddContext(): boolean {
+    const self = this.getLatest()
+
+    return self.__canNotAddContext
+  }
+
   static importJSON(serializedNode: SerializedNode): ContextBlockNode {
     const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext, serializedNode.canNotAddContext)
 
@@ -75,7 +81,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
       version: 1,
       datasets: this.getDatasets(),
       onAddContext: this.getOnAddContext(),
-      canNotAddContext: this.__canNotAddContext,
+      canNotAddContext: this.getCanNotAddContext(),
     }
   }
 

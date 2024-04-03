@@ -165,7 +165,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
         />
-        <ContextBlockReplacementBlock {...contextBlock} />
         {
           contextBlock?.show && (
             <>

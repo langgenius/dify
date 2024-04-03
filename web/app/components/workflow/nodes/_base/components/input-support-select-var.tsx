@@ -11,6 +11,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
+  instanceId?: string
   className?: string
   placeholder?: string
   placeholderClassName?: string
@@ -24,6 +25,7 @@ type Props = {
 }
 
 const Editor: FC<Props> = ({
+  instanceId,
   className,
   placeholder,
   placeholderClassName,
@@ -52,6 +54,7 @@ const Editor: FC<Props> = ({
     <div className={cn(className, 'relative')}>
       <>
         <PromptEditor
+          instanceId={instanceId}
           className={cn(promptMinHeightClassName, '!leading-[18px]')}
           placeholder={placeholder}
           placeholderClassName={placeholderClassName}
