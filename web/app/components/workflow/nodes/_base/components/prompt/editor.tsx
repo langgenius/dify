@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
@@ -76,21 +76,24 @@ const Editor: FC<Props> = ({
 
   const [isFocus, {
     setTrue: setFocus,
-    setFalse: doSetBlur,
+    setFalse: setBlur,
   }] = useBoolean(false)
-  const notBlur = useRef(false)
+  const hideTooltipRunId = useRef(0)
 
-  const setBlur = () => {
-    // delay to avoid to not handle click event(handleInsertVariable)
-    setTimeout(() => {
-      if (!notBlur.current)
-        doSetBlur()
-      notBlur.current = false
-    }, 500)
-  }
+  const [isShowInsertToolTip, setIsShowInsertTooltip] = useState(false)
+  useEffect(() => {
+    if (isFocus) {
+      clearTimeout(hideTooltipRunId.current)
+      setIsShowInsertTooltip(true)
+    }
+    else {
+      hideTooltipRunId.current = setTimeout(() => {
+        setIsShowInsertTooltip(false)
+      }, 100) as any
+    }
+  }, [isFocus])
 
   const handleInsertVariable = () => {
-    notBlur.current = true
     setFocus()
     eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
   }
@@ -129,7 +132,7 @@ const Editor: FC<Props> = ({
             onHeightChange={setEditorHeight}
             footer={(
               <div className='pl-3 pb-2 flex'>
-                {isFocus
+                {(isFocus || isShowInsertToolTip)
                   ? (
                     <TooltipPlus
                       popupContent={`${t('workflow.common.insertVarTip')}`}
