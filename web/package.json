@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.5.11-fix1",
+  "version": "0.6.0-preview-workflow.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
