@@ -38,11 +38,11 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
-      const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0])).data
+      const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
       const varName = `${isSystem ? 'sys.' : ''}${value[value.length - 1]}`
       const type = (() => {
         let type = VarType.string
-        let curr: any = node.vars
+        let curr: any = node?.vars
         if (!curr)
           return type
 
