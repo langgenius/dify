@@ -2,7 +2,7 @@ from typing import cast
 
 from core.app.app_config.entities import VariableEntity
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.start.entities import StartNodeData
@@ -25,6 +25,12 @@ class StartNode(BaseNode):
 
         # Get cleaned inputs
         cleaned_inputs = self._get_cleaned_inputs(variables, variable_pool.user_inputs)
+
+        for var in variable_pool.system_variables:
+            if var == SystemVariable.CONVERSATION:
+                continue
+
+            cleaned_inputs['sys.' + var.value] = variable_pool.system_variables[var]
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
