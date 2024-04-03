@@ -17,7 +17,7 @@ type WorkflowVariableBlockComponentProps = {
 const WorkflowVariableBlockComponent: FC<WorkflowVariableBlockComponentProps> = ({
   nodeKey,
   variables,
-  getWorkflowNode,
+  getWorkflowNode = () => {},
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const node = getWorkflowNode(variables[0])
