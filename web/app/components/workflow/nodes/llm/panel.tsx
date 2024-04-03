@@ -174,7 +174,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                   <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
                 </TooltipPlus>
               </div>
-              <div className='h-[18px] leading-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
+              <div className='flex items-center h-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
             </div>
             {/* Readonly User Query */}
             <div className='mt-4'>
