@@ -384,6 +384,8 @@ class KnowledgeRetrievalNode(BaseNode):
         """
         Handle query.
         """
+        if not query:
+            return
         for dataset_id in dataset_ids:
             dataset_query = DatasetQuery(
                 dataset_id=dataset_id,
