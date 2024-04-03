@@ -46,7 +46,6 @@ const Apps = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
-    disableSearchParams: true, // use search params will distroy app list mutation
   })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')

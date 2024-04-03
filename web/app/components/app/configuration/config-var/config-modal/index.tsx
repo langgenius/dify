@@ -16,6 +16,9 @@ import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import { ChangeType, InputVarType } from '@/app/components/workflow/types'
 
+const TEXT_MAX_LENGTH = 256
+const PARAGRAPH_MAX_LENGTH = 1024
+
 export type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
@@ -165,7 +168,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           {isStringInput && (
             <Field title={t('appDebug.variableConig.maxLength')}>
-              <ConfigString modelId={modelConfig.model_id} value={max_length} onChange={handlePayloadChange('max_length')} />
+              <ConfigString maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : PARAGRAPH_MAX_LENGTH} modelId={modelConfig.model_id} value={max_length} onChange={handlePayloadChange('max_length')} />
             </Field>
 
           )}
