@@ -127,6 +127,7 @@ const EditBody: FC<Props> = ({
 
         {type === BodyType.rawText && (
           <InputWithVar
+            instanceId={'http-body-raw'}
             title={<div className='uppercase'>Raw text</div>}
             onChange={handleBodyValueChange}
             value={payload.data}
@@ -138,6 +139,7 @@ const EditBody: FC<Props> = ({
 
         {type === BodyType.json && (
           <InputWithVar
+            instanceId={'http-body-json'}
             title='JSON'
             value={payload.data}
             onChange={handleBodyValueChange}

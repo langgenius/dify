@@ -10,6 +10,7 @@ import type { Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 type Props = {
   className?: string
+  instanceId?: string
   nodeId: string
   value: string
   onChange: (newValue: string) => void
@@ -21,6 +22,7 @@ type Props = {
 
 const InputItem: FC<Props> = ({
   className,
+  instanceId,
   nodeId,
   value,
   onChange,
@@ -51,6 +53,7 @@ const InputItem: FC<Props> = ({
       {(!readOnly)
         ? (
           <Input
+            instanceId={instanceId}
             className={cn(isFocus ? 'bg-gray-100' : 'bg-width', 'w-0 grow px-3 py-1')}
             value={value}
             onChange={onChange}
@@ -67,6 +70,7 @@ const InputItem: FC<Props> = ({
           {!hasValue && <div className='text-gray-300 text-xs font-normal'>{placeholder}</div>}
           {hasValue && (
             <Input
+              instanceId={instanceId}
               className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
               value={value}
               onChange={onChange}

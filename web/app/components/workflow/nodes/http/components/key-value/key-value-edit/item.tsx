@@ -10,6 +10,7 @@ import InputItem from './input-item'
 const i18nPrefix = 'workflow.nodes.http'
 
 type Props = {
+  instanceId: string
   className?: string
   nodeId: string
   readonly: boolean
@@ -22,6 +23,7 @@ type Props = {
 }
 
 const KeyValueItem: FC<Props> = ({
+  instanceId,
   className,
   nodeId,
   readonly,
@@ -50,6 +52,7 @@ const KeyValueItem: FC<Props> = ({
     <div className={cn(className, 'group flex items-start h-min-7 border-t border-gray-200')}>
       <div className='w-1/2 h-full border-r border-gray-200'>
         <InputItem
+          instanceId={`http-key-${instanceId}`}
           nodeId={nodeId}
           value={payload.key}
           onChange={handleChange('key')}
@@ -60,6 +63,7 @@ const KeyValueItem: FC<Props> = ({
       </div>
       <div className='w-1/2  h-full'>
         <InputItem
+          instanceId={`http-value-${instanceId}`}
           nodeId={nodeId}
           value={payload.value}
           onChange={handleChange('value')}
