@@ -312,7 +312,7 @@ services:
   #   volumes:
   #     - ./volumes/qdrant:/qdrant/storage
   #   environment:
-  #     QDRANT__API_KEY: 'difyai123456'
+  #     QDRANT_API_KEY: 'difyai123456'
   #   # uncomment to expose qdrant port to host
   #   # ports:
   #   #  - "6333:6333"
