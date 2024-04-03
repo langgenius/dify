@@ -49,6 +49,7 @@ parameters:
       zh_Hans: Lora
       pt_BR: Lora
     form: form
+    default: ""
   - name: steps
     type: number
     required: false
