@@ -5,55 +5,68 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
+import classNames from 'classnames'
+import type { ModelAndParameter } from '../configuration/debug/types'
 import SuggestedAction from './suggested-action'
+import PublishWithMultipleModel from './publish-with-multiple-model'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useGetLanguage } from '@/context/i18n'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PlayCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor'
 import { FileText } from '@/app/components/base/icons/src/vender/line/files'
-import { useGetLanguage } from '@/context/i18n'
 
 export type AppPublisherProps = {
   disabled?: boolean
+  publishDisabled?: boolean
   publishedAt?: number
   /** only needed in workflow / chatflow mode */
   draftUpdatedAt?: number
-  onPublish?: () => Promise<void> | void
-  onRestore?: () => Promise<void> | void
+  debugWithMultipleModel?: boolean
+  multipleModelConfigs?: ModelAndParameter[]
+  /** modelAndParameter is passed when debugWithMultipleModel is true */
+  onPublish?: (modelAndParameter?: ModelAndParameter) => Promise<any> | any
+  onRestore?: () => Promise<any> | any
   onToggle?: (state: boolean) => void
+  crossAxisOffset?: number
 }
 
 const AppPublisher = ({
   disabled = false,
+  publishDisabled = false,
   publishedAt,
   draftUpdatedAt,
+  debugWithMultipleModel = false,
+  multipleModelConfigs = [],
   onPublish,
   onRestore,
   onToggle,
+  crossAxisOffset = 0,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
-  const { app_base_url: appBaseURL, access_token } = appDetail?.site ?? {}
+  const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
-  const appURL = `${appBaseURL}/${appMode}/${access_token}`
+  const appURL = `${appBaseURL}/${appMode}/${accessToken}`
 
   const language = useGetLanguage()
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
   }, [language])
 
-  const handlePublish = async () => {
+  const handlePublish = async (modelAndParameter?: ModelAndParameter) => {
     try {
-      await onPublish?.()
+      await onPublish?.(modelAndParameter)
       setPublished(true)
     }
     catch (e) {
@@ -70,21 +83,21 @@ const AppPublisher = ({
   }, [onRestore])
 
   const handleTrigger = useCallback(() => {
+    const state = !open
+
     if (disabled) {
       setOpen(false)
       return
     }
 
-    onToggle?.(!open)
+    onToggle?.(state)
+    setOpen(state)
 
-    if (open) {
-      setOpen(false)
-    }
-    else {
-      setOpen(true)
+    if (state)
       setPublished(false)
-    }
   }, [disabled, onToggle, open])
+
+  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   return (
     <PortalToFollowElem
@@ -93,7 +106,7 @@ const AppPublisher = ({
       placement='bottom-end'
       offset={{
         mainAxis: 4,
-        crossAxis: -5,
+        crossAxis: crossAxisOffset,
       }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
@@ -137,35 +150,68 @@ const AppPublisher = ({
                   {t('workflow.common.autoSaved')} · {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
                 </div>
               )}
-            <Button
-              type='primary'
-              className={`
-                mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium
-                ${published && 'border-transparent'}
-              `}
-              onClick={handlePublish}
-              disabled={published}
-            >
-              {
-                published
-                  ? t('workflow.common.published')
-                  : publishedAt ? t('workflow.common.update') : t('workflow.common.publish')
-              }
-            </Button>
+            {debugWithMultipleModel
+              ? (
+                <PublishWithMultipleModel
+                  multipleModelConfigs={multipleModelConfigs}
+                  onSelect={item => handlePublish(item)}
+                // textGenerationModelList={textGenerationModelList}
+                />
+              )
+              : (
+                <Button
+                  type='primary'
+                  className={classNames(
+                    'mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium',
+                    (publishDisabled || published) && 'border-transparent',
+                  )}
+                  onClick={() => handlePublish()}
+                  disabled={publishDisabled || published}
+                >
+                  {
+                    published
+                      ? t('workflow.common.published')
+                      : publishedAt ? t('workflow.common.update') : t('workflow.common.publish')
+                  }
+                </Button>
+              )
+            }
           </div>
           <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
             <SuggestedAction disabled={!publishedAt} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
-            {appMode === 'chat'
+            {appDetail?.mode === 'workflow'
               ? (
-                <SuggestedAction disabled={!publishedAt} link={appURL} icon={<CodeBrowser className='w-4 h-4' />}>{t('workflow.common.embedIntoSite')}</SuggestedAction>
+                <SuggestedAction
+                  disabled={!publishedAt}
+                  link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+                  icon={<LeftIndent02 className='w-4 h-4' />}
+                >
+                  {t('workflow.common.batchRunApp')}
+                </SuggestedAction>
               )
               : (
-                <SuggestedAction disabled={!publishedAt} link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`} icon={<LeftIndent02 className='w-4 h-4' />}>{t('workflow.common.batchRunApp')}</SuggestedAction>
+                <SuggestedAction
+                  onClick={() => {
+                    setEmbeddingModalOpen(true)
+                    handleTrigger()
+                  }}
+                  disabled={!publishedAt}
+                  icon={<CodeBrowser className='w-4 h-4' />}
+                >
+                  {t('workflow.common.embedIntoSite')}
+                </SuggestedAction>
               )}
             <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
           </div>
         </div>
       </PortalToFollowElemContent>
+      <EmbeddedModal
+        isShow={embeddingModalOpen}
+        onClose={() => setEmbeddingModalOpen(false)}
+        appBaseUrl={appBaseURL}
+        accessToken={accessToken}
+        className='z-50'
+      />
     </PortalToFollowElem >
   )
 }

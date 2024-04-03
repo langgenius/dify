@@ -7,7 +7,10 @@ import { useTranslation } from 'react-i18next'
 import OutputPanel from '../run/output-panel'
 import ResultPanel from '../run/result-panel'
 import TracingPanel from '../run/tracing-panel'
-import { useStore, useWorkflowStore } from '../store'
+import {
+  useWorkflowRun,
+} from '../hooks'
+import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
@@ -17,7 +20,7 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
-  const workflowStore = useWorkflowStore()
+  const { handleRunSetting } = useWorkflowRun()
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
@@ -33,12 +36,7 @@ const WorkflowPreview = () => {
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
         {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
         {showInputsPanel && workflowRunningData?.result?.status !== WorkflowRunningStatus.Running && (
-          <div className='p-1 cursor-pointer' onClick={() => {
-            workflowStore.setState({
-              showInputsPanel: false,
-              workflowRunningData: undefined,
-            })
-          }}>
+          <div className='p-1 cursor-pointer' onClick={() => handleRunSetting(true)}>
             <XClose className='w-4 h-4 text-gray-500' />
           </div>
         )}

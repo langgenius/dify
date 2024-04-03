@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
-import cn from 'classnames'
 import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
+import AppPublisher from '../app-publisher'
 import AgentSettingButton from './config/agent-setting-button'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
@@ -19,7 +19,6 @@ import {
   useFormattingChangedDispatcher,
 } from './debug/hooks'
 import type { ModelAndParameter } from './debug/types'
-import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
 import type {
   AnnotationReplyConfig,
   DatasetConfigs,
@@ -66,7 +65,7 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { setAppSiderbarExpand } = useAppStore()
+  const { appDetail, setAppSiderbarExpand } = useAppStore()
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
@@ -77,6 +76,7 @@ const Configuration: FC = () => {
   const [mode, setMode] = useState('')
   const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
 
+  const modalConfig = useMemo(() => appDetail?.model_config || {} as BackendModelConfig, [appDetail])
   const [conversationId, setConversationId] = useState<string | null>('')
 
   const media = useBreakpoints()
@@ -130,7 +130,7 @@ const Configuration: FC = () => {
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
   const [completionParams, doSetCompletionParams] = useState<FormValue>({})
-  const [tempStop, setTempStop, getTempStop] = useGetState<string[]>([])
+  const [_, setTempStop, getTempStop] = useGetState<string[]>([])
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
@@ -508,6 +508,7 @@ const Configuration: FC = () => {
         setHasFetchedDetail(true)
       })
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   const promptEmpty = (() => {
@@ -541,7 +542,7 @@ const Configuration: FC = () => {
     else { return promptEmpty }
   })()
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
-  const handlePublish = async (isSilence?: boolean, modelAndParameter?: ModelAndParameter) => {
+  const onPublish = async (modelAndParameter?: ModelAndParameter) => {
     const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
@@ -630,17 +631,16 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    if (!isSilence)
-      notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+    notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
 
     setCanReturnToSimpleMode(false)
     return true
   }
 
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const resetAppConfig = () => {
     syncToPublishedConfig(publishedConfig!)
-    setShowConfirm(false)
+    setRestoreConfirmOpen(false)
   }
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
@@ -788,26 +788,20 @@ const Configuration: FC = () => {
                       <div className='mx-2 w-[1px] h-[14px] bg-gray-200'></div>
                     </>
                   )}
-                  <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium text-gray-900'>{t('appDebug.operation.resetConfig')}</Button>
                   {isMobile && (
                     <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
                       <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
                       <CodeBracketIcon className="w-4 h-4 text-gray-500" />
                     </Button>
                   )}
-                  {debugWithMultipleModel
-                    ? (<PublishWithMultipleModel
-                      multipleModelConfigs={multipleModelConfigs}
-                      onSelect={item => handlePublish(false, item)}
-                    />)
-                    : (<Button
-                      type='primary'
-                      onClick={() => handlePublish(false)}
-                      className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}
-                    >
-                      {t('appDebug.operation.applyConfig')}
-                    </Button>)}
-                  {/* <Publish /> */}
+                  <AppPublisher {...{
+                    publishDisabled: cannotPublish,
+                    publishedAt: (modalConfig.created_at || 0) * 1000,
+                    debugWithMultipleModel,
+                    multipleModelConfigs,
+                    onPublish,
+                    onRestore: () => setRestoreConfirmOpen(true),
+                  }} />
                 </div>
               </div>
             </div>
@@ -832,14 +826,14 @@ const Configuration: FC = () => {
             </div>}
           </div>
         </div>
-        {showConfirm && (
+        {restoreConfirmOpen && (
           <Confirm
             title={t('appDebug.resetConfig.title')}
             content={t('appDebug.resetConfig.message')}
-            isShow={showConfirm}
-            onClose={() => setShowConfirm(false)}
+            isShow={restoreConfirmOpen}
+            onClose={() => setRestoreConfirmOpen(false)}
             onConfirm={resetAppConfig}
-            onCancel={() => setShowConfirm(false)}
+            onCancel={() => setRestoreConfirmOpen(false)}
           />
         )}
         {showUseGPT4Confirm && (
