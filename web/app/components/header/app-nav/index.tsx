@@ -17,9 +17,22 @@ import type { AppListResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
-  if (!pageIndex || previousPageData.has_more)
-    return { url: 'apps', params: { page: pageIndex + 1, limit: 30 } }
+const getKey = (
+  pageIndex: number,
+  previousPageData: AppListResponse,
+  activeTab: string,
+  keywords: string,
+) => {
+  if (!pageIndex || previousPageData.has_more) {
+    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords } }
+
+    if (activeTab !== 'all')
+      params.params.mode = activeTab
+    else
+      delete params.params.mode
+
+    return params
+  }
   return null
 }
 
@@ -33,7 +46,13 @@ const AppNav = () => {
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [navItems, setNavItems] = useState<NavItem[]>([])
 
-  const { data: appsData, setSize } = useSWRInfinite(appId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
+  const { data: appsData, setSize, mutate } = useSWRInfinite(
+    appId
+      ? (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, 'all', '')
+      : () => null,
+    fetchAppList,
+    { revalidateFirstPage: false },
+  )
 
   const handleLoadmore = useCallback(() => {
     setSize(size => size + 1)
@@ -105,17 +124,17 @@ const AppNav = () => {
       <CreateAppModal
         show={showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}
-        onSuccess={() => {}}
+        onSuccess={() => mutate()}
       />
       <CreateAppTemplateDialog
         show={showNewAppTemplateDialog}
         onClose={() => setShowNewAppTemplateDialog(false)}
-        onSuccess={() => {}}
+        onSuccess={() => mutate()}
       />
       <CreateFromDSLModal
         show={showCreateFromDSLModal}
         onClose={() => setShowCreateFromDSLModal(false)}
-        onSuccess={() => {}}
+        onSuccess={() => mutate()}
       />
     </>
   )
