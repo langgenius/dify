@@ -12,6 +12,7 @@ import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import type { RetrievalConfig } from '@/types/app'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
   type: RETRIEVE_METHOD
@@ -30,7 +31,7 @@ const RetrievalParamConfig: FC<Props> = ({
   const {
     defaultModel: rerankDefaultModel,
     modelList: rerankModelList,
-  } = useModelListAndDefaultModel(3)
+  } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
 
   const rerankModel = (() => {
     if (value.reranking_model) {
