@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from core.tools.entities.tool_entities import (
     ToolDescription,
@@ -22,6 +22,13 @@ class Tool(BaseModel, ABC):
     parameters: Optional[list[ToolParameter]] = None
     description: ToolDescription = None
     is_team_authorization: bool = False
+
+    @validator('parameters', pre=True, always=True)
+    def set_parameters(cls, v, values):
+        if not v:
+            return []
+
+        return v
 
     class Runtime(BaseModel):
         """
