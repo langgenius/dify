@@ -752,6 +752,10 @@ class Message(db.Model):
         return self.override_model_configs is not None
 
     @property
+    def message_metadata_dict(self) -> dict:
+        return json.loads(self.message_metadata) if self.message_metadata else {}
+
+    @property
     def agent_thoughts(self):
         return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id) \
             .order_by(MessageAgentThought.position.asc()).all()
