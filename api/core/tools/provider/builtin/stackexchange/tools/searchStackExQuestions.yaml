@@ -6,9 +6,9 @@ identity:
     zh_Hans: 搜索Stack Exchange问题
 description:
   human:
-    en_US: A tool for searching questions on a Stack Exchange site. Specify the search query, sorting order, tags to include or exclude, whether to search only for questions with accepted answers, the Stack Exchange site, and number of results per page.
-    zh_Hans: 在Stack Exchange站点上搜索问题的工具。指定搜索查询、排序顺序、要包含或排除的标签、是否仅搜索有已接受答案的问题、Stack Exchange站点以及每页结果数。
-  llm: A tool for searching questions on a Stack Exchange site based on the provided parameters.
+    en_US: A tool for searching questions on a Stack Exchange site.
+    zh_Hans: 在Stack Exchange站点上搜索问题的工具。
+  llm: A tool for searching questions on Stack Exchange site.
 parameters:
   - name: intitle
     type: string
@@ -19,7 +19,7 @@ parameters:
     human_description:
       en_US: The search query to use for finding questions.
       zh_Hans: 用于查找问题的搜索查询。
-    llm_description: The search query to use.
+    llm_description: The search query.
     form: llm
   - name: sort
     type: string
@@ -30,10 +30,10 @@ parameters:
     human_description:
       en_US: The sort order for the search results - relevance, activity, votes, or creation date.
       zh_Hans: 搜索结果的排序顺序 - 相关性、活动、投票或创建日期。
-    llm_description: The sort order - relevance, activity, votes, or creation.
+    llm_description: The sort order - 'relevance', 'activity', 'votes', or 'creation'.
     form: llm
   - name: order
-    type: string
+    type: select
     required: true
     label:
       en_US: Sort direction
@@ -41,8 +41,17 @@ parameters:
     human_description:
       en_US: The direction to sort - ascending or descending.
       zh_Hans: 排序方向 - 升序或降序。
-    llm_description: asc for ascending, desc for descending.
-    form: llm
+    form: form
+    options:
+      - value: asc
+        label:
+          en_US: Ascending
+          zh_Hans: 升序
+      - value: desc
+        label:
+          en_US: Descending
+          zh_Hans: 降序
+    default: desc
   - name: site
     type: string
     required: true
@@ -52,108 +61,8 @@ parameters:
     human_description:
       en_US: The Stack Exchange site to search, e.g. stackoverflow, unix, etc.
       zh_Hans: 要搜索的Stack Exchange站点，例如stackoverflow、unix等。
-    llm_description: The Stack Exchange site identifier.
-    options:
-      - value: stackoverflow
-        label:
-          en_US: stackoverflow
-      - value: serverfault
-        label:
-          en_US: serverfault
-      - value: superuser
-        label:
-          en_US: superuser
-      - value: askubuntu
-        label:
-          en_US: askubuntu
-      - value: unix
-        label:
-          en_US: unix
-      - value: cs
-        label:
-          en_US: cs
-      - value: softwareengineering
-        label:
-          en_US: softwareengineering
-      - value: codegolf
-        label:
-          en_US: codegolf
-      - value: codereview
-        label:
-          en_US: codereview
-      - value: cstheory
-        label:
-          en_US: cstheory
-      - value: security
-        label:
-          en_US: security
-      - value: cryptography
-        label:
-          en_US: cryptography
-      - value: reverseengineering
-        label:
-          en_US: reverseengineering
-      - value: datascience
-        label:
-          en_US: datascience
-      - value: devops
-        label:
-          en_US: devops
-      - value: ux
-        label:
-          en_US: ux
-      - value: dba
-        label:
-          en_US: dba
-      - value: gis
-        label:
-          en_US: gis
-      - value: webmasters
-        label:
-          en_US: webmasters
-      - value: arduino
-        label:
-          en_US: arduino
-      - value: raspberrypi
-        label:
-          en_US: raspberrypi
-      - value: networkengineering
-        label:
-          en_US: networkengineering
-      - value: iot
-        label:
-          en_US: iot
-      - value: tor
-        label:
-          en_US: tor
-      - value: sqa
-        label:
-          en_US: sqa
-      - value: mathoverflow
-        label:
-          en_US: mathoverflow
-      - value: math
-        label:
-          en_US: math
-      - value: mathematica
-        label:
-          en_US: mathematica
-      - value: dsp
-        label:
-          en_US: dsp
-      - value: gamedev
-        label:
-          en_US: gamedev
-      - value: robotics
-        label:
-          en_US: robotics
-      - value: genai
-        label:
-          en_US: genai
-      - value: computergraphics
-        label:
-          en_US: computergraphics
-    form: form
+    llm_description: Stack Exchange site identifier - 'stackoverflow', 'serverfault', 'superuser', 'askubuntu', 'unix', 'cs', 'softwareengineering', 'codegolf', 'codereview', 'cstheory', 'security', 'cryptography', 'reverseengineering', 'datascience', 'devops', 'ux', 'dba', 'gis', 'webmasters', 'arduino', 'raspberrypi', 'networkengineering', 'iot', 'tor', 'sqa', 'mathoverflow', 'math', 'mathematica', 'dsp', 'gamedev', 'robotics', 'genai', 'computergraphics'.
+    form: llm
   - name: tagged
     type: string
     required: false
@@ -185,8 +94,17 @@ parameters:
     human_description:
       en_US: Whether to limit to only questions that have an accepted answer.
       zh_Hans: 是否限制为只有已接受答案的问题。
-    llm_description: true to limit to only questions with accepted answers, false otherwise.
-    form: llm
+    form: form
+    options:
+      - value: true
+        label:
+          en_US: Yes
+          zh_Hans: 是
+      - value: false
+        label:
+          en_US: No
+          zh_Hans: 否
+    default: true
   - name: pagesize
     type: number
     required: true
@@ -197,4 +115,7 @@ parameters:
       en_US: The number of results to return per page.
       zh_Hans: 每页返回的结果数。
     llm_description: The number of results per page.
-    form: llm
+    form: form
+    min: 1
+    max: 50
+    default: 10
