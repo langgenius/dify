@@ -216,7 +216,18 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         prompt = self._convert_messages_to_prompt_anthropic(prompt_messages)
 
         client = Anthropic(api_key="")
-        return client.count_tokens(prompt)
+        tokens = client.count_tokens(prompt)
+
+        tool_call_inner_prompts_tokens_map = {
+            'claude-3-opus-20240229': 395,
+            'claude-3-haiku-20240307': 264,
+            'claude-3-sonnet-20240229': 159
+        }
+
+        if model in tool_call_inner_prompts_tokens_map and tools:
+            tokens += tool_call_inner_prompts_tokens_map[model]
+
+        return tokens
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
