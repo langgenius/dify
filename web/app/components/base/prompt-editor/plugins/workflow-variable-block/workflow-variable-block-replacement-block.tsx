@@ -16,7 +16,7 @@ import { WorkflowVariableBlockNode } from './index'
 const REGEX = /\{\{(#[a-zA-Z0-9_]{1,50}(\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10}#)\}\}/gi
 
 const WorkflowVariableBlockReplacementBlock = ({
-  getWorkflowNode = () => undefined,
+  workflowNodesMap,
   onInsert,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
@@ -31,8 +31,8 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), getWorkflowNode))
-  }, [onInsert, getWorkflowNode])
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap))
+  }, [onInsert, workflowNodesMap])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

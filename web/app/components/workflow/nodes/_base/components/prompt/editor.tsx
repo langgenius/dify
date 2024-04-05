@@ -5,8 +5,11 @@ import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { useWorkflow } from '../../../../hooks'
-import type { NodeOutPutVar } from '../../../../types'
+import {
+  BlockEnum,
+  type Node,
+  type NodeOutPutVar,
+} from '../../../../types'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
@@ -36,6 +39,7 @@ type Props = {
     query: boolean
   }
   nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const Editor: FC<Props> = ({
@@ -52,9 +56,9 @@ const Editor: FC<Props> = ({
   isShowContext,
   hasSetBlockStatus,
   nodesOutputVars,
+  availableNodes = [],
 }) => {
   const { t } = useTranslation()
-  const { getNode } = useWorkflow()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isShowHistory = !isChatModel && isChatApp
@@ -174,7 +178,19 @@ const Editor: FC<Props> = ({
                 workflowVariableBlock={{
                   show: true,
                   variables: nodesOutputVars || [],
-                  getWorkflowNode: getNode,
+                  workflowNodesMap: availableNodes.reduce((acc, node) => {
+                    acc[node.id] = {
+                      title: node.data.title,
+                      type: node.data.type,
+                    }
+                    if (node.data.type === BlockEnum.Start) {
+                      acc.sys = {
+                        title: t('workflow.blocks.start'),
+                        type: BlockEnum.Start,
+                      }
+                    }
+                    return acc
+                  }, {} as any),
                 }}
                 onChange={onChange}
                 onBlur={setBlur}

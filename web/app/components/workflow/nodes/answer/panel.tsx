@@ -21,7 +21,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
     filterVar,
   } = useConfig(id, data)
 
-  const availableVarList = useAvailableVarList(id, {
+  const { availableVars, availableNodes } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar,
   })
@@ -34,7 +34,8 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
         title={t(`${i18nPrefix}.answer`)!}
         value={inputs.answer}
         onChange={handleAnswerChange}
-        nodesOutputVars={availableVarList}
+        nodesOutputVars={availableVars}
+        availableNodes={availableNodes}
       />
     </div>
   )

@@ -27,7 +27,7 @@ export type WorkflowVariableBlockProps = {
   onDelete?: () => void
 }
 const WorkflowVariableBlock = memo(({
-  getWorkflowNode = () => undefined,
+  workflowNodesMap,
   onInsert,
   onDelete,
 }: WorkflowVariableBlockType) => {
@@ -42,7 +42,7 @@ const WorkflowVariableBlock = memo(({
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
           editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
-          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, getWorkflowNode)
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap)
 
           $insertNodes([workflowVariableBlockNode])
           if (onInsert)
@@ -63,7 +63,7 @@ const WorkflowVariableBlock = memo(({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onInsert, onDelete, getWorkflowNode])
+  }, [editor, onInsert, onDelete, workflowNodesMap])
 
   return null
 })

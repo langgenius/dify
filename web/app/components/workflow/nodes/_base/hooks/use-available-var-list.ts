@@ -21,7 +21,10 @@ const useAvailableVarList = (nodeId: string, {
 
   const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
   const availableVars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
-  return availableVars
+  return {
+    availableVars,
+    availableNodes,
+  }
 }
 
 export default useAvailableVarList
