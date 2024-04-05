@@ -41,7 +41,10 @@ const ConfigPrompt: FC<Props> = ({
   hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
-  const availableVarList = useAvailableVarList(nodeId, {
+  const {
+    availableVars,
+    availableNodes,
+  } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
   })
@@ -144,7 +147,8 @@ const ConfigPrompt: FC<Props> = ({
                       isChatApp={isChatApp}
                       isShowContext={isShowContext}
                       hasSetBlockStatus={hasSetBlockStatus}
-                      nodesOutputVars={availableVarList}
+                      nodesOutputVars={availableVars}
+                      availableNodes={availableNodes}
                     />
                   )
                 })
@@ -170,7 +174,8 @@ const ConfigPrompt: FC<Props> = ({
               isChatApp={isChatApp}
               isShowContext={isShowContext}
               hasSetBlockStatus={hasSetBlockStatus}
-              nodesOutputVars={availableVarList}
+              nodesOutputVars={availableVars}
+              availableNodes={availableNodes}
             />
           </div>
         )}

@@ -4,8 +4,11 @@ import React, { useEffect } from 'react'
 import cn from 'classnames'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '@/app/components/workflow/hooks'
-import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -22,6 +25,7 @@ type Props = {
   readOnly?: boolean
   justVar?: boolean
   nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
 }
 
 const Editor: FC<Props> = ({
@@ -35,10 +39,9 @@ const Editor: FC<Props> = ({
   onFocusChange,
   readOnly,
   nodesOutputVars,
+  availableNodes = [],
 }) => {
   const { t } = useTranslation()
-
-  const { getNode } = useWorkflow()
 
   const [isFocus, {
     setTrue: setFocus,
@@ -81,7 +84,19 @@ const Editor: FC<Props> = ({
           workflowVariableBlock={{
             show: true,
             variables: nodesOutputVars || [],
-            getWorkflowNode: getNode,
+            workflowNodesMap: availableNodes.reduce((acc, node) => {
+              acc[node.id] = {
+                title: node.data.title,
+                type: node.data.type,
+              }
+              if (node.data.type === BlockEnum.Start) {
+                acc.sys = {
+                  title: t('workflow.blocks.start'),
+                  type: BlockEnum.Start,
+                }
+              }
+              return acc
+            }, {} as any),
           }}
           onChange={onChange}
           editable={!readOnly}

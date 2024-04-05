@@ -57,7 +57,7 @@ export type ExternalToolBlockType = {
 export type WorkflowVariableBlockType = {
   show?: boolean
   variables?: NodeOutPutVar[]
-  getWorkflowNode?: (nodeId: string) => Node | undefined
+  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type'>>
   onInsert?: () => void
   onDelete?: () => void
 }

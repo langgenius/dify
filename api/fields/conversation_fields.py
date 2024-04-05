@@ -72,6 +72,7 @@ message_detail_fields = {
     'created_at': TimestampField,
     'agent_thoughts': fields.List(fields.Nested(agent_thought_fields)),
     'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
+    'metadata': fields.Raw(attribute='message_metadata_dict'),
     'status': fields.String,
     'error': fields.String,
 }

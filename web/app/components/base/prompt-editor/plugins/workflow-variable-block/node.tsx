@@ -1,35 +1,35 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
+import type { WorkflowVariableBlockType } from '../../types'
 import WorkflowVariableBlockComponent from './component'
-import type { Node } from '@/app/components/workflow/types'
 
-type GetWorkflowNode = (nodeId: string) => Node | undefined
+export type WorkflowNodesMap = WorkflowVariableBlockType['workflowNodesMap']
 export type SerializedNode = SerializedLexicalNode & {
   variables: string[]
-  getWorkflowNode: GetWorkflowNode
+  workflowNodesMap: WorkflowNodesMap
 }
 
 export class WorkflowVariableBlockNode extends DecoratorNode<JSX.Element> {
   __variables: string[]
-  __getWorkflowNode: GetWorkflowNode
+  __workflowNodesMap: WorkflowNodesMap
 
   static getType(): string {
     return 'workflow-variable-block'
   }
 
   static clone(node: WorkflowVariableBlockNode): WorkflowVariableBlockNode {
-    return new WorkflowVariableBlockNode(node.__variables, node.__getWorkflowNode)
+    return new WorkflowVariableBlockNode(node.__variables, node.__workflowNodesMap)
   }
 
   isInline(): boolean {
     return true
   }
 
-  constructor(variables: string[], getWorkflowNode: GetWorkflowNode, key?: NodeKey) {
+  constructor(variables: string[], workflowNodesMap: WorkflowNodesMap, key?: NodeKey) {
     super(key)
 
     this.__variables = variables
-    this.__getWorkflowNode = getWorkflowNode
+    this.__workflowNodesMap = workflowNodesMap
   }
 
   createDOM(): HTMLElement {
@@ -47,13 +47,13 @@ export class WorkflowVariableBlockNode extends DecoratorNode<JSX.Element> {
       <WorkflowVariableBlockComponent
         nodeKey={this.getKey()}
         variables={this.__variables}
-        getWorkflowNode={this.__getWorkflowNode}
+        workflowNodesMap={this.__workflowNodesMap}
       />
     )
   }
 
   static importJSON(serializedNode: SerializedNode): WorkflowVariableBlockNode {
-    const node = $createWorkflowVariableBlockNode(serializedNode.variables, serializedNode.getWorkflowNode)
+    const node = $createWorkflowVariableBlockNode(serializedNode.variables, serializedNode.workflowNodesMap)
 
     return node
   }
@@ -62,17 +62,27 @@ export class WorkflowVariableBlockNode extends DecoratorNode<JSX.Element> {
     return {
       type: 'workflow-variable-block',
       version: 1,
-      variables: this.__variables,
-      getWorkflowNode: this.__getWorkflowNode,
+      variables: this.getVariables(),
+      workflowNodesMap: this.getWorkflowNodesMap(),
     }
   }
 
+  getVariables(): string[] {
+    const self = this.getLatest()
+    return self.__variables
+  }
+
+  getWorkflowNodesMap(): WorkflowNodesMap {
+    const self = this.getLatest()
+    return self.__workflowNodesMap
+  }
+
   getTextContent(): string {
-    return `{{#${this.__variables.join('.')}#}}`
+    return `{{#${this.getVariables().join('.')}#}}`
   }
 }
-export function $createWorkflowVariableBlockNode(variables: string[], getWorkflowNodeName: (nodeId: string) => Node | undefined): WorkflowVariableBlockNode {
-  return new WorkflowVariableBlockNode(variables, getWorkflowNodeName)
+export function $createWorkflowVariableBlockNode(variables: string[], workflowNodesMap: WorkflowNodesMap): WorkflowVariableBlockNode {
+  return new WorkflowVariableBlockNode(variables, workflowNodesMap)
 }
 
 export function $isWorkflowVariableBlockNode(

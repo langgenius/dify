@@ -41,7 +41,7 @@ const EditBody: FC<Props> = ({
   onChange,
 }) => {
   const { type } = payload
-  const availableVarList = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number].includes(varPayload.type)
@@ -132,7 +132,8 @@ const EditBody: FC<Props> = ({
             onChange={handleBodyValueChange}
             value={payload.data}
             justVar
-            nodesOutputVars={availableVarList}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodes}
             readOnly={readonly}
           />
         )}
@@ -144,7 +145,8 @@ const EditBody: FC<Props> = ({
             value={payload.data}
             onChange={handleBodyValueChange}
             justVar
-            nodesOutputVars={availableVarList}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodes}
             readOnly={readonly}
           />
         )}
