@@ -138,7 +138,7 @@ We are looking for contributors to help with translating Dify to languages other
 
 ## Community & Support
 
-* [Canny](https://feedback.dify.ai/). Best for: sharing feedback and checking out our feature roadmap.
+* [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and checking out our feature roadmap.
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
 * [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
