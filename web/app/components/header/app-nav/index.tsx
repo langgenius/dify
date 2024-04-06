@@ -87,6 +87,7 @@ const AppNav = () => {
           icon: app.icon,
           icon_background: app.icon_background,
           name: app.name,
+          mode: app.mode,
           link,
         }
       })

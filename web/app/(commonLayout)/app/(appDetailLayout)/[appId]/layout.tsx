@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useUnmount } from 'ahooks'
 import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import cn from 'classnames'
@@ -101,6 +102,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       }
     })
   }, [appId, isCurrentWorkspaceManager])
+
+  useUnmount(() => {
+    setAppDetail()
+  })
 
   if (!appDetail) {
     return (

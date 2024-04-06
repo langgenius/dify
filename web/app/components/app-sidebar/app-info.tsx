@@ -162,7 +162,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <AppIcon size={expand ? 'large' : 'small'} icon={appDetail.icon} background={appDetail.icon_background} />
               <span className={cn(
                 'absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
-                !expand && '!w-3 !h-3 p-[1px]',
+                !expand && '!w-3.5 !h-3.5 !bottom-[-2px] !right-[-2px]',
               )}>
                 {appDetail.mode === 'advanced-chat' && (
                   <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />

@@ -5,8 +5,9 @@ import cn from 'classnames'
 import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
-import Indicator from '../../indicator'
 import AppIcon from '@/app/components/base/app-icon'
+import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -19,6 +20,7 @@ export type NavItem = {
   link: string
   icon: string
   icon_background: string
+  mode: string
 }
 export type INavSelectorProps = {
   navs: NavItem[]
@@ -75,9 +77,25 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
                       }} title={nav.name}>
                         <div className='relative w-6 h-6 mr-2 rounded-md'>
                           <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
-                          <div className='flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded'>
-                            <Indicator />
-                          </div>
+                          <span className={cn(
+                            'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
+                          )}>
+                            {nav.mode === 'advanced-chat' && (
+                              <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
+                            )}
+                            {nav.mode === 'agent-chat' && (
+                              <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
+                            )}
+                            {nav.mode === 'chat' && (
+                              <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
+                            )}
+                            {nav.mode === 'completion' && (
+                              <AiText className='w-2.5 h-2.5 text-[#0E9384]' />
+                            )}
+                            {nav.mode === 'workflow' && (
+                              <Route className='w-2.5 h-2.5 text-[#f79009]' />
+                            )}
+                          </span>
                         </div>
                         <div className='truncate'>
                           {nav.name}
@@ -125,7 +143,7 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
                               {t('app.newApp.startFromTemplate')}
                             </div>
                           </div>
-                          <div className='p-1 border border-top-[1px] border-gray-100'>
+                          <div className='p-1 border-t border-gray-100'>
                             <div className={cn('flex items-center px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100 text-gray-700 font-normal')} onClick={() => onCreate('dsl')}>
                               <FileArrow01 className='shrink-0 mr-2 w-4 h-4 text-gray-600' />
                               {t('app.importDSL')}
