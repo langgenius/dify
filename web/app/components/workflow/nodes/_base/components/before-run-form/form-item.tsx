@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type { InputVar } from '../../../../types'
 import { BlockEnum, InputVarType } from '../../../../types'
@@ -28,6 +29,7 @@ const FormItem: FC<Props> = ({
   onChange,
   className,
 }) => {
+  const { t } = useTranslation()
   const { type } = payload
   const fileSettings = useFeatures(s => s.features.file)
   const handleContextItemChange = useCallback((index: number) => {
@@ -84,6 +86,7 @@ const FormItem: FC<Props> = ({
               type="text"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
+              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
             />
           )
         }
@@ -95,6 +98,7 @@ const FormItem: FC<Props> = ({
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
+              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
             />
           )
         }
@@ -105,6 +109,7 @@ const FormItem: FC<Props> = ({
               className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
+              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
             />
           )
         }

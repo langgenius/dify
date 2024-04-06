@@ -139,8 +139,7 @@ const PanelOperator = ({
               <div className='flex items-center mb-1 h-[22px] font-medium'>
                 {t('workflow.panel.about').toLocaleUpperCase()}
               </div>
-              <div className='text-gray-500 leading-[18px]'>{about}</div>
-              <div className='my-2 h-[0.5px] bg-black/5'></div>
+              <div className='mb-1 text-gray-700 leading-[18px]'>{about}</div>
               <div className='leading-[18px]'>
                 {t('workflow.panel.createdBy')} {author}
               </div>

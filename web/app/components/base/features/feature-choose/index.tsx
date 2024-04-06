@@ -5,7 +5,7 @@ import { useFeatures } from '../hooks'
 import type { OnFeaturesChange } from '../types'
 import FeatureModal from './feature-modal'
 import Button from '@/app/components/base/button'
-import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 type ChooseFeatureProps = {
   onChange?: OnFeaturesChange
@@ -27,7 +27,7 @@ const ChooseFeature = ({
         `}
         onClick={() => !disabled && setShowFeaturesModal(true)}
       >
-        <Plus02 className='mr-1 w-4 h-4' />
+        <Plus className='mr-1 w-4 h-4' />
         {t('appDebug.operation.addFeature')}
       </Button>
       {

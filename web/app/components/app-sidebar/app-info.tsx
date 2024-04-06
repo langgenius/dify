@@ -22,6 +22,8 @@ import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/ap
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
+import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
@@ -156,8 +158,28 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           className='block'
         >
           <div className={cn('flex cursor-pointer p-1 rounded-lg hover:bg-gray-100', open && 'bg-gray-100')}>
-            <div className='shrink-0 mr-2'>
+            <div className='relative shrink-0 mr-2'>
               <AppIcon size={expand ? 'large' : 'small'} icon={appDetail.icon} background={appDetail.icon_background} />
+              <span className={cn(
+                'absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
+                !expand && '!w-3.5 !h-3.5 !bottom-[-2px] !right-[-2px]',
+              )}>
+                {appDetail.mode === 'advanced-chat' && (
+                  <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />
+                )}
+                {appDetail.mode === 'agent-chat' && (
+                  <CuteRobote className={cn('w-3 h-3 text-indigo-600', !expand && '!w-2.5 !h-2.5')} />
+                )}
+                {appDetail.mode === 'chat' && (
+                  <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />
+                )}
+                {appDetail.mode === 'completion' && (
+                  <AiText className={cn('w-3 h-3 text-[#0E9384]', !expand && '!w-2.5 !h-2.5')} />
+                )}
+                {appDetail.mode === 'workflow' && (
+                  <Route className={cn('w-3 h-3 text-[#f79009]', !expand && '!w-2.5 !h-2.5')} />
+                )}
+              </span>
             </div>
             {expand && (
               <div className="grow w-0">
@@ -199,8 +221,25 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           <div className='relative w-[320px] bg-white rounded-2xl shadow-xl'>
             {/* header */}
             <div className={cn('flex pl-4 pt-3 pr-3', !appDetail.description && 'pb-2')}>
-              <div className='shrink-0 mr-2'>
+              <div className='relative shrink-0 mr-2'>
                 <AppIcon size="large" icon={appDetail.icon} background={appDetail.icon_background} />
+                <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
+                  {appDetail.mode === 'advanced-chat' && (
+                    <ChatBot className='w-3 h-3 text-[#1570EF]' />
+                  )}
+                  {appDetail.mode === 'agent-chat' && (
+                    <CuteRobote className='w-3 h-3 text-indigo-600' />
+                  )}
+                  {appDetail.mode === 'chat' && (
+                    <ChatBot className='w-3 h-3 text-[#1570EF]' />
+                  )}
+                  {appDetail.mode === 'completion' && (
+                    <AiText className='w-3 h-3 text-[#0E9384]' />
+                  )}
+                  {appDetail.mode === 'workflow' && (
+                    <Route className='w-3 h-3 text-[#f79009]' />
+                  )}
+                </span>
               </div>
               <div className='grow w-0'>
                 <div title={appDetail.name} className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900 truncate'>{appDetail.name}</div>

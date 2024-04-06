@@ -70,7 +70,18 @@ const Blocks = ({
               selector={`workflow-block-${block.type}`}
               position='right'
               className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg'
-              content={nodesExtraData[block.type].about}
+              htmlContent={(
+                <div>
+                  <div className='flex items-center mb-2'>
+                    <BlockIcon
+                      className='mr-2'
+                      type={block.type}
+                    />
+                    <div className='text-sm text-gray-900'>{block.title}</div>
+                  </div>
+                  {nodesExtraData[block.type].about}
+                </div>
+              )}
               noArrow
             >
               <div
