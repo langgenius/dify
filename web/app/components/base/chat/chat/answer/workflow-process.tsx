@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { WorkflowProcess } from '../../types'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -47,17 +48,21 @@ const WorkflowProcessItem = ({
 
   return (
     <div
-      className={`
-        mb-2 px-3 w-full rounded-xl border-[0.5px] border-black/[0.08]
-        ${collapse ? 'py-[7px]' : 'py-2'}
-        ${collapse && (!grayBg ? 'bg-white' : 'bg-gray-50')}
-      `}
+      className={cn(
+        'mb-2 rounded-xl border-[0.5px] border-black/[0.08]',
+        collapse ? 'py-[7px]' : hideInfo ? 'pt-2 pb-1' : 'py-2',
+        collapse && (!grayBg ? 'bg-white' : 'bg-gray-50'),
+        hideInfo ? 'mx-[-8px] px-1' : 'w-full px-3',
+      )}
       style={{
         background,
       }}
     >
       <div
-        className='flex items-center h-[18px] cursor-pointer'
+        className={cn(
+          'flex items-center h-[18px] cursor-pointer',
+          hideInfo && 'px-[6px]',
+        )}
         onClick={() => setCollapse(!collapse)}
       >
         {
@@ -87,7 +92,6 @@ const WorkflowProcessItem = ({
               data.tracing.map(node => (
                 <div key={node.id} className='mb-1 last-of-type:mb-0'>
                   <NodePanel
-                    className='!p-0'
                     nodeInfo={node}
                     hideInfo={hideInfo}
                   />

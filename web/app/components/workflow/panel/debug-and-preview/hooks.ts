@@ -309,7 +309,12 @@ export const useChat = (
         },
         onNodeFinished: ({ data }) => {
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-          responseItem.workflowProcess!.tracing[currentIndex] = data as any
+          responseItem.workflowProcess!.tracing[currentIndex] = {
+            ...(responseItem.workflowProcess!.tracing[currentIndex].extras
+              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
+              : {}),
+            ...data,
+          } as any
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
             draft[currentIndex] = {
