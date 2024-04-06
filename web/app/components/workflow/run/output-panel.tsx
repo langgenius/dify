@@ -9,12 +9,14 @@ type OutputPanelProps = {
   isRunning?: boolean
   outputs?: any
   error?: string
+  height?: number
 }
 
 const OutputPanel: FC<OutputPanelProps> = ({
   isRunning,
   outputs,
   error,
+  height,
 }) => {
   return (
     <div className='bg-gray-50 py-2'>
@@ -48,6 +50,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty
+            height={height}
           />
         </div>
       )}

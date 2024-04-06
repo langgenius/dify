@@ -1,5 +1,7 @@
 import {
   memo,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import cn from 'classnames'
@@ -28,6 +30,18 @@ const WorkflowPreview = () => {
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
   }
+
+  const [height, setHieght] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const adjustResultHeight = () => {
+    if (ref.current)
+      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+  }
+
+  useEffect(() => {
+    adjustResultHeight()
+  }, [])
 
   return (
     <div className={`
@@ -89,7 +103,7 @@ const WorkflowPreview = () => {
             }}
           >{t('runLog.tracing')}</div>
         </div>
-        <div className={cn(
+        <div ref={ref} className={cn(
           'grow bg-white h-0 overflow-y-auto rounded-b-2xl',
           (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-gray-50',
         )}>
@@ -101,6 +115,7 @@ const WorkflowPreview = () => {
               isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
               outputs={workflowRunningData?.result?.outputs}
               error={workflowRunningData?.result?.error}
+              height={height}
             />
           )}
           {currentTab === 'DETAIL' && (
