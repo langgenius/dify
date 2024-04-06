@@ -1,6 +1,8 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
+import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
+import { BlockEnum } from '../../types'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
@@ -26,6 +28,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+  const store = useStoreApi()
+
+  const startNode = useMemo(() => {
+    const nodes = store.getState().getNodes()
+    return nodes.find(node => node.data.type === BlockEnum.Start)
+  }, [store])
 
   const {
     readOnly,
@@ -200,6 +208,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                   history: true,
                   context: true,
                 }}
+                availableNodes={[startNode!]}
               />
             </div>
           </div>
