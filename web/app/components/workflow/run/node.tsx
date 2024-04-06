@@ -13,11 +13,10 @@ import type { NodeTracing } from '@/types/workflow'
 
 type Props = {
   nodeInfo: NodeTracing
-  className?: string
   hideInfo?: boolean
 }
 
-const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
+const NodePanel: FC<Props> = ({ nodeInfo, hideInfo = false }) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
   const { t } = useTranslation()
 
@@ -43,12 +42,13 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
   }, [nodeInfo.expand])
 
   return (
-    <div className={`px-4 py-1 ${className}`}>
-      <div className='group transition-all bg-white border border-gray-100 rounded-2xl shadow-xs hover:shadow-md'>
+    <div className={cn('px-4 py-1', hideInfo && '!p-0')}>
+      <div className={cn('group transition-all bg-white border border-gray-100 rounded-2xl shadow-xs hover:shadow-md', hideInfo && '!rounded-lg')}>
         <div
           className={cn(
-            'flex items-center pl-[6px] py-3 pr-3 cursor-pointer',
-            !collapseState && 'pb-2',
+            'flex items-center pl-[6px] pr-3 cursor-pointer',
+            hideInfo ? 'py-2' : 'py-3',
+            !collapseState && (hideInfo ? '!pb-1' : '!pb-2'),
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
@@ -58,8 +58,11 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
               !collapseState && 'rotate-90',
             )}
           />
-          <BlockIcon className='shrink-0 mr-2' type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <div className='grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate' title={nodeInfo.title}>{nodeInfo.title}</div>
+          <BlockIcon size={hideInfo ? 'xs' : 'sm'} className={cn('shrink-0 mr-2', hideInfo && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <div className={cn(
+            'grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate',
+            hideInfo && '!text-xs',
+          )} title={nodeInfo.title}>{nodeInfo.title}</div>
           {nodeInfo.status !== 'running' && !hideInfo && (
             <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>{`${getTime(nodeInfo.elapsed_time || 0)} · ${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens`}</div>
           )}
@@ -81,7 +84,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
         </div>
         {!collapseState && (
           <div className='pb-2'>
-            <div className='px-[10px] py-1'>
+            <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
               {nodeInfo.status === 'stopped' && (
                 <div className='px-3 py-[10px] bg-[#fffaeb] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#dc6803] shadow-xs'>{t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}</div>
               )}
@@ -89,7 +92,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
                 <div className='px-3 py-[10px] bg-[#fef3f2] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#d92d20] shadow-xs'>{nodeInfo.error}</div>
               )}
             </div>
-            <div className='px-[10px] py-1'>
+            <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
               <CodeEditor
                 readOnly
                 title={<div>INPUT</div>}
@@ -99,7 +102,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
               />
             </div>
             {nodeInfo.process_data && (
-              <div className='px-[10px] py-1'>
+              <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
                 <CodeEditor
                   readOnly
                   title={<div>PROCESS DATA</div>}
@@ -110,7 +113,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, className, hideInfo = false }) => {
               </div>
             )}
             {nodeInfo.outputs && (
-              <div className='px-[10px] py-1'>
+              <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
                 <CodeEditor
                   readOnly
                   title={<div>OUTPUT</div>}

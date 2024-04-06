@@ -23,6 +23,7 @@ type BlockIconProps = {
   toolIcon?: string | { content: string; background: string }
 }
 const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
+  xs: 'w-4 h-4 rounded-[5px] shadow-xs',
   sm: 'w-5 h-5 rounded-md shadow-xs',
   md: 'w-6 h-6 rounded-lg shadow-md',
 }
@@ -72,7 +73,7 @@ const BlockIcon: FC<BlockIconProps> = ({
     >
       {
         type !== BlockEnum.Tool && (
-          getIcon(type, 'w-3.5 h-3.5')
+          getIcon(type, size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5')
         )
       }
       {
