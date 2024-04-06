@@ -34,6 +34,7 @@ type NodeSelectorProps = {
   offset?: OffsetOptions
   triggerStyle?: React.CSSProperties
   triggerClassName?: (open: boolean) => string
+  triggerInnerClassName?: string
   popupClassName?: string
   asChild?: boolean
   availableBlocksTypes?: BlockEnum[]
@@ -47,6 +48,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   placement = 'right',
   offset = 6,
   triggerClassName,
+  triggerInnerClassName,
   triggerStyle,
   popupClassName,
   asChild,
@@ -84,6 +86,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
       <PortalToFollowElemTrigger
         asChild={asChild}
         onClick={handleTrigger}
+        className={triggerInnerClassName}
       >
         {
           trigger
