@@ -9,16 +9,15 @@ const withMDX = require('@next/mdx')({
     // If you use `MDXProvider`, uncomment the following line.
     // providerImportSource: "@mdx-js/react",
   },
-})
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
-  experimental: {
-  },
-  // fix all before production. Now it slow the develop speed.
+  experimental: {},
+  // fix all before production. Now it slows down the development speed.
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
@@ -36,9 +35,9 @@ const nextConfig = {
         destination: '/apps',
         permanent: false,
       },
-    ]
+    ];
   },
-  output: 'standalone',
-}
+  output: { standalone: true },
+};
 
-module.exports = withMDX(nextConfig)
+module.exports = withMDX(nextConfig);
