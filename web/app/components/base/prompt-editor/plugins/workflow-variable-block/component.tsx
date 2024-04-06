@@ -1,7 +1,20 @@
-import { memo } from 'react'
+import {
+  memo,
+  useEffect,
+  useState,
+} from 'react'
+import {
+  COMMAND_PRIORITY_EDITOR,
+} from 'lexical'
+import { mergeRegister } from '@lexical/utils'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useSelectOrDelete } from '../../hooks'
 import type { WorkflowNodesMap } from './node'
-import { DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND } from './index'
+import { WorkflowVariableBlockNode } from './node'
+import {
+  DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+  UPDATE_WORKFLOW_NODES_MAP,
+} from './index'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -18,10 +31,29 @@ const WorkflowVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
 }: WorkflowVariableBlockComponentProps) => {
+  const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
-  const node = workflowNodesMap[variables[0]]
   const variablesLength = variables.length
   const lastVariable = isSystemVar(variables) ? variables.join('.') : variables[variablesLength - 1]
+  const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
+  const node = localWorkflowNodesMap![variables[0]]
+
+  useEffect(() => {
+    if (!editor.hasNodes([WorkflowVariableBlockNode]))
+      throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
+
+    return mergeRegister(
+      editor.registerCommand(
+        UPDATE_WORKFLOW_NODES_MAP,
+        (workflowNodesMap: WorkflowNodesMap) => {
+          setLocalWorkflowNodesMap(workflowNodesMap)
+
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+    )
+  }, [editor])
 
   return (
     <div
