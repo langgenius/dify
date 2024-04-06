@@ -25,11 +25,11 @@ const ParamConfigContent = ({
   const file = useFeatures(s => s.features.file)
 
   const transferMethod = useMemo(() => {
-    if (!file.image.transfer_methods || file.image.transfer_methods.length === 2)
+    if (!file?.image?.transfer_methods || file?.image.transfer_methods.length === 2)
       return TransferMethod.all
 
     return file.image.transfer_methods[0]
-  }, [file.image.transfer_methods])
+  }, [file?.image?.transfer_methods])
 
   const handleTransferMethodsChange = useCallback((value: TransferMethod) => {
     const {
@@ -37,10 +37,12 @@ const ParamConfigContent = ({
       setFeatures,
     } = featuresStore!.getState()
     const newFeatures = produce(features, (draft) => {
-      if (TransferMethod.all)
-        draft.file.image.transfer_methods = [TransferMethod.remote_url, TransferMethod.local_file]
-      else
-        draft.file.image.transfer_methods = [value]
+      if (draft.file?.image) {
+        if (TransferMethod.all)
+          draft.file.image.transfer_methods = [TransferMethod.remote_url, TransferMethod.local_file]
+        else
+          draft.file.image.transfer_methods = [value]
+      }
     })
     setFeatures(newFeatures)
     if (onChange)
@@ -56,7 +58,8 @@ const ParamConfigContent = ({
       setFeatures,
     } = featuresStore!.getState()
     const newFeatures = produce(features, (draft) => {
-      draft.file.image.number_limits = value
+      if (draft.file?.image)
+        draft.file.image.number_limits = value
     })
     setFeatures(newFeatures)
     if (onChange)
@@ -102,7 +105,7 @@ const ParamConfigContent = ({
                 min: MIN,
                 max: MAX,
               }}
-              value={file.image.number_limits || 3}
+              value={file?.image?.number_limits || 3}
               enable={true}
               onChange={handleLimitsChange}
             />

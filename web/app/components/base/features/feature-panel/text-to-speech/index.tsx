@@ -25,11 +25,11 @@ const TextToSpeech = ({
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const language = textToSpeech.language
-  const languageInfo = languages.find(i => i.value === textToSpeech.language)
+  const language = textToSpeech?.language
+  const languageInfo = languages.find(i => i.value === textToSpeech?.language)
 
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
-  const voiceItem = voiceItems?.find(item => item.value === textToSpeech.voice)
+  const voiceItem = voiceItems?.find(item => item.value === textToSpeech?.voice)
 
   return (
     <div className='flex items-center px-3 h-12 bg-gray-50 rounded-xl overflow-hidden'>

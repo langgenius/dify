@@ -1,7 +1,7 @@
 import type { TransferMethod } from '@/types/app'
 
 export type EnabledOrDisabled = {
-  enabled: boolean
+  enabled?: boolean
 }
 
 export type OpeningStatement = EnabledOrDisabled & {
@@ -26,9 +26,9 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
 }
 
 export type FileUpload = {
-  image: EnabledOrDisabled & {
-    number_limits: number
-    transfer_methods: TransferMethod[]
+  image?: EnabledOrDisabled & {
+    number_limits?: number
+    transfer_methods?: TransferMethod[]
   }
 }
 
@@ -43,13 +43,13 @@ export enum FeatureEnum {
 }
 
 export type Features = {
-  [FeatureEnum.opening]: OpeningStatement
-  [FeatureEnum.suggested]: SuggestedQuestionsAfterAnswer
-  [FeatureEnum.text2speech]: TextToSpeech
-  [FeatureEnum.speech2text]: SpeechToText
-  [FeatureEnum.citation]: RetrieverResource
-  [FeatureEnum.moderation]: SensitiveWordAvoidance
-  [FeatureEnum.file]: FileUpload
+  [FeatureEnum.opening]?: OpeningStatement
+  [FeatureEnum.suggested]?: SuggestedQuestionsAfterAnswer
+  [FeatureEnum.text2speech]?: TextToSpeech
+  [FeatureEnum.speech2text]?: SpeechToText
+  [FeatureEnum.citation]?: RetrieverResource
+  [FeatureEnum.moderation]?: SensitiveWordAvoidance
+  [FeatureEnum.file]?: FileUpload
 }
 
 export type OnFeaturesChange = (features: Features) => void

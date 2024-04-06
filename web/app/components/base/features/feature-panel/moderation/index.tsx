@@ -57,20 +57,20 @@ const Moderation = ({
   const renderInfo = () => {
     let prefix = ''
     let suffix = ''
-    if (moderation.type === 'openai_moderation')
+    if (moderation?.type === 'openai_moderation')
       prefix = t('appDebug.feature.moderation.modal.provider.openai')
-    else if (moderation.type === 'keywords')
+    else if (moderation?.type === 'keywords')
       prefix = t('appDebug.feature.moderation.modal.provider.keywords')
-    else if (moderation.type === 'api')
+    else if (moderation?.type === 'api')
       prefix = t('common.apiBasedExtension.selector.title')
     else
-      prefix = codeBasedExtensionList?.data.find(item => item.name === moderation.type)?.label[locale] || ''
+      prefix = codeBasedExtensionList?.data.find(item => item.name === moderation?.type)?.label[locale] || ''
 
-    if (moderation.config?.inputs_config?.enabled && moderation.config?.outputs_config?.enabled)
+    if (moderation?.config?.inputs_config?.enabled && moderation.config?.outputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.allEnabled')
-    else if (moderation.config?.inputs_config?.enabled)
+    else if (moderation?.config?.inputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.inputEnabled')
-    else if (moderation.config?.outputs_config?.enabled)
+    else if (moderation?.config?.outputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.outputEnabled')
 
     return `${prefix} · ${suffix}`

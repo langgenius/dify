@@ -28,11 +28,11 @@ const FeaturePanel = ({
   const features = useFeatures(s => s.features)
 
   const showAdvanceFeature = useMemo(() => {
-    return features.opening.enabled || features.suggested.enabled || features.speech2text.enabled || features.text2speech.enabled || features.citation.enabled
+    return features.opening?.enabled || features.suggested?.enabled || features.speech2text?.enabled || features.text2speech?.enabled || features.citation?.enabled
   }, [features])
 
   const showToolFeature = useMemo(() => {
-    return features.moderation.enabled
+    return features.moderation?.enabled
   }, [features])
 
   return (
@@ -55,7 +55,7 @@ const FeaturePanel = ({
             </div>
             <div className='py-2 space-y-2'>
               {
-                features.opening.enabled && (
+                features.opening?.enabled && (
                   <OpeningStatement
                     {...openingStatementProps}
                     onChange={onChange}
@@ -64,22 +64,22 @@ const FeaturePanel = ({
                 )
               }
               {
-                features.suggested.enabled && (
+                features.suggested?.enabled && (
                   <SuggestedQuestionsAfterAnswer />
                 )
               }
               {
-                features.text2speech.enabled && (
+                features.text2speech?.enabled && (
                   <TextToSpeech onChange={onChange} disabled={disabled} />
                 )
               }
               {
-                features.speech2text.enabled && (
+                features.speech2text?.enabled && (
                   <SpeechToText />
                 )
               }
               {
-                features.citation.enabled && (
+                features.citation?.enabled && (
                   <Citation />
                 )
               }
@@ -101,7 +101,7 @@ const FeaturePanel = ({
             </div>
             <div className='py-2 space-y-2'>
               {
-                features.moderation.enabled && (
+                features.moderation?.enabled && (
                   <Moderation onChange={onChange} disabled={disabled} />
                 )
               }
