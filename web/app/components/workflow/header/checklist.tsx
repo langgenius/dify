@@ -98,7 +98,10 @@ const WorkflowChecklist = () => {
                         <div
                           key={node.id}
                           className='mb-2 last-of-type:mb-0 border-[0.5px] border-gray-200 bg-white shadow-xs rounded-lg cursor-pointer'
-                          onClick={() => handleNodeSelect(node.id)}
+                          onClick={() => {
+                            handleNodeSelect(node.id)
+                            setOpen(false)
+                          }}
                         >
                           <div className='flex items-center p-2 h-9 text-xs font-medium text-gray-700'>
                             <BlockIcon
@@ -108,26 +111,28 @@ const WorkflowChecklist = () => {
                             />
                             {node.title}
                           </div>
-                          {
-                            node.unConnected && (
-                              <div className='px-3 py-2 border-t-[0.5px] border-t-black/[0.02] bg-gray-25 rounded-b-lg'>
-                                <div className='flex text-xs leading-[18px] text-gray-500'>
-                                  <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
-                                  {t('workflow.common.needConnecttip')}
+                          <div className='border-t-[0.5px] border-t-black/[0.02]'>
+                            {
+                              node.unConnected && (
+                                <div className='px-3 py-2 bg-gray-25 rounded-b-lg'>
+                                  <div className='flex text-xs leading-[18px] text-gray-500'>
+                                    <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
+                                    {t('workflow.common.needConnecttip')}
+                                  </div>
                                 </div>
-                              </div>
-                            )
-                          }
-                          {
-                            node.errorMessage && (
-                              <div className='px-3 py-2 border-t-[0.5px] border-t-black/[0.02] bg-gray-25 rounded-b-lg'>
-                                <div className='flex text-xs leading-[18px] text-gray-500'>
-                                  <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
-                                  {node.errorMessage}
+                              )
+                            }
+                            {
+                              node.errorMessage && (
+                                <div className='px-3 py-2 bg-gray-25 rounded-b-lg'>
+                                  <div className='flex text-xs leading-[18px] text-gray-500'>
+                                    <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
+                                    {node.errorMessage}
+                                  </div>
                                 </div>
-                              </div>
-                            )
-                          }
+                              )
+                            }
+                          </div>
                         </div>
                       ))
                     }
