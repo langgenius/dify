@@ -44,7 +44,10 @@ const FeatureModal: FC<FeatureModalProps> = ({
     } = featuresStore!.getState()
 
     const newFeatures = produce(features, (draft) => {
-      draft[type].enabled = enabled
+      draft[type] = {
+        ...draft[type],
+        enabled,
+      }
     })
     setFeatures(newFeatures)
     if (onChange)
@@ -72,7 +75,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
               previewImgClassName='openingStatementPreview'
               title={t('appDebug.feature.conversationOpener.title')}
               description={t('appDebug.feature.conversationOpener.description')}
-              value={!!features.opening.enabled}
+              value={!!features.opening?.enabled}
               onChange={handleChange}
               type={FeatureEnum.opening}
             />
@@ -81,7 +84,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
               previewImgClassName='suggestedQuestionsAfterAnswerPreview'
               title={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
               description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
-              value={!!features.suggested.enabled}
+              value={!!features.suggested?.enabled}
               onChange={handleChange}
               type={FeatureEnum.suggested}
             />
@@ -92,7 +95,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
                   previewImgClassName='textToSpeechPreview'
                   title={t('appDebug.feature.textToSpeech.title')}
                   description={t('appDebug.feature.textToSpeech.description')}
-                  value={!!features.text2speech.enabled}
+                  value={!!features.text2speech?.enabled}
                   onChange={handleChange}
                   type={FeatureEnum.text2speech}
                 />
@@ -105,7 +108,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
                   previewImgClassName='speechToTextPreview'
                   title={t('appDebug.feature.speechToText.title')}
                   description={t('appDebug.feature.speechToText.description')}
-                  value={!!features.speech2text.enabled}
+                  value={!!features.speech2text?.enabled}
                   onChange={handleChange}
                   type={FeatureEnum.speech2text}
                 />
@@ -116,7 +119,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
               previewImgClassName='citationPreview'
               title={t('appDebug.feature.citation.title')}
               description={t('appDebug.feature.citation.description')}
-              value={!!features.citation.enabled}
+              value={!!features.citation?.enabled}
               onChange={handleChange}
               type={FeatureEnum.citation}
             />
@@ -130,7 +133,7 @@ const FeatureModal: FC<FeatureModalProps> = ({
               previewImgClassName=''
               title={t('appDebug.feature.moderation.title')}
               description={t('appDebug.feature.moderation.description')}
-              value={!!features.moderation.enabled}
+              value={!!features.moderation?.enabled}
               onChange={handleChange}
               type={FeatureEnum.moderation}
             />

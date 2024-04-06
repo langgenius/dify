@@ -50,7 +50,7 @@ const Add = ({
     return (
       <div
         className={`
-          relative flex items-center px-2 w-[328px] h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
+          relative flex items-center px-2 h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
           hover:bg-gray-100 text-xs text-gray-500 cursor-pointer
           ${open && '!bg-gray-100'}
           ${nodesReadOnly && '!cursor-not-allowed'}

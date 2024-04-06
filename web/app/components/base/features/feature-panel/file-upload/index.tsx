@@ -29,7 +29,8 @@ const FileUpload = ({
       setFeatures,
     } = featuresStore!.getState()
     const newFeatures = produce(features, (draft) => {
-      draft.file.image.enabled = value
+      if (draft.file?.image)
+        draft.file.image.enabled = value
     })
     setFeatures(newFeatures)
 
@@ -50,7 +51,7 @@ const FileUpload = ({
         <ParamConfig onChange={onChange} disabled={disabled} />
         <div className='ml-4 mr-3 w-[1px] h-3.5 bg-gray-200'></div>
         <Switch
-          defaultValue={file.image.enabled}
+          defaultValue={file?.image?.enabled}
           onChange={handleSwitch}
           disabled={disabled}
           size='md'

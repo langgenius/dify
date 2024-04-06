@@ -37,7 +37,7 @@ const FeatureItem: FC<IFeatureItemProps> = ({
       setFeatures,
     } = featuresStore!.getState()
 
-    if (newValue && !features.moderation.type && type === FeatureEnum.moderation) {
+    if (newValue && !features.moderation?.type && type === FeatureEnum.moderation) {
       setShowModerationSettingModal({
         payload: {
           enabled: true,

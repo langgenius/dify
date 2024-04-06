@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
@@ -91,6 +91,18 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
       getData(appDetail.id, runID)
   }, [appDetail, runID])
 
+  const [height, setHieght] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const adjustResultHeight = () => {
+    if (ref.current)
+      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+  }
+
+  useEffect(() => {
+    adjustResultHeight()
+  }, [])
+
   return (
     <div className='grow relative flex flex-col'>
       {/* tab */}
@@ -120,7 +132,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detal */}
-      <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
+      <div ref={ref} className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-white'>
             <Loading />
@@ -130,6 +142,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
           <OutputPanel
             outputs={runDetail.outputs}
             error={runDetail.error}
+            height={height}
           />
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (

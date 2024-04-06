@@ -28,7 +28,6 @@ import {
   useToolIcon,
 } from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
-import { GitBranch01 } from '@/app/components/base/icons/src/vender/line/development'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
@@ -146,7 +145,6 @@ const BasePanel: FC<BasePanelProps> = ({
           !!availableNextNodes.length && (
             <div className='p-4 border-t-[0.5px] border-t-black/5'>
               <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
-                <GitBranch01 className='mr-1 w-4 h-4' />
                 {t('workflow.panel.nextStep').toLocaleUpperCase()}
               </div>
               <div className='mb-2 text-xs text-gray-400'>

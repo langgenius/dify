@@ -43,8 +43,8 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
   const { t } = useTranslation()
   const featureStore = useFeaturesStore()
   const openingStatement = useFeatures(s => s.features.opening)
-  const value = openingStatement.opening_statement || ''
-  const suggestedQuestions = openingStatement.suggested_questions || []
+  const value = openingStatement?.opening_statement || ''
+  const suggestedQuestions = openingStatement?.suggested_questions || []
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
 
   const hasValue = !!(value || '').trim()
@@ -116,8 +116,10 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
     } = getState()
 
     const newFeatures = produce(features, (draft) => {
-      draft.opening.opening_statement = tempValue
-      draft.opening.suggested_questions = tempSuggestedQuestions
+      if (draft.opening) {
+        draft.opening.opening_statement = tempValue
+        draft.opening.suggested_questions = tempSuggestedQuestions
+      }
     })
     setFeatures(newFeatures)
 
@@ -133,7 +135,8 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
     } = getState()
 
     const newFeatures = produce(features, (draft) => {
-      draft.opening.opening_statement = tempValue
+      if (draft.opening)
+        draft.opening.opening_statement = tempValue
     })
     setFeatures(newFeatures)
 
@@ -151,7 +154,8 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
     } = getState()
 
     const newFeatures = produce(features, (draft) => {
-      draft.opening.opening_statement = tempValue
+      if (draft.opening)
+        draft.opening.opening_statement = tempValue
     })
     setFeatures(newFeatures)
     if (onChange)
