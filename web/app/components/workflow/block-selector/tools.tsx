@@ -55,7 +55,19 @@ const Blocks = ({
               selector={`workflow-block-tool-${tool.name}`}
               position='right'
               className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg'
-              content={tool.description[language]}
+              htmlContent={(
+                <div>
+                  <div className='flex items-center mb-2'>
+                    <BlockIcon
+                      className='mr-2'
+                      type={BlockEnum.Tool}
+                      toolIcon={toolWithProvider.icon}
+                    />
+                    <div className='text-sm text-gray-900'>{tool.label[language]}</div>
+                  </div>
+                  {tool.description[language]}
+                </div>
+              )}
               noArrow
             >
               <div
