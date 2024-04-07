@@ -117,7 +117,7 @@ const translation = {
     workspace: 'Робочий простір',
     createWorkspace: 'Створити робочий простір',
     helpCenter: 'Довідковий центр',
-    roadmapAndFeedback: 'Дорожня карта та відгуки',
+    roadmapAndFeedback: 'відгуки',
     community: 'Спільнота',
     about: 'Про нас',
     logout: 'Вийти',
