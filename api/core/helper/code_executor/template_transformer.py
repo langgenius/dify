@@ -4,12 +4,12 @@ from abc import ABC, abstractmethod
 class TemplateTransformer(ABC):
     @classmethod
     @abstractmethod
-    def transform_caller(cls, code: str, inputs: dict) -> str:
+    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
         """
         Transform code to python runner
         :param code: code
         :param inputs: inputs
-        :return:
+        :return: runner, preload
         """
         pass
     
