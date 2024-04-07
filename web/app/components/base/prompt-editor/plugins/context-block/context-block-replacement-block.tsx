@@ -51,6 +51,7 @@ const ContextBlockReplacementBlock = ({
   }, [])
 
   useEffect(() => {
+    REGEX.lastIndex = 0
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createContextBlockNode)),
     )
