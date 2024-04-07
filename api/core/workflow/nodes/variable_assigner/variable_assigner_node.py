@@ -14,18 +14,24 @@ class VariableAssignerNode(BaseNode):
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: VariableAssignerNodeData = cast(self._node_data_cls, self.node_data)
+        # Get variables
         outputs = {}
+        inputs = {}
         for variable in node_data.variables:
             value = variable_pool.get_variable_value(variable)
             if value is not None:
                 outputs = {
                     "output": value
                 }
+                inputs = {
+                    variable: value
+                }
                 break
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs=outputs,
+            inputs=inputs
         )
 
     @classmethod
