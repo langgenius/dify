@@ -13,6 +13,7 @@ import { RETRIEVE_TYPE } from '@/types/app'
 import Toast from '@/app/components/base/toast'
 import { DATASET_DEFAULT } from '@/config'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
@@ -26,7 +27,7 @@ const ParamsConfig: FC = () => {
   const {
     defaultModel: rerankDefaultModel,
     currentModel: isRerankDefaultModelVaild,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const isValid = () => {
     let errMsg = ''

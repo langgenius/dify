@@ -211,6 +211,17 @@ export const useWorkflow = () => {
     return uniqBy(list, 'id')
   }, [store])
 
+  const getBeforeNodeById = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+    const nodes = getNodes()
+    const node = nodes.find(node => node.id === nodeId)!
+
+    return getIncomers(node, nodes, edges)
+  }, [store])
+
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
@@ -314,6 +325,7 @@ export const useWorkflow = () => {
     formatTimeFromNow,
     renderTreeFromRecord,
     getNode,
+    getBeforeNodeById,
   }
 }
 
