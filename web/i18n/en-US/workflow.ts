@@ -179,6 +179,7 @@ const translation = {
       variables: 'variables',
       context: 'context',
       contextTooltip: 'You can import Knowledge as context',
+      notSetContextInPromptTip: 'To enable the context feature, please fill in the context variable in PROMPT.',
       prompt: 'prompt',
       roleDescription: {
         system: 'Give high level instructions for the conversation',

@@ -159,6 +159,7 @@ const ConfigContent: FC<Props> = ({
             </TooltipPlus>
           </div>
           <ModelParameterModal
+            isInWorkflow={isInWorkflow}
             popupClassName='!w-[387px]'
             portalToFollowElemContentClassName='!z-[1002]'
             isAdvancedMode={true}
