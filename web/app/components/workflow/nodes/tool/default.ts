@@ -22,27 +22,31 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
     return nodes
   },
   checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
-    const { toolInputsSchema, toolSettingSchema, language } = moreDataForCheckValid
+    const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid
     let errorMessages = ''
+    if (notAuthed)
+      errorMessages = t(`${i18nPrefix}.authRequired`)
 
-    toolInputsSchema.filter((field: any) => {
-      return field.required
-    }).forEach((field: any) => {
-      const targetVar = payload.tool_parameters[field.variable]
-      if (!targetVar) {
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
-        return
-      }
-      const { type: variable_type, value } = targetVar
-      if (variable_type === VarKindType.variable) {
-        if (!errorMessages && (!value || value.length === 0))
+    if (!errorMessages) {
+      toolInputsSchema.filter((field: any) => {
+        return field.required
+      }).forEach((field: any) => {
+        const targetVar = payload.tool_parameters[field.variable]
+        if (!targetVar) {
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
-      }
-      else {
-        if (!errorMessages && (value === undefined || value === null || value === ''))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
-      }
-    })
+          return
+        }
+        const { type: variable_type, value } = targetVar
+        if (variable_type === VarKindType.variable) {
+          if (!errorMessages && (!value || value.length === 0))
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+        }
+        else {
+          if (!errorMessages && (value === undefined || value === null || value === ''))
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+        }
+      })
+    }
 
     if (!errorMessages) {
       toolSettingSchema.filter((field: any) => {

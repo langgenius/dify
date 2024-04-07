@@ -154,6 +154,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         })
         return formInputs
       })(),
+      notAuthed: isShowAuthBtn,
       toolSettingSchema,
       language,
     },

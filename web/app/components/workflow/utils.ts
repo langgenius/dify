@@ -262,6 +262,7 @@ export const getToolCheckParams = (
       })
       return formInputs
     })(),
+    notAuthed: isBuiltIn && !!currCollection?.allow_delete && !currCollection?.is_team_authorization,
     toolSettingSchema,
     language,
   }
