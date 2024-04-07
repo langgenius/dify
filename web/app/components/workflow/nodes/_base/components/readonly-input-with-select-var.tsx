@@ -2,8 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useWorkflow } from '../../../hooks'
-import type { ValueSelector } from '../../../types'
-import { BlockEnum, VarType } from '../../../types'
+import { BlockEnum } from '../../../types'
 import { VarBlockIcon } from '../../../block-icon'
 import { getNodeInfoById, isSystemVar } from './variable/utils'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -34,38 +33,15 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
     const html: JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
       if (!vars[index])
-        return <span className='leading-[16px]' key={index}>{str}</span>
+        return <span className='relative top-[-3px] leading-[16px]' key={index}>{str}</span>
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
       const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
       const varName = `${isSystem ? 'sys.' : ''}${value[value.length - 1]}`
-      const type = (() => {
-        let type = VarType.string
-        let curr: any = node?.vars
-        if (!curr)
-          return type
 
-        if (isSystem) {
-          return curr.find((v: any) => v.variable === (value as ValueSelector).join('.'))?.type
-        }
-        else {
-          (value as ValueSelector).slice(1).forEach((key, i) => {
-            const isLast = i === value.length - 2
-            curr = curr.find((v: any) => v.variable === key)
-            if (isLast) {
-              type = curr?.type
-            }
-            else {
-              if (curr.type === VarType.object)
-                curr = curr.children
-            }
-          })
-          return type
-        }
-      })()
       return (<span key={index}>
-        <span className='leading-[16px]'>{str}</span>
+        <span className='relative top-[-3px] leading-[16px]'>{str}</span>
         <div className=' inline-flex h-[16px] items-center px-1.5 rounded-[5px] bg-white'>
           <div className='flex items-center'>
             <div className='p-[1px]'>
@@ -74,14 +50,13 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
                 type={node?.type || BlockEnum.Start}
               />
             </div>
-            <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={node?.title}>{node?.title}</div>
+            <div className='max-w-[60px] mx-0.5 text-xs font-medium text-gray-700 truncate' title={node?.title}>{node?.title}</div>
             <Line3 className='mr-0.5'></Line3>
           </div>
           <div className='flex items-center text-primary-600'>
             <Variable02 className='w-3.5 h-3.5' />
-            <div className='ml-0.5 text-xs font-medium truncate' title={varName}>{varName}</div>
+            <div className='max-w-[50px] ml-0.5 text-xs font-medium truncate' title={varName}>{varName}</div>
           </div>
-          <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} >{type}</div>
         </div>
       </span>)
     })
