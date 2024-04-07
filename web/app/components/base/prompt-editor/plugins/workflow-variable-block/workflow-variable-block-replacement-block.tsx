@@ -56,7 +56,7 @@ const WorkflowVariableBlockReplacementBlock = ({
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, transformListener),
     )
-  }, [editor, transformListener])
+  }, [])
 
   return null
 }
