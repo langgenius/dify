@@ -56,8 +56,8 @@ export const VarItem: FC<VarItemProps> = ({
 }) => {
   return (
     <div className='py-1'>
-      <div className='flex leading-[18px]'>
-        <div className='text-[13px] font-medium text-gray-900'>{name}</div>
+      <div className='flex leading-[18px] items-center'>
+        <div className='text-[13px] font-medium text-gray-900 font-mono'>{name}</div>
         <div className='ml-2 text-xs font-normal text-gray-500 capitalize'>{type}</div>
       </div>
       <div className='mt-0.5 leading-[18px] text-xs font-normal text-gray-600'>

@@ -90,7 +90,7 @@ const TagInput: FC<TagInputProps> = ({
             inputClassName={cn('outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400', isSpecialMode ? 'bg-transparent' : '')}
             className={cn(
               !isInWorkflow && 'max-w-[300px]',
-              isInWorkflow && 'max-w-[130px]',
+              isInWorkflow && 'max-w-[146px]',
               `
               mt-1 py-1 rounded-lg border border-transparent text-sm  overflow-hidden
               ${focused && 'px-2 border !border-dashed !border-gray-200'}
