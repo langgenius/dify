@@ -69,13 +69,15 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
 )
 
 GENERATOR_QA_PROMPT = (
-    'The user will send a long text. Please think step by step.'
+    '<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge in the long text. Please think step by step.'
     'Step 1: Understand and summarize the main content of this text.\n'
     'Step 2: What key information or concepts are mentioned in this text?\n'
     'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
-    'Step 4: Generate 20 questions and answers based on these key information and concepts.'
-    'The questions should be clear and detailed, and the answers should be detailed and complete.\n'
-    "Answer MUST according to the the language:{language} and in the following format: Q1:\nA1:\nQ2:\nA2:...\n"
+    'Step 4: Generate questions and answers based on these key information and concepts.\n'
+    '<Constraints> The questions should be clear and detailed, and the answers should be detailed and complete. '
+    'You must answer in {language}, in a style that is clear and detailed in {language}. No language other than {language} should be used. \n'
+    '<Format> Use the following format: Q1:\nA1:\nQ2:\nA2:...\n'
+    '<QA Pairs>'
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
