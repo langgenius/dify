@@ -117,7 +117,7 @@ const translation = {
     workspace: 'Espace de travail',
     createWorkspace: 'Créer un Espace de Travail',
     helpCenter: 'Aide',
-    roadmapAndFeedback: 'Feuille de route & Retour d\'information',
+    roadmapAndFeedback: 'Retour d\'information',
     community: 'Communauté',
     about: 'À propos',
     logout: 'Se déconnecter',
