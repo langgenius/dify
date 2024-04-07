@@ -26,6 +26,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const nodesExtraData = useNodesExtraData()
+  const isChatMode = useIsChatMode()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
 
@@ -63,8 +64,26 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     }
 
+    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
+      list.push({
+        id: 'answer-need-added',
+        type: BlockEnum.Answer,
+        title: t('workflow.blocks.answer'),
+        errorMessage: t('workflow.common.needAnswerNode'),
+      })
+    }
+
+    if (!isChatMode && !nodes.find(node => node.data.type === BlockEnum.End)) {
+      list.push({
+        id: 'end-need-added',
+        type: BlockEnum.End,
+        title: t('workflow.blocks.end'),
+        errorMessage: t('workflow.common.needEndNode'),
+      })
+    }
+
     return list
-  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, language])
+  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, language, isChatMode])
 
   return needWarningNodes
 }

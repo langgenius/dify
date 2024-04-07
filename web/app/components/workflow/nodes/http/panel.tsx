@@ -60,7 +60,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           operations={
             <div
               onClick={showAuthorization}
-              className={cn(!readOnly && 'cursor-pointer', 'flex items-center h-6 space-x-1')}
+              className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
             >
               {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
               <div className='text-xs font-medium text-gray-500'>
