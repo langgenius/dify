@@ -199,7 +199,7 @@ const VarReferencePicker: FC<Props> = ({
             return
           !isConstant ? setOpen(!open) : setControlFocus(Date.now())
         }} className='!flex'>
-          <div ref={triggerRef} className={cn((open || isFocus) ? 'sborder-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100 border')}>
+          <div ref={triggerRef} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100 border')}>
             {isSupportConstantValue
               ? <div onClick={(e) => {
                 e.stopPropagation()
