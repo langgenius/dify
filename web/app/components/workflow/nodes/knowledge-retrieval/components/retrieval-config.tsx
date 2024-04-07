@@ -14,6 +14,7 @@ import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-c
 import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 import type {
   DatasetConfigs,
@@ -49,7 +50,7 @@ const RetrievalConfig: FC<Props> = ({
 
   const {
     defaultModel: rerankDefaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const { multiple_retrieval_config } = payload
   const handleChange = useCallback((configs: DatasetConfigs, isRetrievalModeChange?: boolean) => {

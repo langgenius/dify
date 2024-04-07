@@ -18,6 +18,7 @@ import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files
 import { MessageHeartCircle } from '@/app/components/base/icons/src/vender/solid/communication'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export type FeatureModalProps = {
   onChange?: OnFeaturesChange
@@ -27,8 +28,8 @@ const FeatureModal: FC<FeatureModalProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { data: speech2textDefaultModel } = useDefaultModel(4)
-  const { data: text2speechDefaultModel } = useDefaultModel(5)
+  const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
+  const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const featuresStore = useFeaturesStore()
   const setShowFeaturesModal = useFeatures(s => s.setShowFeaturesModal)
   const features = useFeatures(s => s.features)
