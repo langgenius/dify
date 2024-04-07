@@ -12,6 +12,7 @@ from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
     conversation_detail_fields,
@@ -202,7 +203,7 @@ class ChatConversationApi(Resource):
             )
 
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            query = query.where(Conversation.override_model_configs.is_(None))
+            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
 
         query = query.order_by(Conversation.created_at.desc())
 
