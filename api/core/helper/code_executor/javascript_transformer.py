@@ -18,10 +18,11 @@ result = `<<RESULT>>${output}<<RESULT>>`
 console.log(result)
 """
 
+NODEJS_PRELOAD = """"""
 
 class NodeJsTemplateTransformer(TemplateTransformer):
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> str:
+    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
         """
         Transform code to python runner
         :param code: code
@@ -36,7 +37,7 @@ class NodeJsTemplateTransformer(TemplateTransformer):
         runner = NODEJS_RUNNER.replace('{{code}}', code)
         runner = runner.replace('{{inputs}}', inputs_str)
 
-        return runner
+        return runner, NODEJS_PRELOAD
     
     @classmethod
     def transform_response(cls, response: str) -> dict:

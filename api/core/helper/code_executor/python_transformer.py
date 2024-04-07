@@ -20,10 +20,12 @@ result = f'''<<RESULT>>
 print(result)
 """
 
+PYTHON_PRELOAD = """"""
+
 
 class PythonTemplateTransformer(TemplateTransformer):
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> str:
+    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
         """
         Transform code to python runner
         :param code: code
@@ -38,7 +40,7 @@ class PythonTemplateTransformer(TemplateTransformer):
         runner = PYTHON_RUNNER.replace('{{code}}', code)
         runner = runner.replace('{{inputs}}', inputs_str)
 
-        return runner
+        return runner, PYTHON_PRELOAD
     
     @classmethod
     def transform_response(cls, response: str) -> dict:

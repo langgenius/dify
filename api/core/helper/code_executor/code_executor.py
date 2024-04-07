@@ -47,7 +47,7 @@ class CodeExecutor:
         else:
             raise CodeExecutionException('Unsupported language')
 
-        runner = template_transformer.transform_caller(code, inputs)
+        runner, preload = template_transformer.transform_caller(code, inputs)
         url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'run'
         headers = {
             'X-Api-Key': CODE_EXECUTION_API_KEY
@@ -57,6 +57,7 @@ class CodeExecutor:
                         'nodejs' if language == 'javascript' else
                         'python3' if language == 'python3' else None,
             'code': runner,
+            'preload': preload
         }
 
         try:
