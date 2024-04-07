@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Python: Celery",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "celery",
             "justMyCode": true,
@@ -21,7 +21,7 @@
         },
         {
             "name": "Python: Flask",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "flask",
             "env": {
