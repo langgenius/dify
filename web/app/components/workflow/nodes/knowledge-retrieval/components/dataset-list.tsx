@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
+import { useTranslation } from 'react-i18next'
 import Item from './dataset-item'
 import type { DataSet } from '@/models/datasets'
 type Props = {
@@ -15,6 +16,8 @@ const DatasetList: FC<Props> = ({
   onChange,
   readonly,
 }) => {
+  const { t } = useTranslation()
+
   const handleRemove = useCallback((index: number) => {
     return () => {
       const newList = produce(list, (draft) => {
@@ -34,8 +37,8 @@ const DatasetList: FC<Props> = ({
   }, [list, onChange])
   return (
     <div className='space-y-1'>
-      {
-        list.map((item, index) => {
+      {list.length
+        ? list.map((item, index) => {
           return (
             <Item
               key={index}
@@ -46,6 +49,11 @@ const DatasetList: FC<Props> = ({
             />
           )
         })
+        : (
+          <div className='p-3 text-xs text-center text-gray-500 rounded-lg cursor-default select-none bg-gray-50'>
+            {t('appDebug.datasetConfig.knowledgeTip')}
+          </div>
+        )
       }
 
     </div>

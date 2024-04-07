@@ -356,6 +356,7 @@ const translation = {
   result: '结果',
   datasetConfig: {
     settingTitle: '召回设置',
+    knowledgeTip: '点击 “+” 按钮添加知识库',
     retrieveOneWay: {
       title: 'N选1召回',
       description: '根据用户意图和知识库描述，由 Agent 自主判断选择最匹配的单个知识库来查询相关文本，适合知识库区分度大且知识库数量偏少的应用。',

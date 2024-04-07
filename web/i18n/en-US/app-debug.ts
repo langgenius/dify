@@ -362,6 +362,7 @@ const translation = {
   result: 'Output Text',
   datasetConfig: {
     settingTitle: 'Retrieval settings',
+    knowledgeTip: 'Click the “+” button to add knowledge',
     retrieveOneWay: {
       title: 'N-to-1 retrieval',
       description: 'Based on user intent and Knowledge descriptions, the Agent autonomously selects the best Knowledge for querying. Best for applications with distinct, limited Knowledge.',
