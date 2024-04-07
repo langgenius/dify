@@ -42,7 +42,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
           <Markdown content={outputs[Object.keys(outputs)[0]] || ''} />
         </div>
       )}
-      {outputs && Object.keys(outputs).length > 1 && (
+      {outputs && Object.keys(outputs).length > 1 && height! > 0 && (
         <div className='px-4 py-2 flex flex-col gap-2'>
           <CodeEditor
             readOnly

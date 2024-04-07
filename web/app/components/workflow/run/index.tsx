@@ -101,7 +101,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
 
   useEffect(() => {
     adjustResultHeight()
-  }, [])
+  }, [loading])
 
   return (
     <div className='grow relative flex flex-col'>

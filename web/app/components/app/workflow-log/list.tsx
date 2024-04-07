@@ -104,7 +104,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               <td>
                 <div className={cn(
                   log.workflow_run.elapsed_time === 0 && 'text-gray-400',
-                )}>{`${log.workflow_run.elapsed_time}s`}</div>
+                )}>{`${log.workflow_run.elapsed_time.toFixed(3)}s`}</div>
               </td>
               <td>{log.workflow_run.total_tokens}</td>
               <td>
