@@ -49,6 +49,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
+    authRequired: 'Authorization is required',
     invalidJson: '{{field}} is invalid JSON',
     fields: {
       variable: 'Variable Name',
