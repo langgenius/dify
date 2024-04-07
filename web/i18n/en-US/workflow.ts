@@ -58,6 +58,7 @@ const translation = {
       model: 'Model',
       rerankModel: 'Rerank Model',
     },
+    invalidVariable: 'Invalid variable',
   },
   singleRun: {
     testRun: 'Test Run ',

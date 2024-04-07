@@ -58,6 +58,7 @@ const translation = {
       model: '模型',
       rerankModel: 'Rerank 模型',
     },
+    invalidVariable: '无效的变量',
   },
   singleRun: {
     testRun: '测试运行 ',
