@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom'
 import {
   FloatingPortal,
   flip,
+  offset,
   shift,
   useFloating,
 } from '@floating-ui/react'
@@ -56,6 +57,7 @@ const ComponentPicker = ({
   const { refs, floatingStyles, elements } = useFloating({
     placement: 'bottom-start',
     middleware: [
+      offset(16), // fix hide cursor
       shift(),
       flip(),
     ],
