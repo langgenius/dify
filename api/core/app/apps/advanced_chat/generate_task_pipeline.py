@@ -215,15 +215,15 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
                 if workflow_run:
-                    if workflow_run.status == WorkflowRunStatus.FAILED.value:
-                        err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
-                        yield self._error_to_stream_response(self._handle_error(err_event, self._message))
-                        break
-
                     yield self._workflow_finish_to_stream_response(
                         task_id=self._application_generate_entity.task_id,
                         workflow_run=workflow_run
                     )
+
+                    if workflow_run.status == WorkflowRunStatus.FAILED.value:
+                        err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
+                        yield self._error_to_stream_response(self._handle_error(err_event, self._message))
+                        break
 
                 if isinstance(event, QueueStopEvent):
                     # Save message
