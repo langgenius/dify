@@ -1,5 +1,5 @@
 import produce from 'immer'
-import { isArray } from 'lodash-es'
+import { isArray, uniq } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
 import type { AnswerNodeType } from '../../../answer/types'
@@ -8,6 +8,9 @@ import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/ty
 import type { IfElseNodeType } from '../../../if-else/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
+import type { HttpNodeType } from '../../../http/types'
+import { VarType as ToolVarType } from '../../../tool/types'
+import type { ToolNodeType } from '../../../tool/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -22,6 +25,8 @@ import {
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
+import type { PromptItem } from '@/models/debug'
+import { VAR_REGEX } from '@/config'
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   if (type === InputVarType.number)
@@ -215,6 +220,19 @@ export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMo
   }
 }
 
+const matchNotSystemVars = (prompts: string[]) => {
+  if (!prompts)
+    return []
+
+  const allVars: string[] = []
+  prompts.forEach((prompt) => {
+    VAR_REGEX.lastIndex = 0
+    allVars.push(...(prompt.match(VAR_REGEX) || []))
+  })
+  const uniqVars = uniq(allVars).map(v => v.replaceAll('{{#', '').replace('#}}', '').split('.'))
+  return uniqVars
+}
+
 export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -233,9 +251,15 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.LLM: {
-      // TODO: get var in inputs
-      const inputVars: ValueSelector[] = []
+      const payload = (data as LLMNodeType)
+      const isChatModel = payload.model?.mode === 'chat'
+      let prompts: string[] = []
+      if (isChatModel)
+        prompts = (payload.prompt_template as PromptItem[])?.map(p => p.text) || []
+      else
+        prompts = [(payload.prompt_template as PromptItem).text]
 
+      const inputVars: ValueSelector[] = matchNotSystemVars(prompts)
       const contextVar = (data as LLMNodeType).context?.variable_selector ? [(data as LLMNodeType).context?.variable_selector] : []
       res = [...inputVars, ...contextVar]
       break
@@ -267,11 +291,15 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.HttpRequest: {
-      // TODO: get var in inputs
+      const payload = (data as HttpNodeType)
+      res = matchNotSystemVars([payload.url, payload.headers, payload.params, payload.body.data])
       break
     }
     case BlockEnum.Tool: {
-      // TODO: get var in inputs
+      const payload = (data as ToolNodeType)
+      const mixVars = matchNotSystemVars(Object.keys(payload.tool_parameters)?.filter(key => payload.tool_parameters[key].type === ToolVarType.mixed).map(key => payload.tool_parameters[key].value) as string[])
+      const vars = Object.keys(payload.tool_parameters).filter(key => payload.tool_parameters[key].type === ToolVarType.variable).map(key => payload.tool_parameters[key].value as string) || []
+      res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
     }
 
