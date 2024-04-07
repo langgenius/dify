@@ -179,6 +179,7 @@ const translation = {
       variables: '变量',
       context: '上下文',
       contextTooltip: '您可以导入知识库作为上下文',
+      notSetContextInPromptTip: '要启用上下文功能，请在提示中填写上下文变量。',
       prompt: '提示词',
       addMessage: '添加消息',
       roleDescription: {

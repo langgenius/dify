@@ -41,6 +41,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     isChatModel,
     isChatMode,
     isCompletionModel,
+    shouldShowContextTip,
     isShowVisionConfig,
     handleModelChanged,
     hasSetBlockStatus,
@@ -144,15 +145,19 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           title={t(`${i18nPrefix}.context`)}
           tooltip={t(`${i18nPrefix}.contextTooltip`)!}
         >
-          <VarReferencePicker
-            readonly={readOnly}
-            nodeId={id}
-            isShowNodeName
-            value={inputs.context?.variable_selector || []}
-            onChange={handleContextVarChange}
-            filterVar={filterVar}
-          />
-
+          <>
+            <VarReferencePicker
+              readonly={readOnly}
+              nodeId={id}
+              isShowNodeName
+              value={inputs.context?.variable_selector || []}
+              onChange={handleContextVarChange}
+              filterVar={filterVar}
+            />
+            {shouldShowContextTip && (
+              <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.notSetContextInPromptTip`)}</div>
+            )}
+          </>
         </Field>
 
         {/* Prompt */}
