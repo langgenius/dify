@@ -60,14 +60,17 @@ class CacheEmbedding(Embeddings):
                             db.session.rollback()
                         except Exception as e:
                             logging.exception('Failed transform embedding: ', e)
+                cache_embeddings = []
                 for i, embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
                     text_embeddings[i] = embedding
                     hash = helper.generate_text_hash(texts[i])
-                    embedding_cache = Embedding(model_name=self._model_instance.model,
-                                          hash=hash,
-                                          provider_name=self._model_instance.provider)
-                    embedding_cache.set_embedding(embedding)
-                    db.session.add(embedding_cache)
+                    if hash not in cache_embeddings:
+                        embedding_cache = Embedding(model_name=self._model_instance.model,
+                                              hash=hash,
+                                              provider_name=self._model_instance.provider)
+                        embedding_cache.set_embedding(embedding)
+                        db.session.add(embedding_cache)
+                        cache_embeddings.append(hash)
                 db.session.commit()
             except Exception as ex:
                 db.session.rollback()
