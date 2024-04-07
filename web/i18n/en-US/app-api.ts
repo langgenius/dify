@@ -9,6 +9,7 @@ const translation = {
   play: 'Play',
   pause: 'Pause',
   playing: 'Playing',
+  loading: 'Loading',
   merMaind: {
     rerender: 'Redo Rerender',
   },

@@ -6,6 +6,7 @@ import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { randomString } from '@/utils'
 import { textToAudio } from '@/service/share'
+import Loading from '@/app/components/base/loading'
 
 type AudioBtnProps = {
   value: string
@@ -63,7 +64,6 @@ const AudioBtn = ({
         const blob = new Blob([blob_bytes], { type: 'audio/wav' })
         const audioUrl = URL.createObjectURL(blob)
         audioRef.current!.src = audioUrl
-        setAudioState('playing')
       }
       catch (error) {
         setAudioState('initial')
@@ -96,37 +96,33 @@ const AudioBtn = ({
       currentAudio?.play()
       setAudioState('playing')
     }
-    const handlePaused = () => {
-      setAudioState('paused')
-    }
     const handleEnded = () => {
       setAudioState('ended')
     }
     currentAudio?.addEventListener('progress', handleLoading)
     currentAudio?.addEventListener('canplaythrough', handlePlay)
-    currentAudio?.addEventListener('paused', handlePaused)
     currentAudio?.addEventListener('ended', handleEnded)
     return () => {
       if (currentAudio) {
         currentAudio.removeEventListener('progress', handleLoading)
         currentAudio.removeEventListener('canplaythrough', handlePlay)
-        currentAudio.removeEventListener('paused', handlePaused)
         currentAudio.removeEventListener('ended', handleEnded)
+        URL.revokeObjectURL(currentAudio.src)
         currentAudio.src = ''
       }
     }
   }, [])
 
-  let tooltipContent = t('appApi.play')
-  if (audioState === 'loading')
-    tooltipContent = 'loading...' // todo: i18
-  else if (audioState === 'playing')
-    tooltipContent = t('appApi.playing')
-  else if (audioState === 'paused')
-    tooltipContent = t('appApi.pause')
+  const tooltipContent = {
+    initial: t('appApi.play'),
+    ended: t('appApi.play'),
+    paused: t('appApi.pause'),
+    playing: t('appApi.playing'),
+    loading: t('appApi.loading'),
+  }[audioState]
 
   return (
-    <div className={`${(audioState === 'playing') ? 'mr-1' : className}`}>
+    <div className={`${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
       <Tooltip
         selector={selector.current}
         content={tooltipContent}
@@ -137,7 +133,7 @@ const AudioBtn = ({
           className={`box-border p-0.5 flex items-center justify-center cursor-pointer ${isAudition || 'rounded-md bg-white'}`}
           style={{ boxShadow: !isAudition ? '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)' : '' }}
           onClick={handleToggle}>
-          {audioState === 'loading' && <div className='w-6 h-6 rounded-md flex items-center justify-center'><span className={s.loader}></span></div>}
+          {audioState === 'loading' && <div className='w-6 h-6 rounded-md flex items-center justify-center p-2'><Loading /></div>}
           {audioState !== 'loading' && <div className={`w-6 h-6 rounded-md ${!isAudition ? 'hover:bg-gray-200' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>}
         </button>
       </Tooltip>

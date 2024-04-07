@@ -9,6 +9,7 @@ const translation = {
   play: '播放',
   pause: '暂停',
   playing: '播放中',
+  loading: '加载中',
   merMaind: {
     rerender: '重新渲染',
   },
