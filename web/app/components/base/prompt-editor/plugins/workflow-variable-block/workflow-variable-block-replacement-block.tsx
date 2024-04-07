@@ -53,6 +53,7 @@ const WorkflowVariableBlockReplacementBlock = ({
   }, [createWorkflowVariableBlockNode, getMatch])
 
   useEffect(() => {
+    REGEX.lastIndex = 0
     return mergeRegister(
       editor.registerNodeTransform(CustomTextNode, transformListener),
     )
