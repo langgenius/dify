@@ -15,6 +15,7 @@ import { fetchDatasets } from '@/service/datasets'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -50,11 +51,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const {
     currentProvider,
     currentModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(1)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
   const {
     defaultModel: rerankDefaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {

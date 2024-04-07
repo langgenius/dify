@@ -20,6 +20,7 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -49,7 +50,7 @@ const ConfigContent: FC<Props> = ({
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const rerankModel = (() => {
     if (datasetConfigs.reranking_model) {
       return {
