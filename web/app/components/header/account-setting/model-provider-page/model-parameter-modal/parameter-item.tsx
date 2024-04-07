@@ -219,7 +219,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <div>
-        <div className={cn(isInWorkflow ? 'w-[200px]' : 'w-full', 'shrink-0 flex items-center')}>
+        <div className={cn(isInWorkflow ? 'w-[140px]' : 'w-full', 'shrink-0 flex items-center')}>
           <div
             className='mr-0.5 text-[13px] font-medium text-gray-700 truncate'
             title={parameterRule.label[language] || parameterRule.label.en_US}
@@ -250,7 +250,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         </div>
         {
           parameterRule.type === 'tag' && (
-            <div className='w-[200px] text-gray-400 text-xs font-normal'>
+            <div className={cn(!isInWorkflow && 'w-[200px]', ' text-gray-400 text-xs font-normal')}>
               {parameterRule?.tagPlaceholder?.[language]}
             </div>
           )
