@@ -62,10 +62,15 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
   // use setting
   const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
+  const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
   const toolSettingValue = (() => {
+    if (notSetDefaultValue)
+      return tool_configurations
+
     return addDefaultValue(tool_configurations, toolSettingSchema)
   })()
   const setToolSettingValue = useCallback((value: Record<string, any>) => {
+    setNotSetDefaultValue(true)
     setInputs({
       ...inputs,
       tool_configurations: value,
