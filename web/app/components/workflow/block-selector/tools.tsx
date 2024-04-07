@@ -59,6 +59,7 @@ const Blocks = ({
                 <div>
                   <div className='flex items-center mb-2'>
                     <BlockIcon
+                      size='md'
                       className='mr-2'
                       type={BlockEnum.Tool}
                       toolIcon={toolWithProvider.icon}
