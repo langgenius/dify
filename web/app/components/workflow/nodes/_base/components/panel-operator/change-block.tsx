@@ -61,6 +61,7 @@ const ChangeBlock = ({
       }}
       onSelect={handleSelect}
       trigger={renderTrigger}
+      popupClassName='min-w-[240px]'
       availableBlocksTypes={availableNodes}
     />
   )
