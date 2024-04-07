@@ -48,11 +48,15 @@ const WorkflowVariableBlockReplacementBlock = ({
     }
   }, [])
 
+  const transformListener = useCallback((textNode: any) => {
+    return decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)
+  }, [createWorkflowVariableBlockNode, getMatch])
+
   useEffect(() => {
     return mergeRegister(
-      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createWorkflowVariableBlockNode)),
+      editor.registerNodeTransform(CustomTextNode, transformListener),
     )
-  }, [])
+  }, [editor, transformListener])
 
   return null
 }
