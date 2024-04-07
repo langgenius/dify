@@ -19,3 +19,6 @@ from .datasets import data_source, datasets, datasets_document, datasets_segment
 from .explore import audio, completion, conversation, installed_app, message, parameter, recommended_app, saved_message
 # Import workspace controllers
 from .workspace import account, members, model_providers, models, tool_providers, workspace
+# Import enterprise controllers
+from .enterprise import enterprise_sso
+
