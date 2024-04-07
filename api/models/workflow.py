@@ -120,7 +120,7 @@ class Workflow(db.Model):
 
     @property
     def updated_by_account(self):
-        return Account.query.get(self.updated_by)
+        return Account.query.get(self.updated_by) if self.updated_by else None
 
     @property
     def graph_dict(self):

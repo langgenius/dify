@@ -226,19 +226,12 @@ class AppService:
         }
 
         if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            if app.workflow_id:
-                workflow = app.workflow
-                export_data['workflow'] = {
-                    "graph": workflow.graph_dict,
-                    "features": workflow.features_dict
-                }
-            else:
-                workflow_service = WorkflowService()
-                workflow = workflow_service.get_draft_workflow(app)
-                export_data['workflow'] = {
-                    "graph": workflow.graph_dict,
-                    "features": workflow.features_dict
-                }
+            workflow_service = WorkflowService()
+            workflow = workflow_service.get_draft_workflow(app)
+            export_data['workflow'] = {
+                "graph": workflow.graph_dict,
+                "features": workflow.features_dict
+            }
         else:
             app_model_config = app.app_model_config
 
