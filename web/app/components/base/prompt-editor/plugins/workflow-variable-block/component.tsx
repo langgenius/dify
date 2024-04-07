@@ -3,6 +3,7 @@ import {
   useEffect,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   COMMAND_PRIORITY_EDITOR,
 } from 'lexical'
@@ -19,6 +20,8 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -31,6 +34,7 @@ const WorkflowVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
 }: WorkflowVariableBlockComponentProps) => {
+  const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
@@ -55,11 +59,12 @@ const WorkflowVariableBlockComponent = ({
     )
   }, [editor])
 
-  return (
+  const Item = (
     <div
       className={`
         mx-0.5 relative group/wrap flex items-center h-[18px] pl-0.5 pr-[3px] rounded-[5px] border
         ${isSelected ? ' border-[#84ADFF] bg-[#F5F8FF]' : ' border-black/5 bg-white'}
+        ${!node && '!border-[#F04438] !bg-[#FEF3F2]'}
       `}
       ref={ref}
     >
@@ -81,9 +86,24 @@ const WorkflowVariableBlockComponent = ({
       <div className='flex items-center text-primary-600'>
         <Variable02 className='w-3.5 h-3.5' />
         <div className='shrink-0 ml-0.5 text-xs font-medium truncate' title={lastVariable}>{lastVariable}</div>
+        {
+          !node && (
+            <AlertCircle className='ml-0.5 w-3 h-3 text-[#D92D20]' />
+          )
+        }
       </div>
     </div>
   )
+
+  if (!node) {
+    return (
+      <TooltipPlus popupContent={t('workflow.errorMsg.invalidVariable')}>
+        {Item}
+      </TooltipPlus>
+    )
+  }
+
+  return Item
 }
 
 export default memo(WorkflowVariableBlockComponent)
