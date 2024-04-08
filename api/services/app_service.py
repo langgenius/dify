@@ -221,7 +221,8 @@ class AppService:
                 "name": app.name,
                 "mode": app.mode,
                 "icon": app.icon,
-                "icon_background": app.icon_background
+                "icon_background": app.icon_background,
+                "description": app.description
             }
         }
 
