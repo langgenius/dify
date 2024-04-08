@@ -389,7 +389,7 @@ const Configuration: FC = () => {
         doSetPromptMode(promptMode)
         if (promptMode === PromptMode.advanced) {
           if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
-            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+            setChatPromptConfig(modelConfig.chat_prompt_config)
           else
             setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
           setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
