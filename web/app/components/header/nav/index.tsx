@@ -15,6 +15,7 @@ type INavProps = {
   text: string
   activeSegment: string | string[]
   link: string
+  isApp: boolean
 } & INavSelectorProps
 
 const Nav = ({
@@ -28,6 +29,7 @@ const Nav = ({
   createText,
   onCreate,
   onLoadmore,
+  isApp,
 }: INavProps) => {
   const { setAppDetail } = useAppStore()
   const [hovered, setHovered] = useState(false)
@@ -68,6 +70,7 @@ const Nav = ({
           <>
             <div className='font-light text-gray-300 '>/</div>
             <NavSelector
+              isApp={isApp}
               curNav={curNav}
               navs={navs}
               createText={createText}
