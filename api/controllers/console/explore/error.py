@@ -9,7 +9,13 @@ class NotCompletionAppError(BaseHTTPException):
 
 class NotChatAppError(BaseHTTPException):
     error_code = 'not_chat_app'
-    description = "Not Chat App"
+    description = "App mode is invalid."
+    code = 400
+
+
+class NotWorkflowAppError(BaseHTTPException):
+    error_code = 'not_workflow_app'
+    description = "Only support workflow app."
     code = 400
 
 

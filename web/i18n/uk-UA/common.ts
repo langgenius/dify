@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Налаштування',
     apiAccess: 'Доступ до API',
     logAndAnn: 'Журнали та Повідомлення.',
+    logs: 'Журнали',
   },
   environment: {
     testing: 'ТЕСТУВАННЯ',

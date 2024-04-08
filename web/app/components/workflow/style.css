@@ -1,0 +1,7 @@
+.workflow-panel-animation .react-flow__viewport {
+  transition: transform 0.3s ease-in-out;
+}
+
+.workflow-node-animation .react-flow__node {
+  transition: transform 0.2s ease-in-out;
+}

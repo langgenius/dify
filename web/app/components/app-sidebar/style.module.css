@@ -1,3 +1,11 @@
 .sidebar {
     border-right: 1px solid #F3F4F6;
 }
+
+.completionPic {
+background-image: url('./completion.png')
+}
+  
+.expertPic {
+background-image: url('./expert.png')
+}

@@ -18,7 +18,7 @@ const translation = {
   apps: {
     title: 'Explore Apps by Dify',
     description: 'Use these template apps instantly or customize your own apps based on the templates.',
-    allCategories: 'All Categories',
+    allCategories: 'Recommended',
   },
   appCard: {
     addToWorkspace: 'Add to Workspace',

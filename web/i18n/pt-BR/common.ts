@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Orquestrar',
     apiAccess: 'Acesso à API',
     logAndAnn: 'Logs e Anúncios',
+    logs: 'Logs',
   },
   environment: {
     testing: 'TESTE',

@@ -89,7 +89,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div className="p-2 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg">
-          <ImageLinkInput onUpload={handleUpload} />
+          <ImageLinkInput onUpload={handleUpload} disabled={disabled} />
           {hasUploadFromLocal && (
             <>
               <div className="flex items-center mt-2 px-2 text-xs font-medium text-gray-400">

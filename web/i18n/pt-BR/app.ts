@@ -1,10 +1,16 @@
 const translation = {
-  createApp: 'Criar novo aplicativo',
-  modes: {
+  createApp: 'Criar aplicativo',
+  types: {
+    all: 'Tudo',
+    chatbot: 'Chatbot',
+    agent: 'Agente',
+    workflow: 'Fluxo de trabalho',
     completion: 'Gerador de Texto',
-    chat: 'Aplicativo de Chat',
   },
-  createFromConfigFile: 'Criar aplicativo a partir do arquivo de configuração',
+  duplicate: 'Duplicar',
+  duplicateTitle: 'Duplicate aplicativo',
+  export: 'Exportar DSL',
+  createFromConfigFile: 'Criar através do arquivo DSL',
   deleteAppConfirmTitle: 'Excluir este aplicativo?',
   deleteAppConfirmContent:
     'A exclusão do aplicativo é irreversível. Os usuários não poderão mais acessar seu aplicativo e todas as configurações de prompt e logs serão excluídas permanentemente.',
@@ -14,13 +20,20 @@ const translation = {
   communityIntro:
     'Discuta com membros da equipe, colaboradores e desenvolvedores em diferentes canais.',
   roadmap: 'Veja nosso roteiro',
-  appNamePlaceholder: 'Por favor, digite o nome do aplicativo',
   newApp: {
-    startToCreate: 'Vamos começar com o seu novo aplicativo',
-    captionName: 'Dê um nome ao seu aplicativo',
+    startFromBlank: 'Começar de um aplicativo em branco',
+    startFromTemplate: 'Começar a partir de um modelo',
     captionAppType: 'Que tipo de aplicativo você deseja?',
+    chatbotDescription: 'Construir um assistente baseado em chat usando um Modelo de Linguagem de Grande Escala',
+    agentDescription: 'Construir um Agente inteligente que pode escolher autonomamente ferramentas para completar as tarefas',
+    workflowDescription: 'Description text here',
+    captionName: 'Dê um nome ao seu aplicativo',
+    appNamePlaceholder: 'Dê um nome ao seu aplicativo',
+    captionDescription: 'Descrição',
+    appDescriptionPlaceholder: 'Enter the description of the app',
+    useTemplate: 'Insira a descrição do aplicativo',
     previewDemo: 'Visualizar demonstração',
-    chatApp: 'Aplicativo de Chat',
+    chatApp: 'Usar este modelo',
     chatAppIntro:
       'Quero construir um aplicativo baseado em chat. Este aplicativo usa um formato de pergunta e resposta, permitindo várias rodadas de conversa contínua.',
     agentAssistant: 'Assistente de novo agente',
