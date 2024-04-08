@@ -98,6 +98,7 @@ const Operation: FC<OperationProps> = ({
         className={cn(
           'absolute flex justify-end gap-1',
           hasWorkflowProcess && '-top-3.5 -right-3.5',
+          !positionRight && '-top-3.5 -right-3.5',
           !hasWorkflowProcess && positionRight && '!top-[9px]',
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
