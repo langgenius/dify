@@ -18,7 +18,7 @@ class IfElseNodeData(BaseNodeData):
             # for string or array
             "contains", "not contains", "start with", "end with", "is", "is not", "empty", "not empty",
             # for number
-            "=", "≠", ">", "<", "≥", "≤", "null", "not null"
+            "=" , "≠", ">", "<", "≥", "≤", "null", "not null"
         ]
         value: Optional[str] = None
 

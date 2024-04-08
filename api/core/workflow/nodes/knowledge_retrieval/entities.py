@@ -18,7 +18,7 @@ class MultipleRetrievalConfig(BaseModel):
     Multiple Retrieval Config.
     """
     top_k: int
-    score_threshold: Optional[float]
+    score_threshold: Optional[float] = None
     reranking_model: RerankingModelConfig
 
 
@@ -47,5 +47,5 @@ class KnowledgeRetrievalNodeData(BaseNodeData):
     query_variable_selector: list[str]
     dataset_ids: list[str]
     retrieval_mode: Literal['single', 'multiple']
-    multiple_retrieval_config: Optional[MultipleRetrievalConfig]
-    single_retrieval_config: Optional[SingleRetrievalConfig]
+    multiple_retrieval_config: Optional[MultipleRetrievalConfig] = None
+    single_retrieval_config: Optional[SingleRetrievalConfig] = None

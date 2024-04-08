@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
@@ -61,6 +61,8 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     credentials: dict[str, Any] = {}
     parameters: dict[str, Any] = {}
     stop: list[str] = []
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AppGenerateEntity(BaseModel):

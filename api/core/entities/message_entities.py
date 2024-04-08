@@ -1,8 +1,8 @@
 import enum
-from typing import Any, cast
+from typing import Any, List, cast
 
 from langchain.schema import AIMessage, BaseMessage, FunctionMessage, HumanMessage, SystemMessage
-from pydantic import BaseModel
+from langchain_core.pydantic_v1 import BaseModel, ConfigDict
 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -15,7 +15,7 @@ from core.model_runtime.entities.message_entities import (
 )
 
 
-class PromptMessageFileType(enum.Enum):
+class PromptMessageFileType(str, enum.Enum):
     IMAGE = 'image'
 
     @staticmethod
@@ -29,9 +29,7 @@ class PromptMessageFileType(enum.Enum):
 class PromptMessageFile(BaseModel):
     type: PromptMessageFileType
     data: Any = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ImagePromptMessageFile(PromptMessageFile):
@@ -46,10 +44,8 @@ class ImagePromptMessageFile(PromptMessageFile):
 class LCHumanMessageWithFiles(HumanMessage):
     # content: Union[str, list[Union[str, Dict]]]
     content: str
-    files: list[PromptMessageFile]
-
-    class Config:
-        arbitrary_types_allowed = True
+    files: List[PromptMessageFile]
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 def lc_messages_to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:
