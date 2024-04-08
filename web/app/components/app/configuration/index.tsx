@@ -388,7 +388,10 @@ const Configuration: FC = () => {
         const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
         doSetPromptMode(promptMode)
         if (promptMode === PromptMode.advanced) {
-          setChatPromptConfig(modelConfig.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+          if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
+            setChatPromptConfig(modelConfig.chat_prompt_config)
+          else
+            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
           setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
           setCanReturnToSimpleMode(false)
         }

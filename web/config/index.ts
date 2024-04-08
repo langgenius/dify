@@ -1,6 +1,7 @@
 /* eslint-disable import/no-mutable-exports */
 import { InputVarType } from '@/app/components/workflow/types'
 import { AgentStrategy } from '@/types/app'
+import { PromptRole } from '@/models/debug'
 
 export let apiPrefix = ''
 export let publicApiPrefix = ''
@@ -70,7 +71,12 @@ export const TONE_LIST = [
 ]
 
 export const DEFAULT_CHAT_PROMPT_CONFIG = {
-  prompt: [],
+  prompt: [
+    {
+      role: PromptRole.system,
+      text: '',
+    },
+  ],
 }
 
 export const DEFAULT_COMPLETION_PROMPT_CONFIG = {
