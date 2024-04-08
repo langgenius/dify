@@ -26,11 +26,12 @@ export type INavSelectorProps = {
   navs: NavItem[]
   curNav?: Omit<NavItem, 'link'>
   createText: string
+  isApp: boolean
   onCreate: (state: string) => void
   onLoadmore?: () => void
 }
 
-const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSelectorProps) => {
+const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceManager } = useAppContext()
@@ -77,25 +78,27 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
                       }} title={nav.name}>
                         <div className='relative w-6 h-6 mr-2 rounded-md'>
                           <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
-                          <span className={cn(
-                            'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
-                          )}>
-                            {nav.mode === 'advanced-chat' && (
-                              <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
-                            )}
-                            {nav.mode === 'agent-chat' && (
-                              <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
-                            )}
-                            {nav.mode === 'chat' && (
-                              <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
-                            )}
-                            {nav.mode === 'completion' && (
-                              <AiText className='w-2.5 h-2.5 text-[#0E9384]' />
-                            )}
-                            {nav.mode === 'workflow' && (
-                              <Route className='w-2.5 h-2.5 text-[#f79009]' />
-                            )}
-                          </span>
+                          {!!nav.mode && (
+                            <span className={cn(
+                              'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
+                            )}>
+                              {nav.mode === 'advanced-chat' && (
+                                <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
+                              )}
+                              {nav.mode === 'agent-chat' && (
+                                <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
+                              )}
+                              {nav.mode === 'chat' && (
+                                <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
+                              )}
+                              {nav.mode === 'completion' && (
+                                <AiText className='w-2.5 h-2.5 text-[#0E9384]' />
+                              )}
+                              {nav.mode === 'workflow' && (
+                                <Route className='w-2.5 h-2.5 text-[#f79009]' />
+                              )}
+                            </span>
+                          )}
                         </div>
                         <div className='truncate'>
                           {nav.name}
@@ -105,7 +108,19 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
                   ))
                 }
               </div>
-              {isCurrentWorkspaceManager && (
+              {!isApp && (
+                <Menu.Button className='p-1 w-full'>
+                  <div onClick={() => onCreate('')} className={cn(
+                    'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',
+                  )}>
+                    <div className='shrink-0 flex justify-center items-center w-6 h-6 bg-gray-50 rounded-[6px] border-[0.5px] border-gray-200 border'>
+                      <Plus className='w-4 h-4 text-gray-500' />
+                    </div>
+                    <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
+                  </div>
+                </Menu.Button>
+              )}
+              {isApp && isCurrentWorkspaceManager && (
                 <Menu as="div" className="relative w-full h-full">
                   {({ open }) => (
                     <>
