@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional, Union, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -61,9 +62,13 @@ class QuestionClassifierNode(LLMNode):
             prompt_messages=prompt_messages,
             stop=stop
         )
+        categories = [_class.name for _class in node_data.classes]
         try:
             result_text_json = json.loads(result_text.strip('```JSON\n'))
             categories = result_text_json.get('categories', [])
+        except Exception:
+            logging.error(f"Failed to parse result text: {result_text}")
+        try:
             process_data = {
                 'model_mode': model_config.mode,
                 'prompts': PromptMessageUtil.prompt_messages_to_prompt_for_saving(
