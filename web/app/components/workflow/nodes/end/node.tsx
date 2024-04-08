@@ -71,11 +71,11 @@ const Node: FC<NodeProps<EndNodeType>> = ({
                   type={node?.data.type || BlockEnum.Start}
                 />
               </div>
-              <div>{node?.data.title}</div>
+              <div className='max-w-[75px] truncate'>{node?.data.title}</div>
               <Line3 className='mr-0.5'></Line3>
               <div className='flex items-center text-primary-600'>
                 <Variable02 className='w-3.5 h-3.5' />
-                <div className='ml-0.5 text-xs font-medium'>{varName}</div>
+                <div className='max-w-[50px] ml-0.5 text-xs font-medium truncate'>{varName}</div>
               </div>
             </div>
             <div className='text-xs font-normal text-gray-700'>

@@ -177,8 +177,8 @@ const VarReferencePicker: FC<Props> = ({
   }, [onChange, varKindType])
 
   const type = getVarType()
-  // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 5 buff
-  const availableWidth = triggerWidth - 47
+  // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
+  const availableWidth = triggerWidth - 56
   const [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth] = (() => {
     const totalTextLength = ((outputVarNode?.title || '') + (varName || '') + (type || '')).length
     const maxNodeNameWidth = Math.floor((outputVarNode?.title?.length || 0) / totalTextLength * availableWidth)
