@@ -26,6 +26,7 @@ jobs:
       HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL: b
       HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL: c
       MOCK_SWITCH: true
+      CODE_MAX_STRING_LENGTH: 80000
 
     steps:
       - name: Checkout code
