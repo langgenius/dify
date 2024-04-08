@@ -54,6 +54,20 @@ const getOperators = (type?: VarType) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
+    case VarType.arrayString:
+    case VarType.arrayNumber:
+      return [
+        ComparisonOperator.contains,
+        ComparisonOperator.notContains,
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
+    case VarType.array:
+    case VarType.arrayObject:
+      return [
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
     default:
       return [
         ComparisonOperator.is,
