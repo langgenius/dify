@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import Editor from '@monaco-editor/react'
+import Editor, { loader } from '@monaco-editor/react'
 import React, { useRef } from 'react'
 import Base from '../base'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import './style.css'
+
+// load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
+loader.config({ paths: { vs: '/vs' } })
 
 type Props = {
   value?: string | object
