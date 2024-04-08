@@ -14,6 +14,7 @@ type TooltipProps = {
   position?: 'top' | 'right' | 'bottom' | 'left'
   clickable?: boolean
   children: React.ReactNode
+  noArrow?: boolean
 }
 
 const Tooltip: FC<TooltipProps> = ({
@@ -25,6 +26,7 @@ const Tooltip: FC<TooltipProps> = ({
   htmlContent,
   className,
   clickable,
+  noArrow,
 }) => {
   return (
     <div className='tooltip-container'>
@@ -39,6 +41,7 @@ const Tooltip: FC<TooltipProps> = ({
         place={position}
         clickable={clickable}
         isOpen={disabled ? false : undefined}
+        noArrow={noArrow}
       >
         {htmlContent && htmlContent}
       </ReactTooltip>

@@ -8,7 +8,8 @@ import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 
@@ -34,7 +35,7 @@ class ApiTool(Tool):
             api_bundle=self.api_bundle.copy() if self.api_bundle else None,
             runtime=Tool.Runtime(**meta)
         )
-
+    
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False) -> str:
         """
             validate the credentials for Api tool
@@ -48,6 +49,9 @@ class ApiTool(Tool):
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
         return self.validate_and_parse_response(response)
+
+    def tool_provider_type(self) -> ToolProviderType:
+        return UserToolProvider.ProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}

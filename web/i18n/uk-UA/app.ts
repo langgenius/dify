@@ -1,15 +1,16 @@
 const translation = { // Add the Ukrainian translation object
-  createApp: 'Створити новий додаток',
+  createApp: 'Створити додаток',
   types: {
-    all: 'Всі',
-    assistant: 'Асистент',
+    all: 'Все',
+    chatbot: 'Чатбот',
+    agent: 'Агент',
+    workflow: 'Робочий Процес',
     completion: 'Автодоповнення',
   },
-  modes: {
-    completion: 'Генератор тексту',
-    chat: 'Базовий асистент',
-  },
-  createFromConfigFile: 'Створити додаток з файла конфігурації',
+  duplicate: 'Дублювати',
+  duplicateTitle: 'Дублювати додаток',
+  export: 'Експортувати DSL',
+  createFromConfigFile: 'Створити через файл DSL',
   deleteAppConfirmTitle: 'Видалити цей додаток?',
   deleteAppConfirmContent:
       'Видалення додатка є незворотнім. Користувачі більше не матимуть доступ до вашого додатка, всі конфігурації підказок та журнали будуть видалені назавжди.',
@@ -19,11 +20,18 @@ const translation = { // Add the Ukrainian translation object
   communityIntro:
       'Обговорюйте різні питання з членами команди, учасниками та розробниками на різних каналах.',
   roadmap: 'Ознайомтеся з нашою дорожньою картою',
-  appNamePlaceholder: 'Будь ласка, введіть назву додатка',
   newApp: {
-    startToCreate: 'Давайте створимо Ваш новий додаток',
-    captionName: 'Значок та назва додатка',
+    startFromBlank: 'Розпочати з порожнього додатку',
+    startFromTemplate: 'Розпочати з шаблону',
     captionAppType: 'Який тип додатка Ви бажаєте створити?',
+    chatbotDescription: 'Побудувати чат-асистента, використовуючи Модель Великої Мови',
+    agentDescription: 'Побудувати розумного Агента, який може автономно обирати інструменти для виконання завдань',
+    workflowDescription: 'Description text here',
+    captionName: 'Значок та назва додатка',
+    appNamePlaceholder: 'Назвіть свій додаток',
+    captionDescription: 'Опис',
+    appDescriptionPlaceholder: 'Введіть опис додатку',
+    useTemplate: 'Використати цей шаблон',
     previewDemo: 'Попередній перегляд демо',
     chatApp: 'Асистент',
     chatAppIntro:

@@ -10,7 +10,7 @@
   mask-image: url(~@/assets/action.svg);
 }
 .actionItem {
-  @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer;
+  @apply h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer;
   width: calc(100% - 0.5rem);
 }
 .deleteActionItem {
@@ -19,3 +19,11 @@
 .actionName {
   @apply text-gray-700 text-sm;
 }
+
+/* .completionPic {
+  background-image: url(~@/app/components/app-sidebar/completion.png)
+}
+    
+.expertPic {
+  background-image: url(~@/app/components/app-sidebar/expert.png)
+} */

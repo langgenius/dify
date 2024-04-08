@@ -178,7 +178,7 @@ class AccountService:
 
     @staticmethod
     def close_account(account: Account) -> None:
-        """todo: Close account"""
+        """Close account"""
         account.status = AccountStatus.CLOSED.value
         db.session.commit()
 
@@ -445,7 +445,7 @@ class RegisterService:
 
             db.session.commit()
         except Exception as e:
-            db.session.rollback()  # todo: do not work
+            db.session.rollback()
             logging.error(f'Register failed: {e}')
             raise AccountRegisterError(f'Registration failed: {e}') from e
 

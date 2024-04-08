@@ -6,7 +6,6 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.console import api
-from controllers.console.app import _get_app
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -18,11 +17,13 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
+from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
+from models.model import AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -36,15 +37,13 @@ class ChatMessageAudioApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-        app_model = _get_app(app_id, 'chat')
-
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def post(self, app_model):
         file = request.files['file']
 
         try:
             response = AudioService.transcript_asr(
-                tenant_id=app_model.tenant_id,
+                app_model=app_model,
                 file=file,
                 end_user=None,
             )
@@ -80,15 +79,13 @@ class ChatMessageTextApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-        app_model = _get_app(app_id, None)
-
+    @get_app_model
+    def post(self, app_model):
         try:
             response = AudioService.transcript_tts(
-                tenant_id=app_model.tenant_id,
+                app_model=app_model,
                 text=request.form['text'],
-                voice=request.form['voice'] if request.form['voice'] else app_model.app_model_config.text_to_speech_dict.get('voice'),
+                voice=request.form.get('voice'),
                 streaming=False
             )
 
@@ -120,9 +117,11 @@ class ChatMessageTextApi(Resource):
 
 
 class TextModesApi(Resource):
-    def get(self, app_id: str):
-        app_model = _get_app(str(app_id))
-
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    def get(self, app_model):
         try:
             parser = reqparse.RequestParser()
             parser.add_argument('language', type=str, required=True, location='args')

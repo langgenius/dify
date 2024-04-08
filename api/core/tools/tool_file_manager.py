@@ -6,7 +6,7 @@ import os
 import time
 from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
-from typing import Union
+from typing import Optional, Union
 from uuid import uuid4
 
 from flask import current_app
@@ -19,18 +19,19 @@ from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
 
+
 class ToolFileManager:
     @staticmethod
-    def sign_file(file_id: str, extension: str) -> str:
+    def sign_file(tool_file_id: str, extension: str) -> str:
         """
         sign file to get a temporary url
         """
         base_url = current_app.config.get('FILES_URL')
-        file_preview_url = f'{base_url}/files/tools/{file_id}{extension}'
+        file_preview_url = f'{base_url}/files/tools/{tool_file_id}{extension}'
 
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
-        data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
+        data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
         secret_key = current_app.config['SECRET_KEY'].encode()
         sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
         encoded_sign = base64.urlsafe_b64encode(sign).decode()
@@ -55,10 +56,10 @@ class ToolFileManager:
         return current_time - int(timestamp) <= 300  # expired after 5 minutes
 
     @staticmethod
-    def create_file_by_raw(user_id: str, tenant_id: str, 
-                            conversation_id: str, file_binary: bytes,
-                            mimetype: str
-    ) -> ToolFile:
+    def create_file_by_raw(user_id: str, tenant_id: str,
+                           conversation_id: Optional[str], file_binary: bytes,
+                           mimetype: str
+                           ) -> ToolFile:
         """
         create file
         """
@@ -74,11 +75,11 @@ class ToolFileManager:
         db.session.commit()
 
         return tool_file
-    
+
     @staticmethod
-    def create_file_by_url(user_id: str, tenant_id: str, 
-                            conversation_id: str, file_url: str,
-    ) -> ToolFile:
+    def create_file_by_url(user_id: str, tenant_id: str,
+                           conversation_id: str, file_url: str,
+                           ) -> ToolFile:
         """
         create file
         """
@@ -93,26 +94,26 @@ class ToolFileManager:
         storage.save(filename, blob)
 
         tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
-                             conversation_id=conversation_id, file_key=filename, 
+                             conversation_id=conversation_id, file_key=filename,
                              mimetype=mimetype, original_url=file_url)
-        
+
         db.session.add(tool_file)
         db.session.commit()
 
         return tool_file
 
     @staticmethod
-    def create_file_by_key(user_id: str, tenant_id: str, 
-                            conversation_id: str, file_key: str,
-                            mimetype: str
-    ) -> ToolFile:
+    def create_file_by_key(user_id: str, tenant_id: str,
+                           conversation_id: str, file_key: str,
+                           mimetype: str
+                           ) -> ToolFile:
         """
         create file
         """
         tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
                              conversation_id=conversation_id, file_key=file_key, mimetype=mimetype)
         return tool_file
-    
+
     @staticmethod
     def get_file_binary(id: str) -> Union[tuple[bytes, str], None]:
         """
@@ -132,7 +133,7 @@ class ToolFileManager:
         blob = storage.load_once(tool_file.file_key)
 
         return blob, tool_file.mimetype
-    
+
     @staticmethod
     def get_file_binary_by_message_file_id(id: str) -> Union[tuple[bytes, str], None]:
         """
@@ -161,25 +162,16 @@ class ToolFileManager:
         blob = storage.load_once(tool_file.file_key)
 
         return blob, tool_file.mimetype
-        
+
     @staticmethod
-    def get_file_generator_by_message_file_id(id: str) -> Union[tuple[Generator, str], None]:
+    def get_file_generator_by_tool_file_id(tool_file_id: str) -> Union[tuple[Generator, str], None]:
         """
         get file binary
 
-        :param id: the id of the file
+        :param tool_file_id: the id of the tool file
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile = db.session.query(MessageFile).filter(
-            MessageFile.id == id,
-        ).first()
-
-        # get tool file id
-        tool_file_id = message_file.url.split('/')[-1]
-        # trim extension
-        tool_file_id = tool_file_id.split('.')[0]
-
         tool_file: ToolFile = db.session.query(ToolFile).filter(
             ToolFile.id == tool_file_id,
         ).first()
@@ -190,7 +182,8 @@ class ToolFileManager:
         generator = storage.load_stream(tool_file.file_key)
 
         return generator, tool_file.mimetype
-    
+
+
 # init tool_file_parser
 from core.file.tool_file_parser import tool_file_manager
 

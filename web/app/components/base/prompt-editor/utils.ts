@@ -9,10 +9,13 @@ import type {
 } from 'lexical'
 import {
   $createTextNode,
+  $getSelection,
+  $isRangeSelection,
   $isTextNode,
 } from 'lexical'
 import type { EntityMatch } from '@lexical/text'
 import { CustomTextNode } from './plugins/custom-text/node'
+import type { MenuTextMatch } from './types'
 
 export function getSelectedNode(
   selection: RangeSelection,
@@ -190,7 +193,7 @@ export function registerLexicalTextEntity<T extends TextNode>(
 export const decoratorTransform = (
   node: CustomTextNode,
   getMatch: (text: string) => null | EntityMatch,
-  createNode: () => LexicalNode,
+  createNode: (textNode: TextNode) => LexicalNode,
 ) => {
   if (!node.isSimpleText())
     return
@@ -241,12 +244,55 @@ export const decoratorTransform = (
     else
       [, nodeToReplace, currentNode] = currentNode.splitText(match.start, match.end)
 
-    const replacementNode = createNode()
+    const replacementNode = createNode(nodeToReplace)
     nodeToReplace.replace(replacementNode)
 
     if (currentNode == null)
       return
   }
+}
+
+function getFullMatchOffset(
+  documentText: string,
+  entryText: string,
+  offset: number,
+): number {
+  let triggerOffset = offset
+  for (let i = triggerOffset; i <= entryText.length; i++) {
+    if (documentText.substr(-i) === entryText.substr(0, i))
+      triggerOffset = i
+  }
+  return triggerOffset
+}
+
+export function $splitNodeContainingQuery(match: MenuTextMatch): TextNode | null {
+  const selection = $getSelection()
+  if (!$isRangeSelection(selection) || !selection.isCollapsed())
+    return null
+  const anchor = selection.anchor
+  if (anchor.type !== 'text')
+    return null
+  const anchorNode = anchor.getNode()
+  if (!anchorNode.isSimpleText())
+    return null
+  const selectionOffset = anchor.offset
+  const textContent = anchorNode.getTextContent().slice(0, selectionOffset)
+  const characterOffset = match.replaceableString.length
+  const queryOffset = getFullMatchOffset(
+    textContent,
+    match.matchingString,
+    characterOffset,
+  )
+  const startOffset = selectionOffset - queryOffset
+  if (startOffset < 0)
+    return null
+  let newNode
+  if (startOffset === 0)
+    [newNode] = anchorNode.splitText(selectionOffset)
+  else
+    [, newNode] = anchorNode.splitText(startOffset, selectionOffset)
+
+  return newNode
 }
 
 export function textToEditorState(text: string) {

@@ -235,7 +235,7 @@ class ProviderManager:
             if available_models:
                 found = False
                 for available_model in available_models:
-                    if available_model.model == "gpt-3.5-turbo-1106":
+                    if available_model.model == "gpt-4":
                         default_model = TenantDefaultModel(
                             tenant_id=tenant_id,
                             model_type=model_type.to_origin_model_type(),

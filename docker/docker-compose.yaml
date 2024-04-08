@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.5.11-fix1
+    image: langgenius/dify-api:0.6.0
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -127,6 +127,16 @@ services:
       SENTRY_TRACES_SAMPLE_RATE: 1.0
       # The sample rate for Sentry profiles. Default: `1.0`
       SENTRY_PROFILES_SAMPLE_RATE: 1.0
+      # The sandbox service endpoint.
+      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_MAX_NUMBER: 9223372036854775807
+      CODE_MIN_NUMBER: -9223372036854775808
+      CODE_MAX_STRING_LENGTH: 80000
+      TEMPLATE_TRANSFORM_MAX_LENGTH: 80000
+      CODE_MAX_STRING_ARRAY_LENGTH: 30
+      CODE_MAX_OBJECT_ARRAY_LENGTH: 30
+      CODE_MAX_NUMBER_ARRAY_LENGTH: 1000
     depends_on:
       - db
       - redis
@@ -140,7 +150,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.5.11-fix1
+    image: langgenius/dify-api:0.6.0
     restart: always
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
@@ -222,7 +232,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.5.11-fix1
+    image: langgenius/dify-web:0.6.0
     restart: always
     environment:
       EDITION: SELF_HOSTED
@@ -301,6 +311,18 @@ services:
     # uncomment to expose weaviate port to host
     # ports:
     #  - "8080:8080"
+
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:latest
+    restart: always
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      # The DifySandbox configurations
+      API_KEY: dify-sandbox
+      GIN_MODE: release
+      WORKER_TIMEOUT: 15
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
