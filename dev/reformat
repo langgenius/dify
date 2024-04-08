@@ -9,4 +9,4 @@ if ! command -v ruff &> /dev/null; then
 fi
 
 # run ruff linter
-ruff check --fix ./api
+ruff check --fix --unsafe-fixes ./api
