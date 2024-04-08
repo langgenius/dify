@@ -23,8 +23,9 @@ class VariableAssignerNode(BaseNode):
                 outputs = {
                     "output": value
                 }
+
                 inputs = {
-                    variable: value
+                    '.'.join(variable[1:]): value
                 }
                 break
 

@@ -271,7 +271,10 @@ const VarReferenceVars: FC<Props> = ({
           {
             filteredVars.map((item, i) => (
               <div key={i}>
-                <div className='flex items-center h-[22px] px-3 text-xs font-medium text-gray-500 uppercase'>{item.title}</div>
+                <div
+                  className='leading-[22px] px-3 text-xs font-medium text-gray-500 uppercase truncate'
+                  title={item.title}
+                >{item.title}</div>
                 {item.vars.map((v, j) => (
                   <Item
                     key={j}

@@ -40,7 +40,7 @@ const InputsPanel = ({ onRun }: Props) => {
 
   const variables = useMemo(() => {
     const data = startVariables || []
-    if (fileSettings?.image.enabled) {
+    if (fileSettings?.image?.enabled) {
       return [
         ...data,
         {
@@ -53,7 +53,7 @@ const InputsPanel = ({ onRun }: Props) => {
     }
 
     return data
-  }, [fileSettings.image.enabled, startVariables])
+  }, [fileSettings?.image?.enabled, startVariables])
 
   const handleValueChange = (variable: string, v: any) => {
     if (variable === '__image') {

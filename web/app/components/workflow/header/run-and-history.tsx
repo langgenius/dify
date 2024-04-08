@@ -56,7 +56,7 @@ const RunMode = memo(() => {
     const startVariables = startNode?.data.variables || []
     const fileSettings = featuresStore!.getState().features.file
 
-    if (!startVariables.length && !fileSettings.image.enabled) {
+    if (!startVariables.length && !fileSettings?.image?.enabled) {
       await doSyncWorkflowDraft()
       handleRunSetting()
       handleRun({ inputs: {}, files: [] })
