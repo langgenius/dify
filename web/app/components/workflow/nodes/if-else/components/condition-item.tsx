@@ -168,7 +168,7 @@ const Item: FC<ItemProps> = ({
           nodeId={nodeId}
           readonly={readonly}
           isShowNodeName
-          className='grow'
+          className='w-[162px]'
           value={payload.variable_selector}
           onChange={handleVarReferenceChange}
           filterVar={filterVar}
