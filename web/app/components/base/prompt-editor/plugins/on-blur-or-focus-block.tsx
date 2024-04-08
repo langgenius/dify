@@ -40,7 +40,7 @@ const OnBlurBlock: FC<OnBlurBlockProps> = ({
         () => {
           ref.current = setTimeout(() => {
             editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown', { key: 'Escape' }))
-          }, 100)
+          }, 200)
 
           if (onBlur)
             onBlur()
