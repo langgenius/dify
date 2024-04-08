@@ -94,7 +94,7 @@ class ApiBasedToolProviderController(ToolProviderController):
                 'icon': db_provider.icon,
             },
             'credentials_schema': credentials_schema,
-            'provider_id': db_provider.id,
+            'provider_id': db_provider.id or '',
         })
 
     @property
