@@ -50,7 +50,7 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
     ports:
       - "8080:8080"
-  
+
   # The DifySandbox
   sandbox:
     image: langgenius/dify-sandbox:latest
