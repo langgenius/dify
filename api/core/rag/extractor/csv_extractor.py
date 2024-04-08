@@ -53,20 +53,24 @@ class CSVExtractor(BaseExtractor):
         return docs
 
     def _read_from_file(self, csvfile) -> list[Document]:
-        # load csv file into pandas dataframe
-        df = pd.read_csv(csvfile, error_bad_lines=False, **self.csv_args)
-
-        # check source column exists
-        if self.source_column and self.source_column not in df.columns:
-            raise ValueError(f"Source column '{self.source_column}' not found in CSV file.")
-
-        # create document objects
         docs = []
-        for i, row in df.iterrows():
-            content = "\n".join(f"{col.strip()}: {str(row[col]).strip()}" for col in df.columns)
-            source = row[self.source_column] if self.source_column else ''
-            metadata = {"source": source, "row": i}
-            doc = Document(page_content=content, metadata=metadata)
-            docs.append(doc)
+        try:
+            # load csv file into pandas dataframe
+            df = pd.read_csv(csvfile, error_bad_lines=False, **self.csv_args)
+
+            # check source column exists
+            if self.source_column and self.source_column not in df.columns:
+                raise ValueError(f"Source column '{self.source_column}' not found in CSV file.")
+
+            # create document objects
+
+            for i, row in df.iterrows():
+                content = ";".join(f"{col.strip()}: {str(row[col]).strip()}" for col in df.columns)
+                source = row[self.source_column] if self.source_column else ''
+                metadata = {"source": source, "row": i}
+                doc = Document(page_content=content, metadata=metadata)
+                docs.append(doc)
+        except csv.Error as e:
+            raise e
 
         return docs
