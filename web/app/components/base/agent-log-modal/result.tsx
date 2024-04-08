@@ -15,7 +15,7 @@ type ResultPanelProps = {
   outputs?: string
   created_by?: string
   created_at?: number
-  agentMode?: number
+  agentMode?: string
   tools?: string[]
   iterations?: number
 }
@@ -83,7 +83,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             <div className='flex'>
               <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>{t('runLog.meta.startTime')}</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
-                <span>{dayjs(created_at * 1000).format('YYYY-MM-DD hh:mm:ss')}</span>
+                <span>{dayjs(created_at).format('YYYY-MM-DD hh:mm:ss')}</span>
               </div>
             </div>
             <div className='flex'>
@@ -102,13 +102,13 @@ const ResultPanel: FC<ResultPanelProps> = ({
             <div className='flex'>
               <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>Agent Mode</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
-                <span>{agentMode}</span>
+                <span>{agentMode === 'function_call' ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</span>
               </div>
             </div>
             <div className='flex'>
               <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>Tool used</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
-                <span>{tools?.join(', ')}</span>
+                <span>{tools?.length ? tools?.join(', ') : 'Null'}</span>
               </div>
             </div>
             <div className='flex'>

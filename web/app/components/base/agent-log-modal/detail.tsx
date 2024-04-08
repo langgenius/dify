@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import { flatten, uniq } from 'lodash-es'
 import cn from 'classnames'
 import ResultPanel from './result'
 // import TracingPanel from '@/app/components/workflow/run/tracing-panel'
@@ -27,6 +28,13 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
   // const [list, setList] = useState<NodeTracing[]>([])
+
+  const tools = useMemo(() => {
+    const res = uniq(flatten(runDetail?.iterations.map((iteration: any) => {
+      return iteration.tool_calls.map((tool: any) => tool.tool_name).filter(Boolean)
+    })).filter(Boolean))
+    return res
+  }, [runDetail])
 
   const getResult = useCallback(async (appID: string, conversationID: string, messageID: string) => {
     try {
@@ -97,10 +105,10 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
             error={runDetail.meta.error}
             elapsed_time={runDetail.meta.elapsed_time}
             total_tokens={runDetail.meta.total_tokens}
-            created_at={runDetail.meta.start_time} // wrong type
+            created_at={runDetail.meta.start_time}
             created_by={runDetail.meta.executor}
             agentMode={runDetail.meta.agent_mode}
-            tools={['TODO']}
+            tools={tools}
             iterations={runDetail.iterations.length}
           />
         )}
