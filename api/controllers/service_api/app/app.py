@@ -1,7 +1,7 @@
 import json
 
 from flask import current_app
-from flask_restful import fields, marshal_with, Resource
+from flask_restful import Resource, fields, marshal_with
 
 from controllers.service_api import api
 from controllers.service_api.wraps import validate_app_token
@@ -28,6 +28,7 @@ class AppParameterApi(Resource):
     }
 
     parameters_fields = {
+        'name': fields.String,
         'opening_statement': fields.String,
         'suggested_questions': fields.Raw,
         'suggested_questions_after_answer': fields.Raw,
@@ -49,6 +50,7 @@ class AppParameterApi(Resource):
         app_model_config = app_model.app_model_config
 
         return {
+            'name':app_model.name,
             'opening_statement': app_model_config.opening_statement,
             'suggested_questions': app_model_config.suggested_questions_list,
             'suggested_questions_after_answer': app_model_config.suggested_questions_after_answer_dict,
