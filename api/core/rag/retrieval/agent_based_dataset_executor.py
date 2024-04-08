@@ -32,7 +32,6 @@ class AgentConfiguration(BaseModel):
     early_stopping_method: str = "generate"
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
 
-    agent_llm_callback: Optional[AgentLLMCallback] = None
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
 

@@ -13,7 +13,7 @@ class UserTool(BaseModel):
     name: str # identifier
     label: I18nObject # label
     description: I18nObject
-    parameters: Optional[list[ToolParameter]]
+    parameters: Optional[list[ToolParameter]] = None
 
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):
@@ -52,10 +52,3 @@ class UserToolProvider(BaseModel):
 
 class UserToolProviderCredentials(BaseModel):
     credentials: dict[str, ToolProviderCredentials]
-
-class UserTool(BaseModel):
-    author: str
-    name: str # identifier
-    label: I18nObject # label
-    description: I18nObject
-    parameters: Optional[list[ToolParameter]] = None
