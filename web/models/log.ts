@@ -292,3 +292,15 @@ export type WorkflowRunDetailResponse = {
   created_at: number
   finished_at: number
 }
+
+export type AgentLogDetailRequest = {
+  conversation_id: string
+  message_id: string
+}
+
+// TODO
+export type AgentLogDetailResponse = {
+  meta: any
+  iterations: any[]
+  files: any[]
+}

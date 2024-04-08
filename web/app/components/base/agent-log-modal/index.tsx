@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useEffect, useRef, useState } from 'react'
 import { useClickAway } from 'ahooks'
+import AgentLogDetail from './detail'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { IChatItem } from '@/app/components/app/chat/type'
-// import Run from '@/app/components/workflow/run'
 
 type AgentLogModalProps = {
   currentLogItem?: IChatItem
@@ -57,7 +57,7 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
         <XClose className='w-4 h-4 text-gray-500' />
       </span>
-      {/* <Run hideResult activeTab='DETAIL' runID={currentLogItem.workflow_run_id}/> */}
+      <AgentLogDetail conversationID={currentLogItem.conversationId} messageID={currentLogItem.id} />
     </div>
   )
 }
