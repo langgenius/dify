@@ -20,7 +20,8 @@ import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import { type CitationConfig, type ModelConfig, type ModerationConfig, type MoreLikeThisConfig, type PromptVariable, type SpeechToTextConfig, type SuggestedQuestionsAfterAnswerConfig, type TextToSpeechConfig } from '@/models/debug'
-import { AppType, ModelModeType } from '@/types/app'
+import type { AppType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
@@ -60,7 +61,7 @@ const Config: FC = () => {
     moderationConfig,
     setModerationConfig,
   } = useContext(ConfigContext)
-  const isChatApp = mode === AppType.chat
+  const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { setShowModerationSettingModal } = useModalContext()
