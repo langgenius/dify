@@ -41,6 +41,11 @@ parameters:
     human_description:
       en_US: This is required in order to actually get the body of the answer.
       zh_Hans: 为了实际获取答案的正文是必需的。
+    options:
+      - value: "!nNPvSNdWme"
+        label:
+          en_US: Must Select
+          zh_Hans: 必须选择
     form: form
     default: "!nNPvSNdWme"
   - name: order
