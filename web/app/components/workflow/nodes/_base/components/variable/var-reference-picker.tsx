@@ -181,8 +181,9 @@ const VarReferencePicker: FC<Props> = ({
   const availableWidth = triggerWidth - 56
   const [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth] = (() => {
     const totalTextLength = ((outputVarNode?.title || '') + (varName || '') + (type || '')).length
-    const maxNodeNameWidth = Math.floor((outputVarNode?.title?.length || 0) / totalTextLength * availableWidth)
-    const maxVarNameWidth = Math.floor((varName?.length || 0) / totalTextLength * availableWidth)
+    const PRIORITY_WIDTH = 15
+    const maxNodeNameWidth = PRIORITY_WIDTH + Math.floor((outputVarNode?.title?.length || 0) / totalTextLength * availableWidth)
+    const maxVarNameWidth = -PRIORITY_WIDTH + Math.floor((varName?.length || 0) / totalTextLength * availableWidth)
     const maxTypeWidth = Math.floor((type?.length || 0) / totalTextLength * availableWidth)
     return [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth]
   })()
