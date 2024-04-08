@@ -6,9 +6,9 @@ identity:
     zh_Hans: 获取 Stack Exchange 答案
 description:
   human:
-    en_US: A tool for retrieving answers for a specific Stack Exchange question ID. Specify the question ID, Stack Exchange site, sorting order, number of results per page, and page number. Must be used with the searchStackExQuesID tool.
-    zh_Hans: 用于检索特定Stack Exchange问题ID的答案的工具。指定问题ID、Stack Exchange站点、排序顺序、每页结果数和页码。 必须与searchStackExQuesID工具一起使用。
-  llm: A tool for retrieving answers for a specific Stack Exchange question ID based on the provided parameters.
+    en_US: A tool for retrieving answers for a specific Stack Exchange question ID. Must be used with the searchStackExQuesID tool.
+    zh_Hans: 用于检索特定Stack Exchange问题ID的答案的工具。必须与searchStackExQuesID工具一起使用。
+  llm: A tool for retrieving answers for Stack Exchange question ID.
 parameters:
   - name: id
     type: string
@@ -30,108 +30,8 @@ parameters:
     human_description:
       en_US: The Stack Exchange site the question is from, e.g. stackoverflow, unix, etc.
       zh_Hans: 问题所在的Stack Exchange站点，例如stackoverflow、unix等。
-    llm_description: The Stack Exchange site identifier.
-    options:
-      - value: stackoverflow
-        label:
-          en_US: stackoverflow
-      - value: serverfault
-        label:
-          en_US: serverfault
-      - value: superuser
-        label:
-          en_US: superuser
-      - value: askubuntu
-        label:
-          en_US: askubuntu
-      - value: unix
-        label:
-          en_US: unix
-      - value: cs
-        label:
-          en_US: cs
-      - value: softwareengineering
-        label:
-          en_US: softwareengineering
-      - value: codegolf
-        label:
-          en_US: codegolf
-      - value: codereview
-        label:
-          en_US: codereview
-      - value: cstheory
-        label:
-          en_US: cstheory
-      - value: security
-        label:
-          en_US: security
-      - value: cryptography
-        label:
-          en_US: cryptography
-      - value: reverseengineering
-        label:
-          en_US: reverseengineering
-      - value: datascience
-        label:
-          en_US: datascience
-      - value: devops
-        label:
-          en_US: devops
-      - value: ux
-        label:
-          en_US: ux
-      - value: dba
-        label:
-          en_US: dba
-      - value: gis
-        label:
-          en_US: gis
-      - value: webmasters
-        label:
-          en_US: webmasters
-      - value: arduino
-        label:
-          en_US: arduino
-      - value: raspberrypi
-        label:
-          en_US: raspberrypi
-      - value: networkengineering
-        label:
-          en_US: networkengineering
-      - value: iot
-        label:
-          en_US: iot
-      - value: tor
-        label:
-          en_US: tor
-      - value: sqa
-        label:
-          en_US: sqa
-      - value: mathoverflow
-        label:
-          en_US: mathoverflow
-      - value: math
-        label:
-          en_US: math
-      - value: mathematica
-        label:
-          en_US: mathematica
-      - value: dsp
-        label:
-          en_US: dsp
-      - value: gamedev
-        label:
-          en_US: gamedev
-      - value: robotics
-        label:
-          en_US: robotics
-      - value: genai
-        label:
-          en_US: genai
-      - value: computergraphics
-        label:
-          en_US: computergraphics
-    form: form
+    llm_description: Stack Exchange site identifier - 'stackoverflow', 'serverfault', 'superuser', 'askubuntu', 'unix', 'cs', 'softwareengineering', 'codegolf', 'codereview', 'cstheory', 'security', 'cryptography', 'reverseengineering', 'datascience', 'devops', 'ux', 'dba', 'gis', 'webmasters', 'arduino', 'raspberrypi', 'networkengineering', 'iot', 'tor', 'sqa', 'mathoverflow', 'math', 'mathematica', 'dsp', 'gamedev', 'robotics', 'genai', 'computergraphics'.
+    form: llm
   - name: filter
     type: string
     required: true
@@ -140,9 +40,14 @@ parameters:
       zh_Hans: 过滤器
     human_description:
       en_US: This is required in order to actually get the body of the answer.
-      zh_Hans: 为了实际获取答案的正文，这是必需的。
-    llm_description: Required in order to actually get the body of the answer. Must be \"!nNPvSNdWme\".
-    form: llm
+      zh_Hans: 为了实际获取答案的正文是必需的。
+    options:
+      - value: "!nNPvSNdWme"
+        label:
+          en_US: Must Select
+          zh_Hans: 必须选择
+    form: form
+    default: "!nNPvSNdWme"
   - name: order
     type: string
     required: true
@@ -152,8 +57,17 @@ parameters:
     human_description:
       en_US: The direction to sort the answers - ascending or descending.
       zh_Hans: 答案的排序方向 - 升序或降序。
-    llm_description: asc for ascending, desc for descending.
-    form: llm
+    form: form
+    options:
+      - value: asc
+        label:
+          en_US: Ascending
+          zh_Hans: 升序
+      - value: desc
+        label:
+          en_US: Descending
+          zh_Hans: 降序
+    default: desc
   - name: sort
     type: string
     required: true
@@ -174,8 +88,10 @@ parameters:
     human_description:
       en_US: The number of answers to return per page.
       zh_Hans: 每页返回的答案数。
-    llm_description: The number of answers per page.
-    form: llm
+    form: form
+    min: 1
+    max: 5
+    default: 1
   - name: page
     type: number
     required: true
@@ -185,5 +101,7 @@ parameters:
     human_description:
       en_US: The page number of answers to retrieve.
       zh_Hans: 要检索的答案的页码。
-    llm_description: The page number to retrieve.
-    form: llm
+    form: form
+    min: 1
+    max: 5
+    default: 3
