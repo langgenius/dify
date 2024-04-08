@@ -20,15 +20,14 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
       : ALL_COMPLETION_AVAILABLE_BLOCKS
     return nodes
   },
-  checkValid(payload: AnswerNodeType) {
-    let isValid = true
+  checkValid(payload: AnswerNodeType, t: any) {
     let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
-    }
+    const { answer } = payload
+    if (!answer)
+      errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.answer.answer') })
+
     return {
-      isValid,
+      isValid: !errorMessages,
       errorMessage: errorMessages,
     }
   },
