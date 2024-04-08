@@ -1,4 +1,3 @@
-import importlib
 from abc import abstractmethod
 from os import listdir, path
 from typing import Any
@@ -16,6 +15,7 @@ from core.tools.errors import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
+from core.utils.module_import_helper import load_single_subclass_from_source
 
 
 class BuiltinToolProviderController(ToolProviderController):
@@ -63,16 +63,12 @@ class BuiltinToolProviderController(ToolProviderController):
                 tool_name = tool_file.split(".")[0]
                 tool = load(f.read(), FullLoader)
                 # get tool class, import the module
-                py_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, 'tools', f'{tool_name}.py')
-                spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.tools.{tool_name}', py_path)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-
-                # get all the classes in the module
-                classes = [x for _, x in vars(mod).items() 
-                    if isinstance(x, type) and x not in [BuiltinTool, Tool] and issubclass(x, BuiltinTool)
-                ]
-                assistant_tool_class = classes[0]
+                assistant_tool_class = load_single_subclass_from_source(
+                    module_name=f'core.tools.provider.builtin.{provider}.tools.{tool_name}',
+                    script_path=path.join(path.dirname(path.realpath(__file__)),
+                                           'builtin', provider, 'tools', f'{tool_name}.py'),
+                    parent_type=BuiltinTool)
+                tool["identity"]["provider"] = provider
                 tools.append(assistant_tool_class(**tool))
 
         self.tools = tools
@@ -131,7 +127,8 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: whether the provider needs credentials
         """
-        return self.credentials_schema is not None and len(self.credentials_schema) != 0
+        return self.credentials_schema is not None and \
+            len(self.credentials_schema) != 0
 
     @property
     def app_type(self) -> ToolProviderType:

@@ -1,6 +1,6 @@
 import type { Fetcher } from 'swr'
-import { del, get, post } from './base'
-import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse } from '@/models/app'
+import { del, get, post, put } from './base'
+import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
 
@@ -16,8 +16,28 @@ export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> =
   return get<AppTemplatesResponse>(url)
 }
 
-export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string; icon_background: string; mode: AppMode; config?: ModelConfig }> = ({ name, icon, icon_background, mode, config }) => {
-  return post<AppDetailResponse>('apps', { body: { name, icon, icon_background, mode, model_config: config } })
+export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string; icon_background: string; mode: AppMode; description?: string; config?: ModelConfig }> = ({ name, icon, icon_background, mode, description, config }) => {
+  return post<AppDetailResponse>('apps', { body: { name, icon, icon_background, mode, description, model_config: config } })
+}
+
+export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; description: string }> = ({ appID, name, icon, icon_background, description }) => {
+  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon, icon_background, description } })
+}
+
+export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; mode: AppMode; description?: string }> = ({ appID, name, icon, icon_background, mode, description }) => {
+  return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon, icon_background, mode, description } })
+}
+
+export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
+  return get<{ data: string }>(`apps/${appID}/export`)
+}
+
+export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ data, name, description, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon, icon_background } })
+}
+
+export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: string; icon: string; icon_background: string }> = ({ appID, name, icon, icon_background }) => {
+  return post<{ new_app_id: string }>(`apps/${appID}/convert-to-workflow`, { body: { name, icon, icon_background } })
 }
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
@@ -47,6 +67,10 @@ export const updateAppSiteConfig = ({ url, body }: { url: string; body: Record<s
 
 export const getAppDailyConversations: Fetcher<AppDailyConversationsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<AppDailyConversationsResponse>(url, { params })
+}
+
+export const getWorkflowDailyConversations: Fetcher<WorkflowDailyConversationsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<WorkflowDailyConversationsResponse>(url, { params })
 }
 
 export const getAppStatistics: Fetcher<AppStatisticsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {

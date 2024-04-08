@@ -1,9 +1,9 @@
 'use client'
 import React from 'react'
 import type { FC } from 'react'
-import { Paragraph, TypeSquare } from '@/app/components/base/icons/src/vender/solid/editor'
-import { CheckDone01 } from '@/app/components/base/icons/src/vender/solid/general'
 import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
+import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
+import { InputVarType } from '@/app/components/workflow/types'
 
 export type IInputTypeIconProps = {
   type: 'string' | 'select'
@@ -14,13 +14,16 @@ const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
   const classNames = `w-3.5 h-3.5 ${className}`
   const icons = {
     string: (
-      <TypeSquare className={classNames} />
+      <InputVarTypeIcon type={InputVarType.textInput} className={classNames} />
     ),
     paragraph: (
-      <Paragraph className={classNames} />
+      <InputVarTypeIcon type={InputVarType.paragraph} className={classNames} />
     ),
     select: (
-      <CheckDone01 className={classNames} />
+      <InputVarTypeIcon type={InputVarType.select} className={classNames} />
+    ),
+    number: (
+      <InputVarTypeIcon type={InputVarType.number} className={classNames} />
     ),
     api: (
       <ApiConnection className={classNames} />

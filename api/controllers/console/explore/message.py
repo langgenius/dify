@@ -1,9 +1,5 @@
-import json
 import logging
-from collections.abc import Generator
-from typing import Union
 
-from flask import Response, stream_with_context
 from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range
@@ -24,12 +20,14 @@ from controllers.console.explore.error import (
     NotCompletionAppError,
 )
 from controllers.console.explore.wraps import InstalledAppResource
-from core.entities.application_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
+from libs import helper
 from libs.helper import uuid_value
-from services.completion_service import CompletionService
+from models.model import AppMode
+from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -41,7 +39,8 @@ class MessageListApi(InstalledAppResource):
     def get(self, installed_app):
         app_model = installed_app.app
 
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -91,14 +90,14 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         streaming = args['response_mode'] == 'streaming'
 
         try:
-            response = CompletionService.generate_more_like_this(
+            response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
                 message_id=message_id,
                 invoke_from=InvokeFrom.EXPLORE,
                 streaming=streaming
             )
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
         except MoreLikeThisDisabledError:
@@ -118,22 +117,12 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             raise InternalServerError()
 
 
-def compact_response(response: Union[dict, Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            yield from response
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
-
-
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
         app_model = installed_app.app
-        if app_model.mode != 'chat':
-            raise NotCompletionAppError()
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+            raise NotChatAppError()
 
         message_id = str(message_id)
 
@@ -141,7 +130,8 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
                 user=current_user,
-                message_id=message_id
+                message_id=message_id,
+                invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

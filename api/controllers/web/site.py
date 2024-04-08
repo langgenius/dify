@@ -83,7 +83,3 @@ class AppSiteInfo:
                 'remove_webapp_brand': remove_webapp_brand,
                 'replace_webapp_logo': replace_webapp_logo,
             }
-
-        if app.enable_site and site.prompt_public:
-            app_model_config = app.app_model_config
-            self.model_config = app_model_config

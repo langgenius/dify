@@ -10,6 +10,7 @@ import type {
 import {
   ConfigurateMethodEnum,
   CustomConfigurationStatusEnum,
+  ModelTypeEnum,
 } from './declarations'
 import {
   useDefaultModel,
@@ -26,11 +27,11 @@ const ModelProviderPage = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const { data: textGenerationDefaultModel } = useDefaultModel(1)
-  const { data: embeddingsDefaultModel } = useDefaultModel(2)
-  const { data: rerankDefaultModel } = useDefaultModel(3)
-  const { data: speech2textDefaultModel } = useDefaultModel(4)
-  const { data: ttsDefaultModel } = useDefaultModel(5)
+  const { data: textGenerationDefaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
+  const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
+  const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
+  const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
+  const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
   const { setShowModelModal } = useModalContext()
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel

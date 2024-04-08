@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '../../base/app-unavailable'
+import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import StepsNavBar from './steps-nav-bar'
 import StepOne from './step-one'
 import StepTwo from './step-two'
@@ -28,7 +29,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
-  const { data: embeddingsDefaultModel } = useDefaultModel(2)
+  const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const updateNotionPages = (value: NotionPage[]) => {

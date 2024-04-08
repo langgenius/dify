@@ -11,10 +11,16 @@ import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
+import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import TabSlider from '@/app/components/base/tab-slider'
-import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
+import { DotsGrid, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import {
+  // AiText,
+  ChatBot,
+  CuteRobot,
+} from '@/app/components/base/icons/src/vender/line/communication'
+import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 
 const getKey = (
   pageIndex: number,
@@ -27,6 +33,8 @@ const getKey = (
 
     if (activeTab !== 'all')
       params.params.mode = activeTab
+    else
+      delete params.params.mode
 
     return params
   }
@@ -45,14 +53,16 @@ const Apps = () => {
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
     (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, searchKeywords),
     fetchAppList,
-    { revalidateFirstPage: false },
+    { revalidateFirstPage: true },
   )
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all') },
-    { value: 'chat', text: t('app.types.assistant') },
-    { value: 'completion', text: t('app.types.completion') },
+    { value: 'all', text: t('app.types.all'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'chat', text: t('app.types.chatbot'), icon: <ChatBot className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'agent-chat', text: t('app.types.agent'), icon: <CuteRobot className='w-[14px] h-[14px] mr-1'/> },
+    // { value: 'completion', text: t('app.newApp.completeApp'), icon: <AiText className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'workflow', text: t('app.types.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1'/> },
   ]
 
   useEffect(() => {
@@ -61,7 +71,7 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [mutate, t])
+  }, [])
 
   useEffect(() => {
     let observer: IntersectionObserver | undefined
@@ -91,6 +101,11 @@ const Apps = () => {
   return (
     <>
       <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+        <TabSliderNew
+          value={activeTab}
+          onChange={setActiveTab}
+          options={options}
+        />
         <div className="flex items-center px-2 w-[200px] h-8 rounded-lg bg-gray-200">
           <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
             <SearchLg className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
@@ -117,12 +132,6 @@ const Apps = () => {
             )
           }
         </div>
-        <TabSlider
-          value={activeTab}
-          onChange={setActiveTab}
-          options={options}
-        />
-
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceManager

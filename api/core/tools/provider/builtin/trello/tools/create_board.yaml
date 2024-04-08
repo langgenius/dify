@@ -1,0 +1,27 @@
+identity:
+  name: create_board
+  author: Yash Parmar
+  label:
+    en_US: Create Board
+    zh_Hans: 创建看板
+    pt_BR: Criar Quadro
+description:
+  human:
+    en_US: Creates a new Trello board with a specified name. This tool allows users to quickly add new boards to their Trello account, facilitating project organization and management.
+    zh_Hans: 使用指定的名称创建一个新的 Trello 看板。此工具允许用户快速向其 Trello 账户添加新的看板，促进项目组织和管理。
+    pt_BR: Cria um novo quadro Trello com um nome especificado. Esta ferramenta permite que os usuários adicionem rapidamente novos quadros à sua conta Trello, facilitando a organização e gestão de projetos.
+  llm: Create a new Trello board using the specified name. This functionality simplifies the addition of boards, enhancing project organization and management within Trello.
+parameters:
+  - name: name
+    type: string
+    required: true
+    label:
+      en_US: Board Name
+      zh_Hans: 看板名称
+      pt_BR: Nome do Quadro
+    human_description:
+      en_US: The name for the new Trello board. This name helps in identifying and organizing your projects on Trello.
+      zh_Hans: 新 Trello 看板的名称。这个名称有助于在 Trello 上识别和组织您的项目。
+      pt_BR: O nome para o novo quadro Trello. Este nome ajuda a identificar e organizar seus projetos no Trello.
+    llm_description: Specify the name for your new Trello board, aiding in project identification and organization within Trello.
+    form: llm

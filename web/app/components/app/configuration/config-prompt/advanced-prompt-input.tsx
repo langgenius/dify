@@ -92,7 +92,7 @@ const AdvancedPromptInput: FC<Props> = ({
       },
     })
   }
-  const isChatApp = mode === AppType.chat
+  const isChatApp = mode !== AppType.completion
   const [isCopied, setIsCopied] = React.useState(false)
 
   const promptVariablesObj = (() => {
@@ -216,10 +216,13 @@ const AdvancedPromptInput: FC<Props> = ({
               onAddContext: showSelectDataSet,
             }}
             variableBlock={{
+              show: true,
               variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
                 name: item.name,
                 value: item.key,
               })),
+            }}
+            externalToolBlock={{
               externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
                 name: item.name,
                 variableName: item.key,

@@ -24,9 +24,9 @@ class UnstructuredPPTExtractor(BaseExtractor):
         self._api_url = api_url
 
     def extract(self) -> list[Document]:
-        from unstructured.partition.ppt import partition_ppt
+        from unstructured.partition.api import partition_via_api
 
-        elements = partition_ppt(filename=self._file_path, api_url=self._api_url)
+        elements = partition_via_api(filename=self._file_path, api_url=self._api_url)
         text_by_page = {}
         for element in elements:
             page = element.metadata.page_number

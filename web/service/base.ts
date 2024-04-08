@@ -2,6 +2,14 @@ import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
 import type { VisionFile } from '@/types/app'
+import type {
+  NodeFinishedResponse,
+  NodeStartedResponse,
+  TextChunkResponse,
+  TextReplaceResponse,
+  WorkflowFinishedResponse,
+  WorkflowStartedResponse,
+} from '@/types/workflow'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -36,14 +44,22 @@ export type IOnFile = (file: VisionFile) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
-export type IOnCompleted = (hasError?: boolean) => void
+export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
-type IOtherOptions = {
+export type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
+export type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
+export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
+export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
+export type IOnTextChunk = (textChunk: TextChunkResponse) => void
+export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+
+export type IOtherOptions = {
   isPublicAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
+  silent?: boolean
   onData?: IOnData // for stream
   onThought?: IOnThought
   onFile?: IOnFile
@@ -52,6 +68,13 @@ type IOtherOptions = {
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
+
+  onWorkflowStarted?: IOnWorkflowStarted
+  onWorkflowFinished?: IOnWorkflowFinished
+  onNodeStarted?: IOnNodeStarted
+  onNodeFinished?: IOnNodeFinished
+  onTextChunk?: IOnTextChunk
+  onTextReplace?: IOnTextReplace
 }
 
 type ResponseError = {
@@ -82,7 +105,21 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace, onFile?: IOnFile) => {
+const handleStream = (
+  response: Response,
+  onData: IOnData,
+  onCompleted?: IOnCompleted,
+  onThought?: IOnThought,
+  onMessageEnd?: IOnMessageEnd,
+  onMessageReplace?: IOnMessageReplace,
+  onFile?: IOnFile,
+  onWorkflowStarted?: IOnWorkflowStarted,
+  onWorkflowFinished?: IOnWorkflowFinished,
+  onNodeStarted?: IOnNodeStarted,
+  onNodeFinished?: IOnNodeFinished,
+  onTextChunk?: IOnTextChunk,
+  onTextReplace?: IOnTextReplace,
+) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -122,7 +159,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
                 errorCode: bufferObj?.code,
               })
               hasError = true
-              onCompleted?.(true)
+              onCompleted?.(true, bufferObj?.message)
               return
             }
             if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
@@ -146,6 +183,24 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
             else if (bufferObj.event === 'message_replace') {
               onMessageReplace?.(bufferObj as MessageReplace)
             }
+            else if (bufferObj.event === 'workflow_started') {
+              onWorkflowStarted?.(bufferObj as WorkflowStartedResponse)
+            }
+            else if (bufferObj.event === 'workflow_finished') {
+              onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
+            }
+            else if (bufferObj.event === 'node_started') {
+              onNodeStarted?.(bufferObj as NodeStartedResponse)
+            }
+            else if (bufferObj.event === 'node_finished') {
+              onNodeFinished?.(bufferObj as NodeFinishedResponse)
+            }
+            else if (bufferObj.event === 'text_chunk') {
+              onTextChunk?.(bufferObj as TextChunkResponse)
+            }
+            else if (bufferObj.event === 'text_replace') {
+              onTextReplace?.(bufferObj as TextReplaceResponse)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -157,7 +212,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
           errorMessage: `${e}`,
         })
         hasError = true
-        onCompleted?.(true)
+        onCompleted?.(true, e as string)
         return
       }
       if (!hasError)
@@ -176,6 +231,7 @@ const baseFetch = <T>(
     needAllResponseContent,
     deleteContentType,
     getAbortController,
+    silent,
   }: IOtherOptions,
 ): Promise<T> => {
   const options: typeof baseOptions & FetchOptionType = Object.assign({}, baseOptions, fetchOptions)
@@ -250,13 +306,14 @@ const baseFetch = <T>(
               case 401: {
                 if (isPublicAPI) {
                   return bodyJson.then((data: ResponseError) => {
-                    Toast.notify({ type: 'error', message: data.message })
+                    if (!silent)
+                      Toast.notify({ type: 'error', message: data.message })
                     return Promise.reject(data)
                   })
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
                 bodyJson.then((data: ResponseError) => {
-                  if (data.code === 'init_validate_failed' && IS_CE_EDITION)
+                  if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
                     Toast.notify({ type: 'error', message: data.message, duration: 4000 })
                   else if (data.code === 'not_init_validated' && IS_CE_EDITION)
                     globalThis.location.href = `${globalThis.location.origin}/init`
@@ -264,7 +321,7 @@ const baseFetch = <T>(
                     globalThis.location.href = `${globalThis.location.origin}/install`
                   else if (location.pathname !== '/signin' || !IS_CE_EDITION)
                     globalThis.location.href = loginUrl
-                  else
+                  else if (!silent)
                     Toast.notify({ type: 'error', message: data.message })
                 }).catch(() => {
                   // Handle any other errors
@@ -275,7 +332,8 @@ const baseFetch = <T>(
               }
               case 403:
                 bodyJson.then((data: ResponseError) => {
-                  Toast.notify({ type: 'error', message: data.message })
+                  if (!silent)
+                    Toast.notify({ type: 'error', message: data.message })
                   if (data.code === 'already_setup')
                     globalThis.location.href = `${globalThis.location.origin}/signin`
                 })
@@ -283,7 +341,8 @@ const baseFetch = <T>(
               // fall through
               default:
                 bodyJson.then((data: ResponseError) => {
-                  Toast.notify({ type: 'error', message: data.message })
+                  if (!silent)
+                    Toast.notify({ type: 'error', message: data.message })
                 })
             }
             return Promise.reject(resClone)
@@ -301,7 +360,8 @@ const baseFetch = <T>(
           resolve(needAllResponseContent ? resClone : data)
         })
         .catch((err) => {
-          Toast.notify({ type: 'error', message: err })
+          if (!silent)
+            Toast.notify({ type: 'error', message: err })
           reject(err)
         })
     }),
@@ -361,7 +421,27 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
   })
 }
 
-export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onFile, onMessageEnd, onMessageReplace, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (
+  url: string,
+  fetchOptions: FetchOptionType,
+  {
+    isPublicAPI = false,
+    onData,
+    onCompleted,
+    onThought,
+    onFile,
+    onMessageEnd,
+    onMessageReplace,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    onNodeStarted,
+    onNodeFinished,
+    onTextChunk,
+    onTextReplace,
+    onError,
+    getAbortController,
+  }: IOtherOptions,
+) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -399,7 +479,7 @@ export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAP
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onTextChunk, onTextReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

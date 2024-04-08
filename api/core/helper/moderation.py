@@ -1,7 +1,7 @@
 import logging
 import random
 
-from core.entities.application_entities import ModelConfigEntity
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.openai.moderation.moderation import OpenAIModerationModel
 from extensions.ext_hosting_provider import hosting_configuration
@@ -10,7 +10,7 @@ from models.provider import ProviderType
 logger = logging.getLogger(__name__)
 
 
-def check_moderation(model_config: ModelConfigEntity, text: str) -> bool:
+def check_moderation(model_config: ModelConfigWithCredentialsEntity, text: str) -> bool:
     moderation_config = hosting_configuration.moderation_config
     if (moderation_config and moderation_config.enabled is True
             and 'openai' in hosting_configuration.provider_map

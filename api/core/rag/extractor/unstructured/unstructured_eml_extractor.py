@@ -26,7 +26,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         from unstructured.partition.email import partition_email
-        elements = partition_email(filename=self._file_path, api_url=self._api_url)
+        elements = partition_email(filename=self._file_path)
 
         # noinspection PyBroadException
         try:
@@ -43,7 +43,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
             pass
 
         from unstructured.chunking.title import chunk_by_title
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=0)
+        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:
             text = chunk.text.strip()

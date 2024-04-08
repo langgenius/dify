@@ -16,7 +16,7 @@ import {
 } from '@floating-ui/react'
 
 import type { OffsetOptions, Placement } from '@floating-ui/react'
-
+import cn from 'classnames'
 export type PortalToFollowElemOptions = {
   /*
   * top, bottom, left, right
@@ -129,7 +129,7 @@ React.HTMLProps<HTMLElement> & { asChild?: boolean }
   return (
     <div
       ref={ref}
-      className='inline-block'
+      className={cn('inline-block', props.className)}
       // The user can style the trigger based on the state
       data-state={context.open ? 'open' : 'closed'}
       {...context.getReferenceProps(props)}

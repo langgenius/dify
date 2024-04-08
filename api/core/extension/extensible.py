@@ -1,5 +1,5 @@
 import enum
-import importlib.util
+import importlib
 import json
 import logging
 import os

@@ -1,4 +1,3 @@
-import importlib
 import logging
 import os
 from typing import Optional
@@ -10,6 +9,7 @@ from core.model_runtime.entities.provider_entities import ProviderConfig, Provid
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
+from core.utils.module_import_helper import load_single_subclass_from_source
 from core.utils.position_helper import get_position_map, sort_to_dict_by_position_map
 
 logger = logging.getLogger(__name__)
@@ -229,15 +229,10 @@ class ModelProviderFactory:
 
             # Dynamic loading {model_provider_name}.py file and find the subclass of ModelProvider
             py_path = os.path.join(model_provider_dir_path, model_provider_name + '.py')
-            spec = importlib.util.spec_from_file_location(f'core.model_runtime.model_providers.{model_provider_name}.{model_provider_name}', py_path)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-
-            model_provider_class = None
-            for name, obj in vars(mod).items():
-                if isinstance(obj, type) and issubclass(obj, ModelProvider) and obj != ModelProvider:
-                    model_provider_class = obj
-                    break
+            model_provider_class = load_single_subclass_from_source(
+                module_name=f'core.model_runtime.model_providers.{model_provider_name}.{model_provider_name}',
+                script_path=py_path,
+                parent_type=ModelProvider)
 
             if not model_provider_class:
                 logger.warning(f"Missing Model Provider Class that extends ModelProvider in {py_path}, Skip.")

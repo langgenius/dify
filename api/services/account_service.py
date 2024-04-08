@@ -178,7 +178,7 @@ class AccountService:
 
     @staticmethod
     def close_account(account: Account) -> None:
-        """todo: Close account"""
+        """Close account"""
         account.status = AccountStatus.CLOSED.value
         db.session.commit()
 
@@ -435,19 +435,19 @@ class RegisterService:
 
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
+            if current_app.config['EDITION'] != 'SELF_HOSTED':
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
 
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role='owner')
+                account.current_tenant = tenant
 
-            TenantService.create_tenant_member(tenant, account, role='owner')
-            account.current_tenant = tenant
+                tenant_was_created.send(tenant)
 
             db.session.commit()
         except Exception as e:
-            db.session.rollback()  # todo: do not work
+            db.session.rollback()
             logging.error(f'Register failed: {e}')
             raise AccountRegisterError(f'Registration failed: {e}') from e
-
-        tenant_was_created.send(tenant)
 
         return account
 
@@ -461,7 +461,6 @@ class RegisterService:
             name = email.split('@')[0]
 
             account = cls.register(email=email, name=name, language=language, status=AccountStatus.PENDING)
-
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)

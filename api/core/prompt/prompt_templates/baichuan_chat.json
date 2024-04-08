@@ -1,0 +1,13 @@
+{
+  "human_prefix": "用户",
+  "assistant_prefix": "助手",
+  "context_prompt": "用户在与一个客观的助手对话。助手会尊重找到的材料，给出全面专业的解释，但不会过度演绎。同时回答中不会暴露引用的材料：\n\n```\n{{#context#}}\n```\n\n",
+  "histories_prompt": "用户和助手的历史对话内容如下：\n```\n{{#histories#}}\n```\n\n",
+  "system_prompt_orders": [
+    "context_prompt",
+    "pre_prompt",
+    "histories_prompt"
+  ],
+  "query_prompt": "\n\n用户：{{#query#}}",
+  "stops": ["用户："]
+}

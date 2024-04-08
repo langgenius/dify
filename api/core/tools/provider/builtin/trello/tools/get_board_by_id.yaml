@@ -1,0 +1,27 @@
+identity:
+  name: get_board_by_id
+  author: Yash Parmar
+  label:
+    en_US: Get Board by ID
+    zh_Hans: 通过 ID 获取看板
+    pt_BR: Obter Quadro por ID
+description:
+  human:
+    en_US: Retrieves detailed information about a specific Trello board using its unique ID. This tool enables users to quickly access board details without navigating through the Trello interface.
+    zh_Hans: 使用其唯一 ID 检索有关特定 Trello 看板的详细信息。此工具使用户能够快速访问看板详情，无需通过 Trello 界面导航。
+    pt_BR: Recupera informações detalhadas sobre um quadro Trello específico usando seu ID único. Esta ferramenta permite que os usuários acessem rapidamente os detalhes do quadro sem navegar pela interface do Trello.
+  llm: Access details of a Trello board by providing its ID. This tool offers a direct way to view board information, simplifying the process of managing and reviewing Trello boards.
+parameters:
+  - name: boardId
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier for the Trello board you wish to retrieve. This ID enables precise targeting and fetching of the board's details.
+      zh_Hans: 您希望检索的 Trello 看板的唯一标识符。此 ID 使能够准确定位和获取看板的详细信息。
+      pt_BR: O identificador único do quadro Trello que você deseja recuperar. Este ID permite o direcionamento preciso e a obtenção dos detalhes do quadro.
+    llm_description: Input the ID of the Trello board to get its details. This unique ID ensures accurate retrieval of information about the specified board.
+    form: llm
