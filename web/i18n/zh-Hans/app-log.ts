@@ -77,6 +77,7 @@ const translation = {
     workflowTitle: '日志详情',
   },
   promptLog: 'Prompt 日志',
+  agentLog: 'Agent 日志',
   viewLog: '查看日志',
 }
 

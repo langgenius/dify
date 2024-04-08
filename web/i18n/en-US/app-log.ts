@@ -77,6 +77,7 @@ const translation = {
     workflowTitle: 'Log Detail',
   },
   promptLog: 'Prompt Log',
+  agentLog: 'Agent Log',
   viewLog: 'View Log',
 }
 

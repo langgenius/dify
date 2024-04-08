@@ -11,8 +11,9 @@ const Log: FC<LogProps> = ({
   logItem,
 }) => {
   const { t } = useTranslation()
-  const { setCurrentLogItem, setShowPromptLogModal, setShowMessageLogModal } = useAppStore()
-  const { workflow_run_id: runID } = logItem
+  const { setCurrentLogItem, setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore()
+  const { workflow_run_id: runID, agent_thoughts } = logItem
+  const isAgent = agent_thoughts && agent_thoughts.length > 0
 
   return (
     <div
@@ -23,12 +24,14 @@ const Log: FC<LogProps> = ({
         setCurrentLogItem(logItem)
         if (runID)
           setShowMessageLogModal(true)
+        else if (isAgent)
+          setShowAgentLogModal(true)
         else
           setShowPromptLogModal(true)
       }}
     >
       <File02 className='mr-1 w-4 h-4' />
-      <div className='text-xs leading-4'>{runID ? t('appLog.viewLog') : t('appLog.promptLog')}</div>
+      <div className='text-xs leading-4'>{runID ? t('appLog.viewLog') : isAgent ? t('appLog.agentLog') : t('appLog.promptLog')}</div>
     </div>
   )
 }

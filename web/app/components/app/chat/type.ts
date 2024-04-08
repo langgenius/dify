@@ -83,6 +83,8 @@ export type IChatItem = {
   agent_thoughts?: ThoughtItem[]
   message_files?: VisionFile[]
   workflow_run_id?: string
+  // for agent log
+  conversationId?: string
 }
 
 export type MessageEnd = {
