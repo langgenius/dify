@@ -76,7 +76,7 @@ app_partial_fields = {
     'icon': fields.String,
     'icon_background': fields.String,
     'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config', allow_null=True),
-    'created_at': TimestampField
+    'created_at': TimestampField,
     'tags': fields.List(fields.Nested(tag_fields))
 }
 
