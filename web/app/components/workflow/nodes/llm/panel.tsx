@@ -21,6 +21,7 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import Switch from '@/app/components/base/switch'
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({
@@ -51,6 +52,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     filterVar,
     handlePromptChange,
     handleMemoryChange,
+    handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isShowSingleRun,
     hideSingleRun,
@@ -240,12 +242,19 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               title={t(`${i18nPrefix}.vision`)}
               tooltip={t('appDebug.vision.description')!}
               operations={
-                <ResolutionPicker
-                  value={inputs.vision.configs?.detail || Resolution.high}
-                  onChange={handleVisionResolutionChange}
-                />
+                <Switch size='md' defaultValue={inputs.vision.enabled} onChange={handleVisionResolutionEnabledChange} />
               }
-            />
+            >
+              {inputs.vision.enabled
+                ? (
+                  <ResolutionPicker
+                    value={inputs.vision.configs?.detail || Resolution.high}
+                    onChange={handleVisionResolutionChange}
+                  />
+                )
+                : null}
+
+            </Field>
           </>
         )}
       </div>
