@@ -130,11 +130,10 @@ const AudioBtn = ({
       >
         <button
           disabled={audioState === 'loading'}
-          className={`box-border p-0.5 flex items-center justify-center cursor-pointer ${isAudition || 'rounded-md bg-white'}`}
-          style={{ boxShadow: !isAudition ? '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)' : '' }}
+          className={`box-border p-0.5 flex items-center justify-center cursor-pointer ${isAudition || '!p-0 rounded-md bg-white'}`}
           onClick={handleToggle}>
           {audioState === 'loading' && <div className='w-6 h-6 rounded-md flex items-center justify-center p-2'><Loading /></div>}
-          {audioState !== 'loading' && <div className={`w-6 h-6 rounded-md ${!isAudition ? 'hover:bg-gray-200' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>}
+          {audioState !== 'loading' && <div className={`w-6 h-6 rounded-md ${!isAudition ? 'w-4 h-4 hover:bg-gray-50' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>}
         </button>
       </Tooltip>
       <audio ref={audioRef} src='' className='hidden' />
