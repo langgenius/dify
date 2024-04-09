@@ -29,16 +29,33 @@
 
 **Dify** is an open-source LLM app development platform. Dify's intuitive interface combines a RAG pipeline, AI workflow orchestration, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production.
 
-![](./images/demo.png)
-
+https://github.com/langgenius/dify/assets/13230914/979e7a68-f067-4bbc-b38e-2deb2cc2bbb5
 
 
 ## Using our Cloud Services
 
-You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free requests to OpenAI GPT-3.5.
+You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls.
 
 ### Looking to purchase via AWS?
 Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. 
+
+
+## Features
+
+![](./images/models.png)
+
+**1. Workflow**: Create and test complex AI workflows on a visual canvas, with pre-built nodes taking advantage of the power of all the following features and beyond.
+
+**2. Support**: Seamless integration with hundreds of proprietary / open-source LLMs and dozens of inference providers, including GPT, Mistral, Llama2, and OpenAI API-compatible models. A full list of supported model providers is kept [here](https://docs.dify.ai/getting-started/readme/model-providers).
+
+**3. Prompt IDE**: Visual orchestration of applications and services based on any LLMs. Easily share with your team.
+
+**4. RAG Engine**: Includes various RAG capabilities based on full-text indexing or vector database embeddings, allowing direct upload of PDFs, TXTs, and other text formats.
+
+**5. AI Agent**: Based on Function Calling and ReAct, the Agent inference framework allows users to customize tools, what you see is what you get. Dify provides more than a dozen built-in tools for AI agents, such as Google Search, DELL·E, Stable Diffusion, WolframAlpha, etc.
+
+**6. LLMOps**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models based on production data.
+
 
 ## Dify vs. LangChain vs. Assistants API
 
@@ -52,29 +69,10 @@ Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t
 | **Local Deployment** | Supported | Not Supported | Not Applicable |
 
 
-
-## Features
-
-![](./images/models.png)
-**1. Workflow**: Create and test complex AI workflows on a visual canvas, with pre-built nodes taking advantage of the power of all the following features and beyond.
-
-**2. LLM Support**: Integration with OpenAI's GPT family of models, or the open-source Llama2 family models. In fact, Dify supports mainstream commercial models and open-source models (locally deployed or based on MaaS).
-
-**3. Prompt IDE**: Visual orchestration of applications and services based on LLMs with your team.
-
-**4. RAG Engine**: Includes various RAG capabilities based on full-text indexing or vector database embeddings, allowing direct upload of PDFs, TXTs, and other text formats.
-
-**5. AI Agent**: Based on Function Calling and ReAct, the Agent inference framework allows users to customize tools, what you see is what you get. Dify provides more than a dozen built-in tool calling capabilities, such as Google Search, DELL·E, Stable Diffusion, WolframAlpha, etc.
-
-
-**5. Continuous Operations**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models using production data.
-
 ## Before You Start
 
 **Star us on GitHub, and be instantly notified for new releases!**
-
 ![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
-
 - [Website](https://dify.ai)
 - [Docs](https://docs.dify.ai)
 - [Deployment Docs](https://docs.dify.ai/getting-started/install-self-hosted)
