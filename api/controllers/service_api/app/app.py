@@ -92,7 +92,7 @@ class AppMetaApi(Resource):
 class AppInfoApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
-        """Get app meta"""
+        """Get app infomation"""
         return {
             'name':app_model.name,
             'description':app_model.description
