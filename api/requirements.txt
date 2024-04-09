@@ -58,7 +58,7 @@ qdrant-client==1.7.3
 cohere~=4.44
 pyyaml~=6.0.1
 numpy~=1.25.2
-unstructured[docx,pptx,msg,md,ppt]~=0.10.27
+unstructured[docx,pptx,msg,md,ppt,epub]~=0.10.27
 bs4~=0.0.1
 markdown~=3.5.1
 google-generativeai~=0.3.2
