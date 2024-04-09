@@ -160,8 +160,10 @@ export const useWorkflow = () => {
 
         if (incomers.length) {
           incomers.forEach((node) => {
-            callback(node)
-            traverse(node, callback)
+            if (!list.find(n => node.id === n.id)) {
+              callback(node)
+              traverse(node, callback)
+            }
           })
         }
       }
