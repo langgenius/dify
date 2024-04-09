@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Orchestrer',
     apiAccess: 'Accès API',
     logAndAnn: 'Journaux & Annonces.',
+    logs: 'Journaux',
   },
   environment: {
     testing: 'TESTER',
@@ -476,6 +477,10 @@ const translation = {
       item: {
         title: 'Variables & Outils Externes',
         desc: 'Insérer des Variables & Outils Externes',
+      },
+      outputToolDisabledItem: {
+        title: 'Variables',
+        desc: 'Insérer Variables',
       },
       modal: {
         add: 'Nouvelle variable',

@@ -18,6 +18,7 @@ pycryptodome==3.19.1
 python-dotenv==1.0.0
 pytest~=7.3.1
 pytest-mock~=3.11.1
+pytest-benchmark~=4.0.0
 Authlib==1.2.0
 boto3==1.28.17
 tenacity==8.2.2

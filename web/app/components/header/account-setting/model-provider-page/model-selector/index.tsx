@@ -74,6 +74,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
                 provider={currentProvider}
                 model={currentModel}
                 className={triggerClassName}
+                readonly={readonly}
               />
             )
           }
@@ -95,7 +96,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={`z-[60] ${popupClassName}`}>
+        <PortalToFollowElemContent className={`z-[1002] ${popupClassName}`}>
           <Popup
             defaultModel={defaultModel}
             modelList={modelList}

@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Orchestrate',
     apiAccess: 'Truy cập API',
     logAndAnn: 'Nhật ký & Thông báo',
+    logs: 'Nhật ký',
   },
   environment: {
     testing: 'TESTING',
@@ -476,6 +477,10 @@ const translation = {
       item: {
         title: 'Biến & Công cụ Bên ngoài',
         desc: 'Chèn Biến & Công cụ Bên ngoài',
+      },
+      outputToolDisabledItem: {
+        title: 'Công cụ Bên ngoài',
+        desc: 'Công cụ Bên ngoài không thể chèn vào đây',
       },
       modal: {
         add: 'Biến mới',

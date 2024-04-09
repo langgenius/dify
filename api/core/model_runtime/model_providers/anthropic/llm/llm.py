@@ -394,13 +394,13 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
-                message.content=message.content.strip()
+                message.content = message.content.strip()
                 if first_loop:
-                    system=message.content
-                    first_loop=False
+                    system = message.content
+                    first_loop = False
                 else:
-                    system+="\n"
-                    system+=message.content
+                    system += "\n"
+                    system += message.content
 
         prompt_message_dicts = []
         for message in prompt_messages:

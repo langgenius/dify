@@ -158,9 +158,9 @@ export function useBasicTypeaheadTriggerMatch(
 ): TriggerFn {
   return useCallback(
     (text: string) => {
-      const validChars = `[^${trigger}${PUNCTUATION}\\s]`
+      const validChars = `[${PUNCTUATION}\\s]`
       const TypeaheadTriggerRegex = new RegExp(
-        `([^${trigger}]|^)(`
+        '(.*)('
           + `[${trigger}]`
           + `((?:${validChars}){0,${maxLength}})`
           + ')$',

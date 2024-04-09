@@ -18,7 +18,7 @@ const translation = {
   apps: {
     title: 'Вивчайте програми від Dify',
     description: 'Використовуйте ці шаблони миттєво або налаштуйте власні програми на основі шаблонів.',
-    allCategories: 'Усі категорії',
+    allCategories: 'Рекомендовані',
   },
   appCard: {
     addToWorkspace: 'Додати до робочого простору',

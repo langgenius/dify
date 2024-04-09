@@ -400,6 +400,7 @@ const translation = {
     promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',
+    logs: '日志',
   },
   environment: {
     testing: '测试环境',
@@ -476,6 +477,10 @@ const translation = {
       item: {
         title: '变量 & 外部工具',
         desc: '插入变量和外部工具',
+      },
+      outputToolDisabledItem: {
+        title: '变量',
+        desc: '插入变量',
       },
       modal: {
         add: '添加新变量',

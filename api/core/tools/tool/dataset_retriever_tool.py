@@ -2,11 +2,18 @@ from typing import Any
 
 from langchain.tools import BaseTool
 
+from core.app.app_config.entities import DatasetRetrieveConfigEntity
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.entities.application_entities import DatasetRetrieveConfigEntity, InvokeFrom
-from core.features.dataset_retrieval.dataset_retrieval import DatasetRetrievalFeature
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolDescription, ToolIdentity, ToolInvokeMessage, ToolParameter
+from core.tools.entities.tool_entities import (
+    ToolDescription,
+    ToolIdentity,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderType,
+)
 from core.tools.tool.tool import Tool
 
 
@@ -30,7 +37,7 @@ class DatasetRetrieverTool(Tool):
         if retrieve_config is None:
             return []
 
-        feature = DatasetRetrievalFeature()
+        feature = DatasetRetrieval()
 
         # save original retrieve strategy, and set retrieve strategy to SINGLE
         # Agent only support SINGLE mode
@@ -52,7 +59,7 @@ class DatasetRetrieverTool(Tool):
         for langchain_tool in langchain_tools:
             tool = DatasetRetrieverTool(
                 langchain_tool=langchain_tool,
-                identity=ToolIdentity(author='', name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
+                identity=ToolIdentity(provider='', author='', name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
                 parameters=[],
                 is_team_authorization=True,
                 description=ToolDescription(
@@ -76,6 +83,9 @@ class DatasetRetrieverTool(Tool):
                           required=True,
                           default=''),
         ]
+    
+    def tool_provider_type(self) -> ToolProviderType:
+        return ToolProviderType.DATASET_RETRIEVAL
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
