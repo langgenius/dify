@@ -378,6 +378,34 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         delimiter = credentials.get("stream_mode_delimiter", "\n\n")
         delimiter = codecs.decode(delimiter, "unicode_escape")
 
+        tools_calls: list[AssistantPromptMessage.ToolCall] = []
+
+        def increase_tool_call(new_tool_calls: list[AssistantPromptMessage.ToolCall]):
+            def get_tool_call(tool_call_id: str):
+                tool_call = next(
+                    (tool_call for tool_call in tools_calls if tool_call.id == tool_call_id), None
+                )
+                if tool_call is None:
+                    tool_call = AssistantPromptMessage.ToolCall(
+                        id='', 
+                        type='function', 
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name='',
+                            arguments=''
+                        )
+                    )
+                    tools_calls.append(tool_call)
+                return tool_call
+
+            for new_tool_call in new_tool_calls:
+                # get tool call
+                tool_call = get_tool_call(new_tool_call.id)
+                # update tool call
+                tool_call.id = new_tool_call.id
+                tool_call.type = new_tool_call.type
+                tool_call.function.name = new_tool_call.function.name
+                tool_call.function.arguments += new_tool_call.function.arguments
+
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             if chunk:
                 # ignore sse comments
@@ -405,8 +433,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 if 'delta' in choice:
                     delta = choice['delta']
                     delta_content = delta.get('content')
-                    if delta_content is None or delta_content == '':
-                        continue
 
                     assistant_message_tool_calls = delta.get('tool_calls', None)
                     # assistant_message_function_call = delta.delta.function_call
@@ -414,6 +440,11 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     # extract tool calls from response
                     if assistant_message_tool_calls:
                         tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
+                        increase_tool_call(tool_calls)
+
+                    if delta_content is None or delta_content == '':
+                        continue
+
                     # function_call = self._extract_response_function_call(assistant_message_function_call)
                     # tool_calls = [function_call] if function_call else []
 
@@ -437,6 +468,18 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
                 # check payload indicator for completion
                 if finish_reason is not None:
+                    yield LLMResultChunk(
+                        model=model,
+                        prompt_messages=prompt_messages,
+                        delta=LLMResultChunkDelta(
+                            index=chunk_index,
+                            message=AssistantPromptMessage(
+                                tool_calls=tools_calls,
+                            ),
+                            finish_reason=finish_reason
+                        )
+                    )
+
                     yield create_final_llm_result_chunk(
                         index=chunk_index,
                         message=assistant_prompt_message,

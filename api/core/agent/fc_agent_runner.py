@@ -207,19 +207,25 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
                 )
 
+            assistant_message = AssistantPromptMessage(
+                content='',
+                tool_calls=[]
+            )
             if tool_calls:
-                prompt_messages.append(AssistantPromptMessage(
-                    content='',
-                    name='',
-                    tool_calls=[AssistantPromptMessage.ToolCall(
+                assistant_message.tool_calls=[
+                    AssistantPromptMessage.ToolCall(
                         id=tool_call[0],
                         type='function',
                         function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                             name=tool_call[1],
                             arguments=json.dumps(tool_call[2], ensure_ascii=False)
                         )
-                    ) for tool_call in tool_calls]
-                ))
+                    ) for tool_call in tool_calls
+                ]
+            else:
+                assistant_message.content = response
+            
+            prompt_messages.append(assistant_message)
 
             # save thought
             self.save_agent_thought(
@@ -239,12 +245,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             
             final_answer += response + '\n'
 
-            # update prompt messages
-            if response.strip():
-                prompt_messages.append(AssistantPromptMessage(
-                    content=response,
-                ))
-            
             # call tools
             tool_responses = []
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
