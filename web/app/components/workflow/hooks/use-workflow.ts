@@ -274,7 +274,10 @@ export const useWorkflow = () => {
   }, [isVarUsedInNodes])
 
   const isValidConnection = useCallback(({ source, target }: Connection) => {
-    const { getNodes } = store.getState()
+    const {
+      edges,
+      getNodes,
+    } = store.getState()
     const nodes = getNodes()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
@@ -289,7 +292,21 @@ export const useWorkflow = () => {
         return false
     }
 
-    return true
+    const hasCycle = (node: Node, visited = new Set()) => {
+      if (visited.has(node.id))
+        return false
+
+      visited.add(node.id)
+
+      for (const outgoer of getOutgoers(node, nodes, edges)) {
+        if (outgoer.id === source)
+          return true
+        if (hasCycle(outgoer, visited))
+          return true
+      }
+    }
+
+    return !hasCycle(targetNode)
   }, [store, nodesExtraData])
 
   const formatTimeFromNow = useCallback((time: number) => {
