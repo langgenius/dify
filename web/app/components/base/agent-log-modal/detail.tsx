@@ -6,12 +6,11 @@ import { useTranslation } from 'react-i18next'
 import { flatten, uniq } from 'lodash-es'
 import cn from 'classnames'
 import ResultPanel from './result'
-// import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import TracingPanel from './tracing'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchAgentLogDetail } from '@/service/log'
-// import type { NodeTracing } from '@/types/workflow'
-import type { AgentLogDetailResponse } from '@/models/log'
+import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type AgentLogDetailProps = {
@@ -27,7 +26,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
   const { appDetail } = useAppStore()
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
-  // const [list, setList] = useState<NodeTracing[]>([])
+  const [list, setList] = useState<AgentIteration[]>([])
 
   const tools = useMemo(() => {
     const res = uniq(flatten(runDetail?.iterations.map((iteration: any) => {
@@ -36,7 +35,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
     return res
   }, [runDetail])
 
-  const getResult = useCallback(async (appID: string, conversationID: string, messageID: string) => {
+  const getLogDetail = useCallback(async (appID: string, conversationID: string, messageID: string) => {
     try {
       const res = await fetchAgentLogDetail({
         appID,
@@ -46,6 +45,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
         },
       })
       setRunDetail(res)
+      setList(res.iterations)
     }
     catch (err) {
       notify({
@@ -57,7 +57,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
 
   const getData = async (appID: string, conversationID: string, messageID: string) => {
     setLoading(true)
-    await getResult(appID, conversationID, messageID)
+    await getLogDetail(appID, conversationID, messageID)
     setLoading(false)
   }
 
@@ -112,11 +112,11 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
             iterations={runDetail.iterations.length}
           />
         )}
-        {/* {!loading && currentTab === 'TRACING' && (
+        {!loading && currentTab === 'TRACING' && (
           <TracingPanel
             list={list}
           />
-        )} */}
+        )}
       </div>
     </div>
   )

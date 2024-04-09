@@ -14,7 +14,7 @@ type ResultPanelProps = {
   inputs?: string
   outputs?: string
   created_by?: string
-  created_at?: number
+  created_at?: string
   agentMode?: string
   tools?: string[]
   iterations?: number
@@ -98,21 +98,20 @@ const ResultPanel: FC<ResultPanelProps> = ({
                 <span>{`${total_tokens || 0} Tokens`}</span>
               </div>
             </div>
-            {/* TODO */}
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>Agent Mode</div>
+              <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>{t('appLog.agentLogDetail.agentMode')}</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
                 <span>{agentMode === 'function_call' ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>Tool used</div>
+              <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>{t('appLog.agentLogDetail.toolUsed')}</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
                 <span>{tools?.length ? tools?.join(', ') : 'Null'}</span>
               </div>
             </div>
             <div className='flex'>
-              <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>Iterations</div>
+              <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>{t('appLog.agentLogDetail.iterations')}</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
                 <span>{iterations}</span>
               </div>
