@@ -1,5 +1,5 @@
 const translation = {
-  title: '探索する',
+  title: '探索',
   sidebar: {
     discovery: '探索',
     chat: 'チャット',
@@ -18,7 +18,7 @@ const translation = {
   apps: {
     title: 'Difyによるアプリの探索',
     description: 'これらのテンプレートアプリを即座に使用するか、テンプレートに基づいて独自のアプリをカスタマイズしてください。',
-    allCategories: 'すべてのカテゴリ',
+    allCategories: 'おすすめ',
   },
   appCard: {
     addToWorkspace: 'ワークスペースに追加',

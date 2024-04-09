@@ -122,7 +122,7 @@ class MessageEndStreamResponse(StreamResponse):
     """
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
-    metadata: Optional[dict] = None
+    metadata: dict = {}
 
 
 class MessageFileStreamResponse(StreamResponse):

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.6.0",
+  "version": "0.6.0-fix1",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -19,6 +19,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -657,18 +658,25 @@ class IndexingRunner:
         if embedding_model_instance:
             embedding_model_type_instance = embedding_model_instance.model_type_instance
             embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = []
-            for i in range(0, len(documents), chunk_size):
-                chunk_documents = documents[i:i + chunk_size]
-                futures.append(executor.submit(self._process_chunk, current_app._get_current_object(), index_processor,
-                                               chunk_documents, dataset,
-                                               dataset_document, embedding_model_instance,
-                                               embedding_model_type_instance))
+        # create keyword index
+        create_keyword_thread = threading.Thread(target=self._process_keyword_index,
+                                                 args=(current_app._get_current_object(),
+                                                       dataset, dataset_document, documents))
+        create_keyword_thread.start()
+        if dataset.indexing_technique == 'high_quality':
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                futures = []
+                for i in range(0, len(documents), chunk_size):
+                    chunk_documents = documents[i:i + chunk_size]
+                    futures.append(executor.submit(self._process_chunk, current_app._get_current_object(), index_processor,
+                                                   chunk_documents, dataset,
+                                                   dataset_document, embedding_model_instance,
+                                                   embedding_model_type_instance))
 
-            for future in futures:
-                tokens += future.result()
+                for future in futures:
+                    tokens += future.result()
 
+        create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
         # update document status to completed
@@ -681,6 +689,24 @@ class IndexingRunner:
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
             }
         )
+
+    def _process_keyword_index(self, flask_app, dataset, dataset_document, documents):
+        with flask_app.app_context():
+            keyword = Keyword(dataset)
+            keyword.create(documents)
+            if dataset.indexing_technique != 'high_quality':
+                document_ids = [document.metadata['doc_id'] for document in documents]
+                db.session.query(DocumentSegment).filter(
+                    DocumentSegment.document_id == dataset_document.id,
+                    DocumentSegment.index_node_id.in_(document_ids),
+                    DocumentSegment.status == "indexing"
+                ).update({
+                    DocumentSegment.status: "completed",
+                    DocumentSegment.enabled: True,
+                    DocumentSegment.completed_at: datetime.datetime.utcnow()
+                })
+
+                db.session.commit()
 
     def _process_chunk(self, flask_app, index_processor, chunk_documents, dataset, dataset_document,
                        embedding_model_instance, embedding_model_type_instance):
@@ -700,7 +726,7 @@ class IndexingRunner:
                 )
 
             # load index
-            index_processor.load(dataset, chunk_documents)
+            index_processor.load(dataset, chunk_documents, with_keywords=False)
 
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(
