@@ -815,7 +815,7 @@ class Message(db.Model):
     @property
     def workflow_run(self):
         if self.workflow_run_id:
-            from api.models.workflow import WorkflowRun
+            from .workflow import WorkflowRun
             return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
 
         return None
