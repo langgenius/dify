@@ -3,6 +3,7 @@ from core.file.message_file_parser import MessageFileParser
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    ImagePromptMessageContent,
     PromptMessage,
     PromptMessageRole,
     TextPromptMessageContent,
@@ -124,7 +125,17 @@ class TokenBufferMemory:
             else:
                 continue
 
-            message = f"{role}: {m.content}"
-            string_messages.append(message)
+            if isinstance(m.content, list):
+                inner_msg = ""
+                for content in m.content:
+                    if isinstance(content, TextPromptMessageContent):
+                        inner_msg += f"{content.data}\n"
+                    elif isinstance(content, ImagePromptMessageContent):
+                        inner_msg += "[image]\n"
+
+                string_messages.append(f"{role}: {inner_msg.strip()}")
+            else:
+                message = f"{role}: {m.content}"
+                string_messages.append(message)
 
         return "\n".join(string_messages)
