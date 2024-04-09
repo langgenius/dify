@@ -32,13 +32,15 @@
 https://github.com/langgenius/dify/assets/13230914/979e7a68-f067-4bbc-b38e-2deb2cc2bbb5
 
 
-## Using our Cloud Services
+## Using Dify Cloud
 
-You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls.
+You can try out [Dify Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls.
 
-### Looking to purchase via AWS?
-Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. 
+## Dify for Enterprise / Organizations
 
+[Schedule a meeting with us](#Direct-Meetings) or [send us an email](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) to discuss enterprise needs. 
+
+For startups and small businesses using AWS, check out [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. It's an affordable AMI offering with the option to create apps with custom logo and branding.
 
 ## Features
 
@@ -46,7 +48,7 @@ Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t
 
 **1. Workflow**: Create and test complex AI workflows on a visual canvas, with pre-built nodes taking advantage of the power of all the following features and beyond.
 
-**2. Support**: Seamless integration with hundreds of proprietary / open-source LLMs and dozens of inference providers, including GPT, Mistral, Llama2, and OpenAI API-compatible models. A full list of supported model providers is kept [here](https://docs.dify.ai/getting-started/readme/model-providers).
+**2. Extensive LLM support**: Seamless integration with hundreds of proprietary / open-source LLMs and dozens of inference providers, including GPT, Mistral, Llama2, and OpenAI API-compatible models. A full list of supported model providers is kept [here](https://docs.dify.ai/getting-started/readme/model-providers).
 
 **3. Prompt IDE**: Visual orchestration of applications and services based on any LLMs. Easily share with your team.
 
@@ -137,21 +139,18 @@ We are looking for contributors to help with translating Dify to languages other
 
 ## Community & Support
 
-* [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and checking out our feature roadmap.
+* [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
 * [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
 * [Twitter](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
-* [Business Contact](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry). Best for: business inquiries of licensing Dify.AI for commercial use.
 
 ### Direct Meetings
 
-**Help us make Dify better. Reach out directly to us**.
-
 |                       Point of Contact                       |                           Purpose                            |
 | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="60" width="214"/></a> | Product design feedback, user experience discussions, feature planning and roadmaps. |
-| <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="60" width="225"/></a> |        Technical support, issues, or feature requests        |
+| <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="60" width="214"/></a> | Business enquiries & product feedback. |
+| <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="60" width="225"/></a> | Contributions, issues & feature requests |
 
 ## Security Disclosure
 
