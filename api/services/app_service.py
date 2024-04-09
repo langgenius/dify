@@ -221,12 +221,8 @@ class AppService:
                 "name": app.name,
                 "mode": app.mode,
                 "icon": app.icon,
-<<<<<<< HEAD
-                "icon_background": app.icon_background
-=======
                 "icon_background": app.icon_background,
                 "description": app.description
->>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
             }
         }
 

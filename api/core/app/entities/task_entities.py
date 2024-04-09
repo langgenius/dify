@@ -122,11 +122,7 @@ class MessageEndStreamResponse(StreamResponse):
     """
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
-<<<<<<< HEAD
-    metadata: Optional[dict] = None
-=======
     metadata: dict = {}
->>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
 
 
 class MessageFileStreamResponse(StreamResponse):
