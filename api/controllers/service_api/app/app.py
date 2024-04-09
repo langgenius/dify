@@ -1,4 +1,3 @@
-import json
 
 from flask import current_app
 from flask_restful import Resource, fields, marshal_with
@@ -6,9 +5,7 @@ from flask_restful import Resource, fields, marshal_with
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
-from extensions.ext_database import db
-from models.model import App, AppModelConfig, AppMode
-from models.tools import ApiToolProvider
+from models.model import App, AppMode
 from services.app_service import AppService
 
 
