@@ -28,6 +28,7 @@ def init_app(app: Flask) -> Celery:
 
     celery_app.conf.update(
         result_backend=app.config["CELERY_RESULT_BACKEND"],
+        broker_connection_retry_on_startup=True,
     )
 
     if app.config["BROKER_USE_SSL"]:
