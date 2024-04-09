@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
-import cn from 'classnames'
 import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
+import AppPublisher from '../app-publisher'
+import AgentSettingButton from './config/agent-setting-button'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import {
@@ -18,9 +19,6 @@ import {
   useFormattingChangedDispatcher,
 } from './debug/hooks'
 import type { ModelAndParameter } from './debug/types'
-import { APP_SIDEBAR_SHOULD_COLLAPSE } from './debug/types'
-import PublishWithMultipleModel from './debug/debug-with-multiple-model/publish-with-multiple-model'
-import AssistantTypePicker from './config/assistant-type-picker'
 import type {
   AnnotationReplyConfig,
   DatasetConfigs,
@@ -57,7 +55,7 @@ import type { FormValue } from '@/app/components/header/account-setting/model-pr
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -67,6 +65,7 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { appDetail, setAppSiderbarExpand } = useAppStore()
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
@@ -77,6 +76,7 @@ const Configuration: FC = () => {
   const [mode, setMode] = useState('')
   const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
 
+  const modalConfig = useMemo(() => appDetail?.model_config || {} as BackendModelConfig, [appDetail])
   const [conversationId, setConversationId] = useState<string | null>('')
 
   const media = useBreakpoints()
@@ -130,7 +130,7 @@ const Configuration: FC = () => {
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
   const [completionParams, doSetCompletionParams] = useState<FormValue>({})
-  const [tempStop, setTempStop, getTempStop] = useGetState<string[]>([])
+  const [_, setTempStop, getTempStop] = useGetState<string[]>([])
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
@@ -161,14 +161,8 @@ const Configuration: FC = () => {
     agentConfig: DEFAULT_AGENT_SETTING,
   })
 
-  const isChatApp = mode === AppType.chat
-  const isAgent = modelConfig.agentConfig?.enabled
-  const setIsAgent = (value: boolean) => {
-    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
-      draft.agentConfig.enabled = value
-    })
-    doSetModelConfig(newModelConfig)
-  }
+  const isAgent = mode === 'agent-chat'
+
   const isOpenAI = modelConfig.provider === 'openai'
 
   const [collectionList, setCollectionList] = useState<Collection[]>([])
@@ -352,12 +346,12 @@ const Configuration: FC = () => {
       const appMode = mode
 
       if (modeMode === ModelModeType.completion) {
-        if (appMode === AppType.chat) {
-          if (!completionPromptConfig.prompt.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
+        if (appMode !== AppType.completion) {
+          if (!completionPromptConfig.prompt?.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
             await migrateToDefaultPrompt(true, ModelModeType.completion)
         }
         else {
-          if (!completionPromptConfig.prompt.text)
+          if (!completionPromptConfig.prompt?.text)
             await migrateToDefaultPrompt(true, ModelModeType.completion)
         }
       }
@@ -394,7 +388,10 @@ const Configuration: FC = () => {
         const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
         doSetPromptMode(promptMode)
         if (promptMode === PromptMode.advanced) {
-          setChatPromptConfig(modelConfig.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+          if (modelConfig.chat_prompt_config && modelConfig.chat_prompt_config.prompt.length > 0)
+            setChatPromptConfig(modelConfig.chat_prompt_config)
+          else
+            setChatPromptConfig(clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
           setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
           setCanReturnToSimpleMode(false)
         }
@@ -447,7 +444,7 @@ const Configuration: FC = () => {
             model_id: model.name,
             mode: model.mode,
             configs: {
-              prompt_template: modelConfig.pre_prompt,
+              prompt_template: modelConfig.pre_prompt || '',
               prompt_variables: userInputsFormToPromptVariables(
                 [
                   ...modelConfig.user_input_form,
@@ -483,7 +480,7 @@ const Configuration: FC = () => {
             external_data_tools: modelConfig.external_data_tools,
             dataSets: datasets || [],
             // eslint-disable-next-line multiline-ternary
-            agentConfig: res.is_agent ? {
+            agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
               ...modelConfig.agent_mode,
               // remove dataset
@@ -514,10 +511,11 @@ const Configuration: FC = () => {
         setHasFetchedDetail(true)
       })
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   const promptEmpty = (() => {
-    if (mode === AppType.chat)
+    if (mode !== AppType.completion)
       return false
 
     if (isAdvancedMode) {
@@ -525,13 +523,13 @@ const Configuration: FC = () => {
         return chatPromptConfig.prompt.every(({ text }: any) => !text)
 
       else
-        return !completionPromptConfig.prompt.text
+        return !completionPromptConfig.prompt?.text
     }
 
     else { return !modelConfig.configs.prompt_template }
   })()
   const cannotPublish = (() => {
-    if (mode === AppType.chat) {
+    if (mode !== AppType.completion) {
       if (!isAdvancedMode)
         return false
 
@@ -547,7 +545,7 @@ const Configuration: FC = () => {
     else { return promptEmpty }
   })()
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
-  const handlePublish = async (isSilence?: boolean, modelAndParameter?: ModelAndParameter) => {
+  const onPublish = async (modelAndParameter?: ModelAndParameter) => {
     const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
@@ -556,7 +554,7 @@ const Configuration: FC = () => {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
       return
     }
-    if (isAdvancedMode && mode === AppType.chat) {
+    if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
@@ -636,22 +634,20 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    if (!isSilence)
-      notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+    notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
 
     setCanReturnToSimpleMode(false)
     return true
   }
 
-  const [showConfirm, setShowConfirm] = useState(false)
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const resetAppConfig = () => {
     syncToPublishedConfig(publishedConfig!)
-    setShowConfirm(false)
+    setRestoreConfirmOpen(false)
   }
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
 
-  const { eventEmitter } = useEventEmitterContextContext()
   const {
     debugWithMultipleModel,
     multipleModelConfigs,
@@ -666,13 +662,11 @@ const Configuration: FC = () => {
         { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
-    eventEmitter?.emit({
-      type: APP_SIDEBAR_SHOULD_COLLAPSE,
-    } as any)
+    setAppSiderbarExpand('collapse')
   }
 
   if (isLoading) {
-    return <div className='flex h-full items-center justify-center'>
+    return <div className='flex items-center justify-center h-full'>
       <Loading type='area' />
     </div>
   }
@@ -750,47 +744,36 @@ const Configuration: FC = () => {
     >
       <>
         <div className="flex flex-col h-full">
-          <div className='flex grow h-[200px]'>
-            <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
-              {/* Header Left */}
-              <div className='flex justify-between items-center px-6 h-14'>
+          <div className='relative flex grow h-[200px] pt-14'>
+            {/* Header */}
+            <div className='absolute top-0 left-0 w-full bg-white h-14'>
+              <div className='flex items-center justify-between px-6 h-14'>
                 <div className='flex items-center'>
-                  <div className='leading-6 text-base font-semibold text-gray-900'>{t('appDebug.orchestrate')}</div>
+                  <div className='text-base font-semibold leading-6 text-gray-900'>{t('appDebug.orchestrate')}</div>
                   <div className='flex items-center h-[14px] space-x-1 text-xs'>
                     {isAdvancedMode && (
                       <div className='ml-1 flex items-center h-5 px-1.5 border border-gray-100 rounded-md text-[11px] font-medium text-gray-500 uppercase'>{t('appDebug.promptMode.advanced')}</div>
                     )}
                   </div>
                 </div>
-                {isChatApp && (
-                  <AssistantTypePicker
-                    value={isAgent ? 'agent' : 'assistant'}
-                    disabled={isAdvancedMode && !canReturnToSimpleMode}
-                    onChange={(value: string) => {
-                      setIsAgent(value === 'agent')
-                      if (value === 'agent')
-                        setPromptMode(PromptMode.simple)
-                    }}
-                    isFunctionCall={isFunctionCall}
-                    isChatModel={modelConfig.mode === ModelModeType.chat}
-                    agentConfig={modelConfig.agentConfig}
-                    onAgentSettingChange={(config) => {
-                      const nextConfig = produce(modelConfig, (draft: ModelConfig) => {
-                        draft.agentConfig = config
-                      })
-                      setModelConfig(nextConfig)
-                    }}
-                  />
-                )}
-              </div>
-              <Config />
-            </div>
-            {!isMobile && <div className="grow relative w-1/2  h-full overflow-y-auto  flex flex-col " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              {/* Header Right */}
-              <div className='flex justify-end items-center flex-wrap px-6 h-14 space-x-2'>
-                {/* Model and Parameters */}
-                {
-                  !debugWithMultipleModel && (
+                <div className='flex items-center'>
+                  {/* Agent Setting */}
+                  {isAgent && (
+                    <AgentSettingButton
+                      isChatModel={modelConfig.mode === ModelModeType.chat}
+                      agentConfig={modelConfig.agentConfig}
+
+                      isFunctionCall={isFunctionCall}
+                      onAgentSettingChange={(config) => {
+                        const nextConfig = produce(modelConfig, (draft: ModelConfig) => {
+                          draft.agentConfig = config
+                        })
+                        setModelConfig(nextConfig)
+                      }}
+                    />
+                  )}
+                  {/* Model and Parameters */}
+                  {!debugWithMultipleModel && (
                     <>
                       <ModelParameterModal
                         isAdvancedMode={isAdvancedMode}
@@ -805,37 +788,31 @@ const Configuration: FC = () => {
                         debugWithMultipleModel={debugWithMultipleModel}
                         onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
                       />
-                      <div className='w-[1px] h-[14px] bg-gray-200'></div>
+                      <div className='mx-2 w-[1px] h-[14px] bg-gray-200'></div>
                     </>
-                  )
-                }
-                <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
-                {isMobile && (
-                  <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
-                    <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
-                    <CodeBracketIcon className="h-4 w-4 text-gray-500" />
-                  </Button>
-                )}
-                {
-                  debugWithMultipleModel
-                    ? (
-                      <PublishWithMultipleModel
-                        multipleModelConfigs={multipleModelConfigs}
-                        onSelect={item => handlePublish(false, item)}
-                      />
-                    )
-                    : (
-                      <Button
-                        type='primary'
-                        onClick={() => handlePublish(false)}
-                        className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}
-                      >
-                        {t('appDebug.operation.applyConfig')}
-                      </Button>
-                    )
-                }
+                  )}
+                  {isMobile && (
+                    <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                      <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
+                      <CodeBracketIcon className="w-4 h-4 text-gray-500" />
+                    </Button>
+                  )}
+                  <AppPublisher {...{
+                    publishDisabled: cannotPublish,
+                    publishedAt: (modalConfig.created_at || 0) * 1000,
+                    debugWithMultipleModel,
+                    multipleModelConfigs,
+                    onPublish,
+                    onRestore: () => setRestoreConfirmOpen(true),
+                  }} />
+                </div>
               </div>
-              <div className='flex flex-col grow h-0 rounded-tl-2xl border-t border-l bg-gray-50 '>
+            </div>
+            <div className={`w-full sm:w-1/2 shrink-0 flex flex-col h-full ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <Config />
+            </div>
+            {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              <div className='flex flex-col h-0 border-t border-l grow rounded-tl-2xl bg-gray-50 '>
                 <Debug
                   hasSetAPIKEY={hasSettedApiKey}
                   onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
@@ -852,14 +829,14 @@ const Configuration: FC = () => {
             </div>}
           </div>
         </div>
-        {showConfirm && (
+        {restoreConfirmOpen && (
           <Confirm
             title={t('appDebug.resetConfig.title')}
             content={t('appDebug.resetConfig.message')}
-            isShow={showConfirm}
-            onClose={() => setShowConfirm(false)}
+            isShow={restoreConfirmOpen}
+            onClose={() => setRestoreConfirmOpen(false)}
             onConfirm={resetAppConfig}
-            onCancel={() => setShowConfirm(false)}
+            onCancel={() => setRestoreConfirmOpen(false)}
           />
         )}
         {showUseGPT4Confirm && (

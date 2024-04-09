@@ -16,6 +16,8 @@ from models.tools import ApiToolProvider
 
 
 class ApiBasedToolProviderController(ToolProviderController):
+    provider_id: str
+
     @staticmethod
     def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiBasedToolProviderController':
         credentials_schema = {
@@ -89,9 +91,10 @@ class ApiBasedToolProviderController(ToolProviderController):
                     'en_US': db_provider.description,
                     'zh_Hans': db_provider.description
                 },
-                'icon': db_provider.icon
+                'icon': db_provider.icon,
             },
-            'credentials_schema': credentials_schema
+            'credentials_schema': credentials_schema,
+            'provider_id': db_provider.id or '',
         })
 
     @property
@@ -120,7 +123,8 @@ class ApiBasedToolProviderController(ToolProviderController):
                     'en_US': tool_bundle.operation_id,
                     'zh_Hans': tool_bundle.operation_id
                 },
-                'icon': tool_bundle.icon if tool_bundle.icon else ''
+                'icon': self.identity.icon,
+                'provider': self.provider_id,
             },
             'description': {
                 'human': {

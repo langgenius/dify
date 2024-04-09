@@ -1,11 +1,12 @@
-from typing import Optional, Union
+from typing import Union
 
 import requests
 
-from core.file.file_obj import FileBelongsTo, FileObj, FileTransferMethod, FileType
+from core.app.app_config.entities import FileExtraConfig
+from core.file.file_obj import FileBelongsTo, FileTransferMethod, FileType, FileVar
 from extensions.ext_database import db
 from models.account import Account
-from models.model import AppModelConfig, EndUser, MessageFile, UploadFile
+from models.model import EndUser, MessageFile, UploadFile
 from services.file_service import IMAGE_EXTENSIONS
 
 
@@ -15,18 +16,16 @@ class MessageFileParser:
         self.tenant_id = tenant_id
         self.app_id = app_id
 
-    def validate_and_transform_files_arg(self, files: list[dict], app_model_config: AppModelConfig,
-                                         user: Union[Account, EndUser]) -> list[FileObj]:
+    def validate_and_transform_files_arg(self, files: list[dict], file_extra_config: FileExtraConfig,
+                                         user: Union[Account, EndUser]) -> list[FileVar]:
         """
         validate and transform files arg
 
         :param files:
-        :param app_model_config:
+        :param file_extra_config:
         :param user:
         :return:
         """
-        file_upload_config = app_model_config.file_upload_dict
-
         for file in files:
             if not isinstance(file, dict):
                 raise ValueError('Invalid file format, must be dict')
@@ -45,17 +44,17 @@ class MessageFileParser:
                 raise ValueError('Missing file upload_file_id')
 
         # transform files to file objs
-        type_file_objs = self._to_file_objs(files, file_upload_config)
+        type_file_objs = self._to_file_objs(files, file_extra_config)
 
         # validate files
         new_files = []
         for file_type, file_objs in type_file_objs.items():
             if file_type == FileType.IMAGE:
                 # parse and validate files
-                image_config = file_upload_config.get('image')
+                image_config = file_extra_config.image_config
 
                 # check if image file feature is enabled
-                if not image_config['enabled']:
+                if not image_config:
                     continue
 
                 # Validate number of files
@@ -80,7 +79,7 @@ class MessageFileParser:
                         # get upload file from upload_file_id
                         upload_file = (db.session.query(UploadFile)
                                        .filter(
-                            UploadFile.id == file_obj.upload_file_id,
+                            UploadFile.id == file_obj.related_id,
                             UploadFile.tenant_id == self.tenant_id,
                             UploadFile.created_by == user.id,
                             UploadFile.created_by_role == ('account' if isinstance(user, Account) else 'end_user'),
@@ -96,30 +95,30 @@ class MessageFileParser:
         # return all file objs
         return new_files
 
-    def transform_message_files(self, files: list[MessageFile], app_model_config: Optional[AppModelConfig]) -> list[FileObj]:
+    def transform_message_files(self, files: list[MessageFile], file_extra_config: FileExtraConfig) -> list[FileVar]:
         """
         transform message files
 
         :param files:
-        :param app_model_config:
+        :param file_extra_config:
         :return:
         """
         # transform files to file objs
-        type_file_objs = self._to_file_objs(files, app_model_config.file_upload_dict)
+        type_file_objs = self._to_file_objs(files, file_extra_config)
 
         # return all file objs
         return [file_obj for file_objs in type_file_objs.values() for file_obj in file_objs]
 
     def _to_file_objs(self, files: list[Union[dict, MessageFile]],
-                      file_upload_config: dict) -> dict[FileType, list[FileObj]]:
+                      file_extra_config: FileExtraConfig) -> dict[FileType, list[FileVar]]:
         """
         transform files to file objs
 
         :param files:
-        :param file_upload_config:
+        :param file_extra_config:
         :return:
         """
-        type_file_objs: dict[FileType, list[FileObj]] = {
+        type_file_objs: dict[FileType, list[FileVar]] = {
             # Currently only support image
             FileType.IMAGE: []
         }
@@ -133,7 +132,7 @@ class MessageFileParser:
                 if file.belongs_to == FileBelongsTo.ASSISTANT.value:
                     continue
 
-            file_obj = self._to_file_obj(file, file_upload_config)
+            file_obj = self._to_file_obj(file, file_extra_config)
             if file_obj.type not in type_file_objs:
                 continue
 
@@ -141,7 +140,7 @@ class MessageFileParser:
 
         return type_file_objs
 
-    def _to_file_obj(self, file: Union[dict, MessageFile], file_upload_config: dict) -> FileObj:
+    def _to_file_obj(self, file: Union[dict, MessageFile], file_extra_config: FileExtraConfig) -> FileVar:
         """
         transform file to file obj
 
@@ -150,23 +149,23 @@ class MessageFileParser:
         """
         if isinstance(file, dict):
             transfer_method = FileTransferMethod.value_of(file.get('transfer_method'))
-            return FileObj(
+            return FileVar(
                 tenant_id=self.tenant_id,
                 type=FileType.value_of(file.get('type')),
                 transfer_method=transfer_method,
                 url=file.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
-                upload_file_id=file.get('upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
-                file_config=file_upload_config
+                related_id=file.get('upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
+                extra_config=file_extra_config
             )
         else:
-            return FileObj(
+            return FileVar(
                 id=file.id,
                 tenant_id=self.tenant_id,
                 type=FileType.value_of(file.type),
                 transfer_method=FileTransferMethod.value_of(file.transfer_method),
                 url=file.url,
-                upload_file_id=file.upload_file_id or None,
-                file_config=file_upload_config
+                related_id=file.upload_file_id or None,
+                extra_config=file_extra_config
             )
 
     def _check_image_remote_url(self, url):

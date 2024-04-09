@@ -1,6 +1,8 @@
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.user_entities import UserToolProvider
 from core.tools.model.tool_model_manager import ToolModelManager
 from core.tools.tool.tool import Tool
 from core.tools.utils.web_reader_tool import get_url
@@ -39,6 +41,9 @@ class BuiltinTool(Tool):
             tool_name=self.identity.name,
             prompt_messages=prompt_messages,
         )
+    
+    def tool_provider_type(self) -> ToolProviderType:
+        return UserToolProvider.ProviderType.BUILTIN
     
     def get_max_tokens(self) -> int:
         """

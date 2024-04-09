@@ -56,14 +56,15 @@ Check out [Dify Premium on AWS](https://aws.amazon.com/marketplace/pp/prodview-t
 ## Features
 
 ![](./images/models.png)
+**1. Workflow**: Create and test complex AI workflows on a visual canvas, with pre-built nodes taking advantage of the power of all the following features and beyond.
 
-**1. LLM Support**: Integration with OpenAI's GPT family of models, or the open-source Llama2 family models. In fact, Dify supports mainstream commercial models and open-source models (locally deployed or based on MaaS).
+**2. LLM Support**: Integration with OpenAI's GPT family of models, or the open-source Llama2 family models. In fact, Dify supports mainstream commercial models and open-source models (locally deployed or based on MaaS).
 
-**2. Prompt IDE**: Visual orchestration of applications and services based on LLMs with your team.
+**3. Prompt IDE**: Visual orchestration of applications and services based on LLMs with your team.
 
-**3. RAG Engine**: Includes various RAG capabilities based on full-text indexing or vector database embeddings, allowing direct upload of PDFs, TXTs, and other text formats.
+**4. RAG Engine**: Includes various RAG capabilities based on full-text indexing or vector database embeddings, allowing direct upload of PDFs, TXTs, and other text formats.
 
-**4. AI Agent**: Based on Function Calling and ReAct, the Agent inference framework allows users to customize tools, what you see is what you get. Dify provides more than a dozen built-in tool calling capabilities, such as Google Search, DELL·E, Stable Diffusion, WolframAlpha, etc.
+**5. AI Agent**: Based on Function Calling and ReAct, the Agent inference framework allows users to customize tools, what you see is what you get. Dify provides more than a dozen built-in tool calling capabilities, such as Google Search, DELL·E, Stable Diffusion, WolframAlpha, etc.
 
 
 **5. Continuous Operations**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models using production data.

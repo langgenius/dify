@@ -36,7 +36,7 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
         print_text("\n[on_tool_end]\n", color=self.color)
         print_text("Tool: " + tool_name + "\n", color=self.color)
         print_text("Inputs: " + str(tool_inputs) + "\n", color=self.color)
-        print_text("Outputs: " + str(tool_outputs) + "\n", color=self.color)
+        print_text("Outputs: " + str(tool_outputs)[:1000] + "\n", color=self.color)
         print_text("\n")
 
     def on_tool_error(

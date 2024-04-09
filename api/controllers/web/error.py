@@ -15,7 +15,13 @@ class NotCompletionAppError(BaseHTTPException):
 
 class NotChatAppError(BaseHTTPException):
     error_code = 'not_chat_app'
-    description = "Please check if your Chat app mode matches the right API route."
+    description = "Please check if your app mode matches the right API route."
+    code = 400
+
+
+class NotWorkflowAppError(BaseHTTPException):
+    error_code = 'not_workflow_app'
+    description = "Please check if your Workflow app mode matches the right API route."
     code = 400
 
 
