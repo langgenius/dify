@@ -43,7 +43,7 @@ const ResolutionPicker: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center'>
+    <div className='flex items-center justify-between'>
       <div className='mr-2 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.resolution.name`)}</div>
       <div className='flex items-center space-x-1'>
         <Item
