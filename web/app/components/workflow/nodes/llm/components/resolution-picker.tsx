@@ -23,7 +23,7 @@ const Item: FC<ItemProps> = ({ title, value, onSelect, isSelected }) => {
 
   return (
     <div
-      className={cn(isSelected ? 'bg-white border-[2px] border-primary-400  shadow-xs' : 'bg-gray-25 border border-gray-100', 'flex items-center h-8 px-3 rounded-xl text-[13px] font-normal text-gray-900 cursor-pointer')}
+      className={cn(isSelected ? 'bg-white border-[2px] border-primary-400  shadow-xs' : 'bg-gray-25 border border-gray-100', 'flex items-center h-8 px-3 rounded-lg text-[13px] font-normal text-gray-900 cursor-pointer')}
       onClick={handleSelect}
     >
       {title}
@@ -43,7 +43,7 @@ const ResolutionPicker: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center'>
+    <div className='flex items-center justify-between'>
       <div className='mr-2 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.resolution.name`)}</div>
       <div className='flex items-center space-x-1'>
         <Item

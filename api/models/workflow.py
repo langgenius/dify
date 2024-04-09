@@ -299,6 +299,10 @@ class WorkflowRun(db.Model):
             Message.workflow_run_id == self.id
         ).first()
 
+    @property
+    def workflow(self):
+        return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+
 
 class WorkflowNodeExecutionTriggeredFrom(Enum):
     """

@@ -65,7 +65,9 @@ class QuestionClassifierNode(LLMNode):
         categories = [_class.name for _class in node_data.classes]
         try:
             result_text_json = json.loads(result_text.strip('```JSON\n'))
-            categories = result_text_json.get('categories', [])
+            categories_result = result_text_json.get('categories', [])
+            if categories_result:
+                categories = categories_result
         except Exception:
             logging.error(f"Failed to parse result text: {result_text}")
         try:

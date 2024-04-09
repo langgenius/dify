@@ -12,6 +12,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Toast from '@/app/components/base/toast'
+import { TransferMethod } from '@/types/app'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -51,7 +52,18 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
   const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
   const isRunning = runningStatus === NodeRunningStatus.Running
+  const isFileLoaded = (() => {
+    // system files
+    const filesForm = forms.find(item => !!item.values['#files#'])
+    if (!filesForm)
+      return true
 
+    const files = filesForm.values['#files#'] as any
+    if (files?.some((item: any) => item.transfer_method === TransferMethod.local_file && !item.upload_file_id))
+      return false
+
+    return true
+  })()
   const handleRun = useCallback(() => {
     let errMsg = ''
     forms.forEach((form) => {
@@ -129,7 +141,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
                 <StopCircle className='w-4 h-4 text-gray-500' />
               </div>
             )}
-            <Button disabled={isRunning} type='primary' className='w-0 grow !h-8 flex items-center space-x-2 text-[13px]' onClick={handleRun}>
+            <Button disabled={!isFileLoaded || isRunning} type='primary' className='w-0 grow !h-8 flex items-center space-x-2 text-[13px]' onClick={handleRun}>
               {isRunning && <Loading02 className='animate-spin w-4 h-4 text-white' />}
               <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
             </Button>
