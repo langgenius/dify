@@ -2,7 +2,11 @@ version: '3'
 services:
   # API service
   api:
+<<<<<<< HEAD
     image: langgenius/dify-api:0.6.0
+=======
+    image: langgenius/dify-api:0.6.0-fix1
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -150,7 +154,11 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
+<<<<<<< HEAD
     image: langgenius/dify-api:0.6.0
+=======
+    image: langgenius/dify-api:0.6.0-fix1
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
     restart: always
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
@@ -232,7 +240,11 @@ services:
 
   # Frontend web application.
   web:
+<<<<<<< HEAD
     image: langgenius/dify-web:0.6.0
+=======
+    image: langgenius/dify-web:0.6.0-fix1
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
     restart: always
     environment:
       EDITION: SELF_HOSTED
@@ -323,8 +335,11 @@ services:
       API_KEY: dify-sandbox
       GIN_MODE: release
       WORKER_TIMEOUT: 15
+<<<<<<< HEAD
     ports:
       - "8194:8194"
+=======
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.

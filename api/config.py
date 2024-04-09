@@ -98,7 +98,11 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
+<<<<<<< HEAD
         self.CURRENT_VERSION = "0.6.0"
+=======
+        self.CURRENT_VERSION = "0.6.0-fix1"
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')

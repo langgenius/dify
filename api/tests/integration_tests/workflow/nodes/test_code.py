@@ -6,6 +6,13 @@ from core.workflow.nodes.code.code_node import CodeNode
 from models.workflow import WorkflowNodeExecutionStatus
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
+<<<<<<< HEAD
+=======
+from os import getenv
+
+CODE_MAX_STRING_LENGTH = int(getenv('CODE_MAX_STRING_LENGTH', '10000'))
+
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
 @pytest.mark.parametrize('setup_code_executor_mock', [['none']], indirect=True)
 def test_execute_code(setup_code_executor_mock):
     code = '''
@@ -227,7 +234,11 @@ def test_execute_code_output_validator_depth():
     # construct result
     result = {
         "number_validator": 1,
+<<<<<<< HEAD
         "string_validator": "1" * 6000,
+=======
+        "string_validator": (CODE_MAX_STRING_LENGTH + 1) * "1",
+>>>>>>> fix/sometimes-choosed-old-selected-knowledge-overwrite-new
         "number_array_validator": [1, 2, 3, 3.333],
         "string_array_validator": ["1", "2", "3"],
         "object_validator": {

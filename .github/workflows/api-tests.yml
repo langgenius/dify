@@ -26,6 +26,7 @@ jobs:
       HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL: b
       HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL: c
       MOCK_SWITCH: true
+      CODE_MAX_STRING_LENGTH: 80000
 
     steps:
       - name: Checkout code
@@ -41,5 +42,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r ./api/requirements.txt
 
-      - name: Run pytest
+      - name: Run ModelRuntime
         run: pytest api/tests/integration_tests/model_runtime/anthropic api/tests/integration_tests/model_runtime/azure_openai api/tests/integration_tests/model_runtime/openai api/tests/integration_tests/model_runtime/chatglm api/tests/integration_tests/model_runtime/google api/tests/integration_tests/model_runtime/xinference api/tests/integration_tests/model_runtime/huggingface_hub/test_llm.py
+
+      - name: Run Tool
+        run: pytest api/tests/integration_tests/tools/test_all_provider.py
+
+      - name: Run Workflow
+        run: pytest api/tests/integration_tests/workflow

@@ -478,6 +478,10 @@ const translation = {
         title: 'Змінні та зовнішні інструменти',
         desc: 'Вставити змінні та зовнішні інструменти',
       },
+      outputToolDisabledItem: {
+        title: 'Змінні',
+        desc: 'Вставити змінні',
+      },
       modal: {
         add: 'Нова змінна',
         addTool: 'Новий інструмент',

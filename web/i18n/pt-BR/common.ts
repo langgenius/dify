@@ -478,6 +478,10 @@ const translation = {
         title: 'Variáveis e Ferramentas Externas',
         desc: 'Inserir Variáveis e Ferramentas Externas',
       },
+      outputToolDisabledItem: {
+        title: 'Variáveis',
+        desc: 'Inserir variáveis',
+      },
       modal: {
         add: 'Nova variável',
         addTool: 'Nova ferramenta',
