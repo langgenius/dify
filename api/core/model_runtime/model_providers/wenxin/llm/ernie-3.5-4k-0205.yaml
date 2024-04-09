@@ -1,4 +1,4 @@
-model: ernie-3.5-8k
+model: ernie-3.5-4k-0205
 label:
   en_US: Ernie-3.5-8K
 model_type: llm
