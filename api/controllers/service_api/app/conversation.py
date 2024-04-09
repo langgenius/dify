@@ -6,6 +6,7 @@ import services
 from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
@@ -27,7 +28,13 @@ class ConversationApi(Resource):
         args = parser.parse_args()
 
         try:
-            return ConversationService.pagination_by_last_id(app_model, end_user, args['last_id'], args['limit'])
+            return ConversationService.pagination_by_last_id(
+                app_model=app_model,
+                user=end_user,
+                last_id=args['last_id'],
+                limit=args['limit'],
+                invoke_from=InvokeFrom.SERVICE_API
+            )
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
