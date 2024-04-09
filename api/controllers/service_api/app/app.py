@@ -30,7 +30,6 @@ class AppParameterApi(Resource):
     }
 
     parameters_fields = {
-        'name': fields.String,
         'opening_statement': fields.String,
         'suggested_questions': fields.Raw,
         'suggested_questions_after_answer': fields.Raw,
@@ -63,7 +62,6 @@ class AppParameterApi(Resource):
             user_input_form = features_dict.get('user_input_form', [])
 
         return {
-            'name':app_model.name,
             'opening_statement': features_dict.get('opening_statement'),
             'suggested_questions': features_dict.get('suggested_questions', []),
             'suggested_questions_after_answer': features_dict.get('suggested_questions_after_answer',
@@ -94,6 +92,16 @@ class AppMetaApi(Resource):
         """Get app meta"""
         return AppService().get_app_meta(app_model)
 
+class AppInfoApi(Resource):
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get app meta"""
+        return {
+            'name':app_model.name,
+            'description':app_model.description
+        } 
+
 
 api.add_resource(AppParameterApi, '/parameters')
 api.add_resource(AppMetaApi, '/meta')
+api.add_resource(AppInfoApi, '/info')
