@@ -1,4 +1,4 @@
-import { type FC, useEffect, useState } from 'react'
+import { type FC, useEffect, useRef, useState } from 'react'
 import React from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
@@ -10,10 +10,17 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   data,
 }) => {
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
+  const updateTime = useRef(0)
   useEffect(() => {
     (async () => {
+      updateTime.current = updateTime.current + 1
+      const currUpdateTime = updateTime.current
+
       if (data.dataset_ids?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: data.dataset_ids } })
+        //  avoid old data overwrite new data
+        if (currUpdateTime < updateTime.current)
+          return
         setSelectedDatasets(dataSetsWithDetail)
       }
       else {
@@ -33,7 +40,7 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
             <div className='mr-1 shrink-0 p-1 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]'>
               <Folder className='w-3 h-3 text-[#444CE7]' />
             </div>
-            <div className='text-xs font-normal text-gray-700'>
+            <div className='grow w-0 text-xs font-normal text-gray-700 truncate'>
               {name}
             </div>
           </div>
